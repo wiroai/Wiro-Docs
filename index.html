@@ -13037,7 +13037,7 @@ import type {
 <p>Cache-read and cache-write categories are charged only when the selected model rate defines them. <code>inputtokens</code> contains only uncached input; <code>totaltokens</code> is always the exact sum of input, output, cache-read, and cache-write tokens. For models with <code>long_context_threshold_tokens</code>, Wiro selects the long-context rate <strong>per LLM call</strong> using <code>input + cacheRead + cacheWrite</code>. You don't send anything. Each billed turn appears once as a ledger row with <code>action: "tokens"</code> (see <a href="/docs/agent-transactions#tx-transactionlist"><code>POST /UserAgent/TransactionList</code></a>). Per-turn token counts and cost also ride on each assistant message (<code>inputtokens</code> / <code>outputtokens</code> / <code>cachereadtokens</code> / <code>cachewritetokens</code> / <code>totaltokens</code> / <code>tokencost</code> / <code>model</code>, see <a href="/docs/agent-messaging">Agent Messaging</a>).</p>
 <p>When the credit pool is exhausted, <a href="/docs/agent-messaging#post-useragentmessagesend"><code>POST /UserAgent/Message/Send</code></a> and <a href="#post-useragentstart"><code>POST /UserAgent/Start</code></a> refuse with an <code>Agent has no remaining credits…</code> error plus an <code>agentbalance</code> snapshot; renew the subscription or buy an extra credit pack to continue.</p>
 <blockquote>
-<p><strong>Voice realtime audio is billed separately.</strong> Live voice-call audio (for <code>util-voice-receptionist</code> agents) is <strong>not</strong> charged to the platform credit pool. It flows through the operator's own Wiro AI Models balance via the <code>int-wiro-aimodels</code> skill (you bring your own Wiro API key). The voice-prep turn before the call and the post-call text turn are billed as normal token deducts.</p>
+<p><strong>Voice realtime audio is billed separately.</strong> Live voice-call audio (for <code>util-voice-receptionist</code> agents) is <strong>not</strong> charged to the platform credit pool. It is billed to the operator's own Wiro wallet through the <code>int-wiro-aimodels</code> skill, the AI Models connector (you bring your own Wiro API key). The voice-prep turn before the call and the post-call text turn are billed as normal token deducts.</p>
 </blockquote>
 <h3 id="live-pricing-preview">Live Pricing Preview</h3>
 <p>Before you deploy, change the plan or change skills, call <a href="#post-useragentpricingpreview"><code>POST /UserAgent/PricingPreview</code></a>. It writes nothing and returns the three plans under <code>tiers</code>, the <code>tokenRates</code>, and <code>enabledSkills</code> with every transitive <code>depends_on</code> resolved. For an agent with an active plan it also returns <code>planChange</code>: what a different <code>tier</code> would charge now and when it starts. A skill change has no price, so its <code>planChange</code> shows no charge and no credit change.</p>
@@ -13293,7 +13293,7 @@ import type {
         },
         &quot;int-wiro-aimodels&quot;: {
           &quot;name&quot;: &quot;int-wiro-aimodels&quot;,
-          &quot;title&quot;: &quot;Wiro AI Models&quot;,
+          &quot;title&quot;: &quot;AI Models&quot;,
           &quot;icon&quot;: &quot;https://wiro.ai/images/icons/skills/wiro.svg&quot;,
           &quot;brand_color&quot;: &quot;#33F2BC&quot;,
           &quot;brand_text_color&quot;: &quot;#0F1A24&quot;,
@@ -13306,7 +13306,7 @@ import type {
           &quot;user_invocable&quot;: true,
           &quot;deprecated&quot;: false,
           &quot;replacement&quot;: null,
-          &quot;description&quot;: &quot;Universal access to every AI model on Wiro: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more.&quot;
+          &quot;description&quot;: &quot;Universal access to every AI model in the catalog: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more.&quot;
         }
       },
       &quot;credentials&quot;: {
@@ -13808,7 +13808,7 @@ import type {
   &quot;errors&quot;: [
     {
       &quot;code&quot;: 99,
-      &quot;message&quot;: &quot;Duplicate deploy: an identical agent (\&quot;My Instagram Bot\&quot;) was already deployed 4s ago. Open the existing one in your panel, or wait a few seconds and retry.&quot;
+      &quot;message&quot;: &quot;Duplicate deploy: an identical agent (\&quot;My Instagram Bot\&quot;) was already deployed 4s ago. Use the existing one, or wait a few seconds and retry.&quot;
     }
   ],
   &quot;existingUserAgentGuid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;
@@ -14296,7 +14296,7 @@ import type {
         },
         &quot;int-wiro-aimodels&quot;: {
           &quot;name&quot;: &quot;int-wiro-aimodels&quot;,
-          &quot;title&quot;: &quot;Wiro AI Models&quot;,
+          &quot;title&quot;: &quot;AI Models&quot;,
           &quot;icon&quot;: &quot;https://wiro.ai/images/icons/skills/wiro.svg&quot;,
           &quot;brand_color&quot;: &quot;#33f2bc&quot;,
           &quot;brand_text_color&quot;: &quot;#0f1a24&quot;,
@@ -14309,7 +14309,7 @@ import type {
           &quot;user_invocable&quot;: true,
           &quot;deprecated&quot;: false,
           &quot;replacement&quot;: null,
-          &quot;description&quot;: &quot;Universal access to every AI model on Wiro: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more.&quot;
+          &quot;description&quot;: &quot;Universal access to every AI model in the catalog: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more.&quot;
         }
       },
       &quot;monthlycredits&quot;: 3000,
@@ -15458,7 +15458,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <p>Treat all four fields as best-effort: the credential write itself never depends on Twilio's API call succeeding. See <a href="/docs/integration-twiliovoice-skills">Twilio Voice Integration</a> for the full lifecycle.</p>
 </blockquote>
 <h4 id="post-useragentcredentialprojectbind"><strong>POST</strong> /UserAgent/CredentialProjectBind</h4>
-<p>Connects an agent's Wiro AI Models connector (<code>int-wiro-aimodels</code>, the <code>wiro</code> key under <code>credentials</code>) to one of your Wiro projects. You name the project, and Wiro saves that project's API key on the agent. The agent's model runs are paid from the wallet of the workspace that owns the project.</p>
+<p>Connects an agent's AI Models connector (<code>int-wiro-aimodels</code>, the <code>wiro</code> key under <code>credentials</code>) to one of your Wiro projects. You name the project, and Wiro saves that project's API key on the agent. The agent's model runs are paid from the wallet of the workspace that owns the project.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -15836,7 +15836,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </div>
 </div>
 <h4 id="post-useragentcustomskillrename"><strong>POST</strong> /UserAgent/CustomSkillRename</h4>
-<p>Renames a user-created custom skill, optionally updating its description in the same atomic write. Only rows with <code>usercreated: true</code> can be renamed. Preset-owned rows reject with <code>agent-customskill-rename-preset-forbidden</code>.</p>
+<p>Renames a user-created custom skill, optionally updating its description in the same atomic write. Only rows with <code>usercreated: true</code> can be renamed. Preset-owned rows are refused with <code>Preset skills cannot be renamed.</code></p>
 <p>The skillkey flavour is preserved: a <code>cs-cron-*</code> scheduled task stays scheduled, a <code>cs-*</code> strategy stays a strategy. Cross-flavour renames are rejected. Delete + re-create via <code>CustomSkillUpsert</code> with the right kind if you need to switch sections.</p>
 <p>Version history is migrated under the new key so the full audit chain stays continuous after the rename, and a new <code>rename</code> entry is appended.</p>
 <div class="docs-param-table">
@@ -15908,8 +15908,8 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </thead>
 <tbody>
 <tr>
-<td><code>agent-customskill-rename-preset-forbidden</code></td>
-<td>Target row has <code>usercreated: false</code> (preset-owned).</td>
+<td><code>Preset skills cannot be renamed.</code></td>
+<td>Target row has <code>usercreated: false</code> (preset-owned). This refusal comes as the sentence, with no message key.</td>
 </tr>
 <tr>
 <td><code>agent-customskill-rename-flavour-mismatch</code></td>
@@ -17688,7 +17688,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td>Toggle the skill via <code>SkillsApply</code> or pick a preset that bundles it.</td>
 </tr>
 <tr>
-<td><code>Web voice is available from the Wiro panel or with an API key.</code></td>
+<td><code>Web voice from this origin needs an API key.</code></td>
 <td>Bearer auth with an Origin outside the allow-list.</td>
 </tr>
 <tr>
@@ -18074,7 +18074,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <li><strong>A lower plan starts at the next renewal</strong>, when the request sends <code>allowDowngrade: true</code>. Without it, a lower <code>targetTier</code> is refused and nothing changes, so a client that only means to upgrade never moves an agent down. Nothing is charged or refunded now. The agent keeps its current plan, price and credits until the period ends, and <code>nextplan</code> on <code>UserAgent/Detail</code> reads the lower plan. The renewal then charges the lower plan's price and grants its credits. The flag is only for a lower plan: a higher <code>targetTier</code> sent with it, such as from a page that still shows a plan the agent has since left, is refused, and nothing is changed or charged.</li>
 <li><strong>Asking for the agent's current plan</strong> cancels a scheduled move to a lower plan: <code>nextplan</code> goes back to <code>null</code>. An agent that still pays a price from before the three plans gets its current plan scheduled instead: <code>nextplan</code> names that plan, and the renewal moves the agent to the plan's own price and credits.</li>
 </ul>
-<p>A move to a higher plan while a lower one is scheduled cancels the scheduled move first, then upgrades from the current plan. On a plan paid by card, a move to a higher plan returns a checkout <code>url</code> instead of charging the wallet, and nothing changes on the agent until it is paid: the answer's <code>tier</code> and <code>nextplan</code> are the agent's as they were. Once it is paid, the higher plan starts a new full period with its full credits, and a lower plan scheduled before is dropped. A lower plan on a card plan applies from the next card renewal. A scheduled move on a card plan can't be cancelled once it has started with the new billing period and its payment is going through: that payment moves the agent, and asking for the current plan is refused until the agent shows the new plan. A team agent's card plan can't be changed with a project API key: the call answers <code>Card checkouts for a team agent are not available with an API key. Pay from the team wallet (useprepaid) or use the dashboard.</code> and changes nothing.</p>
+<p>A move to a higher plan while a lower one is scheduled cancels the scheduled move first, then upgrades from the current plan. On a plan paid by card, a move to a higher plan returns a checkout <code>url</code> instead of charging the wallet, and nothing changes on the agent until it is paid: the answer's <code>tier</code> and <code>nextplan</code> are the agent's as they were. Once it is paid, the higher plan starts a new full period with its full credits, and a lower plan scheduled before is dropped. A lower plan on a card plan applies from the next card renewal. A scheduled move on a card plan can't be cancelled once it has started with the new billing period and its payment is going through: that payment moves the agent, and asking for the current plan is refused until the agent shows the new plan. A team agent's card plan can't be changed with a project API key: the call answers <code>Card checkouts for a team agent need a signed-in session, not an API key. Pay from the team wallet (useprepaid) instead.</code> and changes nothing.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -18472,7 +18472,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td>Stop called on an agent with status <code>5</code> that has nothing left to stop; an errored agent that still holds its runtime is accepted and moves to <code>1</code> (Stopping)</td>
 </tr>
 <tr>
-<td><code>Duplicate deploy: an identical agent ("&lt;title&gt;") was already deployed Ns ago. Open the existing one in your panel, or wait a few seconds and retry.</code></td>
+<td><code>Duplicate deploy: an identical agent ("&lt;title&gt;") was already deployed Ns ago. Use the existing one, or wait a few seconds and retry.</code></td>
 <td><code>Deploy</code> called a second time within 10s for the same caller, template and team (custom builds: same caller, <code>title</code> and team). Carries <code>errors[0].code: 99</code> and a top-level <code>existingUserAgentGuid</code> field.</td>
 </tr>
 <tr>
@@ -18568,7 +18568,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td><code>Deploy</code> or <code>CreateSubscriptionCheckout</code> with <code>useprepaid: true</code>, <code>CreateExtraCreditCheckout</code>, <code>RenewSubscription</code> or <code>UpgradeTier</code> (code <code>104</code> on <code>UpgradeTier</code>) while another plan or credit pack payment from the same wallet is going through. A <code>Deploy</code> refused this way creates no agent</td>
 </tr>
 <tr>
-<td><code>Card checkouts for a team agent are not available with an API key. Pay from the team wallet (useprepaid) or use the dashboard.</code></td>
+<td><code>Card checkouts for a team agent need a signed-in session, not an API key. Pay from the team wallet (useprepaid) instead.</code></td>
 <td>A card payment for a team agent asked for with a project API key: <code>UpgradeTier</code> on a plan paid by card, <code>CreateExtraCreditCheckout</code> paid by card, or <code>CreateSubscriptionCheckout</code> without <code>useprepaid: true</code>. Nothing is charged or changed</td>
 </tr>
 <tr>
@@ -24669,7 +24669,7 @@ email tools, CRMs) through three credential methods:</p>
 <tr>
 <td><code>platform_managed</code></td>
 <td><code>boolean?</code></td>
-<td><code>true</code> when Wiro fills the value server-side, so you can't supply it, such as Reddit's three approval flags. These fields are never returned. <code>CredentialUpsert</code> rejects writes to these fields with <code>&lt;Field label&gt; is managed by Wiro</code>, and Deploy drops them.</td>
+<td><code>true</code> when Wiro fills the value server-side, so you can't supply it, such as Reddit's three approval flags. These fields are never returned. <code>CredentialUpsert</code> rejects writes to these fields with <code>&lt;Field label&gt; is managed by the platform</code>, and Deploy drops them.</td>
 </tr>
 <tr>
 <td><code>item_schema</code> / <code>item_type</code></td>
@@ -25133,8 +25133,8 @@ pending provider review.</p>
 <td><a href="/docs/integration-twiliovoice-skills">Twilio Voice</a></td>
 </tr>
 <tr>
-<td>Wiro AI Models</td>
-<td>See <a href="/docs/agent-skills#using-wiro-ai-models-from-your-agent">Using Wiro AI Models from Your Agent</a></td>
+<td>AI Models</td>
+<td>See <a href="/docs/agent-skills#using-ai-models-from-your-agent">Using AI Models from Your Agent</a></td>
 </tr>
 <tr>
 <td>Calendarific</td>
@@ -25144,9 +25144,9 @@ pending provider review.</p>
 </table>
 </div>
 </div>
-<h2 id="wiro-ai-models-calendarific-user-provided">Wiro AI Models &amp; Calendarific (User-Provided)</h2>
+<h2 id="ai-models-calendarific-user-provided">AI Models &amp; Calendarific (User-Provided)</h2>
 <p>Two integrations are <strong>user-input credentials</strong> that ship in agent templates but require you (or your end users) to supply the key before the skill runs. They appear in <code>POST /UserAgent/Detail</code> <code>credentials[]</code> and accept writes via <code>POST /UserAgent/CredentialUpsert</code> like any other API-key integration.</p>
-<h3 id="wiro-ai-models-wiro-credential">Wiro AI Models: <code>wiro</code> credential</h3>
+<h3 id="ai-models-wiro-credential">AI Models: <code>wiro</code> credential</h3>
 <p>The <code>int-wiro-aimodels</code> skill lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) using <strong>one of your Wiro projects</strong>. Each generated asset is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).</p>
 <ul>
 <li><strong>Credential key:</strong> <code>wiro</code></li>
@@ -25191,7 +25191,7 @@ pending provider review.</p>
 <ul>
 <li>The chat model your agent runs on is set up by Wiro. Pick the model with <code>UserAgent/UpdateSettings</code>; there is no key to supply.</li>
 </ul>
-<p><code>CredentialUpsert</code> rejects writes to these fields with <code>&lt;Field label&gt; is managed by Wiro</code>, and Deploy drops them from <code>credentials</code>.</p>
+<p><code>CredentialUpsert</code> rejects writes to these fields with <code>&lt;Field label&gt; is managed by the platform</code>, and Deploy drops them from <code>credentials</code>.</p>
 <h2 id="auditing-credential-changes-credentialfieldhistory">Auditing Credential Changes: <code>CredentialFieldHistory</code></h2>
 <p>Every credential field write is appended to a versioned history. Use <code>POST /UserAgent/CredentialFieldHistory</code> to read it, the same idea as <code>CustomSkillHistory</code> for skills.</p>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CredentialFieldHistory&quot; \
@@ -25317,7 +25317,7 @@ pending provider review.</p>
 <h3 id="field-level-write-rules">Field-level write rules</h3>
 <ul>
 <li><strong><code>fieldstatus</code> is assigned by the server.</strong> Any <code>fieldstatus</code> you send is ignored: a field that already exists keeps its stored status, and a new field gets the status its registry schema implies. That is why own-mode app keys (<code>clientid</code> / <code>clientsecret</code>, <code>appid</code> / <code>appsecret</code>, …) and the <code>authmethod</code> switch can be written here. Fields that the connection flow fills in (schema flag <code>auto_filled_by_oauth</code> or <code>server_managed</code>, such as account and page selections) are rejected with <code>&lt;Field label&gt; is managed by the connection flow</code> in <code>errors[]</code>; set them through the OAuth and picker endpoints. OAuth tokens are written by Wiro's OAuth callback flow, not by your API.</li>
-<li><strong>Wiro-managed fields and OAuth tokens are rejected.</strong> You can't write a field whose status is <code>platform</code> or <code>oauth_session</code>. A <code>platform</code> field fails with <code>&lt;Field label&gt; is managed by Wiro</code> and an <code>oauth_session</code> field with <code>&lt;Field label&gt; is managed by the connection flow</code>; a field with no schema label is named <code>&lt;credentialkey&gt;.&lt;fieldname&gt;</code> instead. As with any invalid field, the whole request is rejected and nothing is saved.
+<li><strong>Wiro-managed fields and OAuth tokens are rejected.</strong> You can't write a field whose status is <code>platform</code> or <code>oauth_session</code>. A <code>platform</code> field fails with <code>&lt;Field label&gt; is managed by the platform</code> and an <code>oauth_session</code> field with <code>&lt;Field label&gt; is managed by the connection flow</code>; a field with no schema label is named <code>&lt;credentialkey&gt;.&lt;fieldname&gt;</code> instead. As with any invalid field, the whole request is rejected and nothing is saved.
 <ul>
 <li><code>platform</code>: fields Wiro manages, such as Reddit's approval flags that Wiro sets after its own review (<code>developerprofileverified</code>, <code>dataapiaccessapproved</code>, <code>commercialwrittenapproval</code>).</li>
 <li><code>oauth_session</code>: the token fields <code>accesstoken</code>, <code>refreshtoken</code>, <code>connectedat</code>, <code>tokenexpiresat</code> and <code>refreshtokenexpiresat</code>, on any credential and in any letter case. They have no schema label, so the message reads, for example, <code>reddit.accesstoken is managed by the connection flow</code>.</li>
@@ -25352,7 +25352,7 @@ pending provider review.</p>
 </ul>
 <p>If you skip these keys in Deploy entirely, the instance is created empty and you set credentials/skills later with <code>CredentialUpsert</code>, <code>CredentialProjectBind</code>, <code>CustomSkillUpsert</code>, and <code>SkillsApply</code>.</p>
 <h2 id="oauth-authorization-flow">OAuth Authorization Flow</h2>
-<p>For services that require user authorization, Wiro implements a full OAuth redirect flow. Your end users interact only with your app and the provider's consent screen, which shows your app's name in own mode and Wiro's in Wiro mode. They land on wiro.ai only when a callback cannot be matched to your flow: <code>missing_params</code>, or <code>session_expired</code> for a callback more than 24 hours after <code>OAuthConnect</code>.</p>
+<p>For services that require user authorization, Wiro implements a full OAuth redirect flow. Your end users interact only with your app and the provider's consent screen, which shows your app's name in own mode and Wiro's in Wiro mode. A callback that cannot be matched to your flow, <code>missing_params</code>, or <code>session_expired</code> more than 24 hours after <code>OAuthConnect</code>, ends instead on a plain page of the API's own, <code>https://api.wiro.ai/v1/UserAgentOAuth/SignInNotFinished</code>, which names no brand and links nowhere: it says the sign-in could not be finished and shows the error code.</p>
 <blockquote>
 <p>The <code>redirecturl</code> you pass to <code>OAuthConnect</code> is <strong>your own URL</strong>: any https page you control, or <code>http://localhost</code> / <code>http://127.0.0.1</code> for development. After authorization, users are redirected back to your app with status query parameters and, for credentials with an account picker, the list of accounts to show in your own UI (see <a href="#callback-success-error-parameters">Callback success &amp; error parameters</a>).</p>
 </blockquote>
@@ -25587,7 +25587,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect&quot; \
 <tbody>
 <tr>
 <td><code>missing_params</code></td>
-<td>The callback was opened without an OAuth <code>state</code>. Wiro cannot tell which flow it belongs to, so the browser goes to <code>https://wiro.ai</code> with this code instead of to your app. Start a new flow with <code>OAuthConnect</code>.</td>
+<td>The callback was opened without an OAuth <code>state</code>. Wiro cannot tell which flow it belongs to, so the browser goes to the API's own neutral page, <code>https://api.wiro.ai/v1/UserAgentOAuth/SignInNotFinished</code>, with this code instead of to your app. Start a new flow with <code>OAuthConnect</code>.</td>
 </tr>
 <tr>
 <td><code>authorization_denied</code></td>
@@ -25595,7 +25595,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect&quot; \
 </tr>
 <tr>
 <td><code>session_expired</code></td>
-<td>More than 15 minutes passed between <code>OAuthConnect</code> and the callback. The browser returns to your <code>redirecturl</code> with this code; call <code>OAuthConnect</code> again. After 24 hours, or when the <code>state</code> is unknown, it goes to <code>https://wiro.ai</code> instead. A callback that the browser repeats after a completed one (for example when the provider's Continue button is clicked twice) is not an error: it lands where the first one did.</td>
+<td>More than 15 minutes passed between <code>OAuthConnect</code> and the callback. The browser returns to your <code>redirecturl</code> with this code; call <code>OAuthConnect</code> again. After 24 hours, or when the <code>state</code> is unknown, it goes to the same neutral page as <code>missing_params</code> instead. A callback that the browser repeats after a completed one (for example when the provider's Continue button is clicked twice) is not an error: it lands where the first one did.</td>
 </tr>
 <tr>
 <td><code>flow_replaced</code></td>
@@ -25615,7 +25615,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect&quot; \
 </tr>
 <tr>
 <td><code>internal_error</code></td>
-<td>Unexpected server error.</td>
+<td>Unexpected server error. When it happens before the callback has read its flow, the browser goes to the same neutral page as <code>missing_params</code>.</td>
 </tr>
 </tbody>
 </table>
@@ -25785,7 +25785,7 @@ without a browser redirect.</p>
 </div>
 </div>
 <blockquote>
-<p><strong>Your <code>redirecturl</code>.</strong> Use any https URL you control; plain http works only on <code>localhost</code> and <code>127.0.0.1</code> (any port). Wiro adds its parameters to the end of the URL, after <code>?</code>, or after <code>&amp;</code> when the URL already has a query string, and keeps your own parameters. The redirect does not carry <code>useragentguid</code> or <code>credentialkey</code>, so put your own context (for example your customer ID) in the query string. Do not use a <code>#fragment</code>, because the parameters would land inside it. Values are URL-encoded, and empty values are left out. Success and every error code return to this URL, except a callback without a known <code>state</code> or one more than 24 hours after <code>OAuthConnect</code>, which goes to <code>https://wiro.ai</code>.</p>
+<p><strong>Your <code>redirecturl</code>.</strong> Use any https URL you control; plain http works only on <code>localhost</code> and <code>127.0.0.1</code> (any port). Wiro adds its parameters to the end of the URL, after <code>?</code>, or after <code>&amp;</code> when the URL already has a query string, and keeps your own parameters. The redirect does not carry <code>useragentguid</code> or <code>credentialkey</code>, so put your own context (for example your customer ID) in the query string. Do not use a <code>#fragment</code>, because the parameters would land inside it. Values are URL-encoded, and empty values are left out. Success and every error code return to this URL, except a callback without a known <code>state</code> or one more than 24 hours after <code>OAuthConnect</code>, which ends on the API's own neutral page, <code>https://api.wiro.ai/v1/UserAgentOAuth/SignInNotFinished</code>.</p>
 <p>Starting an OAuth flow for a credential that holds a System User token (Meta Ads, Facebook Pages, Instagram) or a Mailchimp API key clears that secret, and the connection and account selection made with it, right away, before the user consents. This also happens if the user then cancels, or if the call fails later, for example because your app keys are not saved.</p>
 </blockquote>
 <h5 id="response_3" aria-level="4">Response</h5>
@@ -25834,7 +25834,7 @@ without a browser redirect.</p>
 <td><code>authmethod: "own"</code> but <code>clientid</code>/<code>clientsecret</code> not saved yet.</td>
 </tr>
 <tr>
-<td><code>Wiro-managed OAuth is not enabled for &lt;Provider&gt;</code></td>
+<td><code>Sign-in with the platform's app is not enabled for &lt;Provider&gt;</code></td>
 <td><code>authmethod</code> is <code>"wiro"</code>, or left out where Wiro mode is the default, but that credential's Wiro mode is still pending (<code>wiro_connect_pending: true</code>). Use another mode from its <code>connection_modes</code>, such as <code>"own"</code>.</td>
 </tr>
 <tr>
@@ -25842,8 +25842,8 @@ without a browser redirect.</p>
 <td>A saved field the provider's consent page needs is missing or malformed: Shopify's <code>Shop Domain</code> (<code>&lt;shop&gt;.myshopify.com</code>) or Reddit's <code>Developer Profile Username</code>. Save it with <code>CredentialUpsert</code>.</td>
 </tr>
 <tr>
-<td><code>Wiro must verify ...</code></td>
-<td>Reddit only: one of Wiro's three approval flags is not set yet. You can't set them yourself.</td>
+<td><code>The platform must verify ...</code></td>
+<td>Reddit only: one of the three approval flags Wiro sets after its review is not set yet. You can't set them yourself.</td>
 </tr>
 <tr>
 <td><code>Invalid provider authorization URL</code></td>
@@ -26564,7 +26564,7 @@ response (see <a href="/docs/integration-googlebusiness-skills#connect-through-t
 <td><code>errorcode: "flow_waiting"</code>. The current sign-in hasn't come back from the provider yet, so it has no list. Finish it, then save. A new <code>OAuthConnect</code> would replace it. Only a sign-in waits, so this message has no token check wording.</td>
 </tr>
 <tr>
-<td><code>Choose accounts from the list Wiro gave after the sign-in.</code></td>
+<td><code>Choose accounts from the list the sign-in returned.</code></td>
 <td><code>errorcode: "not_listed"</code>. An ID isn't on the list.</td>
 </tr>
 <tr>
@@ -26743,7 +26743,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
 <li><strong><code>fieldstatus</code> is server-assigned.</strong> A <code>fieldstatus</code> sent to <code>CredentialUpsert</code> is ignored; the server assigns the status itself.
 <ul>
 <li>Fields that the connection flow fills in, OAuth tokens included, are rejected with <code>&lt;Field label&gt; is managed by the connection flow</code> in <code>errors[]</code>. A token field has no schema label, so it is named <code>&lt;credentialkey&gt;.&lt;fieldname&gt;</code>.</li>
-<li>Wiro-managed (<code>platform</code>) fields are rejected with <code>&lt;Field label&gt; is managed by Wiro</code>.</li>
+<li>Wiro-managed (<code>platform</code>) fields are rejected with <code>&lt;Field label&gt; is managed by the platform</code>.</li>
 <li>A request that fails validation saves nothing, and Deploy never saves either kind of field from its <code>credentials</code> body.</li>
 </ul>
 </li>
@@ -29730,7 +29730,7 @@ Message/Send  &quot;&lt;the Serper API key&gt;&quot;
 <tr>
 <td><code>billing_model</code></td>
 <td><code>string</code></td>
-<td>Always <code>"tokens"</code>. Per-turn conversation cost is token-metered at the agent's per-model <code>tokenRates</code> (credits per 1M input / output / cached-input tokens). See <a href="/docs/agent-overview#token-billing">token billing in the Agent Overview</a>. Voice skills stream realtime audio through the operator's own Wiro AI Models balance via <code>int-wiro-aimodels</code> (your own Wiro API key); the voice-prep and post-call text turns are normal token deducts.</td>
+<td>Always <code>"tokens"</code>. Per-turn conversation cost is token-metered at the agent's per-model <code>tokenRates</code> (credits per 1M input / output / cached-input tokens). See <a href="/docs/agent-overview#token-billing">token billing in the Agent Overview</a>. Voice skills bill realtime audio to the operator's own Wiro wallet through <code>int-wiro-aimodels</code>, the AI Models connector (your own Wiro API key); the voice-prep and post-call text turns are normal token deducts.</td>
 </tr>
 </tbody>
 </table>
@@ -29946,7 +29946,7 @@ Message/Send  &quot;&lt;the Serper API key&gt;&quot;
     { &quot;name&quot;: &quot;video_generation&quot;,         &quot;description&quot;: &quot;Generate videos&quot; },
     { &quot;name&quot;: &quot;motion_graphics&quot;,          &quot;description&quot;: &quot;Compose and render motion graphics (HTML/CSS/GSAP animations, sound effects, transitions) to video&quot; },
     { &quot;name&quot;: &quot;audio_generation&quot;,         &quot;description&quot;: &quot;Generate audio / voice clips (TTS, music, SFX)&quot; },
-    { &quot;name&quot;: &quot;realtime_conversation&quot;,    &quot;description&quot;: &quot;Bidirectional realtime audio/text conversation (Wiro realtime, OpenAI realtime)&quot; },
+    { &quot;name&quot;: &quot;realtime_conversation&quot;,    &quot;description&quot;: &quot;Bidirectional realtime audio/text conversation (the platform's realtime models, OpenAI realtime)&quot; },
     { &quot;name&quot;: &quot;vision&quot;,                   &quot;description&quot;: &quot;Vision LLM analysis of images (caption, describe, OCR, visual QA)&quot; },
     { &quot;name&quot;: &quot;human_copywriting&quot;,        &quot;description&quot;: &quot;Enforce anti-AI human copy rules&quot; },
     { &quot;name&quot;: &quot;anti_ai_tone&quot;,             &quot;description&quot;: &quot;Reject AI-generated tone patterns&quot; },
@@ -30978,7 +30978,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <tr>
 <td><code>int-wiro-aimodels</code></td>
 <td><code>wiro</code> (the Wiro project the agent runs models with)</td>
-<td>See <a href="#using-wiro-ai-models-from-your-agent">Using Wiro AI Models from Your Agent</a></td>
+<td>See <a href="#using-ai-models-from-your-agent">Using AI Models from Your Agent</a></td>
 </tr>
 <tr>
 <td><code>int-calendarific</code></td>
@@ -31012,7 +31012,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 </tr>
 <tr>
 <td><code>util-video-creator</code></td>
-<td>The Video Creator's playbook: finished videos with voice-over, music and captions from a website or web app (behind a login too), an app-store listing, a document, an article or product photos; 16:9 or 9:16, up to 3 minutes. It brings <code>util-video-shots</code>, <code>util-video-docs</code>, <code>util-motion-effects</code> and <code>int-wiro-aimodels</code> with it, so the agent needs your Wiro project key, which pays the video's model runs (see <a href="#using-wiro-ai-models-from-your-agent">Using Wiro AI Models from Your Agent</a>). <code>util-motion-effects</code> and <code>util-video-creator</code> always come together, whichever one you turn on.</td>
+<td>The Video Creator's playbook: finished videos with voice-over, music and captions from a website or web app (behind a login too), an app-store listing, a document, an article or product photos; 16:9 or 9:16, up to 3 minutes. It brings <code>util-video-shots</code>, <code>util-video-docs</code>, <code>util-motion-effects</code> and <code>int-wiro-aimodels</code> with it, so the agent needs your Wiro project key, which pays the video's model runs (see <a href="#using-ai-models-from-your-agent">Using AI Models from Your Agent</a>). <code>util-motion-effects</code> and <code>util-video-creator</code> always come together, whichever one you turn on.</td>
 </tr>
 </tbody>
 </table>
@@ -31022,7 +31022,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <blockquote>
 <p><strong>Restart behavior:</strong> On a starting or running agent (status 3 or 4), <code>SkillsApply</code>, <code>CustomSkillRename</code>, <code>CustomSkillDelete</code> and <code>CustomSkillRevert</code> restart it so the new skill configuration is picked up, as credential updates do. <code>CustomSkillUpsert</code> restarts it for a new skill or task, a new <code>interval</code> or an <code>enabled</code> change. A change to the text or description of an existing one reaches the running agent without a restart, except for <code>cs-approval-policy</code>. See <a href="/docs/agent-overview#automatic-restart">Automatic Restart</a>.</p>
 </blockquote>
-<h2 id="using-wiro-ai-models-from-your-agent">Using Wiro AI Models from Your Agent</h2>
+<h2 id="using-ai-models-from-your-agent">Using AI Models from Your Agent</h2>
 <p><code>int-wiro-aimodels</code> lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) while it works. When it's enabled on an agent:</p>
 <ul>
 <li><code>credentials.wiro.apikey</code> is <strong>operator-supplied</strong>: pick or create a Wiro project at <a href="https://wiro.ai/panel/project">wiro.ai/panel/project</a> and connect it on the agent's <strong>Connectors</strong> tab, or through the API with <code>POST /UserAgent/CredentialProjectBind</code>. Each generated asset is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).</li>
@@ -32832,7 +32832,7 @@ for e in cron_runs:
 <tr>
 <td>Wiro-owned approved-app OAuth</td>
 <td>Pending provider approval</td>
-<td>Not available yet. <code>OAuthConnect</code> with <code>"wiro"</code>, or with no <code>authmethod</code>, returns <code>Wiro-managed OAuth is not enabled for Meta Ads</code> while Wiro's Meta app waits for App Review and Advanced Access.</td>
+<td>Not available yet. <code>OAuthConnect</code> with <code>"wiro"</code>, or with no <code>authmethod</code>, returns <code>Sign-in with the platform's app is not enabled for Meta Ads</code> while Wiro's Meta app waits for App Review and Advanced Access.</td>
 </tr>
 <tr>
 <td><code>"own"</code></td>
@@ -33310,14 +33310,14 @@ than running ads), that's a separate integration (see the
 <td><code>authmethod</code></td>
 <td>string</td>
 <td>No</td>
-<td><code>"api_key"</code> for the recommended System User token mode or <code>"own"</code> for advanced customer-owned app OAuth. Always send it: without it the request runs in Wiro mode and fails with <code>Wiro-managed OAuth is not enabled for Meta Ads</code>.</td>
+<td><code>"api_key"</code> for the recommended System User token mode or <code>"own"</code> for advanced customer-owned app OAuth. Always send it: without it the request runs in Wiro mode and fails with <code>Sign-in with the platform's app is not enabled for Meta Ads</code>.</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
 <p>OAuth response: <code>{ result, authorizeUrl, flowid, errors }</code>. Direct System User token response: <code>{ result, accounts: [{id, name}], flowid, account, restart, errors }</code> with no <code>authorizeUrl</code>, where <code>account</code> is the System User's name and <code>restart</code> is <code>"none"</code> until the ad accounts are saved. A failed direct check returns <code>{ result: false, errorcode, flowid, errors }</code>: <code>no_accounts</code> (no active ad account with both <code>ADVERTISE</code> and <code>ANALYZE</code>), <code>too_many_ad_accounts</code> (Meta listed more than 500 ad accounts), <code>direct_token_missing</code>, <code>direct_token_invalid</code>, <code>provider_rejected_request</code>, <code>provider_timeout</code> or <code>provider_request_failed</code>. A check that finds a saved token first clears the saved ad account and Page selection.</p>
-<p>If <code>result: false</code>, inspect <code>errors[0].message</code>. Common messages: <code>Request parameter [useragentguid] required</code>, <code>Request parameter [credentialkey] required</code>, <code>Request parameter [redirecturl] required</code> (OAuth only), <code>Invalid redirect URL</code>, <code>User agent not found or unauthorized</code>, <code>Wiro-managed OAuth is not enabled for Meta Ads</code> (no <code>authmethod</code>, or <code>"wiro"</code>), <code>Unsupported connection mode for Meta Ads</code>, and <code>Meta Ads credentials not configured</code> (own mode before <code>appid</code> and <code>appsecret</code> are saved with <code>CredentialUpsert</code>).</p>
+<p>If <code>result: false</code>, inspect <code>errors[0].message</code>. Common messages: <code>Request parameter [useragentguid] required</code>, <code>Request parameter [credentialkey] required</code>, <code>Request parameter [redirecturl] required</code> (OAuth only), <code>Invalid redirect URL</code>, <code>User agent not found or unauthorized</code>, <code>Sign-in with the platform's app is not enabled for Meta Ads</code> (no <code>authmethod</code>, or <code>"wiro"</code>), <code>Unsupported connection mode for Meta Ads</code>, and <code>Meta Ads credentials not configured</code> (own mode before <code>appid</code> and <code>appsecret</code> are saved with <code>CredentialUpsert</code>).</p>
 <h3 id="get-useragentoauthmetaadscallback">GET /UserAgentOAuth/MetaAdsCallback</h3>
 <p>Server-side endpoint invoked by Meta. You don't call it. You only handle the final redirect back to your <code>redirecturl</code>. The callback path is per-provider: Meta Ads's stays <code>MetaAdsCallback</code>.</p>
 <div class="docs-param-table">
@@ -33605,7 +33605,7 @@ agent model.</p>
 <tbody>
 <tr>
 <td><code>missing_params</code></td>
-<td>The callback was opened without an OAuth <code>state</code>. This error lands on <code>https://wiro.ai</code>, not on your app.</td>
+<td>The callback was opened without an OAuth <code>state</code>. This error ends on the API's own neutral page, not on your app.</td>
 <td>Don't open the callback URL directly. Start a new flow from Step 8.</td>
 </tr>
 <tr>
@@ -33829,7 +33829,7 @@ agent model.</p>
 </tr>
 <tr>
 <td>Creatives</td>
-<td>Upload images and videos by URL, choose music, generate creatives with Wiro AI models (when the Wiro AI Models skill is set up), check creative fatigue, run video fix tasks, and preview ads.</td>
+<td>Upload images and videos by URL, choose music, generate creatives with AI models (when the AI Models skill is set up), check creative fatigue, run video fix tasks, and preview ads.</td>
 </tr>
 <tr>
 <td>Spark Ads</td>
@@ -34352,7 +34352,7 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
 </table>
 </div>
 </div>
-<p><code>missing_params</code> sends the browser to <code>https://wiro.ai</code>, because a callback without a <code>state</code> has no return address. <code>session_expired</code> comes back to your <code>redirecturl</code>. It lands on <code>https://wiro.ai</code> only when the callback arrives more than 24 hours after <code>OAuthConnect</code> or carries a <code>state</code> Wiro never issued.</p>
+<p><code>missing_params</code> sends the browser to the API's own neutral page, <code>https://api.wiro.ai/v1/UserAgentOAuth/SignInNotFinished</code>, because a callback without a <code>state</code> has no return address. <code>session_expired</code> comes back to your <code>redirecturl</code>. It ends on that page only when the callback arrives more than 24 hours after <code>OAuthConnect</code> or carries a <code>state</code> Wiro never issued.</p>
 <h3 id="no-accounts-available-after-signing-in">"No accounts available" after signing in</h3>
 <p>Either the TikTok for Business user you signed in with has no advertiser access, or TikTok's advertiser lookup failed. Get access to an advertiser in TikTok Ads Manager or through Business Center membership, then connect again. If this user already has advertiser access, try connecting again.</p>
 <h3 id="the-agent-says-the-tiktok-ads-connection-expired">The agent says the TikTok Ads connection expired</h3>
@@ -34744,7 +34744,7 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
 <li>A dedicated app account used only for app functions, not a mixed-use personal account.</li>
 <li>A customer-owned Reddit <code>web app</code> registered with the Wiro callback.</li>
 </ol>
-<p>Three Wiro-managed flags gate the connection: <code>developerprofileverified</code>, <code>dataapiaccessapproved</code> and <code>commercialwrittenapproval</code>. Wiro sets them only after it has reviewed the labeled developer profile, Reddit's Data API approval for this app and Reddit's written commercial approval. You cannot set them: <code>CredentialUpsert</code> refuses each one with <code>&lt;Field label&gt; is managed by Wiro</code>. Until all three are on, <code>OAuthConnect</code> returns an error such as <code>Wiro must verify Reddit Data API approval for this app before connecting.</code> The flags grant no rights and do not replace Reddit's review or the commercial contract.</p>
+<p>Three Wiro-managed flags gate the connection: <code>developerprofileverified</code>, <code>dataapiaccessapproved</code> and <code>commercialwrittenapproval</code>. Wiro sets them only after it has reviewed the labeled developer profile, Reddit's Data API approval for this app and Reddit's written commercial approval. You cannot set them: <code>CredentialUpsert</code> refuses each one with <code>&lt;Field label&gt; is managed by the platform</code>. Until all three are on, <code>OAuthConnect</code> returns an error such as <code>The platform must verify Reddit Data API approval for this app before connecting.</code> The flags grant no rights and do not replace Reddit's review or the commercial contract.</p>
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
 <li>A deployed Wiro agent with the <code>int-reddit-post</code> skill enabled.</li>
@@ -35360,7 +35360,7 @@ if (params.get("fb_connected") === "true") {
                         <tbody>
                           <tr>
                             <td><code>missing_params</code></td>
-                            <td>The callback was opened without an OAuth <code>state</code>. This error lands on <code>https://wiro.ai</code>, not on your app.</td>
+                            <td>The callback was opened without an OAuth <code>state</code>. This error ends on the API's own neutral page, not on your app.</td>
                             <td>Don't open the callback URL directly. Start a new flow from Step 7.</td>
                           </tr>
                           <tr>
@@ -35424,7 +35424,7 @@ if (params.get("fb_connected") === "true") {
                     <p>The OAuth sign-in of Step 7 hasn't come back yet, so it has no list to save from (<code>The sign-in is not finished yet. Finish it, then choose the accounts.</code>). Finish it, then save the Pages it lists. Don't call <code>OAuthConnect</code> again in the meantime: a new sign-in replaces the one under way. System User mode never returns this code.</p>
 
                     <h3><code>SetPickerAccounts</code> returns <code>not_listed</code></h3>
-                    <p>The <code>pageid</code> you sent isn't in the latest discovery result (<code>Choose accounts from the list Wiro gave after the sign-in.</code>; the wording depends on whether it was a sign-in or a token check). Verify you're parsing <code>fb_pages</code> correctly and sending the exact ID string.</p>
+                    <p>The <code>pageid</code> you sent isn't in the latest discovery result (<code>Choose accounts from the list the token check returned.</code>, or <code>Choose accounts from the list the sign-in returned.</code> after a sign-in). Verify you're parsing <code>fb_pages</code> correctly and sending the exact ID string.</p>
 
                     <h3>Posts publish but as the wrong author</h3>
                     <p>Check <code>POST /UserAgent/Detail</code> and verify <code>credentials.facebook-pages.pageid</code> is the Page you intended. If not, connect again (Step 3 or Step 7) and save the right Page from the new list within 15 minutes.</p>
@@ -35935,7 +35935,7 @@ if (params.get("ig_connected") === "true") {
                         <tbody>
                           <tr>
                             <td><code>missing_params</code></td>
-                            <td>The callback was opened without an OAuth <code>state</code>. This error lands on <code>https://wiro.ai</code>, not on your app.</td>
+                            <td>The callback was opened without an OAuth <code>state</code>. This error ends on the API's own neutral page, not on your app.</td>
                             <td>Don't open the callback URL directly. Start a new flow from Step 8.</td>
                           </tr>
                           <tr>
@@ -36278,7 +36278,7 @@ if (params.get("li_connected") === "true") {
                             <td><code>authmethod</code></td>
                             <td>string</td>
                             <td>Yes</td>
-                            <td><code>"own"</code>. Wiro mode is not available yet: leaving <code>authmethod</code> out (it defaults to <code>"wiro"</code>) or sending <code>"wiro"</code> returns <code>Wiro-managed OAuth is not enabled for LinkedIn</code>.</td>
+                            <td><code>"own"</code>. Wiro mode is not available yet: leaving <code>authmethod</code> out (it defaults to <code>"wiro"</code>) or sending <code>"wiro"</code> returns <code>Sign-in with the platform's app is not enabled for LinkedIn</code>.</td>
                           </tr>
                         </tbody>
                       </table>
@@ -36330,7 +36330,7 @@ if (params.get("li_connected") === "true") {
                         <tbody>
                           <tr>
                             <td><code>missing_params</code></td>
-                            <td>The callback was opened without an OAuth <code>state</code>. The browser lands on <code>https://wiro.ai</code>, not on your <code>redirecturl</code>.</td>
+                            <td>The callback was opened without an OAuth <code>state</code>. The browser ends on the API's own neutral page, not on your <code>redirecturl</code>.</td>
                             <td>Don't open the callback URL directly. Start again from Step 7.</td>
                           </tr>
                           <tr>
@@ -36364,7 +36364,7 @@ if (params.get("li_connected") === "true") {
                             <td><code>UserAgent/CredentialUpsert</code> with <code>clientid</code> + <code>clientsecret</code>.</td>
                           </tr>
                           <tr>
-                            <td><code>Wiro-managed OAuth is not enabled for LinkedIn</code></td>
+                            <td><code>Sign-in with the platform's app is not enabled for LinkedIn</code></td>
                             <td>Returned in <code>OAuthConnect</code>'s <code>errors[]</code> when <code>authmethod</code> is missing or <code>"wiro"</code>.</td>
                             <td>Send <code>authmethod: "own"</code>.</td>
                           </tr>
@@ -36704,7 +36704,7 @@ if (params.get("x_connected") === "true") {
                         <tbody>
                           <tr>
                             <td><code>missing_params</code></td>
-                            <td>The callback was opened without an OAuth <code>state</code>. This error lands on <code>https://wiro.ai</code>, not on your app.</td>
+                            <td>The callback was opened without an OAuth <code>state</code>. This error ends on the API's own neutral page, not on your app.</td>
                             <td>Don't open the callback URL directly. Start a new flow from Step 6.</td>
                           </tr>
                           <tr>
@@ -36816,7 +36816,7 @@ if (params.get("x_connected") === "true") {
                           <tr>
                             <td><code>"wiro"</code></td>
                             <td>Coming soon</td>
-                            <td>Wiro's shared TikTok app is awaiting TikTok's review. Until then, <code>OAuthConnect</code> in Wiro mode, which is also what you get when you leave out <code>authmethod</code>, returns <code>Wiro-managed OAuth is not enabled for TikTok</code>.</td>
+                            <td>Wiro's shared TikTok app is awaiting TikTok's review. Until then, <code>OAuthConnect</code> in Wiro mode, which is also what you get when you leave out <code>authmethod</code>, returns <code>Sign-in with the platform's app is not enabled for TikTok</code>.</td>
                           </tr>
                         </tbody>
                       </table>
@@ -37029,7 +37029,7 @@ if (params.get("x_connected") === "true") {
                         <tbody>
                           <tr>
                             <td><code>missing_params</code></td>
-                            <td>The callback was opened without an OAuth <code>state</code>. This error lands on <code>https://wiro.ai</code>, not on your app.</td>
+                            <td>The callback was opened without an OAuth <code>state</code>. This error ends on the API's own neutral page, not on your app.</td>
                             <td>Don't open the callback URL directly. Start a new OAuth flow.</td>
                           </tr>
                           <tr>
@@ -37053,7 +37053,7 @@ if (params.get("x_connected") === "true") {
                             <td>Re-copy; verify URL.</td>
                           </tr>
                           <tr>
-                            <td><code>Wiro-managed OAuth is not enabled for TikTok</code></td>
+                            <td><code>Sign-in with the platform's app is not enabled for TikTok</code></td>
                             <td>Returned in <code>OAuthConnect</code>'s <code>errors[]</code>: Wiro mode isn't available yet, and it is the default when <code>authmethod</code> is left out.</td>
                             <td>Save your app credentials (Step 6) and call <code>OAuthConnect</code> with <code>"authmethod": "own"</code>.</td>
                           </tr>
@@ -37144,7 +37144,7 @@ if (params.get("x_connected") === "true") {
                           <tr>
                             <td><code>"wiro"</code></td>
                             <td>Coming soon</td>
-                            <td>Wiro's shared Google Cloud project is awaiting Google's review. Until then, <code>OAuthConnect</code> in Wiro mode, which is also what you get when you leave out <code>authmethod</code>, returns <code>Wiro-managed OAuth is not enabled for Google Ads</code>.</td>
+                            <td>Wiro's shared Google Cloud project is awaiting Google's review. Until then, <code>OAuthConnect</code> in Wiro mode, which is also what you get when you leave out <code>authmethod</code>, returns <code>Sign-in with the platform's app is not enabled for Google Ads</code>.</td>
                           </tr>
                         </tbody>
                       </table>
@@ -37453,7 +37453,7 @@ if (params.get("gads_connected") === "true") {
                         <tbody>
                           <tr>
                             <td><code>missing_params</code></td>
-                            <td>The callback was opened without a <code>state</code>, so the browser lands on wiro.ai instead of your app.</td>
+                            <td>The callback was opened without a <code>state</code>, so the browser ends on the API's own neutral page instead of your app.</td>
                             <td>Start a new flow from Step 5.</td>
                           </tr>
                           <tr>
@@ -37487,7 +37487,7 @@ if (params.get("gads_connected") === "true") {
                             <td>Connect with a Google user who can open fewer customers directly.</td>
                           </tr>
                           <tr>
-                            <td><code>Wiro-managed OAuth is not enabled for Google Ads</code></td>
+                            <td><code>Sign-in with the platform's app is not enabled for Google Ads</code></td>
                             <td>Returned in <code>OAuthConnect</code>'s <code>errors[]</code>: Wiro mode isn't available yet, and it is the default when <code>authmethod</code> is left out.</td>
                             <td>Save your credentials (Step 4) and call <code>OAuthConnect</code> with <code>"authmethod": "own"</code>.</td>
                           </tr>
@@ -37579,7 +37579,7 @@ if (params.get("gads_connected") === "true") {
                           </thead>
                           <tbody>
                             <tr><td><code>"own"</code></td><td>Available</td><td>Your own Google Cloud project and OAuth client.</td></tr>
-                            <tr><td><code>"wiro"</code></td><td>Coming soon</td><td>Wiro's shared Google Cloud project is awaiting Google's review. Until then, <code>OAuthConnect</code> in Wiro mode, which is also what you get when you leave out <code>authmethod</code>, returns <code>Wiro-managed OAuth is not enabled for YouTube</code>.</td></tr>
+                            <tr><td><code>"wiro"</code></td><td>Coming soon</td><td>Wiro's shared Google Cloud project is awaiting Google's review. Until then, <code>OAuthConnect</code> in Wiro mode, which is also what you get when you leave out <code>authmethod</code>, returns <code>Sign-in with the platform's app is not enabled for YouTube</code>.</td></tr>
                           </tbody>
                         </table>
                       </div>
@@ -37799,7 +37799,7 @@ Agent → POST /youtubeAnalytics/v2/reports
                             <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
                           </thead>
                           <tbody>
-                            <tr><td><code>Wiro-managed OAuth is not enabled for YouTube</code> in <code>OAuthConnect</code>'s <code>errors[]</code></td><td>Wiro mode isn't available yet, and it is the default when <code>authmethod</code> is left out</td><td>Save your OAuth client (Step 3) and call <code>OAuthConnect</code> with <code>"authmethod": "own"</code></td></tr>
+                            <tr><td><code>Sign-in with the platform's app is not enabled for YouTube</code> in <code>OAuthConnect</code>'s <code>errors[]</code></td><td>Wiro mode isn't available yet, and it is the default when <code>authmethod</code> is left out</td><td>Save your OAuth client (Step 3) and call <code>OAuthConnect</code> with <code>"authmethod": "own"</code></td></tr>
                             <tr><td><code>YouTube credentials not configured</code></td><td><code>authmethod: "own"</code> without a saved <code>clientid</code> and <code>clientsecret</code></td><td>Save them (Step 3), then retry</td></tr>
                             <tr><td><code>yt_error=no_accounts</code> on your <code>redirecturl</code></td><td>Google listed no YouTube channel for this account, and Wiro saved nothing: the account has no channel, or the YouTube Data API v3 is not enabled in your project</td><td>Enable the API (Step 1), or have the user create a channel, then call <code>OAuthConnect</code> again</td></tr>
                             <tr><td><code>quotaExceeded</code></td><td>Daily quota hit</td><td>Wait 24h or request higher quota from Google</td></tr>
@@ -37850,7 +37850,7 @@ Agent → POST /youtubeAnalytics/v2/reports
                           </thead>
                           <tbody>
                             <tr><td><code>"own"</code></td><td>Available</td><td>Your own Google Cloud project and OAuth client.</td></tr>
-                            <tr><td><code>"wiro"</code></td><td>Coming soon</td><td>Wiro's shared Google Cloud project is awaiting Google's review. Until then, <code>OAuthConnect</code> in Wiro mode, which is also what you get when you leave out <code>authmethod</code>, returns <code>Wiro-managed OAuth is not enabled for Google Analytics 4</code>.</td></tr>
+                            <tr><td><code>"wiro"</code></td><td>Coming soon</td><td>Wiro's shared Google Cloud project is awaiting Google's review. Until then, <code>OAuthConnect</code> in Wiro mode, which is also what you get when you leave out <code>authmethod</code>, returns <code>Sign-in with the platform's app is not enabled for Google Analytics 4</code>.</td></tr>
                           </tbody>
                         </table>
                       </div>
@@ -37999,7 +37999,7 @@ Agent → POST /v1beta/properties/123456789:runReport
                             <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
                           </thead>
                           <tbody>
-                            <tr><td><code>Wiro-managed OAuth is not enabled for Google Analytics 4</code> in <code>OAuthConnect</code>'s <code>errors[]</code></td><td>Wiro mode isn't available yet, and it is the default when <code>authmethod</code> is left out</td><td>Save your OAuth client (Step 3) and call <code>OAuthConnect</code> with <code>"authmethod": "own"</code></td></tr>
+                            <tr><td><code>Sign-in with the platform's app is not enabled for Google Analytics 4</code> in <code>OAuthConnect</code>'s <code>errors[]</code></td><td>Wiro mode isn't available yet, and it is the default when <code>authmethod</code> is left out</td><td>Save your OAuth client (Step 3) and call <code>OAuthConnect</code> with <code>"authmethod": "own"</code></td></tr>
                             <tr><td><code>Google Analytics 4 credentials not configured</code> in <code>OAuthConnect</code>'s <code>errors[]</code></td><td><code>authmethod: "own"</code> without a saved <code>clientid</code> and <code>clientsecret</code></td><td>Save them (Step 3), then retry</td></tr>
                             <tr><td><code>invalid_grant</code></td><td>Refresh token expired or revoked; a consent screen still in Testing expires it after 7 days</td><td>Publish the consent screen, then re-connect via <code>OAuthConnect</code></td></tr>
                             <tr><td><code>PERMISSION_DENIED</code></td><td>User not a property administrator</td><td>Ask user to add the GA account</td></tr>
@@ -38255,7 +38255,7 @@ Agent → POST /v1beta/properties/123456789:runReport
                           </thead>
                           <tbody>
                             <tr><td><code>"own"</code></td><td>Available</td><td>Your own Google Cloud project and OAuth client, plus a one-time developer registration of that project against your primary Merchant Center.</td></tr>
-                            <tr><td><code>"wiro"</code></td><td>Coming soon</td><td>Wiro's shared Google Cloud project is awaiting Google's review. Until then, <code>OAuthConnect</code> in Wiro mode, which is also what you get when you leave out <code>authmethod</code>, returns <code>Wiro-managed OAuth is not enabled for Merchant Center</code>.</td></tr>
+                            <tr><td><code>"wiro"</code></td><td>Coming soon</td><td>Wiro's shared Google Cloud project is awaiting Google's review. Until then, <code>OAuthConnect</code> in Wiro mode, which is also what you get when you leave out <code>authmethod</code>, returns <code>Sign-in with the platform's app is not enabled for Merchant Center</code>.</td></tr>
                           </tbody>
                         </table>
                       </div>
@@ -38405,7 +38405,7 @@ Agent → POST /v1beta/properties/123456789:runReport
                             <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
                           </thead>
                           <tbody>
-                            <tr><td><code>Wiro-managed OAuth is not enabled for Merchant Center</code> in <code>OAuthConnect</code>'s <code>errors[]</code></td><td>Wiro mode isn't available yet, and it is the default when <code>authmethod</code> is left out</td><td>Save your OAuth client (Step 4) and call <code>OAuthConnect</code> with <code>"authmethod": "own"</code></td></tr>
+                            <tr><td><code>Sign-in with the platform's app is not enabled for Merchant Center</code> in <code>OAuthConnect</code>'s <code>errors[]</code></td><td>Wiro mode isn't available yet, and it is the default when <code>authmethod</code> is left out</td><td>Save your OAuth client (Step 4) and call <code>OAuthConnect</code> with <code>"authmethod": "own"</code></td></tr>
                             <tr><td><code>PERMISSION_DENIED</code> on any merchant call</td><td>GCP project not registered</td><td>Complete Step 3 once</td></tr>
                             <tr><td><code>Merchant Center credentials not configured</code> in <code>OAuthConnect</code>'s <code>errors[]</code></td><td><code>authmethod: "own"</code> without a saved <code>clientid</code> and <code>clientsecret</code></td><td>Save them (Step 4), then retry</td></tr>
                             <tr><td><code>invalid_grant</code></td><td>Refresh token expired or revoked; a consent screen still in Testing expires it after 7 days</td><td>Publish the consent screen, then re-connect via <code>OAuthConnect</code></td></tr>
@@ -38655,7 +38655,7 @@ Agent → POST /v1beta/properties/123456789:runReport
   "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19"
 }</code></pre>
                     <p>Redirect the user's browser to <code>authorizeUrl</code> with a full-page redirect rather than a popup. Wiro requests the <code>business.manage</code> scope with offline access, so Google issues a refresh token. Google asks which Google account to connect, even when the browser is already signed in to one.</p>
-                    <p>Always send <code>authmethod: "own"</code>. Without it, or with <code>"wiro"</code>, <code>OAuthConnect</code> returns <code>Wiro-managed OAuth is not enabled for Google Business Profile</code>.</p>
+                    <p>Always send <code>authmethod: "own"</code>. Without it, or with <code>"wiro"</code>, <code>OAuthConnect</code> returns <code>Sign-in with the platform's app is not enabled for Google Business Profile</code>.</p>
                     <div class="info-callout"><p><strong>State TTL:</strong> Wiro keeps the OAuth state for <strong>15 minutes</strong>. If the user takes longer on Google's consent screen, the connection fails with <code>gbp_error=session_expired</code>; call <code>OAuthConnect</code> again.</p></div>
 
                     <h3>Step 3: Handle the return</h3>
@@ -38895,7 +38895,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
                         </table>
                       </div>
                     </div>
-                    <p>Response: <code>{ result, errors, authorizeUrl, flowid }</code>. If <code>result: false</code>, inspect <code>errors[0].message</code>. Common messages: <code>Invalid redirect URL</code>, <code>User agent not found or unauthorized</code>, <code>Wiro-managed OAuth is not enabled for Google Business Profile</code> (no <code>authmethod</code>, or <code>"wiro"</code>), and <code>Google Business Profile credentials not configured</code> (the Client ID or Client Secret is not saved).</p>
+                    <p>Response: <code>{ result, errors, authorizeUrl, flowid }</code>. If <code>result: false</code>, inspect <code>errors[0].message</code>. Common messages: <code>Invalid redirect URL</code>, <code>User agent not found or unauthorized</code>, <code>Sign-in with the platform's app is not enabled for Google Business Profile</code> (no <code>authmethod</code>, or <code>"wiro"</code>), and <code>Google Business Profile credentials not configured</code> (the Client ID or Client Secret is not saved).</p>
 
                     <h3>GET /UserAgentOAuth/GBPCallback</h3>
                     <p>Server-side endpoint invoked by Google. You don't call it: you register it as the Authorized redirect URI of your OAuth client and handle the final redirect back to your <code>redirecturl</code>.</p>
@@ -39062,7 +39062,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
                             <tr><td><code>token_exchange_failed</code></td><td>Google did not return an access token for the authorization code, usually because of a wrong Client Secret or a redirect URI mismatch.</td><td>Re-copy the Client Secret, check the redirect URI, and connect again.</td></tr>
                             <tr><td><code>useragent_not_found</code></td><td>The agent was deleted, or is no longer owned by the account that started the flow, before Google returned.</td><td>Start again with <code>OAuthConnect</code> for an existing agent.</td></tr>
                             <tr><td><code>internal_error</code></td><td>Unexpected server error during callback processing.</td><td>Retry once. If it persists, contact Wiro support with the timestamp and your <code>useragentguid</code>.</td></tr>
-                            <tr><td><code>Wiro-managed OAuth is not enabled for Google Business Profile</code></td><td>Returned in <code>OAuthConnect</code>'s <code>errors[]</code> when <code>authmethod</code> is missing or <code>"wiro"</code>.</td><td>Send <code>authmethod: "own"</code>.</td></tr>
+                            <tr><td><code>Sign-in with the platform's app is not enabled for Google Business Profile</code></td><td>Returned in <code>OAuthConnect</code>'s <code>errors[]</code> when <code>authmethod</code> is missing or <code>"wiro"</code>.</td><td>Send <code>authmethod: "own"</code>.</td></tr>
                             <tr><td><code>Google Business Profile credentials not configured</code></td><td>Returned in <code>OAuthConnect</code>'s <code>errors[]</code> when the Client ID or Client Secret is not saved.</td><td>Save both with <code>POST /UserAgent/CredentialUpsert</code> (Step 1), then retry.</td></tr>
                             <tr><td><code>Picker candidates expired. Discover them again.</code></td><td>More than five minutes passed after location discovery, or the account selection changed.</td><td>Call <code>DiscoverPickerItems</code> again, then resubmit the location selection.</td></tr>
                             <tr><td><code>Choose at least one location to finish.</code></td><td><code>errorcode: "next_required"</code>: the accounts and locations were saved in one call with no location chosen.</td><td>Choose at least one location and save again.</td></tr>
@@ -39073,7 +39073,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
                         </table>
                       </div>
                     </div>
-                    <p>Without a <code>state</code>, Wiro can't tell which flow the callback belongs to, so <code>missing_params</code> sends the browser to <code>https://wiro.ai</code> instead of to your app. <code>session_expired</code> returns to your <code>redirecturl</code>, as long as the return comes within a day of <code>OAuthConnect</code>.</p>
+                    <p>Without a <code>state</code>, Wiro can't tell which flow the callback belongs to, so <code>missing_params</code> sends the browser to the API's own neutral page, <code>https://api.wiro.ai/v1/UserAgentOAuth/SignInNotFinished</code>, instead of to your app. <code>session_expired</code> returns to your <code>redirecturl</code>, as long as the return comes within a day of <code>OAuthConnect</code>.</p>
 
                     <h3>"No accounts available" right after connecting</h3>
                     <p>The Google Cloud project is usually not approved yet (0 requests per minute in <a href="https://console.cloud.google.com/iam-admin/quotas" target="_blank" rel="noopener">IAM &amp; Admin → Quotas</a>), or one of the three APIs from Step 4 is disabled. Connect again once Google has approved the project and the APIs are enabled.</p>
@@ -39386,7 +39386,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
                         <tbody>
                           <tr>
                             <td><code>missing_params</code></td>
-                            <td>The callback was opened without an OAuth <code>state</code>. The browser lands on <code>https://wiro.ai</code>, not on your <code>redirecturl</code>.</td>
+                            <td>The callback was opened without an OAuth <code>state</code>. The browser ends on the API's own neutral page, not on your <code>redirecturl</code>.</td>
                             <td>Don't open the callback URL directly. Start a new flow with <code>OAuthConnect</code>.</td>
                           </tr>
                           <tr>
@@ -42506,7 +42506,7 @@ Base URL: <code>https://api.sendgrid.com/v3</code>.</p>
                         </table>
                       </div>
                     </div>
-                    <div class="info-callout"><p><strong>Live call audio is billed through the <a href="/docs/agent-credentials" class="docs-link"><code>int-wiro-aimodels</code></a> skill against your own Wiro AI Models balance</strong>: you bring your own Wiro API key, and the voice cost is charged to the wallet of the workspace that owns that key. It is <strong>not</strong> charged to the agent's platform credit pool and writes <strong>no</strong> <code>POST /UserAgent/TransactionList</code> row. The agent's text turns around the call (the prep turn that briefs the voice model before the voice session starts, and the post-call turn where the agent summarizes and acts on the call) are billed as normal token deducts (<code>type: "deduct"</code>, <code>action: "tokens"</code>) and show up in TransactionList. Audit call-audio cost from your Wiro AI Models usage (the workspace wallet behind your <code>wiro</code> key); TransactionList accounts only for those text turns.</p></div>
+                    <div class="info-callout"><p><strong>Live call audio is billed through the <a href="/docs/agent-credentials" class="docs-link"><code>int-wiro-aimodels</code></a> skill, the AI Models connector, against your own Wiro wallet</strong>: you bring your own Wiro API key, and the voice cost is charged to the wallet of the workspace that owns that key. It is <strong>not</strong> charged to the agent's platform credit pool and writes <strong>no</strong> <code>POST /UserAgent/TransactionList</code> row. The agent's text turns around the call (the prep turn that briefs the voice model before the voice session starts, and the post-call turn where the agent summarizes and acts on the call) are billed as normal token deducts (<code>type: "deduct"</code>, <code>action: "tokens"</code>) and show up in TransactionList. Audit call-audio cost from your AI Models usage (the workspace wallet behind your <code>wiro</code> key); TransactionList accounts only for those text turns.</p></div>
                   </section>
 
                   <section id="pairing-with-other-skills">
@@ -42591,7 +42591,7 @@ Base URL: <code>https://api.sendgrid.com/v3</code>.</p>
                         </table>
                       </div>
                     </div>
-                    <div class="info-callout"><p>No third-party billing on this channel. The live call audio is billed through the <a href="/docs/agent-credentials"><code>int-wiro-aimodels</code></a> skill against your own Wiro AI Models balance (you bring your own Wiro API key). It is <strong>not</strong> charged to the agent's platform credit pool. The voice-prep turn and the post-call text turn are billed as normal token deducts (<code>action: "tokens"</code>) on <a href="/docs/agent-transactions#tx-transactionlist"><code>POST /UserAgent/TransactionList</code></a>.</p></div>
+                    <div class="info-callout"><p>No third-party billing on this channel. The live call audio is billed through the <a href="/docs/agent-credentials"><code>int-wiro-aimodels</code></a> skill, the AI Models connector, against your own Wiro wallet (you bring your own Wiro API key). It is <strong>not</strong> charged to the agent's platform credit pool. The voice-prep turn and the post-call text turn are billed as normal token deducts (<code>action: "tokens"</code>) on <a href="/docs/agent-transactions#tx-transactionlist"><code>POST /UserAgent/TransactionList</code></a>.</p></div>
                   </section>
 
                   <section id="availability">
@@ -43008,7 +43008,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                     <h3>Session lifetime</h3>
                     <ul>
                       <li>The <code>sessionToken</code> handle is valid for <strong>300 seconds</strong> from issue (until <code>expiresAt</code>) and works once, so the browser must send <code>session_start</code> before then. To connect again, call <code>WebStart</code> for fresh handles, since there's no in-band refresh.</li>
-                      <li>Once the bridge accepts your <code>session_start</code> frame, the 5-minute release timer no longer applies to the call. Live call audio is billed through <code>int-wiro-aimodels</code> against your own Wiro AI Models balance; the time before the browser connects carries no audio charge.</li>
+                      <li>Once the bridge accepts your <code>session_start</code> frame, the 5-minute release timer no longer applies to the call. Live call audio is billed through <code>int-wiro-aimodels</code> against your own Wiro wallet; the time before the browser connects carries no audio charge.</li>
                     </ul>
                   </section>
 
@@ -43075,7 +43075,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                             <tr>
                               <td>403</td>
                               <td>none</td>
-                              <td><code>Web voice is available from the Wiro panel or with an API key.</code></td>
+                              <td><code>Web voice from this origin needs an API key.</code></td>
                               <td>Bearer auth call with an Origin outside the Wiro allow-list. Either switch to API-key auth or call from an allow-listed origin.</td>
                             </tr>
                             <tr>
@@ -43406,7 +43406,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
                     <p>A richer variant of white-label chat: besides replying with text, the agent <strong>generates images, video, or audio</strong> through Wiro AI models and streams them into a live activity feed beside the conversation. This is the pattern behind Wiro's own Studio. It layers the realtime socket on top of the <strong>Session-Per-User</strong> model.</p>
                     <p><strong>Shape:</strong></p>
                     <ul>
-                      <li>One deployed agent that has the <code>int-wiro-aimodels</code> skill enabled, with its Wiro AI Models connector set to your Wiro project (see <a href="/docs/agent-credentials#wiro-ai-models-wiro-credential">Agent Credentials</a>). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).</li>
+                      <li>One deployed agent that has the <code>int-wiro-aimodels</code> skill enabled, with its AI Models connector set to your Wiro project (see <a href="/docs/agent-credentials#ai-models-wiro-credential">Agent Credentials</a>). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).</li>
                       <li>One <code>sessionkey</code> per end user (Pattern 2 above): the same agent instance serves everyone; each user's chat and media history is isolated by session.</li>
                       <li>A single WebSocket connection carries three things at once: the streaming chat reply, the per-turn token-usage report, and discovery of any model runs the agent launches.</li>
                     </ul>

@@ -23,7 +23,7 @@ Toggle `util-web-channel` on a useragent and a single REST call (`POST /UserAgen
 | Web (this page) | Browser mic on **your** site | "Open mic" button on a product / support / sales page. No phone number, no per-minute Twilio bill. |
 | [Twilio](/docs/integration-twiliovoice-skills) | Inbound PSTN phone call | A real phone number ringing. Twilio bills per inbound minute. |
 
-> No third-party billing on this channel. The live call audio is billed through the [`int-wiro-aimodels`](/docs/agent-credentials) skill against your own Wiro AI Models balance (you bring your own Wiro API key). It is **not** charged to the agent's platform credit pool. The voice-prep turn and the post-call text turn are billed as normal token deducts (`action: "tokens"`) on [`POST /UserAgent/TransactionList`](/docs/agent-transactions#tx-transactionlist).
+> No third-party billing on this channel. The live call audio is billed through the [`int-wiro-aimodels`](/docs/agent-credentials) skill, the AI Models connector, against your own Wiro wallet (you bring your own Wiro API key). It is **not** charged to the agent's platform credit pool. The voice-prep turn and the post-call text turn are billed as normal token deducts (`action: "tokens"`) on [`POST /UserAgent/TransactionList`](/docs/agent-transactions#tx-transactionlist).
 
 ## Availability
 
@@ -313,7 +313,7 @@ The bridge transcodes server-side if a downstream model needs a different sample
 ### Session lifetime
 
 - The `sessionToken` handle is valid for **300 seconds** from issue (until `expiresAt`) and works once, so the browser must send `session_start` before then. To connect again, call `WebStart` for fresh handles, since there's no in-band refresh.
-- Once the bridge accepts your `session_start` frame, the 5-minute release timer no longer applies to the call. Live call audio is billed through `int-wiro-aimodels` against your own Wiro AI Models balance; the time before the browser connects carries no audio charge.
+- Once the bridge accepts your `session_start` frame, the 5-minute release timer no longer applies to the call. Live call audio is billed through `int-wiro-aimodels` against your own Wiro wallet; the time before the browser connects carries no audio charge.
 
 ## Rate Limits
 
@@ -332,7 +332,7 @@ The bridge transcodes server-side if a downstream model needs a different sample
 | 200  | none       | `This agent belongs to a different team.` | Team agent called from another team's workspace or project key by a caller who is no longer a member of the agent's team. |
 | 200  | none       | `Agent is not running`   | Useragent is not in `status: 4`. Start it via `POST /UserAgent/Start` first. |
 | 200  | none       | `util-web-channel not enabled` | Toggle `util-web-channel` via `POST /UserAgent/SkillsApply` (custom agents) or pick a preset that bundles it (Voice Receptionist / Voice Sales Rep). |
-| 403  | none       | `Web voice is available from the Wiro panel or with an API key.` | Bearer auth call with an Origin outside the Wiro allow-list. Either switch to API-key auth or call from an allow-listed origin. |
+| 403  | none       | `Web voice from this origin needs an API key.` | Bearer auth call with an Origin outside the Wiro allow-list. Either switch to API-key auth or call from an allow-listed origin. |
 | 429  | none       | `Rate limit: max N web voice sessions per hour` | Operator burned through the per-hour cap. Wait for the fixed-window expiry. |
 | 500  | none       | `internal error`         | Unexpected backend failure: check `POST /UserAgent/Logs` for context. |
 

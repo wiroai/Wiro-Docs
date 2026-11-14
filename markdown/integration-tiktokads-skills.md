@@ -64,7 +64,7 @@ This integration covers **advertising only**. It does not post organic videos to
 | Campaign management | Create and update campaigns, ad groups, and ads; pause, enable, or delete them; change budgets and schedules; copy campaigns; run split tests; set up automated rules; manage search negative keywords. |
 | Upgraded Smart+ and GMV Max | Create, update, and change the status of Upgraded Smart+ campaigns. Update and report on existing GMV Max campaigns. |
 | Audiences | Custom and lookalike audiences, saved audiences, audience size estimates, and audience insights. |
-| Creatives | Upload images and videos by URL, choose music, generate creatives with Wiro AI models (when the Wiro AI Models skill is set up), check creative fatigue, run video fix tasks, and preview ads. |
+| Creatives | Upload images and videos by URL, choose music, generate creatives with AI models (when the AI Models skill is set up), check creative fatigue, run video fix tasks, and preview ads. |
 | Spark Ads | Promote posts from your own TikTok account linked to the advertiser, or authorize a creator's post with the Spark Ads code the creator sends you. |
 | Placement control | Pangle block lists and inventory filters. |
 | Diagnosis | TikTok's own diagnosis tools for delivery and performance issues (no spend, low spend, high CPA, creative fatigue). |
@@ -384,7 +384,7 @@ To change **what** the reports include (tracking quality gates, kill thresholds,
 | `flow_waiting` | Returned by `SetPickerAccounts` (`The sign-in is not finished yet. Finish it, then choose the accounts.`) while the sign-in has started but TikTok hasn't sent the user back yet, so there is no list to save from. | Let the user finish on TikTok's consent screen, then save the selection. Don't call `OAuthConnect` again meanwhile: it would replace the sign-in under way. |
 | `TikTok Ads account not connected` | Returned by `SetPickerAccounts` when the sign-in's list is open but the sign-in's token is no longer saved. | Run Steps 1-2 again, then save the selection. |
 
-`missing_params` sends the browser to `https://wiro.ai`, because a callback without a `state` has no return address. `session_expired` comes back to your `redirecturl`. It lands on `https://wiro.ai` only when the callback arrives more than 24 hours after `OAuthConnect` or carries a `state` Wiro never issued.
+`missing_params` sends the browser to the API's own neutral page, `https://api.wiro.ai/v1/UserAgentOAuth/SignInNotFinished`, because a callback without a `state` has no return address. `session_expired` comes back to your `redirecturl`. It ends on that page only when the callback arrives more than 24 hours after `OAuthConnect` or carries a `state` Wiro never issued.
 
 ### "No accounts available" after signing in
 

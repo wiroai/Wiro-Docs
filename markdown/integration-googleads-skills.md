@@ -21,7 +21,7 @@ The Google Ads integration uses Google OAuth 2.0 with the Google Ads API v23 RES
 | Mode | Status | Notes |
 |------|--------|-------|
 | `"own"` | Available | Your own Google Cloud project, OAuth client and Developer Token. |
-| `"wiro"` | Coming soon | Wiro's shared Google Cloud project is awaiting Google's review. Until then, `OAuthConnect` in Wiro mode, which is also what you get when you leave out `authmethod`, returns `Wiro-managed OAuth is not enabled for Google Ads`. |
+| `"wiro"` | Coming soon | Wiro's shared Google Cloud project is awaiting Google's review. Until then, `OAuthConnect` in Wiro mode, which is also what you get when you leave out `authmethod`, returns `Sign-in with the platform's app is not enabled for Google Ads`. |
 
 ## Prerequisites
 
@@ -288,14 +288,14 @@ To change **what** the reporter includes (wasted-spend threshold, target ROAS, r
 
 | Error code | Meaning | What to do |
 |------------|---------|------------|
-| `missing_params` | The callback was opened without a `state`, so the browser lands on wiro.ai instead of your app. | Start a new flow from Step 5. |
+| `missing_params` | The callback was opened without a `state`, so the browser ends on the API's own neutral page instead of your app. | Start a new flow from Step 5. |
 | `authorization_denied` | User cancelled, or consent screen in Testing and the user isn't a test user. | Add test user or publish consent screen. |
 | `session_expired` | State cache expired. | Restart. |
 | `flow_replaced` | A newer sign-in for the same agent and credential replaced this one, whoever started it, so nothing from it was saved. | Use the newer sign-in, or start again with `OAuthConnect`. |
 | `token_exchange_failed` | Google did not return an access token for the authorization code, usually because the saved Client Secret is wrong. | Re-copy the Client Secret (Step 4) and connect again. |
 | `no_accounts` | Sign-in worked, but Google listed no Google Ads customer for this user, and nothing was saved. A missing or refused developer token, or a Google Ads API that isn't enabled in your project, ends here too. | Check the `developertoken` from Step 4 and its access level, and that the Google Ads API is enabled, then connect again with a Google user who can open the account. |
 | `account_list_too_large` | Google listed more than 2,000 customers for this user, and nothing was saved. | Connect with a Google user who can open fewer customers directly. |
-| `Wiro-managed OAuth is not enabled for Google Ads` | Returned in `OAuthConnect`'s `errors[]`: Wiro mode isn't available yet, and it is the default when `authmethod` is left out. | Save your credentials (Step 4) and call `OAuthConnect` with `"authmethod": "own"`. |
+| `Sign-in with the platform's app is not enabled for Google Ads` | Returned in `OAuthConnect`'s `errors[]`: Wiro mode isn't available yet, and it is the default when `authmethod` is left out. | Save your credentials (Step 4) and call `OAuthConnect` with `"authmethod": "own"`. |
 | `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before Google returned. | Start again with `OAuthConnect` for an existing agent. |
 | `Google Ads credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `clientid` / `clientsecret` are missing. | `UserAgent/CredentialUpsert` with `clientid` + `clientsecret` (Step 4). |
 | `internal_error` | Server error. | Retry; contact support. |

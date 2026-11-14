@@ -19,7 +19,7 @@ The Merchant Center integration uses the [Merchant API v1](https://developers.go
 | Mode | Status | Notes |
 |------|--------|-------|
 | `"own"` | Available | Your own Google Cloud project and OAuth client, plus a one-time developer registration of that project against your primary Merchant Center. |
-| `"wiro"` | Coming soon | Wiro's shared Google Cloud project is awaiting Google's review. Until then, `OAuthConnect` in Wiro mode, which is also what you get when you leave out `authmethod`, returns `Wiro-managed OAuth is not enabled for Merchant Center`. |
+| `"wiro"` | Coming soon | Wiro's shared Google Cloud project is awaiting Google's review. Until then, `OAuthConnect` in Wiro mode, which is also what you get when you leave out `authmethod`, returns `Sign-in with the platform's app is not enabled for Merchant Center`. |
 
 ## Prerequisites
 
@@ -174,7 +174,7 @@ Response:
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `Wiro-managed OAuth is not enabled for Merchant Center` in `OAuthConnect`'s `errors[]` | Wiro mode isn't available yet, and it is the default when `authmethod` is left out | Save your OAuth client (Step 4) and call `OAuthConnect` with `"authmethod": "own"` |
+| `Sign-in with the platform's app is not enabled for Merchant Center` in `OAuthConnect`'s `errors[]` | Wiro mode isn't available yet, and it is the default when `authmethod` is left out | Save your OAuth client (Step 4) and call `OAuthConnect` with `"authmethod": "own"` |
 | `PERMISSION_DENIED` on any merchant call | GCP project not registered | Complete Step 3 once |
 | `Merchant Center credentials not configured` in `OAuthConnect`'s `errors[]` | `authmethod: "own"` without a saved `clientid` and `clientsecret` | Save them (Step 4), then retry |
 | `invalid_grant` | Refresh token expired or revoked; a consent screen still in Testing expires it after 7 days | Publish the consent screen, then re-connect via `OAuthConnect` |

@@ -134,7 +134,7 @@ Cache-read and cache-write categories are charged only when the selected model r
 
 When the credit pool is exhausted, [`POST /UserAgent/Message/Send`](/docs/agent-messaging#post-useragentmessagesend) and [`POST /UserAgent/Start`](#post-useragentstart) refuse with an `Agent has no remaining credits…` error plus an `agentbalance` snapshot; renew the subscription or buy an extra credit pack to continue.
 
-> **Voice realtime audio is billed separately.** Live voice-call audio (for `util-voice-receptionist` agents) is **not** charged to the platform credit pool. It flows through the operator's own Wiro AI Models balance via the `int-wiro-aimodels` skill (you bring your own Wiro API key). The voice-prep turn before the call and the post-call text turn are billed as normal token deducts.
+> **Voice realtime audio is billed separately.** Live voice-call audio (for `util-voice-receptionist` agents) is **not** charged to the platform credit pool. It is billed to the operator's own Wiro wallet through the `int-wiro-aimodels` skill, the AI Models connector (you bring your own Wiro API key). The voice-prep turn before the call and the post-call text turn are billed as normal token deducts.
 
 ### Live Pricing Preview
 
@@ -299,7 +299,7 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
         },
         "int-wiro-aimodels": {
           "name": "int-wiro-aimodels",
-          "title": "Wiro AI Models",
+          "title": "AI Models",
           "icon": "https://wiro.ai/images/icons/skills/wiro.svg",
           "brand_color": "#33F2BC",
           "brand_text_color": "#0F1A24",
@@ -312,7 +312,7 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
           "user_invocable": true,
           "deprecated": false,
           "replacement": null,
-          "description": "Universal access to every AI model on Wiro: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more."
+          "description": "Universal access to every AI model in the catalog: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more."
         }
       },
       "credentials": {
@@ -640,7 +640,7 @@ Deploy rejects a second call from the same caller for the same template and team
   "errors": [
     {
       "code": 99,
-      "message": "Duplicate deploy: an identical agent (\"My Instagram Bot\") was already deployed 4s ago. Open the existing one in your panel, or wait a few seconds and retry."
+      "message": "Duplicate deploy: an identical agent (\"My Instagram Bot\") was already deployed 4s ago. Use the existing one, or wait a few seconds and retry."
     }
   ],
   "existingUserAgentGuid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321"
@@ -1081,7 +1081,7 @@ Retrieves full details for a single deployed agent instance, including subscript
         },
         "int-wiro-aimodels": {
           "name": "int-wiro-aimodels",
-          "title": "Wiro AI Models",
+          "title": "AI Models",
           "icon": "https://wiro.ai/images/icons/skills/wiro.svg",
           "brand_color": "#33f2bc",
           "brand_text_color": "#0f1a24",
@@ -1094,7 +1094,7 @@ Retrieves full details for a single deployed agent instance, including subscript
           "user_invocable": true,
           "deprecated": false,
           "replacement": null,
-          "description": "Universal access to every AI model on Wiro: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more."
+          "description": "Universal access to every AI model in the catalog: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more."
         }
       },
       "monthlycredits": 3000,
@@ -1645,7 +1645,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 
 #### **POST** /UserAgent/CredentialProjectBind
 
-Connects an agent's Wiro AI Models connector (`int-wiro-aimodels`, the `wiro` key under `credentials`) to one of your Wiro projects. You name the project, and Wiro saves that project's API key on the agent. The agent's model runs are paid from the wallet of the workspace that owns the project.
+Connects an agent's AI Models connector (`int-wiro-aimodels`, the `wiro` key under `credentials`) to one of your Wiro projects. You name the project, and Wiro saves that project's API key on the agent. The agent's model runs are paid from the wallet of the workspace that owns the project.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -1811,7 +1811,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
 
 #### **POST** /UserAgent/CustomSkillRename
 
-Renames a user-created custom skill, optionally updating its description in the same atomic write. Only rows with `usercreated: true` can be renamed. Preset-owned rows reject with `agent-customskill-rename-preset-forbidden`.
+Renames a user-created custom skill, optionally updating its description in the same atomic write. Only rows with `usercreated: true` can be renamed. Preset-owned rows are refused with `Preset skills cannot be renamed.`
 
 The skillkey flavour is preserved: a `cs-cron-*` scheduled task stays scheduled, a `cs-*` strategy stays a strategy. Cross-flavour renames are rejected. Delete + re-create via `CustomSkillUpsert` with the right kind if you need to switch sections.
 
@@ -1850,7 +1850,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillRename" \
 
 | Error message key | When |
 |---|---|
-| `agent-customskill-rename-preset-forbidden` | Target row has `usercreated: false` (preset-owned). |
+| `Preset skills cannot be renamed.` | Target row has `usercreated: false` (preset-owned). This refusal comes as the sentence, with no message key. |
 | `agent-customskill-rename-flavour-mismatch` | Caller tried to rename `cs-cron-*` ↔ `cs-*`. Delete + re-create with the right kind instead. |
 | `agent-customskill-rename-collision` | `newskillkey` already exists on this useragent. |
 | `agent-customskill-rename-same-key` | `oldskillkey` equals canonicalised `newskillkey`: nothing to change. |
@@ -2866,7 +2866,7 @@ Starts a browser-embedded realtime voice session with the agent. Returns two opa
 | `This agent belongs to a different team.` | Team agent called from another team's workspace or project key by a caller who is no longer a member of the agent's team. |
 | `Agent is not running` | Useragent is not in `status: 4`. |
 | `util-web-channel not enabled` | Toggle the skill via `SkillsApply` or pick a preset that bundles it. |
-| `Web voice is available from the Wiro panel or with an API key.` | Bearer auth with an Origin outside the allow-list. |
+| `Web voice from this origin needs an API key.` | Bearer auth with an Origin outside the allow-list. |
 | `Rate limit: max N web voice sessions per hour` | Operator burned through the per-hour cap. |
 
 #### **POST** /UserAgent/Realtime/Cancel
@@ -3059,7 +3059,7 @@ Moves an active subscription to another plan: `"starter"`, `"pro"` or `"max"`. D
 - **A lower plan starts at the next renewal**, when the request sends `allowDowngrade: true`. Without it, a lower `targetTier` is refused and nothing changes, so a client that only means to upgrade never moves an agent down. Nothing is charged or refunded now. The agent keeps its current plan, price and credits until the period ends, and `nextplan` on `UserAgent/Detail` reads the lower plan. The renewal then charges the lower plan's price and grants its credits. The flag is only for a lower plan: a higher `targetTier` sent with it, such as from a page that still shows a plan the agent has since left, is refused, and nothing is changed or charged.
 - **Asking for the agent's current plan** cancels a scheduled move to a lower plan: `nextplan` goes back to `null`. An agent that still pays a price from before the three plans gets its current plan scheduled instead: `nextplan` names that plan, and the renewal moves the agent to the plan's own price and credits.
 
-A move to a higher plan while a lower one is scheduled cancels the scheduled move first, then upgrades from the current plan. On a plan paid by card, a move to a higher plan returns a checkout `url` instead of charging the wallet, and nothing changes on the agent until it is paid: the answer's `tier` and `nextplan` are the agent's as they were. Once it is paid, the higher plan starts a new full period with its full credits, and a lower plan scheduled before is dropped. A lower plan on a card plan applies from the next card renewal. A scheduled move on a card plan can't be cancelled once it has started with the new billing period and its payment is going through: that payment moves the agent, and asking for the current plan is refused until the agent shows the new plan. A team agent's card plan can't be changed with a project API key: the call answers `Card checkouts for a team agent are not available with an API key. Pay from the team wallet (useprepaid) or use the dashboard.` and changes nothing.
+A move to a higher plan while a lower one is scheduled cancels the scheduled move first, then upgrades from the current plan. On a plan paid by card, a move to a higher plan returns a checkout `url` instead of charging the wallet, and nothing changes on the agent until it is paid: the answer's `tier` and `nextplan` are the agent's as they were. Once it is paid, the higher plan starts a new full period with its full credits, and a lower plan scheduled before is dropped. A lower plan on a card plan applies from the next card renewal. A scheduled move on a card plan can't be cancelled once it has started with the new billing period and its payment is going through: that payment moves the agent, and asking for the current plan is refused until the agent shows the new plan. A team agent's card plan can't be changed with a project API key: the call answers `Card checkouts for a team agent need a signed-in session, not an API key. Pay from the team wallet (useprepaid) instead.` and changes nothing.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -3289,7 +3289,7 @@ Agent-specific errors you may encounter:
 | `Agent is already stopped` | Stop called on an agent with status `0` |
 | `Agent is currently stopping, please wait` | Start called on an agent with status `1` |
 | `Agent is in error state, use Start to retry` | Stop called on an agent with status `5` that has nothing left to stop; an errored agent that still holds its runtime is accepted and moves to `1` (Stopping) |
-| `Duplicate deploy: an identical agent ("<title>") was already deployed Ns ago. Open the existing one in your panel, or wait a few seconds and retry.` | `Deploy` called a second time within 10s for the same caller, template and team (custom builds: same caller, `title` and team). Carries `errors[0].code: 99` and a top-level `existingUserAgentGuid` field. |
+| `Duplicate deploy: an identical agent ("<title>") was already deployed Ns ago. Use the existing one, or wait a few seconds and retry.` | `Deploy` called a second time within 10s for the same caller, template and team (custom builds: same caller, `title` and team). Carries `errors[0].code: 99` and a top-level `existingUserAgentGuid` field. |
 | A sentence that says what is wrong and what to write, such as `This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.` or `This schedule never comes up: February has no 30th. Pick a day February has, such as 28.` | `CustomSkillUpsert` with an `interval` the agent can't run on a scheduled task, or one whose date never comes. Nothing is saved. |
 | `<skillkey>:` followed by the same sentence | `Deploy` with a `customskills` entry whose `interval` the agent can't run, or whose date never comes. Nothing is created or charged. |
 | `A deploy takes up to 50 entries in customskills, and this one sent <n>. Send at most 50, then add the rest with /UserAgent/CustomSkillUpsert once the agent is deployed.` | `Deploy` with more than 50 `customskills` entries. Nothing is created or charged. |
@@ -3313,7 +3313,7 @@ Agent-specific errors you may encounter:
 | `The agent's plan changed while this was asked for. Nothing was changed; please retry.` | `UpgradeTier` when the agent's plan ended or moved off the wallet after the call was made |
 | `Could not read the agent's plan. Nothing was changed; please retry.` | `UpgradeTier`: the agent's plan could not be read |
 | `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | `Deploy` or `CreateSubscriptionCheckout` with `useprepaid: true`, `CreateExtraCreditCheckout`, `RenewSubscription` or `UpgradeTier` (code `104` on `UpgradeTier`) while another plan or credit pack payment from the same wallet is going through. A `Deploy` refused this way creates no agent |
-| `Card checkouts for a team agent are not available with an API key. Pay from the team wallet (useprepaid) or use the dashboard.` | A card payment for a team agent asked for with a project API key: `UpgradeTier` on a plan paid by card, `CreateExtraCreditCheckout` paid by card, or `CreateSubscriptionCheckout` without `useprepaid: true`. Nothing is charged or changed |
+| `Card checkouts for a team agent need a signed-in session, not an API key. Pay from the team wallet (useprepaid) instead.` | A card payment for a team agent asked for with a project API key: `UpgradeTier` on a plan paid by card, `CreateExtraCreditCheckout` paid by card, or `CreateSubscriptionCheckout` without `useprepaid: true`. Nothing is charged or changed |
 | `Project not found. Send the id of one of your projects from Project/List: one you created, or any project of a team you are an admin of.` | `CredentialProjectBind` with a project that doesn't exist or that the caller can't bind. See its [other errors](#post-useragentcredentialprojectbind) |
 | `Agent not found or access denied` | Message endpoint with invalid useragentguid |
 | `User agent not found` (code `95`) | `Message/Send`, `Message/History`, `Message/Sessions`, `Message/DeleteSession`, `Message/RenameSession` or `Message/Delete` called for an agent that has been deleted |

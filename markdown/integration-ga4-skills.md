@@ -22,7 +22,7 @@ The GA4 integration uses Google OAuth 2.0 with the GA4 Data API v1beta and the G
 | Mode | Status | Notes |
 |------|--------|-------|
 | `"own"` | Available | Your own Google Cloud project and OAuth client. |
-| `"wiro"` | Coming soon | Wiro's shared Google Cloud project is awaiting Google's review. Until then, `OAuthConnect` in Wiro mode, which is also what you get when you leave out `authmethod`, returns `Wiro-managed OAuth is not enabled for Google Analytics 4`. |
+| `"wiro"` | Coming soon | Wiro's shared Google Cloud project is awaiting Google's review. Until then, `OAuthConnect` in Wiro mode, which is also what you get when you leave out `authmethod`, returns `Sign-in with the platform's app is not enabled for Google Analytics 4`. |
 
 ## Prerequisites
 
@@ -175,7 +175,7 @@ Agent reads GA4 predefined + custom audiences via Admin API and can propose Cust
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `Wiro-managed OAuth is not enabled for Google Analytics 4` in `OAuthConnect`'s `errors[]` | Wiro mode isn't available yet, and it is the default when `authmethod` is left out | Save your OAuth client (Step 3) and call `OAuthConnect` with `"authmethod": "own"` |
+| `Sign-in with the platform's app is not enabled for Google Analytics 4` in `OAuthConnect`'s `errors[]` | Wiro mode isn't available yet, and it is the default when `authmethod` is left out | Save your OAuth client (Step 3) and call `OAuthConnect` with `"authmethod": "own"` |
 | `Google Analytics 4 credentials not configured` in `OAuthConnect`'s `errors[]` | `authmethod: "own"` without a saved `clientid` and `clientsecret` | Save them (Step 3), then retry |
 | `invalid_grant` | Refresh token expired or revoked; a consent screen still in Testing expires it after 7 days | Publish the consent screen, then re-connect via `OAuthConnect` |
 | `PERMISSION_DENIED` | User not a property administrator | Ask user to add the GA account |

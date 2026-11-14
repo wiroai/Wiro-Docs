@@ -280,7 +280,7 @@ Lists all credentials in the registry.
 | `readonly_when_connected` | `boolean?` | `true` when the field becomes read-only after a successful OAuth connection. |
 | `only_in_modes` | `array<string>?` | When set (e.g. `["own"]`), the field only appears in the listed `authmethod` mode. |
 | `runtime_excluded` | `boolean?` | `true` when a setup secret is used only by Wiro's server and must never enter the agent runtime. The Instagram and Facebook Pages System User tokens use this flag. |
-| `platform_managed` | `boolean?` | `true` when Wiro fills the value server-side, so you can't supply it, such as Reddit's three approval flags. These fields are never returned. `CredentialUpsert` rejects writes to these fields with `<Field label> is managed by Wiro`, and Deploy drops them. |
+| `platform_managed` | `boolean?` | `true` when Wiro fills the value server-side, so you can't supply it, such as Reddit's three approval flags. These fields are never returned. `CredentialUpsert` rejects writes to these fields with `<Field label> is managed by the platform`, and Deploy drops them. |
 | `item_schema` / `item_type` | `object?` | For array-of-object fields: describes the per-entry shape (e.g. `apple-appstore.apps[].{appname, appid}`). |
 
 **`oauth_provider` object** (present when `credential_mode` includes OAuth):
@@ -489,14 +489,14 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 | Brevo | [Brevo Skills](/docs/integration-brevo-skills) |
 | SendGrid | [SendGrid Skills](/docs/integration-sendgrid-skills) |
 | Twilio Voice | [Twilio Voice](/docs/integration-twiliovoice-skills) |
-| Wiro AI Models | See [Using Wiro AI Models from Your Agent](/docs/agent-skills#using-wiro-ai-models-from-your-agent) |
+| AI Models | See [Using AI Models from Your Agent](/docs/agent-skills#using-ai-models-from-your-agent) |
 | Calendarific | See [Calendarific in your agent](#calendarific-in-your-agent) |
 
-## Wiro AI Models & Calendarific (User-Provided)
+## AI Models & Calendarific (User-Provided)
 
 Two integrations are **user-input credentials** that ship in agent templates but require you (or your end users) to supply the key before the skill runs. They appear in `POST /UserAgent/Detail` `credentials[]` and accept writes via `POST /UserAgent/CredentialUpsert` like any other API-key integration.
 
-### Wiro AI Models: `wiro` credential
+### AI Models: `wiro` credential
 
 The `int-wiro-aimodels` skill lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) using **one of your Wiro projects**. Each generated asset is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
 
@@ -550,7 +550,7 @@ Some credential fields are **managed by Wiro**. You don't provide them, and they
 
 - The chat model your agent runs on is set up by Wiro. Pick the model with `UserAgent/UpdateSettings`; there is no key to supply.
 
-`CredentialUpsert` rejects writes to these fields with `<Field label> is managed by Wiro`, and Deploy drops them from `credentials`.
+`CredentialUpsert` rejects writes to these fields with `<Field label> is managed by the platform`, and Deploy drops them from `credentials`.
 
 ## Auditing Credential Changes: `CredentialFieldHistory`
 
@@ -658,7 +658,7 @@ Response: `{ "result": true, "applied": 2, "errors": [] }`. `applied` is the cou
 ### Field-level write rules
 
 - **`fieldstatus` is assigned by the server.** Any `fieldstatus` you send is ignored: a field that already exists keeps its stored status, and a new field gets the status its registry schema implies. That is why own-mode app keys (`clientid` / `clientsecret`, `appid` / `appsecret`, …) and the `authmethod` switch can be written here. Fields that the connection flow fills in (schema flag `auto_filled_by_oauth` or `server_managed`, such as account and page selections) are rejected with `<Field label> is managed by the connection flow` in `errors[]`; set them through the OAuth and picker endpoints. OAuth tokens are written by Wiro's OAuth callback flow, not by your API.
-- **Wiro-managed fields and OAuth tokens are rejected.** You can't write a field whose status is `platform` or `oauth_session`. A `platform` field fails with `<Field label> is managed by Wiro` and an `oauth_session` field with `<Field label> is managed by the connection flow`; a field with no schema label is named `<credentialkey>.<fieldname>` instead. As with any invalid field, the whole request is rejected and nothing is saved.
+- **Wiro-managed fields and OAuth tokens are rejected.** You can't write a field whose status is `platform` or `oauth_session`. A `platform` field fails with `<Field label> is managed by the platform` and an `oauth_session` field with `<Field label> is managed by the connection flow`; a field with no schema label is named `<credentialkey>.<fieldname>` instead. As with any invalid field, the whole request is rejected and nothing is saved.
   - `platform`: fields Wiro manages, such as Reddit's approval flags that Wiro sets after its own review (`developerprofileverified`, `dataapiaccessapproved`, `commercialwrittenapproval`).
   - `oauth_session`: the token fields `accesstoken`, `refreshtoken`, `connectedat`, `tokenexpiresat` and `refreshtokenexpiresat`, on any credential and in any letter case. They have no schema label, so the message reads, for example, `reddit.accesstoken is managed by the connection flow`.
   - These fields are rejected whatever status is stored. For any other field, the rejection check uses the schema's status when the registry schema declares it as a top-level field, even if a different status is stored, and the stored status otherwise; the write is rejected when that status is `platform` or `oauth_session`.
@@ -694,7 +694,7 @@ If you skip these keys in Deploy entirely, the instance is created empty and you
 
 ## OAuth Authorization Flow
 
-For services that require user authorization, Wiro implements a full OAuth redirect flow. Your end users interact only with your app and the provider's consent screen, which shows your app's name in own mode and Wiro's in Wiro mode. They land on wiro.ai only when a callback cannot be matched to your flow: `missing_params`, or `session_expired` for a callback more than 24 hours after `OAuthConnect`.
+For services that require user authorization, Wiro implements a full OAuth redirect flow. Your end users interact only with your app and the provider's consent screen, which shows your app's name in own mode and Wiro's in Wiro mode. A callback that cannot be matched to your flow, `missing_params`, or `session_expired` more than 24 hours after `OAuthConnect`, ends instead on a plain page of the API's own, `https://api.wiro.ai/v1/UserAgentOAuth/SignInNotFinished`, which names no brand and links nowhere: it says the sign-in could not be finished and shows the error code.
 
 > The `redirecturl` you pass to `OAuthConnect` is **your own URL**: any https page you control, or `http://localhost` / `http://127.0.0.1` for development. After authorization, users are redirected back to your app with status query parameters and, for credentials with an account picker, the list of accounts to show in your own UI (see [Callback success & error parameters](#callback-success-error-parameters)).
 
@@ -824,14 +824,14 @@ Common error codes across providers:
 
 | Code | Meaning |
 |------|---------|
-| `missing_params` | The callback was opened without an OAuth `state`. Wiro cannot tell which flow it belongs to, so the browser goes to `https://wiro.ai` with this code instead of to your app. Start a new flow with `OAuthConnect`. |
+| `missing_params` | The callback was opened without an OAuth `state`. Wiro cannot tell which flow it belongs to, so the browser goes to the API's own neutral page, `https://api.wiro.ai/v1/UserAgentOAuth/SignInNotFinished`, with this code instead of to your app. Start a new flow with `OAuthConnect`. |
 | `authorization_denied` | The user cancelled, the provider returned an error or no authorization code, or (Meta Dev Mode) the user is not in App Roles. |
-| `session_expired` | More than 15 minutes passed between `OAuthConnect` and the callback. The browser returns to your `redirecturl` with this code; call `OAuthConnect` again. After 24 hours, or when the `state` is unknown, it goes to `https://wiro.ai` instead. A callback that the browser repeats after a completed one (for example when the provider's Continue button is clicked twice) is not an error: it lands where the first one did. |
+| `session_expired` | More than 15 minutes passed between `OAuthConnect` and the callback. The browser returns to your `redirecturl` with this code; call `OAuthConnect` again. After 24 hours, or when the `state` is unknown, it goes to the same neutral page as `missing_params` instead. A callback that the browser repeats after a completed one (for example when the provider's Continue button is clicked twice) is not an error: it lands where the first one did. |
 | `flow_replaced` | A newer sign-in or token check for the same agent and credential replaced this sign-in, whoever started it. Wiro saves nothing from it, and the newer one still works. |
 | `token_exchange_failed` | The provider returned no usable token for the authorization code, for example because the saved Client/App Secret is wrong. |
 | `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before the provider returned. A wrong `useragentguid` never gets this far: `OAuthConnect` refuses it with `User agent not found or unauthorized`. |
 | `<Provider> credentials not configured` | Agent's `credentials.<provider>` block is empty (typically `authmethod: "own"` but `clientid` / `clientsecret` missing). Returned in `errors[]` of `OAuthConnect` itself, not as a redirect-URL `*_error` code. Fix with `POST /UserAgent/CredentialUpsert`. |
-| `internal_error` | Unexpected server error. |
+| `internal_error` | Unexpected server error. When it happens before the callback has read its flow, the browser goes to the same neutral page as `missing_params`. |
 
 Provider-specific codes:
 
@@ -886,7 +886,7 @@ without a browser redirect.
 | `redirecturl` | string | OAuth only | Your page that the browser returns to after OAuth: any https URL you control, or `http://localhost` / `http://127.0.0.1` in development. Direct probes do not use it. |
 | `authmethod` | string | No | One value from the credential's `connection_modes`, such as `"wiro"`, `"own"`, or `"api_key"`. Omission uses `oauth_provider.auth_method_value`. |
 
-> **Your `redirecturl`.** Use any https URL you control; plain http works only on `localhost` and `127.0.0.1` (any port). Wiro adds its parameters to the end of the URL, after `?`, or after `&` when the URL already has a query string, and keeps your own parameters. The redirect does not carry `useragentguid` or `credentialkey`, so put your own context (for example your customer ID) in the query string. Do not use a `#fragment`, because the parameters would land inside it. Values are URL-encoded, and empty values are left out. Success and every error code return to this URL, except a callback without a known `state` or one more than 24 hours after `OAuthConnect`, which goes to `https://wiro.ai`.
+> **Your `redirecturl`.** Use any https URL you control; plain http works only on `localhost` and `127.0.0.1` (any port). Wiro adds its parameters to the end of the URL, after `?`, or after `&` when the URL already has a query string, and keeps your own parameters. The redirect does not carry `useragentguid` or `credentialkey`, so put your own context (for example your customer ID) in the query string. Do not use a `#fragment`, because the parameters would land inside it. Values are URL-encoded, and empty values are left out. Success and every error code return to this URL, except a callback without a known `state` or one more than 24 hours after `OAuthConnect`, which ends on the API's own neutral page, `https://api.wiro.ai/v1/UserAgentOAuth/SignInNotFinished`.
 
 > Starting an OAuth flow for a credential that holds a System User token (Meta Ads, Facebook Pages, Instagram) or a Mailchimp API key clears that secret, and the connection and account selection made with it, right away, before the user consents. This also happens if the user then cancels, or if the call fails later, for example because your app keys are not saved.
 
@@ -915,9 +915,9 @@ Direct probes return `{ "result": true, "errors": [], "accounts": [...], "flowid
 | `Unsupported connection mode for <Provider>` | `authmethod` is not in the credential's `connection_modes`, for example `"own"` for TikTok Ads or `"wiro"` for Shopify and Reddit. |
 | `Invalid redirect URL` | `redirecturl` is not an https URL, or uses http on a host other than `localhost` / `127.0.0.1`. |
 | `<Provider> credentials not configured` | `authmethod: "own"` but `clientid`/`clientsecret` not saved yet. |
-| `Wiro-managed OAuth is not enabled for <Provider>` | `authmethod` is `"wiro"`, or left out where Wiro mode is the default, but that credential's Wiro mode is still pending (`wiro_connect_pending: true`). Use another mode from its `connection_modes`, such as `"own"`. |
+| `Sign-in with the platform's app is not enabled for <Provider>` | `authmethod` is `"wiro"`, or left out where Wiro mode is the default, but that credential's Wiro mode is still pending (`wiro_connect_pending: true`). Use another mode from its `connection_modes`, such as `"own"`. |
 | `<Field> is required` / `Invalid <Field>` | A saved field the provider's consent page needs is missing or malformed: Shopify's `Shop Domain` (`<shop>.myshopify.com`) or Reddit's `Developer Profile Username`. Save it with `CredentialUpsert`. |
-| `Wiro must verify ...` | Reddit only: one of Wiro's three approval flags is not set yet. You can't set them yourself. |
+| `The platform must verify ...` | Reddit only: one of the three approval flags Wiro sets after its review is not set yet. You can't set them yourself. |
 | `Invalid provider authorization URL` | The provider's consent URL could not be built from the saved fields. |
 | Direct credential validation message | The saved direct credential fields failed the registry-declared exchange/probe, or no required account was assigned. Read `errorcode` for the cause. |
 | `User agent not found or unauthorized` | `useragentguid` doesn't exist or doesn't belong to the caller. |
@@ -1300,7 +1300,7 @@ A refusal of the list rules also answers `errorcode`, as named below. The wordin
 | `A newer sign-in replaced this one. Sign in again.` | `errorcode: "flow_replaced"`. The `flowid` you sent isn't the current one. |
 | `The sign-in did not finish. Sign in again.` | `errorcode: "flow_failed"`. The current sign-in or check failed; `flow.errorcode` in `OAuthStatus` says why. |
 | `The sign-in is not finished yet. Finish it, then choose the accounts.` | `errorcode: "flow_waiting"`. The current sign-in hasn't come back from the provider yet, so it has no list. Finish it, then save. A new `OAuthConnect` would replace it. Only a sign-in waits, so this message has no token check wording. |
-| `Choose accounts from the list Wiro gave after the sign-in.` | `errorcode: "not_listed"`. An ID isn't on the list. |
+| `Choose accounts from the list the sign-in returned.` | `errorcode: "not_listed"`. An ID isn't on the list. |
 | `The account list could not be read. Try again in a moment.` | A temporary failure. Try again. |
 | `accountids must be a non-empty array` / `Each account id must be text` | `accountids` is empty, or holds something other than strings and numbers. |
 | `accounts must be a non-empty array` | Neither `accountids` nor a non-empty `accounts` was sent. |
@@ -1403,7 +1403,7 @@ The two branches are checked together: `setuprequired` stays `true` until every 
 - **`oauth_app` fields (`clientid` / `clientsecret`, `appid` / `appsecret`) are stripped from Detail responses**, even after an OAuth "own mode" setup writes them. The append-only credential history redacts `clientsecret` to `[REDACTED]` and always redacts `oauth_session` rows.
 - **`fieldstatus` is server-assigned.** A `fieldstatus` sent to `CredentialUpsert` is ignored; the server assigns the status itself.
   - Fields that the connection flow fills in, OAuth tokens included, are rejected with `<Field label> is managed by the connection flow` in `errors[]`. A token field has no schema label, so it is named `<credentialkey>.<fieldname>`.
-  - Wiro-managed (`platform`) fields are rejected with `<Field label> is managed by Wiro`.
+  - Wiro-managed (`platform`) fields are rejected with `<Field label> is managed by the platform`.
   - A request that fails validation saves nothing, and Deploy never saves either kind of field from its `credentials` body.
 - The `redirecturl` receives only connection status parameters: no tokens, no secrets.
 - OAuth state parameters use a 15-minute TTL cache to prevent replay attacks.

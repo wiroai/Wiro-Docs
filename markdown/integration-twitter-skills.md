@@ -240,7 +240,7 @@ To change **what** the scheduled task posts (topics, tone, hashtag rules), edit 
 
 | Error code | Meaning | What to do |
 |------------|---------|------------|
-| `missing_params` | The callback was opened without an OAuth `state`. This error lands on `https://wiro.ai`, not on your app. | Don't open the callback URL directly. Start a new flow from Step 6. |
+| `missing_params` | The callback was opened without an OAuth `state`. This error ends on the API's own neutral page, not on your app. | Don't open the callback URL directly. Start a new flow from Step 6. |
 | `authorization_denied` | User cancelled, or OAuth 2.0 not enabled in app settings. | Verify OAuth 2.0 setup (Step 2); retry. |
 | `session_expired` | 15-min state cache expired (includes PKCE verifier). | Call `OAuthConnect` again. |
 | `flow_replaced` | A newer sign-in for the same agent and credential replaced this one, whoever started it, so nothing from it was saved. | Use the newer sign-in, or start again with `OAuthConnect`. |

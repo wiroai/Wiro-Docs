@@ -202,7 +202,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"linkedin"`. |
 | `redirecturl` | string | Yes | Any HTTPS URL you control; the browser returns there after consent. `http://localhost` and `http://127.0.0.1` also work for development. |
-| `authmethod` | string | Yes | `"own"`. Wiro mode is not available yet: leaving `authmethod` out (it defaults to `"wiro"`) or sending `"wiro"` returns `Wiro-managed OAuth is not enabled for LinkedIn`. |
+| `authmethod` | string | Yes | `"own"`. Wiro mode is not available yet: leaving `authmethod` out (it defaults to `"wiro"`) or sending `"wiro"` returns `Sign-in with the platform's app is not enabled for LinkedIn`. |
 
 ### GET /UserAgentOAuth/LICallback
 
@@ -242,14 +242,14 @@ To change **what** the scheduled task posts (topics, tone, audience angle), edit
 
 | Error code | Meaning | What to do |
 |------------|---------|------------|
-| `missing_params` | The callback was opened without an OAuth `state`. The browser lands on `https://wiro.ai`, not on your `redirecturl`. | Don't open the callback URL directly. Start again from Step 7. |
+| `missing_params` | The callback was opened without an OAuth `state`. The browser ends on the API's own neutral page, not on your `redirecturl`. | Don't open the callback URL directly. Start again from Step 7. |
 | `session_expired` | >15 min between `OAuthConnect` and callback. | Call `OAuthConnect` again. |
 | `flow_replaced` | A newer sign-in for the same agent and credential replaced this one, whoever started it, so nothing from it was saved. | Use the newer sign-in, or start again with `OAuthConnect`. |
 | `authorization_denied` | The user cancelled, or LinkedIn returned an error instead of an authorization code. | Verify all four scopes are enabled under Auth → OAuth 2.0 scopes. |
 | `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy secret; verify URL. |
 | `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before LinkedIn returned. | Start again with `OAuthConnect` for an existing agent. |
 | `LinkedIn credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `clientid` / `clientsecret` are missing. | `UserAgent/CredentialUpsert` with `clientid` + `clientsecret`. |
-| `Wiro-managed OAuth is not enabled for LinkedIn` | Returned in `OAuthConnect`'s `errors[]` when `authmethod` is missing or `"wiro"`. | Send `authmethod: "own"`. |
+| `Sign-in with the platform's app is not enabled for LinkedIn` | Returned in `OAuthConnect`'s `errors[]` when `authmethod` is missing or `"wiro"`. | Send `authmethod: "own"`. |
 | `internal_error` | Server error. | Retry; contact support if persistent. |
 
 ### Posts rejected with 401 Unauthorized
