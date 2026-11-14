@@ -905,22 +905,30 @@ Retrieves full details for a single deployed agent instance, including subscript
             "docs_url": "integration-telegram-skills",
             "credential_mode": "api_key",
             "connection_modes": [],
+            "default_connection_mode": null,
+            "mode_badges": {},
             "wiro_connect_pending": false,
+            "channel": {
+              "id": "telegram",
+              "plugin": "telegram",
+              "required_fields": ["bottoken", "allowedusers"],
+              "capabilities": { "direct": true, "rooms": true, "threads": true, "roles": false, "command_menu": true }
+            },
             "oauth_provider": null,
             "fields": [
               {
                 "key": "bottoken",
-                "label": "Bot Token",
+                "label": "Telegram Bot Token",
                 "type": "password",
                 "required": true,
-                "placeholder": "123456789:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
-                "help": "Issued by @BotFather when you create the bot."
+                "show_toggle": true
               },
               {
                 "key": "allowedusers",
-                "label": "Allowed User IDs",
+                "label": "Allowed Telegram DM User IDs",
                 "type": "string-array",
-                "required": false,
+                "required": true,
+                "depends_on_field": { "field": "bottoken", "value": "", "operator": "ne" },
                 "pattern": "^\\d{5,}$"
               },
               {
@@ -928,9 +936,10 @@ Retrieves full details for a single deployed agent instance, including subscript
                 "label": "Allowed Telegram Groups",
                 "type": "object-array",
                 "required": false,
+                "depends_on_field": { "field": "bottoken", "value": "", "operator": "ne" },
                 "item_schema": [
-                  { "key": "chatid", "type": "text", "required": true, "pattern": "^-\\d{5,}$" },
-                  { "key": "allowedusers", "type": "string-array", "required": true, "pattern": "^\\d{5,}$" }
+                  { "key": "chatid", "label": "Group Chat ID", "type": "text", "required": true, "placeholder": "-1001234567890", "pattern": "^-\\d{5,}$" },
+                  { "key": "allowedusers", "label": "Allowed User IDs", "type": "string-array", "required": true, "pattern": "^\\d{5,}$" }
                 ]
               }
             ]
@@ -959,6 +968,8 @@ Retrieves full details for a single deployed agent instance, including subscript
             "docs_url": "integration-wordpress-skills",
             "credential_mode": "api_key",
             "connection_modes": [],
+            "default_connection_mode": null,
+            "mode_badges": {},
             "wiro_connect_pending": false,
             "channel": null,
             "oauth_provider": null,
