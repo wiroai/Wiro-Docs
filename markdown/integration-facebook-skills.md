@@ -495,7 +495,7 @@ makes links clickable, so a draft's page link goes into the post.
 
 | Error code | Meaning | What to do |
 |------------|---------|------------|
-| `missing_params` | The callback was opened without an OAuth `state`. This error lands on `https://wiro.ai`, not on your app. | Don't open the callback URL directly. Start a new flow from Step 7. |
+| `missing_params` | The callback was opened without an OAuth `state`. This error ends on the API's own neutral page, not on your app. | Don't open the callback URL directly. Start a new flow from Step 7. |
 | `session_expired` | >15 min between `OAuthConnect` and the callback. | Call `OAuthConnect` again. |
 | `flow_replaced` | A newer sign-in or token check for the same agent and credential replaced this sign-in, whoever started it, so nothing from it was saved. | Use the newer sign-in or check, or start again with `OAuthConnect`. |
 | `authorization_denied` | User cancelled, or not listed in App Roles (Development Mode). | Add as Tester (Step 5), retry. |
@@ -517,7 +517,7 @@ The OAuth sign-in of Step 7 hasn't come back yet, so it has no list to save from
 
 ### `SetPickerAccounts` returns `not_listed`
 
-The `pageid` you sent isn't in the latest discovery result (`Choose accounts from the list Wiro gave after the sign-in.`; the wording depends on whether it was a sign-in or a token check). Verify you're parsing `fb_pages` correctly and sending the exact ID string.
+The `pageid` you sent isn't in the latest discovery result (`Choose accounts from the list the token check returned.`, or `Choose accounts from the list the sign-in returned.` after a sign-in). Verify you're parsing `fb_pages` correctly and sending the exact ID string.
 
 ### Posts publish but as the wrong author
 

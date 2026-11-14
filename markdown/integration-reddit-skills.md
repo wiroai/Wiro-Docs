@@ -33,7 +33,7 @@ The prerequisites are cumulative:
 4. A dedicated app account used only for app functions, not a mixed-use personal account.
 5. A customer-owned Reddit `web app` registered with the Wiro callback.
 
-Three Wiro-managed flags gate the connection: `developerprofileverified`, `dataapiaccessapproved` and `commercialwrittenapproval`. Wiro sets them only after it has reviewed the labeled developer profile, Reddit's Data API approval for this app and Reddit's written commercial approval. You cannot set them: `CredentialUpsert` refuses each one with `<Field label> is managed by Wiro`. Until all three are on, `OAuthConnect` returns an error such as `Wiro must verify Reddit Data API approval for this app before connecting.` The flags grant no rights and do not replace Reddit's review or the commercial contract.
+Three Wiro-managed flags gate the connection: `developerprofileverified`, `dataapiaccessapproved` and `commercialwrittenapproval`. Wiro sets them only after it has reviewed the labeled developer profile, Reddit's Data API approval for this app and Reddit's written commercial approval. You cannot set them: `CredentialUpsert` refuses each one with `<Field label> is managed by the platform`. Until all three are on, `OAuthConnect` returns an error such as `The platform must verify Reddit Data API approval for this app before connecting.` The flags grant no rights and do not replace Reddit's review or the commercial contract.
 
 ## Prerequisites
 

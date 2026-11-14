@@ -203,7 +203,7 @@ Response:
 
 Redirect the user's browser to `authorizeUrl` with a full-page redirect rather than a popup. Wiro requests the `business.manage` scope with offline access, so Google issues a refresh token. Google asks which Google account to connect, even when the browser is already signed in to one.
 
-Always send `authmethod: "own"`. Without it, or with `"wiro"`, `OAuthConnect` returns `Wiro-managed OAuth is not enabled for Google Business Profile`.
+Always send `authmethod: "own"`. Without it, or with `"wiro"`, `OAuthConnect` returns `Sign-in with the platform's app is not enabled for Google Business Profile`.
 
 > **State TTL:** Wiro keeps the OAuth state for **15 minutes**. If the user takes longer on Google's consent screen, the connection fails with `gbp_error=session_expired`; call `OAuthConnect` again.
 
@@ -476,7 +476,7 @@ All endpoints require Wiro authentication: see [Authentication](/docs/authentica
 | `redirecturl` | string | Yes | Any HTTPS URL you control (or `http://localhost` / `http://127.0.0.1` for development) where the browser returns after Google. |
 | `authmethod` | string | Yes | `"own"`, the only available mode. |
 
-Response: `{ result, errors, authorizeUrl, flowid }`. If `result: false`, inspect `errors[0].message`. Common messages: `Invalid redirect URL`, `User agent not found or unauthorized`, `Wiro-managed OAuth is not enabled for Google Business Profile` (no `authmethod`, or `"wiro"`), and `Google Business Profile credentials not configured` (the Client ID or Client Secret is not saved).
+Response: `{ result, errors, authorizeUrl, flowid }`. If `result: false`, inspect `errors[0].message`. Common messages: `Invalid redirect URL`, `User agent not found or unauthorized`, `Sign-in with the platform's app is not enabled for Google Business Profile` (no `authmethod`, or `"wiro"`), and `Google Business Profile credentials not configured` (the Client ID or Client Secret is not saved).
 
 ### GET /UserAgentOAuth/GBPCallback
 
@@ -612,7 +612,7 @@ To change how replies read, edit `cs-review-preferences`; to change which replie
 | `token_exchange_failed` | Google did not return an access token for the authorization code, usually because of a wrong Client Secret or a redirect URI mismatch. | Re-copy the Client Secret, check the redirect URI, and connect again. |
 | `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before Google returned. | Start again with `OAuthConnect` for an existing agent. |
 | `internal_error` | Unexpected server error during callback processing. | Retry once. If it persists, contact Wiro support with the timestamp and your `useragentguid`. |
-| `Wiro-managed OAuth is not enabled for Google Business Profile` | Returned in `OAuthConnect`'s `errors[]` when `authmethod` is missing or `"wiro"`. | Send `authmethod: "own"`. |
+| `Sign-in with the platform's app is not enabled for Google Business Profile` | Returned in `OAuthConnect`'s `errors[]` when `authmethod` is missing or `"wiro"`. | Send `authmethod: "own"`. |
 | `Google Business Profile credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when the Client ID or Client Secret is not saved. | Save both with `POST /UserAgent/CredentialUpsert` (Step 1), then retry. |
 | `Picker candidates expired. Discover them again.` | More than five minutes passed after location discovery, or the account selection changed. | Call `DiscoverPickerItems` again, then resubmit the location selection. |
 | `Choose at least one location to finish.` | `errorcode: "next_required"`: the accounts and locations were saved in one call with no location chosen. | Choose at least one location and save again. |
@@ -620,7 +620,7 @@ To change how replies read, edit `cs-review-preferences`; to change which replie
 | `selections must include every available parent exactly once` | The location selection left out or repeated an account group. | Send one `selections[]` entry per group returned without `errorcode`; use `items: []` to select no location for an account. |
 | `Google Business Profile account not connected` | Returned by `DiscoverPickerItems` or the location `SetPickerAccounts` call when no account is saved yet, or when the access token has run out: about an hour after the last renewal while the agent is stopped. | Save the account selection (Step 4). If it is saved, start the agent so Wiro renews the token, or connect again with Steps 2 and 3: the saved accounts stay selected. |
 
-Without a `state`, Wiro can't tell which flow the callback belongs to, so `missing_params` sends the browser to `https://wiro.ai` instead of to your app. `session_expired` returns to your `redirecturl`, as long as the return comes within a day of `OAuthConnect`.
+Without a `state`, Wiro can't tell which flow the callback belongs to, so `missing_params` sends the browser to the API's own neutral page, `https://api.wiro.ai/v1/UserAgentOAuth/SignInNotFinished`, instead of to your app. `session_expired` returns to your `redirecturl`, as long as the return comes within a day of `OAuthConnect`.
 
 ### "No accounts available" right after connecting
 

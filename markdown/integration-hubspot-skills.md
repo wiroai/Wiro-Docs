@@ -217,7 +217,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
 
 | Error code | Meaning | What to do |
 |------------|---------|------------|
-| `missing_params` | The callback was opened without an OAuth `state`. The browser lands on `https://wiro.ai`, not on your `redirecturl`. | Don't open the callback URL directly. Start a new flow with `OAuthConnect`. |
+| `missing_params` | The callback was opened without an OAuth `state`. The browser ends on the API's own neutral page, not on your `redirecturl`. | Don't open the callback URL directly. Start a new flow with `OAuthConnect`. |
 | `authorization_denied` | The user cancelled, or HubSpot returned an error instead of an authorization code. | Verify the scope list in the HubSpot app's Auth tab. |
 | `session_expired` | State cache expired (15 min TTL). | Restart the OAuth flow. |
 | `flow_replaced` | A newer sign-in for the same agent and credential replaced this one, whoever started it, so nothing from it was saved. | Use the newer sign-in, or start again with `OAuthConnect`. |

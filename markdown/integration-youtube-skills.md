@@ -22,7 +22,7 @@ The YouTube integration uses Google OAuth 2.0 with:
 | Mode | Status | Notes |
 |------|--------|-------|
 | `"own"` | Available | Your own Google Cloud project and OAuth client. |
-| `"wiro"` | Coming soon | Wiro's shared Google Cloud project is awaiting Google's review. Until then, `OAuthConnect` in Wiro mode, which is also what you get when you leave out `authmethod`, returns `Wiro-managed OAuth is not enabled for YouTube`. |
+| `"wiro"` | Coming soon | Wiro's shared Google Cloud project is awaiting Google's review. Until then, `OAuthConnect` in Wiro mode, which is also what you get when you leave out `authmethod`, returns `Sign-in with the platform's app is not enabled for YouTube`. |
 
 ## Prerequisites
 
@@ -234,7 +234,7 @@ Agent → POST /youtubeAnalytics/v2/reports
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `Wiro-managed OAuth is not enabled for YouTube` in `OAuthConnect`'s `errors[]` | Wiro mode isn't available yet, and it is the default when `authmethod` is left out | Save your OAuth client (Step 3) and call `OAuthConnect` with `"authmethod": "own"` |
+| `Sign-in with the platform's app is not enabled for YouTube` in `OAuthConnect`'s `errors[]` | Wiro mode isn't available yet, and it is the default when `authmethod` is left out | Save your OAuth client (Step 3) and call `OAuthConnect` with `"authmethod": "own"` |
 | `YouTube credentials not configured` | `authmethod: "own"` without a saved `clientid` and `clientsecret` | Save them (Step 3), then retry |
 | `yt_error=no_accounts` on your `redirecturl` | Google listed no YouTube channel for this account, and Wiro saved nothing: the account has no channel, or the YouTube Data API v3 is not enabled in your project | Enable the API (Step 1), or have the user create a channel, then call `OAuthConnect` again |
 | `quotaExceeded` | Daily quota hit | Wait 24h or request higher quota from Google |

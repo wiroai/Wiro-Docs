@@ -20,7 +20,7 @@ The TikTok integration uses TikTok's OAuth 2.0 with the Content Posting API.
 | Mode | Status | Notes |
 |------|--------|-------|
 | `"own"` | Available | Use your own TikTok for Developers app. |
-| `"wiro"` | Coming soon | Wiro's shared TikTok app is awaiting TikTok's review. Until then, `OAuthConnect` in Wiro mode, which is also what you get when you leave out `authmethod`, returns `Wiro-managed OAuth is not enabled for TikTok`. |
+| `"wiro"` | Coming soon | Wiro's shared TikTok app is awaiting TikTok's review. Until then, `OAuthConnect` in Wiro mode, which is also what you get when you leave out `authmethod`, returns `Sign-in with the platform's app is not enabled for TikTok`. |
 
 ## Prerequisites
 
@@ -191,12 +191,12 @@ Wiro renews the 24-hour access token while the agent is running. `OAuthStatus` c
 
 | Error code | Meaning | What to do |
 |------------|---------|------------|
-| `missing_params` | The callback was opened without an OAuth `state`. This error lands on `https://wiro.ai`, not on your app. | Don't open the callback URL directly. Start a new OAuth flow. |
+| `missing_params` | The callback was opened without an OAuth `state`. This error ends on the API's own neutral page, not on your app. | Don't open the callback URL directly. Start a new OAuth flow. |
 | `authorization_denied` | User cancelled, or scopes not enabled. | Verify scope configuration. |
 | `session_expired` | 15-min state cache expired. | Restart OAuth. |
 | `flow_replaced` | A newer sign-in for the same agent and credential replaced this one, whoever started it, so nothing from it was saved. | Use the newer sign-in, or start again with `OAuthConnect`. |
 | `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
-| `Wiro-managed OAuth is not enabled for TikTok` | Returned in `OAuthConnect`'s `errors[]`: Wiro mode isn't available yet, and it is the default when `authmethod` is left out. | Save your app credentials (Step 6) and call `OAuthConnect` with `"authmethod": "own"`. |
+| `Sign-in with the platform's app is not enabled for TikTok` | Returned in `OAuthConnect`'s `errors[]`: Wiro mode isn't available yet, and it is the default when `authmethod` is left out. | Save your app credentials (Step 6) and call `OAuthConnect` with `"authmethod": "own"`. |
 | `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before TikTok returned. | Start again with `OAuthConnect` for an existing agent. |
 | `TikTok credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `clientkey` / `clientsecret` are missing. | `UserAgent/CredentialUpsert` with `clientkey` + `clientsecret`. |
 | `internal_error` | Server error. | Retry. |
