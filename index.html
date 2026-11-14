@@ -27098,7 +27098,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 </div>
 <p>Match the code and show your own words, or the sentence after it. The full texts are in <a href="/docs/agent-messaging#failed-turns">Failed turns</a>.</p>
 <h3 id="load-a-conversation">Load a conversation</h3>
-<p><a href="/docs/agent-messaging#post-useragentmessagehistory"><code>POST /UserAgent/Message/History</code></a> returns a session's messages, newest first, each with the same shape as <code>Message/Detail</code>:</p>
+<p><a href="/docs/agent-messaging#post-useragentmessagehistory"><code>POST /UserAgent/Message/History</code></a> returns a session's messages, newest first. Each row has the fields of a <code>Message/Detail</code> answer except <code>sessionkey</code>, <code>startedat</code> and <code>endedat</code>, which History doesn't return:</p>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/Message/History&quot; \
   -H &quot;Content-Type: application/json&quot; \
   -H &quot;x-api-key: YOUR_API_KEY&quot; \
@@ -27115,7 +27115,6 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
     &quot;messages&quot;: [
       {
         &quot;guid&quot;: &quot;c3d4e5f6-a7b8-9012-cdef-345678901234&quot;,
-        &quot;sessionkey&quot;: &quot;customer-42&quot;,
         &quot;content&quot;: &quot;Can you report our website traffic every Monday?&quot;,
         &quot;response&quot;: &quot;I can do that once Google Analytics 4 is on and connected. Approve the card below and connect your Google Analytics account.&quot;,
         &quot;status&quot;: &quot;agent_end&quot;
@@ -27127,7 +27126,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
   }
 }
 </code></pre>
-<p>Each row of <code>messages</code> is a full row, shortened here; the GA4 example in <a href="#worked-examples">Worked Examples</a> shows one whole. Page back with <code>before</code> (the oldest <code>guid</code> you have) while <code>hasmore</code> is <code>true</code>. A session holds four kinds of row:</p>
+<p>The row is shortened here; the GA4 example in <a href="#worked-examples">Worked Examples</a> shows a whole one as <code>Message/Detail</code> returns it. Page back with <code>before</code> (the oldest <code>guid</code> you have) while <code>hasmore</code> is <code>true</code>. A session holds four kinds of row:</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -27299,7 +27298,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 </tr>
 <tr>
 <td><code>next</code></td>
-<td>Only on a pending <code>connect</code> card: how its own connector connects, as one entry <code>{ connector, title, mode }</code>. It is gone once the card is applied, dismissed or failed. See <a href="#your-own-connect-button">Your Own Connect Button</a>. An <code>add</code> card's block has no <code>next</code>: its <code>setup.needs</code> lists what it brings. A card stored before <code>next</code> existed has none: name its connector by <code>credentials.&lt;connector&gt;._schema.title</code> of <code>UserAgent/Detail</code> and send the person to your settings screen for it.</td>
+<td>Only on a pending <code>connect</code> card: how its own connector connects, as one entry <code>{ connector, title, mode }</code>. It is gone once the card is applied, dismissed or failed. See <a href="#your-own-connect-button">Your Own Connect Button</a>. An <code>add</code> card's block has no <code>next</code>: its <code>setup.needs</code> lists what it brings. A card stored before <code>next</code> existed may have none. It still gets one while a pending <code>add</code> card on the same message names its connector in <code>needs</code>. Without one, name its connector by <code>credentials.&lt;connector&gt;._schema.title</code> of <code>UserAgent/Detail</code> and send the person to your settings screen for it.</td>
 </tr>
 </tbody>
 </table>
@@ -27375,7 +27374,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <tr>
 <td><code>pauses</code>, <code>resumes</code></td>
 <td><code>add</code>, <code>remove</code></td>
-<td>Scheduled tasks (<code>cs-cron-&lt;name&gt;</code>) that stop, or run again, with this change, at most 20 each. Written by Wiro. Name each by the <code>description</code> of its entry in <code>customskills</code> of <code>UserAgent/Detail</code>, or by its key in words.</td>
+<td>Scheduled tasks (<code>cs-cron-&lt;name&gt;</code>) that stop, or run again, with this change, at most 20 each. Written by Wiro. Name each by the <code>description</code> of its entry in <code>scheduledskills</code> of <code>UserAgent/Detail</code>, or by its key in words.</td>
 </tr>
 <tr>
 <td><code>needs</code></td>
@@ -28518,7 +28517,7 @@ async function connectFromNext(entry, useragentguid, own) {
 </tr>
 <tr>
 <td><code>&lt;Connector&gt; is not connected: &lt;Add&gt; was not added.</code>, <code>&lt;Title&gt; is connected, but &lt;Add&gt; was not added.</code></td>
-<td>In <code>paired[0].error</code>: the <code>add</code> card failed, or waits for another change, so its <code>connect</code> card stays pending.</td>
+<td>In <code>paired[0].error</code>, the first with <code>values</code> and the second with <code>signin: true</code>, when the <code>add</code> card failed: its <code>connect</code> card stays pending. When the <code>add</code> card's change waits for another change instead, both cards stay pending, and <code>paired[0].error</code> reads <code>Another change to this agent's connectors or skills is being applied. Try again in a moment.</code>, as <code>errors[0].message</code> does.</td>
 </tr>
 <tr>
 <td><code>The setup card could not be applied. Try again.</code></td>
@@ -28693,7 +28692,7 @@ async function connectFromNext(entry, useragentguid, own) {
 <li>A card that changes only the text of a custom skill or scheduled task (<code>append</code>, <code>revert</code>, or an <code>update</code> that keeps the schedule) reaches a running agent without a restart.</li>
 <li>A sign-in <code>connect</code> card writes nothing: the connection restarted the agent if it needed to, so its apply answers <code>restarting: false</code>.</li>
 <li>One change, one restart. An <code>add</code> card applied with its key, or with <code>signin: true</code>, restarts the agent once for both cards, and a change made while a restart is still stopping or queued loads with that restart.</li>
-<li>A connection made while nothing on the agent uses the connector restarts nothing, which is why connecting first and then applying the <code>add</code> card with <code>signin: true</code> restarts the agent once.</li>
+<li>A <code>signin</code>, <code>appkeys</code> or <code>token</code> connection made while nothing on the agent uses the connector restarts nothing, which is why connecting first and then applying the <code>add</code> card with <code>signin: true</code> restarts the agent once. The fields of a <code>key</code> or <code>page</code> connector saved with <code>CredentialUpsert</code> restart a starting or running agent either way, whenever a saved value changes.</li>
 <li>An agent that is stopped doesn't start: it loads the change when it next starts, and <code>restarting</code> is <code>false</code>.</li>
 </ul>
 <p><code>restarting</code> in the <code>SetupCardApply</code> answer and in <code>setupresult</code> says whether this change restarts the agent.</p>
@@ -28800,7 +28799,14 @@ async function connectFromNext(entry, useragentguid, own) {
 </table>
 </div>
 </div>
-<p>Before this refusal, Wiro still answers the replies it handles itself: a <code>yes</code> that lists or applies a card other than a <code>connect</code> card, a <code>yes</code> while a sign-in <code>connect</code> card waits, a key for the one waiting <code>key</code> connect card, and a <code>no</code> that turned pending cards down, answered <code>The setup change was turned down.</code> or <code>The &lt;N&gt; setup changes were turned down.</code> Every other message gets the refusal, a <code>yes</code> while only <code>key</code> connect cards wait and a <code>yes</code> or <code>no</code> with no pending card included. A turn still running when the restart began, in another session for example, ends as <code>agent_error</code> with <code>[TURN_INTERRUPTED]</code>: offer to send it again.</p>
+<p>Before this refusal, Wiro still answers the replies it handles itself:</p>
+<ul>
+<li>A <code>yes</code> that lists or applies a card other than a <code>connect</code> card, and a <code>yes</code> while a sign-in <code>connect</code> card waits.</li>
+<li>A key for the one waiting <code>key</code> connect card. Another service's key pasted while that card waits is answered too, and not saved: <code>That does not look like a &lt;Title&gt; key (it looks like &lt;kind&gt;), so it was not saved. Paste the &lt;Title&gt; key as your reply.</code>, the part in brackets only when Wiro knows the kind.</li>
+<li>Such a <code>yes</code> or key from a sender who isn't an agent admin, answered <code>Only an agent admin can apply setup changes.</code></li>
+<li>A <code>no</code> that turned pending cards down, answered <code>The setup change was turned down.</code> or <code>The &lt;N&gt; setup changes were turned down.</code></li>
+</ul>
+<p>Every other message gets the refusal, a <code>yes</code> while only <code>key</code> connect cards wait and a <code>yes</code> or <code>no</code> with no pending card included. A turn still running when the restart began, in another session for example, ends as <code>agent_error</code> with <code>[TURN_INTERRUPTED]</code>: offer to send it again.</p>
 <h2 id="chats-without-cards">Chats Without Cards</h2>
 <p>Your chat can work with text alone, or people may type <code>yes</code> even where you show cards. Wiro then reads the reply itself.</p>
 <h3 id="typed-replies">Typed replies</h3>
