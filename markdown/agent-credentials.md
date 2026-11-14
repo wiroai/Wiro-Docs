@@ -489,19 +489,19 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 | Brevo | [Brevo Skills](/docs/integration-brevo-skills) |
 | SendGrid | [SendGrid Skills](/docs/integration-sendgrid-skills) |
 | Twilio Voice | [Twilio Voice](/docs/integration-twiliovoice-skills) |
-| AI Models | See [Using AI Models from Your Agent](/docs/agent-skills#using-ai-models-from-your-agent) |
+| Wiro AI Models | See [Using Wiro AI Models from Your Agent](/docs/agent-skills#using-wiro-ai-models-from-your-agent) |
 | Calendarific | See [Calendarific in your agent](#calendarific-in-your-agent) |
 
-## AI Models & Calendarific (User-Provided)
+## Wiro AI Models & Calendarific (User-Provided)
 
 Two integrations are **user-input credentials** that ship in agent templates but require you (or your end users) to supply the key before the skill runs. They appear in `POST /UserAgent/Detail` `credentials[]` and accept writes via `POST /UserAgent/CredentialUpsert` like any other API-key integration.
 
-### AI Models: `wiro` credential
+### Wiro AI Models: `wiro` credential
 
 The `int-wiro-aimodels` skill lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) using **one of your Wiro projects**. Each generated asset is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
 
 - **Credential key:** `wiro`
-- **Field:** `apikey` (single field, type `custom:wiro-project-picker` in the registry; the dashboard renders it as a project picker).
+- **Field:** `apikey` (label "Wiro Project"; single field, type `custom:wiro-project-picker` in the registry; the dashboard renders it as a project picker).
 - **No secret to supply.** Only the project is needed. Request signing for the agent's internal Wiro calls is handled automatically: Wiro derives the project's signing secret server-side from the key you pick, so there is no `apisecret` (or similar) field to paste.
 - **Setup in the dashboard:** open the agent's **Connectors** tab and pick a project, or create one on the [Projects page](https://wiro.ai/panel/project).
 - **Setup through the API:** take the project's `id` from `POST /Project/List` and call [`POST /UserAgent/CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind). A request made with a project API key can leave `projectid` out to bind that key's own project:

@@ -644,7 +644,7 @@ Each entry of `needs` and of `next` says how its connector connects in `mode`:
 | `appkeys` | The person's own app keys, then the provider's sign-in | A form for the app keys, the redirect URI to register, then a Connect button | `CredentialUpsert`, `OAuthConnect` (`own`), `OAuthStatus`, `SetPickerAccounts`, then `SetupCardApply` |
 | `token` | A token Wiro checks on the server, such as a Meta System User token | A form for the token, then the accounts to pick when the check lists some | `CredentialUpsert`, `OAuthConnect` (`api_key`), `SetPickerAccounts` when there are accounts to pick, then `SetupCardApply` |
 | `signin` | The provider's sign-in with Wiro's own app | A Connect button | `OAuthConnect` (`wiro`), `OAuthStatus`, `SetPickerAccounts` when there are accounts to pick, then `SetupCardApply` |
-| `page` | Anything else: service account files, lists, the project the agent runs AI models with | A link to your settings screen for that connector | The credential endpoints, with no card |
+| `page` | Anything else: service account files, lists, the Wiro project of Wiro AI Models | A link to your settings screen for that connector | The credential endpoints, with no card |
 
 Read a mode you don't know as `page`. `mode` is the connector's usual way. A connector can offer others, listed in `connection_modes` of `POST /Credentials/Detail` by their `authmethod`: `wiro` is `signin`, `own` is `appkeys` and `api_key` is `token`. Any of them that connects the connector lets its card apply. `wiro` stays listed while `wiro_connect_pending` is `true`, and until that flag is `false`, `OAuthConnect` refuses it with `Sign-in with the platform's app is not enabled for <Title>`: don't offer it then. Each mode below uses one example connector, and the same calls work for every connector of that mode.
 
@@ -1161,7 +1161,7 @@ A connector with `mode` `page`, such as Google Drive with its service account fi
 { "result": true, "applied": 1, "errors": [] }
 ```
 
-There is no card to apply afterwards. The save restarts a running agent once, so it loads the connector, but its answer doesn't say so: see [Showing a restart](#showing-a-restart). Files go through [`CredentialFileUpload`](/docs/agent-overview#post-useragentcredentialfileupload), and the AI Models connector, the project the agent runs AI models with, through [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind), whose answer says in `restart` whether the agent restarts.
+There is no card to apply afterwards. The save restarts a running agent once, so it loads the connector, but its answer doesn't say so: see [Showing a restart](#showing-a-restart). Files go through [`CredentialFileUpload`](/docs/agent-overview#post-useragentcredentialfileupload), and the Wiro AI Models connector, the Wiro project the agent runs models with, through [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind), whose answer says in `restart` whether the agent restarts.
 
 ## Your Own Connect Button
 
