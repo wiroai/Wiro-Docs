@@ -14120,22 +14120,30 @@ import type {
             &quot;docs_url&quot;: &quot;integration-telegram-skills&quot;,
             &quot;credential_mode&quot;: &quot;api_key&quot;,
             &quot;connection_modes&quot;: [],
+            &quot;default_connection_mode&quot;: null,
+            &quot;mode_badges&quot;: {},
             &quot;wiro_connect_pending&quot;: false,
+            &quot;channel&quot;: {
+              &quot;id&quot;: &quot;telegram&quot;,
+              &quot;plugin&quot;: &quot;telegram&quot;,
+              &quot;required_fields&quot;: [&quot;bottoken&quot;, &quot;allowedusers&quot;],
+              &quot;capabilities&quot;: { &quot;direct&quot;: true, &quot;rooms&quot;: true, &quot;threads&quot;: true, &quot;roles&quot;: false, &quot;command_menu&quot;: true }
+            },
             &quot;oauth_provider&quot;: null,
             &quot;fields&quot;: [
               {
                 &quot;key&quot;: &quot;bottoken&quot;,
-                &quot;label&quot;: &quot;Bot Token&quot;,
+                &quot;label&quot;: &quot;Telegram Bot Token&quot;,
                 &quot;type&quot;: &quot;password&quot;,
                 &quot;required&quot;: true,
-                &quot;placeholder&quot;: &quot;123456789:ABC-DEF1234ghIkl-zyx57W2v1u123ew11&quot;,
-                &quot;help&quot;: &quot;Issued by @BotFather when you create the bot.&quot;
+                &quot;show_toggle&quot;: true
               },
               {
                 &quot;key&quot;: &quot;allowedusers&quot;,
-                &quot;label&quot;: &quot;Allowed User IDs&quot;,
+                &quot;label&quot;: &quot;Allowed Telegram DM User IDs&quot;,
                 &quot;type&quot;: &quot;string-array&quot;,
-                &quot;required&quot;: false,
+                &quot;required&quot;: true,
+                &quot;depends_on_field&quot;: { &quot;field&quot;: &quot;bottoken&quot;, &quot;value&quot;: &quot;&quot;, &quot;operator&quot;: &quot;ne&quot; },
                 &quot;pattern&quot;: &quot;^\\d{5,}$&quot;
               },
               {
@@ -14143,9 +14151,10 @@ import type {
                 &quot;label&quot;: &quot;Allowed Telegram Groups&quot;,
                 &quot;type&quot;: &quot;object-array&quot;,
                 &quot;required&quot;: false,
+                &quot;depends_on_field&quot;: { &quot;field&quot;: &quot;bottoken&quot;, &quot;value&quot;: &quot;&quot;, &quot;operator&quot;: &quot;ne&quot; },
                 &quot;item_schema&quot;: [
-                  { &quot;key&quot;: &quot;chatid&quot;, &quot;type&quot;: &quot;text&quot;, &quot;required&quot;: true, &quot;pattern&quot;: &quot;^-\\d{5,}$&quot; },
-                  { &quot;key&quot;: &quot;allowedusers&quot;, &quot;type&quot;: &quot;string-array&quot;, &quot;required&quot;: true, &quot;pattern&quot;: &quot;^\\d{5,}$&quot; }
+                  { &quot;key&quot;: &quot;chatid&quot;, &quot;label&quot;: &quot;Group Chat ID&quot;, &quot;type&quot;: &quot;text&quot;, &quot;required&quot;: true, &quot;placeholder&quot;: &quot;-1001234567890&quot;, &quot;pattern&quot;: &quot;^-\\d{5,}$&quot; },
+                  { &quot;key&quot;: &quot;allowedusers&quot;, &quot;label&quot;: &quot;Allowed User IDs&quot;, &quot;type&quot;: &quot;string-array&quot;, &quot;required&quot;: true, &quot;pattern&quot;: &quot;^\\d{5,}$&quot; }
                 ]
               }
             ]
@@ -14174,6 +14183,8 @@ import type {
             &quot;docs_url&quot;: &quot;integration-wordpress-skills&quot;,
             &quot;credential_mode&quot;: &quot;api_key&quot;,
             &quot;connection_modes&quot;: [],
+            &quot;default_connection_mode&quot;: null,
+            &quot;mode_badges&quot;: {},
             &quot;wiro_connect_pending&quot;: false,
             &quot;channel&quot;: null,
             &quot;oauth_provider&quot;: null,
