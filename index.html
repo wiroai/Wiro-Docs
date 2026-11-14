@@ -26197,8 +26197,8 @@ expires. A discovery with <code>parents</code> is kept for exactly those account
 <td><code>parents</code> was sent empty, or not as an array.</td>
 </tr>
 <tr>
-<td>The sentences of <code>flow_expired</code>, <code>flow_other_person</code>, <code>flow_replaced</code>, <code>flow_failed</code> and <code>not_listed</code></td>
-<td>With <code>parents</code>, as for <a href="#post-useragentoauthsetpickeraccounts"><code>SetPickerAccounts</code></a>, with the same <code>errorcode</code>: no list is open, another account started it, <code>flowid</code> isn't the current one, the sign-in failed, or a parent isn't on the list.</td>
+<td>The sentences of <code>flow_expired</code>, <code>flow_other_person</code>, <code>flow_replaced</code>, <code>flow_failed</code>, <code>flow_waiting</code> and <code>not_listed</code></td>
+<td>With <code>parents</code>, as for <a href="#post-useragentoauthsetpickeraccounts"><code>SetPickerAccounts</code></a>, with the same <code>errorcode</code>: no list is open, another account started it, <code>flowid</code> isn't the current one, the sign-in failed, the sign-in hasn't come back yet, or a parent isn't on the list.</td>
 </tr>
 <tr>
 <td><code>The account list could not be read. Try again in a moment.</code></td>
@@ -26516,7 +26516,7 @@ response (see <a href="/docs/integration-googlebusiness-skills#connect-through-t
 <tbody>
 <tr>
 <td><code>The sign-in expired. Sign in again to choose the accounts.</code></td>
-<td><code>errorcode: "flow_expired"</code>. No list is open for this agent and credential: no sign-in or check was started, the sign-in hasn't come back yet, it was more than 15 minutes ago, a save already used its list, or the credential was disconnected. Call <code>OAuthConnect</code> again.</td>
+<td><code>errorcode: "flow_expired"</code>. No list is open for this agent and credential: no sign-in or check was started, it was more than 15 minutes ago, a save already used its list, or the credential was disconnected. Call <code>OAuthConnect</code> again.</td>
 </tr>
 <tr>
 <td><code>Another admin started this sign-in. Sign in again to choose the accounts yourself.</code></td>
@@ -26529,6 +26529,10 @@ response (see <a href="/docs/integration-googlebusiness-skills#connect-through-t
 <tr>
 <td><code>The sign-in did not finish. Sign in again.</code></td>
 <td><code>errorcode: "flow_failed"</code>. The current sign-in or check failed; <code>flow.errorcode</code> in <code>OAuthStatus</code> says why.</td>
+</tr>
+<tr>
+<td><code>The sign-in is not finished yet. Finish it, then choose the accounts.</code></td>
+<td><code>errorcode: "flow_waiting"</code>. The current sign-in hasn't come back from the provider yet, so it has no list. Finish it, then save. A new <code>OAuthConnect</code> would replace it. Only a sign-in waits, so this message has no token check wording.</td>
 </tr>
 <tr>
 <td><code>Choose accounts from the list Wiro gave after the sign-in.</code></td>
@@ -32887,6 +32891,9 @@ if (params.get("fb_connected") === "true") {
 
                     <h3><code>SetPickerAccounts</code> returns <code>flow_expired</code></h3>
                     <p>No discovery result is waiting: the 15-minute window expired, a previous <code>SetPickerAccounts</code> already used it, or a newer connection replaced it. Repeat Step 3 for System User mode or Step 7 for OAuth. <code>No pending Facebook connection. Please reconnect via OAuthConnect.</code> means the same: connect again.</p>
+
+                    <h3><code>SetPickerAccounts</code> returns <code>flow_waiting</code></h3>
+                    <p>The OAuth sign-in of Step 7 hasn't come back yet, so it has no list to save from (<code>The sign-in is not finished yet. Finish it, then choose the accounts.</code>). Finish it, then save the Pages it lists. Don't call <code>OAuthConnect</code> again in the meantime: a new sign-in replaces the one under way. System User mode never returns this code.</p>
 
                     <h3><code>SetPickerAccounts</code> returns <code>not_listed</code></h3>
                     <p>The <code>pageid</code> you sent isn't in the latest discovery result (<code>Choose accounts from the list Wiro gave after the sign-in.</code>; the wording depends on whether it was a sign-in or a token check). Verify you're parsing <code>fb_pages</code> correctly and sending the exact ID string.</p>

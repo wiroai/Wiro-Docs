@@ -1117,7 +1117,7 @@ A group's `errorcode` is a short code such as `too_many_pages` (more than 500 Pa
 | `<Provider> account not connected` | Without `parents`: no parent account is saved yet, or `OAuthStatus` would report `connected: false`, for example because the access token expired while the agent was stopped. For an expired token, start the agent, or connect again with `OAuthConnect` in the same mode if it cannot start yet: the saved accounts stay selected. With `parents`: the sign-in's token is no longer saved in its mode, for example because `authmethod` changed. |
 | `Too many parent accounts selected for picker discovery` | `errorcode: "too_many_parents"`. More than 50 Meta ad accounts or more than 20 Business Profile accounts are selected, or sent in `parents`. |
 | `parents must be a non-empty array of account ids` | `parents` was sent empty, or not as an array. |
-| The sentences of `flow_expired`, `flow_other_person`, `flow_replaced`, `flow_failed` and `not_listed` | With `parents`, as for [`SetPickerAccounts`](#post-useragentoauthsetpickeraccounts), with the same `errorcode`: no list is open, another account started it, `flowid` isn't the current one, the sign-in failed, or a parent isn't on the list. |
+| The sentences of `flow_expired`, `flow_other_person`, `flow_replaced`, `flow_failed`, `flow_waiting` and `not_listed` | With `parents`, as for [`SetPickerAccounts`](#post-useragentoauthsetpickeraccounts), with the same `errorcode`: no list is open, another account started it, `flowid` isn't the current one, the sign-in failed, the sign-in hasn't come back yet, or a parent isn't on the list. |
 | `The account list could not be read. Try again in a moment.` | With `parents`: a temporary failure. Try again. |
 | `Picker candidate limit exceeded` | Discovery found more than 2,000 items across all groups. |
 | `Picker candidates could not be secured for selection` / `Picker discovery failed` | Temporary failure. Try again. |
@@ -1295,10 +1295,11 @@ A refusal of the list rules also answers `errorcode`, as named below. The wordin
 
 | Error message | Cause |
 |---------------|-------|
-| `The sign-in expired. Sign in again to choose the accounts.` | `errorcode: "flow_expired"`. No list is open for this agent and credential: no sign-in or check was started, the sign-in hasn't come back yet, it was more than 15 minutes ago, a save already used its list, or the credential was disconnected. Call `OAuthConnect` again. |
+| `The sign-in expired. Sign in again to choose the accounts.` | `errorcode: "flow_expired"`. No list is open for this agent and credential: no sign-in or check was started, it was more than 15 minutes ago, a save already used its list, or the credential was disconnected. Call `OAuthConnect` again. |
 | `Another admin started this sign-in. Sign in again to choose the accounts yourself.` | `errorcode: "flow_other_person"`. Another account started the current sign-in or check. |
 | `A newer sign-in replaced this one. Sign in again.` | `errorcode: "flow_replaced"`. The `flowid` you sent isn't the current one. |
 | `The sign-in did not finish. Sign in again.` | `errorcode: "flow_failed"`. The current sign-in or check failed; `flow.errorcode` in `OAuthStatus` says why. |
+| `The sign-in is not finished yet. Finish it, then choose the accounts.` | `errorcode: "flow_waiting"`. The current sign-in hasn't come back from the provider yet, so it has no list. Finish it, then save. A new `OAuthConnect` would replace it. Only a sign-in waits, so this message has no token check wording. |
 | `Choose accounts from the list Wiro gave after the sign-in.` | `errorcode: "not_listed"`. An ID isn't on the list. |
 | `The account list could not be read. Try again in a moment.` | A temporary failure. Try again. |
 | `accountids must be a non-empty array` / `Each account id must be text` | `accountids` is empty, or holds something other than strings and numbers. |
