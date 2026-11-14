@@ -214,7 +214,7 @@ Match the code and show your own words, or the sentence after it. The full texts
 
 ### Load a conversation
 
-[`POST /UserAgent/Message/History`](/docs/agent-messaging#post-useragentmessagehistory) returns a session's messages, newest first, each with the same shape as `Message/Detail`:
+[`POST /UserAgent/Message/History`](/docs/agent-messaging#post-useragentmessagehistory) returns a session's messages, newest first. Each row has the fields of a `Message/Detail` answer except `sessionkey`, `startedat` and `endedat`, which History doesn't return:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/History" \
@@ -235,7 +235,6 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/History" \
     "messages": [
       {
         "guid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
-        "sessionkey": "customer-42",
         "content": "Can you report our website traffic every Monday?",
         "response": "I can do that once Google Analytics 4 is on and connected. Approve the card below and connect your Google Analytics account.",
         "status": "agent_end"
@@ -248,7 +247,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/History" \
 }
 ```
 
-Each row of `messages` is a full row, shortened here; the GA4 example in [Worked Examples](#worked-examples) shows one whole. Page back with `before` (the oldest `guid` you have) while `hasmore` is `true`. A session holds four kinds of row:
+The row is shortened here; the GA4 example in [Worked Examples](#worked-examples) shows a whole one as `Message/Detail` returns it. Page back with `before` (the oldest `guid` you have) while `hasmore` is `true`. A session holds four kinds of row:
 
 | Row | How you know it | What your UI shows |
 |-----|-----------------|--------------------|
@@ -341,7 +340,7 @@ A setup block has the usual block fields, `type: "setup"`, `text: null` and a `s
 | `version` | `1` while the card is pending, `2` once it is applied, dismissed or failed. Keep the copy with the higher version. |
 | `startedat` | When the agent proposed the card (Unix seconds). |
 | `updatedat` | When the card last changed. |
-| `next` | Only on a pending `connect` card: how its own connector connects, as one entry `{ connector, title, mode }`. It is gone once the card is applied, dismissed or failed. See [Your Own Connect Button](#your-own-connect-button). An `add` card's block has no `next`: its `setup.needs` lists what it brings. A card stored before `next` existed has none: name its connector by `credentials.<connector>._schema.title` of `UserAgent/Detail` and send the person to your settings screen for it. |
+| `next` | Only on a pending `connect` card: how its own connector connects, as one entry `{ connector, title, mode }`. It is gone once the card is applied, dismissed or failed. See [Your Own Connect Button](#your-own-connect-button). An `add` card's block has no `next`: its `setup.needs` lists what it brings. A card stored before `next` existed may have none. It still gets one while a pending `add` card on the same message names its connector in `needs`. Without one, name its connector by `credentials.<connector>._schema.title` of `UserAgent/Detail` and send the person to your settings screen for it. |
 
 ### Card fields
 
@@ -358,7 +357,7 @@ A setup block has the usual block fields, `type: "setup"`, `text: null` and a `s
 | `instructions` | `schedule`, `skill` | `create` and `update`: the full text. `append`: only the text to add. `revert`: the text it restores. Up to 20,000 characters on what the agent writes. |
 | `before` | `skill` (`update`, `append`, `revert`) | The skill's text when Wiro checked the card. Show it next to the text after the change: for `append`, that is `before` without the spaces and line breaks at its end, a blank line, then `instructions`. Can be absent on older cards. |
 | `with` | `add`, `remove` | Other connectors and skills turned on (`add`) or off (`remove`) together with `key`, by name, sorted, at most 12. Written by Wiro. An `add` names only the ones still off on this agent, so the same `key` can bring a different list, or none, on another agent. |
-| `pauses`, `resumes` | `add`, `remove` | Scheduled tasks (`cs-cron-<name>`) that stop, or run again, with this change, at most 20 each. Written by Wiro. Name each by the `description` of its entry in `customskills` of `UserAgent/Detail`, or by its key in words. |
+| `pauses`, `resumes` | `add`, `remove` | Scheduled tasks (`cs-cron-<name>`) that stop, or run again, with this change, at most 20 each. Written by Wiro. Name each by the `description` of its entry in `scheduledskills` of `UserAgent/Detail`, or by its key in words. |
 | `needs` | `add` | The connectors the change brings that aren't connected yet, at most 3, each `{ connector, title, mode }`. `title` can be absent: then use the connector's key. Written by Wiro. See [Modes](#modes). |
 | `timezone` | `timezone` | The proposed IANA time zone, such as `Europe/Istanbul`. |
 | `note` | all | Optional. The agent's one-line note on the change, up to 300 characters. |
@@ -1253,7 +1252,7 @@ Refusals with no `errorcode`:
 | `Saved <fields> for <Connector>. It is not connected yet: finish it in the agent's settings.` | The fields are saved, and the connector still doesn't read connected: finish it in your settings screen for it. |
 | A field's sentence, such as `Serper API Key must be at least 20 characters` | Show it next to the field. Nothing was saved. |
 | `<Title> is connected in the agent's settings, not from chat.` | A `page` connector: `next` names it with `mode: "page"`. |
-| `<Connector> is not connected: <Add> was not added.`, `<Title> is connected, but <Add> was not added.` | In `paired[0].error`: the `add` card failed, or waits for another change, so its `connect` card stays pending. |
+| `<Connector> is not connected: <Add> was not added.`, `<Title> is connected, but <Add> was not added.` | In `paired[0].error`, the first with `values` and the second with `signin: true`, when the `add` card failed: its `connect` card stays pending. When the `add` card's change waits for another change instead, both cards stay pending, and `paired[0].error` reads `Another change to this agent's connectors or skills is being applied. Try again in a moment.`, as `errors[0].message` does. |
 | `The setup card could not be applied. Try again.` | Something went wrong. Read the card again with `Message/Detail` before you offer to try again. |
 
 These refusals carry `code` `0`, except the rights refusal, whose `code` is `97`. Check what you can before you call: that the reply has ended, that `chatSetup` is `"all"`, and that the card is pending in your copy.
@@ -1324,7 +1323,7 @@ An agent loads its setup when it starts, so most changes restart it:
 - A card that changes only the text of a custom skill or scheduled task (`append`, `revert`, or an `update` that keeps the schedule) reaches a running agent without a restart.
 - A sign-in `connect` card writes nothing: the connection restarted the agent if it needed to, so its apply answers `restarting: false`.
 - One change, one restart. An `add` card applied with its key, or with `signin: true`, restarts the agent once for both cards, and a change made while a restart is still stopping or queued loads with that restart.
-- A connection made while nothing on the agent uses the connector restarts nothing, which is why connecting first and then applying the `add` card with `signin: true` restarts the agent once.
+- A `signin`, `appkeys` or `token` connection made while nothing on the agent uses the connector restarts nothing, which is why connecting first and then applying the `add` card with `signin: true` restarts the agent once. The fields of a `key` or `page` connector saved with `CredentialUpsert` restart a starting or running agent either way, whenever a saved value changes.
 - An agent that is stopped doesn't start: it loads the change when it next starts, and `restarting` is `false`.
 
 `restarting` in the `SetupCardApply` answer and in `setupresult` says whether this change restarts the agent.
@@ -1369,7 +1368,14 @@ While the agent isn't running, `Message/Send` answers `result: false` with `agen
 | `5` | `Agent is in error state. Restart it before sending messages.` |
 | `6` | `Agent setup is incomplete. Complete the setup before sending messages.` |
 
-Before this refusal, Wiro still answers the replies it handles itself: a `yes` that lists or applies a card other than a `connect` card, a `yes` while a sign-in `connect` card waits, a key for the one waiting `key` connect card, and a `no` that turned pending cards down, answered `The setup change was turned down.` or `The <N> setup changes were turned down.` Every other message gets the refusal, a `yes` while only `key` connect cards wait and a `yes` or `no` with no pending card included. A turn still running when the restart began, in another session for example, ends as `agent_error` with `[TURN_INTERRUPTED]`: offer to send it again.
+Before this refusal, Wiro still answers the replies it handles itself:
+
+- A `yes` that lists or applies a card other than a `connect` card, and a `yes` while a sign-in `connect` card waits.
+- A key for the one waiting `key` connect card. Another service's key pasted while that card waits is answered too, and not saved: `That does not look like a <Title> key (it looks like <kind>), so it was not saved. Paste the <Title> key as your reply.`, the part in brackets only when Wiro knows the kind.
+- Such a `yes` or key from a sender who isn't an agent admin, answered `Only an agent admin can apply setup changes.`
+- A `no` that turned pending cards down, answered `The setup change was turned down.` or `The <N> setup changes were turned down.`
+
+Every other message gets the refusal, a `yes` while only `key` connect cards wait and a `yes` or `no` with no pending card included. A turn still running when the restart began, in another session for example, ends as `agent_error` with `[TURN_INTERRUPTED]`: offer to send it again.
 
 ## Chats Without Cards
 
