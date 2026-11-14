@@ -153,7 +153,7 @@ The response shape is identical: `folders[]` now contains the immediate children
 > **Two equivalent ways to run Steps 5 and 5b**
 >
 > - **Upfront**: you already know the folder IDs from Step 3. Call `UserAgent/CredentialUpsert` once with both the `serviceaccountjson` field row and every `folders` ordinal row.
-> - **Discovery (matches the Dashboard flow)**: call `UserAgent/CredentialUpsert` first with just the `serviceaccountjson` field row, then call `UserAgentOAuth/GoogleDriveListFolders` to enumerate what the SA can see, then call `UserAgent/CredentialUpsert` again with the picked `folders` ordinal rows. The Dashboard uses this pattern: JSON upload renders the service account email, the user shares folders with it in Drive, and the folder picker lists the results.
+> - **Discovery (matches the Dashboard flow)**: call `UserAgent/CredentialUpsert` first with just the `serviceaccountjson` field row, then call `UserAgentOAuth/GoogleDriveListFolders` to enumerate what the SA can see, then call `UserAgent/CredentialUpsert` again with the picked `folders` ordinal rows. The Dashboard uses this pattern: JSON upload renders the service account email, the user shares folders with it in Drive, and the folder picker lists the results. Through the API, read that email from `UserAgent/Detail` once the JSON is saved: `credentials["google-drive"]._service_account_email.serviceaccountjson`, returned to the agent's owner and team admins.
 
 ### Step 6: Start the agent
 

@@ -310,7 +310,7 @@ Server-side endpoint invoked by TikTok. You don't call it. You only handle the f
 | `credentialkey` | string | Yes | `"tiktok-ads"`. |
 | `accounts` | array | Yes | One or more `{ advertiserid, advertisername }` entries. `advertiserid` is the numeric advertiser ID (non-digits stripped); Wiro saves the name from its list as `advertisername`, the display name shown in dashboards and `OAuthStatus` responses. |
 
-Response: `{ result, errors, accounts: [{id, name}, ...], restart }`. Replaces the previous selection. The save that completes the connection restarts a running agent once (`restart: "scheduled"`), and a save that changes nothing restarts nothing. Returns `The sign-in expired. Sign in again to choose the accounts.` (`errorcode: "flow_expired"`) when no sign-in's list is open: none was completed, it was more than 15 minutes ago, or a save already used it.
+Response: `{ result, errors, accounts: [{id, name}, ...], restart }`. Replaces the previous selection. The save that completes the connection restarts a running agent once (`restart: "scheduled"`), and a save that changes nothing restarts nothing. Returns `The sign-in expired. Sign in again to choose the accounts.` (`errorcode: "flow_expired"`) when no sign-in's list is open: none was started, it was more than 15 minutes ago, or a save already used it. Returns `The sign-in is not finished yet. Finish it, then choose the accounts.` (`errorcode: "flow_waiting"`) when the sign-in started but TikTok hasn't sent the user back yet.
 
 ### POST /UserAgentOAuth/OAuthStatus
 
@@ -381,7 +381,8 @@ To change **what** the reports include (tracking quality gates, kill thresholds,
 | `internal_error` | Unexpected server error during callback processing. | Retry once. If it persists, contact Wiro support with the timestamp and your `useragentguid`. |
 | `Unsupported connection mode for TikTok Ads` | Returned in `OAuthConnect`'s `errors[]` when `authmethod` is anything other than `"wiro"`. | Omit `authmethod` or send `"wiro"`. |
 | `TikTok Ads credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when TikTok Ads is not available for this account. | Contact Wiro support. |
-| `TikTok Ads account not connected` | Returned by `SetPickerAccounts` before the TikTok authorization completed. | Finish Steps 1-2, then save the selection. |
+| `flow_waiting` | Returned by `SetPickerAccounts` (`The sign-in is not finished yet. Finish it, then choose the accounts.`) while the sign-in has started but TikTok hasn't sent the user back yet, so there is no list to save from. | Let the user finish on TikTok's consent screen, then save the selection. Don't call `OAuthConnect` again meanwhile: it would replace the sign-in under way. |
+| `TikTok Ads account not connected` | Returned by `SetPickerAccounts` when the sign-in's list is open but the sign-in's token is no longer saved. | Run Steps 1-2 again, then save the selection. |
 
 `missing_params` sends the browser to `https://wiro.ai`, because a callback without a `state` has no return address. `session_expired` comes back to your `redirecturl`. It lands on `https://wiro.ai` only when the callback arrives more than 24 hours after `OAuthConnect` or carries a `state` Wiro never issued.
 
