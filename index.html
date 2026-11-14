@@ -24399,6 +24399,8 @@ email tools, CRMs) through three credential methods:</p>
           &quot;set_endpoint&quot;: &quot;/UserAgentOAuth/SetPickerAccounts&quot;,
           &quot;item_value_field&quot;: &quot;accountId&quot;,
           &quot;item_label_field&quot;: &quot;igusername&quot;,
+          &quot;item_noun&quot;: &quot;Account&quot;,
+          &quot;item_noun_plural&quot;: &quot;Accounts&quot;,
           &quot;item_fields_to_save&quot;: [&quot;accountId&quot;, &quot;igusername&quot;]
         },
         &quot;extra_step&quot;: null
@@ -24639,7 +24641,7 @@ email tools, CRMs) through three credential methods:</p>
 <tr>
 <td><code>account_picker</code></td>
 <td><code>object|null</code></td>
-<td>When non-null, the connection flow includes an account / page / channel picker after OAuth or direct discovery. Key fields: <code>set_endpoint</code> (always <code>/UserAgentOAuth/SetPickerAccounts</code>), <code>trigger_param</code> (the redirect parameter that carries the list, such as <code>gads_accounts</code>), <code>url_item_fields</code> (maps each <code>accounts[]</code> key to a field of the list items, such as <code>{ "customerid": "id" }</code>), <code>multi_select</code> (<code>true</code> when 1+ entries can be picked, <code>false</code> for exactly one), <code>item_value_field</code> / <code>item_label_field</code> (which entry keys identify and label each account in the response), <code>item_fields_to_save</code> (the fields each entry in the <code>accounts</code> body carries; only <code>item_value_field</code> is required), and optional <code>next</code> for a chained picker. <code>next.discover_endpoint</code> is <code>/UserAgentOAuth/DiscoverPickerItems</code>; its <code>key</code>, parent/item fields, <code>set_endpoint</code>, and <code>persist_field</code> define the grouped child-selection request and stored result. Meta Ads uses this for ad account → Facebook Pages, and Google Business Profile for account → locations.</td>
+<td>When non-null, the connection flow includes an account / page / channel picker after OAuth or direct discovery. Key fields: <code>set_endpoint</code> (always <code>/UserAgentOAuth/SetPickerAccounts</code>), <code>trigger_param</code> (the redirect parameter that carries the list, such as <code>gads_accounts</code>), <code>url_item_fields</code> (maps each <code>accounts[]</code> key to a field of the list items, such as <code>{ "customerid": "id" }</code>), <code>multi_select</code> (<code>true</code> when 1+ entries can be picked, <code>false</code> for exactly one), <code>item_value_field</code> / <code>item_label_field</code> (which entry keys identify and label each account in the response), <code>item_noun</code> / <code>item_noun_plural</code> (what one item and several items are called, in Title Case, such as <code>Property</code> / <code>Properties</code> for GA4 or <code>Ad Account</code> / <code>Ad Accounts</code> for Meta Ads; <code>next</code> has its own, such as <code>Page</code> / <code>Pages</code>), <code>item_fields_to_save</code> (the fields each entry in the <code>accounts</code> body carries; only <code>item_value_field</code> is required), and optional <code>next</code> for a chained picker. <code>next.discover_endpoint</code> is <code>/UserAgentOAuth/DiscoverPickerItems</code>; its <code>key</code>, parent/item fields, <code>set_endpoint</code>, and <code>persist_field</code> define the grouped child-selection request and stored result. Meta Ads uses this for ad account → Facebook Pages, and Google Business Profile for account → locations.</td>
 </tr>
 <tr>
 <td><code>direct_probe</code></td>
@@ -24827,6 +24829,8 @@ email tools, CRMs) through three credential methods:</p>
         &quot;set_endpoint&quot;: &quot;/UserAgentOAuth/SetPickerAccounts&quot;,
         &quot;item_value_field&quot;: &quot;accountId&quot;,
         &quot;item_label_field&quot;: &quot;igusername&quot;,
+        &quot;item_noun&quot;: &quot;Account&quot;,
+        &quot;item_noun_plural&quot;: &quot;Accounts&quot;,
         &quot;item_fields_to_save&quot;: [&quot;accountId&quot;, &quot;igusername&quot;]
       },
       &quot;extra_step&quot;: null
