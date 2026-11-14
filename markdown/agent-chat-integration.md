@@ -20,6 +20,8 @@ Wiro's answers in a chat sent with a project API key name no site, page or link.
 
 A few fields are for your backend, not for your users: every message row and every card names your API key's owner as the person who sent, asked or applied (see [API key](#api-key)), and the tokens and ids are your own references. Show your users your own names and words.
 
+Connector titles name their vendors, such as Google Analytics 4 or WordPress. The connector the agent runs AI models with, key `wiro`, is titled `Wiro AI Models`, and so is its skill `int-wiro-aimodels` in `Skills/List`. That title comes wherever the API names it: in `needs` and `next[].title`, in the card listing and in `summary`, for every change that brings it, such as adding Video Creator or a voice channel. An agent that runs models through it can also write its public links in an answer, such as a model's page on wiro.ai or an output file on cdn1.wiro.ai. Your product may show its own label for the connector key `wiro`, as for any title the API gives.
+
 ### The flow at a glance
 
 ```text
@@ -273,7 +275,7 @@ A reply is an ordered list of blocks. Keep a map keyed by `blockid`, keep a bloc
 
 Setup blocks have `callindex: 1000000`, so they sort after the reply's other blocks, in the order the agent proposed them, at most three per message. Skip a block whose `type` you don't know. The block fields are listed in [Public timeline block fields](/docs/agent-messaging#public-timeline-block-fields).
 
-Wiro cleans the agent's text before it reaches you, in the blocks, in `response` and in every event: a link to a private address or into the agent's own system reads `[link removed]`, and a path inside the agent's system reads `[private detail removed]`. A turn in which the agent wrote nothing can read `No response from the agent.` Show these as they are, or your own words.
+Wiro cleans the agent's text before it reaches you, in the blocks, in `response` and in every event: a link to a private address or into the agent's own system reads `[link removed]`, and a path inside the agent's system reads `[private detail removed]`. A turn in which the agent wrote nothing can read `No response from the agent.` Show these as they are, or your own words. Public links stay as written, the Wiro AI Models links of [Your product shows everything](#your-product-shows-everything) included.
 
 ### Replies the API answers itself
 
@@ -961,7 +963,7 @@ Two connectors have a second step after the accounts: Meta Ads (its Facebook Pag
 }
 ```
 
-A group whose items couldn't be listed has an `errorcode` of its own, such as `provider_timeout`, instead of items: show it, and leave that account out of `selections`. See [Both steps in one call](/docs/agent-credentials#both-steps-in-one-call) for the rules of that save.
+A group whose items couldn't be listed comes with `items: []` and an `errorcode` of its own, such as `provider_timeout`: show it, and leave that account out of `selections`. See [Both steps in one call](/docs/agent-credentials#both-steps-in-one-call) for the rules of that save.
 
 **8. Apply the cards.** Send the `add` card with `signin: true`. Wiro checks that the connector reads connected, then applies the `add` card, which restarts the agent once, and its `connect` card:
 
@@ -1085,7 +1087,7 @@ The person pastes a Meta Business System User token, Wiro checks it on the serve
 
 ### Sign-in: X with Wiro's app
 
-A `signin` connector connects with Wiro's own app, so there are no app keys to collect: one button. The provider's consent screen then names Wiro's app, not yours. To show your own brand there, connect the same connector with your own app keys instead (`authmethod: "own"`, as in [Own app keys](#own-app-keys-google-analytics-4)), where the connector offers it in `connection_modes`: a product whose users never see Wiro's name does that wherever it can. For a pending `add` card for `int-twitterx-post` and its `connect` card for `twitter`:
+A `signin` connector connects with Wiro's own app, so there are no app keys to collect: one button. The provider's consent screen then names Wiro's app, not yours. To show your own brand there, connect the same connector with your own app keys instead (`authmethod: "own"`, as in [Own app keys](#own-app-keys-google-analytics-4)), where the connector offers it in `connection_modes`: a product whose users never see Wiro's name does that wherever it can, and shows its own label for Wiro AI Models (see [Your product shows everything](#your-product-shows-everything)). For a pending `add` card for `int-twitterx-post` and its `connect` card for `twitter`:
 
 **1. Start the sign-in:**
 
@@ -1384,9 +1386,11 @@ Your chat can work with text alone, or people may type `yes` even where you show
 ### Typed replies
 
 - **Approve.** A message that is only an approval, such as `yes`, `ok`, `approve`, `go ahead`, `evet` or `👍`, acts on the pending cards of the agent's latest reply in the same `sessionkey`, when they are less than 30 minutes old. In a chat sent with your API key, the first approval applies nothing: Wiro answers with the card listing, the exact content of the cards. A second one applies the one card listed. With several cards, `yes 2` applies card 2 once the listing has shown it, one card per reply.
-- **Turn down.** A message that is only a refusal, such as `no` or `cancel`, dismisses every pending card of the latest reply, then goes to the agent as a normal message. While the agent isn't running, Wiro answers it itself: `The setup change was turned down.`, or `The <N> setup changes were turned down.` for several cards. Anyone who can write in the chat can turn cards down.
+- **Turn down.** A message that is only a refusal, such as `no` or `cancel`, dismisses the pending cards of the latest reply that are less than 30 minutes old, then goes to the agent as a normal message. Older cards aren't dismissed, and the `no` goes to the agent all the same. While the agent isn't running, Wiro answers it itself: `The setup change was turned down.`, or `The <N> setup changes were turned down.` for several cards. Anyone who can write in the chat can turn cards down.
 - **A key as the reply.** When the latest reply has one pending `connect` card for a key connector, a key pasted as the reply is saved to it with your key owner's rights, and the message is stored as `[key saved to <Connector title>]`. When the only pending cards are an `add` card and its `connect` card, and the key is all the connector needs, the key typed after the listing applies both cards at once. A key typed before that listing saves nothing: the message is stored with `[key removed]` in its place, and Wiro answers with the listing.
 - A `yes` never applies a `connect` card: a key or a sign-in connects it.
+
+The latest reply is the newest row of the session, other than the replies Wiro answers itself and model switches. A row added between turns counts, such as a scheduled task's report written into that session: once it comes, a `yes` or `no` typed after it finds no cards. Your buttons still act on those cards, since `SetupCardApply` takes a pending card by its `messageguid` and `cardid`, at any age.
 
 A message counts as an approval or a refusal when it is sent with no attachment and has at most four words, no question mark and nothing but these words. Case, accents and other punctuation don't matter:
 
