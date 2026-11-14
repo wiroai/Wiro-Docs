@@ -121,7 +121,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
 
 This call is required, even when `mc_accounts` has one entry. Until it runs, `OAuthStatus` reports `connected: false`.
 
-Pass multiple `{ merchantid, accountname }` entries to authorize the agent against several merchant accounts at once.
+Pass multiple `{ merchantid, accountname }` entries to authorize the agent against several merchant accounts at once. Wiro saves only accounts from this sign-in's list, under the names it lists, when the call comes from the same Wiro account within 15 minutes. The first save uses the list up: to change the selection later, connect again. See [SetPickerAccounts](/docs/agent-credentials#post-useragentoauthsetpickeraccounts).
 
 ## Disconnect
 

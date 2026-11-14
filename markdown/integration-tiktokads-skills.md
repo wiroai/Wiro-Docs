@@ -216,7 +216,7 @@ Response:
 Behavior:
 
 - Send one or more `{ advertiserid, advertisername }` entries picked from `tiktokads_advertisers` (`id` becomes `advertiserid`, `name` becomes `advertisername`). Non-digits in `advertiserid` are stripped server-side.
-- Each call replaces the previous selection.
+- A save replaces the previous selection. Wiro saves only advertisers from this sign-in's list, under the names it lists, when the call comes from the same Wiro account within 15 minutes. The first save uses the list up: to change the selection later, connect again. See [SetPickerAccounts](/docs/agent-credentials#post-useragentoauthsetpickeraccounts).
 - If the agent was running, Wiro restarts it so it picks up the selection. No manual Start needed.
 
 ### Step 4: Verify the connection
@@ -306,9 +306,9 @@ Server-side endpoint invoked by TikTok. You don't call it. You only handle the f
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"tiktok-ads"`. |
-| `accounts` | array | Yes | One or more `{ advertiserid, advertisername }` entries. `advertiserid` is the numeric advertiser ID (non-digits stripped); `advertisername` is the display name shown in dashboards and `OAuthStatus` responses. |
+| `accounts` | array | Yes | One or more `{ advertiserid, advertisername }` entries. `advertiserid` is the numeric advertiser ID (non-digits stripped); Wiro saves the name from its list as `advertisername`, the display name shown in dashboards and `OAuthStatus` responses. |
 
-Response: `{ result, errors, accounts: [{id, name}, ...] }`. Replaces the previous selection and triggers an automatic agent restart if the agent was running. Returns `TikTok Ads account not connected` when no completed connection exists yet.
+Response: `{ result, errors, accounts: [{id, name}, ...] }`. Replaces the previous selection and triggers an automatic agent restart if the agent was running. Returns `The sign-in expired. Sign in again to choose the accounts.` (`errorcode: "flow_expired"`) when no sign-in's list is open: none was completed, it was more than 15 minutes ago, or a save already used it.
 
 ### POST /UserAgentOAuth/OAuthStatus
 

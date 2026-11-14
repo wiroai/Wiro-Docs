@@ -284,9 +284,9 @@ Response:
 Behavior:
 
 - Pass the ad account ID **without** the `act_` prefix. If you include it, Wiro strips it automatically.
-- `adaccountname` is optional but recommended: it surfaces in `OAuthStatus` responses and dashboards.
+- `adaccountname` is optional: Wiro saves the name from its list, which `OAuthStatus` responses and dashboards show.
 - Pass multiple `{ adaccountid, adaccountname }` entries to authorize the agent against several ad accounts at once.
-- Each call replaces the previous selection. Page mappings are kept only for ad accounts that stay selected, so run Step 10b again for ad accounts you add.
+- A save replaces the previous selection. Wiro saves only ad accounts from the list of this token check or sign-in, from the same Wiro account within 15 minutes, and the first save uses the list up: to change the ad accounts later, connect again (step 6 of the System User path, or Step 8) and save from the new list. Page mappings are kept only for ad accounts that stay selected, so run Step 10b again for ad accounts you add.
 - If the agent was running (status `3` or `4`), Wiro marks it `status: 1` and restarts it after the stop cycle, so the agent uses the new ad account. No manual Start needed.
 
 ### Step 10b: Discover and select Facebook Pages (optional)
@@ -497,7 +497,7 @@ Root ad-account selection:
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"meta-ads"`. |
-| `accounts` | array | Yes | One or more `{ adaccountid, adaccountname }` entries. `adaccountid` must be without the `act_` prefix (prefix stripped automatically if sent); `adaccountname` is the display name shown in dashboards and `OAuthStatus` responses. |
+| `accounts` | array | Yes | One or more `{ adaccountid, adaccountname }` entries. `adaccountid` must be without the `act_` prefix (prefix stripped automatically if sent); Wiro saves the name from its list as `adaccountname`, the display name shown in dashboards and `OAuthStatus` responses. |
 
 Response: `{ result, accounts: [{id, name}, ...], errors }`. Triggers an automatic agent restart if the agent was running.
 

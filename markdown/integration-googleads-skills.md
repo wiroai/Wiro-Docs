@@ -171,8 +171,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
 ```
 
 - `customerid`: either 10-digit or `123-456-7890` format works, and non-digits are stripped automatically.
-- `customerdescriptivename` (optional): the account label shown next to the customer ID. Take both values from the `gads_accounts` entry: `id` becomes `customerid`, `name` becomes `customerdescriptivename`.
+- `customerdescriptivename` (optional): Wiro saves the name its list gives the customer, so you can leave it out. Take `customerid` from the `gads_accounts` entry's `id`.
 - Pass multiple `{ customerid, customerdescriptivename }` entries to authorize the agent against several customers at once.
+- Wiro saves only customers from this sign-in's list, under the names it lists, when the call comes from the same Wiro account within 15 minutes. The first save uses the list up: to change the selection later, connect again. See [SetPickerAccounts](/docs/agent-credentials#post-useragentoauthsetpickeraccounts).
 
 Response:
 
@@ -247,7 +248,7 @@ Server-side endpoint invoked by Google. You don't call it: you register it as th
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"google-ads"`. |
-| `accounts` | array | Yes | One or more `{ customerid, customerdescriptivename }` entries. `customerid` is 10 digits (dashes/letters stripped server-side); `customerdescriptivename` is the label, the `name` of the `gads_accounts` entry. |
+| `accounts` | array | Yes | One or more `{ customerid, customerdescriptivename }` entries. `customerid` is 10 digits (dashes/letters stripped server-side); Wiro saves the entry's `name` from its list as `customerdescriptivename`. |
 
 Response: `{ result, accounts: [{id, name}, ...], errors }`. Triggers agent restart if running.
 

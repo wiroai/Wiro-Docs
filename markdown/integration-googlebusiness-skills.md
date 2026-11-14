@@ -266,7 +266,7 @@ Response:
 Behavior:
 
 - Send one or more `{ accountid, accountname }` entries picked from `gbp_accounts` (`id` becomes `accountid`, `name` becomes `accountname`). Non-digits in `accountid` are stripped server-side.
-- Each call replaces the previous account selection. Locations already chosen for accounts that stay selected are kept; locations of removed accounts are dropped.
+- A save replaces the previous account selection. Locations already chosen for accounts that stay selected are kept; locations of removed accounts are dropped. Wiro saves only accounts from this sign-in's list, under the names it lists, when the call comes from the same Wiro account within 15 minutes. The first save uses the list up: to change the selection later, connect again. See [SetPickerAccounts](/docs/agent-credentials#post-useragentoauthsetpickeraccounts).
 - If the agent was running, Wiro restarts it.
 
 ### Step 5: Choose the locations
@@ -466,7 +466,7 @@ Account selection:
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"google-business"`. |
-| `accounts` | array | Yes | One or more `{ accountid, accountname }` entries. `accountid` is the numeric account ID (non-digits stripped); `accountname` is the display name shown in dashboards and `OAuthStatus` responses. |
+| `accounts` | array | Yes | One or more `{ accountid, accountname }` entries. `accountid` is the numeric account ID (non-digits stripped); Wiro saves the name from its list as `accountname`, the display name shown in dashboards and `OAuthStatus` responses. |
 
 Response: `{ result, errors, accounts: [{id, name}, ...] }`. Replaces the previous account selection and restarts the agent if it was running.
 
