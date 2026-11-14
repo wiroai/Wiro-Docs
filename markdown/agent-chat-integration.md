@@ -1325,7 +1325,7 @@ An agent loads its setup when it starts, so most changes restart it:
 - A card that changes only the text of a custom skill or scheduled task (`append`, `revert`, or an `update` that keeps the schedule) reaches a running agent without a restart.
 - A sign-in `connect` card writes nothing: the connection restarted the agent if it needed to, so its apply answers `restarting: false`.
 - One change, one restart. An `add` card applied with its key, or with `signin: true`, restarts the agent once for both cards, and a change made while a restart is still stopping or queued loads with that restart.
-- A `signin`, `appkeys` or `token` connection made while nothing on the agent uses the connector restarts nothing, which is why connecting first and then applying the `add` card with `signin: true` restarts the agent once. The fields of a `key` or `page` connector saved with `CredentialUpsert` restart a starting or running agent either way, whenever a saved value changes.
+- A connection made with a sign-in, app keys or a token check while nothing on the agent uses the connector restarts nothing, which is why connecting first and then applying the `add` card with `signin: true` restarts the agent once. Fields saved with `CredentialUpsert` for a connector that has no sign-in, a `key` connector or a `page` one such as Google Drive, restart a starting or running agent whenever a saved value changes, whether or not anything on the agent uses the connector.
 - An agent that is stopped doesn't start: it loads the change when it next starts, and `restarting` is `false`.
 
 `restarting` in the `SetupCardApply` answer and in `setupresult` says whether this change restarts the agent.
