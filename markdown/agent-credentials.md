@@ -1335,7 +1335,7 @@ Client ID + Secret mode. An alternative API-key field is kept while
 disconnecting OAuth, but disconnecting that direct mode itself clears its
 secret, such as Meta `systemusertoken` or Mailchimp `apikey`. Because
 `authmethod` is cleared, send it again with the next `OAuthConnect` (and save it
-again for a direct mode). The agent restarts automatically if it was running.
+again for a direct mode). A starting or running agent restarts when the disconnect removes a token, such as the ones a sign-in saved or a System User token, or when the connection was complete. A disconnect that removes no token from a credential that wasn't connected, such as one with only its own app keys saved, restarts nothing.
 
 For providers that publish a token-revocation endpoint (currently X, TikTok, TikTok Ads and Reddit), Wiro also calls the provider's revoke endpoint for OAuth connections as a non-critical best-effort step. Other providers only clear local credentials; the token remains valid on the provider side until it expires.
 

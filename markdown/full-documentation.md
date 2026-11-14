@@ -7890,7 +7890,7 @@ When you mutate an agent's configuration while it is **starting** (status `3`) o
 
 This means you can update credentials, toggle skills, or change a custom skill on a running agent without manually stopping and starting it.
 
-These calls restart a starting or running agent when they change something: `CredentialUpsert` (except the sign-in case below), `CredentialFileUpload`, `CredentialProjectBind` (when the project changes), an OAuth sign-in, direct `OAuthConnect` probe or `SetPickerAccounts` save that completes a connection, `OAuthDisconnect`, `SkillsApply`, `SkillToggle`, `CustomSkillUpsert` (a new custom skill or scheduled task, a new `interval`, an `enabled` change, or a change to `cs-approval-policy`), `CustomSkillRename`, `CustomSkillDelete`, `CustomSkillRevert`, `UpdateSettings` (a new time zone, Chat Mode, model, slash-command list or Wiro API path list, or turning `chatsetup` on or off), `Update` (a changed `title`, or a body that names no field), and a setup card applied from chat (see [Setup From Chat](/docs/agent-messaging#setup-from-chat)). A restart takes about a minute. A change saved while a restart is still stopping or queued loads with that restart instead of starting another one.
+These calls restart a starting or running agent when they change something: `CredentialUpsert` (except the sign-in case below), `CredentialFileUpload`, `CredentialProjectBind` (when the project changes), an OAuth sign-in, direct `OAuthConnect` probe or `SetPickerAccounts` save that completes a connection, `OAuthDisconnect` (when it removes a token or the connection was complete), `SkillsApply`, `SkillToggle`, `CustomSkillUpsert` (a new custom skill or scheduled task, a new `interval`, an `enabled` change, or a change to `cs-approval-policy`), `CustomSkillRename`, `CustomSkillDelete`, `CustomSkillRevert`, `UpdateSettings` (a new time zone, Chat Mode, model, slash-command list or Wiro API path list, or turning `chatsetup` on or off), `Update` (a changed `title`, or a body that names no field), and a setup card applied from chat (see [Setup From Chat](/docs/agent-messaging#setup-from-chat)). A restart takes about a minute. A change saved while a restart is still stopping or queued loads with that restart instead of starting another one.
 
 **Sign-in connectors restart the agent once, when the connection is complete.** A connection is complete when its mode has a token and, for a credential with an account picker, at least one account is saved. Saving own-mode app keys, a System User token or `authmethod` with `CredentialUpsert` for a sign-in credential (one with an `oauth_provider`) that isn't connected before or after the save restarts nothing. A first sign-in or token check that leaves accounts to pick restarts nothing, and the `SetPickerAccounts` save restarts the agent once. One with nothing to pick (X, TikTok, LinkedIn, HubSpot, Mailchimp, Reddit, Shopify, an Instagram Login, or a Google account with a single YouTube channel) restarts it when it finishes. A reconnect that keeps the saved accounts restarts it at the sign-in, so the agent loads the new token. Saving the same accounts again restarts nothing, and a failed token check restarts the agent only when it cleared a connection that was complete. While nothing that is on uses the credential, a connection restarts nothing: turning on the connector that uses it restarts the agent once, with the connection. A direct `OAuthConnect` and `SetPickerAccounts` answer `restart` (`"scheduled"` or `"none"`), and `flow.restart` in `OAuthStatus` says what the sign-in did.
 
@@ -17072,7 +17072,7 @@ Client ID + Secret mode. An alternative API-key field is kept while
 disconnecting OAuth, but disconnecting that direct mode itself clears its
 secret, such as Meta `systemusertoken` or Mailchimp `apikey`. Because
 `authmethod` is cleared, send it again with the next `OAuthConnect` (and save it
-again for a direct mode). The agent restarts automatically if it was running.
+again for a direct mode). A starting or running agent restarts when the disconnect removes a token, such as the ones a sign-in saved or a System User token, or when the connection was complete. A disconnect that removes no token from a credential that wasn't connected, such as one with only its own app keys saved, restarts nothing.
 
 For providers that publish a token-revocation endpoint (currently X, TikTok, TikTok Ads and Reddit), Wiro also calls the provider's revoke endpoint for OAuth connections as a non-critical best-effort step. Other providers only clear local credentials; the token remains valid on the provider side until it expires.
 
@@ -20278,7 +20278,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthDisconnect" \
   }'
 ```
 
-Response: `{ "result": true, "errors": [] }`. Running agents restart automatically.
+Response: `{ "result": true, "errors": [] }`. A starting or running agent restarts when the disconnect removes a token or the connection was complete. Otherwise, for example with only the app keys saved, it restarts nothing.
 
 ### Token lifecycle
 
@@ -20708,7 +20708,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthDisconnect" \
   }'
 ```
 
-Response: `{ "result": true, "errors": [] }`. Running agents restart automatically.
+Response: `{ "result": true, "errors": [] }`. A starting or running agent restarts when the disconnect removes a token or the connection was complete. Otherwise it restarts nothing.
 
 ### Token lifecycle
 
@@ -23074,7 +23074,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthDisconnect" \
   }'
 ```
 
-Response: `{ "result": true, "errors": [] }`. Running agents restart automatically.
+Response: `{ "result": true, "errors": [] }`. A starting or running agent restarts when the disconnect removes a token or the connection was complete. Otherwise, for example with only the app keys saved, it restarts nothing.
 
 ### Token lifecycle
 
