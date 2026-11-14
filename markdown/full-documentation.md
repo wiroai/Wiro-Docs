@@ -16561,6 +16561,7 @@ Common error codes across providers:
 | `missing_params` | The callback was opened without an OAuth `state`. Wiro cannot tell which flow it belongs to, so the browser goes to `https://wiro.ai` with this code instead of to your app. Start a new flow with `OAuthConnect`. |
 | `authorization_denied` | The user cancelled, the provider returned an error or no authorization code, or (Meta Dev Mode) the user is not in App Roles. |
 | `session_expired` | More than 15 minutes passed between `OAuthConnect` and the callback. The browser returns to your `redirecturl` with this code; call `OAuthConnect` again. After 24 hours, or when the `state` is unknown, it goes to `https://wiro.ai` instead. A callback that the browser repeats after a completed one (for example when the provider's Continue button is clicked twice) is not an error: it lands where the first one did. |
+| `flow_replaced` | A newer sign-in or token check for the same agent and credential replaced this sign-in, whoever started it. Wiro saves nothing from it, and the newer one still works. |
 | `token_exchange_failed` | The provider returned no usable token for the authorization code, for example because the saved Client/App Secret is wrong. |
 | `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before the provider returned. A wrong `useragentguid` never gets this far: `OAuthConnect` refuses it with `User agent not found or unauthorized`. |
 | `<Provider> credentials not configured` | Agent's `credentials.<provider>` block is empty (typically `authmethod: "own"` but `clientid` / `clientsecret` missing). Returned in `errors[]` of `OAuthConnect` itself, not as a redirect-URL `*_error` code. Fix with `POST /UserAgent/CredentialUpsert`. |
@@ -17024,7 +17025,7 @@ Wiro writes the accounts and the mappings in one save. The discovery must be the
 
 ##### Common errors
 
-A refusal of the list rules also answers `errorcode`, as named below.
+A refusal of the list rules also answers `errorcode`, as named below. The wording of its message depends on whether the list came from a sign-in or a token check; the table shows a sign-in's.
 
 | Error message | Cause |
 |---------------|-------|
@@ -20309,6 +20310,7 @@ To change **what** the reporter includes (thresholds, reporting preferences, hol
 |------------|---------|------------|
 | `missing_params` | The callback was opened without an OAuth `state`. This error lands on `https://wiro.ai`, not on your app. | Don't open the callback URL directly. Start a new flow from Step 8. |
 | `session_expired` | More than 15 minutes elapsed between `OAuthConnect` and the consent return. | Call `OAuthConnect` again to refresh the state. |
+| `flow_replaced` | A newer sign-in or token check for the same agent and credential replaced this sign-in, whoever started it, so nothing from it was saved. | Use the newer sign-in or check, or start again with `OAuthConnect`. |
 | `authorization_denied` | User clicked Cancel, or Facebook returned `error=access_denied`. In Development Mode this also happens when the user isn't listed under App Roles. | Add the user as a Tester (Step 6), have them accept, retry. |
 | `token_exchange_failed` | Facebook rejected the token exchange. Usually wrong App Secret, revoked app, or redirect URI mismatch. | Re-copy the App Secret from Settings → Basic, verify the redirect URI exactly matches, retry. |
 | `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before Meta returned. | Start again with `OAuthConnect` for an existing agent. |
@@ -20734,6 +20736,7 @@ To change **what** the reports include (tracking quality gates, kill thresholds,
 |------------|---------|------------|
 | `missing_params` | The callback was opened without an OAuth `state`. | Don't open the callback URL directly. Start a new flow with `OAuthConnect`. |
 | `session_expired` | More than 15 minutes passed between `OAuthConnect` and the return from TikTok. A callback the browser repeats after a completed one is not an error: it lands where the first one did. | Call `OAuthConnect` again. |
+| `flow_replaced` | A newer sign-in for the same agent and credential replaced this one, whoever started it, so nothing from it was saved. | Use the newer sign-in, or start again with `OAuthConnect`. |
 | `authorization_denied` | The user cancelled on TikTok's consent screen, or TikTok returned an error instead of an authorization code. | Start again and approve the consent screen. |
 | `token_exchange_failed` | TikTok did not return a usable access and refresh token for the authorization code. | Start a new flow. If it persists, contact Wiro support. |
 | `no_accounts` | Sign-in worked, but no advertiser could be listed for this TikTok for Business user: the user has no advertiser access, or TikTok's advertiser lookup failed. | Get access to an advertiser in TikTok Ads Manager or Business Center, then connect again. If this user already has advertiser access, try connecting again. |
@@ -21123,8 +21126,8 @@ restarts a running agent so the new selection takes effect.
 If the 15-minute window lapses before you call `SetPickerAccounts`, or an
 earlier call already saved a selection from it, you'll get
 `The sign-in expired. Sign in again to choose the accounts.` with
-`errorcode: "flow_expired"`. Repeat Step 3 for System User mode or Step 7 for
-OAuth.
+`errorcode: "flow_expired"` (the wording depends on whether it was a sign-in
+or a token check). Repeat Step 3 for System User mode or Step 7 for OAuth.
 
 Wiro saves each Page's name from its list (the `name` in `fb_pages` or in the `OAuthConnect` response), so `fbpagename` can be left out, and a name you send is not read. Only the Wiro account that started the sign-in or check can save from its list. The Facebook Pages picker accepts one or more entries: pass multiple `{ pageid, fbpagename }` objects to authorize the agent against several Pages at once.
 
@@ -21286,6 +21289,7 @@ makes links clickable, so a draft's page link goes into the post.
 |------------|---------|------------|
 | `missing_params` | The callback was opened without an OAuth `state`. This error lands on `https://wiro.ai`, not on your app. | Don't open the callback URL directly. Start a new flow from Step 7. |
 | `session_expired` | >15 min between `OAuthConnect` and the callback. | Call `OAuthConnect` again. |
+| `flow_replaced` | A newer sign-in or token check for the same agent and credential replaced this sign-in, whoever started it, so nothing from it was saved. | Use the newer sign-in or check, or start again with `OAuthConnect`. |
 | `authorization_denied` | User cancelled, or not listed in App Roles (Development Mode). | Add as Tester (Step 5), retry. |
 | `token_exchange_failed` | Wrong App Secret or redirect URI mismatch. | Re-copy App Secret; verify redirect URI exactly. |
 | `no_pages` | User has no administered Facebook Pages. | Ask the user to create/administer a Page first, retry. |
@@ -21301,7 +21305,7 @@ No discovery result is waiting: the 15-minute window expired, a previous `SetPic
 
 ### `SetPickerAccounts` returns `not_listed`
 
-The `pageid` you sent isn't in the latest discovery result (`Choose accounts from the list Wiro gave after the sign-in.`). Verify you're parsing `fb_pages` correctly and sending the exact ID string.
+The `pageid` you sent isn't in the latest discovery result (`Choose accounts from the list Wiro gave after the sign-in.`; the wording depends on whether it was a sign-in or a token check). Verify you're parsing `fb_pages` correctly and sending the exact ID string.
 
 ### Posts publish but as the wrong author
 
@@ -21837,6 +21841,7 @@ Instagram allows each account 50 posts through the API in 24 hours.
 |------------|---------|------------|
 | `missing_params` | The callback was opened without an OAuth `state`. This error lands on `https://wiro.ai`, not on your app. | Don't open the callback URL directly. Start a new flow from Step 8. |
 | `session_expired` | >15 min between `OAuthConnect` and callback. | Call `OAuthConnect` again. |
+| `flow_replaced` | A newer sign-in or token check for the same agent and credential replaced this sign-in, whoever started it, so nothing from it was saved. | Use the newer sign-in or check, or start again with `OAuthConnect`. |
 | `authorization_denied` | User cancelled, or not in App Roles (Development Mode). | Add as Tester (Step 6), retry. |
 | `token_exchange_failed` | Wrong App Secret, redirect URI mismatch, or Instagram rejected the authorization code. | Re-copy the App Secret, verify the redirect URI, and retry Instagram Login. |
 | `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before Instagram returned. | Start again with `OAuthConnect` for an existing agent. |
@@ -23115,6 +23120,7 @@ To change how replies read, edit `cs-review-preferences`; to change which replie
 | `no_accounts` | Sign-in worked, but no Business Profile account could be listed for this Google user. Right after setup this usually means the project is not approved yet (quota 0) or an API is disabled. | Check Steps 3 and 4 of the Google Cloud setup, then connect again. Otherwise connect with the Google account that owns or manages the business. |
 | `authorization_denied` | The user cancelled on Google's consent screen, or Google returned an error instead of an authorization code. | Start again and approve the consent screen. |
 | `session_expired` | More than 15 minutes passed between `OAuthConnect` and the return from Google. A repeated return after a completed one is not an error: it lands where the first one did. | Call `OAuthConnect` again. |
+| `flow_replaced` | A newer sign-in for the same agent and credential replaced this one, whoever started it, so nothing from it was saved. | Use the newer sign-in, or start again with `OAuthConnect`. |
 | `missing_params` | The callback was opened without an OAuth `state`. | Don't open the callback URL directly. Start a new flow with `OAuthConnect`. |
 | `token_exchange_failed` | Google did not return an access token for the authorization code, usually because of a wrong Client Secret or a redirect URI mismatch. | Re-copy the Client Secret, check the redirect URI, and connect again. |
 | `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before Google returned. | Start again with `OAuthConnect` for an existing agent. |

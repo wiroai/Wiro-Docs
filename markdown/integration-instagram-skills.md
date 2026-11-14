@@ -491,6 +491,7 @@ Instagram allows each account 50 posts through the API in 24 hours.
 |------------|---------|------------|
 | `missing_params` | The callback was opened without an OAuth `state`. This error lands on `https://wiro.ai`, not on your app. | Don't open the callback URL directly. Start a new flow from Step 8. |
 | `session_expired` | >15 min between `OAuthConnect` and callback. | Call `OAuthConnect` again. |
+| `flow_replaced` | A newer sign-in or token check for the same agent and credential replaced this sign-in, whoever started it, so nothing from it was saved. | Use the newer sign-in or check, or start again with `OAuthConnect`. |
 | `authorization_denied` | User cancelled, or not in App Roles (Development Mode). | Add as Tester (Step 6), retry. |
 | `token_exchange_failed` | Wrong App Secret, redirect URI mismatch, or Instagram rejected the authorization code. | Re-copy the App Secret, verify the redirect URI, and retry Instagram Login. |
 | `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before Instagram returned. | Start again with `OAuthConnect` for an existing agent. |

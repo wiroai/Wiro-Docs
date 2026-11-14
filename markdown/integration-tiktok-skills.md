@@ -194,6 +194,7 @@ Wiro renews the 24-hour access token while the agent is running. `OAuthStatus` c
 | `missing_params` | The callback was opened without an OAuth `state`. This error lands on `https://wiro.ai`, not on your app. | Don't open the callback URL directly. Start a new OAuth flow. |
 | `authorization_denied` | User cancelled, or scopes not enabled. | Verify scope configuration. |
 | `session_expired` | 15-min state cache expired. | Restart OAuth. |
+| `flow_replaced` | A newer sign-in for the same agent and credential replaced this one, whoever started it, so nothing from it was saved. | Use the newer sign-in, or start again with `OAuthConnect`. |
 | `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
 | `Wiro-managed OAuth is not enabled for TikTok` | Returned in `OAuthConnect`'s `errors[]`: Wiro mode isn't available yet, and it is the default when `authmethod` is left out. | Save your app credentials (Step 6) and call `OAuthConnect` with `"authmethod": "own"`. |
 | `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before TikTok returned. | Start again with `OAuthConnect` for an existing agent. |

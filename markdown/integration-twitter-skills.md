@@ -243,6 +243,7 @@ To change **what** the scheduled task posts (topics, tone, hashtag rules), edit 
 | `missing_params` | The callback was opened without an OAuth `state`. This error lands on `https://wiro.ai`, not on your app. | Don't open the callback URL directly. Start a new flow from Step 6. |
 | `authorization_denied` | User cancelled, or OAuth 2.0 not enabled in app settings. | Verify OAuth 2.0 setup (Step 2); retry. |
 | `session_expired` | 15-min state cache expired (includes PKCE verifier). | Call `OAuthConnect` again. |
+| `flow_replaced` | A newer sign-in for the same agent and credential replaced this one, whoever started it, so nothing from it was saved. | Use the newer sign-in, or start again with `OAuthConnect`. |
 | `token_exchange_failed` | Wrong Client Secret, redirect URI mismatch, or lost PKCE verifier. | Re-copy Client Secret; verify URL; start over. |
 | `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before X returned. | Start again with `OAuthConnect` for an existing agent. |
 | `Twitter / X credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `clientid` / `clientsecret` are missing. | `UserAgent/CredentialUpsert` with `clientid` + `clientsecret`. |

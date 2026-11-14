@@ -222,6 +222,7 @@ To change **what** the scanner checks (target lists, bounce thresholds, tone, au
 |------------|---------|------------|
 | `authorization_denied` | User cancelled. | Retry. |
 | `session_expired` | State cache expired (15 min). | Restart. |
+| `flow_replaced` | A newer sign-in for the same agent and credential replaced this one, whoever started it, so nothing from it was saved. | Use the newer sign-in, or start again with `OAuthConnect`. |
 | `token_exchange_failed` | Wrong Client Secret, a redirect URI mismatch, or no server prefix in the account details Mailchimp sent. Nothing is saved. | Re-copy; verify URL; connect again. |
 | `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before Mailchimp returned. | Start again with `OAuthConnect` for an existing agent. |
 | `Mailchimp credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `clientid` / `clientsecret` are missing. | Update with `POST /UserAgent/CredentialUpsert`. |

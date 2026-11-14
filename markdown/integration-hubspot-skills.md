@@ -220,6 +220,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
 | `missing_params` | The callback was opened without an OAuth `state`. The browser lands on `https://wiro.ai`, not on your `redirecturl`. | Don't open the callback URL directly. Start a new flow with `OAuthConnect`. |
 | `authorization_denied` | The user cancelled, or HubSpot returned an error instead of an authorization code. | Verify the scope list in the HubSpot app's Auth tab. |
 | `session_expired` | State cache expired (15 min TTL). | Restart the OAuth flow. |
+| `flow_replaced` | A newer sign-in for the same agent and credential replaced this one, whoever started it, so nothing from it was saved. | Use the newer sign-in, or start again with `OAuthConnect`. |
 | `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
 | `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before HubSpot returned. | Start again with `OAuthConnect` for an existing agent. |
 | `HubSpot credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `clientid` / `clientsecret` are missing. | `UserAgent/CredentialUpsert` with `clientid` + `clientsecret`. |
