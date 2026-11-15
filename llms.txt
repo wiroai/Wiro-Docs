@@ -242,9 +242,13 @@ Direct `/v1/files` compatibility routes use that same authenticated project
 storage.
 Direct LLM routes never return Wiro Run/Sync `segments`; they emit only the
 selected OpenAI or Anthropic native JSON/SSE schema.
-Current `stream: true` routes publish protocol-compatible buffered deltas after
-the provider request and authenticated turn persistence complete; first-event
-timing is not live provider token latency.
+With `stream: true` the stream opens as soon as the request is accepted, so its
+first events do not mean the model has started writing. Answer text, and
+reasoning on routes that return it, then arrives in small batches while the
+model writes it. Tool calls, the finish reason and usage arrive once the turn
+is complete, and a `: keep-alive` comment comes every 15 seconds. On Wiro-hosted
+models, a turn that can call tools or asks for `json_object` output can arrive
+in one batch at the end.
 Model IDs: lowercase `owner/model`.
 
 Authentication for model discovery/detail, `/chat/completions`,
@@ -309,8 +313,13 @@ routes reject query parameters.
 Responses expose OpenRouter-style `canonical_slug`, `name`, `description`,
 `context_length`, `architecture`, exact per-token pricing strings,
 `top_provider`, `supported_parameters`, `default_parameters`, Wiro
-compatibility fields, and `x_wiro` pricing-source metadata. Tiered
-models expose exact bands in `x_wiro.pricing_tiers`. Fields Wiro does not
+compatibility fields, and `x_wiro` pricing-source metadata.
+`top_provider.min_completion_tokens` and `min_tokens` are the smallest output
+cap the model runs with (a smaller cap is raised to it; `null` when the model
+takes no cap). On models with an effort setting,
+`default_parameters.reasoning_effort` is the effort a request runs at when it
+sends none.
+Tiered models expose exact bands in `x_wiro.pricing_tiers`. Fields Wiro does not
 publish are omitted. Source-backed values can remain `null`; they are never
 guessed or replaced by zero. `pricing` is `null` for models not billed at a
 fixed token rate: Wiro-hosted models bill by processing time, and models with
@@ -398,6 +407,14 @@ OpenAI Chat:
   metadata field, an option written for another provider) is left out and
   named in `x-wiro-dropped-parameters` as well. An empty `stop` list is read
   as no stop sequence.
+- An output cap below the model's `min_tokens` is raised to that value rather
+  than refused. A changed cap is listed in `x-wiro-adjusted-parameters` under
+  the field the request sent (`max_tokens=128`, `max_completion_tokens=128`,
+  or `max_output_tokens=128` on Responses). On some models that always think
+  first, such as Kimi K3.1 Pro and most Gemini models, `min_tokens` leaves room
+  for that thinking at the default effort plus a short answer; raise the cap
+  when asking for more effort. On other reasoning models, `min_tokens` is only
+  the smallest cap the model accepts, so leave room for the reasoning as well.
 - Remote media uses public HTTPS, validated data/base64, or a supported Wiro
   gateway file ID; private and non-HTTP fetch targets are rejected.
 - Final object is `chat.completion`; native usage can be absent.
@@ -567,9 +584,11 @@ Errors:
   `completion_timeout` is 504: a completion still running after 40 minutes
   (streamed requests too) is stopped and not billed. `provider_overloaded` is
   503 (529 on Anthropic routes); `provider_unavailable`,
-  `authentication_service_unavailable` and `gateway_shutting_down` (the gateway
-  restarted mid-run; the run is stopped, not billed, send again) are 503. The
-  503 and 529 errors can be retried.
+  `authentication_service_unavailable` and `gateway_shutting_down` are 503.
+  `gateway_shutting_down` means the gateway was restarting: a request that
+  arrived during the restart did not run, and one that was already running was
+  stopped. Neither is billed; send it again. The 503 and 529 errors can be
+  retried.
 - A non-streamed request still running after 60 seconds gets its HTTP 200
   headers early and a newline every 15 seconds; the JSON body follows and
   parses as usual. Any failure after that arrives as the error object in that
@@ -581,9 +600,21 @@ Errors:
   `authentication_service_unavailable` read `api_error` like other server
   failures.
 - `/v1` responses include `ratelimit-limit`, `ratelimit-remaining`,
-  `ratelimit-reset`, `request-id`, and `x-request-id`; rate-limit responses
-  also include `retry-after`.
-- Protocol execution JSON POST bodies are limited to 16 MiB. Multipart Files
+  `ratelimit-reset`, `request-id`, and `x-request-id`; a request over that rate
+  limit gets 429 `rate_limit_exceeded` with `retry-after`.
+- `concurrent_execution_limit` (HTTP 429, `rate_limit_error`): too many
+  requests were already running when this one arrived, usually from the same
+  API key. The request is refused before the model runs, on every route and
+  with or without streaming, so no task is created and nothing is billed. The
+  response has no `retry-after`; send the request again after a short wait that
+  grows with each attempt (1, 2, 4, 8 seconds) or run fewer requests at once.
+- Protocol execution JSON POST bodies are limited to 40 MiB. Messages, tools
+  and tool outputs together are limited to 32 MiB per request (some models take
+  less; the error message names the limit), and one text block, text document
+  or tool output to 16 MiB. Over the body or conversation limit: 400
+  `context_length_exceeded` (on Anthropic routes, a message that starts with
+  `prompt is too long`), so an agent can compact its history and send it
+  again. A single block over 16 MiB: 400 `payload_too_large`. Multipart Files
   uploads use the separate 50 MiB limit.
 
 ### Task Detail

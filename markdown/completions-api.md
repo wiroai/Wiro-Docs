@@ -26,9 +26,14 @@ Direct LLM responses never expose Wiro Run/Sync `segments`. Each route returns
 only its selected protocol's native JSON and streaming events: OpenAI Chat
 chunks, OpenAI Responses events, or Anthropic Messages events. OpenClaw and Hermes receive the native transport they configure.
 
-In this release, `stream: true` provides protocol-compatible SSE ordering after
-the provider request completes and the authenticated structured turn is
-persisted. Do not interpret first-event timing as live provider token latency.
+With `stream: true`, the stream opens as soon as the request is accepted, so
+its first events do not mean the model has started writing. Answer text then
+arrives while the model writes it, in small batches rather than one event per
+token, and so does reasoning on the routes that return it. Tool calls, the
+finish reason and usage arrive once the turn is complete. While the model
+works, a `: keep-alive` comment arrives every 15 seconds. On Wiro-hosted
+models, a turn that can call tools or asks for `json_object` output can arrive
+in one batch at the end.
 
 Model IDs use lowercase `owner/model` form. Do not send a provider-only model
 name: discover the exact ID and protocol capabilities first.
@@ -1970,7 +1975,8 @@ website/model catalog at `POST /v1/Tool/List`.
       },
       "top_provider": {
         "context_length": 1050000,
-        "max_completion_tokens": 65536
+        "max_completion_tokens": 65536,
+        "min_completion_tokens": 16
       },
       "supported_parameters": [
         "max_completion_tokens",
@@ -1982,7 +1988,9 @@ website/model catalog at `POST /v1/Tool/List`.
         "tool_choice",
         "tools"
       ],
-      "default_parameters": {},
+      "default_parameters": {
+        "reasoning_effort": "medium"
+      },
       "object": "model",
       "type": "model",
       "created": 1783670833,
@@ -1991,6 +1999,7 @@ website/model catalog at `POST /v1/Tool/List`.
       "display_name": "(Wiro) GPT 5.6 Sol by OpenAI (Vision)",
       "max_input_tokens": 1050000,
       "max_tokens": 65536,
+      "min_tokens": 16,
       "capabilities": {
         "endpoints": ["anthropic", "chat", "responses"],
         "input_modalities": ["text", "image", "document"],
@@ -2037,6 +2046,13 @@ rate: Wiro-hosted models are billed by processing time, and models whose
 `x_wiro.pricing_source.basis` is `provider-reported-usd-ticks` are billed at
 the cost the provider reports for each call. Every response still carries
 its billed amount in `usage.cost`.
+
+`top_provider.min_completion_tokens` and `min_tokens` are the smallest output
+cap the model runs with, beside the largest in `max_completion_tokens` and
+`max_tokens`. A smaller cap is raised to that value (see OpenAI Chat
+Completions below), and both are `null` when the model takes no output cap. On
+models with an effort setting, `default_parameters.reasoning_effort` is the
+effort a request runs at when it sends none.
 
 The list accepts:
 
@@ -2302,6 +2318,16 @@ as an effort the model does not offer moved to one it does, is listed in
 `x-wiro-adjusted-parameters` as `name=applied` entries, for example
 `reasoning.effort=low`. Responses and Anthropic Messages send the same two
 headers.
+
+An output cap below the model's `min_tokens` is raised to that value rather
+than refused. A cap the gateway changed is listed in
+`x-wiro-adjusted-parameters` under the field you sent, for example
+`max_tokens=128` or `max_completion_tokens=128`, and `max_output_tokens=128`
+on Responses. On some models that always think first, such as Kimi K3.1 Pro
+and most Gemini models, `min_tokens` leaves room for that thinking at the
+default effort plus a short answer, so raise the cap when you ask for more
+effort. On other reasoning models, `min_tokens` is only the smallest cap the
+model accepts, so leave room for the reasoning as well as the answer.
 
 Structured output uses OpenAI's two `response_format` shapes. `json_object`
 asks only for a valid JSON document:
@@ -2902,8 +2928,9 @@ Anthropic-route error bodies, streamed or not, carry no code; key on
 `api_error`, like other server failures.
 
 `gateway_shutting_down` (HTTP `503`, or in the `200` body of a non-streamed
-response that has started) means the gateway restarted while the model was
-running. The run is stopped and is not billed; send the same request again.
+response that has started) means the gateway was restarting. A request that
+arrived during the restart did not run, and one that was already running was
+stopped. Neither is billed; send the same request again.
 
 `unsupported_capability` means the model does not declare something the request
 asked for. A structured-output mode missing from
@@ -2925,17 +2952,34 @@ statuses carry their code the same way: `completion_timeout` is `504`;
 Once a non-streamed response has started, every failure arrives in its `200`
 body instead.
 Responses under `/v1` include `ratelimit-limit`, `ratelimit-remaining`,
-`ratelimit-reset`, `request-id`, and `x-request-id`. A rate-limit response also
-includes `retry-after`. A run refused at your Wiro concurrency limit (error code
-`96`) also arrives as HTTP `429`, with error type `rate_limit_error`, Wiro's
+`ratelimit-reset`, `request-id`, and `x-request-id`. A request over that rate
+limit gets HTTP `429` with code `rate_limit_exceeded` and a `retry-after`
+header. A run refused at your Wiro concurrency limit (error code `96`) also
+arrives as HTTP `429`, with error type `rate_limit_error`, Wiro's
 message and `retry-after`; a streamed Responses request ends with
 `response.failed` carrying code `rate_limit_exceeded` instead, like other errors
 that happen when the run is submitted. See
 [Concurrency Limits](/docs/concurrency-limits#concurrency-handling-code-96).
 
-Protocol execution POST bodies must be JSON and are limited to 16 MiB. Files
-uploads are multipart and use the separate 50 MiB file limit. Unsupported
-fields that could change execution fail instead of being silently accepted. A
-model task can also fail after HTTP validation; preserve the protocol error and
-status rather than treating every `2xx` task creation as a successful model
-answer.
+`concurrent_execution_limit` (HTTP `429`, type `rate_limit_error`) means too
+many requests were already running when this one arrived, usually from the
+same API key. The request is refused before the model runs, on every route and
+with or without streaming, so no task is created and nothing is billed. The
+response has no `retry-after` header: send the request again after a short
+wait that grows with each attempt, for example 1, 2, 4 and 8 seconds, or run
+fewer requests at once.
+
+Protocol execution POST bodies must be JSON and are limited to 40 MiB. The
+messages, tools and tool outputs in one request are limited to 32 MiB
+together; some models take less, and the error message names the limit. One
+text block, text document or tool output is limited to 16 MiB. A request over
+the body or conversation limit gets HTTP `400` with code
+`context_length_exceeded` (on Anthropic routes, a message that starts with
+`prompt is too long`), so an agent can compact its history and send it again.
+A single block over 16 MiB gets HTTP `400` with code `payload_too_large`. Files
+uploads are multipart and use the separate 50 MiB file limit.
+
+Unsupported fields that could change execution fail instead of being silently
+accepted. A model task can also fail after HTTP validation; preserve the
+protocol error and status rather than treating every `2xx` task creation as a
+successful model answer.
