@@ -977,7 +977,7 @@ Agents (`agent` is "studio", "workflow-agent" or the guid of a deployed agent; s
 - `cancel_agent_message`: Stop a reply that is still being written (Message/Cancel)
 - `delete_agent_session`: Delete a conversation and the agent's memory of it, with `confirm: true` (Studio Message/ClearSession, others Message/DeleteSession)
 - `list_studio_results`: Model runs Studio started, newest first, across sessions (POST /Studio/Tasks)
-- `list_agent_templates`: Agent templates and their monthly prices (POST /Agent/List)
+- `list_agent_templates`: Agent templates and the three monthly plans (POST /Agent/List)
 - `get_agent_template`: A template's skills, plans, credentials and channels (POST /Agent/Detail)
 - `list_agent_skills`: Skills and what each one needs to work; every plan includes every skill (POST /Skills/List, /Skills/Detail, /Skills/Capabilities)
 - `deploy_agent`: Deploy from a template or from skills, on the Starter, Pro or Max plan; quote first (the plan's price, the wallet it charges and the other plans' prices), then `confirm: true` with `confirm_charge_usd`; `chat_setup` (`all`, `webchat` or `off`) sets setup from chat (POST /UserAgent/PricingPreview, /UserAgent/Deploy)

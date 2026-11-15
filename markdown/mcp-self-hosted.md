@@ -217,7 +217,7 @@ The conversation tools call the matching `Message/*` route of [Studio](/docs/stu
 | `cancel_agent_message` | `Message/Cancel` | Stop a reply that is still being written. |
 | `delete_agent_session` | `Message/ClearSession` (Studio), `Message/DeleteSession` | Delete a conversation and the agent's memory of it, after your confirmation. |
 | `list_studio_results` | `POST /Studio/Tasks` | List the images, videos and other results Studio generated for you. |
-| `list_agent_templates` | `POST /Agent/List` | Browse ready-made agent templates and their monthly prices. |
+| `list_agent_templates` | `POST /Agent/List` | Browse ready-made agent templates and the three monthly plans. |
 | `get_agent_template` | `POST /Agent/Detail` | Read a template's skills, plans, and the accounts and keys it needs. |
 | `list_agent_skills` | `POST /Skills/List`, `/Skills/Detail`, `/Skills/Capabilities` | Browse the skills an agent can have, and what each one needs to work. |
 | `deploy_agent` | `POST /UserAgent/PricingPreview`, `/UserAgent/Deploy` | Deploy an agent from a template or build one from skills, on the Starter, Pro or Max plan; shows the plan's price, the wallet it charges and the other plans' prices, and asks before charging. |

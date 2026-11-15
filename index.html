@@ -8428,7 +8428,7 @@ if (!data.result) {
                       <tbody>
                         <tr>
                           <td><code>list_agent_templates</code></td>
-                          <td>Browse ready-made agent templates and their monthly prices</td>
+                          <td>Browse ready-made agent templates and the three monthly plans</td>
                         </tr>
                         <tr>
                           <td><code>get_agent_template</code></td>
@@ -9605,7 +9605,7 @@ WIRO_API_SECRET=your-api-secret</code></pre>
                         <tr>
                           <td><code>list_agent_templates</code></td>
                           <td><code>POST /Agent/List</code></td>
-                          <td>Browse ready-made agent templates and their monthly prices.</td>
+                          <td>Browse ready-made agent templates and the three monthly plans.</td>
                         </tr>
                         <tr>
                           <td><code>get_agent_template</code></td>
@@ -12856,7 +12856,7 @@ import type {
 <tr>
 <td><strong>Learn About Agents</strong></td>
 <td><a href="https://wiro.ai/agents/learn">wiro.ai/agents/learn</a></td>
-<td>Concept primer: pricing model, security model, deployment lifecycle, and the difference between marketplace templates and custom builds.</td>
+<td>Concept primer: security model, deployment lifecycle, and the difference between marketplace templates and custom builds.</td>
 </tr>
 <tr>
 <td><strong>Anatomy of an Agent</strong></td>
@@ -12866,12 +12866,12 @@ import type {
 <tr>
 <td><strong>Build Your Own Agent</strong></td>
 <td><a href="https://wiro.ai/agents/build">wiro.ai/agents/build</a></td>
-<td>The web wizard for the same custom-build flow exposed by <a href="#post-useragentdeploy"><code>POST /UserAgent/Deploy</code></a> with <code>custom: true</code>. Useful for previewing the skill picker / pricing breakdown before scripting it.</td>
+<td>The web wizard for the same custom-build flow exposed by <a href="#post-useragentdeploy"><code>POST /UserAgent/Deploy</code></a> with <code>custom: true</code>. Useful for previewing the skill picker and the three plans before scripting it.</td>
 </tr>
 <tr>
 <td><strong>Browse Agents</strong></td>
 <td><a href="https://wiro.ai/agents/browse">wiro.ai/agents/browse</a></td>
-<td>Full marketplace catalog with categories, descriptions, screenshots, and plan prices, the visual mirror of <a href="#post-agentlist"><code>POST /Agent/List</code></a>. Each row links to a dedicated agent page at <code>/agents/{slug}</code>.</td>
+<td>Full marketplace catalog with categories, descriptions and screenshots, the visual mirror of <a href="#post-agentlist"><code>POST /Agent/List</code></a>. Each row links to a dedicated agent page at <code>/agents/{slug}</code>.</td>
 </tr>
 <tr>
 <td><strong>Use Case Showcases</strong></td>
