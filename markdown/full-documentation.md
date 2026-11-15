@@ -5998,7 +5998,7 @@ to Wiro in your browser. The plugin comes from the
 
 The plugin also adds slash commands, such as `/wiro-ai:image`,
 `/wiro-ai:video` and `/wiro-ai:speech`, and five agent skills. Each command
-picks a model from the catalog, shows the price before a paid run and can save
+picks a model from the catalog, shows the price and waits for your yes before a paid run and can save
 the results into your project.
 
 #### Or add the server with your API key
@@ -6372,7 +6372,9 @@ Prompts: `build_workflow`, `deploy_agent`, `create_with_studio` and
 `talk_to_my_agent`. Each one sends the assistant to the matching playbook first.
 
 Paid work: model and workflow runs, Studio and Workflow Agent turns, and
-messages to your own agents (from the agent's credits) cost money. Agent plans,
+messages to your own agents (from the agent's credits) cost money. Before a run
+or a Studio or Workflow Agent turn, the assistant tells you the expected cost and
+waits for your yes. Agent plans,
 moves to a larger plan and credit packs first return a quote (for a move inside
 a billing period, the amount Wiro works out for the time left) and act only
 when called again with `confirm: true` and `confirm_charge_usd`; if the price

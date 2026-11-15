@@ -8010,7 +8010,7 @@ if (!data.result) {
                         <pre><code>/plugin marketplace add wiroai/Wiro-Plugin
 /plugin install wiro-ai@wiro</code></pre>
                         <p>Then open <code>/mcp</code>, pick the Wiro server and choose <strong>Authenticate</strong> to sign in to Wiro in your browser. The plugin comes from the <a href="https://github.com/wiroai/Wiro-Plugin" target="_blank" rel="noopener">wiroai/Wiro-Plugin</a> repository.</p>
-                        <p>The plugin also adds slash commands, such as <code>/wiro-ai:image</code>, <code>/wiro-ai:video</code> and <code>/wiro-ai:speech</code>, and five agent skills. Each command picks a model from the catalog, shows the price before a paid run and can save the results into your project.</p>
+                        <p>The plugin also adds slash commands, such as <code>/wiro-ai:image</code>, <code>/wiro-ai:video</code> and <code>/wiro-ai:speech</code>, and five agent skills. Each command picks a model from the catalog, shows the price and waits for your yes before a paid run and can save the results into your project.</p>
                         <h4>Or add the server with your API key</h4>
                         <p>Run this command in your terminal:</p>
                         <pre><code class="language-bash">claude mcp add --transport http wiro \
@@ -8600,7 +8600,7 @@ if (!data.result) {
                         </tr>
                         <tr>
                           <td><code>create_with_studio</code></td>
-                          <td>Ask Studio to create images, video or audio, after explaining what a turn can cost</td>
+                          <td>Ask Studio to create images, video or audio, after showing what a turn can cost and getting your yes</td>
                         </tr>
                         <tr>
                           <td><code>talk_to_my_agent</code></td>
@@ -8610,7 +8610,7 @@ if (!data.result) {
                     </table>
 
                     <h3>Paid and irreversible actions</h3>
-                    <p>Running a model or a workflow, sending a message to Studio or the Workflow Agent, and messages to your own agents (which use the agent's credits) cost money. The assistant tells you the expected cost in one line before it starts such work.</p>
+                    <p>Running a model or a workflow, sending a message to Studio or the Workflow Agent, and messages to your own agents (which use the agent's credits) cost money. Before a run or a Studio or Workflow Agent turn, the assistant tells you the expected cost in one line and waits for your yes. A message to your own agent goes out once the assistant has said that it uses the agent's credits.</p>
                     <p>Agent plans, moves to a larger plan and credit packs are charged to your wallet, so <code>deploy_agent</code> and <code>manage_agent_billing</code> first return the price (for a move inside a billing period, the amount Wiro works out for the time left). They act only when they are called again with <code>confirm: true</code> and <code>confirm_charge_usd</code>, the approved amount, after you agree. If the price changed in between, nothing is charged and you get a new quote. Turning an agent's skills on or off with <code>apply_agent_skills</code> costs nothing, since every plan includes every skill, and a move to a smaller plan starts with the next renewal, with nothing charged or refunded.</p>
                     <p>Deleting a workflow, an agent, a conversation or an account connection also waits for <code>confirm: true</code>, and so do connecting an agent to a Wiro project with <code>bind_agent_project</code> and replacing a workflow's steps with <code>update_workflow</code> or <code>save_workflow_from_agent</code>: you see a summary of the change first, with the old and new value of each step input that changes. No tool adds funds or takes a card payment. Funds are added in the Wiro dashboard, and an agent plan paid by card moves to a larger plan or is topped up there.</p>
                     <p>The connected project decides the workspace: a personal project uses your personal wallet, a team project uses the team wallet. <code>get_account</code> shows which one and its balance.</p>
@@ -8671,7 +8671,7 @@ if (!data.result) {
                     <p>The assistant will call <code>list_tasks</code>, select the matching task, and call <code>get_task</code>. History is scoped from the authenticated project; the LLM never sends a user UUID.</p>
                     <h3>Build and run a workflow</h3>
                     <div class="info-callout"><p>"Build a workflow that turns a product photo into a short ad video, then run it on this photo"</p></div>
-                    <p>The assistant reads the <code>workflows</code> and <code>workflow-graph</code> playbooks, picks a model for each step with <code>search_models</code> and <code>get_model_schema</code>, and saves the graph with <code>create_workflow</code>. It tells you the expected cost, then calls <code>run_workflow</code> and follows <code>wait_for_workflow_run</code> until the video is ready.</p>
+                    <p>The assistant reads the <code>workflows</code> and <code>workflow-graph</code> playbooks, picks a model for each step with <code>search_models</code> and <code>get_model_schema</code>, and saves the graph with <code>create_workflow</code>. It tells you the expected cost and waits for your yes, then calls <code>run_workflow</code> and follows <code>wait_for_workflow_run</code> until the video is ready.</p>
                     <h3>Edit a workflow with the Workflow Agent</h3>
                     <div class="info-callout"><p>"Ask the Workflow Agent to add an upscale step to my product ad workflow and save it"</p></div>
                     <p>The assistant finds the workflow with <code>list_workflows</code> and sends your request with <code>send_agent_message</code> (<code>agent: "workflow-agent"</code>) with the workflow attached. It shows you the proposal and the models it uses, and saves it with <code>save_workflow_from_agent</code> once you agree to the change.</p>

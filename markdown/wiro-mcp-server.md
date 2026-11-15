@@ -190,7 +190,7 @@ to Wiro in your browser. The plugin comes from the
 
 The plugin also adds slash commands, such as `/wiro-ai:image`,
 `/wiro-ai:video` and `/wiro-ai:speech`, and five agent skills. Each command
-picks a model from the catalog, shows the price before a paid run and can save
+picks a model from the catalog, shows the price and waits for your yes before a paid run and can save
 the results into your project.
 
 #### Or add the server with your API key
@@ -750,15 +750,14 @@ the matching playbook first.
 |------|-------------|
 | `build_workflow` | Plan, save and test a multi-step workflow for a goal, confirming costs before any run |
 | `deploy_agent` | Choose a template or skills, quote and deploy an agent, then set it up and test it |
-| `create_with_studio` | Ask Studio to create images, video or audio, after explaining what a turn can cost |
+| `create_with_studio` | Ask Studio to create images, video or audio, after showing what a turn can cost and getting your yes |
 | `talk_to_my_agent` | Find one of your agents, make sure it is running, send it a message and show the reply |
 
 ### Paid and irreversible actions
 
 Running a model or a workflow, sending a message to Studio or the Workflow
 Agent, and messages to your own agents (which use the agent's credits) cost
-money. The assistant tells you the expected cost in one line before it starts
-such work.
+money. Before a run or a Studio or Workflow Agent turn, the assistant tells you the expected cost in one line and waits for your yes. A message to your own agent goes out once the assistant has said that it uses the agent's credits.
 
 Agent plans, moves to a larger plan and credit packs are charged to your
 wallet, so `deploy_agent` and `manage_agent_billing` first return the price
@@ -904,7 +903,7 @@ The assistant will call `list_tasks`, select the matching task, and call `get_ta
 
 The assistant reads the `workflows` and `workflow-graph` playbooks, picks a
 model for each step with `search_models` and `get_model_schema`, and saves the
-graph with `create_workflow`. It tells you the expected cost, then calls
+graph with `create_workflow`. It tells you the expected cost and waits for your yes, then calls
 `run_workflow` and follows `wait_for_workflow_run` until the video is ready.
 
 ### Edit a workflow with the Workflow Agent
