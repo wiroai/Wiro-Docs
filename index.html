@@ -13120,7 +13120,7 @@ import type {
 <p>This means you can update credentials, toggle skills, or change a custom skill on a running agent without manually stopping and starting it.</p>
 <p>These calls restart a starting or running agent when they change something: <code>CredentialUpsert</code> (except the sign-in case below), <code>CredentialFileUpload</code>, <code>CredentialProjectBind</code> (when the project changes), an OAuth sign-in, direct <code>OAuthConnect</code> probe or <code>SetPickerAccounts</code> save that completes a connection, <code>OAuthDisconnect</code> (when it removes a token or the connection was complete), <code>SkillsApply</code>, <code>SkillToggle</code>, <code>CustomSkillUpsert</code> (a new custom skill or scheduled task, a new <code>interval</code>, an <code>enabled</code> change, or a change to <code>cs-approval-policy</code>), <code>CustomSkillRename</code>, <code>CustomSkillDelete</code>, <code>CustomSkillRevert</code>, <code>UpdateSettings</code> (a new time zone, Chat Mode, model, slash-command list or Wiro API path list, or turning <code>chatsetup</code> on or off), <code>Update</code> (a changed <code>title</code>, or a body that names no field), and a setup card applied from chat (see <a href="/docs/agent-messaging#setup-from-chat">Setup From Chat</a>). A restart takes about a minute. A change saved while a restart is still stopping or queued loads with that restart instead of starting another one.</p>
 <p><strong>Sign-in connectors restart the agent once, when the connection is complete.</strong> A connection is complete when its mode has a token and, for a credential with an account picker, at least one account is saved. Saving own-mode app keys, a System User token or <code>authmethod</code> with <code>CredentialUpsert</code> for a sign-in credential (one with an <code>oauth_provider</code>) that isn't connected before or after the save restarts nothing. A first sign-in or token check that leaves accounts to pick restarts nothing, and the <code>SetPickerAccounts</code> save restarts the agent once. One with nothing to pick (X, TikTok, LinkedIn, HubSpot, Mailchimp, Reddit, Shopify, an Instagram Login, or a Google account with a single YouTube channel) restarts it when it finishes. A reconnect that keeps the saved accounts restarts it at the sign-in, so the agent loads the new token. Saving the same accounts again restarts nothing, and a failed token check restarts the agent only when it cleared a connection that was complete. While nothing that is on uses the credential, a connection restarts nothing: turning on the connector that uses it restarts the agent once, with the connection. A direct <code>OAuthConnect</code> and <code>SetPickerAccounts</code> answer <code>restart</code> (<code>"scheduled"</code> or <code>"none"</code>), and <code>flow.restart</code> in <code>OAuthStatus</code> says what the sign-in did.</p>
-<p>A change to only the text or description of an existing custom skill or scheduled task, through <code>CustomSkillUpsert</code> or a setup card, reaches a running agent right away, without a restart. These never restart a running agent: a plan change, a credit pack, a renewal or a cancellation, moving <code>chatsetup</code> between <code>"all"</code> and <code>"webchat"</code>, and a description, categories or cover edit through <code>Update</code>.</p>
+<p>A change to only the text or description of an existing custom skill or scheduled task, through <code>CustomSkillUpsert</code> or a setup card, reaches a running agent right away, without a restart. These never restart a running agent: a plan change, a credit pack, a renewal or a cancellation, moving <code>chatsetup</code> between <code>"all"</code> and <code>"webchat"</code>, a <code>screen</code> change through <code>UpdateSettings</code>, and a description, categories or cover edit through <code>Update</code>.</p>
 <h2 id="endpoints">Endpoints</h2>
 <h3 id="browse-the-catalog">Browse the Catalog</h3>
 <h4 id="post-agentlist"><strong>POST</strong> /Agent/List</h4>
@@ -14354,6 +14354,7 @@ import type {
         &quot;voicePostcallModel&quot;: &quot;openai/gpt-5.4&quot;
       },
       &quot;chatSetup&quot;: &quot;all&quot;,
+      &quot;screen&quot;: &quot;on&quot;,
       &quot;subscription&quot;: {
         &quot;plan&quot;: &quot;agent&quot;,
         &quot;status&quot;: &quot;active&quot;,
@@ -14557,6 +14558,11 @@ import type {
 <td><code>chatSetup</code></td>
 <td><code>string</code></td>
 <td>Setup From Chat as it applies to this agent (camelCase read): <code>"all"</code>, <code>"webchat"</code> or <code>"off"</code>. Write it via <a href="#post-useragentupdatesettings"><code>POST /UserAgent/UpdateSettings</code></a> or at Deploy with the lowercase <code>chatsetup</code> key. See <a href="/docs/agent-messaging#setup-from-chat">Setup From Chat</a>.</td>
+</tr>
+<tr>
+<td><code>screen</code></td>
+<td><code>string</code></td>
+<td>Screen as it applies to this agent: <code>"on"</code> or <code>"off"</code>. When it is on, the people who manage the agent can watch its computer live from the Wiro panel. Write it via <a href="#post-useragentupdatesettings"><code>POST /UserAgent/UpdateSettings</code></a>. <code>null</code> when it could not be read.</td>
 </tr>
 </tbody>
 </table>
@@ -15012,9 +15018,9 @@ import type {
 <p><strong><code>restarting</code>.</strong> <code>true</code> when this call restarts the agent, <code>false</code> otherwise. With <code>true</code>, the row shows the transition mid-flight: <code>status: 1</code> (Stopping) with a fresh <code>stoppingat</code> timestamp. Wiro re-queues the agent once it has stopped, so it comes back with the new title. A restart request that can't be carried out answers <code>Failed to restart user agent</code>; try again.</p>
 </blockquote>
 <h4 id="post-useragentupdatesettings"><strong>POST</strong> /UserAgent/UpdateSettings</h4>
-<p>Writes per-agent preference toggles that are not credentials and not skill rows. Exposes <code>timezone</code> (operator-selected IANA zone the agent uses for scheduled tasks and voice calls), <code>teamsessionmode</code> (the one Chat Mode for team web-chat history and external-channel DMs), the four <strong>model overrides</strong> (<code>chatmodel</code>, <code>cronmodel</code>, <code>voiceprepmodel</code>, <code>voicepostcallmodel</code>) that choose which LLM the agent uses for chat replies, scheduled (cron) turns, voice-call prep, and the post-call summary turn, <code>enabledcommands</code> (the in-chat slash-command allowlist), <code>wiroapiallowedpaths</code> (the Wiro API endpoints the agent may call with its own Wiro project key), and <code>chatsetup</code> (where people can change the agent's setup from chat). Submit any subset in the same call: partial updates are supported and untouched fields keep their current value.</p>
+<p>Writes per-agent preference toggles that are not credentials and not skill rows. Exposes <code>timezone</code> (operator-selected IANA zone the agent uses for scheduled tasks and voice calls), <code>teamsessionmode</code> (the one Chat Mode for team web-chat history and external-channel DMs), the four <strong>model overrides</strong> (<code>chatmodel</code>, <code>cronmodel</code>, <code>voiceprepmodel</code>, <code>voicepostcallmodel</code>) that choose which LLM the agent uses for chat replies, scheduled (cron) turns, voice-call prep, and the post-call summary turn, <code>enabledcommands</code> (the in-chat slash-command allowlist), <code>wiroapiallowedpaths</code> (the Wiro API endpoints the agent may call with its own Wiro project key), <code>chatsetup</code> (where people can change the agent's setup from chat), and <code>screen</code> (whether the people who manage the agent can watch its computer live from the Wiro panel). Submit any subset in the same call: partial updates are supported and untouched fields keep their current value.</p>
 <p><strong>Permission</strong>: owner or team admin only, as for <code>/UserAgent/Update</code>. Team members cannot change these settings.</p>
-<p><strong>Restart</strong>: if the agent is <strong>starting (status <code>3</code>)</strong> or <strong>running (status <code>4</code>)</strong> and the call changes a setting, the agent restarts so it applies: a new time zone, Chat Mode (<code>teamsessionmode</code>), model, slash-command list (<code>enabledcommands</code>) or Wiro API path list (<code>wiroapiallowedpaths</code>), or turning <code>chatsetup</code> on or off. Moving <code>chatsetup</code> between <code>"all"</code> and <code>"webchat"</code> doesn't restart it: Wiro checks that difference on each message. A call that changes nothing restarts nothing. For agents in status <code>0</code>/<code>1</code>/<code>2</code>/<code>5</code>/<code>6</code> the change applies on the next start.</p>
+<p><strong>Restart</strong>: if the agent is <strong>starting (status <code>3</code>)</strong> or <strong>running (status <code>4</code>)</strong> and the call changes a setting, the agent restarts so it applies: a new time zone, Chat Mode (<code>teamsessionmode</code>), model, slash-command list (<code>enabledcommands</code>) or Wiro API path list (<code>wiroapiallowedpaths</code>), or turning <code>chatsetup</code> on or off. Moving <code>chatsetup</code> between <code>"all"</code> and <code>"webchat"</code> doesn't restart it: Wiro checks that difference on each message. Changing <code>screen</code> never restarts it. A call that changes nothing restarts nothing. For agents in status <code>0</code>/<code>1</code>/<code>2</code>/<code>5</code>/<code>6</code> the change applies on the next start.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -15086,6 +15092,12 @@ import type {
 <td>string|null</td>
 <td>No</td>
 <td>Setup From Chat: where people can change the agent's setup by approving setup cards in chat. <code>"all"</code> (the default): in the Wiro web chat and in messages sent with a project API key, such as from your backend or an MCP client. <code>"webchat"</code>: only in the Wiro web chat on wiro.ai. <code>"off"</code>: never from chat; the agent says that an agent admin makes the change in the agent's settings. <code>null</code> goes back to <code>"all"</code>, and any other value is rejected. Agents that your customers or many people talk to usually choose <code>"webchat"</code> or <code>"off"</code>; see <a href="/docs/agent-messaging#setup-from-chat">Setup From Chat</a>. Read it back as <code>chatSetup</code> on <a href="#post-useragentdetail"><code>UserAgent/Detail</code></a>.</td>
+</tr>
+<tr>
+<td><code>screen</code></td>
+<td>string|null</td>
+<td>No</td>
+<td>Screen: whether the people who manage the agent (its owner and the team's admins) can watch its computer live from the Wiro panel, beside the chat. <code>"on"</code> (the default) or <code>"off"</code>. Turning it off also closes a screen that is open, within about half a minute. On a team agent whose Chat Mode is <code>"private"</code> the screen stays closed to the team whatever this says. <code>null</code> goes back to <code>"on"</code>, and any other value is rejected. It never restarts the agent. Read it back as <code>screen</code> on <a href="#post-useragentdetail"><code>UserAgent/Detail</code></a>.</td>
 </tr>
 </tbody>
 </table>
@@ -15201,7 +15213,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td>400</td>
 <td><code>nothing-to-update</code></td>
-<td>Body had none of the recognised fields (<code>timezone</code>, <code>teamsessionmode</code>, a model override, <code>enabledcommands</code>, <code>wiroapiallowedpaths</code> or <code>chatsetup</code>).</td>
+<td>Body had none of the recognised fields (<code>timezone</code>, <code>teamsessionmode</code>, a model override, <code>enabledcommands</code>, <code>wiroapiallowedpaths</code>, <code>chatsetup</code> or <code>screen</code>).</td>
 </tr>
 <tr>
 <td>400</td>
