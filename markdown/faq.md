@@ -56,16 +56,16 @@ No. The [Wiro MCP server](/docs/wiro-mcp-server) is free. You pay the normal pri
 
 ## Can I use Wiro with n8n?
 
-Yes. Install the [Wiro AI community node](/docs/n8n-wiro-integration) (`@wiro-ai/n8n-nodes-wiro`) in your n8n instance to run any Wiro model from your workflows. Pick the model in the node and its inputs load with their defaults.
+Yes. Install the [Wiro AI community node](/docs/n8n-wiro-integration) (`@wiro-ai/n8n-nodes-wiro`) in your n8n instance to run any Wiro model from your workflows. Pick the model in the node and its inputs load with their defaults. The node is [verified by n8n](https://n8n.io/integrations/wiro-ai/), so an instance owner can also install it from the nodes panel, on n8n Cloud too.
 
 ## Which other apps have a Wiro AI add-on?
 
 Wiro AI has open-source add-ons for these apps. Each repository has the install steps:
 
-- [ComfyUI](https://github.com/wiroai/Wiro-ComfyUI): nodes that run image, video, audio, 3D and LLM models inside your graphs
+- [ComfyUI](https://github.com/wiroai/Wiro-ComfyUI): nodes that run image, video, audio, 3D and LLM models inside your graphs, also on the [Comfy Registry](https://registry.comfy.org/nodes/comfyui-wiro)
 - [Dify](https://github.com/wiroai/Wiro-Dify-Plugin): the LLM gateway and voice models as a model provider, plus tools for images, video, speech, music and 3D in workflows and agents
-- [WordPress](https://github.com/wiroai/Wiro-WordPress): featured images, image edits, alt text, narration and SEO suggestions in the block editor
-- [Obsidian](https://github.com/wiroai/Wiro-Obsidian): images, video, speech, music, transcription and text tools, saved into your notes
+- [WordPress](https://github.com/wiroai/Wiro-WordPress): featured images, image edits, alt text, narration and SEO suggestions in the block editor, from the [WordPress plugin directory](https://wordpress.org/plugins/wiro-ai/)
+- [Obsidian](https://github.com/wiroai/Wiro-Obsidian): images, video, speech, music, transcription and text tools, saved into your notes, from [Obsidian community plugins](https://community.obsidian.md/plugins/wiro-ai)
 - [Figma](https://github.com/wiroai/Wiro-Figma): images, SVG vectors, image edits, background removal and text rewriting or translation on the canvas
 - [Blender](https://github.com/wiroai/Wiro-Blender): text to 3D, image to 3D and textures, with any model in the catalog
 - [Raycast](https://github.com/wiroai/Wiro-Raycast): image and video generation, LLM chat and model search from your launcher
@@ -74,7 +74,7 @@ Wiro AI has open-source add-ons for these apps. Each repository has the install 
 - [Hermes Agent](https://github.com/wiroai/Wiro-Hermes): media tools, plus the LLM gateway as a model provider
 - [Coding agents](https://github.com/wiroai/Wiro-Skills): agent skills for images, image edits, video, music, speech, transcripts, 3D and model search in Claude Code, Codex, Cursor, Gemini CLI, GitHub Copilot and OpenClaw
 - [Vercel AI SDK](https://github.com/wiroai/Wiro-LLM): chat, image, speech, transcription and video models, with a [Next.js starter](https://github.com/wiroai/Wiro-Next-Starter) for Vercel and Railway
-- [Chrome, Edge, Opera and Brave](https://github.com/wiroai/Wiro-Chromium-Extension), [Firefox](https://github.com/wiroai/Wiro-Firefox-Extension) and [Safari](https://github.com/wiroai/Wiro-Safari-Extension): right-click an image, video, audio clip, text or page to run a model
+- [Chrome, Edge, Opera and Brave](https://github.com/wiroai/Wiro-Chromium-Extension), [Firefox](https://github.com/wiroai/Wiro-Firefox-Extension) and [Safari](https://github.com/wiroai/Wiro-Safari-Extension): right-click an image, video, audio clip, text or page to run a model. Install it from the [Chrome Web Store](https://chromewebstore.google.com/detail/wiro-ai-tools-for-images/cehkhdmppbnfeahegjjkdhangjelehab), [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/wiro-ai-tools-for-images/obkibkhehpojlejdoinhlmoofalgaddg), [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/wiro-ai/) or the [Naver Whale Store](https://store.whale.naver.com/detail/elgobhnkemhlhfakdmpijbknhehnkgle)
 
 AI assistants such as Claude, ChatGPT, Cursor and VS Code connect through the [Wiro MCP server](/docs/wiro-mcp-server).
 

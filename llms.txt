@@ -95,7 +95,7 @@ API key integrations:
 - [MCP Server](https://wiro.ai/docs/wiro-mcp-server): Model Context Protocol server for AI assistants
 - [Self-Hosted MCP](https://wiro.ai/docs/mcp-self-hosted): Run MCP server locally via npx
 - [Node.js Library](https://wiro.ai/docs/nodejs-library): Standalone API client for Node.js/TypeScript
-- [n8n Integration](https://wiro.ai/docs/n8n-wiro-integration): the Wiro AI community node for n8n, one node that runs any Wiro model with a searchable model picker
+- [n8n Integration](https://wiro.ai/docs/n8n-wiro-integration): the Wiro AI community node for n8n, one node that runs any Wiro model with a searchable model picker; [verified by n8n](https://n8n.io/integrations/wiro-ai/)
 
 ## Optional
 
@@ -1282,16 +1282,16 @@ Resource isolation: Project/List, Project/UsageSummary, UserAgent/MyAgents, Task
 - [Wiro-Skills](https://github.com/wiroai/Wiro-Skills): agent skills for images, image edits, video, music, speech, transcripts, 3D and model search, for Claude Code, Codex, Cursor, Gemini CLI, GitHub Copilot and OpenClaw (`npx skills add wiroai/Wiro-Skills`)
 - [Wiro-LLM](https://github.com/wiroai/Wiro-LLM): Vercel AI SDK provider for chat, images, speech, transcription and video (`@wiro-ai/wiro-llm` on npm)
 - [Wiro-Next-Starter](https://github.com/wiroai/Wiro-Next-Starter): Next.js starter with a Playground, image, video and audio tools and LLM chat, for Vercel and Railway
-- [Wiro-ComfyUI](https://github.com/wiroai/Wiro-ComfyUI): ComfyUI nodes for image, video, audio, 3D and LLM models
+- [Wiro-ComfyUI](https://github.com/wiroai/Wiro-ComfyUI): ComfyUI nodes for image, video, audio, 3D and LLM models; on the [Comfy Registry](https://registry.comfy.org/nodes/comfyui-wiro)
 - [Wiro-Dify-Plugin](https://github.com/wiroai/Wiro-Dify-Plugin): Dify plugins: the LLM gateway and voice models as a model provider, plus media tools
-- [Wiro-WordPress](https://github.com/wiroai/Wiro-WordPress): WordPress plugin for featured images, image edits, alt text, narration and SEO suggestions
-- [Wiro-Obsidian](https://github.com/wiroai/Wiro-Obsidian): Obsidian plugin for images, video, speech, music, transcription and text tools
+- [Wiro-WordPress](https://github.com/wiroai/Wiro-WordPress): WordPress plugin for featured images, image edits, alt text, narration and SEO suggestions; on [WordPress.org](https://wordpress.org/plugins/wiro-ai/)
+- [Wiro-Obsidian](https://github.com/wiroai/Wiro-Obsidian): Obsidian plugin for images, video, speech, music, transcription and text tools; in [Obsidian community plugins](https://community.obsidian.md/plugins/wiro-ai)
 - [Wiro-Figma](https://github.com/wiroai/Wiro-Figma): Figma plugin for images, SVG vectors, image edits and text
 - [Wiro-Blender](https://github.com/wiroai/Wiro-Blender): Blender add-on for text to 3D, image to 3D and textures
 - [Wiro-Raycast](https://github.com/wiroai/Wiro-Raycast): Raycast extension for image and video generation, LLM chat and model search
 - [Wiro-Zed](https://github.com/wiroai/Wiro-Zed): Zed extension for the Wiro MCP server
 - [Wiro-Action](https://github.com/wiroai/Wiro-Action): GitHub Action that runs models, workflows and LLM prompts
 - [Wiro-Hermes](https://github.com/wiroai/Wiro-Hermes): Hermes Agent plugins: media tools and the LLM gateway as a model provider
-- [Wiro-Chromium-Extension](https://github.com/wiroai/Wiro-Chromium-Extension): extension for Chrome, Edge, Opera and Brave
-- [Wiro-Firefox-Extension](https://github.com/wiroai/Wiro-Firefox-Extension): add-on for Firefox
+- [Wiro-Chromium-Extension](https://github.com/wiroai/Wiro-Chromium-Extension): extension for Chrome, Edge, Opera and Brave; on the [Chrome Web Store](https://chromewebstore.google.com/detail/wiro-ai-tools-for-images/cehkhdmppbnfeahegjjkdhangjelehab), [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/wiro-ai-tools-for-images/obkibkhehpojlejdoinhlmoofalgaddg) and the [Naver Whale Store](https://store.whale.naver.com/detail/elgobhnkemhlhfakdmpijbknhehnkgle)
+- [Wiro-Firefox-Extension](https://github.com/wiroai/Wiro-Firefox-Extension): add-on for Firefox; on [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/wiro-ai/)
 - [Wiro-Safari-Extension](https://github.com/wiroai/Wiro-Safari-Extension): extension for Safari on the Mac

@@ -12,6 +12,7 @@ Pick a model from a searchable list and its inputs load into the node with their
 
 - [npm: @wiro-ai/n8n-nodes-wiro](https://www.npmjs.com/package/@wiro-ai/n8n-nodes-wiro)
 - [GitHub: wiroai/n8n-nodes-wiro](https://github.com/wiroai/n8n-nodes-wiro)
+- [n8n: Wiro AI integration (verified)](https://n8n.io/integrations/wiro-ai/)
 - [n8n Community Nodes Installation Guide](https://docs.n8n.io/integrations/community-nodes/installation/)
 - [Wiro Model Catalog](https://wiro.ai/models): browse all available models
 
@@ -71,6 +72,10 @@ A task that fails or is cancelled stops the node with an error. To handle it in 
 ## Installation
 
 Install the community node package in your n8n instance:
+
+### From the nodes panel
+
+The Wiro AI node is [verified by n8n](https://n8n.io/integrations/wiro-ai/). An instance owner can search for **Wiro AI** in the nodes panel of the workflow editor and install it, on n8n Cloud and on self-hosted instances that show verified community nodes. After that, everyone on the instance can add it to their workflows.
 
 ### Via n8n UI (Recommended)
 

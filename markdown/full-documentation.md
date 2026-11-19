@@ -6549,7 +6549,7 @@ Common questions about using the Wiro API.
 
 **Does the MCP server cost extra?** No. The [Wiro MCP server](/docs/wiro-mcp-server) is free. You pay the normal prices for the work its tools start: model runs, the model steps of workflow runs, Studio and Workflow Agent turns, and agent plans and credits.
 
-**Which other apps have a Wiro AI add-on?** ComfyUI, Dify, WordPress, Obsidian, Figma, Blender, Raycast, Zed, GitHub Actions, Hermes Agent, coding agents such as Claude Code, Codex and Cursor (agent skills), the Vercel AI SDK (with a Next.js starter for Vercel and Railway), and the Chrome, Edge, Opera, Brave, Firefox and Safari browsers. Each add-on is open source in the [wiroai](https://github.com/wiroai) GitHub organization, with its install steps in the repository. AI assistants connect through the [Wiro MCP server](/docs/wiro-mcp-server).
+**Which other apps have a Wiro AI add-on?** ComfyUI, Dify, WordPress, Obsidian, Figma, Blender, Raycast, Zed, GitHub Actions, Hermes Agent, coding agents such as Claude Code, Codex and Cursor (agent skills), the Vercel AI SDK (with a Next.js starter for Vercel and Railway), and the Chrome, Edge, Opera, Brave, Firefox and Safari browsers. Each add-on is open source in the [wiroai](https://github.com/wiroai) GitHub organization, with its install steps in the repository. Store listings: the [WordPress plugin directory](https://wordpress.org/plugins/wiro-ai/), [Obsidian community plugins](https://community.obsidian.md/plugins/wiro-ai), the [Comfy Registry](https://registry.comfy.org/nodes/comfyui-wiro), the [Chrome Web Store](https://chromewebstore.google.com/detail/wiro-ai-tools-for-images/cehkhdmppbnfeahegjjkdhangjelehab), [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/wiro-ai-tools-for-images/obkibkhehpojlejdoinhlmoofalgaddg), [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/wiro-ai/) and the [Naver Whale Store](https://store.whale.naver.com/detail/elgobhnkemhlhfakdmpijbknhehnkgle); the n8n node is [verified by n8n](https://n8n.io/integrations/wiro-ai/). AI assistants connect through the [Wiro MCP server](/docs/wiro-mcp-server).
 
 **Can I use a webhook instead of polling?** Yes. All models support an optional `callbackUrl` parameter. It must be a public `http(s)` address.
 
@@ -6575,6 +6575,8 @@ The **Wiro AI** community node (`@wiro-ai/n8n-nodes-wiro`) runs any model in the
 
 ## Installation
 
+The node is [verified by n8n](https://n8n.io/integrations/wiro-ai/): an instance owner can search for **Wiro AI** in the nodes panel of the workflow editor and install it, on n8n Cloud and on self-hosted instances that show verified community nodes.
+
 Install via n8n UI: **Settings → Community Nodes → Install → `@wiro-ai/n8n-nodes-wiro`**
 
 Or via command line: `npm install @wiro-ai/n8n-nodes-wiro`
@@ -6583,6 +6585,7 @@ Or via command line: `npm install @wiro-ai/n8n-nodes-wiro`
 
 - [npm: @wiro-ai/n8n-nodes-wiro](https://www.npmjs.com/package/@wiro-ai/n8n-nodes-wiro)
 - [GitHub: wiroai/n8n-nodes-wiro](https://github.com/wiroai/n8n-nodes-wiro)
+- [n8n: Wiro AI integration (verified)](https://n8n.io/integrations/wiro-ai/)
 
 ---
 
