@@ -86,7 +86,7 @@ const sections = [
   { slug: 'integration-webvoice-skills', title: 'Web Voice Integration', description: 'Browser-embedded realtime voice channel. POST /UserAgent/Realtime/WebStart issues a short-lived JWT + WebSocket URL; the browser presents it as the first WS message and streams 24 kHz PCM mono. Used by Voice Receptionist and Voice Sales Rep agents.' },
   { slug: 'organizations-overview', title: 'Organizations & Teams', description: 'Collaborate with your team under a shared workspace with unified billing, access controls, and resource management. Learn about organizations, teams, and personal workspaces.' },
   { slug: 'organizations-managing-teams', title: 'Managing Teams', description: 'Create organizations, invite members, manage roles and permissions. Transfer agents and projects between workspaces.' },
-  { slug: 'organizations-billing', title: 'Team Billing & Spending', description: 'Manage team wallets, set spend limits per team and per member, control model access, and track usage across your organization.' },
+  { slug: 'organizations-billing', title: 'Team Billing & Spending', description: 'Manage team wallets, set spend limits for personal accounts and teams, control model access, and track usage across your organization.' },
   { slug: 'organizations-api-access', title: 'Team API Access', description: 'How workspace context is resolved in API requests. Learn about API key context resolution, resource filtering, and agent context guards.' },
 ];
 
