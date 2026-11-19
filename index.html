@@ -7975,6 +7975,11 @@ if (!data.result) {
                         <strong>Gemini CLI</strong>
                         <span>Extension install</span>
                       </a>
+                      <a href="/docs/wiro-mcp-server#mcp-setup-codex" class="mcp-client-card" data-toggle-target="mcp-setup-codex">
+                        <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-openai"></use></svg>
+                        <strong>Codex</strong>
+                        <span>Sign in, plugin or command</span>
+                      </a>
                       <a href="/docs/wiro-mcp-server#mcp-setup-devin" class="mcp-client-card" data-toggle-target="mcp-setup-devin">
                         <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-devin"></use></svg>
                         <strong>Devin</strong>
@@ -8148,6 +8153,24 @@ if (!data.result) {
                         <p>The extension also adds slash commands such as <code>/wiro:image</code> and <code>/wiro:video</code>, and five agent skills.</p>
                       </div>
 
+                      <div class="mcp-setup-panel" id="mcp-setup-codex">
+                        <h3>Codex</h3>
+                        <h4>Sign in with your browser</h4>
+                        <p>Run this command in your terminal:</p>
+                        <pre><code class="language-bash">codex mcp add wiro --url https://mcp.wiro.ai/v1</code></pre>
+                        <p>Codex adds the server and opens the Wiro sign-in page in your browser. To sign in again later, run <code>codex mcp login wiro</code>.</p>
+                        <h4>Or install as a plugin</h4>
+                        <p>Run these two commands in your terminal:</p>
+                        <pre><code class="language-bash">codex plugin marketplace add wiroai/Wiro-Plugin
+codex plugin add wiro-ai@wiro</code></pre>
+                        <p>Then run <code>codex mcp login wiro</code> to sign in to Wiro in your browser. The plugin comes from the <a href="https://github.com/wiroai/Wiro-Plugin" target="_blank" rel="noopener">wiroai/Wiro-Plugin</a> repository.</p>
+                        <p>The plugin also adds commands you call with <code>$</code>, such as <code>$wiro-ai:image</code>, <code>$wiro-ai:video</code> and <code>$wiro-ai:speech</code>, and five agent skills. Each command picks a model from the catalog, shows the price and waits for your yes before a paid run and can save the results into your project.</p>
+                        <h4>Or add the server with your API key</h4>
+                        <p>Keep the key in an environment variable and point Codex at it:</p>
+                        <pre><code class="language-bash">export WIRO_API_KEY="YOUR_API_KEY:YOUR_API_SECRET"
+codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_KEY</code></pre>
+                        <p>Codex sends the variable as <code>Authorization: Bearer</code>, so keep it in your shell profile. For an API Key Only project, set it to <code>YOUR_API_KEY</code> without the colon or secret. Verify the connection with <code>codex mcp list</code>.</p>
+                      </div>
                       <div class="mcp-setup-panel" id="mcp-setup-devin">
                         <h3>Devin</h3>
                         <p>Install Wiro as a Devin plugin from the <a href="https://github.com/wiroai/Wiro-Plugin" target="_blank" rel="noopener">wiroai/Wiro-Plugin</a> repository. With the Devin CLI, run:</p>

@@ -325,6 +325,50 @@ browser.
 The extension also adds slash commands such as `/wiro:image` and
 `/wiro:video`, and five agent skills.
 
+### Codex
+
+#### Sign in with your browser
+
+Run this command in your terminal:
+
+```bash
+codex mcp add wiro --url https://mcp.wiro.ai/v1
+```
+
+Codex adds the server and opens the Wiro sign-in page in your browser. To sign
+in again later, run `codex mcp login wiro`.
+
+#### Or install as a plugin
+
+Run these two commands in your terminal:
+
+```bash
+codex plugin marketplace add wiroai/Wiro-Plugin
+codex plugin add wiro-ai@wiro
+```
+
+Then run `codex mcp login wiro` to sign in to Wiro in your browser. The plugin
+comes from the [wiroai/Wiro-Plugin](https://github.com/wiroai/Wiro-Plugin)
+repository.
+
+The plugin also adds commands you call with `$`, such as `$wiro-ai:image`,
+`$wiro-ai:video` and `$wiro-ai:speech`, and five agent skills. Each command
+picks a model from the catalog, shows the price and waits for your yes before a
+paid run and can save the results into your project.
+
+#### Or add the server with your API key
+
+Keep the key in an environment variable and point Codex at it:
+
+```bash
+export WIRO_API_KEY="YOUR_API_KEY:YOUR_API_SECRET"
+codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_KEY
+```
+
+Codex sends the variable as `Authorization: Bearer`, so keep it in your shell
+profile. For an API Key Only project, set it to `YOUR_API_KEY` without the
+colon or secret. Verify the connection with `codex mcp list`.
+
 ### Devin
 
 Install Wiro as a Devin plugin from the
