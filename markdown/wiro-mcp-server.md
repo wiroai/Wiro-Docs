@@ -762,7 +762,7 @@ These three tools are always available, whichever groups are loaded.
 
 | Tool | What it does |
 |------|-------------|
-| `get_account` | Show which workspace the connected project belongs to, its wallet balance and, when you ask, the wallet's recent transactions |
+| `get_account` | Show which workspace the connected project belongs to, its wallet balance, its spend limits and, when you ask, the wallet's recent transactions |
 | `get_playbook` | Step-by-step guides: getting started, models, workflows, workflow graphs, the Workflow Agent, Studio, agents and billing |
 | `search_docs` | Search the Wiro documentation for guides and API references |
 
@@ -823,7 +823,15 @@ card moves to a larger plan or is topped up there.
 
 The connected project decides the workspace: a personal project uses your
 personal wallet, a team project uses the team wallet. `get_account` shows which
-one and its balance.
+one, its balance and its spend limits.
+
+Calls through the MCP server count toward the workspace's
+[spend limits](/docs/organizations-billing#spend-limits), on the `mcp` surface (the Wiro browser extensions' calls on the `extension`
+surface).
+When a limit refuses work (error code `93`), the tool returns an error with
+Wiro's message and a note: nothing ran and nothing was charged, do not try
+again until the limit resets or someone who manages it raises it, and limits
+are managed at [wiro.ai/panel/wallet/limits](https://wiro.ai/panel/wallet/limits).
 
 ## MCP Request and Response Contract
 
@@ -1184,7 +1192,10 @@ Returns relevant documentation sections matching your query.
 `get_account` names the workspace of the connected project, personal or a
 team, and shows that wallet's balance. It is also the call that proves the
 connection works, since model search, schema reads and `search_docs` answer
-without credentials. Without arguments it reads only the balance. With
+without credentials. Without arguments it reads the balance and the
+workspace's spend limits, each with what it has used this period and whether it
+is used up. A used-up limit refuses new work with error code `93` even when the
+wallet has money. With
 `recent_transactions` (1 to 50) it also lists that many of the wallet's latest
 transactions, newest first, as the Transactions page of the Wiro dashboard
 shows them: each row's time, type, whether it adds to the wallet or takes from

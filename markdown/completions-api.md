@@ -2958,6 +2958,27 @@ request is different: its stream is already open, so it answers `200` and ends
 with `response.failed` carrying code `permission_denied` and the same message,
 like other errors that happen when the run is submitted.
 
+A run refused by a [spend limit](/docs/organizations-billing#spend-limits) of
+the key's workspace (Wiro error code `93`) gets HTTP `402` with Wiro's message,
+which names the limit and when it resets. Chat and Responses return type
+`insufficient_quota`, code `spend_limit_reached` and param `null`; Anthropic
+routes return type `billing_error`. Nothing runs and nothing is charged, and
+SDKs do not retry it: send the request again only after the limit resets or is
+raised. A streamed Responses request ends with `response.failed` carrying code
+`spend_limit_reached` instead, like other errors that happen when the run is
+submitted.
+
+```json
+{
+  "error": {
+    "message": "This API key's monthly spend limit is reached ($50.20 of $50.00). It resets on December 1, 2026 at 00:00 UTC.",
+    "type": "insufficient_quota",
+    "code": "spend_limit_reached",
+    "param": null
+  }
+}
+```
+
 Common codes include `invalid_model`, `model_not_found`,
 `unsupported_model_type`, `unsupported_parameter`, `response_not_found`,
 `response_chain_too_deep`, `invalid_generation_id`, `generation_not_found`,

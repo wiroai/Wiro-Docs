@@ -171,3 +171,7 @@ The [MCP server](/docs/wiro-mcp-server) provides three ways to check costs:
 ### Dashboard
 
 View your overall balance, usage history, and billing details in the [Dashboard](https://wiro.ai/panel/billing).
+
+### Spend Limits
+
+To cap what you spend, set monthly or daily spend limits on the [Spend Limits](https://wiro.ai/panel/wallet/limits) page or with the `/SpendLimit` endpoints: for the whole wallet, one API key, one team member, one way in such as the API or the LLM gateway, or one agent. Once a limit is reached, new work it covers is refused with error code `93`, and an alert email can warn you before that. See [Spend Limits](/docs/organizations-billing#spend-limits).

@@ -3689,6 +3689,27 @@ request is different: its stream is already open, so it answers `200` and ends
 with `response.failed` carrying code `permission_denied` and the same message,
 like other errors that happen when the run is submitted.
 
+A run refused by a [spend limit](/docs/organizations-billing#spend-limits) of
+the key's workspace (Wiro error code `93`) gets HTTP `402` with Wiro's message,
+which names the limit and when it resets. Chat and Responses return type
+`insufficient_quota`, code `spend_limit_reached` and param `null`; Anthropic
+routes return type `billing_error`. Nothing runs and nothing is charged, and
+SDKs do not retry it: send the request again only after the limit resets or is
+raised. A streamed Responses request ends with `response.failed` carrying code
+`spend_limit_reached` instead, like other errors that happen when the run is
+submitted.
+
+```json
+{
+  "error": {
+    "message": "This API key's monthly spend limit is reached ($50.20 of $50.00). It resets on December 1, 2026 at 00:00 UTC.",
+    "type": "insufficient_quota",
+    "code": "spend_limit_reached",
+    "param": null
+  }
+}
+```
+
 Common codes include `invalid_model`, `model_not_found`,
 `unsupported_model_type`, `unsupported_parameter`, `response_not_found`,
 `response_chain_too_deep`, `invalid_generation_id`, `generation_not_found`,
@@ -5274,6 +5295,10 @@ Successful runs only (`pexit: "0"`). Cost recorded in `totalcost` field of Task/
 
 Pricing page: https://wiro.ai/product/pricing
 
+## Spend Limits
+
+To cap what you spend, set monthly or daily spend limits on the [Spend Limits](https://wiro.ai/panel/wallet/limits) page or with the `/SpendLimit` endpoints: for the whole wallet, one API key, one team member, one way in such as the API or the LLM gateway, or one agent. Once a limit is reached, new work it covers is refused with error code `93`, and an alert email can warn you before that. See [Spend Limits](/docs/organizations-billing#spend-limits).
+
 ---
 
 # Concurrency Limits
@@ -5378,6 +5403,7 @@ Understand API error responses, error codes, and how to handle them.
 |------|----------|-------------|
 | `0` | General | Server-side errors, validation failures, missing parameters |
 | `1` | Not Found | Resource not found or not accessible |
+| `93` | Spend Limit | A spend limit of the workspace is reached. See [Spend Limits](/docs/organizations-billing#spend-limits) |
 | `96` | Concurrency Limit | Too many concurrent tasks for your balance |
 | `97` | Insufficient Balance | Not enough funds to run the model |
 | `98` | Authentication Required | Sign in required to access this model |
@@ -5408,6 +5434,7 @@ Public endpoints such as `Tool/List` and `Agent/List` still answer a key whose c
 
 | Code | Message | Action |
 |------|---------|--------|
+| `93` | Spend limit reached (the message names the limit and when it resets) | Wait for the reset or raise the limit on the [Spend Limits](https://wiro.ai/panel/wallet/limits) page; retrying does not help before that |
 | `96` | Concurrent task limit reached | Wait for task to finish or add funds |
 | `97` | Insufficient balance | Add funds ($0.50 min, $10 for training) |
 | `98` | Sign in required | Model requires registered account |
@@ -6471,7 +6498,7 @@ Always available:
 
 | Tool | Description |
 |------|-------------|
-| `get_account` | Show which workspace the connected project belongs to, its wallet balance and, when you ask (`recent_transactions`, `transactions_start`), the wallet's recent transactions |
+| `get_account` | Show which workspace the connected project belongs to, its wallet balance, its spend limits (each with what it has used this period and whether it is used up) and, when you ask (`recent_transactions`, `transactions_start`), the wallet's recent transactions |
 | `get_playbook` | Step-by-step guides: `getting-started`, `models`, `workflows`, `workflow-graph`, `workflow-agent`, `studio`, `agents`, `billing` |
 | `search_docs` | Search Wiro documentation |
 
@@ -6492,6 +6519,14 @@ an agent to a Wiro project with `bind_agent_project` and graph replacements also
 wait for `confirm: true`; a graph replacement's summary shows the old and new
 value of each step input that changes. No tool adds funds or takes a card
 payment.
+
+Calls through the MCP server count toward the workspace's
+[spend limits](/docs/organizations-billing#spend-limits), on the `mcp` surface (the Wiro browser extensions' calls on the `extension`
+surface).
+When a limit refuses work (error code `93`), the tool returns an error with
+Wiro's message and a note: nothing ran and nothing was charged, do not try
+again until the limit resets or someone who manages it raises it, and limits
+are managed at [wiro.ai/panel/wallet/limits](https://wiro.ai/panel/wallet/limits).
 
 If a generation exceeds the wait budget, continue with `wait_for_task` using
 the returned token. Do not call `run_model` again for the same request.
@@ -6876,7 +6911,7 @@ A resume runs the remaining steps exactly as the run started them, with the same
 - Nothing is charged when a run starts. Each model step is a normal [model task](/docs/run-a-model), billed when it finishes successfully at that model's price. Failed steps are not charged, and utility steps are free.
 - To start, the wallet must hold $0.50 for each model step the run will execute (up to the breakpoint, when one is set). Otherwise the run is refused with code `97`, `Insufficient balance`. The [concurrency limit](/docs/concurrency-limits) also applies (code `96`).
 - The expected cost of a run is the sum of the model prices for the settings each step uses, from [Tool/Detail](/docs/models). A run's `totalcost` shows the list price of the steps finished so far, and once the run has ended `chargedcost` and `discountamount` show what the wallet paid. `chargedcost` is `null` while a step's charge is still settling.
-- In a team workspace, the team's spend limits and model access rules apply when a run starts.
+- The workspace's [spend limits](/docs/organizations-billing#spend-limits) apply when a run starts or resumes: once a limit that covers the run is reached, it is refused with code `93`. In a team workspace, the team's model access rules apply too.
 
 ## **POST** /Workflow/List
 
@@ -7462,6 +7497,7 @@ Business errors come back with HTTP 200, `result: false` and an `errors` array. 
 | Message | Code | When |
 |---------|------|------|
 | `Insufficient balance` | 97 | Send or SendForm with less than $10 spendable. The response adds `walletUsd` and `minTopup`. |
+| A spend limit refusal, such as `Your monthly spend limit is reached ($100.40 of $100.00). It resets on December 1, 2026 at 00:00 UTC.` | 93 | Send or SendForm while a [spend limit](/docs/organizations-billing#spend-limits) that covers the message is used up. Nothing is charged. |
 | `Request parameter [message] required` | 0 | No message, and no file on SendForm. |
 | `message exceeds the 16KB limit.` | 0 | The message is longer than 16 KB. |
 | `sessionkey has invalid format` | 0 | A session name with other characters, `:cron:`, or more than 100 characters. |
@@ -7859,6 +7895,7 @@ Business errors come back with HTTP 200, `result: false` and an `errors` array, 
 | Message | Code | When |
 |---------|------|------|
 | `Insufficient balance` | 97 | Send or SendForm with less than $10 spendable. The response adds `walletUsd` and `minTopup`. |
+| A spend limit refusal, such as `Your monthly spend limit is reached ($100.40 of $100.00). It resets on December 1, 2026 at 00:00 UTC.` | 93 | Send or SendForm while a [spend limit](/docs/organizations-billing#spend-limits) that covers the message is used up. Nothing is charged. |
 | `Request parameter [message] required` | 0 | Send without a message, or SendForm with neither a message nor a file. |
 | `Invalid model: <model> is not in the selectable model allowlist.` | 0 | `model` is not a selectable slug in Studio/Status. |
 | `A Studio session name may contain only letters, digits, ".", "_", ":" and "-", at most 128 characters, and cannot end in "-r" followed by a number. Nothing was sent or charged.` | 0 | Send or SendForm with a session name outside that rule. |
@@ -11460,6 +11497,7 @@ Agent-specific errors you may encounter:
 | `User agent not found` (code `95`) | `Message/Send`, `Message/History`, `Message/Sessions`, `Message/DeleteSession`, `Message/RenameSession` or `Message/Delete` called for an agent that has been deleted |
 | The sentence for the agent's status: `Agent is stopped. Start it before sending messages.` (status `0`), `Agent is stopping. Please wait a moment and try again.` (status `1`, when the agent is shutting down to stay stopped), `Agent is restarting. Please wait a moment and try again.` (status `1`, when the agent is shutting down to start again, as in a [restart](#automatic-restart)), `Agent is starting up. Please wait a moment and try again.` (status `2` or `3`), `Agent is in error state. Restart it before sending messages.` (status `5`) or `Agent setup is incomplete. Complete the setup before sending messages.` (status `6`) | `Message/Send` while the agent isn't running (any status other than `4`), for every message Wiro doesn't answer itself as a setup reply (see [Replies Wiro handles itself](/docs/agent-messaging#handled-setup-replies)). Response includes `agentstatus` (the integer) so your client can branch on it. |
 | `Agent has no remaining credits. Renew your subscription or buy a credit pack to continue.` | `Message/Send` while `remainingcredits <= 0`. Response includes `agentbalance`, so your client can offer to buy credits. |
+| A spend limit refusal (code `93`), such as `This agent's monthly spend limit is reached ($20.35 of $20.00). It resets on December 1, 2026 at 00:00 UTC.` | `Message/Send` while the agent's own [spend limit](/docs/organizations-billing#spend-limits) is used up; the response includes `agentstatus`. Paying from the wallet with `Deploy`, `CreateSubscriptionCheckout`, `UpgradeTier`, `RenewSubscription` or `CreateExtraCreditCheckout` is refused the same way when the price would take spending over a limit of the wallet. Nothing runs and nothing is charged |
 | `Message not found` | `Detail` / `Cancel` with invalid messageguid |
 | `Message cannot be cancelled (status: {status})` | `Cancel` on a message that's already in a terminal state |
 | `Invalid redirect URL` | OAuth `Connect` with non-HTTPS URL |
@@ -25684,8 +25722,8 @@ A single user can own multiple organizations, and each organization can contain 
 | Role | Scope | Permissions |
 |------|-------|-------------|
 | **Owner** | Organization | Create and remove teams; edit, remove, and restore the organization. The owner is added as an admin of every team they create and can't be demoted to member, so they also have all Admin permissions there |
-| **Admin** | Team | Edit team settings (name, spend limit, budget alert, model access); invite members and cancel invitations; change roles and per-member spend limits; remove members; deploy and manage team agents; edit and delete team projects; transfer agents, projects, and credit; redeem coupons into the team wallet; set up, change, and turn off the team wallet's auto-pay |
-| **Member** | Team | Run models and create projects in the team workspace (billed to the team wallet), chat with team agents, and view the member list and every member's spending |
+| **Admin** | Team | Edit team settings (name, model access); set the team's spend limits, member limits included; invite members and cancel invitations; change roles; remove members; deploy and manage team agents; edit and delete team projects; transfer agents, projects, and credit; redeem coupons into the team wallet; set up, change, and turn off the team wallet's auto-pay |
+| **Member** | Team | Run models and create projects in the team workspace (billed to the team wallet), chat with team agents, and view the member list, the team's spend limits and every member's spending |
 
 The organization creator is automatically the owner. When the owner creates a team, including the Default Team created with the organization, they are added to it as an admin member. Additional members are invited by email and join once they accept the invitation, signed in with the invited email address, within 72 hours.
 
@@ -25705,7 +25743,7 @@ For step-by-step instructions, see [Managing Teams](/docs/organizations-managing
 ## What's Next
 
 - [Managing Teams](/docs/organizations-managing-teams): Create organizations, invite members, manage roles and permissions
-- [Team Billing & Spending](/docs/organizations-billing): Wallets, spend limits, model access controls, and budget alerts
+- [Team Billing & Spending](/docs/organizations-billing): Wallets, spend limits and their alert emails, and model access controls
 - [Team API Access](/docs/organizations-api-access): How workspace context works with API keys and context guards
 
 ---
@@ -25718,7 +25756,7 @@ Creating, changing, deleting or restoring organizations and teams, managing memb
 
 ## **POST** /Organization/Create
 
-Creates a new organization. The caller automatically becomes the organization **owner**, and only the owner can create teams, delete the organization, or restore it after deletion. A team named `Default Team` is created with it automatically: the caller is added as its admin, and it gets its own wallet (starting at $0.00), no spend limit, and access to all models. Use `/Team/Create` only for additional teams.
+Creates a new organization. The caller automatically becomes the organization **owner**, and only the owner can create teams, delete the organization, or restore it after deletion. A team named `Default Team` is created with it automatically: the caller is added as its admin, and it gets its own wallet (starting at $0.00), no spend limits, and access to all models. Use `/Team/Create` only for additional teams.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -25741,8 +25779,6 @@ Creates a new organization. The caller automatically becomes the organization **
           "guid": "7c1e5a90-2f3b-4d8e-a6c4-9b0d1e2f3a45",
           "organizationguid": "1b43089c-3b56-4638-b4ac-24268bb1d970",
           "name": "Default Team",
-          "spendlimit": null,
-          "budgetalertpct": 80,
           "modelaccess": "all",
           "status": 1
         }
@@ -25774,8 +25810,6 @@ Creates a team inside an organization. Only the organization owner can create te
       "organizationguid": "1b43089c-3b56-4638-b4ac-24268bb1d970",
       "name": "Engineering",
       "description": null,
-      "spendlimit": null,
-      "budgetalertpct": 80,
       "modelaccess": "all",
       "allowedmodelids": null,
       "blockedmodelids": null,
@@ -25810,8 +25844,7 @@ Inviting an address that already has an unexpired invitation to the team, or tha
       "role": "member",
       "status": "pending",
       "inviteemail": "teammate@example.com",
-      "inviteexpiry": "1757923200",
-      "spendlimit": null
+      "inviteexpiry": "1757923200"
     }
   ]
 }
@@ -25883,7 +25916,6 @@ Lists all members of a team, including pending invitations. Any active member of
       "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
       "role": "admin",
       "status": "active",
-      "spendlimit": null,
       "user": {
         "firstname": "John",
         "lastname": "Doe",
@@ -25899,8 +25931,7 @@ Lists all members of a team, including pending invitations. Any active member of
       "role": "member",
       "status": "pending",
       "inviteemail": "jane@example.com",
-      "inviteexpiry": "1757923200",
-      "spendlimit": null
+      "inviteexpiry": "1757923200"
     }
   ]
 }
@@ -25922,13 +25953,14 @@ Removes a member from the team. Organization owners and team admins can remove m
 
 ## **POST** /Team/Member/UpdateRole
 
-Updates a member's role and, optionally, their member spend limit in the team. Team admins and the organization owner can change a member's role between **admin** and **member**. A team must always keep at least one admin: demoting the last admin fails with `Cannot demote the last admin. Assign another admin first.` Nobody, the owner included, can change the organization owner's role to member: the request fails with `The organization owner is always an admin of their teams and can't be made a member`.
+Updates a member's role in the team. Team admins and the organization owner can change a member's role between **admin** and **member**. A team must always keep at least one admin: demoting the last admin fails with `Cannot demote the last admin. Assign another admin first.` Nobody, the owner included, can change the organization owner's role to member: the request fails with `The organization owner is always an admin of their teams and can't be made a member`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `teammemberguid` | string | Yes | The member's `guid` from `/Team/Member/List` |
-| `role` | string | Yes | New role: `"admin"` or `"member"`. To change only the spend limit, send the member's current role |
-| `spendlimit` | number | No | Member spend limit in USD. `0` or `null` removes the limit; omit it to keep the current limit |
+| `role` | string | Yes | New role: `"admin"` or `"member"` |
+
+The call changes only the role. To cap what a member can spend in the team, add a member limit with [`/SpendLimit/Set`](/docs/organizations-billing#spend-limit-set) (`scope: "member"`, with the member's `useruuid` as `target`), or on the [Spend Limits](https://wiro.ai/panel/wallet/limits) page.
 
 ## **POST** /Team/Remove
 
@@ -26046,7 +26078,7 @@ Credit can be transferred between your personal wallet and team wallets. Transfe
 
 # Team Billing & Spending
 
-Manage team wallets, set spend limits, control model access, and track usage across members.
+Manage team wallets, set spend limits for personal accounts and teams, control model access, and track usage across members.
 
 ## Team Wallets
 
@@ -26073,34 +26105,348 @@ In team context, the pre-run balance check and the [concurrency limit](/docs/con
 
 ## Spend Limits
 
-Admins can set spend limits at two levels to control costs:
+A spend limit caps what a wallet can spend in a month or a day. Limits work the same way for a personal account's wallet and for a team's wallet. The limits of the workspace a call runs in apply: a team project's API key runs in its team, a personal project's key in your personal account, and the dashboard in the workspace you have selected.
 
-| Limit Type | Set by | Applies to | Effect when reached |
-|-----------|--------|------------|---------------------|
-| Team spend limit | Admin / Owner | Entire team | All tasks rejected for all members |
-| Member spend limit | Admin / Owner | Individual member | Tasks rejected for that member only |
+Manage limits on the [Spend Limits](https://wiro.ai/panel/wallet/limits) page of the dashboard, for your personal account or for the team workspace you have selected, or with the `/SpendLimit` endpoints below. Team and member limits set before this system were moved into it as monthly limits of the same amount.
 
-Both limits count **all-time** spending in the team. They are not monthly budgets and never reset; raise or remove the limit to let work continue. Limits are checked when a task or workflow starts, so a task that is already running finishes even if it takes spending past the limit.
+### What a Limit Caps
 
-A member's spending includes their dashboard runs in the team workspace and every run made with the API key of a team project they created.
+Each limit caps one scope of the wallet's spending:
 
-Once spending is over a limit, new tasks fail with `Team spend limit has been reached` or `Your personal spend limit in this team has been reached`.
+| Scope | `target` | What it caps |
+|-------|----------|--------------|
+| `account` | None | The whole wallet. In a team, the whole team's spending |
+| `member` | The member's `useruuid` from `/Team/Member/List` | One team member's spending in the team (team wallets only). A member's spending includes their dashboard runs in the team workspace and every run made with the API key of a team project they created |
+| `project` | The project's `id` from `/Project/List` | One API key: what is spent with that project's key |
+| `surface` | `web`, `api`, `mcp`, `llm-gateway`, `extension` or `agent` | One way in (see Surfaces below) |
+| `agent` | The agent's `guid` (its `useragentguid`) | One deployed agent: what the agent itself spends, its own model runs and the credits its replies use (100 credits = $1). Its plan, upgrades and credit packs count toward the wallet's other limits, not this one |
 
-Each team also has a **budget alert threshold**: 50%, 80% (the default) or 90% of the team spend limit, set in **Team Settings** or with `budgetalertpct` on `/Team/Update`. When the team's total spending reaches it, every team admin gets one email. The alert is sent once and is re-armed whenever the team spend limit is saved (saving Team Settings, or sending `spendlimit` to `/Team/Update`), even if the value is unchanged. No alert is sent while the team has no spend limit. This gives you time to increase the limit or pause operations before tasks start failing.
+### Surfaces
 
-Team-level limits are set in **Team Settings** or via `/Team/Update` (see below). Member-level limits are set on the team's **Members** page, or via `/Team/Member/UpdateRole` with `teammemberguid` (the member's `guid` from `/Team/Member/List`), `role` (required; send the member's current role to keep it) and `spendlimit`. Set `spendlimit` to `0` or `null` to remove a member limit.
+| Surface | Label | Covers |
+|---------|-------|--------|
+| `web` | the dashboard | The Wiro dashboard, including Studio and the Workflow Agent used there |
+| `api` | the API | Calls with an API key |
+| `mcp` | MCP | The [Wiro MCP server](/docs/wiro-mcp-server), hosted or the npm package |
+| `llm-gateway` | the LLM gateway | The OpenAI and Anthropic compatible [LLM gateway](/docs/completions-api) |
+| `extension` | the browser extensions | The Wiro browser extensions |
+| `agent` | agents | Your deployed agents' own runs |
+
+Studio and Workflow Agent messages count on the surface they were sent from. Refusal messages and `/SpendLimit/Usage` name a surface by its label.
+
+### Periods and Amounts
+
+A limit's `period` is `month` (the default), which resets on the 1st of each month at 00:00 UTC, or `day`, which resets every day at 00:00 UTC. `amountusd` is a positive amount in USD, rounded to cents. A scope and target can have one monthly limit and one daily limit.
+
+### What Counts
+
+Every charge to the wallet for usage counts: model runs, workflow runs, realtime sessions, Studio, the Workflow Agent, agent plans, upgrades and credit packs. Deposits are not spending.
+
+### When Limits Are Checked
+
+Limits are checked before work starts:
+
+- Model runs, workflow runs and workflow resumes
+- Studio and Workflow Agent messages
+- An agent deploy, upgrade, renewal or credit pack purchase that a person starts
+- Messages to an agent, against that agent's own limit
+
+When the price of the work is known before it starts, as for fixed-price models and agent purchases, the work is refused if spending so far plus that price would go over the limit. Otherwise it is refused once spending has reached the limit.
+
+Work that is already running finishes and is charged. A realtime session ends after the turn that uses up a limit, the same way it ends when the balance runs out. Automatic monthly renewals of running agents are never refused by a limit, but they still count toward it.
+
+### When a Limit Is Reached
+
+New work the limit covers is refused with HTTP `200`, `result: false` and error code `93`. The message names the limit and says when it resets:
+
+```json
+{
+  "result": false,
+  "errors": [
+    {
+      "code": 93,
+      "message": "This API key's monthly spend limit is reached ($50.20 of $50.00). It resets on December 1, 2026 at 00:00 UTC."
+    }
+  ]
+}
+```
+
+When the price of the work is known before it starts, the message says what is left instead, for example `This team's monthly spend limit has $3.10 left of $500.00, and this run costs $4.00. It resets on December 1, 2026 at 00:00 UTC.` A daily limit says `daily` instead of `monthly`, and its message ends with `It resets at 00:00 UTC.`
+
+| Limit | The message starts with |
+|-------|-------------------------|
+| A personal account's `account` limit | `Your monthly spend limit` |
+| A team's `account` limit | `This team's monthly spend limit` |
+| `member` | `Your monthly spend limit in this team` |
+| `project` | `This API key's monthly spend limit` |
+| `surface` | `The monthly spend limit for` and the surface's label, for example `The monthly spend limit for the LLM gateway` |
+| `agent` | `This agent's monthly spend limit` |
+
+Nothing runs and nothing is charged. Retrying does not help until the limit resets or someone who manages it raises it. Through the [LLM gateway](/docs/completions-api#gateway-errors) the refusal is an HTTP `402` error with code `spend_limit_reached`, and the [MCP server](/docs/wiro-mcp-server) returns it as a tool error.
+
+### Alert Emails
+
+A limit sends an alert email when spending reaches its `alertpct`: 50, 80 (the default) or 90 percent of the limit, or `null` for no alert email. It sends a used-up email when the limit is reached. Each email goes out once per limit and period, and changing the limit re-arms both for the current period.
+
+A personal account's limits email the account. A team's limits email the team's admins and the organization owner, and also the member a member limit is for, the person who created the API key a key limit is for, and the owner of the agent an agent limit is for.
+
+### Who Can Change Limits
+
+- **Personal account**: the account itself
+- **Team**: the organization owner or a team admin. The owner of an agent can also set that agent's own limit
+
+Any team member can read the team's limits and usage with `/SpendLimit/List` and `/SpendLimit/Usage`, which also work with an API key. `/SpendLimit/Set` and `/SpendLimit/Remove` work only while signed in, in the dashboard or with the user's Bearer token: with an API key they fail with HTTP `401`, so a key can never lift its own limit.
+
+## **POST** /SpendLimit/List
+
+Returns the spend limits of the call's workspace, each with what has been spent in its current period. A team project's API key reads its team, a personal project's key your personal account, and the dashboard the workspace you have selected. Any team member can call it, and it works with an API key. Send an empty body: `{}`.
+
+```json
+// Response
+{
+  "result": true,
+  "errors": [],
+  "workspace": {
+    "type": "team",
+    "teamguid": "0d9aade4-d31b-4b97-88f3-a90482f080ea",
+    "canmanage": false
+  },
+  "limits": [
+    {
+      "guid": "e93fc393-aedd-4828-a6be-fbc2853d3202",
+      "scope": "account",
+      "target": "",
+      "targetlabel": null,
+      "period": "month",
+      "amountusd": 500,
+      "alertpct": 90,
+      "periodstart": 1793491200,
+      "resetsat": 1796083200,
+      "createdat": 1793805600,
+      "updatedat": 1793805600,
+      "spentusd": 248.7
+    },
+    {
+      "guid": "f4134ddb-e837-44a9-9b36-0af44241f3ef",
+      "scope": "member",
+      "target": "3f5a9c20-6d41-4b8e-a1c7-5e9d0f2b4c61",
+      "targetlabel": "Jane Doe",
+      "period": "month",
+      "amountusd": 150,
+      "alertpct": 80,
+      "periodstart": 1793491200,
+      "resetsat": 1796083200,
+      "createdat": 1793805600,
+      "updatedat": 1793805600,
+      "spentusd": 120.5
+    },
+    {
+      "guid": "15be7fb3-c602-4ff1-a3f1-3afaa3996974",
+      "scope": "project",
+      "target": "48211",
+      "targetlabel": "Production",
+      "period": "month",
+      "amountusd": 100,
+      "alertpct": 80,
+      "periodstart": 1793491200,
+      "resetsat": 1796083200,
+      "createdat": 1794474300,
+      "updatedat": 1794474300,
+      "spentusd": 88.2
+    }
+  ]
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `workspace.type` | `team` or `personal` |
+| `workspace.teamguid` | The team's guid, or `null` for a personal account |
+| `workspace.canmanage` | Whether the caller can change limits in this workspace. The owner of an agent can still set that agent's own limit when it is `false` |
+| `limits[].guid` | The limit's guid, for `/SpendLimit/Remove` |
+| `limits[].scope` | `account`, `member`, `project`, `surface` or `agent` |
+| `limits[].target` | The member's `useruuid`, the project id, the surface or the agent's guid; `""` for `account` |
+| `limits[].targetlabel` | The member's name, the project's name, the agent's title or the surface's label; `null` for `account` |
+| `limits[].period` | `month` or `day` |
+| `limits[].amountusd` | The limit in USD |
+| `limits[].alertpct` | `50`, `80` or `90`, or `null` for no alert email |
+| `limits[].periodstart` | Start of the current period, in Unix seconds |
+| `limits[].resetsat` | When the current period ends and the limit resets, in Unix seconds |
+| `limits[].createdat`, `limits[].updatedat` | When the limit was added and last changed, in Unix seconds |
+| `limits[].spentusd` | What has been spent in the current period, in USD |
+
+## **POST** /SpendLimit/Set
+
+Adds a spend limit to the call's workspace, or changes the existing limit with the same `scope`, `target` and `period`. Changing a limit re-arms its emails for the current period. In a team, only the organization owner or a team admin can call it, and the owner of an agent can set that agent's own limit. It works only while signed in, in the dashboard or with the user's Bearer token: with an API key it fails with HTTP `401`, so a key can never lift its own limit.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `scope` | string | Yes | `"account"`, `"member"`, `"project"`, `"surface"` or `"agent"`. See [Spend Limits](#spend-limits) |
+| `target` | string | For every scope but `account` | The member's `useruuid`, the project's `id`, the surface (`web`, `api`, `mcp`, `llm-gateway`, `extension` or `agent`) or the agent's guid. Leave it out for `account` |
+| `period` | string | No | `"month"` or `"day"`. Default: `"month"` |
+| `amountusd` | number | Yes | The limit in USD, a positive number. Rounded to cents |
+| `alertpct` | number | No | When the alert email goes out: `50`, `80` or `90` percent of the limit, or `null` for no alert email. Default: `80` |
+
+### Examples
+
+**Cap the whole wallet at $500 a month, with the alert at 90%:**
+
+```json
+{
+  "scope": "account",
+  "amountusd": 500,
+  "alertpct": 90
+}
+```
+
+**Cap one API key at $100 a month:**
+
+```json
+{
+  "scope": "project",
+  "target": "48211",
+  "period": "month",
+  "amountusd": 100
+}
+```
+
+**Cap the LLM gateway at $25 a day, with no alert email:**
+
+```json
+{
+  "scope": "surface",
+  "target": "llm-gateway",
+  "period": "day",
+  "amountusd": 25,
+  "alertpct": null
+}
+```
+
+`limit` is the limit as saved, shaped like a row of `/SpendLimit/List`:
+
+```json
+// Response
+{
+  "result": true,
+  "errors": [],
+  "limit": {
+    "guid": "15be7fb3-c602-4ff1-a3f1-3afaa3996974",
+    "scope": "project",
+    "target": "48211",
+    "targetlabel": "Production",
+    "period": "month",
+    "amountusd": 100,
+    "alertpct": 80,
+    "periodstart": 1793491200,
+    "resetsat": 1796083200,
+    "createdat": 1794474300,
+    "updatedat": 1794474300,
+    "spentusd": 61.4
+  }
+}
+```
+
+### Errors
+
+| Error | Cause |
+|-------|-------|
+| `scope must be one of account, member, project, surface, agent.` | `scope` is missing or not one of the five scopes |
+| `Member limits exist only in a team workspace.` | A `member` limit in a personal account |
+| `target is required for this scope.` | No `target` for a `member`, `project`, `surface` or `agent` limit |
+| `A surface is one of web, api, mcp, llm-gateway, extension, agent.` | A `surface` limit with another `target` |
+| `target must be a project id.` | A `project` limit whose `target` is not a project id |
+| `period must be month or day.` | Another `period` |
+| `amountusd must be a positive number.` | `amountusd` is missing, zero or negative |
+| `alertpct must be 50, 80 or 90, or null for no alert.` | Another `alertpct` |
+| `Only a team admin or the organization owner can change this limit.` | In a team, the caller is not a team admin or the organization owner (or, for an `agent` limit, the agent's owner) |
+| `That person is not an active member of this team.` | A `member` limit for someone who is not an active member of the team |
+| `That API key's project is not in this workspace.` | A `project` limit for a project of another workspace |
+| `That agent is not in this workspace.` | An `agent` limit for an agent of another workspace |
+
+## **POST** /SpendLimit/Remove
+
+Removes a spend limit from the call's workspace. The people who can set a limit can remove it, and only while signed in: with an API key it fails with HTTP `401`.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `guid` | string | Yes | The limit's `guid` from `/SpendLimit/List` |
+
+```json
+// Response
+{
+  "result": true,
+  "errors": []
+}
+```
+
+| Error | Cause |
+|-------|-------|
+| `guid is required.` | No `guid` was sent |
+| `Limit not found in this workspace.` | The guid is not a limit of the call's workspace, or it was already removed |
+| `Only a team admin or the organization owner can change this limit.` | In a team, the caller can't manage this limit |
+
+## **POST** /SpendLimit/Usage
+
+Returns what the call's workspace has spent this month or today, in total and by surface, member, API key and agent. A team project's API key reads its team, a personal project's key your personal account, and the dashboard the workspace you have selected. Any team member can call it, and it works with an API key.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `period` | string | No | `"month"` or `"day"`. Default: `"month"` |
+
+```json
+// Response
+{
+  "result": true,
+  "errors": [],
+  "usage": {
+    "period": "month",
+    "periodstart": 1793491200,
+    "resetsat": 1796083200,
+    "totalusd": 248.7,
+    "surfaces": [
+      { "surface": "web", "label": "the dashboard", "spentusd": 40.1 },
+      { "surface": "api", "label": "the API", "spentusd": 168.2 },
+      { "surface": "mcp", "label": "MCP", "spentusd": 12.5 },
+      { "surface": "llm-gateway", "label": "the LLM gateway", "spentusd": 7.9 },
+      { "surface": "extension", "label": "the browser extensions", "spentusd": 0 },
+      { "surface": "agent", "label": "agents", "spentusd": 20 }
+    ],
+    "members": [
+      { "useruuid": "3f5a9c20-6d41-4b8e-a1c7-5e9d0f2b4c61", "label": "Jane Doe", "spentusd": 120.5 },
+      { "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", "label": "John Doe", "spentusd": 108.2 }
+    ],
+    "projects": [
+      { "projectid": "48211", "label": "Production", "spentusd": 88.2 },
+      { "projectid": "48377", "label": "Staging", "spentusd": 80 }
+    ],
+    "agents": [
+      { "useragentguid": "6e4bbd6f-6b73-4421-adae-e9599ba2e317", "label": "Support Agent", "spentusd": 20 }
+    ]
+  }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `usage.period` | `month` or `day` |
+| `usage.periodstart`, `usage.resetsat` | Start and end of the period, in Unix seconds |
+| `usage.totalusd` | What the wallet has spent in the period, in USD |
+| `usage.surfaces` | One row per surface, always in the order `web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, with its label |
+| `usage.members` | Spending per team member, with the member's name as `label`. Empty for a personal account |
+| `usage.projects` | Spending per API key, with the project's name as `label` |
+| `usage.agents` | Spending per deployed agent, with the agent's title as `label` |
+
+For other breakdowns, `/Project/UsageSummary` gives usage per project and `/Task/Stat` gives time-series task execution data. Both filter by the active workspace.
 
 ## **POST** /Team/Update
 
-Updates team settings, including model access controls, the team-level spend limit and the budget alert threshold. Only the organization owner and team admins can call it, and only while signed in: with an API key it fails with HTTP `401`.
+Updates team settings, including model access controls. Only the organization owner and team admins can call it, and only while signed in: with an API key it fails with HTTP `401`. Spend limits are not team settings: set them with [`/SpendLimit/Set`](#spend-limit-set).
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `teamguid` | string | Yes | Team guid |
 | `name` | string | No | New team name |
 | `description` | string | No | Team description |
-| `spendlimit` | number | No | Team-level spend limit in USD. Set to `0` or `null` to remove. Sending it re-arms the budget alert. |
-| `budgetalertpct` | number | No | Budget alert threshold as a percentage of `spendlimit`. The dashboard offers 50, 80 and 90. Default: `80` |
 | `modelaccess` | string | No | Access mode: `"all"`, `"allowlist"`, or `"blocklist"`. Default: `"all"` |
 | `allowedmodelids` | array | No | List of model IDs that are allowed. Used when `modelaccess` is `"allowlist"`. |
 | `blockedmodelids` | array | No | List of model IDs that are blocked. Used when `modelaccess` is `"blocklist"`. |
@@ -26183,59 +26529,6 @@ When a team member tries to run a restricted model through `/Run`, the dashboard
   ]
 }
 ```
-
-## **POST** /Team/Spending/Summary
-
-Returns the team's all-time spending totals and a per-member breakdown. Any active team member can call it, and the response includes every active member's spending, spend limit, name and email. Anyone else gets `You must be a member of this team to perform this action`.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `teamguid` | string | Yes | Team guid |
-
-```json
-// Response
-{
-  "result": true,
-  "errors": [],
-  "teamtotal": 45.23,
-  "playgroundTotal": 32.10,
-  "apiTotal": 13.13,
-  "spending": [
-    {
-      "memberguid": "7c1e2f4a-0b9d-4e3a-9f51-2d6c8a0b1e77",
-      "useruuid": "3f5a9c20-6d41-4b8e-a1c7-5e9d0f2b4c61",
-      "role": "admin",
-      "spendlimit": 100.00,
-      "spent": 12.50,
-      "playgroundSpent": 8.30,
-      "apiSpent": 4.20,
-      "user": {
-        "firstname": "Jane",
-        "lastname": "Doe",
-        "email": "jane@example.com",
-        "avatar": null,
-        "avatarinitials": "JD"
-      }
-    }
-  ]
-}
-```
-
-| Field | Description |
-|-------|-------------|
-| `teamtotal` | All-time spending on model runs billed to the team wallet |
-| `playgroundTotal` | Part of `teamtotal` from dashboard (playground) runs |
-| `apiTotal` | Part of `teamtotal` from project API key runs |
-| `spending` | One entry per active member |
-| `spending[].memberguid` | The member's team membership guid (used by `/Team/Member/UpdateRole`) |
-| `spending[].spendlimit` | The member's spend limit in USD (`null` if not set) |
-| `spending[].spent` | The member's all-time spending in the team |
-| `spending[].playgroundSpent` | Dashboard part of `spent` |
-| `spending[].apiSpent` | API key part of `spent`, from team projects the member created |
-
-`spending` lists only current members, so it can add up to less than `teamtotal`. The team-level spend limit is not part of this response.
-
-For project-level breakdown, call `/Project/UsageSummary` in team context. For time-series task execution data, call `/Task/Stat` in team context. Both automatically filter by the active workspace.
 
 ## **POST** /Team/TransferCredit
 
@@ -26362,9 +26655,9 @@ These examples use API-key-only authentication. For projects that use signature 
 
 Create a project inside a team to get a team API key, or use a personal project for personal context. The same `x-api-key` header works for both, with no extra configuration needed.
 
-A team project's API key works only while the user who created the project is an active member of the team or the owner of its organization. Once the creator is removed from the team, the key stops working right away, in your apps and in any agent that uses it. The project stays in the team. Requests with the key then fail with HTTP `401` and `The person who created this API key is no longer in its team. Ask a team admin for a new key.` Public endpoints such as `Agent/List` still answer, as if the request had no key. While the key works, runs made with it count toward the creator's member spend limit.
+A team project's API key works only while the user who created the project is an active member of the team or the owner of its organization. Once the creator is removed from the team, the key stops working right away, in your apps and in any agent that uses it. The project stays in the team. Requests with the key then fail with HTTP `401` and `The person who created this API key is no longer in its team. Ask a team admin for a new key.` Public endpoints such as `Agent/List` still answer, as if the request had no key. While the key works, runs made with it count toward the creator's member limit (see [Spend Limits](/docs/organizations-billing#spend-limits)).
 
-API keys can't change teams or organizations. `Organization/Create`, `Organization/Remove`, `Organization/Restore`, `Team/Create`, `Team/Update`, `Team/Remove`, `Team/Member/Invite`, `Team/Member/CancelInvite`, `Team/Member/UpdateRole`, `Team/Member/Remove`, `Team/TransferAgent`, `Team/TransferProject` and `Team/TransferCredit` need a signed-in user: use the dashboard, or send that user's Bearer token. With any API key, personal or team, they fail with HTTP `401` and `API keys can't manage teams or organizations. Sign in and try again.` Endpoints that only read, such as `Organization/List`, `Team/Member/List` and `Team/Spending/Summary`, work with an API key.
+API keys can't change teams or organizations. `Organization/Create`, `Organization/Remove`, `Organization/Restore`, `Team/Create`, `Team/Update`, `Team/Remove`, `Team/Member/Invite`, `Team/Member/CancelInvite`, `Team/Member/UpdateRole`, `Team/Member/Remove`, `Team/TransferAgent`, `Team/TransferProject` and `Team/TransferCredit` need a signed-in user: use the dashboard, or send that user's Bearer token. With any API key, personal or team, they fail with HTTP `401` and `API keys can't manage teams or organizations. Sign in and try again.` Endpoints that only read, such as `Organization/List`, `Team/Member/List`, `SpendLimit/List` and `SpendLimit/Usage`, work with an API key. `SpendLimit/Set` and `SpendLimit/Remove` also need a signed-in user and fail with HTTP `401` with an API key, so a key can never lift its own limit.
 
 ## What Gets Filtered by Context
 
@@ -26483,7 +26776,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
   -d '{"prompt": "A mountain landscape"}'
 ```
 
-The task is created with the team's `teamguid`. The cost is deducted from the team wallet. The task appears in the team's usage statistics. The team's model access rules and spend limits also apply. A model the team doesn't allow fails with "This model is not available for your team", and runs stop once the team or member spend limit is reached. See [Team Billing & Spending](/docs/organizations-billing).
+The task is created with the team's `teamguid`. The cost is deducted from the team wallet. The task appears in the team's usage statistics. The team's model access rules and spend limits also apply. A model the team doesn't allow fails with "This model is not available for your team", and runs are refused with code `93` once a spend limit that covers them is reached, such as the team's limit, the key creator's member limit or the key's own limit. See [Team Billing & Spending](/docs/organizations-billing).
 
 ### Listing Team Agents with API Key
 

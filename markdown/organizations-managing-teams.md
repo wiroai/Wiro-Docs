@@ -6,7 +6,7 @@ Creating, changing, deleting or restoring organizations and teams, managing memb
 
 ## **POST** /Organization/Create
 
-Creates a new organization. The caller automatically becomes the organization **owner**, and only the owner can create teams, delete the organization, or restore it after deletion. A team named `Default Team` is created with it automatically: the caller is added as its admin, and it gets its own wallet (starting at $0.00), no spend limit, and access to all models. Use `/Team/Create` only for additional teams.
+Creates a new organization. The caller automatically becomes the organization **owner**, and only the owner can create teams, delete the organization, or restore it after deletion. A team named `Default Team` is created with it automatically: the caller is added as its admin, and it gets its own wallet (starting at $0.00), no spend limits, and access to all models. Use `/Team/Create` only for additional teams.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -29,8 +29,6 @@ Creates a new organization. The caller automatically becomes the organization **
           "guid": "7c1e5a90-2f3b-4d8e-a6c4-9b0d1e2f3a45",
           "organizationguid": "1b43089c-3b56-4638-b4ac-24268bb1d970",
           "name": "Default Team",
-          "spendlimit": null,
-          "budgetalertpct": 80,
           "modelaccess": "all",
           "status": 1
         }
@@ -62,8 +60,6 @@ Creates a team inside an organization. Only the organization owner can create te
       "organizationguid": "1b43089c-3b56-4638-b4ac-24268bb1d970",
       "name": "Engineering",
       "description": null,
-      "spendlimit": null,
-      "budgetalertpct": 80,
       "modelaccess": "all",
       "allowedmodelids": null,
       "blockedmodelids": null,
@@ -98,8 +94,7 @@ Inviting an address that already has an unexpired invitation to the team, or tha
       "role": "member",
       "status": "pending",
       "inviteemail": "teammate@example.com",
-      "inviteexpiry": "1757923200",
-      "spendlimit": null
+      "inviteexpiry": "1757923200"
     }
   ]
 }
@@ -171,7 +166,6 @@ Lists all members of a team, including pending invitations. Any active member of
       "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
       "role": "admin",
       "status": "active",
-      "spendlimit": null,
       "user": {
         "firstname": "John",
         "lastname": "Doe",
@@ -187,8 +181,7 @@ Lists all members of a team, including pending invitations. Any active member of
       "role": "member",
       "status": "pending",
       "inviteemail": "jane@example.com",
-      "inviteexpiry": "1757923200",
-      "spendlimit": null
+      "inviteexpiry": "1757923200"
     }
   ]
 }
@@ -210,13 +203,14 @@ Removes a member from the team. Organization owners and team admins can remove m
 
 ## **POST** /Team/Member/UpdateRole
 
-Updates a member's role and, optionally, their member spend limit in the team. Team admins and the organization owner can change a member's role between **admin** and **member**. A team must always keep at least one admin: demoting the last admin fails with `Cannot demote the last admin. Assign another admin first.` Nobody, the owner included, can change the organization owner's role to member: the request fails with `The organization owner is always an admin of their teams and can't be made a member`.
+Updates a member's role in the team. Team admins and the organization owner can change a member's role between **admin** and **member**. A team must always keep at least one admin: demoting the last admin fails with `Cannot demote the last admin. Assign another admin first.` Nobody, the owner included, can change the organization owner's role to member: the request fails with `The organization owner is always an admin of their teams and can't be made a member`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `teammemberguid` | string | Yes | The member's `guid` from `/Team/Member/List` |
-| `role` | string | Yes | New role: `"admin"` or `"member"`. To change only the spend limit, send the member's current role |
-| `spendlimit` | number | No | Member spend limit in USD. `0` or `null` removes the limit; omit it to keep the current limit |
+| `role` | string | Yes | New role: `"admin"` or `"member"` |
+
+The call changes only the role. To cap what a member can spend in the team, add a member limit with [`/SpendLimit/Set`](/docs/organizations-billing#spend-limit-set) (`scope: "member"`, with the member's `useruuid` as `target`), or on the [Spend Limits](https://wiro.ai/panel/wallet/limits) page.
 
 ## **POST** /Team/Remove
 

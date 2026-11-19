@@ -28,6 +28,7 @@ Error codes indicate the category of the problem. Use these for conditional logi
 |------|----------|-------------|
 | `0` | General | Server-side errors, validation failures, missing parameters |
 | `1` | Not Found / Client | Resource not found or not accessible |
+| `93` | Spend Limit | A spend limit of the workspace is reached. See [Spend Limits](/docs/organizations-billing#spend-limits) |
 | `96` | Concurrency Limit | Too many concurrent tasks for your balance |
 | `97` | Insufficient Balance | Not enough funds to run the model |
 | `98` | Authentication Required | Sign in required to access this model |
@@ -87,6 +88,7 @@ These errors are returned by the `POST /Run/{owner}/{model}` endpoint.
 | Error | Code | Message | Action |
 |-------|------|---------|--------|
 | Insufficient balance | `97` | "Insufficient balance" | [Add funds](https://wiro.ai/panel/billing): minimum $0.50 required (or $10 for training models) |
+| Spend limit reached | `93` | "This API key's monthly spend limit is reached ($50.20 of $50.00). It resets on December 1, 2026 at 00:00 UTC." | Wait for the limit to reset, or raise it on the [Spend Limits](https://wiro.ai/panel/wallet/limits) page. The message names the limit. See [Spend Limits](/docs/organizations-billing#spend-limits) |
 | Concurrent task limit | `96` | "You have reached your concurrent task limit. With your current balance of ${balance}, you can run up to {maxConcurrent} tasks at the same time. Add funds to increase your limit." | Wait for a task to finish, or [add funds](https://wiro.ai/panel/billing). See [Concurrency Limits](/docs/concurrency-limits) |
 | Sign in required | `98` | "sign in to run this model" | Model requires a registered account |
 
@@ -152,6 +154,9 @@ const data = await response.json();
 if (!data.result) {
   const error = data.errors[0];
   switch (error.code) {
+    case 93:
+      console.log('Spend limit reached: wait for the reset or raise the limit');
+      break;
     case 96:
       console.log('Concurrent limit reached — wait for a task to finish');
       break;
@@ -174,6 +179,7 @@ if (!data.result) {
 | `0` (validation) | No | Fix the request parameters |
 | `0` (server) | Yes | Retry with exponential backoff |
 | `1` | No | Resource not found: check model slug or task token |
+| `93` | No | Wait until the limit resets or someone who manages it raises it |
 | `96` | Yes | Wait for a running task to complete, then retry |
 | `97` | No | Add funds, then retry |
 | `98` | No | Sign in or use authenticated credentials |

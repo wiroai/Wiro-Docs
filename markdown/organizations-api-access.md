@@ -31,9 +31,9 @@ These examples use API-key-only authentication. For projects that use signature 
 
 Create a project inside a team to get a team API key, or use a personal project for personal context. The same `x-api-key` header works for both, with no extra configuration needed.
 
-A team project's API key works only while the user who created the project is an active member of the team or the owner of its organization. Once the creator is removed from the team, the key stops working right away, in your apps and in any agent that uses it. The project stays in the team. Requests with the key then fail with HTTP `401` and `The person who created this API key is no longer in its team. Ask a team admin for a new key.` Public endpoints such as `Agent/List` still answer, as if the request had no key. While the key works, runs made with it count toward the creator's member spend limit.
+A team project's API key works only while the user who created the project is an active member of the team or the owner of its organization. Once the creator is removed from the team, the key stops working right away, in your apps and in any agent that uses it. The project stays in the team. Requests with the key then fail with HTTP `401` and `The person who created this API key is no longer in its team. Ask a team admin for a new key.` Public endpoints such as `Agent/List` still answer, as if the request had no key. While the key works, runs made with it count toward the creator's member limit (see [Spend Limits](/docs/organizations-billing#spend-limits)).
 
-API keys can't change teams or organizations. `Organization/Create`, `Organization/Remove`, `Organization/Restore`, `Team/Create`, `Team/Update`, `Team/Remove`, `Team/Member/Invite`, `Team/Member/CancelInvite`, `Team/Member/UpdateRole`, `Team/Member/Remove`, `Team/TransferAgent`, `Team/TransferProject` and `Team/TransferCredit` need a signed-in user: use the dashboard, or send that user's Bearer token. With any API key, personal or team, they fail with HTTP `401` and `API keys can't manage teams or organizations. Sign in and try again.` Endpoints that only read, such as `Organization/List`, `Team/Member/List` and `Team/Spending/Summary`, work with an API key.
+API keys can't change teams or organizations. `Organization/Create`, `Organization/Remove`, `Organization/Restore`, `Team/Create`, `Team/Update`, `Team/Remove`, `Team/Member/Invite`, `Team/Member/CancelInvite`, `Team/Member/UpdateRole`, `Team/Member/Remove`, `Team/TransferAgent`, `Team/TransferProject` and `Team/TransferCredit` need a signed-in user: use the dashboard, or send that user's Bearer token. With any API key, personal or team, they fail with HTTP `401` and `API keys can't manage teams or organizations. Sign in and try again.` Endpoints that only read, such as `Organization/List`, `Team/Member/List`, `SpendLimit/List` and `SpendLimit/Usage`, work with an API key. `SpendLimit/Set` and `SpendLimit/Remove` also need a signed-in user and fail with HTTP `401` with an API key, so a key can never lift its own limit.
 
 ## What Gets Filtered by Context
 
@@ -152,7 +152,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
   -d '{"prompt": "A mountain landscape"}'
 ```
 
-The task is created with the team's `teamguid`. The cost is deducted from the team wallet. The task appears in the team's usage statistics. The team's model access rules and spend limits also apply. A model the team doesn't allow fails with "This model is not available for your team", and runs stop once the team or member spend limit is reached. See [Team Billing & Spending](/docs/organizations-billing).
+The task is created with the team's `teamguid`. The cost is deducted from the team wallet. The task appears in the team's usage statistics. The team's model access rules and spend limits also apply. A model the team doesn't allow fails with "This model is not available for your team", and runs are refused with code `93` once a spend limit that covers them is reached, such as the team's limit, the key creator's member limit or the key's own limit. See [Team Billing & Spending](/docs/organizations-billing).
 
 ### Listing Team Agents with API Key
 

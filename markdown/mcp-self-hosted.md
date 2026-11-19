@@ -240,7 +240,7 @@ The conversation tools call the matching `Message/*` route of [Studio](/docs/stu
 
 | Tool | API Endpoint | What it does |
 |------|-------------|-------------|
-| `get_account` | `POST /Wallet/List`, `/Wallet/TransactionList` | Show which workspace the connected project belongs to, its wallet balance and, when you ask, the wallet's recent transactions. |
+| `get_account` | `POST /Wallet/List`, `/SpendLimit/List`, `/Wallet/TransactionList` | Show which workspace the connected project belongs to, its wallet balance, its spend limits and, when you ask, the wallet's recent transactions. |
 | `get_playbook` | Built into the server | Step-by-step guides: getting started, models, workflows, workflow graphs, the Workflow Agent, Studio, agents and billing. |
 | `search_docs` | Wiro Docs | Search the Wiro documentation for guides, API references, and examples. |
 
