@@ -3023,8 +3023,8 @@ hermes model</code></pre>
                       <div class="mcp-setup-panel" id="llm-setup-goose">
                         <h3>goose</h3>
                         <p><a href="https://github.com/aaif-goose/goose" class="docs-link">goose</a> reaches the gateway as a custom provider. The whole definition is one JSON file in its <code>custom_providers</code> folder:</p>
-                        <pre><code>~/.config/goose/custom_providers/wiro.json                   macOS, Linux
-%APPDATA%\Block\goose\config\custom_providers\wiro.json      Windows</code></pre>
+                        <pre><code>~/.config/goose/custom_providers/wiro.json</code></pre>
+                        <p>That path is for macOS and Linux. On Windows the folder is <code>%APPDATA%\Block\goose\config\custom_providers</code>.</p>
                         <ol class="docs-steps">
                           <li>
                             <strong>Save the file</strong> <span>Paste the JSON below into <code>wiro.json</code> in that folder. goose Desktop and the goose CLI read the same file, and Wiro AI then shows up in the provider list.</span>

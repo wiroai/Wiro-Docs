@@ -1525,9 +1525,11 @@ goose reaches the gateway as a custom provider. The whole definition is one
 JSON file in its `custom_providers` folder:
 
 ```
-~/.config/goose/custom_providers/wiro.json                   macOS, Linux
-%APPDATA%\Block\goose\config\custom_providers\wiro.json      Windows
+~/.config/goose/custom_providers/wiro.json
 ```
+
+That path is for macOS and Linux. On Windows the folder is
+`%APPDATA%\Block\goose\config\custom_providers`.
 
 1. **Save the file**: paste the JSON below into `wiro.json` in that folder.
    goose Desktop and the goose CLI read the same file, and Wiro AI then shows
