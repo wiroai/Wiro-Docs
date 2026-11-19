@@ -8,7 +8,7 @@ Every Wiro agent appends one structured `ActivityEvent` JSON line per tool call,
 
 A daily JSONL file is written for each calendar day; files older than 7 days are gzipped, files older than 180 days are deleted by the agent's daily maintenance cron.
 
-The feed also lists what people and API keys did to the agent: starts and stops, renames, skill, connector and billing changes, connections and deleted log days, each with who did it. These [who-did-what rows](#who-did-what-rows) don't depend on the agent running.
+The feed also lists what people and API keys did to the agent: starts and stops, renames, skill, connector and billing changes, connections, Screen views and Take Control sessions, and deleted log days, each with who did it. These [who-did-what rows](#who-did-what-rows) don't depend on the agent running.
 
 The endpoints below are **owner-or-team-admin** scoped. Plain members of the agent's team receive `useragent-team-admin-required` (code `97`); outside callers receive `useragent-access-denied`.
 
@@ -136,8 +136,8 @@ A `token_usage` event records the token spend and credit deduction for one bille
 | `AGENT_STARTED`, `AGENT_STOPPED`, `AGENT_RESTARTED` | `Agent started`, `Agent stopped`, `Agent restarted` |
 | `AGENT_RENAMED` | `Agent renamed from "Inbox Bot" to "Inbox Watcher"` |
 | `AGENT_UPDATED` | `Agent details updated: description, cover` |
-| `AGENT_SETTINGS_UPDATED` | `Agent settings updated: timezone Europe/Istanbul` |
-| `AGENT_TRANSFERRED` | `Agent moved to a team workspace`, `Agent moved to the personal workspace` |
+| `AGENT_SETTINGS_UPDATED` | `Agent settings updated: timezone Europe/Istanbul`, `Agent settings updated: screen off` |
+| `AGENT_TRANSFERRED` | `Agent moved to a team workspace`, `Agent moved to the personal workspace`; the system's rows when the agent's team or organization is deleted read `Agent moved to the personal workspace: its team was deleted` and `Agent moved to the personal workspace: its organization was deleted` |
 | `AGENT_INSTRUCTION_ADDED`, `AGENT_INSTRUCTION_UPDATED`, `AGENT_INSTRUCTION_RENAMED`, `AGENT_INSTRUCTION_DELETED`, `AGENT_INSTRUCTION_REVERTED` | `Custom skill added: cs-brand-voice`, `Scheduled task updated: cs-cron-blog-scanner (text, schedule 0 9 * * 1)`, `Custom skill renamed: cs-brand-voice to cs-house-style`, `Scheduled task deleted: cs-cron-blog-scanner`, `Custom skill reverted to its preset: cs-brand-voice` |
 | `AGENT_SKILLS_UPDATED` | `Connectors updated: int-gmail-check on`, `Skills updated: util-web-channel off`, `Connectors and skills updated: int-gmail-check on, util-web-channel off` |
 | `AGENT_CREDENTIAL_SAVED` | `Connector setting saved: wiro.apikey` |
@@ -150,6 +150,8 @@ A `token_usage` event records the token spend and credit deduction for one bille
 | `AGENT_CREDITS_PURCHASED` | `Extra credits bought: small pack, 1000 credits, $10.00 charged` |
 | `AGENT_CHECKOUT_CREATED` | `Card checkout link created: plan` |
 | `AGENT_LOG_DAY_DELETED` | `Activity log day deleted: 2026-05-02` |
+| `AGENT_SCREEN_VIEWED`, `AGENT_SCREEN_CONTROLLED` | `Watched the agent's screen`, `Took control of the agent's screen` |
+| `AGENT_SCREEN_CONTROL_ENDED` | `Control of the agent's screen ended after 4 minutes 10 seconds: handed back` (`summary: { seconds, reason }`; see [Screen in the Activity Log](/docs/agent-overview#screen-in-the-activity-log)) |
 
 #### Note rows
 

@@ -98,6 +98,10 @@ Each agent runs on one of three monthly plans: Starter ($5 a month with 500 cred
 
 Yes. Use the Agent Messaging API to send messages programmatically, receive streaming responses via WebSocket, and get async notifications via webhooks. You can build white-label chat interfaces, webhook-driven pipelines, and multi-agent workflows. See [Agent Use Cases](/docs/agent-use-cases). For a chat in your own product, with setup from chat, follow [Agent Chat Integration](/docs/agent-chat-integration).
 
+### Can I watch my agent work?
+
+Yes. In the Wiro panel, the people who manage an agent can open its Screen beside the chat and watch its computer live (on a team agent, while its Chat Mode is Collaborative). The owner of a personal agent that has never been in a team can also take control and use the keyboard and mouse, for example to sign in to a site for the agent. See [Screen and Take Control](/docs/agent-overview#screen-and-take-control).
+
 ### How do I connect third-party services to an agent?
 
 Agents connect to services like Twitter, Instagram, Google Ads, and HubSpot via OAuth or API keys. Use `POST /UserAgentOAuth/OAuthConnect` with the provider's `credentialkey` to initiate OAuth flows, or set API keys via `/UserAgent/CredentialUpsert`. See [Agent Credentials & OAuth](/docs/agent-credentials). You can also ask the agent in its chat: it proposes a setup card, and an agent admin approves it and gives the key, which the agent never sees. See [Setup From Chat](/docs/agent-messaging#setup-from-chat).

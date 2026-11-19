@@ -62,7 +62,7 @@ Projects and agents can be transferred between workspaces:
 - **Team → Personal**: move a project you created, or an agent you deployed, from a team you have admin access to back to your personal workspace. Only the original creator or deployer can do this.
 - **Team → Team**: move a project or agent between teams you have admin access to in the same or different organizations
 
-When a resource is transferred, its billing context changes immediately. Future tasks on a transferred project will be billed to the new workspace's wallet. Transfer operations are available in the dashboard and via the API.
+When a resource is transferred, its billing context changes immediately. Future tasks on a transferred project will be billed to the new workspace's wallet. Transfer operations are available in the dashboard and via the API. An agent that has been in a team doesn't get [Take Control](/docs/agent-overview#take-control), even after it moves back to a personal workspace: its browser may still hold team members' sign-ins.
 
 > **Important:** Agents can only access projects in the same workspace. If you transfer a project out of a team, agents in that team can no longer use it.
 
@@ -92,6 +92,8 @@ A single user can own multiple organizations, and each organization can contain 
 | **Member** | Team | Run models and create projects in the team workspace (billed to the team wallet), chat with team agents, and view the member list and every member's spending |
 
 The organization creator is automatically the owner. When the owner creates a team, including the Default Team created with the organization, they are added to it as an admin member. Additional members are invited by email and join once they accept the invitation, signed in with the invited email address, within 72 hours.
+
+On a team agent whose Chat Mode is `"collaborative"`, the team's admins and the agent's owner can watch its [Screen](/docs/agent-overview#screen-and-take-control) in the Wiro panel; other members can't. Nobody can take control of a team agent's computer.
 
 ## Getting Started
 

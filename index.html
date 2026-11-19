@@ -7666,6 +7666,15 @@ if (!data.result) {
                     </div>
 
                     <div class="faq-item">
+                      <button class="faq-question">Can I watch my agent work?</button>
+                      <div class="faq-answer">
+                        <div class="faq-answer-inner">
+                          <p>Yes. In the Wiro panel, the people who manage an agent can open its Screen beside the chat and watch its computer live (on a team agent, while its Chat Mode is Collaborative). The owner of a personal agent that has never been in a team can also take control and use the keyboard and mouse, for example to sign in to a site for the agent. See <a href="/docs/agent-overview#screen-and-take-control">Screen and Take Control</a>.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="faq-item">
                       <button class="faq-question">How do I connect third-party services to an agent?</button>
                       <div class="faq-answer">
                         <div class="faq-answer-inner">
@@ -12902,7 +12911,7 @@ import type {
 <p>The system has two layers:</p>
 <ul>
 <li><strong>Agent templates</strong> (the catalog): Pre-built agent definitions published by Wiro. Each template defines the agent's default skill set and required credentials, and runs on any of the three plans. Browse the catalog with <code>POST /Agent/List</code>.</li>
-<li><strong>UserAgent instances</strong> (your deployments): When you deploy an agent template (or build a custom one), Wiro creates a personal instance tied to your account. Each instance runs in its own isolated environment with its own credentials, configuration, conversation history, billing, and per-model token-rate profile.</li>
+<li><strong>UserAgent instances</strong> (your deployments): When you deploy an agent template (or build a custom one), Wiro creates a personal instance tied to your account. Each instance runs in its own isolated environment with its own credentials, configuration, conversation history, billing, and per-model token-rate profile, and its own computer in the cloud with a web browser the agent works in. The people who manage the agent can watch that computer from the Wiro panel (see <a href="#screen-and-take-control">Screen and Take Control</a>).</li>
 </ul>
 <p>Every instance is fully isolated. Your credentials, conversations, and data are never shared with other users.</p>
 <blockquote>
@@ -13121,6 +13130,347 @@ import type {
 <p>These calls restart a starting or running agent when they change something: <code>CredentialUpsert</code> (except the sign-in case below), <code>CredentialFileUpload</code>, <code>CredentialProjectBind</code> (when the project changes), an OAuth sign-in, direct <code>OAuthConnect</code> probe or <code>SetPickerAccounts</code> save that completes a connection, <code>OAuthDisconnect</code> (when it removes a token or the connection was complete), <code>SkillsApply</code>, <code>SkillToggle</code>, <code>CustomSkillUpsert</code> (a new custom skill or scheduled task, a new <code>interval</code>, an <code>enabled</code> change, or a change to <code>cs-approval-policy</code>), <code>CustomSkillRename</code>, <code>CustomSkillDelete</code>, <code>CustomSkillRevert</code>, <code>UpdateSettings</code> (a new time zone, Chat Mode, model, slash-command list or Wiro API path list, or turning <code>chatsetup</code> on or off), <code>Update</code> (a changed <code>title</code>, or a body that names no field), and a setup card applied from chat (see <a href="/docs/agent-messaging#setup-from-chat">Setup From Chat</a>). A restart takes about a minute. A change saved while a restart is still stopping or queued loads with that restart instead of starting another one.</p>
 <p><strong>Sign-in connectors restart the agent once, when the connection is complete.</strong> A connection is complete when its mode has a token and, for a credential with an account picker, at least one account is saved. Saving own-mode app keys, a System User token or <code>authmethod</code> with <code>CredentialUpsert</code> for a sign-in credential (one with an <code>oauth_provider</code>) that isn't connected before or after the save restarts nothing. A first sign-in or token check that leaves accounts to pick restarts nothing, and the <code>SetPickerAccounts</code> save restarts the agent once. One with nothing to pick (X, TikTok, LinkedIn, HubSpot, Mailchimp, Reddit, Shopify, an Instagram Login, or a Google account with a single YouTube channel) restarts it when it finishes. A reconnect that keeps the saved accounts restarts it at the sign-in, so the agent loads the new token. Saving the same accounts again restarts nothing, and a failed token check restarts the agent only when it cleared a connection that was complete. While nothing that is on uses the credential, a connection restarts nothing: turning on the connector that uses it restarts the agent once, with the connection. A direct <code>OAuthConnect</code> and <code>SetPickerAccounts</code> answer <code>restart</code> (<code>"scheduled"</code> or <code>"none"</code>), and <code>flow.restart</code> in <code>OAuthStatus</code> says what the sign-in did.</p>
 <p>A change to only the text or description of an existing custom skill or scheduled task, through <code>CustomSkillUpsert</code> or a setup card, reaches a running agent right away, without a restart. These never restart a running agent: a plan change, a credit pack, a renewal or a cancellation, moving <code>chatsetup</code> between <code>"all"</code> and <code>"webchat"</code>, a <code>screen</code> change through <code>UpdateSettings</code>, and a description, categories or cover edit through <code>Update</code>.</p>
+<h2 id="screen-and-take-control">Screen and Take Control</h2>
+<p>Every agent has its own computer in the cloud: a 1920 x 1080 desktop that holds the agent's web browser, where its browser and desktop tools do their work. In the Wiro panel, the people who manage an agent can open its <strong>Screen</strong> beside the chat and watch that computer live while the agent works. The owner of a personal agent that has never been in a team can also press <strong>Take Control</strong> and use the keyboard and mouse there, for example to sign in to a site for the agent or to finish a step by hand.</p>
+<p>The Screen is part of the Wiro panel at <a href="https://wiro.ai/panel/agents">wiro.ai/panel/agents</a> and opens for people signed in there. A project API key can't open it, so the chats people have with the agent through your own app, or in Telegram, Slack and Discord, never show it. In the API you meet the Screen in two places: the <code>screen</code> setting on <a href="#post-useragentupdatesettings"><code>UpdateSettings</code></a> and <a href="#post-useragentdetail"><code>Detail</code></a>, and the rows it adds to the agent's <a href="#screen-in-the-activity-log">activity log</a>.</p>
+<h3 id="who-can-watch">Who Can Watch</h3>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Agent</th>
+<th>Who can open its Screen</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Personal agent</td>
+<td>Its owner, the person who deployed it.</td>
+</tr>
+<tr>
+<td>Team agent whose Chat Mode is <code>"collaborative"</code></td>
+<td>The agent's owner, while they are in the team, and the team's admins. The organization owner is an admin of every team they create. Other members can't open it.</td>
+</tr>
+<tr>
+<td>Team agent whose Chat Mode is <code>"private"</code></td>
+<td>Nobody. One computer shows the work of every chat, so the Screen stays closed to the whole team.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The <strong>Screen</strong> button sits in the agent's chat header. It shows only for these people, only while the agent is running (status <code>4</code>) and only while its <code>screen</code> setting is <code>"on"</code>. When the agent stops or restarts, an open Screen closes, and the button comes back once the agent runs again.</p>
+<h3 id="watching-the-screen">Watching the Screen</h3>
+<ul>
+<li>On the agent's page, <strong>Screen</strong> opens the screen beside the chat when your browser window is wide, and inside the expanded chat when it is narrower. On a phone, tap <strong>Open Agent Chat</strong>, then <strong>Screen</strong> in the <strong>Chat</strong> / <strong>Screen</strong> switch.</li>
+<li>A pinned agent's chat window in the dock has the same button, which opens the screen in a mini window.</li>
+<li><strong>Pop Out</strong> moves the screen into a mini window that floats over the page; drag it by its header. <strong>Put Back</strong> returns it beside the chat. <strong>Expand Screen</strong> makes it fill the expanded chat, with the chat in a mini window of its own, and <strong>Collapse Screen</strong> undoes that. <strong>Close</strong> ends the session.</li>
+<li>Leaving the agent's <strong>Chat</strong> tab moves an open screen into its mini window, so the session goes on.</li>
+<li>A browser tab holds one Screen per agent: opening the same agent's screen somewhere else in the tab, such as on its page and in its dock window, closes the first one. Other tabs and devices open screens of their own.</li>
+</ul>
+<p>The screen opens in <strong>View Only</strong>: "View only. Your clicks and keys are not sent." Everyone watching sees the same screen at the same moment, including what a person in control does. While someone watches and nobody has control, the browser tab the agent just used comes to the front, so you see the page it is working on.</p>
+<p><strong>Zoom.</strong> Zooming changes only your view; the agent's screen stays 1920 x 1080. The bar under the screen ends with <strong>Zoom Out</strong>, the zoom level (<strong>Fit</strong> or a percentage) and <strong>Zoom In</strong>, in every view but the mini window, which always fits. <strong>Zoom In</strong> and <strong>Zoom Out</strong> step between Fit and the levels above it among 50%, 75%, 100%, 150% and 200%; when Fit is already 100% or more, the top level is twice Fit. At 100% one pixel of the agent's screen is one pixel of yours. The level button switches between Fit and 100%, or between Fit and twice Fit when Fit is already 100% or more. You can also zoom these ways:</p>
+<ul>
+<li>Ctrl or Cmd with the scroll wheel, or a pinch on a trackpad, zooms at the pointer. This works in control too, outside the mini window, and none of it reaches the agent.</li>
+<li>A double-click does what the level button does, at the pointer: in View Only, and in control while <strong>Move View</strong> is on.</li>
+<li>In View Only, click the screen or Tab to it, then press <code>+</code> or <code>=</code> to zoom in, <code>-</code> to zoom out, and <code>0</code> or Esc to fit.</li>
+<li>On a touch screen in View Only, pinch with two fingers, or double tap to do what the level button does, at that spot.</li>
+</ul>
+<p><strong>Moving around.</strong> A zoomed screen shows scrollbars, which move the view in every mode. In View Only you can also drag it, turn the scroll wheel, press the arrow keys or move it with one finger; at Fit the wheel and your finger scroll the page instead. In control, use <strong>Move View</strong> (see <a href="#take-control">Take Control</a>). Each view keeps its own zoom through Take Control, Hand Back and reconnects, and goes back to Fit when you close the screen or open another agent.</p>
+<h3 id="take-control">Take Control</h3>
+<p>Only the owner of a personal agent that has never been in a team can take control of its computer. It works at any screen size, phones included. Everyone else who can watch keeps <strong>View Only</strong>, and the <strong>Take Control</strong> button doesn't show for them.</p>
+<ul>
+<li><strong>Team agents.</strong> Nobody can take control of a team agent, its owner and the team's admins included: its one browser is shared by the whole team, signed in wherever the members' chats signed in. They can still watch while its Chat Mode is <code>"collaborative"</code>.</li>
+<li><strong>Agents that have been in a team.</strong> An agent that was ever in a team doesn't get Take Control, even after it moves back to a personal workspace or returns there because its team or organization was deleted: its browser may still hold team members' sign-ins. Its owner can still watch.</li>
+</ul>
+<p>To take control:</p>
+<ol>
+<li>With the screen <strong>Live</strong>, press <strong>Take Control</strong>. The panel asks first: "Take control of the agent's computer?", followed by "Control lasts up to 15 minutes. The agent's browser and desktop tools pause until you hand back. The session is noted in the agent's activity log." Press <strong>Take Control</strong> again to go ahead, or <strong>Cancel</strong>.</li>
+<li>The screen switches to control. It gets an amber frame, its header shows <strong>You Have Control</strong> when there is room, and the bar under it shows how long you have had control against the limit, such as <code>4:10 / 15:00</code>.</li>
+<li>Your clicks, keys, scrolling and touches now reach the agent's computer.</li>
+<li>Press <strong>Hand Back</strong> when you're done. The agent's browser and desktop tools work again at once, and the screen goes back to <strong>View Only</strong>. Closing the screen or the browser tab ends control too.</li>
+</ol>
+<p><strong>Keyboard.</strong> In control every key goes to the agent's screen, Tab and Esc included. Press Esc twice quickly to move keyboard focus out of the screen, onto <strong>Hand Back</strong>; the first Esc still reaches the agent. On a phone, or a tablet without a mouse, <strong>Keyboard</strong> in the bar under the screen brings up the device's keyboard. What you type there goes to the agent's screen, and text you paste into it is typed in.</p>
+<p><strong>Touch.</strong> In control, with Move View off, a tap clicks, a two-finger tap or a long press right-clicks, a three-finger tap middle-clicks, a one-finger drag drags, a two-finger drag scrolls, and a pinch zooms the page on the agent's screen. Use the zoom buttons to zoom your own view.</p>
+<p><strong>Move View.</strong> When you zoom in during control, <strong>Move View</strong> appears next to the zoom buttons. While it is on, dragging, the wheel, a finger or a pinch moves or zooms your view and none of it reaches the agent; keys still do. It turns itself off at Fit and when control ends.</p>
+<p><strong>One session at a time.</strong> Taking control in another tab or on another device moves control there, and the first screen goes back to watching with "Control was taken somewhere else. You're watching again." Everyone else watching keeps <strong>View Only</strong>.</p>
+<p><strong>Not during a capture.</strong> Take Control doesn't start while the agent is capturing its screen or a browser tab, for example to take a screenshot. Watching is not affected.</p>
+<p>When Take Control can't start, the screen stays as it was and a notice under its header says why:</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Notice</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>"Take Control can be started 6 times an hour on this agent. Try again in 12 minutes."</td>
+<td>The hourly start limit (see <a href="#screen-limits">Screen Limits</a>). The wait is the time until the oldest of the 6 starts is an hour old.</td>
+</tr>
+<tr>
+<td>"The agent is capturing its screen right now. Try again in a minute."</td>
+<td>The agent is taking a screenshot or otherwise capturing its screen or a tab.</td>
+</tr>
+<tr>
+<td>"The agent's screen is not answering right now. Try again in a minute."</td>
+<td>The agent's computer didn't answer in time.</td>
+</tr>
+<tr>
+<td>"The agent's screen could not be checked. Try again in a moment." or "Take Control could not start just now. Try again in a minute."</td>
+<td>A check before control could not finish. Try again.</td>
+</tr>
+<tr>
+<td>"You can't take control right now."</td>
+<td>The panel got no answer, for example because your connection dropped. Try again.</td>
+</tr>
+<tr>
+<td>"Too many screen sessions started. Try again in a few minutes."</td>
+<td>You started 30 screen sessions in 10 minutes.</td>
+</tr>
+<tr>
+<td>"Take Control is off for team agents: their browser is shared by the whole team."</td>
+<td>The agent is in a team.</td>
+</tr>
+<tr>
+<td>"Take Control is off for an agent that was used in a team, because its browser may still hold team members' sign-ins."</td>
+<td>The agent has been in a team.</td>
+</tr>
+<tr>
+<td>"Take Control is not available for this agent right now."</td>
+<td>Take Control can't be used on this agent at the moment. Watching still works.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<h3 id="while-you-have-control">While You Have Control</h3>
+<ul>
+<li>From the moment control starts until it ends, the agent's browser and desktop tools pause: the agent starts no new browser or desktop step. The rest of the agent keeps running: it answers chats in every channel, its Scheduled Tasks run, and its other tools and Connectors work.</li>
+<li>The agent isn't interrupted when you take control. If it reaches for its browser or desktop meanwhile, the call is refused with a message that a person has control of the computer, which asks the agent not to retry in that turn and to tell whoever it is talking to that it will continue once control is handed back. The message names no one and doesn't mention Wiro, so the agent can pass it on in any channel.</li>
+<li>When control ends and no other session holds it, each chat whose browser or desktop call was refused gets one note: control is back and the tools work again. The agent reads it at the start of that chat's next turn, when the chat's next message comes in, and can pick up the paused task then. In the Wiro web chat and in chats through your own app, the note waits up to 6 hours. The note starts no turn of its own, so it spends no credits by itself; that next turn is billed as usual. A chat that didn't reach for those tools gets no note. Neither does a Scheduled Task run: a run whose browser or desktop call was refused ends without that step, and the task runs again at its next scheduled time.</li>
+<li>You work in the agent's own browser, the one all of its chats use, signed in wherever they signed in. What you sign in to or change there stays in the agent's browser after you hand back, and the agent can use it.</li>
+</ul>
+<p><strong>The agent's browser.</strong> For safety, it saves no passwords and fills in no addresses or payment cards, the browser itself can't be signed in to an account or synced, and its settings pages, developer tools and local files stay closed. Signing in to websites works as usual. The desktop holds only the browser; if you close its last window, it opens again by itself within about 15 seconds. Your clipboard stays on your device, and on a phone or tablet, text you paste into <strong>Keyboard</strong> is typed in.</p>
+<h3 id="when-control-ends">When Control Ends</h3>
+<p>Control ends when you press <strong>Hand Back</strong> or close the screen, and on its own in the cases below. The agent's browser and desktop tools work again at once, unless control moved to another tab or device: then they stay paused until that session ends too.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Why control ended</th>
+<th>What you see</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>15 minutes in control</td>
+<td>"This session reached its time limit" with <strong>Reconnect</strong>. Reconnect opens View Only; take control again to go on.</td>
+</tr>
+<tr>
+<td>2 minutes without keyboard or mouse input</td>
+<td>View Only, with "Control was handed back after a while without keyboard or mouse input."</td>
+</tr>
+<tr>
+<td>Someone took control in another tab or on another device</td>
+<td>View Only, with "Control was taken somewhere else. You're watching again."</td>
+</tr>
+<tr>
+<td>Input arrived faster than a person types or moves the mouse</td>
+<td>View Only, with "Too much keyboard and mouse input arrived at once."</td>
+</tr>
+<tr>
+<td>The browser sent input the agent's screen doesn't accept</td>
+<td>View Only, with "The browser sent input the screen does not accept."</td>
+</tr>
+<tr>
+<td>Take Control stopped applying to you on this agent</td>
+<td>View Only, with "You can no longer control this agent's computer." Take Control stays hidden.</td>
+</tr>
+<tr>
+<td>A capture began just as control was starting</td>
+<td>View Only, with "The agent is capturing its screen right now. Try again in a minute."</td>
+</tr>
+<tr>
+<td>The agent stopped or restarted, a settings change that restarts it included</td>
+<td>The screen closes and the <strong>Screen</strong> button hides until the agent runs again.</td>
+</tr>
+<tr>
+<td>Screen was turned off in the agent's settings</td>
+<td>The screen closes and the <strong>Screen</strong> button hides.</td>
+</tr>
+<tr>
+<td>Your connection dropped</td>
+<td>The panel tries once more by itself, in control again, then offers <strong>Reconnect</strong>, which opens View Only.</td>
+</tr>
+<tr>
+<td>The agent's computer closed the connection</td>
+<td>"The agent's desktop closed the connection" with <strong>Reconnect</strong>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p><strong>Idle end.</strong> Control counts as idle while no key press, click, touch or mouse movement reaches the agent. Moving the mouse over the screen counts, and so does any key; changes on the screen itself don't. With <strong>Move View</strong> on, your mouse and fingers don't reach the agent, so only keys keep control. For the last 30 seconds the bar under the screen counts down: "Control hands back in 0:30 without input. Move the mouse, tap or type to keep it." With Move View on it reads "Control hands back in 0:30 without input. Press a key or turn Move View off to keep it." Any input that reaches the agent clears it.</p>
+<h3 id="screen-limits">Screen Limits</h3>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Limit</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Screens open on one agent at once, watching and control together; each browser tab or device counts</td>
+<td>4</td>
+</tr>
+<tr>
+<td>One watching session</td>
+<td>30 minutes</td>
+</tr>
+<tr>
+<td>One Take Control session, from when control starts</td>
+<td>15 minutes</td>
+</tr>
+<tr>
+<td>Control without keyboard or mouse input</td>
+<td>2 minutes, counted down for the last 30 seconds</td>
+</tr>
+<tr>
+<td>Take Control starts on one agent</td>
+<td>6 in any hour</td>
+</tr>
+<tr>
+<td>Screen sessions one person starts, on all agents together</td>
+<td>30 in 10 minutes</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<ul>
+<li>When 4 screens are open on an agent, another one is refused with "4 people are watching this agent's screen. Try again in a minute."</li>
+<li>After 30 minutes a watching session ends with "This session reached its time limit"; <strong>Reconnect</strong> starts a new one.</li>
+<li>The 6 Take Control starts are counted per agent over a rolling hour. Watching doesn't count, and neither does a start refused with one of the notices above. A start within 2 minutes after your control session on the agent ended, or while it is still open in another tab, is a reconnect and isn't counted, which covers the panel's own retry after a dropped connection. A start that ends at once because a capture began just then (see <a href="#when-control-ends">When Control Ends</a>) is counted, and taking control again within 2 minutes is then a reconnect. The seventh start in an hour is refused with the hourly notice above, which says how long to wait.</li>
+<li>Every screen the panel starts counts toward a person's 30 in 10 minutes: opening the Screen, <strong>Reconnect</strong>, each <strong>Take Control</strong> (also one refused for a capture or the hourly limit), the panel's own retry after a dropped connection, and the View Only screen it opens when control ends. Past that, a new one is refused until the 10 minutes are over.</li>
+</ul>
+<h3 id="screen-in-the-activity-log">Screen in the Activity Log</h3>
+<p>Three <a href="/docs/agent-logs#who-did-what-rows">who-did-what rows</a> in the agent's activity log record the Screen:</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th><code>kind</code></th>
+<th><code>title</code></th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AGENT_SCREEN_VIEWED</code></td>
+<td><code>Watched the agent's screen</code></td>
+<td>Someone opened the Screen. At most one row per person and agent an hour.</td>
+</tr>
+<tr>
+<td><code>AGENT_SCREEN_CONTROLLED</code></td>
+<td><code>Took control of the agent's screen</code></td>
+<td>Someone took control. At most one row per person and agent every 10 minutes.</td>
+</tr>
+<tr>
+<td><code>AGENT_SCREEN_CONTROL_ENDED</code></td>
+<td><code>Control of the agent's screen ended after 4 minutes 10 seconds: handed back</code></td>
+<td>A Take Control session ended. One row for every session.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p><code>userUuid</code> and <code>user</code> name the person. The first two rows carry no <code>summary</code>. <code>AGENT_SCREEN_CONTROL_ENDED</code> carries <code>summary: { seconds, reason }</code>: how long control lasted, in seconds from when it started, and why it ended:</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th><code>reason</code></th>
+<th>The title ends with</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hand_back</code></td>
+<td><code>handed back</code></td>
+<td><strong>Hand Back</strong>, or the screen was closed in the panel.</td>
+</tr>
+<tr>
+<td><code>time_limit</code></td>
+<td><code>the time limit was reached</code></td>
+<td>15 minutes in control.</td>
+</tr>
+<tr>
+<td><code>idle</code></td>
+<td><code>no keyboard or mouse input for a while</code></td>
+<td>2 minutes without input.</td>
+</tr>
+<tr>
+<td><code>disconnect</code></td>
+<td><code>the connection closed</code></td>
+<td>The tab closed, the connection dropped, or the agent's computer closed the connection.</td>
+</tr>
+<tr>
+<td><code>taken_over</code></td>
+<td><code>control was taken in another session</code></td>
+<td>Someone took control in another tab or on another device.</td>
+</tr>
+<tr>
+<td><code>access_lost</code></td>
+<td><code>access to the agent's screen ended</code></td>
+<td>Screen was turned off in the agent's settings, or Take Control stopped applying to the person.</td>
+</tr>
+<tr>
+<td><code>agent_stopped</code></td>
+<td><code>the agent stopped</code></td>
+<td>The agent stopped or restarted.</td>
+</tr>
+<tr>
+<td><code>input_refused</code></td>
+<td><code>the screen refused the browser's input</code></td>
+<td>Input arrived too fast, or the screen didn't accept it.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<pre><code class="language-json">{
+  &quot;ts&quot;: &quot;2026-11-19T18:24:10.000Z&quot;,
+  &quot;kind&quot;: &quot;AGENT_SCREEN_CONTROL_ENDED&quot;,
+  &quot;title&quot;: &quot;Control of the agent's screen ended after 4 minutes 10 seconds: handed back&quot;,
+  &quot;ok&quot;: true,
+  &quot;summary&quot;: { &quot;seconds&quot;: 250, &quot;reason&quot;: &quot;hand_back&quot; },
+  &quot;userUuid&quot;: &quot;ada-uuid&quot;,
+  &quot;user&quot;: {
+    &quot;uuid&quot;: &quot;ada-uuid&quot;,
+    &quot;firstname&quot;: &quot;Ada&quot;,
+    &quot;lastname&quot;: &quot;Lovelace&quot;,
+    &quot;email&quot;: &quot;ada@example.com&quot;,
+    &quot;username&quot;: &quot;ada&quot;,
+    &quot;avatar&quot;: &quot;https://cdn.wiro.ai/avatars/ada.webp&quot;,
+    &quot;avatarinitials&quot;: &quot;AL&quot;
+  }
+}
+</code></pre>
+<p>Read the rows in the panel under the agent's <strong>Logs</strong>, which its owner and the team's admins can open, or with <a href="/docs/agent-logs#logs-tail"><code>POST /UserAgent/Logs</code></a> and <code>LogsFile</code>, which also take an API key (<code>LogsList</code> lists the days that have rows). The owner's Account Activity page at <a href="https://wiro.ai/panel/account/activity">wiro.ai/panel/account/activity</a> lists them too, by <code>kind</code>. A change to the <code>screen</code> setting writes an <code>AGENT_SETTINGS_UPDATED</code> row: <code>Agent settings updated: screen off</code> or <code>screen on</code>.</p>
+<h3 id="turning-the-screen-off">Turning the Screen Off</h3>
+<p>The Screen is on for every agent by default. The agent's owner or a team admin turns it off with the <strong>Screen</strong> switch on the agent's <strong>Settings</strong> tab, or by sending <code>screen: "off"</code> to <a href="#post-useragentupdatesettings"><code>UpdateSettings</code></a>. Off closes the Screen for everyone: nobody can watch or take control, the <strong>Screen</strong> button hides, and screens that are open, a Take Control session included, close within about half a minute. Turning it back on brings the button back. A change never restarts the agent, and <code>null</code> goes back to <code>"on"</code>. Read the value as <code>screen</code> on <a href="#post-useragentdetail"><code>Detail</code></a>.</p>
+<p>On a team agent whose Chat Mode is <code>"private"</code>, the Screen stays closed to the team whatever <code>screen</code> says, and the <strong>Settings</strong> tab says so.</p>
 <h2 id="endpoints">Endpoints</h2>
 <h3 id="browse-the-catalog">Browse the Catalog</h3>
 <h4 id="post-agentlist"><strong>POST</strong> /Agent/List</h4>
@@ -14561,8 +14911,8 @@ import type {
 </tr>
 <tr>
 <td><code>screen</code></td>
-<td><code>string</code></td>
-<td>Screen as it applies to this agent: <code>"on"</code> or <code>"off"</code>. When it is on, the people who manage the agent can watch its computer live from the Wiro panel. Write it via <a href="#post-useragentupdatesettings"><code>POST /UserAgent/UpdateSettings</code></a>. <code>null</code> when it could not be read.</td>
+<td><code>string|null</code></td>
+<td>The agent's Screen setting: <code>"on"</code> or <code>"off"</code>. When it is on, the people who manage the agent can watch its computer live from the Wiro panel, and the owner of a personal agent that has never been in a team can take control of it there; <code>"off"</code> closes both. On a team agent whose Chat Mode (<code>teamsessionmode</code>) is <code>"private"</code>, the Screen stays closed to the team even while this reads <code>"on"</code>. See <a href="#screen-and-take-control">Screen and Take Control</a>. Write it via <a href="#post-useragentupdatesettings"><code>POST /UserAgent/UpdateSettings</code></a>. <code>null</code> when it could not be read.</td>
 </tr>
 </tbody>
 </table>
@@ -14654,7 +15004,7 @@ import type {
 <tr>
 <td><code>teamsessionmode</code></td>
 <td><code>string</code></td>
-<td>The unified Chat Mode: <code>"collaborative"</code> or <code>"private"</code> for every agent. For team agents it drives <code>Message/History</code>, <code>Sessions</code>, and native web-chat memory scope; for all agents it also drives Telegram, Slack, and Discord DM scope. Team deployments/transfers default collaborative; personal deployments/team detachments default private. Write with <a href="#post-useragentupdatesettings"><code>POST /UserAgent/UpdateSettings</code></a> (team admins / owner only).</td>
+<td>The unified Chat Mode: <code>"collaborative"</code> or <code>"private"</code> for every agent. For team agents it drives <code>Message/History</code>, <code>Sessions</code>, and native web-chat memory scope; for all agents it also drives Telegram, Slack, and Discord DM scope. Team deployments/transfers default collaborative; personal deployments/team detachments default private. Write with <a href="#post-useragentupdatesettings"><code>POST /UserAgent/UpdateSettings</code></a> (team admins / owner only). On a team agent, <code>"private"</code> also keeps the agent's Screen closed to the team (see <a href="#who-can-watch">Who Can Watch</a>).</td>
 </tr>
 <tr>
 <td><code>timezone</code></td>
@@ -14925,7 +15275,7 @@ import type {
 <td><a href="#post-useragentcover"><code>POST /UserAgent/Cover</code></a></td>
 </tr>
 <tr>
-<td>Per-agent timezone or unified Chat Mode</td>
+<td>Per-agent settings: time zone, Chat Mode, models, slash commands, Wiro API paths, Setup From Chat and Screen</td>
 <td><a href="#post-useragentupdatesettings"><code>POST /UserAgent/UpdateSettings</code></a></td>
 </tr>
 <tr>
@@ -15018,7 +15368,7 @@ import type {
 <p><strong><code>restarting</code>.</strong> <code>true</code> when this call restarts the agent, <code>false</code> otherwise. With <code>true</code>, the row shows the transition mid-flight: <code>status: 1</code> (Stopping) with a fresh <code>stoppingat</code> timestamp. Wiro re-queues the agent once it has stopped, so it comes back with the new title. A restart request that can't be carried out answers <code>Failed to restart user agent</code>; try again.</p>
 </blockquote>
 <h4 id="post-useragentupdatesettings"><strong>POST</strong> /UserAgent/UpdateSettings</h4>
-<p>Writes per-agent preference toggles that are not credentials and not skill rows. Exposes <code>timezone</code> (operator-selected IANA zone the agent uses for scheduled tasks and voice calls), <code>teamsessionmode</code> (the one Chat Mode for team web-chat history and external-channel DMs), the four <strong>model overrides</strong> (<code>chatmodel</code>, <code>cronmodel</code>, <code>voiceprepmodel</code>, <code>voicepostcallmodel</code>) that choose which LLM the agent uses for chat replies, scheduled (cron) turns, voice-call prep, and the post-call summary turn, <code>enabledcommands</code> (the in-chat slash-command allowlist), <code>wiroapiallowedpaths</code> (the Wiro API endpoints the agent may call with its own Wiro project key), <code>chatsetup</code> (where people can change the agent's setup from chat), and <code>screen</code> (whether the people who manage the agent can watch its computer live from the Wiro panel). Submit any subset in the same call: partial updates are supported and untouched fields keep their current value.</p>
+<p>Writes per-agent preference toggles that are not credentials and not skill rows. Exposes <code>timezone</code> (operator-selected IANA zone the agent uses for scheduled tasks and voice calls), <code>teamsessionmode</code> (the one Chat Mode for team web-chat history and external-channel DMs), the four <strong>model overrides</strong> (<code>chatmodel</code>, <code>cronmodel</code>, <code>voiceprepmodel</code>, <code>voicepostcallmodel</code>) that choose which LLM the agent uses for chat replies, scheduled (cron) turns, voice-call prep, and the post-call summary turn, <code>enabledcommands</code> (the in-chat slash-command allowlist), <code>wiroapiallowedpaths</code> (the Wiro API endpoints the agent may call with its own Wiro project key), <code>chatsetup</code> (where people can change the agent's setup from chat), and <code>screen</code> (whether the agent's <a href="#screen-and-take-control">Screen</a> opens in the Wiro panel, for watching its computer live and for Take Control). Submit any subset in the same call: partial updates are supported and untouched fields keep their current value.</p>
 <p><strong>Permission</strong>: owner or team admin only, as for <code>/UserAgent/Update</code>. Team members cannot change these settings.</p>
 <p><strong>Restart</strong>: if the agent is <strong>starting (status <code>3</code>)</strong> or <strong>running (status <code>4</code>)</strong> and the call changes a setting, the agent restarts so it applies: a new time zone, Chat Mode (<code>teamsessionmode</code>), model, slash-command list (<code>enabledcommands</code>) or Wiro API path list (<code>wiroapiallowedpaths</code>), or turning <code>chatsetup</code> on or off. Moving <code>chatsetup</code> between <code>"all"</code> and <code>"webchat"</code> doesn't restart it: Wiro checks that difference on each message. Changing <code>screen</code> never restarts it. A call that changes nothing restarts nothing. For agents in status <code>0</code>/<code>1</code>/<code>2</code>/<code>5</code>/<code>6</code> the change applies on the next start.</p>
 <div class="docs-param-table">
@@ -15049,7 +15399,7 @@ import type {
 <td><code>teamsessionmode</code></td>
 <td>string</td>
 <td>No</td>
-<td>Unified Chat Mode: <code>"private"</code> isolates each team member's Wiro web-chat history and native agent memory plus each approved external-channel DM operator; <code>"collaborative"</code> shares both runtime contexts. Personal agents can set it because external-channel DMs can have multiple operators. Web and external-channel message lists remain separate transports; room/thread sessions remain room-scoped. Channel activation remains credential-derived.</td>
+<td>Unified Chat Mode: <code>"private"</code> isolates each team member's Wiro web-chat history and native agent memory plus each approved external-channel DM operator; <code>"collaborative"</code> shares both runtime contexts. Personal agents can set it because external-channel DMs can have multiple operators. Web and external-channel message lists remain separate transports; room/thread sessions remain room-scoped. Channel activation remains credential-derived. On a team agent, <code>"private"</code> also keeps the agent's Screen closed to the team (see <a href="#who-can-watch">Who Can Watch</a>).</td>
 </tr>
 <tr>
 <td><code>chatmodel</code></td>
@@ -15097,7 +15447,7 @@ import type {
 <td><code>screen</code></td>
 <td>string|null</td>
 <td>No</td>
-<td>Screen: whether the people who manage the agent (its owner and the team's admins) can watch its computer live from the Wiro panel, beside the chat. <code>"on"</code> (the default) or <code>"off"</code>. Turning it off also closes a screen that is open, within about half a minute. On a team agent whose Chat Mode is <code>"private"</code> the screen stays closed to the team whatever this says. <code>null</code> goes back to <code>"on"</code>, and any other value is rejected. It never restarts the agent. Read it back as <code>screen</code> on <a href="#post-useragentdetail"><code>UserAgent/Detail</code></a>.</td>
+<td>Screen: whether the agent's <a href="#screen-and-take-control">Screen</a> opens in the Wiro panel, where the people who manage the agent (its owner and the team's admins) watch its computer live beside the chat and the owner of a personal agent that has never been in a team can take control of it. <code>"on"</code> (the default) or <code>"off"</code>. <code>"off"</code> closes it for everyone, watching and Take Control alike, and also closes screens that are open, a Take Control session included, within about half a minute. On a team agent whose Chat Mode is <code>"private"</code> the screen stays closed to the team whatever this says. <code>null</code> goes back to <code>"on"</code>, and any other value is rejected with <code>screen must be on or off</code>. It never restarts the agent. Read it back as <code>screen</code> on <a href="#post-useragentdetail"><code>UserAgent/Detail</code></a>.</td>
 </tr>
 </tbody>
 </table>
@@ -15172,6 +15522,15 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
   -d '{
     &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
     &quot;chatsetup&quot;: &quot;webchat&quot;
+  }'
+
+# Keep this agent's Screen closed: nobody can watch it or take control
+curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
+  -H &quot;Authorization: Bearer $WIRO_API_KEY&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
+    &quot;screen&quot;: &quot;off&quot;
   }'
 
 # Update both preference toggles in one call
@@ -15249,6 +15608,11 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td>400</td>
 <td><code>invalid-wiro-api-path-rule</code></td>
 <td><code>wiroapiallowedpaths</code> was not an array, or a rule broke the format or the limits above.</td>
+</tr>
+<tr>
+<td>400</td>
+<td><code>screen must be on or off</code></td>
+<td><code>screen</code> wasn't <code>"on"</code>, <code>"off"</code> or <code>null</code>.</td>
 </tr>
 <tr>
 <td>403</td>
@@ -32193,7 +32557,7 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
                     <h2>Overview</h2>
                     <p>Every Wiro agent appends one structured <code>ActivityEvent</code> JSON line per tool call, LLM turn boundary, scheduled task run and billed turn, plus each message that arrives on a connected Telegram, Slack or Discord channel. Secrets (matched by field name and by high-entropy value), internal tool-call IDs and API credentials are redacted before an event is written, so what shows up in <code>Logs</code> is safe to show end users.</p>
                     <p>A daily JSONL file is written for each calendar day; files older than 7 days are gzipped, files older than 180 days are deleted by the agent's daily maintenance cron.</p>
-                    <p>The feed also lists what people and API keys did to the agent: starts and stops, renames, skill, connector and billing changes, connections and deleted log days, each with who did it. These <a href="#who-did-what-rows">who-did-what rows</a> don't depend on the agent running.</p>
+                    <p>The feed also lists what people and API keys did to the agent: starts and stops, renames, skill, connector and billing changes, connections, Screen views and Take Control sessions, and deleted log days, each with who did it. These <a href="#who-did-what-rows">who-did-what rows</a> don't depend on the agent running.</p>
                     <p>The endpoints below are <strong>owner-or-team-admin</strong> scoped. Plain members of the agent's team receive <code>useragent-team-admin-required</code> (code <code>97</code>); outside callers receive <code>useragent-access-denied</code>.</p>
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
@@ -32332,8 +32696,8 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
                             <tr><td><code>AGENT_STARTED</code>, <code>AGENT_STOPPED</code>, <code>AGENT_RESTARTED</code></td><td><code>Agent started</code>, <code>Agent stopped</code>, <code>Agent restarted</code></td></tr>
                             <tr><td><code>AGENT_RENAMED</code></td><td><code>Agent renamed from "Inbox Bot" to "Inbox Watcher"</code></td></tr>
                             <tr><td><code>AGENT_UPDATED</code></td><td><code>Agent details updated: description, cover</code></td></tr>
-                            <tr><td><code>AGENT_SETTINGS_UPDATED</code></td><td><code>Agent settings updated: timezone Europe/Istanbul</code></td></tr>
-                            <tr><td><code>AGENT_TRANSFERRED</code></td><td><code>Agent moved to a team workspace</code>, <code>Agent moved to the personal workspace</code></td></tr>
+                            <tr><td><code>AGENT_SETTINGS_UPDATED</code></td><td><code>Agent settings updated: timezone Europe/Istanbul</code>, <code>Agent settings updated: screen off</code></td></tr>
+                            <tr><td><code>AGENT_TRANSFERRED</code></td><td><code>Agent moved to a team workspace</code>, <code>Agent moved to the personal workspace</code>; the system's rows when the agent's team or organization is deleted read <code>Agent moved to the personal workspace: its team was deleted</code> and <code>Agent moved to the personal workspace: its organization was deleted</code></td></tr>
                             <tr><td><code>AGENT_INSTRUCTION_ADDED</code>, <code>AGENT_INSTRUCTION_UPDATED</code>, <code>AGENT_INSTRUCTION_RENAMED</code>, <code>AGENT_INSTRUCTION_DELETED</code>, <code>AGENT_INSTRUCTION_REVERTED</code></td><td><code>Custom skill added: cs-brand-voice</code>, <code>Scheduled task updated: cs-cron-blog-scanner (text, schedule 0 9 * * 1)</code>, <code>Custom skill renamed: cs-brand-voice to cs-house-style</code>, <code>Scheduled task deleted: cs-cron-blog-scanner</code>, <code>Custom skill reverted to its preset: cs-brand-voice</code></td></tr>
                             <tr><td><code>AGENT_SKILLS_UPDATED</code></td><td><code>Connectors updated: int-gmail-check on</code>, <code>Skills updated: util-web-channel off</code>, <code>Connectors and skills updated: int-gmail-check on, util-web-channel off</code></td></tr>
                             <tr><td><code>AGENT_CREDENTIAL_SAVED</code></td><td><code>Connector setting saved: wiro.apikey</code></td></tr>
@@ -32346,6 +32710,8 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
                             <tr><td><code>AGENT_CREDITS_PURCHASED</code></td><td><code>Extra credits bought: small pack, 1000 credits, $10.00 charged</code></td></tr>
                             <tr><td><code>AGENT_CHECKOUT_CREATED</code></td><td><code>Card checkout link created: plan</code></td></tr>
                             <tr><td><code>AGENT_LOG_DAY_DELETED</code></td><td><code>Activity log day deleted: 2026-05-02</code></td></tr>
+                            <tr><td><code>AGENT_SCREEN_VIEWED</code>, <code>AGENT_SCREEN_CONTROLLED</code></td><td><code>Watched the agent's screen</code>, <code>Took control of the agent's screen</code></td></tr>
+                            <tr><td><code>AGENT_SCREEN_CONTROL_ENDED</code></td><td><code>Control of the agent's screen ended after 4 minutes 10 seconds: handed back</code> (<code>summary: { seconds, reason }</code>; see <a href="/docs/agent-overview#screen-in-the-activity-log">Screen in the Activity Log</a>)</td></tr>
                           </tbody>
                         </table>
                       </div>
@@ -43770,7 +44136,7 @@ Organization (created by you)
                       <li><strong>Team → Personal</strong>: move a project you created, or an agent you deployed, from a team you have admin access to back to your personal workspace. Only the original creator or deployer can do this.</li>
                       <li><strong>Team → Team</strong>: move a project or agent between teams you have admin access to in the same or different organizations</li>
                     </ul>
-                    <p>When a resource is transferred, its billing context changes immediately. Future tasks on a transferred project will be billed to the new workspace's wallet. Transfer operations are available in the dashboard and via the API.</p>
+                    <p>When a resource is transferred, its billing context changes immediately. Future tasks on a transferred project will be billed to the new workspace's wallet. Transfer operations are available in the dashboard and via the API. An agent that has been in a team doesn't get <a href="/docs/agent-overview#take-control">Take Control</a>, even after it moves back to a personal workspace: its browser may still hold team members' sign-ins.</p>
                     <div class="info-callout">
                       <p><strong>Important:</strong> Agents can only access projects in the same workspace. If you transfer a project out of a team, agents in that team can no longer use it.</p>
                     </div>
@@ -43861,6 +44227,7 @@ Organization (created by you)
                       </div>
                     </div>
                     <p>The organization creator is automatically the owner. When the owner creates a team, including the Default Team created with the organization, they are added to it as an admin member. Additional members are invited by email and join once they accept the invitation, signed in with the invited email address, within 72 hours.</p>
+                    <p>On a team agent whose Chat Mode is <code>"collaborative"</code>, the team's admins and the agent's owner can watch its <a href="/docs/agent-overview#screen-and-take-control">Screen</a> in the Wiro panel; other members can't. Nobody can take control of a team agent's computer.</p>
                   </section>
 
                   <section id="getting-started">
@@ -44246,6 +44613,7 @@ Organization (created by you)
                       </div>
                     </div>
                     <p>The organization owner is added as an admin of every team they create, including the Default Team. The owner is always an admin of their teams: nobody, the owner included, can change the owner's role to member, and nobody but the owner can remove the owner from a team. The owner role cannot be transferred.</p>
+                    <p>On a team agent whose Chat Mode is <code>"collaborative"</code>, admins and the agent's owner can also watch the agent's <a href="/docs/agent-overview#screen-and-take-control">Screen</a> in the Wiro panel; other members can't. Nobody can take control of a team agent's computer.</p>
                   </section>
 
                   <section id="listing-members">
@@ -44402,7 +44770,7 @@ Organization (created by you)
                     <ul>
                       <li>Soft-deletes the team (sets status to <code>0</code>)</li>
                       <li>Removes all team members and cancels pending invitations</li>
-                      <li>Moves each team agent back to the personal workspace of the user who deployed it; its active subscriptions and credit purchases move with it, the agent is restarted, and future agent billing goes to that user's personal wallet</li>
+                      <li>Moves each team agent back to the personal workspace of the user who deployed it; its active subscriptions and credit purchases move with it, the agent is restarted, and future agent billing goes to that user's personal wallet; <a href="/docs/agent-overview#take-control">Take Control</a> stays off for it, as for any agent that has been in a team</li>
                       <li>Moves each team project back to the personal workspace of the user who created it; its API key keeps working and future tasks are billed to that user's personal wallet</li>
                     </ul>
                     <p>The team's wallet balance is not automatically transferred. Move it out with <a href="/docs/organizations-billing">Transfer Credit</a> before deleting the team; after deletion, contact support to recover it.</p>
@@ -44436,7 +44804,7 @@ Organization (created by you)
                       <span class="endpoint-badge post">POST</span>
                       /Organization/Remove
                     </h2>
-                    <p>Deletes an organization. Only the organization owner can delete an organization. Deleting an organization soft-deletes it and archives the teams and members that are active at that moment, so <code>/Organization/Restore</code> can bring exactly those back. Each team is removed the same way as with <code>/Team/Remove</code>: members are removed, pending invitations are cancelled, agents go back to the personal workspace of the user who deployed them, and projects go back to the personal workspace of the user who created them. Team wallet balances are not moved.</p>
+                    <p>Deletes an organization. Only the organization owner can delete an organization. Deleting an organization soft-deletes it and archives the teams and members that are active at that moment, so <code>/Organization/Restore</code> can bring exactly those back. Each team is removed the same way as with <code>/Team/Remove</code>: members are removed, pending invitations are cancelled, agents go back to the personal workspace of the user who deployed them (with <a href="/docs/agent-overview#take-control">Take Control</a> off, as for any agent that has been in a team), and projects go back to the personal workspace of the user who created them. Team wallet balances are not moved.</p>
 
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
@@ -44576,6 +44944,7 @@ Organization (created by you)
                       <li>Its chat history moves with it</li>
                       <li>The agent is restarted with the new context</li>
                       <li>Future billing is charged to the new workspace's wallet</li>
+                      <li><a href="/docs/agent-overview#take-control">Take Control</a> stays off for an agent that has been in a team, even after it moves back to a personal workspace: its browser goes with it, signed in wherever the team's chats signed in</li>
                     </ul>
                   </section>
 
