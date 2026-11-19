@@ -552,6 +552,12 @@ Client compatibility and boundaries:
   (https://github.com/wiroai/Wiro-Hermes): `hermes plugins install wiro`,
   `hermes config set WIRO_API_KEY YOUR_API_KEY:YOUR_API_SECRET` (the key alone
   for API Key Only), then pick Wiro AI in `hermes model`.
+- goose reaches the gateway as a custom provider: save the JSON from
+  https://wiro.ai/docs/completions-api#llm-setup-goose as
+  `~/.config/goose/custom_providers/wiro.json` (`engine: openai`,
+  `base_url: https://llm.wiro.ai/v1`, `api_key_env: WIRO_API_KEY`,
+  `dynamic_models: true`), set `WIRO_API_KEY` to `YOUR_API_KEY:YOUR_API_SECRET`
+  (the key alone for API Key Only), then pick Wiro AI as the provider.
 - Windsurf Cascade has no native provider route; use a custom-endpoint
   extension.
 - No hosted web/file-search, code-interpreter, computer-use, or remote MCP tool

@@ -2250,6 +2250,67 @@ Every model the gateway serves today. The same set is in the catalog and behind
 Tool calling works through the gateway, so the agent can run its own tools
 across as many turns as the task needs.
 
+### goose
+
+goose reaches the gateway as a custom provider. The whole definition is one
+JSON file in its `custom_providers` folder:
+
+```
+~/.config/goose/custom_providers/wiro.json                   macOS, Linux
+%APPDATA%\Block\goose\config\custom_providers\wiro.json      Windows
+```
+
+1. **Save the file**: paste the JSON below into `wiro.json` in that folder.
+   goose Desktop and the goose CLI read the same file, and Wiro AI then shows
+   up in the provider list.
+2. **Set the key**: `WIRO_API_KEY` takes `YOUR_API_KEY:YOUR_API_SECRET` for a
+   Signature project, `YOUR_API_KEY` alone for API Key Only. Export it in your
+   shell, or enter it once under **Settings > Models > Configure providers >
+   Wiro AI** in goose Desktop (`goose configure` > **Configure Providers** in
+   the CLI) to keep it in the keychain.
+3. **Pick a model**: with `dynamic_models` on, goose reads `GET /v1/models`
+   when you configure the provider, so every gateway model is selectable. The
+   `models` array is the fallback list, with each model's context window.
+4. **Run a turn**: `goose run --provider wiro --model claude/opus-5-5 -t "your prompt"`
+   for one shot, or `goose session` after choosing Wiro AI as the provider.
+
+```json
+{
+  "name": "wiro",
+  "engine": "openai",
+  "display_name": "Wiro AI",
+  "description": "Hosted OpenAI-compatible gateway for Claude, GPT, Gemini, Grok, DeepSeek, Kimi, GLM and more, billed per call from a prepaid Wiro wallet.",
+  "api_key_env": "WIRO_API_KEY",
+  "base_url": "https://llm.wiro.ai/v1",
+  "dynamic_models": true,
+  "models": [
+    { "name": "claude/opus-5-5", "context_limit": 1000000 },
+    { "name": "claude/sonnet-5", "context_limit": 1000000 },
+    { "name": "claude/fable-5-2", "context_limit": 1000000 },
+    { "name": "openai/gpt-6-1-sol", "context_limit": 1050000 },
+    { "name": "openai/gpt-5-5", "context_limit": 1050000 },
+    { "name": "google/gemini-4-argon", "context_limit": 1048576 },
+    { "name": "google/gemini-3-8-flash", "context_limit": 1048576 },
+    { "name": "xai/grok-4-5", "context_limit": 500000 },
+    { "name": "xai/grok-4-1-fast", "context_limit": 2000000 },
+    { "name": "deepseek/v4-pro", "context_limit": 1048576 },
+    { "name": "moonshot/kimi-k3-1-pro", "context_limit": 1048576 },
+    { "name": "glm/5-3", "context_limit": 1000000 }
+  ],
+  "supports_streaming": true,
+  "requires_auth": true,
+  "model_doc_link": "https://wiro.ai/models?categories=llm-tool-call",
+  "setup_steps": [
+    "Create a project at https://wiro.ai/panel/project/new and copy its API key",
+    "For a Signature project, enter YOUR_API_KEY:YOUR_API_SECRET; for API Key Only, the key alone",
+    "Paste it above as WIRO_API_KEY"
+  ]
+}
+```
+
+Tool calling works through the gateway, so goose can run its extensions across
+as many turns as the task needs.
+
 ### OpenAI SDK
 
 The official `openai` package talks to the gateway unchanged. Only
