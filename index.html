@@ -44754,7 +44754,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
 
                   <section id="overview">
                     <h2>Overview</h2>
-                    <p>The Gmail integration uses IMAP with Basic authentication backed by a Google App Password. Agents can monitor the inbox, parse incoming messages, and trigger actions.</p>
+                    <p>The Gmail integration uses IMAP with Basic authentication backed by a Google App Password. Agents can monitor the inbox, parse incoming messages, and trigger actions. It reads mail only: to send email, an agent uses an email Connector such as Brevo, SendGrid, Mailchimp, HubSpot or Lemlist.</p>
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
                       <li><code>int-gmail-check</code>: Poll Gmail inbox on a schedule, parse messages, route to actions</li>
@@ -44762,7 +44762,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
                     <p><strong>Agents that typically enable this integration:</strong></p>
                     <ul>
                       <li>Blog Content Editor (inbox-triggered workflows)</li>
-                      <li>Newsletter Manager (test sends)</li>
+                      <li>Newsletter Manager</li>
                       <li>Support / App Review agents (operator notifications)</li>
                     </ul>
                   </section>
@@ -44901,7 +44901,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
                     <ul>
                       <li><strong>"Invalid credentials" when IMAP connects:</strong> Wrong App Password, or 2-Step Verification was turned off (which invalidates all App Passwords). Regenerate.</li>
                       <li><strong>Agent can't see messages older than ~30 days:</strong> IMAP folder defaults. For broader scope, your agent may need to switch to "All Mail". Ask support.</li>
-                      <li><strong>"Less Secure Apps" mentioned anywhere:</strong> Google removed that option in 2022. App Password is the only supported path for IMAP/SMTP.</li>
+                      <li><strong>"Less Secure Apps" mentioned anywhere:</strong> Google removed that option in 2022. App Password is the only supported path for IMAP.</li>
                     </ul>
                   </section>
 

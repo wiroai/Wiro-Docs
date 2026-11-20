@@ -4,7 +4,7 @@ Connect your agent to a Gmail inbox using a Google App Password for IMAP access.
 
 ## Overview
 
-The Gmail integration uses IMAP with Basic authentication backed by a Google App Password. Agents can monitor the inbox, parse incoming messages, and trigger actions.
+The Gmail integration uses IMAP with Basic authentication backed by a Google App Password. Agents can monitor the inbox, parse incoming messages, and trigger actions. It reads mail only: to send email, an agent uses an email Connector such as Brevo, SendGrid, Mailchimp, HubSpot or Lemlist.
 
 **Skills that use this integration:**
 
@@ -13,7 +13,7 @@ The Gmail integration uses IMAP with Basic authentication backed by a Google App
 **Agents that typically enable this integration:**
 
 - Blog Content Editor (inbox-triggered workflows)
-- Newsletter Manager (test sends)
+- Newsletter Manager
 - Support / App Review agents (operator notifications)
 
 ## Availability
@@ -104,7 +104,7 @@ The skill is active only when it is enabled and `account` is set.
 
 - **"Invalid credentials" when IMAP connects:** Wrong App Password, or 2-Step Verification was turned off (which invalidates all App Passwords). Regenerate.
 - **Agent can't see messages older than ~30 days:** IMAP folder defaults. For broader scope, your agent may need to switch to "All Mail". Ask support.
-- **"Less Secure Apps" mentioned anywhere:** Google removed that option in 2022. App Password is the only supported path for IMAP/SMTP.
+- **"Less Secure Apps" mentioned anywhere:** Google removed that option in 2022. App Password is the only supported path for IMAP.
 
 ## Related
 
