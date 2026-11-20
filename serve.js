@@ -74,7 +74,7 @@ const sections = [
   { slug: 'integration-googledrive-skills', title: 'Google Drive Integration', description: 'Per-user Google Cloud service account upload. User shares Drive folders with the service account email; the agent scans only those folders.' },
   { slug: 'integration-google-calendar-skills', title: 'Google Calendar Integration', description: 'Per-user Google Cloud service account + per-calendar sharing. Read availability, find slots, and draft events. Used by appointment-booking and voice-receptionist agents.' },
   { slug: 'integration-serper-search-skills', title: 'Serper Web Search Integration', description: 'Real Google web-search results as clean JSON via Serper.dev: title/link/snippet for research before writing, then fetch the top pages. One API key, no Google Cloud project or cx. Used by content and marketing agents.' },
-  { slug: 'integration-gmail-skills', title: 'Gmail Integration', description: 'Gmail IMAP/SMTP setup using Google App Passwords. Inbox monitoring and email sending.' },
+  { slug: 'integration-gmail-skills', title: 'Gmail Integration', description: 'Gmail IMAP setup using Google App Passwords. Inbox monitoring.' },
   { slug: 'integration-telegram-skills', title: 'Telegram Integration', description: 'Telegram bot setup: BotFather token, allowed users, private vs collaborative session modes.' },
   { slug: 'integration-firebase-skills', title: 'Firebase Integration', description: 'Firebase Cloud Messaging setup: Admin SDK service account, topic targeting, multi-project configuration.' },
   { slug: 'integration-wordpress-skills', title: 'WordPress Integration', description: 'WordPress REST API setup using Application Passwords for blog post and page publishing.' },
