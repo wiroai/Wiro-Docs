@@ -66,6 +66,7 @@ One row per page, in sidebar order. Each path is live under `https://wiro.ai`.
 | Files | `/docs/files` | [files.md](./markdown/files.md) |
 | Pricing | `/docs/pricing` | [pricing.md](./markdown/pricing.md) |
 | Concurrency Limits | `/docs/concurrency-limits` | [concurrency-limits.md](./markdown/concurrency-limits.md) |
+| Spend Limits | `/docs/spend-limits` | [spend-limits.md](./markdown/spend-limits.md) |
 | Error Reference | `/docs/error-reference` | [error-reference.md](./markdown/error-reference.md) |
 | FAQ | `/docs/faq` | [faq.md](./markdown/faq.md) |
 | **Workflow & Studio API Reference** | | |

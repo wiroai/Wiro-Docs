@@ -81,6 +81,11 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://wiro.ai/docs/spend-limits</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://wiro.ai/docs/error-reference</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>

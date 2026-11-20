@@ -17,6 +17,7 @@ const sections = [
   { slug: 'files', title: 'Files', description: 'Upload files to Wiro for use as model inputs. Manage folders, retrieve file metadata, and reference uploaded assets across multiple API calls.' },
   { slug: 'pricing', title: 'Pricing', description: 'Wiro uses pay-per-use pricing with no subscriptions. Each model has its own cost per run. Add credits to your account and pay only for what you use.' },
   { slug: 'concurrency-limits', title: 'Concurrency Limits', description: 'How many unfinished tasks your Wiro balance allows at once, one for each full $10 up to $250 and no limit above that, and how to handle error code 96.' },
+  { slug: 'spend-limits', title: 'Spend Limits', description: 'Monthly or daily spend limits for a personal account or a team: the whole wallet, a member, an API key, a surface or an agent, alert emails, error code 93 and the SpendLimit endpoints.' },
   { slug: 'error-reference', title: 'Error Reference', description: 'Complete reference of Wiro API error codes and messages. Troubleshoot authentication failures, rate limits, invalid parameters, and more.' },
   { slug: 'faq', title: 'FAQ', description: 'Frequently asked questions about the Wiro API, covering authentication, billing, model support, rate limits, webhooks, and integrations.' },
   { slug: 'code-examples', title: 'Code Examples', description: 'Ready-to-use Wiro API code examples in 9 languages: cURL, Python, Node.js, PHP, C#, Go, Swift, Kotlin, and Dart.' },
@@ -73,7 +74,7 @@ const sections = [
   { slug: 'integration-webvoice-skills', title: 'Web Voice Integration', description: 'Browser-embedded realtime voice channel. POST /UserAgent/Realtime/WebStart issues a short-lived JWT + WebSocket URL; the browser presents it as the first WS message and streams 24 kHz PCM mono. Used by Voice Receptionist and Voice Sales Rep agents.' },
   { slug: 'organizations-overview', title: 'Organizations & Teams', description: 'Collaborate with your team under a shared workspace with unified billing, access controls, and resource management. Learn about organizations, teams, and personal workspaces.' },
   { slug: 'organizations-managing-teams', title: 'Managing Teams', description: 'Create organizations, invite members, manage roles and permissions. Transfer agents and projects between workspaces.' },
-  { slug: 'organizations-billing', title: 'Team Billing & Spending', description: 'Manage team wallets, set spend limits for personal accounts and teams, control model access, and track usage across your organization.' },
+  { slug: 'organizations-billing', title: 'Team Billing & Spending', description: 'Manage team wallets, control model access, transfer credit and track usage across your organization.' },
   { slug: 'organizations-api-access', title: 'Team API Access', description: 'How workspace context is resolved in API requests. Learn about API key context resolution, resource filtering, and agent context guards.' },
 ];
 
