@@ -157,7 +157,7 @@ Then set the End node's `"depends": ["node-video"]` and `"fields": { "video": "$
 | `stopped` | The run reached its breakpoint. Continue it with [RunResume](#post-workflowrunresume). |
 | `cancelled` | One of the run's steps was cancelled. |
 
-A step is `pending`, `running`, `completed`, `failed`, `cancelled` or `aborted` (skipped because an earlier step failed). A failed step's `cause` is `tool-error` (the model refused its inputs or the task failed; `error` says why), `poll-timeout` (the step ran past 4 hours and was not charged), or another short code.
+A step is `pending`, `running`, `completed`, `failed`, `cancelled` or `aborted` (skipped because an earlier step failed). A failed step's `cause` is `tool-error` (the model refused its inputs or the task failed; `error` says why), `poll-timeout` (the step ran past 4 hours and was not charged), `spend-limit-reached` (a [spend limit](/docs/spend-limits) refused the step before it started; `error` holds the limit's message), or another short code.
 
 ### Breakpoints
 
@@ -175,8 +175,8 @@ A resume runs the remaining steps exactly as the run started them, with the same
 - Nothing is charged when a run starts. Each model step is a normal [model task](/docs/run-a-model), billed when it finishes successfully at that model's price. Failed steps are not charged, and utility steps are free.
 - To start, the wallet must hold $0.50 for each model step the run will execute (up to the breakpoint, when one is set). Otherwise the run is refused with code `97`, `Insufficient balance`. The [concurrency limit](/docs/concurrency-limits) also applies (code `96`).
 - The expected cost of a run is the sum of the model prices for the settings each step uses, from [Tool/Detail](/docs/models). A run's `totalcost` shows the list price of the steps finished so far, and once the run has ended `chargedcost` and `discountamount` show what the wallet paid. `chargedcost` is `null` while a step's charge is still settling.
-- The workspace's [spend limits](/docs/spend-limits) apply when a run starts or resumes, and again before each step starts. A run is refused with code `93` when its known price would go over a limit that covers it, and a step is refused once that limit has no room left.
-- The workspace's [Model Access](/docs/model-access) rules apply when a run starts or resumes: when a rule blocks the model of a step that will run, the run is refused with code `92` before anything runs, and the message names that model. Steps that will not run, such as the steps after a breakpoint, are not checked.
+- The workspace's [spend limits](/docs/spend-limits) apply when a run starts or resumes, and again before each step starts. A run is refused with code `93` when its known price would go over a limit that covers it, or once that limit has no room left. Each step is checked the same way with its own price, and holds that price until it is charged. A step a limit refuses fails with cause `spend-limit-reached`, and the run ends as `failed`: resume it with [RunResume](#post-workflowrunresume) once the limit allows.
+- The workspace's [Model Access](/docs/model-access) rules apply when a run starts or resumes: when a rule blocks the model of a step that will run, the run is refused with code `92` before anything runs, and the message names that model. When the workflow's steps are hidden from you, as on a protected workflow from another workspace, the message names your rule but not the model, for example `Your account can't use one of the models this workflow runs. Model Access rules decide which models can run.` Steps that will not run, such as the steps after a breakpoint, are not checked.
 
 ## **POST** /Workflow/List
 

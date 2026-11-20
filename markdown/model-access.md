@@ -132,10 +132,10 @@ Every team member can read the team's rules with `/ModelAccess/List` and `/Model
 
 `/ModelAccess/Set`, `/ModelAccess/Remove` and `/ModelAccess/Preview` work in the dashboard, with a signed-in user's Bearer token and with an API key:
 
-- **With an API key**, the call acts as the person who created the key's project, in that project's workspace: the creator's personal account for a personal project, the team for a team project. The key of a project that a member who is not an admin created can read rules but not change them.
-- **With a Bearer token**, the call acts as you, in your personal account. To work in a team, send the team's guid in the `x-team-guid` header. Calls with an API key ignore this header.
+- **With an API key**, the call acts as the person who created the key's project, in that project's workspace: the creator's personal account for a personal project, the team for a team project. The key follows its creator's current role: while the creator is a team member who is not an admin, the key can read rules but not change them.
+- **With a Bearer token**, the call acts as you, in your personal account. To work in a team, send the team's guid in the `x-team-guid` header. A call whose `x-team-guid` names a team you are not a member of, and whose organization you don't own, is refused with `You are not a member of this team.` Calls with an API key ignore this header.
 
-`/ModelAccess/List` and `/ModelAccess/Preview` return the `workspace` they work in, so you can check where a change lands before you make it. Changes made with API keys are limited to 60 per workspace per hour. Each change is recorded with who made it and how.
+`/ModelAccess/List` and `/ModelAccess/Preview` return the `workspace` they work in, so you can check where a change lands before you make it. Changes made with API keys are limited to 60 per workspace in any hour, counting spend limits and Model Access rules together. Preview does not count. Each change is recorded with who made it and how.
 
 ## **POST** /ModelAccess/List
 
@@ -332,14 +332,17 @@ Adds a rule to the call's workspace, or replaces the rule with the same `scope` 
 | `<model> is not a model's owner/slug or id.` | A model named neither by `owner/slug` nor by a number |
 | `<model> is not a model on Wiro.` | No model listed on Wiro has that `owner/slug` or id |
 | `<model> is named twice.` | `models` names a model twice: by the same name, or by its id and its `owner/slug` with a different `access` |
-| `Only a team admin or the organization owner can change this rule.` | In a team, the caller is not a team admin or the organization owner. With an API key, the caller is the person who created the key's project |
+| `You are not a member of this team.` | With a Bearer token, `x-team-guid` names a team you are not a member of, and whose organization you don't own |
+| `Only a team admin or the organization owner can change this rule.` | In a team, a signed-in caller is not a team admin or the organization owner |
+| `This API key acts as the person who created it, who is a member of this team. Only a team admin or the organization owner can change this rule.` | With an API key, the person who created the key's project is a team member who is not an admin |
 | `That person is not an active member of this team.` | A `member` rule for someone who is not an active member of the team |
 | `That API key's project is not in this workspace.` | A `project` rule for a project of another workspace |
 | `That agent is not in this workspace.` | An `agent` rule for an agent of another workspace |
+| `Too many changes to Spend Limits and Model Access in the last hour. Try again later.` | With API keys, this workspace's spend limits and Model Access rules have been changed 60 times in the last hour |
 
 ## **POST** /ModelAccess/Preview
 
-Shows what `/ModelAccess/Set` would do, and changes nothing. It takes the same body as `/ModelAccess/Set` and checks it the same way, with the same errors, so only the people who can change rules can call it. Use it to see which workspace a change lands in, the rule as it would be saved and the rule it would replace. For an `agent` rule, it also says whether the rule would block the chat model the agent answers with.
+Shows what `/ModelAccess/Set` would do, and changes nothing. It takes the same body as `/ModelAccess/Set` and checks it the same way, so only the people who can change rules can call it. Use it to see which workspace a change lands in, the rule as it would be saved and the rule it would replace. For an `agent` rule, it also says whether the rule would block the chat model the agent answers with.
 
 ### Example
 
@@ -364,7 +367,8 @@ Shows what `/ModelAccess/Set` would do, and changes nothing. It takes the same b
   "preview": true,
   "workspace": {
     "type": "team",
-    "teamguid": "0d9aade4-d31b-4b97-88f3-a90482f080ea"
+    "teamguid": "0d9aade4-d31b-4b97-88f3-a90482f080ea",
+    "canmanage": true
   },
   "rule": {
     "guid": "c2f0a9d4-5b7e-4c1a-8e36-9d4b2a7f1e05",
@@ -377,7 +381,7 @@ Shows what `/ModelAccess/Set` would do, and changes nothing. It takes the same b
     ],
     "models": [],
     "createdat": 1795195200,
-    "updatedat": 1795195200
+    "updatedat": null
   },
   "existing": {
     "guid": "c2f0a9d4-5b7e-4c1a-8e36-9d4b2a7f1e05",
@@ -403,12 +407,12 @@ Shows what `/ModelAccess/Set` would do, and changes nothing. It takes the same b
 | Field | Description |
 |-------|-------------|
 | `preview` | Always `true`: nothing was changed |
-| `workspace` | The workspace the change would be made in: `type` and `teamguid`, as in `/ModelAccess/List` |
-| `rule` | The rule as `/ModelAccess/Set` would save it, shaped like a row of `/ModelAccess/List` |
+| `workspace` | The workspace the change would be made in, as in `/ModelAccess/List`: `type`, `teamguid` and `canmanage`, which is always `true` here |
+| `rule` | The rule as `/ModelAccess/Set` would save it, shaped like a row of `/ModelAccess/List`. Its `guid` and `createdat` are those of the rule it would replace, or `null` for a new rule, and its `updatedat` is `null` |
 | `existing` | The current rule with the same `scope` and `target`, which the change would replace, or `null` when there is none |
 | `agentchatmodel` | For an `agent` rule only: the chat model the agent answers with, as its settings name it (`ref`) and by its `owner/slug` on Wiro (`model`), and whether the rule would block it (`blocked`) |
 
-When `agentchatmodel.blocked` is `true`, the agent stops answering once the rule is saved: its turns end with `[MODEL_NOT_ALLOWED]`. Allow its chat model in the rule too, or allow LLM & Chat. The errors are those of `/ModelAccess/Set`.
+When `agentchatmodel.blocked` is `true`, the agent stops answering within about a minute of the rule being saved: its turns end with `[MODEL_NOT_ALLOWED]`. Allow its chat model in the rule too, or allow LLM & Chat. The errors are those of `/ModelAccess/Set`, except that Preview does not count toward the hourly cap on changes made with API keys.
 
 ## **POST** /ModelAccess/Remove
 
@@ -430,7 +434,10 @@ Removes a rule from the call's workspace. The people who can change rules can re
 |-------|-------|
 | `guid is required.` | No `guid` was sent |
 | `Rule not found in this workspace.` | The guid is not a rule of the call's workspace, or it was already removed |
-| `Only a team admin or the organization owner can change this rule.` | In a team, the caller can't manage this rule |
+| `You are not a member of this team.` | With a Bearer token, `x-team-guid` names a team you are not a member of, and whose organization you don't own |
+| `Only a team admin or the organization owner can change this rule.` | In a team, a signed-in caller is not a team admin or the organization owner |
+| `This API key acts as the person who created it, who is a member of this team. Only a team admin or the organization owner can change this rule.` | With an API key, the person who created the key's project is a team member who is not an admin |
+| `Too many changes to Spend Limits and Model Access in the last hour. Try again later.` | With API keys, this workspace's spend limits and Model Access rules have been changed 60 times in the last hour |
 
 ## **POST** /ModelAccess/Check
 

@@ -5448,7 +5448,7 @@ Studio and Workflow Agent messages count on the surface they were sent from. Ref
 
 A limit's `period` is `month` (the default), which resets on the 1st of each month at 00:00 UTC, or `day`, which resets every day at 00:00 UTC. A scope and target can have one monthly limit and one daily limit.
 
-`amountusd` is the limit in USD, rounded to cents. It must be at least `0.01`: a smaller amount is refused. A limit counts everything spent in its current period, also what was spent before the limit was added, so a new limit below that amount is used up at once.
+`amountusd` is the limit in USD, rounded to cents. Once rounded, it must be at least `0.01`. A limit counts everything spent in its current period, also what was spent before the limit was added, so a new limit below that amount is used up at once.
 
 ### What Counts
 
@@ -5471,7 +5471,7 @@ Work that is already running finishes and is charged. A realtime session ends af
 
 ### Work in Progress
 
-A run that starts holds its expected price against every limit that covers it, until it is charged or ends. The next check counts what is held, so runs started at the same time can pass a limit by one run at most. A run whose price is not known before it starts goes ahead while the limit has room. Refusal messages, the `heldusd` of a limit in `/SpendLimit/List` and `/SpendLimit/Usage` show what is held.
+A run that starts holds its expected price against every limit that covers it, until it is charged or ends. The next check counts what is held, so runs started at the same time can pass a limit by one run at most. A run whose price is not known before it starts goes ahead while the limit has room. Refusal messages show what is held, and so does `heldusd` on the limits of `/SpendLimit/List` and in `/SpendLimit/Usage`.
 
 ### When a Limit Is Reached
 
@@ -5519,10 +5519,10 @@ Every team member can read the team's limits and spending with `/SpendLimit/List
 
 `/SpendLimit/Set`, `/SpendLimit/Remove` and `/SpendLimit/Preview` work in the dashboard, with a signed-in user's Bearer token and with an API key:
 
-- **With an API key**, the call acts as the person who created the key's project, in that project's workspace: the creator's personal account for a personal project, the team for a team project. The key of a project that a member who is not an admin created can read limits but not change them.
-- **With a Bearer token**, the call acts as you, in your personal account. To work in a team, send the team's guid in the `x-team-guid` header. Calls with an API key ignore this header.
+- **With an API key**, the call acts as the person who created the key's project, in that project's workspace: the creator's personal account for a personal project, the team for a team project. The key follows its creator's current role: while the creator is a team member who is not an admin, the key can read limits but not change them.
+- **With a Bearer token**, the call acts as you, in your personal account. To work in a team, send the team's guid in the `x-team-guid` header. A call whose `x-team-guid` names a team you are not a member of, and whose organization you don't own, is refused with `You are not a member of this team.` Calls with an API key ignore this header.
 
-`/SpendLimit/List` and `/SpendLimit/Preview` return the `workspace` they work in, so you can check where a change lands before you make it. Changes made with API keys are limited to 60 per workspace per hour. Each change is recorded with who made it and how.
+`/SpendLimit/List` and `/SpendLimit/Preview` return the `workspace` they work in, so you can check where a change lands before you make it. Changes made with API keys are limited to 60 per workspace in any hour, counting spend limits and Model Access rules together. Preview does not count. Each change is recorded with who made it and how.
 
 ## **POST** /SpendLimit/List
 
@@ -5619,7 +5619,7 @@ Adds a spend limit to the call's workspace, or changes the existing limit with t
 | `scope` | string | Yes | `"account"`, `"member"`, `"project"`, `"surface"` or `"agent"`. See [Spend Limits](#how-spend-limits-work) |
 | `target` | string | For every scope but `account` | The member's `useruuid`, the project's `id`, the surface (`web`, `api`, `mcp`, `llm-gateway`, `extension` or `agent`) or the agent's guid. Leave it out for `account` |
 | `period` | string | No | `"month"` or `"day"`. Default: `"month"` |
-| `amountusd` | number | Yes | The limit in USD, at least `0.01`. Rounded to cents |
+| `amountusd` | number | Yes | The limit in USD, rounded to cents. Once rounded, it must be at least `0.01` |
 | `alertpct` | number | No | When the alert email goes out: `50`, `80` or `90` percent of the limit, or `null` for no alert email. Default: `80` |
 
 ### Examples
@@ -5693,15 +5693,19 @@ Adds a spend limit to the call's workspace, or changes the existing limit with t
 | `period must be month or day.` | Another `period` |
 | `amountusd must be a positive number.` | `amountusd` is missing, zero or negative |
 | `amountusd is too large.` | `amountusd` is over 10,000,000 |
+| `amountusd must be at least 0.01.` | `amountusd` is above zero but rounds to less than one cent |
 | `alertpct must be 50, 80 or 90, or null for no alert.` | Another `alertpct` |
-| `Only a team admin or the organization owner can change this limit.` | In a team, the caller is not a team admin or the organization owner. With an API key, the caller is the person who created the key's project |
+| `You are not a member of this team.` | With a Bearer token, `x-team-guid` names a team you are not a member of, and whose organization you don't own |
+| `Only a team admin or the organization owner can change this limit.` | In a team, a signed-in caller is not a team admin or the organization owner |
+| `This API key acts as the person who created it, who is a member of this team. Only a team admin or the organization owner can change this limit.` | With an API key, the person who created the key's project is a team member who is not an admin |
 | `That person is not an active member of this team.` | A `member` limit for someone who is not an active member of the team |
 | `That API key's project is not in this workspace.` | A `project` limit for a project of another workspace |
 | `That agent is not in this workspace.` | An `agent` limit for an agent of another workspace |
+| `Too many changes to Spend Limits and Model Access in the last hour. Try again later.` | With API keys, this workspace's spend limits and Model Access rules have been changed 60 times in the last hour |
 
 ## **POST** /SpendLimit/Preview
 
-Shows what `/SpendLimit/Set` would do, and changes nothing. It takes the same body as `/SpendLimit/Set` and checks it the same way, with the same errors, so only the people who can change limits can call it. Use it to see which workspace a change lands in, the limit as it would be saved and the limit it would replace.
+Shows what `/SpendLimit/Set` would do, and changes nothing. It takes the same body as `/SpendLimit/Set` and checks it the same way, so only the people who can change limits can call it. Use it to see which workspace a change lands in, the limit as it would be saved and the limit it would replace.
 
 ### Example
 
@@ -5724,7 +5728,8 @@ Shows what `/SpendLimit/Set` would do, and changes nothing. It takes the same bo
   "preview": true,
   "workspace": {
     "type": "team",
-    "teamguid": "0d9aade4-d31b-4b97-88f3-a90482f080ea"
+    "teamguid": "0d9aade4-d31b-4b97-88f3-a90482f080ea",
+    "canmanage": true
   },
   "limit": {
     "guid": "15be7fb3-c602-4ff1-a3f1-3afaa3996974",
@@ -5737,7 +5742,7 @@ Shows what `/SpendLimit/Set` would do, and changes nothing. It takes the same bo
     "periodstart": 1793491200,
     "resetsat": 1796083200,
     "createdat": 1794474300,
-    "updatedat": 1794474300,
+    "updatedat": null,
     "spentusd": 88.2
   },
   "existing": {
@@ -5760,11 +5765,11 @@ Shows what `/SpendLimit/Set` would do, and changes nothing. It takes the same bo
 | Field | Description |
 |-------|-------------|
 | `preview` | Always `true`: nothing was changed |
-| `workspace` | The workspace the change would be made in: `type` and `teamguid`, as in `/SpendLimit/List` |
-| `limit` | The limit as `/SpendLimit/Set` would save it, shaped like a row of `/SpendLimit/List`, with what has been spent in its current period |
+| `workspace` | The workspace the change would be made in, as in `/SpendLimit/List`: `type`, `teamguid` and `canmanage`, which is always `true` here |
+| `limit` | The limit as `/SpendLimit/Set` would save it, shaped like a row of `/SpendLimit/List`, with what has been spent in its current period. Its `guid` and `createdat` are those of the limit it would replace, or `null` for a new limit, and its `updatedat` is `null` |
 | `existing` | The current limit with the same `scope`, `target` and `period`, which the change would replace, or `null` when there is none |
 
-When `limit.spentusd` is already at or above the new amount, the limit is used up as soon as it is saved. The errors are those of `/SpendLimit/Set`.
+When `limit.spentusd` is already at or above the new amount, the limit is used up as soon as it is saved. The errors are those of `/SpendLimit/Set`, except that Preview does not count toward the hourly cap on changes made with API keys.
 
 ## **POST** /SpendLimit/Remove
 
@@ -5786,7 +5791,10 @@ Removes a spend limit from the call's workspace. The people who can change limit
 |-------|-------|
 | `guid is required.` | No `guid` was sent |
 | `Limit not found in this workspace.` | The guid is not a limit of the call's workspace, or it was already removed |
-| `Only a team admin or the organization owner can change this limit.` | In a team, the caller can't manage this limit |
+| `You are not a member of this team.` | With a Bearer token, `x-team-guid` names a team you are not a member of, and whose organization you don't own |
+| `Only a team admin or the organization owner can change this limit.` | In a team, a signed-in caller is not a team admin or the organization owner |
+| `This API key acts as the person who created it, who is a member of this team. Only a team admin or the organization owner can change this limit.` | With an API key, the person who created the key's project is a team member who is not an admin |
+| `Too many changes to Spend Limits and Model Access in the last hour. Try again later.` | With API keys, this workspace's spend limits and Model Access rules have been changed 60 times in the last hour |
 
 ## **POST** /SpendLimit/Usage
 
@@ -5806,9 +5814,10 @@ Returns what the call's workspace has spent this month or today, in total and by
     "periodstart": 1793491200,
     "resetsat": 1796083200,
     "totalusd": 248.7,
+    "heldusd": 3.5,
     "surfaces": [
       { "surface": "web", "label": "the dashboard", "spentusd": 40.1 },
-      { "surface": "api", "label": "the API", "spentusd": 168.2 },
+      { "surface": "api", "label": "the API", "spentusd": 168.2, "heldusd": 3.5 },
       { "surface": "mcp", "label": "MCP", "spentusd": 12.5 },
       { "surface": "llm-gateway", "label": "the LLM gateway", "spentusd": 7.9 },
       { "surface": "extension", "label": "the browser extensions", "spentusd": 0 },
@@ -5816,11 +5825,11 @@ Returns what the call's workspace has spent this month or today, in total and by
     ],
     "members": [
       { "useruuid": "3f5a9c20-6d41-4b8e-a1c7-5e9d0f2b4c61", "label": "Jane Doe", "spentusd": 120.5 },
-      { "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", "label": "John Doe", "spentusd": 108.2 }
+      { "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", "label": "John Doe", "spentusd": 108.2, "heldusd": 3.5 }
     ],
     "projects": [
       { "projectid": "48211", "label": "Production", "spentusd": 88.2 },
-      { "projectid": "48377", "label": "Staging", "spentusd": 80 }
+      { "projectid": "48377", "label": "Staging", "spentusd": 80, "heldusd": 3.5 }
     ],
     "agents": [
       { "useragentguid": "6e4bbd6f-6b73-4421-adae-e9599ba2e317", "label": "Support Agent", "spentusd": 20 }
@@ -5834,10 +5843,12 @@ Returns what the call's workspace has spent this month or today, in total and by
 | `usage.period` | `month` or `day` |
 | `usage.periodstart`, `usage.resetsat` | Start and end of the period, in Unix seconds |
 | `usage.totalusd` | What the wallet has spent in the period, in USD |
+| `usage.heldusd` | What work in progress holds, in USD. Present only when it holds something (see [Work in Progress](#work-in-progress)) |
 | `usage.surfaces` | One row per surface, always in the order `web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, with its label |
 | `usage.members` | Spending per team member, with the member's name as `label`. Empty for a personal account |
 | `usage.projects` | Spending per API key, with the project's name as `label` |
 | `usage.agents` | Spending per deployed agent, with the agent's title as `label` |
+| `heldusd` in a row of `usage.surfaces`, `usage.members`, `usage.projects` or `usage.agents` | What work in progress holds for that row, present only when it holds something. A member, API key or agent whose only spending so far is held work is listed with `spentusd` `0` |
 
 For other breakdowns, `/Project/UsageSummary` gives usage per project and `/Task/Stat` gives time-series task execution data. Both filter by the active workspace.
 
@@ -5977,10 +5988,10 @@ Every team member can read the team's rules with `/ModelAccess/List` and `/Model
 
 `/ModelAccess/Set`, `/ModelAccess/Remove` and `/ModelAccess/Preview` work in the dashboard, with a signed-in user's Bearer token and with an API key:
 
-- **With an API key**, the call acts as the person who created the key's project, in that project's workspace: the creator's personal account for a personal project, the team for a team project. The key of a project that a member who is not an admin created can read rules but not change them.
-- **With a Bearer token**, the call acts as you, in your personal account. To work in a team, send the team's guid in the `x-team-guid` header. Calls with an API key ignore this header.
+- **With an API key**, the call acts as the person who created the key's project, in that project's workspace: the creator's personal account for a personal project, the team for a team project. The key follows its creator's current role: while the creator is a team member who is not an admin, the key can read rules but not change them.
+- **With a Bearer token**, the call acts as you, in your personal account. To work in a team, send the team's guid in the `x-team-guid` header. A call whose `x-team-guid` names a team you are not a member of, and whose organization you don't own, is refused with `You are not a member of this team.` Calls with an API key ignore this header.
 
-`/ModelAccess/List` and `/ModelAccess/Preview` return the `workspace` they work in, so you can check where a change lands before you make it. Changes made with API keys are limited to 60 per workspace per hour. Each change is recorded with who made it and how.
+`/ModelAccess/List` and `/ModelAccess/Preview` return the `workspace` they work in, so you can check where a change lands before you make it. Changes made with API keys are limited to 60 per workspace in any hour, counting spend limits and Model Access rules together. Preview does not count. Each change is recorded with who made it and how.
 
 ## **POST** /ModelAccess/List
 
@@ -6177,14 +6188,17 @@ Adds a rule to the call's workspace, or replaces the rule with the same `scope` 
 | `<model> is not a model's owner/slug or id.` | A model named neither by `owner/slug` nor by a number |
 | `<model> is not a model on Wiro.` | No model listed on Wiro has that `owner/slug` or id |
 | `<model> is named twice.` | `models` names a model twice: by the same name, or by its id and its `owner/slug` with a different `access` |
-| `Only a team admin or the organization owner can change this rule.` | In a team, the caller is not a team admin or the organization owner. With an API key, the caller is the person who created the key's project |
+| `You are not a member of this team.` | With a Bearer token, `x-team-guid` names a team you are not a member of, and whose organization you don't own |
+| `Only a team admin or the organization owner can change this rule.` | In a team, a signed-in caller is not a team admin or the organization owner |
+| `This API key acts as the person who created it, who is a member of this team. Only a team admin or the organization owner can change this rule.` | With an API key, the person who created the key's project is a team member who is not an admin |
 | `That person is not an active member of this team.` | A `member` rule for someone who is not an active member of the team |
 | `That API key's project is not in this workspace.` | A `project` rule for a project of another workspace |
 | `That agent is not in this workspace.` | An `agent` rule for an agent of another workspace |
+| `Too many changes to Spend Limits and Model Access in the last hour. Try again later.` | With API keys, this workspace's spend limits and Model Access rules have been changed 60 times in the last hour |
 
 ## **POST** /ModelAccess/Preview
 
-Shows what `/ModelAccess/Set` would do, and changes nothing. It takes the same body as `/ModelAccess/Set` and checks it the same way, with the same errors, so only the people who can change rules can call it. Use it to see which workspace a change lands in, the rule as it would be saved and the rule it would replace. For an `agent` rule, it also says whether the rule would block the chat model the agent answers with.
+Shows what `/ModelAccess/Set` would do, and changes nothing. It takes the same body as `/ModelAccess/Set` and checks it the same way, so only the people who can change rules can call it. Use it to see which workspace a change lands in, the rule as it would be saved and the rule it would replace. For an `agent` rule, it also says whether the rule would block the chat model the agent answers with.
 
 ### Example
 
@@ -6209,7 +6223,8 @@ Shows what `/ModelAccess/Set` would do, and changes nothing. It takes the same b
   "preview": true,
   "workspace": {
     "type": "team",
-    "teamguid": "0d9aade4-d31b-4b97-88f3-a90482f080ea"
+    "teamguid": "0d9aade4-d31b-4b97-88f3-a90482f080ea",
+    "canmanage": true
   },
   "rule": {
     "guid": "c2f0a9d4-5b7e-4c1a-8e36-9d4b2a7f1e05",
@@ -6222,7 +6237,7 @@ Shows what `/ModelAccess/Set` would do, and changes nothing. It takes the same b
     ],
     "models": [],
     "createdat": 1795195200,
-    "updatedat": 1795195200
+    "updatedat": null
   },
   "existing": {
     "guid": "c2f0a9d4-5b7e-4c1a-8e36-9d4b2a7f1e05",
@@ -6248,12 +6263,12 @@ Shows what `/ModelAccess/Set` would do, and changes nothing. It takes the same b
 | Field | Description |
 |-------|-------------|
 | `preview` | Always `true`: nothing was changed |
-| `workspace` | The workspace the change would be made in: `type` and `teamguid`, as in `/ModelAccess/List` |
-| `rule` | The rule as `/ModelAccess/Set` would save it, shaped like a row of `/ModelAccess/List` |
+| `workspace` | The workspace the change would be made in, as in `/ModelAccess/List`: `type`, `teamguid` and `canmanage`, which is always `true` here |
+| `rule` | The rule as `/ModelAccess/Set` would save it, shaped like a row of `/ModelAccess/List`. Its `guid` and `createdat` are those of the rule it would replace, or `null` for a new rule, and its `updatedat` is `null` |
 | `existing` | The current rule with the same `scope` and `target`, which the change would replace, or `null` when there is none |
 | `agentchatmodel` | For an `agent` rule only: the chat model the agent answers with, as its settings name it (`ref`) and by its `owner/slug` on Wiro (`model`), and whether the rule would block it (`blocked`) |
 
-When `agentchatmodel.blocked` is `true`, the agent stops answering once the rule is saved: its turns end with `[MODEL_NOT_ALLOWED]`. Allow its chat model in the rule too, or allow LLM & Chat. The errors are those of `/ModelAccess/Set`.
+When `agentchatmodel.blocked` is `true`, the agent stops answering within about a minute of the rule being saved: its turns end with `[MODEL_NOT_ALLOWED]`. Allow its chat model in the rule too, or allow LLM & Chat. The errors are those of `/ModelAccess/Set`, except that Preview does not count toward the hourly cap on changes made with API keys.
 
 ## **POST** /ModelAccess/Remove
 
@@ -6275,7 +6290,10 @@ Removes a rule from the call's workspace. The people who can change rules can re
 |-------|-------|
 | `guid is required.` | No `guid` was sent |
 | `Rule not found in this workspace.` | The guid is not a rule of the call's workspace, or it was already removed |
-| `Only a team admin or the organization owner can change this rule.` | In a team, the caller can't manage this rule |
+| `You are not a member of this team.` | With a Bearer token, `x-team-guid` names a team you are not a member of, and whose organization you don't own |
+| `Only a team admin or the organization owner can change this rule.` | In a team, a signed-in caller is not a team admin or the organization owner |
+| `This API key acts as the person who created it, who is a member of this team. Only a team admin or the organization owner can change this rule.` | With an API key, the person who created the key's project is a team member who is not an admin |
+| `Too many changes to Spend Limits and Model Access in the last hour. Try again later.` | With API keys, this workspace's spend limits and Model Access rules have been changed 60 times in the last hour |
 
 ## **POST** /ModelAccess/Check
 
@@ -7887,7 +7905,7 @@ Then set the End node's `"depends": ["node-video"]` and `"fields": { "video": "$
 | `stopped` | The run reached its breakpoint. Continue it with [RunResume](#post-workflowrunresume). |
 | `cancelled` | One of the run's steps was cancelled. |
 
-A step is `pending`, `running`, `completed`, `failed`, `cancelled` or `aborted` (skipped because an earlier step failed). A failed step's `cause` is `tool-error` (the model refused its inputs or the task failed; `error` says why), `poll-timeout` (the step ran past 4 hours and was not charged), or another short code.
+A step is `pending`, `running`, `completed`, `failed`, `cancelled` or `aborted` (skipped because an earlier step failed). A failed step's `cause` is `tool-error` (the model refused its inputs or the task failed; `error` says why), `poll-timeout` (the step ran past 4 hours and was not charged), `spend-limit-reached` (a [spend limit](/docs/spend-limits) refused the step before it started; `error` holds the limit's message), or another short code.
 
 ### Breakpoints
 
@@ -7905,8 +7923,8 @@ A resume runs the remaining steps exactly as the run started them, with the same
 - Nothing is charged when a run starts. Each model step is a normal [model task](/docs/run-a-model), billed when it finishes successfully at that model's price. Failed steps are not charged, and utility steps are free.
 - To start, the wallet must hold $0.50 for each model step the run will execute (up to the breakpoint, when one is set). Otherwise the run is refused with code `97`, `Insufficient balance`. The [concurrency limit](/docs/concurrency-limits) also applies (code `96`).
 - The expected cost of a run is the sum of the model prices for the settings each step uses, from [Tool/Detail](/docs/models). A run's `totalcost` shows the list price of the steps finished so far, and once the run has ended `chargedcost` and `discountamount` show what the wallet paid. `chargedcost` is `null` while a step's charge is still settling.
-- The workspace's [spend limits](/docs/spend-limits) apply when a run starts or resumes, and again before each step starts. A run is refused with code `93` when its known price would go over a limit that covers it, and a step is refused once that limit has no room left.
-- The workspace's [Model Access](/docs/model-access) rules apply when a run starts or resumes: when a rule blocks the model of a step that will run, the run is refused with code `92` before anything runs, and the message names that model. Steps that will not run, such as the steps after a breakpoint, are not checked.
+- The workspace's [spend limits](/docs/spend-limits) apply when a run starts or resumes, and again before each step starts. A run is refused with code `93` when its known price would go over a limit that covers it, or once that limit has no room left. Each step is checked the same way with its own price, and holds that price until it is charged. A step a limit refuses fails with cause `spend-limit-reached`, and the run ends as `failed`: resume it with [RunResume](#post-workflowrunresume) once the limit allows.
+- The workspace's [Model Access](/docs/model-access) rules apply when a run starts or resumes: when a rule blocks the model of a step that will run, the run is refused with code `92` before anything runs, and the message names that model. When the workflow's steps are hidden from you, as on a protected workflow from another workspace, the message names your rule but not the model, for example `Your account can't use one of the models this workflow runs. Model Access rules decide which models can run.` Steps that will not run, such as the steps after a breakpoint, are not checked.
 
 ## **POST** /Workflow/List
 
@@ -28312,7 +28330,7 @@ Create a project inside a team to get a team API key, or use a personal project 
 
 A team project's API key works only while the user who created the project is an active member of the team or the owner of its organization. Once the creator is removed from the team, the key stops working right away, in your apps and in any agent that uses it. The project stays in the team. Requests with the key then fail with HTTP `401` and `The person who created this API key is no longer in its team. Ask a team admin for a new key.` Public endpoints such as `Agent/List` still answer, as if the request had no key. While the key works, runs made with it count toward the creator's member limit (see [Spend Limits](/docs/spend-limits)).
 
-API keys can't change teams or organizations. `Organization/Create`, `Organization/Remove`, `Organization/Restore`, `Team/Create`, `Team/Update`, `Team/Remove`, `Team/Member/Invite`, `Team/Member/CancelInvite`, `Team/Member/UpdateRole`, `Team/Member/Remove`, `Team/TransferAgent`, `Team/TransferProject` and `Team/TransferCredit` need a signed-in user: use the dashboard, or send that user's Bearer token. With any API key, personal or team, they fail with HTTP `401` and `API keys can't manage teams or organizations. Sign in and try again.` Endpoints that only read, such as `Organization/List`, `Team/Member/List`, `SpendLimit/List`, `SpendLimit/Usage`, `ModelAccess/List` and `ModelAccess/Check`, work with an API key. Spend limits and Model Access rules are not team settings, and API keys can change them: `SpendLimit/Set`, `SpendLimit/Remove`, `SpendLimit/Preview`, `ModelAccess/Set`, `ModelAccess/Remove` and `ModelAccess/Preview` work with a personal project's key and with the key of a team project that a team admin or the organization owner created. The key of a team project that another member created can only read them. See [Spend Limits](/docs/spend-limits#changing-limits-with-the-api) and [Model Access](/docs/model-access#changing-rules-with-the-api).
+API keys can't change teams or organizations. `Organization/Create`, `Organization/Remove`, `Organization/Restore`, `Team/Create`, `Team/Update`, `Team/Remove`, `Team/Member/Invite`, `Team/Member/CancelInvite`, `Team/Member/UpdateRole`, `Team/Member/Remove`, `Team/TransferAgent`, `Team/TransferProject` and `Team/TransferCredit` need a signed-in user: use the dashboard, or send that user's Bearer token. With any API key, personal or team, they fail with HTTP `401` and `API keys can't manage teams or organizations. Sign in and try again.` Endpoints that only read, such as `Organization/List`, `Team/Member/List`, `SpendLimit/List`, `SpendLimit/Usage`, `ModelAccess/List` and `ModelAccess/Check`, work with an API key. Spend limits and Model Access rules are not team settings, and API keys can change them: `SpendLimit/Set`, `SpendLimit/Remove`, `SpendLimit/Preview`, `ModelAccess/Set`, `ModelAccess/Remove` and `ModelAccess/Preview` work with a personal project's key and with the key of a team project whose creator is a team admin or the organization owner. A key follows its creator's current role: while its creator is a member who is not an admin, it can only read them. See [Spend Limits](/docs/spend-limits#changing-limits-with-the-api) and [Model Access](/docs/model-access#changing-rules-with-the-api).
 
 ## What Gets Filtered by Context
 

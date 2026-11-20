@@ -7197,7 +7197,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
 
                     <h3>Periods and Amounts</h3>
                     <p>A limit's <code>period</code> is <code>month</code> (the default), which resets on the 1st of each month at 00:00 UTC, or <code>day</code>, which resets every day at 00:00 UTC. A scope and target can have one monthly limit and one daily limit.</p>
-                    <p><code>amountusd</code> is the limit in USD, rounded to cents. It must be at least <code>0.01</code>: a smaller amount is refused. A limit counts everything spent in its current period, also what was spent before the limit was added, so a new limit below that amount is used up at once.</p>
+                    <p><code>amountusd</code> is the limit in USD, rounded to cents. Once rounded, it must be at least <code>0.01</code>. A limit counts everything spent in its current period, also what was spent before the limit was added, so a new limit below that amount is used up at once.</p>
 
                     <h3>What Counts</h3>
                     <p>Every charge to the wallet for usage counts: model runs, workflow runs, realtime sessions, Studio, the Workflow Agent, agent plans, upgrades and credit packs. Deposits are not spending.</p>
@@ -7215,7 +7215,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                     <p>Work that is already running finishes and is charged. A realtime session ends after the turn that uses up a limit, the same way it ends when the balance runs out. Automatic monthly renewals of running agents are never refused by a limit, but they still count toward it.</p>
 
                     <h3 id="work-in-progress">Work in Progress</h3>
-                    <p>A run that starts holds its expected price against every limit that covers it, until it is charged or ends. The next check counts what is held, so runs started at the same time can pass a limit by one run at most. A run whose price is not known before it starts goes ahead while the limit has room. Refusal messages, the <code>heldusd</code> of a limit in <code>/SpendLimit/List</code> and <code>/SpendLimit/Usage</code> show what is held.</p>
+                    <p>A run that starts holds its expected price against every limit that covers it, until it is charged or ends. The next check counts what is held, so runs started at the same time can pass a limit by one run at most. A run whose price is not known before it starts goes ahead while the limit has room. Refusal messages show what is held, and so does <code>heldusd</code> on the limits of <code>/SpendLimit/List</code> and in <code>/SpendLimit/Usage</code>.</p>
 
                     <h3>When a Limit Is Reached</h3>
                     <p>New work the limit covers is refused with HTTP <code>200</code>, <code>result: false</code> and error code <code>93</code>. The message names the limit and says when it resets:</p>
@@ -7283,10 +7283,10 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                     <h3 id="changing-limits-with-the-api">Changing Limits With the API</h3>
                     <p><code>/SpendLimit/Set</code>, <code>/SpendLimit/Remove</code> and <code>/SpendLimit/Preview</code> work in the dashboard, with a signed-in user's Bearer token and with an API key:</p>
                     <ul>
-                      <li><strong>With an API key</strong>, the call acts as the person who created the key's project, in that project's workspace: the creator's personal account for a personal project, the team for a team project. The key of a project that a member who is not an admin created can read limits but not change them.</li>
-                      <li><strong>With a Bearer token</strong>, the call acts as you, in your personal account. To work in a team, send the team's guid in the <code>x-team-guid</code> header. Calls with an API key ignore this header.</li>
+                      <li><strong>With an API key</strong>, the call acts as the person who created the key's project, in that project's workspace: the creator's personal account for a personal project, the team for a team project. The key follows its creator's current role: while the creator is a team member who is not an admin, the key can read limits but not change them.</li>
+                      <li><strong>With a Bearer token</strong>, the call acts as you, in your personal account. To work in a team, send the team's guid in the <code>x-team-guid</code> header. A call whose <code>x-team-guid</code> names a team you are not a member of, and whose organization you don't own, is refused with <code>You are not a member of this team.</code> Calls with an API key ignore this header.</li>
                     </ul>
-                    <p><code>/SpendLimit/List</code> and <code>/SpendLimit/Preview</code> return the <code>workspace</code> they work in, so you can check where a change lands before you make it. Changes made with API keys are limited to 60 per workspace per hour. Each change is recorded with who made it and how.</p>
+                    <p><code>/SpendLimit/List</code> and <code>/SpendLimit/Preview</code> return the <code>workspace</code> they work in, so you can check where a change lands before you make it. Changes made with API keys are limited to 60 per workspace in any hour, counting spend limits and Model Access rules together. Preview does not count. Each change is recorded with who made it and how.</p>
                   </section>
 
                   <section id="spend-limit-list">
@@ -7481,7 +7481,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                               <td><code>amountusd</code></td>
                               <td>number</td>
                               <td>Yes</td>
-                              <td>The limit in USD, at least <code>0.01</code>. Rounded to cents</td>
+                              <td>The limit in USD, rounded to cents. Once rounded, it must be at least <code>0.01</code></td>
                             </tr>
                             <tr>
                               <td><code>alertpct</code></td>
@@ -7582,12 +7582,24 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                               <td><code>amountusd</code> is over 10,000,000</td>
                             </tr>
                             <tr>
+                              <td><code>amountusd must be at least 0.01.</code></td>
+                              <td><code>amountusd</code> is above zero but rounds to less than one cent</td>
+                            </tr>
+                            <tr>
                               <td><code>alertpct must be 50, 80 or 90, or null for no alert.</code></td>
                               <td>Another <code>alertpct</code></td>
                             </tr>
                             <tr>
+                              <td><code>You are not a member of this team.</code></td>
+                              <td>With a Bearer token, <code>x-team-guid</code> names a team you are not a member of, and whose organization you don't own</td>
+                            </tr>
+                            <tr>
                               <td><code>Only a team admin or the organization owner can change this limit.</code></td>
-                              <td>In a team, the caller is not a team admin or the organization owner. With an API key, the caller is the person who created the key's project</td>
+                              <td>In a team, a signed-in caller is not a team admin or the organization owner</td>
+                            </tr>
+                            <tr>
+                              <td><code>This API key acts as the person who created it, who is a member of this team. Only a team admin or the organization owner can change this limit.</code></td>
+                              <td>With an API key, the person who created the key's project is a team member who is not an admin</td>
                             </tr>
                             <tr>
                               <td><code>That person is not an active member of this team.</code></td>
@@ -7601,6 +7613,10 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                               <td><code>That agent is not in this workspace.</code></td>
                               <td>An <code>agent</code> limit for an agent of another workspace</td>
                             </tr>
+                            <tr>
+                              <td><code>Too many changes to Spend Limits and Model Access in the last hour. Try again later.</code></td>
+                              <td>With API keys, this workspace's spend limits and Model Access rules have been changed 60 times in the last hour</td>
+                            </tr>
                           </tbody>
                         </table>
                       </div>
@@ -7612,7 +7628,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                       <span class="endpoint-badge post">POST</span>
                       /SpendLimit/Preview
                     </h2>
-                    <p>Shows what <code>/SpendLimit/Set</code> would do, and changes nothing. It takes the same body as <code>/SpendLimit/Set</code> and checks it the same way, with the same errors, so only the people who can change limits can call it. Use it to see which workspace a change lands in, the limit as it would be saved and the limit it would replace.</p>
+                    <p>Shows what <code>/SpendLimit/Set</code> would do, and changes nothing. It takes the same body as <code>/SpendLimit/Set</code> and checks it the same way, so only the people who can change limits can call it. Use it to see which workspace a change lands in, the limit as it would be saved and the limit it would replace.</p>
 
                     <h3>Example</h3>
                     <p><strong>Raise the Production API key's monthly limit to $150:</strong></p>
@@ -7630,7 +7646,8 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
   "preview": true,
   "workspace": {
     "type": "team",
-    "teamguid": "0d9aade4-d31b-4b97-88f3-a90482f080ea"
+    "teamguid": "0d9aade4-d31b-4b97-88f3-a90482f080ea",
+    "canmanage": true
   },
   "limit": {
     "guid": "15be7fb3-c602-4ff1-a3f1-3afaa3996974",
@@ -7643,7 +7660,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
     "periodstart": 1793491200,
     "resetsat": 1796083200,
     "createdat": 1794474300,
-    "updatedat": 1794474300,
+    "updatedat": null,
     "spentusd": 88.2
   },
   "existing": {
@@ -7678,11 +7695,11 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                             </tr>
                             <tr>
                               <td><code>workspace</code></td>
-                              <td>The workspace the change would be made in: <code>type</code> and <code>teamguid</code>, as in <code>/SpendLimit/List</code></td>
+                              <td>The workspace the change would be made in, as in <code>/SpendLimit/List</code>: <code>type</code>, <code>teamguid</code> and <code>canmanage</code>, which is always <code>true</code> here</td>
                             </tr>
                             <tr>
                               <td><code>limit</code></td>
-                              <td>The limit as <code>/SpendLimit/Set</code> would save it, shaped like a row of <code>/SpendLimit/List</code>, with what has been spent in its current period</td>
+                              <td>The limit as <code>/SpendLimit/Set</code> would save it, shaped like a row of <code>/SpendLimit/List</code>, with what has been spent in its current period. Its <code>guid</code> and <code>createdat</code> are those of the limit it would replace, or <code>null</code> for a new limit, and its <code>updatedat</code> is <code>null</code></td>
                             </tr>
                             <tr>
                               <td><code>existing</code></td>
@@ -7692,7 +7709,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                         </table>
                       </div>
                     </div>
-                    <p>When <code>limit.spentusd</code> is already at or above the new amount, the limit is used up as soon as it is saved. The errors are those of <a href="#spend-limit-set"><code>/SpendLimit/Set</code></a>.</p>
+                    <p>When <code>limit.spentusd</code> is already at or above the new amount, the limit is used up as soon as it is saved. The errors are those of <a href="#spend-limit-set"><code>/SpendLimit/Set</code></a>, except that Preview does not count toward the hourly cap on changes made with API keys.</p>
                   </section>
 
                   <section id="spend-limit-remove">
@@ -7750,8 +7767,20 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                               <td>The guid is not a limit of the call's workspace, or it was already removed</td>
                             </tr>
                             <tr>
+                              <td><code>You are not a member of this team.</code></td>
+                              <td>With a Bearer token, <code>x-team-guid</code> names a team you are not a member of, and whose organization you don't own</td>
+                            </tr>
+                            <tr>
                               <td><code>Only a team admin or the organization owner can change this limit.</code></td>
-                              <td>In a team, the caller can't manage this limit</td>
+                              <td>In a team, a signed-in caller is not a team admin or the organization owner</td>
+                            </tr>
+                            <tr>
+                              <td><code>This API key acts as the person who created it, who is a member of this team. Only a team admin or the organization owner can change this limit.</code></td>
+                              <td>With an API key, the person who created the key's project is a team member who is not an admin</td>
+                            </tr>
+                            <tr>
+                              <td><code>Too many changes to Spend Limits and Model Access in the last hour. Try again later.</code></td>
+                              <td>With API keys, this workspace's spend limits and Model Access rules have been changed 60 times in the last hour</td>
                             </tr>
                           </tbody>
                         </table>
@@ -7798,9 +7827,10 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
     "periodstart": 1793491200,
     "resetsat": 1796083200,
     "totalusd": 248.7,
+    "heldusd": 3.5,
     "surfaces": [
       { "surface": "web", "label": "the dashboard", "spentusd": 40.1 },
-      { "surface": "api", "label": "the API", "spentusd": 168.2 },
+      { "surface": "api", "label": "the API", "spentusd": 168.2, "heldusd": 3.5 },
       { "surface": "mcp", "label": "MCP", "spentusd": 12.5 },
       { "surface": "llm-gateway", "label": "the LLM gateway", "spentusd": 7.9 },
       { "surface": "extension", "label": "the browser extensions", "spentusd": 0 },
@@ -7808,11 +7838,11 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
     ],
     "members": [
       { "useruuid": "3f5a9c20-6d41-4b8e-a1c7-5e9d0f2b4c61", "label": "Jane Doe", "spentusd": 120.5 },
-      { "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", "label": "John Doe", "spentusd": 108.2 }
+      { "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", "label": "John Doe", "spentusd": 108.2, "heldusd": 3.5 }
     ],
     "projects": [
       { "projectid": "48211", "label": "Production", "spentusd": 88.2 },
-      { "projectid": "48377", "label": "Staging", "spentusd": 80 }
+      { "projectid": "48377", "label": "Staging", "spentusd": 80, "heldusd": 3.5 }
     ],
     "agents": [
       { "useragentguid": "6e4bbd6f-6b73-4421-adae-e9599ba2e317", "label": "Support Agent", "spentusd": 20 }
@@ -7843,6 +7873,10 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                               <td>What the wallet has spent in the period, in USD</td>
                             </tr>
                             <tr>
+                              <td><code>usage.heldusd</code></td>
+                              <td>What work in progress holds, in USD. Present only when it holds something (see <a href="#work-in-progress">Work in Progress</a>)</td>
+                            </tr>
+                            <tr>
                               <td><code>usage.surfaces</code></td>
                               <td>One row per surface, always in the order <code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code>, <code>agent</code>, with its label</td>
                             </tr>
@@ -7857,6 +7891,10 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                             <tr>
                               <td><code>usage.agents</code></td>
                               <td>Spending per deployed agent, with the agent's title as <code>label</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>heldusd</code> in a row of <code>usage.surfaces</code>, <code>usage.members</code>, <code>usage.projects</code> or <code>usage.agents</code></td>
+                              <td>What work in progress holds for that row, present only when it holds something. A member, API key or agent whose only spending so far is held work is listed with <code>spentusd</code> <code>0</code></td>
                             </tr>
                           </tbody>
                         </table>
@@ -8138,10 +8176,10 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                     <h3 id="changing-rules-with-the-api">Changing Rules With the API</h3>
                     <p><code>/ModelAccess/Set</code>, <code>/ModelAccess/Remove</code> and <code>/ModelAccess/Preview</code> work in the dashboard, with a signed-in user's Bearer token and with an API key:</p>
                     <ul>
-                      <li><strong>With an API key</strong>, the call acts as the person who created the key's project, in that project's workspace: the creator's personal account for a personal project, the team for a team project. The key of a project that a member who is not an admin created can read rules but not change them.</li>
-                      <li><strong>With a Bearer token</strong>, the call acts as you, in your personal account. To work in a team, send the team's guid in the <code>x-team-guid</code> header. Calls with an API key ignore this header.</li>
+                      <li><strong>With an API key</strong>, the call acts as the person who created the key's project, in that project's workspace: the creator's personal account for a personal project, the team for a team project. The key follows its creator's current role: while the creator is a team member who is not an admin, the key can read rules but not change them.</li>
+                      <li><strong>With a Bearer token</strong>, the call acts as you, in your personal account. To work in a team, send the team's guid in the <code>x-team-guid</code> header. A call whose <code>x-team-guid</code> names a team you are not a member of, and whose organization you don't own, is refused with <code>You are not a member of this team.</code> Calls with an API key ignore this header.</li>
                     </ul>
-                    <p><code>/ModelAccess/List</code> and <code>/ModelAccess/Preview</code> return the <code>workspace</code> they work in, so you can check where a change lands before you make it. Changes made with API keys are limited to 60 per workspace per hour. Each change is recorded with who made it and how.</p>
+                    <p><code>/ModelAccess/List</code> and <code>/ModelAccess/Preview</code> return the <code>workspace</code> they work in, so you can check where a change lands before you make it. Changes made with API keys are limited to 60 per workspace in any hour, counting spend limits and Model Access rules together. Preview does not count. Each change is recorded with who made it and how.</p>
                   </section>
 
                   <section id="model-access-list">
@@ -8474,8 +8512,16 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                               <td><code>models</code> names a model twice: by the same name, or by its id and its <code>owner/slug</code> with a different <code>access</code></td>
                             </tr>
                             <tr>
+                              <td><code>You are not a member of this team.</code></td>
+                              <td>With a Bearer token, <code>x-team-guid</code> names a team you are not a member of, and whose organization you don't own</td>
+                            </tr>
+                            <tr>
                               <td><code>Only a team admin or the organization owner can change this rule.</code></td>
-                              <td>In a team, the caller is not a team admin or the organization owner. With an API key, the caller is the person who created the key's project</td>
+                              <td>In a team, a signed-in caller is not a team admin or the organization owner</td>
+                            </tr>
+                            <tr>
+                              <td><code>This API key acts as the person who created it, who is a member of this team. Only a team admin or the organization owner can change this rule.</code></td>
+                              <td>With an API key, the person who created the key's project is a team member who is not an admin</td>
                             </tr>
                             <tr>
                               <td><code>That person is not an active member of this team.</code></td>
@@ -8489,6 +8535,10 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                               <td><code>That agent is not in this workspace.</code></td>
                               <td>An <code>agent</code> rule for an agent of another workspace</td>
                             </tr>
+                            <tr>
+                              <td><code>Too many changes to Spend Limits and Model Access in the last hour. Try again later.</code></td>
+                              <td>With API keys, this workspace's spend limits and Model Access rules have been changed 60 times in the last hour</td>
+                            </tr>
                           </tbody>
                         </table>
                       </div>
@@ -8500,7 +8550,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                       <span class="endpoint-badge post">POST</span>
                       /ModelAccess/Preview
                     </h2>
-                    <p>Shows what <code>/ModelAccess/Set</code> would do, and changes nothing. It takes the same body as <code>/ModelAccess/Set</code> and checks it the same way, with the same errors, so only the people who can change rules can call it. Use it to see which workspace a change lands in, the rule as it would be saved and the rule it would replace. For an <code>agent</code> rule, it also says whether the rule would block the chat model the agent answers with.</p>
+                    <p>Shows what <code>/ModelAccess/Set</code> would do, and changes nothing. It takes the same body as <code>/ModelAccess/Set</code> and checks it the same way, so only the people who can change rules can call it. Use it to see which workspace a change lands in, the rule as it would be saved and the rule it would replace. For an <code>agent</code> rule, it also says whether the rule would block the chat model the agent answers with.</p>
 
                     <h3>Example</h3>
                     <p><strong>Let the Support Agent run only image models:</strong></p>
@@ -8520,7 +8570,8 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
   "preview": true,
   "workspace": {
     "type": "team",
-    "teamguid": "0d9aade4-d31b-4b97-88f3-a90482f080ea"
+    "teamguid": "0d9aade4-d31b-4b97-88f3-a90482f080ea",
+    "canmanage": true
   },
   "rule": {
     "guid": "c2f0a9d4-5b7e-4c1a-8e36-9d4b2a7f1e05",
@@ -8533,7 +8584,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
     ],
     "models": [],
     "createdat": 1795195200,
-    "updatedat": 1795195200
+    "updatedat": null
   },
   "existing": {
     "guid": "c2f0a9d4-5b7e-4c1a-8e36-9d4b2a7f1e05",
@@ -8571,11 +8622,11 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                             </tr>
                             <tr>
                               <td><code>workspace</code></td>
-                              <td>The workspace the change would be made in: <code>type</code> and <code>teamguid</code>, as in <code>/ModelAccess/List</code></td>
+                              <td>The workspace the change would be made in, as in <code>/ModelAccess/List</code>: <code>type</code>, <code>teamguid</code> and <code>canmanage</code>, which is always <code>true</code> here</td>
                             </tr>
                             <tr>
                               <td><code>rule</code></td>
-                              <td>The rule as <code>/ModelAccess/Set</code> would save it, shaped like a row of <code>/ModelAccess/List</code></td>
+                              <td>The rule as <code>/ModelAccess/Set</code> would save it, shaped like a row of <code>/ModelAccess/List</code>. Its <code>guid</code> and <code>createdat</code> are those of the rule it would replace, or <code>null</code> for a new rule, and its <code>updatedat</code> is <code>null</code></td>
                             </tr>
                             <tr>
                               <td><code>existing</code></td>
@@ -8589,7 +8640,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                         </table>
                       </div>
                     </div>
-                    <p>When <code>agentchatmodel.blocked</code> is <code>true</code>, the agent stops answering once the rule is saved: its turns end with <code>[MODEL_NOT_ALLOWED]</code>. Allow its chat model in the rule too, or allow LLM &amp; Chat. The errors are those of <a href="#model-access-set"><code>/ModelAccess/Set</code></a>.</p>
+                    <p>When <code>agentchatmodel.blocked</code> is <code>true</code>, the agent stops answering within about a minute of the rule being saved: its turns end with <code>[MODEL_NOT_ALLOWED]</code>. Allow its chat model in the rule too, or allow LLM &amp; Chat. The errors are those of <a href="#model-access-set"><code>/ModelAccess/Set</code></a>, except that Preview does not count toward the hourly cap on changes made with API keys.</p>
                   </section>
 
                   <section id="model-access-remove">
@@ -8647,8 +8698,20 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                               <td>The guid is not a rule of the call's workspace, or it was already removed</td>
                             </tr>
                             <tr>
+                              <td><code>You are not a member of this team.</code></td>
+                              <td>With a Bearer token, <code>x-team-guid</code> names a team you are not a member of, and whose organization you don't own</td>
+                            </tr>
+                            <tr>
                               <td><code>Only a team admin or the organization owner can change this rule.</code></td>
-                              <td>In a team, the caller can't manage this rule</td>
+                              <td>In a team, a signed-in caller is not a team admin or the organization owner</td>
+                            </tr>
+                            <tr>
+                              <td><code>This API key acts as the person who created it, who is a member of this team. Only a team admin or the organization owner can change this rule.</code></td>
+                              <td>With an API key, the person who created the key's project is a team member who is not an admin</td>
+                            </tr>
+                            <tr>
+                              <td><code>Too many changes to Spend Limits and Model Access in the last hour. Try again later.</code></td>
+                              <td>With API keys, this workspace's spend limits and Model Access rules have been changed 60 times in the last hour</td>
                             </tr>
                           </tbody>
                         </table>
@@ -12537,7 +12600,7 @@ import type {
 </table>
 </div>
 </div>
-<p>A step is <code>pending</code>, <code>running</code>, <code>completed</code>, <code>failed</code>, <code>cancelled</code> or <code>aborted</code> (skipped because an earlier step failed). A failed step's <code>cause</code> is <code>tool-error</code> (the model refused its inputs or the task failed; <code>error</code> says why), <code>poll-timeout</code> (the step ran past 4 hours and was not charged), or another short code.</p>
+<p>A step is <code>pending</code>, <code>running</code>, <code>completed</code>, <code>failed</code>, <code>cancelled</code> or <code>aborted</code> (skipped because an earlier step failed). A failed step's <code>cause</code> is <code>tool-error</code> (the model refused its inputs or the task failed; <code>error</code> says why), <code>poll-timeout</code> (the step ran past 4 hours and was not charged), <code>spend-limit-reached</code> (a <a href="/docs/spend-limits">spend limit</a> refused the step before it started; <code>error</code> holds the limit's message), or another short code.</p>
 <h3 id="breakpoints">Breakpoints</h3>
 <p>To test the first steps, start the run with <code>breakpointNodeId</code>. The run executes every layer up to and including the one that holds that step, then ends as <code>stopped</code>, and the steps after it stay <code>pending</code>. The breakpoint must be a step the run executes and cannot be in the last layer. Only people who can edit the workflow can set one. Check the outputs, then continue with <a href="#post-workflowrunresume">RunResume</a>, to the end or to a later breakpoint.</p>
 <h3 id="resuming">Resuming</h3>
@@ -12549,8 +12612,8 @@ import type {
 <li>Nothing is charged when a run starts. Each model step is a normal <a href="/docs/run-a-model">model task</a>, billed when it finishes successfully at that model's price. Failed steps are not charged, and utility steps are free.</li>
 <li>To start, the wallet must hold $0.50 for each model step the run will execute (up to the breakpoint, when one is set). Otherwise the run is refused with code <code>97</code>, <code>Insufficient balance</code>. The <a href="/docs/concurrency-limits">concurrency limit</a> also applies (code <code>96</code>).</li>
 <li>The expected cost of a run is the sum of the model prices for the settings each step uses, from <a href="/docs/models">Tool/Detail</a>. A run's <code>totalcost</code> shows the list price of the steps finished so far, and once the run has ended <code>chargedcost</code> and <code>discountamount</code> show what the wallet paid. <code>chargedcost</code> is <code>null</code> while a step's charge is still settling.</li>
-<li>The workspace's <a href="/docs/spend-limits">spend limits</a> apply when a run starts or resumes, and again before each step starts. A run is refused with code <code>93</code> when its known price would go over a limit that covers it, and a step is refused once that limit has no room left.</li>
-<li>The workspace's <a href="/docs/model-access">Model Access</a> rules apply when a run starts or resumes: when a rule blocks the model of a step that will run, the run is refused with code <code>92</code> before anything runs, and the message names that model. Steps that will not run, such as the steps after a breakpoint, are not checked.</li>
+<li>The workspace's <a href="/docs/spend-limits">spend limits</a> apply when a run starts or resumes, and again before each step starts. A run is refused with code <code>93</code> when its known price would go over a limit that covers it, or once that limit has no room left. Each step is checked the same way with its own price, and holds that price until it is charged. A step a limit refuses fails with cause <code>spend-limit-reached</code>, and the run ends as <code>failed</code>: resume it with <a href="#post-workflowrunresume">RunResume</a> once the limit allows.</li>
+<li>The workspace's <a href="/docs/model-access">Model Access</a> rules apply when a run starts or resumes: when a rule blocks the model of a step that will run, the run is refused with code <code>92</code> before anything runs, and the message names that model. When the workflow's steps are hidden from you, as on a protected workflow from another workspace, the message names your rule but not the model, for example <code>Your account can't use one of the models this workflow runs. Model Access rules decide which models can run.</code> Steps that will not run, such as the steps after a breakpoint, are not checked.</li>
 </ul>
 <h2 id="post-workflowlist"><strong>POST</strong> /Workflow/List</h2>
 <p>Lists the workflows of the key's workspace, or searches the public gallery.</p>
@@ -48936,7 +48999,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
                     <p>These examples use API-key-only authentication. For projects that use signature authentication, also send <code>x-nonce</code> and <code>x-signature</code> (see <a href="/docs/authentication">Authentication</a>).</p>
                     <p>Create a project inside a team to get a team API key, or use a personal project for personal context. The same <code>x-api-key</code> header works for both, with no extra configuration needed.</p>
                     <p>A team project's API key works only while the user who created the project is an active member of the team or the owner of its organization. Once the creator is removed from the team, the key stops working right away, in your apps and in any agent that uses it. The project stays in the team. Requests with the key then fail with HTTP <code>401</code> and <code>The person who created this API key is no longer in its team. Ask a team admin for a new key.</code> Public endpoints such as <code>Agent/List</code> still answer, as if the request had no key. While the key works, runs made with it count toward the creator's member limit (see <a href="/docs/spend-limits">Spend Limits</a>).</p>
-                    <p>API keys can't change teams or organizations. <code>Organization/Create</code>, <code>Organization/Remove</code>, <code>Organization/Restore</code>, <code>Team/Create</code>, <code>Team/Update</code>, <code>Team/Remove</code>, <code>Team/Member/Invite</code>, <code>Team/Member/CancelInvite</code>, <code>Team/Member/UpdateRole</code>, <code>Team/Member/Remove</code>, <code>Team/TransferAgent</code>, <code>Team/TransferProject</code> and <code>Team/TransferCredit</code> need a signed-in user: use the dashboard, or send that user's Bearer token. With any API key, personal or team, they fail with HTTP <code>401</code> and <code>API keys can't manage teams or organizations. Sign in and try again.</code> Endpoints that only read, such as <code>Organization/List</code>, <code>Team/Member/List</code>, <code>SpendLimit/List</code>, <code>SpendLimit/Usage</code>, <code>ModelAccess/List</code> and <code>ModelAccess/Check</code>, work with an API key. Spend limits and Model Access rules are not team settings, and API keys can change them: <code>SpendLimit/Set</code>, <code>SpendLimit/Remove</code>, <code>SpendLimit/Preview</code>, <code>ModelAccess/Set</code>, <code>ModelAccess/Remove</code> and <code>ModelAccess/Preview</code> work with a personal project's key and with the key of a team project that a team admin or the organization owner created. The key of a team project that another member created can only read them. See <a href="/docs/spend-limits#changing-limits-with-the-api">Spend Limits</a> and <a href="/docs/model-access#changing-rules-with-the-api">Model Access</a>.</p>
+                    <p>API keys can't change teams or organizations. <code>Organization/Create</code>, <code>Organization/Remove</code>, <code>Organization/Restore</code>, <code>Team/Create</code>, <code>Team/Update</code>, <code>Team/Remove</code>, <code>Team/Member/Invite</code>, <code>Team/Member/CancelInvite</code>, <code>Team/Member/UpdateRole</code>, <code>Team/Member/Remove</code>, <code>Team/TransferAgent</code>, <code>Team/TransferProject</code> and <code>Team/TransferCredit</code> need a signed-in user: use the dashboard, or send that user's Bearer token. With any API key, personal or team, they fail with HTTP <code>401</code> and <code>API keys can't manage teams or organizations. Sign in and try again.</code> Endpoints that only read, such as <code>Organization/List</code>, <code>Team/Member/List</code>, <code>SpendLimit/List</code>, <code>SpendLimit/Usage</code>, <code>ModelAccess/List</code> and <code>ModelAccess/Check</code>, work with an API key. Spend limits and Model Access rules are not team settings, and API keys can change them: <code>SpendLimit/Set</code>, <code>SpendLimit/Remove</code>, <code>SpendLimit/Preview</code>, <code>ModelAccess/Set</code>, <code>ModelAccess/Remove</code> and <code>ModelAccess/Preview</code> work with a personal project's key and with the key of a team project whose creator is a team admin or the organization owner. A key follows its creator's current role: while its creator is a member who is not an admin, it can only read them. See <a href="/docs/spend-limits#changing-limits-with-the-api">Spend Limits</a> and <a href="/docs/model-access#changing-rules-with-the-api">Model Access</a>.</p>
                   </section>
 
                   <section id="filtered-endpoints">
