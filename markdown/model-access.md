@@ -81,7 +81,7 @@ Rules are checked before work starts, and before the balance and the spend limit
 - Model runs: `/Run` and its `/sync` wait, realtime sessions, the [LLM gateway](/docs/completions-api), the [MCP server](/docs/wiro-mcp-server), the browser extensions and the dashboard
 - Workflow runs and resumes: every model step that will run must be allowed
 - The models that Studio and your deployed agents run through Wiro
-- An agent's chat model: choosing one in the agent's settings, or sending `model` with `Message/Send`, follows that agent's own rule
+- An agent's chat model: choosing one in the agent's settings, or sending `model` with `Message/Send`, follows that agent's own rule. If its rule blocks the model the agent already uses, its model calls are refused and the turn ends with `[MODEL_NOT_ALLOWED]`
 
 A change applies to work that starts after it. Work that is already running is not stopped. Browsing models is not affected: `/Tool/List`, `/Tool/Detail` and the LLM gateway's model list show the same models whatever the rules.
 

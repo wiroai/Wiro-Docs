@@ -7923,7 +7923,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                       <li>Model runs: <code>/Run</code> and its <code>/sync</code> wait, realtime sessions, the <a href="/docs/completions-api">LLM gateway</a>, the <a href="/docs/wiro-mcp-server">MCP server</a>, the browser extensions and the dashboard</li>
                       <li>Workflow runs and resumes: every model step that will run must be allowed</li>
                       <li>The models that Studio and your deployed agents run through Wiro</li>
-                      <li>An agent's chat model: choosing one in the agent's settings, or sending <code>model</code> with <code>Message/Send</code>, follows that agent's own rule</li>
+                      <li>An agent's chat model: choosing one in the agent's settings, or sending <code>model</code> with <code>Message/Send</code>, follows that agent's own rule. If its rule blocks the model the agent already uses, its model calls are refused and the turn ends with <code>[MODEL_NOT_ALLOWED]</code></li>
                     </ul>
                     <p>A change applies to work that starts after it. Work that is already running is not stopped. Browsing models is not affected: <code>/Tool/List</code>, <code>/Tool/Detail</code> and the LLM gateway's model list show the same models whatever the rules.</p>
 
@@ -21489,6 +21489,12 @@ print(response.body);
 <td>Wait until that hour or day is over.</td>
 </tr>
 <tr>
+<td><code>[MODEL_NOT_ALLOWED]</code></td>
+<td><code>agent_error</code></td>
+<td>The agent's own <a href="/docs/model-access">Model Access</a> rule blocks the model it uses, so its model calls were refused.</td>
+<td>Have its owner allow the model on the <a href="https://wiro.ai/panel/controls/model-access" target="_blank">Model Access</a> page, or choose another model for the agent.</td>
+</tr>
+<tr>
 <td><code>[AGENT_UNAVAILABLE]</code></td>
 <td><code>agent_error</code></td>
 <td>Any other failure.</td>
@@ -21510,6 +21516,7 @@ print(response.body);
 [TURN_INTERRUPTED] This request was interrupted by a restart before it finished. Please send it again.
 [SPEND_LIMIT_REACHED] This agent's spend limit is used up, so it paused. It runs again when the limit resets or its owner raises it.
 [USAGE_CEILING_REACHED] This agent reached its hourly or daily safety ceiling for AI model calls, so it paused. It runs again when that hour or day is over.
+[MODEL_NOT_ALLOWED] This agent's Model Access rule blocks the model it uses, so it stopped. Its owner can allow the model on the Model Access page or choose another one.
 [AGENT_UNAVAILABLE] Agent is temporarily unavailable. Please try again shortly.
 [REQUEST_CANCELLED] Request cancelled.
 </code></pre>
@@ -29339,6 +29346,11 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <td><code>[USAGE_CEILING_REACHED]</code></td>
 <td><code>agent_error</code></td>
 <td>The agent reached its hourly or daily safety ceiling for AI model calls: say it runs again when that hour or day is over.</td>
+</tr>
+<tr>
+<td><code>[MODEL_NOT_ALLOWED]</code></td>
+<td><code>agent_error</code></td>
+<td>The agent's Model Access rule blocks the model it uses: say its owner can allow the model on the Model Access page or choose another one.</td>
 </tr>
 <tr>
 <td><code>[AGENT_UNAVAILABLE]</code></td>

@@ -5833,7 +5833,7 @@ Rules are checked before work starts, and before the balance and the spend limit
 - Model runs: `/Run` and its `/sync` wait, realtime sessions, the [LLM gateway](/docs/completions-api), the [MCP server](/docs/wiro-mcp-server), the browser extensions and the dashboard
 - Workflow runs and resumes: every model step that will run must be allowed
 - The models that Studio and your deployed agents run through Wiro
-- An agent's chat model: choosing one in the agent's settings, or sending `model` with `Message/Send`, follows that agent's own rule
+- An agent's chat model: choosing one in the agent's settings, or sending `model` with `Message/Send`, follows that agent's own rule. If its rule blocks the model the agent already uses, its model calls are refused and the turn ends with `[MODEL_NOT_ALLOWED]`
 
 A change applies to work that starts after it. Work that is already running is not stopped. Browsing models is not affected: `/Tool/List`, `/Tool/Detail` and the LLM gateway's model list show the same models whatever the rules.
 
@@ -13372,6 +13372,7 @@ When a turn ends with `agent_error` or `agent_cancel`, `response` and `debugoutp
 | `[TURN_INTERRUPTED]` | `agent_error` | The agent restarted while the turn was running. | Send the message again. |
 | `[SPEND_LIMIT_REACHED]` | `agent_error` | The agent's own [spend limit](/docs/spend-limits) is used up, so its model calls were refused. | Wait for the limit to reset, or have its owner raise it on the [Spend Limits](https://wiro.ai/panel/wallet/limits) page. |
 | `[USAGE_CEILING_REACHED]` | `agent_error` | The agent reached its hourly or daily safety ceiling for AI model calls. | Wait until that hour or day is over. |
+| `[MODEL_NOT_ALLOWED]` | `agent_error` | The agent's own [Model Access](/docs/model-access) rule blocks the model it uses, so its model calls were refused. | Have its owner allow the model on the [Model Access](https://wiro.ai/panel/controls/model-access) page, or choose another model for the agent. |
 | `[AGENT_UNAVAILABLE]` | `agent_error` | Any other failure. | Try again after a short wait. |
 | `[REQUEST_CANCELLED]` | `agent_cancel` | The turn was cancelled, while it ran or while it was still queued. | Nothing to do. |
 
@@ -13383,6 +13384,7 @@ The full texts:
 [TURN_INTERRUPTED] This request was interrupted by a restart before it finished. Please send it again.
 [SPEND_LIMIT_REACHED] This agent's spend limit is used up, so it paused. It runs again when the limit resets or its owner raises it.
 [USAGE_CEILING_REACHED] This agent reached its hourly or daily safety ceiling for AI model calls, so it paused. It runs again when that hour or day is over.
+[MODEL_NOT_ALLOWED] This agent's Model Access rule blocks the model it uses, so it stopped. Its owner can allow the model on the Model Access page or choose another one.
 [AGENT_UNAVAILABLE] Agent is temporarily unavailable. Please try again shortly.
 [REQUEST_CANCELLED] Request cancelled.
 ```
@@ -18795,6 +18797,7 @@ A turn that fails ends with `status: "agent_error"`, and a cancelled one with `"
 | `[TURN_INTERRUPTED]` | `agent_error` | A restart cut the turn short: offer to send it again. |
 | `[SPEND_LIMIT_REACHED]` | `agent_error` | The agent's spend limit is used up: say it runs again when the limit resets or its owner raises it. |
 | `[USAGE_CEILING_REACHED]` | `agent_error` | The agent reached its hourly or daily safety ceiling for AI model calls: say it runs again when that hour or day is over. |
+| `[MODEL_NOT_ALLOWED]` | `agent_error` | The agent's Model Access rule blocks the model it uses: say its owner can allow the model on the Model Access page or choose another one. |
 | `[AGENT_UNAVAILABLE]` | `agent_error` | Anything else, a message that couldn't be queued included: offer to try again shortly. |
 | `[REQUEST_CANCELLED]` | `agent_cancel` | The turn was cancelled. |
 
