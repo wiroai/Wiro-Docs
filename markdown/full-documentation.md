@@ -7002,7 +7002,7 @@ settings and paste the URL above:
 
 ## What is MCP?
 
-[Model Context Protocol](https://modelcontextprotocol.io/) (MCP) is an open standard that lets AI assistants use external tools directly. With the Wiro MCP server, your AI assistant can find and run models, build and run workflows, create media with Studio, and deploy and talk to your own agents, all without leaving your editor or chat app.
+[Model Context Protocol](https://modelcontextprotocol.io/) (MCP) is an open standard that lets AI assistants use external tools directly. With the Wiro MCP server, your AI assistant can find and run models, build and run workflows, create media with Studio, deploy and talk to your own agents, and check or change your spend limits and Model Access rules, all without leaving your editor or chat app.
 
 The hosted MCP server is available at `mcp.wiro.ai/v1`. Most apps connect with
 the browser sign-in above. Clients that send custom request headers, including
@@ -7122,7 +7122,7 @@ Or install Node.js 20 or later and add this local stdio entry to
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.6.1"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.9.0"],
       "env": {
         "WIRO_API_KEY": "YOUR_API_KEY",
         "WIRO_API_SECRET": "YOUR_API_SECRET"
@@ -7133,7 +7133,7 @@ Or install Node.js 20 or later and add this local stdio entry to
 ```
 
 For API Key Only authentication, remove `WIRO_API_SECRET` completely. Fully quit
-and reopen Claude Desktop after saving. Pin `@wiro-ai/wiro-mcp@1.6.1` in `args`
+and reopen Claude Desktop after saving. Pin `@wiro-ai/wiro-mcp@1.9.0` in `args`
 so `npx` does not reuse an older cached build. This runs the local package
 and provides the same Wiro tools. To always start the newest release instead, use `@wiro-ai/wiro-mcp@latest` (for example `npx -y @wiro-ai/wiro-mcp@latest`): `npx` then looks up the latest version on npm when the client starts the server.
 
@@ -7414,8 +7414,8 @@ Wiro API error.
 
 **Model slugs:** Use the clean/lowercase format `owner/model` (e.g. `openai/sora-2`, `wiro/virtual-try-on`). These correspond to the `cleanslugowner/cleanslugproject` values returned by `search_models`.
 
-The server has 50 tools: three groups (Models, Workflows, Agents) and three
-tools that are always available.
+The server has 54 tools: four groups (Models, Workflows, Agents, Controls) and
+three tools that are always available.
 
 | Tool | Description |
 |------|-------------|
@@ -7498,12 +7498,26 @@ Session names use letters, digits, dots, dashes, underscores and colons, up to
 a number. Studio refuses a message under any other name; a Studio session that
 already has another name can still be read and deleted.
 
+Controls ([Spend Limits](/docs/spend-limits), [Model Access](/docs/model-access)). Only a personal
+account's owner, a team admin or the organization owner can change limits and
+rules, and a connection acts as the person who created its project:
+
+| Tool | Description |
+|------|-------------|
+| `get_controls` | Read the workspace's spend limits, with what each has used and when it resets, its Model Access rules, and whether this connection can change them; on request, also this month's or today's spending by surface, member, API key and agent |
+| `check_model_access` | Explain whether a model may run here and why, rule by rule. Nothing runs and nothing is charged |
+| `manage_spend_limit` | Set or remove a spend limit, after your confirmation |
+| `manage_model_access` | Update, replace or remove a Model Access rule, after your confirmation |
+
+The two manage tools show a change summary first and change nothing until you
+confirm.
+
 Always available:
 
 | Tool | Description |
 |------|-------------|
 | `get_account` | Show which workspace the connected project belongs to, its wallet balance, its spend limits (each with what it has used this period and whether it is used up) and, when you ask (`recent_transactions`, `transactions_start`), the wallet's recent transactions |
-| `get_playbook` | Step-by-step guides: `getting-started`, `models`, `workflows`, `workflow-graph`, `workflow-agent`, `studio`, `agents`, `billing` |
+| `get_playbook` | Step-by-step guides: `getting-started`, `models`, `workflows`, `workflow-graph`, `workflow-agent`, `studio`, `agents`, `billing`, `controls` |
 | `search_docs` | Search Wiro documentation |
 
 Prompts: `build_workflow`, `deploy_agent`, `create_with_studio` and
@@ -7521,8 +7535,10 @@ nothing, since every plan includes every skill, and a move to a smaller plan
 starts with the next renewal, with nothing charged or refunded. Deletions, connecting
 an agent to a Wiro project with `bind_agent_project` and graph replacements also
 wait for `confirm: true`; a graph replacement's summary shows the old and new
-value of each step input that changes. No tool adds funds or takes a card
-payment.
+value of each step input that changes. Changes to a spend limit or a Model
+Access rule with `manage_spend_limit` and `manage_model_access` also wait for
+`confirm: true`, after a summary with the old and new values. No tool adds
+funds or takes a card payment.
 
 Calls through the hosted MCP server count toward the workspace's
 [spend limits](/docs/spend-limits) on the `mcp` surface, and calls from the Wiro
@@ -7531,13 +7547,17 @@ browser extensions on the `extension` surface. The
 as calls with its API key. When a limit refuses work (error code `93`), the
 tool returns an error with Wiro's message and a note: nothing ran and nothing
 was charged, and the work should not be tried again until the limit resets or
-someone who manages it raises it. Limits are managed under
+someone who manages it raises it. `get_controls` shows the limit and when it
+resets, and `manage_spend_limit` changes it after a change summary. Limits are
+also managed under
 [Controls > Spend Limits](https://wiro.ai/panel/controls/spend-limits).
 
 The workspace's [Model Access](/docs/model-access) rules apply to these calls
 too, on the same surfaces. A model a rule blocks is refused before anything runs
 (error code `92`), and the tool returns an error with Wiro's message, which names
-the rule. Nothing ran and nothing was charged. Rules are managed under
+the rule. Nothing ran and nothing was charged. `check_model_access` shows why
+the model is blocked, and `manage_model_access` changes the rule after a change
+summary. Rules are also managed under
 [Controls > Model Access](https://wiro.ai/panel/controls/model-access).
 
 If a generation exceeds the wait budget, continue with `wait_for_task` using
@@ -7578,7 +7598,7 @@ Run the Wiro MCP server locally on your own machine using npx.
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.6.1"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.9.0"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -7588,9 +7608,9 @@ Run the Wiro MCP server locally on your own machine using npx.
 }
 ```
 
-The self-hosted server exposes the same 50 tools, playbooks and prompts as
+The self-hosted server exposes the same 54 tools, playbooks and prompts as
 the hosted server, including bounded `run_model`, `wait_for_task`, and optional short waits through
-`get_task.wait_seconds`. Pin `@wiro-ai/wiro-mcp@1.6.1` in the npx `args` so
+`get_task.wait_seconds`. Pin `@wiro-ai/wiro-mcp@1.9.0` in the npx `args` so
 clients do not reuse an older cached package. To always start the newest release instead, use `@wiro-ai/wiro-mcp@latest` (for example `npx -y @wiro-ai/wiro-mcp@latest`): `npx` then looks up the latest version on npm when the client starts the server.
 
 ## Environment Variables
@@ -7600,11 +7620,14 @@ clients do not reuse an older cached package. To always start the newest release
 | `WIRO_API_KEY` | Yes | Your Wiro project API key |
 | `WIRO_API_SECRET` | No | API secret (for signature auth) |
 | `WIRO_API_BASE_URL` | No | Override API URL (default: `https://api.wiro.ai/v1`) |
-| `WIRO_TOOLSETS` | No | Comma-separated tool groups to load: `models`, `workflows`, `agents` (default: all) |
+| `WIRO_TOOLSETS` | No | Comma-separated tool groups to load: `models`, `workflows`, `agents`, `controls` (default: all) |
 
 `get_account`, `get_playbook` and `search_docs` are always available, and
 `workflows` also brings the model search tools it needs. The conversation tools
-for Studio and the Workflow Agent come with either `workflows` or `agents`.
+for Studio and the Workflow Agent come with either `workflows` or `agents`, and
+`controls` loads the four Controls tools, which come with 1.9.0 and later. The
+self-hosted server's calls count on the `api` surface of [spend limits](/docs/spend-limits) and
+[Model Access](/docs/model-access) rules, as calls with its API key.
 
 ## Authentication errors
 

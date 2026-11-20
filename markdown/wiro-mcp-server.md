@@ -32,7 +32,7 @@ settings and paste the URL above:
 
 ## What is MCP?
 
-[Model Context Protocol](https://modelcontextprotocol.io/) (MCP) is an open standard that lets AI assistants use external tools directly. With the Wiro MCP server, your AI assistant can find and run models, build and run workflows, create media with Studio, and deploy and talk to your own agents, all without leaving your editor or chat app.
+[Model Context Protocol](https://modelcontextprotocol.io/) (MCP) is an open standard that lets AI assistants use external tools directly. With the Wiro MCP server, your AI assistant can find and run models, build and run workflows, create media with Studio, deploy and talk to your own agents, and check or change your spend limits and Model Access rules, all without leaving your editor or chat app.
 
 The hosted MCP server is available at `https://mcp.wiro.ai/v1`. Most apps
 connect with the browser sign-in above. Clients that send custom request
@@ -64,6 +64,7 @@ Wiro's list: write to [support@wiro.ai](mailto:support@wiro.ai) to add one.
 
 - Each connection uses one project. A personal project bills your personal wallet, a team project the team's wallet.
 - In a team, members can connect the projects they created. Team admins and the organization owner can connect any project of the team.
+- The connection acts as the person who created the project. Its Controls tools change spend limits and Model Access rules only when that person can: a personal account's owner, or in a team a team admin or the organization owner.
 - A project with an IP whitelist only accepts calls from the addresses on it. ChatGPT and Claude call from their own servers, so pick a project open to all addresses for them. Apps on your computer, such as Claude Code, Cursor and VS Code, call from your own address.
 
 ### How long it stays connected
@@ -228,7 +229,7 @@ your `claude_desktop_config.json`:
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.6.1"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.9.0"],
       "env": {
         "WIRO_API_KEY": "YOUR_API_KEY",
         "WIRO_API_SECRET": "YOUR_API_SECRET"
@@ -242,7 +243,7 @@ For API Key Only authentication, keep `WIRO_API_KEY` and remove the
 `WIRO_API_SECRET` entry completely. Save the file, fully quit Claude Desktop,
 and reopen it.
 
-Pin the current published version (`@wiro-ai/wiro-mcp@1.6.1`) in `args`.
+Pin the current published version (`@wiro-ai/wiro-mcp@1.9.0`) in `args`.
 Unversioned `npx` can keep an older cached build after a package update. To always start the newest release instead, use `@wiro-ai/wiro-mcp@latest` (for example `npx -y @wiro-ai/wiro-mcp@latest`): `npx` then looks up the latest version on npm when the client starts the server.
 
 This setup runs the open-source
@@ -257,7 +258,7 @@ your machine and calls Wiro with your project credentials. See
 - **The Wiro tools do not appear**: confirm `node --version` reports 20 or
   later, then fully quit and reopen Claude Desktop.
 - **Tools appear but every call fails immediately**: pin
-  `@wiro-ai/wiro-mcp@1.6.1` as shown above so `npx` does not reuse an older
+  `@wiro-ai/wiro-mcp@1.9.0` as shown above so `npx` does not reuse an older
   cached package, then fully quit and reopen Claude Desktop.
 - **A generation reaches Claude's tool timeout**: Wiro waits for at most 45
   seconds per call. If the task is still running, the response contains
@@ -642,7 +643,7 @@ expired or disconnected sign-in gets the same answer with
 
 ## Available Tools
 
-The MCP server has 50 tools. Most of them belong to one of three groups, Models, Workflows and Agents, and three tools for your account, the playbooks and the docs are always available. Your AI assistant picks the right tool for each request, and for longer jobs it reads a playbook first.
+The MCP server has 54 tools. Most of them belong to one of four groups, Models, Workflows, Agents and Controls, and three tools for your account, the playbooks and the docs are always available. Your AI assistant picks the right tool for each request, and for longer jobs it reads a playbook first.
 
 **Model slugs:** When a tool requires a model identifier, use the clean/lowercase format `owner/model` (e.g. `openai/sora-2`, `wiro/virtual-try-on`). These correspond to the `cleanslugowner/cleanslugproject` values returned by `search_models`.
 
@@ -756,6 +757,19 @@ agent's setup from chat is `all`, the default, which `deploy_agent` and
 `update_agent` set with `chat_setup`. With `webchat`, apply the change in the
 agent's chat on wiro.ai; with `off`, the agent asks for it on the agent page.
 
+### Controls
+
+These tools read and change the workspace's [spend limits](/docs/spend-limits) and [Model Access](/docs/model-access) rules. Reading them is free. They change limits and rules only when the person who created the connected project can change them: a personal account's owner, or in a team a team admin or the organization owner. Other members' connections can read them.
+
+| Tool | What it does |
+|------|-------------|
+| `get_controls` | Read the workspace's spend limits, with what each has used and when it resets, its Model Access rules, and whether this connection can change them; on request, also this month's or today's spending by surface, member, API key and agent |
+| `check_model_access` | Explain whether a model may run here and why, rule by rule. Nothing runs and nothing is charged |
+| `manage_spend_limit` | Set or remove a spend limit, after your confirmation |
+| `manage_model_access` | Update, replace or remove a Model Access rule, after your confirmation |
+
+The two manage tools always show a change summary first: what the change covers, the old and new values and, for a limit, what was spent this period. Nothing changes until you confirm. If the limit or rule changed in the meantime, nothing is saved and you get a new summary.
+
 ### Account and guides
 
 These three tools are always available, whichever groups are loaded.
@@ -763,7 +777,7 @@ These three tools are always available, whichever groups are loaded.
 | Tool | What it does |
 |------|-------------|
 | `get_account` | Show which workspace the connected project belongs to, its wallet balance, its spend limits and, when you ask, the wallet's recent transactions |
-| `get_playbook` | Step-by-step guides: getting started, models, workflows, workflow graphs, the Workflow Agent, Studio, agents and billing |
+| `get_playbook` | Step-by-step guides: getting started, models, workflows, workflow graphs, the Workflow Agent, Studio, agents, billing and Controls |
 | `search_docs` | Search the Wiro documentation for guides and API references |
 
 ### Playbooks
@@ -783,6 +797,7 @@ before a multi-step job.
 | `studio` | When to use Studio, what a turn costs, the brief, collecting the results and slow turns |
 | `agents` | Templates and plans, deploying, statuses, setup and sign-ins, an agent that does not answer, messages, plan changes and credits, skills and schedules, removal |
 | `billing` | Which wallet pays, what is charged and when, minimums and limits, teams, estimates and where to see past spending |
+| `controls` | Spend limits and Model Access: who can change them, scopes and surfaces, periods, how rules combine, recipes, and the refusals with codes `92` and `93` |
 
 ### Prompts
 
@@ -817,13 +832,17 @@ Deleting a workflow, an agent, a conversation or an account connection also
 waits for `confirm: true`, and so do connecting an agent to a Wiro project with
 `bind_agent_project` and replacing a workflow's steps with `update_workflow` or
 `save_workflow_from_agent`: you see a summary of the change first, with the old
-and new value of each step input that changes. No tool adds funds or takes a
-card payment. Funds are added in the Wiro dashboard, and an agent plan paid by
-card moves to a larger plan or is topped up there.
+and new value of each step input that changes. Changing a spend limit or a
+Model Access rule with `manage_spend_limit` or `manage_model_access` also waits
+for `confirm: true`: you see the old and new values first and, for a limit,
+what was spent this period. No tool adds funds or takes a card payment. Funds
+are added in the Wiro dashboard, and an agent plan paid by card moves to a
+larger plan or is topped up there.
 
 The connected project decides the workspace: a personal project uses your
 personal wallet, a team project uses the team wallet. `get_account` shows which
-one, its balance and its spend limits.
+one, its balance and its spend limits, and `get_controls` its spend limits and
+Model Access rules in full.
 
 Calls through the hosted MCP server count toward the workspace's
 [spend limits](/docs/spend-limits) on the `mcp` surface, and calls from the Wiro
@@ -832,13 +851,17 @@ browser extensions on the `extension` surface. The
 as calls with its API key. When a limit refuses work (error code `93`), the
 tool returns an error with Wiro's message and a note: nothing ran and nothing
 was charged, and the work should not be tried again until the limit resets or
-someone who manages it raises it. Limits are managed under
+someone who manages it raises it. `get_controls` shows the limit and when it
+resets, and `manage_spend_limit` changes it after a change summary. Limits are
+also managed under
 [Controls > Spend Limits](https://wiro.ai/panel/controls/spend-limits).
 
 The workspace's [Model Access](/docs/model-access) rules apply to these calls
 too, on the same surfaces. A model a rule blocks is refused before anything runs
 (error code `92`), and the tool returns an error with Wiro's message, which names
-the rule. Nothing ran and nothing was charged. Rules are managed under
+the rule. Nothing ran and nothing was charged. `check_model_access` shows why
+the model is blocked, and `manage_model_access` changes the rule after a change
+summary. Rules are also managed under
 [Controls > Model Access](https://wiro.ai/panel/controls/model-access).
 
 ## MCP Request and Response Contract
@@ -1011,6 +1034,24 @@ with `get_my_agent`, and sends the message with `send_agent_message`. The
 message uses the agent's credits. If the reply proposes a setup change, the
 assistant shows it and sends your yes only after you agree.
 
+### Cap your spending
+
+> "Cap this team's spending at $200 a month"
+
+The assistant calls `manage_spend_limit` to set a $200 monthly limit on the
+whole team (`scope: "account"`). Nothing changes yet: it shows you the change
+summary, with what was already spent this month, and saves the limit with
+`confirm: true` once you agree.
+
+### Find out why a model is blocked
+
+> "Why can't I run this video model here?"
+
+The assistant calls `check_model_access` with the model and shows each rule
+that applies and the one that blocks it. It changes a rule with
+`manage_model_access` only when you ask, after you agree to the change
+summary.
+
 ## How It Works
 
 The MCP server is stateless and hosted on Wiro infrastructure. Each request is fully isolated:
@@ -1025,8 +1066,8 @@ All tools are dynamic: they fetch model data from the Wiro API at runtime. When 
 
 ## Tool Reference
 
-The model tools are described one by one below. The workflow, conversation and
-agent tools follow in tables of their main arguments.
+The model tools are described one by one below. The workflow, conversation,
+agent and Controls tools follow in tables of their main arguments.
 
 ### search_models
 
@@ -1217,8 +1258,8 @@ such as `["workflows"]` or `["agents", "billing"]`.
 
 ### Workflow tools
 
-The workflow, conversation and agent tools publish their full input schemas,
-which your MCP client reads, so the tables below list only their main
+The workflow, conversation, agent and Controls tools publish their full input
+schemas, which your MCP client reads, so the tables below list only their main
 arguments. A workflow is named by its full slug, such as `product-shots-a1B2c`,
 and a run by its run token. The [Workflows](/docs/workflows) page describes the
 API behind these tools.
@@ -1297,6 +1338,26 @@ nothing and restarts nothing. On a team agent, a team admin can connect any
 project of the team, and the person who deployed the agent the projects they
 created. The API behind it is
 [`POST /UserAgent/CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind).
+
+### Controls tools
+
+A limit or a rule is for one scope: `account`, `member` (a team member, by
+e-mail or user uuid), `project` (an API key, by its project's id or name; left
+out, the key of this connection), `surface` or `agent` (by guid or name). See
+[Spend Limits](/docs/spend-limits) and [Model Access](/docs/model-access) for
+the API behind these tools.
+
+| Tool | Main arguments |
+|------|----------------|
+| `get_controls` | `usage` (`month` or `day`: also that period's spending by surface, member, API key and agent) |
+| `check_model_access` | `model` (`owner/slug` or id), `member`, `project`, `surface`, `agent` |
+| `manage_spend_limit` | `action` (`set` or `remove`), `scope` and its target (`member`, `project`, `surface` or `agent`), `period` (`month` or `day`), `amount_usd`, `alert_percent` (`50`, `80`, `90` or `null`), `limit_guid` (to remove), `confirm` |
+| `manage_model_access` | `action` (`update`, `replace` or `remove`), `scope` and its target, `everything_else` (`allow` or `block`), `categories`, `models`, `rule_guid` (to remove), `confirm` |
+
+Called without `confirm`, the two manage tools change nothing: they return the
+change summary. After you agree, the assistant repeats the call with
+`confirm: true`, as its `nextAction` shows. `update` keeps the entries of a
+rule that you don't name, and `replace` writes the whole rule again.
 
 ## FAQ
 

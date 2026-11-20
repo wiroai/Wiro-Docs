@@ -9765,7 +9765,7 @@ if (!data.result) {
 
                   <section id="mcp-what-is">
                     <h2>What is MCP?</h2>
-                    <p><a href="https://modelcontextprotocol.io/" target="_blank">Model Context Protocol</a> (MCP) is an open standard that lets AI assistants use external tools directly. With the Wiro MCP server, your AI assistant can find and run models, build and run workflows, create media with Studio, and deploy and talk to your own agents, all without leaving your editor or chat app.</p>
+                    <p><a href="https://modelcontextprotocol.io/" target="_blank">Model Context Protocol</a> (MCP) is an open standard that lets AI assistants use external tools directly. With the Wiro MCP server, your AI assistant can find and run models, build and run workflows, create media with Studio, deploy and talk to your own agents, and check or change your spend limits and Model Access rules, all without leaving your editor or chat app.</p>
                     <p>The hosted MCP server is available at <code>mcp.wiro.ai/v1</code>. Most apps connect with the browser sign-in above. Clients that send custom request headers, including Cursor, Claude Code, Windsurf, Kiro, goose, OpenClaw, and Hermes, can use your API key instead. An API key sent in a header is never stored on the hosted server.</p>
                     <p>You need a Wiro account. With a browser sign-in you pick a project while connecting. For the API key method, <a href="https://wiro.ai/panel/project/new" target="_blank">create a project here</a>.</p>
 
@@ -9786,6 +9786,7 @@ if (!data.result) {
                     <ul>
                       <li>Each connection uses one project. A personal project bills your personal wallet, a team project the team's wallet.</li>
                       <li>In a team, members can connect the projects they created. Team admins and the organization owner can connect any project of the team.</li>
+                      <li>The connection acts as the person who created the project. Its Controls tools change spend limits and Model Access rules only when that person can: a personal account's owner, or in a team a team admin or the organization owner.</li>
                       <li>A project with an IP whitelist only accepts calls from the addresses on it. ChatGPT and Claude call from their own servers, so pick a project open to all addresses for them. Apps on your computer, such as Claude Code, Cursor and VS Code, call from your own address.</li>
                     </ul>
                     <h3>How long it stays connected</h3>
@@ -9990,7 +9991,7 @@ if (!data.result) {
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.6.1"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.9.0"],
       "env": {
         "WIRO_API_KEY": "YOUR_API_KEY",
         "WIRO_API_SECRET": "YOUR_API_SECRET"
@@ -9999,13 +10000,13 @@ if (!data.result) {
   }
 }</code></pre>
                         <p>For API Key Only authentication, keep <code>WIRO_API_KEY</code> and remove the <code>WIRO_API_SECRET</code> entry completely. Save the file, fully quit Claude Desktop, and reopen it.</p>
-                        <p>Pin the current published version (<code>@wiro-ai/wiro-mcp@1.6.1</code>) in <code>args</code>. Unversioned <code>npx</code> can keep an older cached build after a package update. To always start the newest release instead, use <code>@wiro-ai/wiro-mcp@latest</code> (for example <code>npx -y @wiro-ai/wiro-mcp@latest</code>): <code>npx</code> then looks up the latest version on npm when the client starts the server.</p>
+                        <p>Pin the current published version (<code>@wiro-ai/wiro-mcp@1.9.0</code>) in <code>args</code>. Unversioned <code>npx</code> can keep an older cached build after a package update. To always start the newest release instead, use <code>@wiro-ai/wiro-mcp@latest</code> (for example <code>npx -y @wiro-ai/wiro-mcp@latest</code>): <code>npx</code> then looks up the latest version on npm when the client starts the server.</p>
                         <p>This setup runs the open-source <a href="https://www.npmjs.com/package/@wiro-ai/wiro-mcp" target="_blank" rel="noopener"><code>@wiro-ai/wiro-mcp</code></a> bridge on your machine and calls Wiro with your project credentials. See <a href="/docs/mcp-self-hosted">Self-Hosted MCP</a> for the complete local package guide.</p>
                         <h4>Claude connection and timeout troubleshooting</h4>
                         <ul>
                           <li><strong>"Not valid MCP server configurations"</strong>: ensure the entry contains <code>"type": "stdio"</code>, <code>command</code>, <code>args</code>, and <code>env</code> exactly as shown above.</li>
                           <li><strong>The Wiro tools do not appear</strong>: confirm <code>node --version</code> reports 20 or later, then fully quit and reopen Claude Desktop.</li>
-                          <li><strong>Tools appear but every call fails immediately</strong>: pin <code>@wiro-ai/wiro-mcp@1.6.1</code> as shown above so <code>npx</code> does not reuse an older cached package, then fully quit and reopen Claude Desktop.</li>
+                          <li><strong>Tools appear but every call fails immediately</strong>: pin <code>@wiro-ai/wiro-mcp@1.9.0</code> as shown above so <code>npx</code> does not reuse an older cached package, then fully quit and reopen Claude Desktop.</li>
                           <li><strong>A generation reaches Claude's tool timeout</strong>: Wiro waits for at most 45 seconds per call. If the task is still running, Claude should execute the returned <code>nextAction.tool: "wait_for_task"</code> until completion and must not call <code>run_model</code> again.</li>
                           <li>Do not add a <code>timeout</code> field to <code>claude_desktop_config.json</code>; Claude Desktop versions with a fixed client-side tool timeout may ignore it. Wiro's bounded wait flow is designed to remain below that boundary.</li>
                         </ul>
@@ -10247,7 +10248,7 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
 
                   <section id="mcp-tools">
                     <h2>Available Tools</h2>
-                    <p>The MCP server has 50 tools. Most of them belong to one of three groups, Models, Workflows and Agents, and three tools for your account, the playbooks and the docs are always available. Your AI assistant picks the right tool for each request, and for longer jobs it reads a playbook first.</p>
+                    <p>The MCP server has 54 tools. Most of them belong to one of four groups, Models, Workflows, Agents and Controls, and three tools for your account, the playbooks and the docs are always available. Your AI assistant picks the right tool for each request, and for longer jobs it reads a playbook first.</p>
                     <p><strong>Model slugs:</strong> Use the clean/lowercase format <code>owner/model</code> (e.g. <code>openai/sora-2</code>, <code>wiro/virtual-try-on</code>). These correspond to the <code>cleanslugowner/cleanslugproject</code> values returned by <code>search_models</code>.</p>
                     <h3>Models</h3>
                     <table>
@@ -10489,6 +10490,36 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
                     </table>
                     <p><strong>Setup changes from chat.</strong> A reply from one of your agents can propose a change to its own setup, such as connecting a service, adding a connector or skill, or creating a scheduled task (see <a href="/docs/agent-messaging#setup-from-chat">Setup From Chat</a>). The assistant shows you the proposal and never approves it on its own. When you agree, it sends your yes as the next message: Wiro answers the first yes with the exact change, and your next yes (or <code>yes 2</code> for the second of several changes) applies it. Keys never go in a chat message: the assistant saves them with <code>set_agent_credentials</code>. When the change adds a connector that takes a key, the assistant asks for the key together with your yes and saves it right after the change is applied, so one restart loads both. This works while the agent's setup from chat is <code>all</code>, the default, which <code>deploy_agent</code> and <code>update_agent</code> set with <code>chat_setup</code>. With <code>webchat</code>, apply the change in the agent's chat on wiro.ai; with <code>off</code>, the agent asks for it on the agent page.</p>
 
+                    <h3 id="mcp-controls">Controls</h3>
+                    <p>These tools read and change the workspace's <a href="/docs/spend-limits">spend limits</a> and <a href="/docs/model-access">Model Access</a> rules. Reading them is free. They change limits and rules only when the person who created the connected project can change them: a personal account's owner, or in a team a team admin or the organization owner. Other members' connections can read them.</p>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Tool</th>
+                          <th>Description</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><code>get_controls</code></td>
+                          <td>Read the workspace's spend limits, with what each has used and when it resets, its Model Access rules, and whether this connection can change them; on request, also this month's or today's spending by surface, member, API key and agent</td>
+                        </tr>
+                        <tr>
+                          <td><code>check_model_access</code></td>
+                          <td>Explain whether a model may run here and why, rule by rule. Nothing runs and nothing is charged</td>
+                        </tr>
+                        <tr>
+                          <td><code>manage_spend_limit</code></td>
+                          <td>Set or remove a spend limit, after your confirmation</td>
+                        </tr>
+                        <tr>
+                          <td><code>manage_model_access</code></td>
+                          <td>Update, replace or remove a Model Access rule, after your confirmation</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <p>The two manage tools always show a change summary first: what the change covers, the old and new values and, for a limit, what was spent this period. Nothing changes until you confirm. If the limit or rule changed in the meantime, nothing is saved and you get a new summary.</p>
+
                     <h3>Account and guides</h3>
                     <p>These three tools are always available, whichever groups are loaded.</p>
                     <table>
@@ -10505,7 +10536,7 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
                         </tr>
                         <tr>
                           <td><code>get_playbook</code></td>
-                          <td>Step-by-step guides: getting started, models, workflows, workflow graphs, the Workflow Agent, Studio, agents and billing</td>
+                          <td>Step-by-step guides: getting started, models, workflows, workflow graphs, the Workflow Agent, Studio, agents, billing and Controls</td>
                         </tr>
                         <tr>
                           <td><code>search_docs</code></td>
@@ -10556,6 +10587,10 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
                           <td><code>billing</code></td>
                           <td>Which wallet pays, what is charged and when, minimums and limits, teams, estimates and where to see past spending</td>
                         </tr>
+                        <tr>
+                          <td><code>controls</code></td>
+                          <td>Spend limits and Model Access: who can change them, scopes and surfaces, periods, how rules combine, recipes, and the refusals with codes <code>92</code> and <code>93</code></td>
+                        </tr>
                       </tbody>
                     </table>
 
@@ -10591,10 +10626,10 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
                     <h3>Paid and irreversible actions</h3>
                     <p>Running a model or a workflow, sending a message to Studio or the Workflow Agent, and messages to your own agents (which use the agent's credits) cost money. Before a run or a Studio or Workflow Agent turn, the assistant tells you the expected cost in one line and waits for your yes. A message to your own agent goes out once the assistant has said that it uses the agent's credits.</p>
                     <p>Agent plans, moves to a larger plan and credit packs are charged to your wallet, so <code>deploy_agent</code> and <code>manage_agent_billing</code> first return the price (for a move inside a billing period, the amount Wiro works out for the time left). They act only when they are called again with <code>confirm: true</code> and <code>confirm_charge_usd</code>, the approved amount, after you agree. If the price changed in between, nothing is charged and you get a new quote. Turning an agent's skills on or off with <code>apply_agent_skills</code> costs nothing, since every plan includes every skill, and a move to a smaller plan starts with the next renewal, with nothing charged or refunded.</p>
-                    <p>Deleting a workflow, an agent, a conversation or an account connection also waits for <code>confirm: true</code>, and so do connecting an agent to a Wiro project with <code>bind_agent_project</code> and replacing a workflow's steps with <code>update_workflow</code> or <code>save_workflow_from_agent</code>: you see a summary of the change first, with the old and new value of each step input that changes. No tool adds funds or takes a card payment. Funds are added in the Wiro dashboard, and an agent plan paid by card moves to a larger plan or is topped up there.</p>
-                    <p>The connected project decides the workspace: a personal project uses your personal wallet, a team project uses the team wallet. <code>get_account</code> shows which one, its balance and its spend limits.</p>
-                    <p>Calls through the hosted MCP server count toward the workspace's <a href="/docs/spend-limits">spend limits</a> on the <code>mcp</code> surface, and calls from the Wiro browser extensions on the <code>extension</code> surface. The <a href="/docs/mcp-self-hosted">self-hosted</a> package's calls count on the <code>api</code> surface, as calls with its API key. When a limit refuses work (error code <code>93</code>), the tool returns an error with Wiro's message and a note: nothing ran and nothing was charged, and the work should not be tried again until the limit resets or someone who manages it raises it. Limits are managed under <a href="https://wiro.ai/panel/controls/spend-limits" target="_blank">Controls &gt; Spend Limits</a>.</p>
-                    <p>The workspace's <a href="/docs/model-access">Model Access</a> rules apply to these calls too, on the same surfaces. A model a rule blocks is refused before anything runs (error code <code>92</code>), and the tool returns an error with Wiro's message, which names the rule. Nothing ran and nothing was charged. Rules are managed under <a href="https://wiro.ai/panel/controls/model-access" target="_blank">Controls &gt; Model Access</a>.</p>
+                    <p>Deleting a workflow, an agent, a conversation or an account connection also waits for <code>confirm: true</code>, and so do connecting an agent to a Wiro project with <code>bind_agent_project</code> and replacing a workflow's steps with <code>update_workflow</code> or <code>save_workflow_from_agent</code>: you see a summary of the change first, with the old and new value of each step input that changes. Changing a spend limit or a Model Access rule with <code>manage_spend_limit</code> or <code>manage_model_access</code> also waits for <code>confirm: true</code>: you see the old and new values first and, for a limit, what was spent this period. No tool adds funds or takes a card payment. Funds are added in the Wiro dashboard, and an agent plan paid by card moves to a larger plan or is topped up there.</p>
+                    <p>The connected project decides the workspace: a personal project uses your personal wallet, a team project uses the team wallet. <code>get_account</code> shows which one, its balance and its spend limits, and <code>get_controls</code> its spend limits and Model Access rules in full.</p>
+                    <p>Calls through the hosted MCP server count toward the workspace's <a href="/docs/spend-limits">spend limits</a> on the <code>mcp</code> surface, and calls from the Wiro browser extensions on the <code>extension</code> surface. The <a href="/docs/mcp-self-hosted">self-hosted</a> package's calls count on the <code>api</code> surface, as calls with its API key. When a limit refuses work (error code <code>93</code>), the tool returns an error with Wiro's message and a note: nothing ran and nothing was charged, and the work should not be tried again until the limit resets or someone who manages it raises it. <code>get_controls</code> shows the limit and when it resets, and <code>manage_spend_limit</code> changes it after a change summary. Limits are also managed under <a href="https://wiro.ai/panel/controls/spend-limits" target="_blank">Controls &gt; Spend Limits</a>.</p>
+                    <p>The workspace's <a href="/docs/model-access">Model Access</a> rules apply to these calls too, on the same surfaces. A model a rule blocks is refused before anything runs (error code <code>92</code>), and the tool returns an error with Wiro's message, which names the rule. Nothing ran and nothing was charged. <code>check_model_access</code> shows why the model is blocked, and <code>manage_model_access</code> changes the rule after a change summary. Rules are also managed under <a href="https://wiro.ai/panel/controls/model-access" target="_blank">Controls &gt; Model Access</a>.</p>
                   </section>
 
                   <section id="mcp-contract">
@@ -10668,6 +10703,12 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
                     <h3>Talk to your agent</h3>
                     <div class="info-callout"><p>"Tell my support agent to summarise today's tickets"</p></div>
                     <p>The assistant finds the agent with <code>list_my_agents</code>, checks that it is running with <code>get_my_agent</code>, and sends the message with <code>send_agent_message</code>. The message uses the agent's credits. If the reply proposes a setup change, the assistant shows it and sends your yes only after you agree.</p>
+                    <h3>Cap your spending</h3>
+                    <div class="info-callout"><p>"Cap this team's spending at $200 a month"</p></div>
+                    <p>The assistant calls <code>manage_spend_limit</code> to set a $200 monthly limit on the whole team (<code>scope: "account"</code>). Nothing changes yet: it shows you the change summary, with what was already spent this month, and saves the limit with <code>confirm: true</code> once you agree.</p>
+                    <h3>Find out why a model is blocked</h3>
+                    <div class="info-callout"><p>"Why can't I run this video model here?"</p></div>
+                    <p>The assistant calls <code>check_model_access</code> with the model and shows each rule that applies and the one that blocks it. It changes a rule with <code>manage_model_access</code> only when you ask, after you agree to the change summary.</p>
                   </section>
 
                   <section id="mcp-how-it-works">
@@ -10683,7 +10724,7 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
 
                   <section id="mcp-tool-reference">
                     <h2>Tool Reference</h2>
-                    <p>The model tools are described one by one below. The workflow, conversation and agent tools follow in tables of their main arguments.</p>
+                    <p>The model tools are described one by one below. The workflow, conversation, agent and Controls tools follow in tables of their main arguments.</p>
 
                     <h3>search_models</h3>
                     <p>Search Wiro's model catalog by keyword, category, owner, or any combination. Calls <code>POST /Tool/List</code> on the Wiro API.</p>
@@ -11029,7 +11070,7 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
                     <p><code>get_account</code> names the workspace of the connected project, personal or a team, and shows that wallet's balance. It is also the call that proves the connection works, since model search, schema reads and <code>search_docs</code> answer without credentials. Without arguments it reads the balance and the workspace's spend limits, each with what it has used this period and whether it is used up. A used-up limit refuses new work with error code <code>93</code> even when the wallet has money. With <code>recent_transactions</code> (1 to 50) it also lists that many of the wallet's latest transactions, newest first, as the Transactions page of the Wiro dashboard shows them: each row's time, type, whether it adds to the wallet or takes from it, the amount in USD and what it was for, such as a model run, a store item or an agent. That is how to check that a charge or a credit landed. In a team the wallet is shared, so the list holds the whole team's activity. <code>transactions_start</code> pages back: pass the <code>nextStart</code> of the last answer. <code>get_playbook</code> takes <code>topics</code>, one or more of the playbook topics listed under <a href="#mcp-tools">Available Tools</a>, such as <code>["workflows"]</code> or <code>["agents", "billing"]</code>.</p>
 
                     <h3>Workflow tools</h3>
-                    <p>The workflow, conversation and agent tools publish their full input schemas, which your MCP client reads, so the tables below list only their main arguments. A workflow is named by its full slug, such as <code>product-shots-a1B2c</code>, and a run by its run token. The <a href="/docs/workflows">Workflows</a> page describes the API behind these tools.</p>
+                    <p>The workflow, conversation, agent and Controls tools publish their full input schemas, which your MCP client reads, so the tables below list only their main arguments. A workflow is named by its full slug, such as <code>product-shots-a1B2c</code>, and a run by its run token. The <a href="/docs/workflows">Workflows</a> page describes the API behind these tools.</p>
                     <table>
                       <thead>
                         <tr>
@@ -11207,6 +11248,36 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
                       </tbody>
                     </table>
                     <p><code>list_projects</code> lists the projects of the connected project's workspace by id and name. It marks the connection's own project, the projects this connection can connect to an agent (the ones you created, or any project of a team you are an admin of) and the projects with an IP whitelist, and it shows no keys. <code>bind_agent_project</code> connects the Wiro project an agent runs models with. Called without <code>confirm</code>, it changes nothing: it shows the project, the one it replaces, whether a running agent restarts and which wallet pays for the agent's model runs (the wallet of the workspace that owns the project). After you agree, the assistant repeats the call with <code>confirm: true</code>, as its <code>nextAction</code> shows. Connecting the project an agent already has changes nothing and restarts nothing. On a team agent, a team admin can connect any project of the team, and the person who deployed the agent the projects they created. The API behind it is <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>POST /UserAgent/CredentialProjectBind</code></a>.</p>
+
+                    <h3>Controls tools</h3>
+                    <p>A limit or a rule is for one scope: <code>account</code>, <code>member</code> (a team member, by e-mail or user uuid), <code>project</code> (an API key, by its project's id or name; left out, the key of this connection), <code>surface</code> or <code>agent</code> (by guid or name). See <a href="/docs/spend-limits">Spend Limits</a> and <a href="/docs/model-access">Model Access</a> for the API behind these tools.</p>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Tool</th>
+                          <th>Main arguments</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><code>get_controls</code></td>
+                          <td><code>usage</code> (<code>month</code> or <code>day</code>: also that period's spending by surface, member, API key and agent)</td>
+                        </tr>
+                        <tr>
+                          <td><code>check_model_access</code></td>
+                          <td><code>model</code> (<code>owner/slug</code> or id), <code>member</code>, <code>project</code>, <code>surface</code>, <code>agent</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>manage_spend_limit</code></td>
+                          <td><code>action</code> (<code>set</code> or <code>remove</code>), <code>scope</code> and its target (<code>member</code>, <code>project</code>, <code>surface</code> or <code>agent</code>), <code>period</code> (<code>month</code> or <code>day</code>), <code>amount_usd</code>, <code>alert_percent</code> (<code>50</code>, <code>80</code>, <code>90</code> or <code>null</code>), <code>limit_guid</code> (to remove), <code>confirm</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>manage_model_access</code></td>
+                          <td><code>action</code> (<code>update</code>, <code>replace</code> or <code>remove</code>), <code>scope</code> and its target, <code>everything_else</code> (<code>allow</code> or <code>block</code>), <code>categories</code>, <code>models</code>, <code>rule_guid</code> (to remove), <code>confirm</code></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <p>Called without <code>confirm</code>, the two manage tools change nothing: they return the change summary. After you agree, the assistant repeats the call with <code>confirm: true</code>, as its <code>nextAction</code> shows. <code>update</code> keeps the entries of a rule that you don't name, and <code>replace</code> writes the whole rule again.</p>
                   </section>
 
                   <section id="mcp-faq">
@@ -11241,7 +11312,7 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.6.1"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.9.0"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -11249,7 +11320,7 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
     }
   }
 }</code></pre>
-                    <p>That's it. Your assistant can now run Wiro models, build and run workflows, and work with Studio and your own agents. The <code>args</code> entry pins the current published version (<code>@wiro-ai/wiro-mcp@1.6.1</code>) so <code>npx</code> does not reuse an older cached build. To always start the newest release instead, use <code>@wiro-ai/wiro-mcp@latest</code> (for example <code>npx -y @wiro-ai/wiro-mcp@latest</code>): <code>npx</code> then looks up the latest version on npm when the client starts the server.</p>
+                    <p>That's it. Your assistant can now run Wiro models, build and run workflows, and work with Studio and your own agents. The <code>args</code> entry pins the current published version (<code>@wiro-ai/wiro-mcp@1.9.0</code>) so <code>npx</code> does not reuse an older cached build. To always start the newest release instead, use <code>@wiro-ai/wiro-mcp@latest</code> (for example <code>npx -y @wiro-ai/wiro-mcp@latest</code>): <code>npx</code> then looks up the latest version on npm when the client starts the server.</p>
                   </section>
 
                   <section id="self-hosted-setup">
@@ -11302,7 +11373,7 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
   "mcpServers": {
     "wiro": {
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.6.1"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.9.0"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -11313,7 +11384,7 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
                       </div>
                       <div class="mcp-setup-panel" id="sh-setup-claude-code">
                         <h3>Claude Code</h3>
-                        <pre><code class="language-bash">claude mcp add wiro -- npx -y @wiro-ai/wiro-mcp@1.6.1</code></pre>
+                        <pre><code class="language-bash">claude mcp add wiro -- npx -y @wiro-ai/wiro-mcp@1.9.0</code></pre>
                         <p>Then set environment variables:</p>
                         <pre><code class="language-bash">export WIRO_API_KEY="your-api-key"
 export WIRO_API_SECRET="your-api-secret"</code></pre>
@@ -11326,7 +11397,7 @@ export WIRO_API_SECRET="your-api-secret"</code></pre>
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.6.1"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.9.0"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -11342,7 +11413,7 @@ export WIRO_API_SECRET="your-api-secret"</code></pre>
   "mcpServers": {
     "wiro": {
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.6.1"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.9.0"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -11358,7 +11429,7 @@ export WIRO_API_SECRET="your-api-secret"</code></pre>
   "mcpServers": {
     "wiro": {
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.6.1"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.9.0"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -11369,13 +11440,13 @@ export WIRO_API_SECRET="your-api-secret"</code></pre>
                       </div>
                       <div class="mcp-setup-panel" id="sh-setup-goose">
                         <h3>goose</h3>
-                        <p>In the goose CLI, run <code>goose configure</code>, pick <strong>Add Extension &gt; Command-line Extension</strong>, enter <code>npx -y @wiro-ai/wiro-mcp@1.6.1</code> as the command and add <code>WIRO_API_KEY</code> and <code>WIRO_API_SECRET</code> as environment variables. goose Desktop takes the same command and variables under <strong>Extensions &gt; Add custom extension</strong>. Or add Wiro to <code>~/.config/goose/config.yaml</code>:</p>
+                        <p>In the goose CLI, run <code>goose configure</code>, pick <strong>Add Extension &gt; Command-line Extension</strong>, enter <code>npx -y @wiro-ai/wiro-mcp@1.9.0</code> as the command and add <code>WIRO_API_KEY</code> and <code>WIRO_API_SECRET</code> as environment variables. goose Desktop takes the same command and variables under <strong>Extensions &gt; Add custom extension</strong>. Or add Wiro to <code>~/.config/goose/config.yaml</code>:</p>
                         <pre><code class="language-yaml">extensions:
   wiro:
     name: Wiro AI
     type: stdio
     cmd: npx
-    args: ["-y", "@wiro-ai/wiro-mcp@1.6.1"]
+    args: ["-y", "@wiro-ai/wiro-mcp@1.9.0"]
     envs:
       WIRO_API_KEY: your-api-key
       WIRO_API_SECRET: your-api-secret
@@ -11385,7 +11456,7 @@ export WIRO_API_SECRET="your-api-secret"</code></pre>
                       <div class="mcp-setup-panel" id="sh-setup-other">
                         <h3>Other Clients</h3>
                         <p>Any MCP client that supports the <strong>stdio</strong> transport can connect. The command is:</p>
-                        <pre><code class="language-bash">npx -y @wiro-ai/wiro-mcp@1.6.1</code></pre>
+                        <pre><code class="language-bash">npx -y @wiro-ai/wiro-mcp@1.9.0</code></pre>
                         <p>Set <code>WIRO_API_KEY</code> and <code>WIRO_API_SECRET</code> as environment variables in your client's MCP configuration.</p>
                       </div>
                     </div>
@@ -11408,8 +11479,8 @@ WIRO_API_SECRET=your-api-secret</code></pre>
 
                   <section id="self-hosted-tools">
                     <h2>Available Tools</h2>
-                    <p>The self-hosted server provides the same 50 typed tools, playbooks and prompts as the <a href="/docs/wiro-mcp-server">hosted MCP server</a>. Successful calls include <code>structuredContent</code> for LLM chaining plus text content for compatibility. Completed media calls return standard MCP resource links and an assistant-audience delivery instruction so the assistant can present image previews and clickable media links in its user-facing response even when the client does not render media inside its tool card.</p>
-                    <p>All three tool groups load by default. To load fewer tools, set <code>WIRO_TOOLSETS</code> (see <a href="#self-hosted-env">Environment Variables</a>). <code>get_account</code>, <code>get_playbook</code> and <code>search_docs</code> are always available.</p>
+                    <p>The self-hosted server provides the same 54 typed tools, playbooks and prompts as the <a href="/docs/wiro-mcp-server">hosted MCP server</a>. Successful calls include <code>structuredContent</code> for LLM chaining plus text content for compatibility. Completed media calls return standard MCP resource links and an assistant-audience delivery instruction so the assistant can present image previews and clickable media links in its user-facing response even when the client does not render media inside its tool card.</p>
+                    <p>All four tool groups load by default. To load fewer tools, set <code>WIRO_TOOLSETS</code> (see <a href="#self-hosted-env">Environment Variables</a>). <code>get_account</code>, <code>get_playbook</code> and <code>search_docs</code> are always available.</p>
                     <p><strong>Model slugs:</strong> Use the clean/lowercase format <code>owner/model</code> (e.g. <code>openai/sora-2</code>, <code>wiro/virtual-try-on</code>). These correspond to <code>cleanslugowner/cleanslugproject</code> values returned by <code>search_models</code>.</p>
                     <h3>Models</h3>
                     <table>
@@ -11683,6 +11754,39 @@ WIRO_API_SECRET=your-api-secret</code></pre>
                         </tr>
                       </tbody>
                     </table>
+                    <h3 id="self-hosted-controls">Controls</h3>
+                    <p>These tools read and change the workspace's <a href="/docs/spend-limits">spend limits</a> and <a href="/docs/model-access">Model Access</a> rules. They come with <code>@wiro-ai/wiro-mcp</code> 1.9.0 and later. The self-hosted server's calls count on the <code>api</code> surface, as calls with its API key. Its Controls tools change limits and rules only when the person who created the key's project can change them: a personal account's owner, or in a team a team admin or the organization owner.</p>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Tool</th>
+                          <th>Wiro API</th>
+                          <th>Description</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><code>get_controls</code></td>
+                          <td><code>POST /SpendLimit/List</code>, <code>/ModelAccess/List</code>, <code>/SpendLimit/Usage</code></td>
+                          <td>Read the workspace's spend limits, with what each has used and when it resets, its Model Access rules, and whether this connection can change them; on request, also this month's or today's spending by surface, member, API key and agent.</td>
+                        </tr>
+                        <tr>
+                          <td><code>check_model_access</code></td>
+                          <td><code>POST /ModelAccess/Check</code></td>
+                          <td>Explain whether a model may run here and why, rule by rule. Nothing runs and nothing is charged.</td>
+                        </tr>
+                        <tr>
+                          <td><code>manage_spend_limit</code></td>
+                          <td><code>POST /SpendLimit/List</code>, <code>/SpendLimit/Preview</code>, <code>/SpendLimit/Set</code>, <code>/SpendLimit/Remove</code></td>
+                          <td>Set or remove a spend limit. It shows a change summary first and changes nothing until you confirm.</td>
+                        </tr>
+                        <tr>
+                          <td><code>manage_model_access</code></td>
+                          <td><code>POST /ModelAccess/List</code>, <code>/ModelAccess/Preview</code>, <code>/ModelAccess/Set</code>, <code>/ModelAccess/Remove</code></td>
+                          <td>Update, replace or remove a Model Access rule. It shows a change summary first and changes nothing until you confirm.</td>
+                        </tr>
+                      </tbody>
+                    </table>
                     <h3>Account and guides</h3>
                     <table>
                       <thead>
@@ -11701,7 +11805,7 @@ WIRO_API_SECRET=your-api-secret</code></pre>
                         <tr>
                           <td><code>get_playbook</code></td>
                           <td>Built into the server</td>
-                          <td>Step-by-step guides: getting started, models, workflows, workflow graphs, the Workflow Agent, Studio, agents and billing.</td>
+                          <td>Step-by-step guides: getting started, models, workflows, workflow graphs, the Workflow Agent, Studio, agents, billing and Controls.</td>
                         </tr>
                         <tr>
                           <td><code>search_docs</code></td>
@@ -11742,7 +11846,7 @@ WIRO_API_SECRET=your-api-secret</code></pre>
                         <tr>
                           <td><code>WIRO_TOOLSETS</code></td>
                           <td>No</td>
-                          <td>Comma-separated tool groups to load: <code>models</code>, <code>workflows</code>, <code>agents</code> (default: all)</td>
+                          <td>Comma-separated tool groups to load: <code>models</code>, <code>workflows</code>, <code>agents</code>, <code>controls</code> (default: all)</td>
                         </tr>
                       </tbody>
                     </table>
@@ -11752,7 +11856,7 @@ WIRO_API_SECRET=your-api-secret</code></pre>
   "WIRO_API_KEY": "your-api-key",
   "WIRO_TOOLSETS": "models,workflows"
 }</code></pre>
-                    <p><code>get_account</code>, <code>get_playbook</code> and <code>search_docs</code> are always available, and <code>workflows</code> also brings the model search tools it needs. The conversation tools for Studio and the Workflow Agent, with <code>save_workflow_from_agent</code>, come with either <code>workflows</code> or <code>agents</code>, and each prompt appears only when its tools are loaded. If a job needs a tool from a group that is not loaded, the server instructions tell the assistant to say so.</p>
+                    <p><code>get_account</code>, <code>get_playbook</code> and <code>search_docs</code> are always available, and <code>workflows</code> also brings the model search tools it needs. <code>controls</code> loads the four Controls tools. The conversation tools for Studio and the Workflow Agent, with <code>save_workflow_from_agent</code>, come with either <code>workflows</code> or <code>agents</code>, and each prompt appears only when its tools are loaded. If a job needs a tool from a group that is not loaded, the server instructions tell the assistant to say so.</p>
                   </section>
 
                   <section id="self-hosted-links">

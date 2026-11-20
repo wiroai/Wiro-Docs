@@ -12,7 +12,7 @@ Add to your AI assistant's MCP config:
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.6.1"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.9.0"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -24,7 +24,7 @@ Add to your AI assistant's MCP config:
 
 That's it. Your assistant can now run Wiro models, build and run workflows,
 and work with Studio and your own agents. The `args` entry pins the current
-published version (`@wiro-ai/wiro-mcp@1.6.1`) so `npx`
+published version (`@wiro-ai/wiro-mcp@1.9.0`) so `npx`
 does not reuse an older cached build. To always start the newest release instead, use `@wiro-ai/wiro-mcp@latest` (for example `npx -y @wiro-ai/wiro-mcp@latest`): `npx` then looks up the latest version on npm when the client starts the server.
 
 ## Setup
@@ -36,7 +36,7 @@ Open MCP settings (`Cmd+Shift+P` → "Open MCP settings") and add the config abo
 ### Claude Code
 
 ```bash
-claude mcp add wiro -- npx -y @wiro-ai/wiro-mcp@1.6.1
+claude mcp add wiro -- npx -y @wiro-ai/wiro-mcp@1.9.0
 ```
 
 Then set `WIRO_API_KEY` and `WIRO_API_SECRET` environment variables.
@@ -51,7 +51,7 @@ Add to `claude_desktop_config.json`:
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.6.1"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.9.0"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -70,7 +70,7 @@ Add to your MCP settings:
   "mcpServers": {
     "wiro": {
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.6.1"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.9.0"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -90,7 +90,7 @@ Add to `~/.kiro/settings/mcp.json` (every workspace) or
   "mcpServers": {
     "wiro": {
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.6.1"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.9.0"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -104,7 +104,7 @@ Add to `~/.kiro/settings/mcp.json` (every workspace) or
 
 In the goose CLI, run `goose configure`, pick
 **Add Extension > Command-line Extension**, enter
-`npx -y @wiro-ai/wiro-mcp@1.6.1` as the command and add `WIRO_API_KEY` and
+`npx -y @wiro-ai/wiro-mcp@1.9.0` as the command and add `WIRO_API_KEY` and
 `WIRO_API_SECRET` as environment variables. goose Desktop takes the same command
 and variables under **Extensions > Add custom extension**. Or add Wiro to
 `~/.config/goose/config.yaml`:
@@ -115,7 +115,7 @@ extensions:
     name: Wiro AI
     type: stdio
     cmd: npx
-    args: ["-y", "@wiro-ai/wiro-mcp@1.6.1"]
+    args: ["-y", "@wiro-ai/wiro-mcp@1.9.0"]
     envs:
       WIRO_API_KEY: your-api-key
       WIRO_API_SECRET: your-api-secret
@@ -128,7 +128,7 @@ extensions:
 Any MCP client that supports the **stdio** transport can connect. The command is:
 
 ```bash
-npx -y @wiro-ai/wiro-mcp@1.6.1
+npx -y @wiro-ai/wiro-mcp@1.9.0
 ```
 
 Set `WIRO_API_KEY` and `WIRO_API_SECRET` as environment variables in your client's MCP configuration.
@@ -166,9 +166,9 @@ Add `WIRO_API_SECRET` to the `env` block of your MCP config and restart the clie
 
 ## Available Tools
 
-The self-hosted server provides the same 50 typed tools, playbooks and prompts as the [hosted MCP server](/docs/wiro-mcp-server). Successful calls include `structuredContent` for LLM chaining plus text content for compatibility. Completed media calls return standard MCP resource links and an assistant-audience delivery instruction so the assistant can present image previews and clickable media links in its user-facing response even when the client does not render media inside its tool card.
+The self-hosted server provides the same 54 typed tools, playbooks and prompts as the [hosted MCP server](/docs/wiro-mcp-server). Successful calls include `structuredContent` for LLM chaining plus text content for compatibility. Completed media calls return standard MCP resource links and an assistant-audience delivery instruction so the assistant can present image previews and clickable media links in its user-facing response even when the client does not render media inside its tool card.
 
-All three tool groups load by default. To load fewer tools, set `WIRO_TOOLSETS` (see [Environment Variables](#environment-variables)). `get_account`, `get_playbook` and `search_docs` are always available.
+All four tool groups load by default. To load fewer tools, set `WIRO_TOOLSETS` (see [Environment Variables](#environment-variables)). `get_account`, `get_playbook` and `search_docs` are always available.
 
 **Model slugs:** When a tool requires a model identifier, use the clean/lowercase format `owner/model` (e.g. `openai/sora-2`, `wiro/virtual-try-on`). These correspond to `cleanslugowner/cleanslugproject` values returned by `search_models`.
 
@@ -236,12 +236,23 @@ The conversation tools call the matching `Message/*` route of [Studio](/docs/stu
 | `get_agent_activity` | `POST /UserAgent/TransactionList`, `/UserAgent/LogsList`, `/UserAgent/Logs` | Read an agent's credit usage and activity logs, including who changed what on it. |
 | `delete_agent` | `POST /UserAgent/Delete` | Delete an agent, after your confirmation. |
 
+### Controls
+
+These tools read and change the workspace's [spend limits](/docs/spend-limits) and [Model Access](/docs/model-access) rules. They come with `@wiro-ai/wiro-mcp` 1.9.0 and later. The self-hosted server's calls count on the `api` surface, as calls with its API key. Its Controls tools change limits and rules only when the person who created the key's project can change them: a personal account's owner, or in a team a team admin or the organization owner.
+
+| Tool | API Endpoint | What it does |
+|------|-------------|-------------|
+| `get_controls` | `POST /SpendLimit/List`, `/ModelAccess/List`, `/SpendLimit/Usage` | Read the workspace's spend limits, with what each has used and when it resets, its Model Access rules, and whether this connection can change them; on request, also this month's or today's spending by surface, member, API key and agent. |
+| `check_model_access` | `POST /ModelAccess/Check` | Explain whether a model may run here and why, rule by rule. Nothing runs and nothing is charged. |
+| `manage_spend_limit` | `POST /SpendLimit/List`, `/SpendLimit/Preview`, `/SpendLimit/Set`, `/SpendLimit/Remove` | Set or remove a spend limit. It shows a change summary first and changes nothing until you confirm. |
+| `manage_model_access` | `POST /ModelAccess/List`, `/ModelAccess/Preview`, `/ModelAccess/Set`, `/ModelAccess/Remove` | Update, replace or remove a Model Access rule. It shows a change summary first and changes nothing until you confirm. |
+
 ### Account and guides
 
 | Tool | API Endpoint | What it does |
 |------|-------------|-------------|
 | `get_account` | `POST /Wallet/List`, `/SpendLimit/List`, `/Wallet/TransactionList` | Show which workspace the connected project belongs to, its wallet balance, its spend limits and, when you ask, the wallet's recent transactions. |
-| `get_playbook` | Built into the server | Step-by-step guides: getting started, models, workflows, workflow graphs, the Workflow Agent, Studio, agents and billing. |
+| `get_playbook` | Built into the server | Step-by-step guides: getting started, models, workflows, workflow graphs, the Workflow Agent, Studio, agents, billing and Controls. |
 | `search_docs` | Wiro Docs | Search the Wiro documentation for guides, API references, and examples. |
 
 See the [Wiro MCP Server](/docs/wiro-mcp-server) page for the playbook topics, the prompts, the rules for paid and irreversible actions, and the tool arguments.
@@ -253,7 +264,7 @@ See the [Wiro MCP Server](/docs/wiro-mcp-server) page for the playbook topics, t
 | `WIRO_API_KEY` | Yes | Your Wiro project API key |
 | `WIRO_API_SECRET` | No | Your API secret (for signature auth) |
 | `WIRO_API_BASE_URL` | No | Override API URL (default: `https://api.wiro.ai/v1`) |
-| `WIRO_TOOLSETS` | No | Comma-separated tool groups to load: `models`, `workflows`, `agents` (default: all) |
+| `WIRO_TOOLSETS` | No | Comma-separated tool groups to load: `models`, `workflows`, `agents`, `controls` (default: all) |
 
 ### Choosing tool groups
 
@@ -267,10 +278,10 @@ Some clients work best with fewer tools. Set `WIRO_TOOLSETS` to load only the gr
 ```
 
 `get_account`, `get_playbook` and `search_docs` are always available, and
-`workflows` also brings the model search tools it needs. The conversation tools
-for Studio and the Workflow Agent, with `save_workflow_from_agent`, come with
-either `workflows` or `agents`, and each prompt appears only when its tools are
-loaded. If a job needs a tool from a group that is not loaded, the server
+`workflows` also brings the model search tools it needs. `controls` loads the
+four Controls tools. The conversation tools for Studio and the Workflow Agent,
+with `save_workflow_from_agent`, come with either `workflows` or `agents`, and
+each prompt appears only when its tools are loaded. If a job needs a tool from a group that is not loaded, the server
 instructions tell the assistant to say so.
 
 ## GitHub & npm
