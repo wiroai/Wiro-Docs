@@ -20570,6 +20570,18 @@ print(response.body);
 <td>Send the message again.</td>
 </tr>
 <tr>
+<td><code>[SPEND_LIMIT_REACHED]</code></td>
+<td><code>agent_error</code></td>
+<td>The agent's own <a href="/docs/spend-limits">spend limit</a> is used up, so its model calls were refused.</td>
+<td>Wait for the limit to reset, or have its owner raise it on the <a href="https://wiro.ai/panel/wallet/limits" target="_blank">Spend Limits</a> page.</td>
+</tr>
+<tr>
+<td><code>[USAGE_CEILING_REACHED]</code></td>
+<td><code>agent_error</code></td>
+<td>The agent reached its hourly or daily safety ceiling for AI model calls.</td>
+<td>Wait until that hour or day is over.</td>
+</tr>
+<tr>
 <td><code>[AGENT_UNAVAILABLE]</code></td>
 <td><code>agent_error</code></td>
 <td>Any other failure.</td>
@@ -20589,6 +20601,8 @@ print(response.body);
 <pre><code class="language-text">[SECURITY_BLOCKED] The agent's security rules blocked this message. Change it and send it again.
 [SAFETY_POLICY_BLOCKED] The model's provider declined this request under its safety policy. Rephrase it and send it again.
 [TURN_INTERRUPTED] This request was interrupted by a restart before it finished. Please send it again.
+[SPEND_LIMIT_REACHED] This agent's spend limit is used up, so it paused. It runs again when the limit resets or its owner raises it.
+[USAGE_CEILING_REACHED] This agent reached its hourly or daily safety ceiling for AI model calls, so it paused. It runs again when that hour or day is over.
 [AGENT_UNAVAILABLE] Agent is temporarily unavailable. Please try again shortly.
 [REQUEST_CANCELLED] Request cancelled.
 </code></pre>
@@ -28408,6 +28422,16 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <td><code>[TURN_INTERRUPTED]</code></td>
 <td><code>agent_error</code></td>
 <td>A restart cut the turn short: offer to send it again.</td>
+</tr>
+<tr>
+<td><code>[SPEND_LIMIT_REACHED]</code></td>
+<td><code>agent_error</code></td>
+<td>The agent's spend limit is used up: say it runs again when the limit resets or its owner raises it.</td>
+</tr>
+<tr>
+<td><code>[USAGE_CEILING_REACHED]</code></td>
+<td><code>agent_error</code></td>
+<td>The agent reached its hourly or daily safety ceiling for AI model calls: say it runs again when that hour or day is over.</td>
 </tr>
 <tr>
 <td><code>[AGENT_UNAVAILABLE]</code></td>

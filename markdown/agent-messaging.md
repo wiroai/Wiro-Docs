@@ -52,6 +52,8 @@ When a turn ends with `agent_error` or `agent_cancel`, `response` and `debugoutp
 | `[SECURITY_BLOCKED]` | `agent_error` | The agent's security rules blocked the message. | Change the message and send it again. |
 | `[SAFETY_POLICY_BLOCKED]` | `agent_error` | The model's provider declined the request under its usage or safety policy. | Rephrase the request and send it again. |
 | `[TURN_INTERRUPTED]` | `agent_error` | The agent restarted while the turn was running. | Send the message again. |
+| `[SPEND_LIMIT_REACHED]` | `agent_error` | The agent's own [spend limit](/docs/spend-limits) is used up, so its model calls were refused. | Wait for the limit to reset, or have its owner raise it on the [Spend Limits](https://wiro.ai/panel/wallet/limits) page. |
+| `[USAGE_CEILING_REACHED]` | `agent_error` | The agent reached its hourly or daily safety ceiling for AI model calls. | Wait until that hour or day is over. |
 | `[AGENT_UNAVAILABLE]` | `agent_error` | Any other failure. | Try again after a short wait. |
 | `[REQUEST_CANCELLED]` | `agent_cancel` | The turn was cancelled, while it ran or while it was still queued. | Nothing to do. |
 
@@ -61,6 +63,8 @@ The full texts:
 [SECURITY_BLOCKED] The agent's security rules blocked this message. Change it and send it again.
 [SAFETY_POLICY_BLOCKED] The model's provider declined this request under its safety policy. Rephrase it and send it again.
 [TURN_INTERRUPTED] This request was interrupted by a restart before it finished. Please send it again.
+[SPEND_LIMIT_REACHED] This agent's spend limit is used up, so it paused. It runs again when the limit resets or its owner raises it.
+[USAGE_CEILING_REACHED] This agent reached its hourly or daily safety ceiling for AI model calls, so it paused. It runs again when that hour or day is over.
 [AGENT_UNAVAILABLE] Agent is temporarily unavailable. Please try again shortly.
 [REQUEST_CANCELLED] Request cancelled.
 ```
