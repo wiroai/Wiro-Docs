@@ -6297,15 +6297,15 @@ Removes a rule from the call's workspace. The people who can change rules can re
 
 ## **POST** /ModelAccess/Check
 
-Shows how the rules of the call's workspace decide one model for one run: which rules apply, what each one decides and why, and the refusal the run would get. Nothing runs. A team project's API key reads its team, a personal project's key your personal account, and the dashboard the workspace you have selected. Any team member can call it, and it works with an API key. With only `model`, it checks a dashboard run of yours.
+Shows how the rules of the call's workspace decide one model for one run: which rules apply, what each one decides and why, and the refusal the run would get. Nothing runs. A team project's API key reads its team, a personal project's key your personal account, and the dashboard the workspace you have selected. Any team member can call it, and it works with an API key. With only `model`, it checks a dashboard run of yours. To check another run, name it with `member`, `project`, `agent` or `surface`. `check.context` in the response says which run was checked.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `model` | string | Yes | The model's `owner/slug` or `id` |
-| `member` | string | No | In a team, the `useruuid` of the member whose run to check. Default: you (with an API key, the person who created its project) |
-| `project` | string | No | A project's `id`, to check a run made with that project's API key |
-| `surface` | string | No | Where the run comes from: `web`, `api`, `mcp`, `llm-gateway`, `extension` or `agent`. Default: `web`. A run with an API key comes from `api` |
-| `agent` | string | No | An agent's guid, to check a model run that agent makes. The surface is then `agent` |
+| `member` | string | No | In a team, the `useruuid` of the member whose dashboard run to check. Default: you (with an API key, the person who created its project). With `project` or `agent`, the run is checked as the person who created that API key, and `member` is not used |
+| `project` | string | No | A project's `id`, to check a run made with that project's API key, as the person who created the project. The surface is then `api` unless you name another one, and `web` is refused: a run made with an API key never counts as the dashboard |
+| `surface` | string | No | Where the run comes from: `web`, `api`, `mcp`, `llm-gateway`, `extension` or `agent`. Default: `web`, a dashboard run. With `project` the default is `api`, and with `agent` the surface is always `agent`. The `agent` surface needs an agent: send its guid in `agent` |
+| `agent` | string | No | An agent's guid, to check a model run that agent makes: with the API key it runs models with, as the person who created that key, on the `agent` surface. `project` is not used then |
 
 ### Example
 
@@ -6319,7 +6319,7 @@ Shows how the rules of the call's workspace decide one model for one run: which 
 }
 ```
 
-Each applicable rule comes back shaped like a row of `/ModelAccess/List`, with what it decides:
+Each applicable rule comes back shaped like a row of `/ModelAccess/List`, with what it decides. This workspace is a team, so `check.context` shows the key's run checked as Jane Doe, who created the Production project:
 
 ```json
 // Response
@@ -6370,7 +6370,13 @@ Each applicable rule comes back shaped like a row of `/ModelAccess/List`, with w
         "by": "default",
         "category": null
       }
-    ]
+    ],
+    "context": {
+      "surface": "api",
+      "member": { "useruuid": "3f5a9c20-6d41-4b8e-a1c7-5e9d0f2b4c61", "label": "Jane Doe" },
+      "project": { "projectid": "48211", "label": "Production" },
+      "agent": null
+    }
   }
 }
 ```
@@ -6386,6 +6392,11 @@ Each applicable rule comes back shaped like a row of `/ModelAccess/List`, with w
 | `check.rules[].access` | What this rule decides: `allow` or `block` |
 | `check.rules[].by` | What decided it: `model` (the model's own entry), `category` (one of its categories) or `default` (Everything Else) |
 | `check.rules[].category` | The category that decided it when `by` is `category`, else `null` |
+| `check.context` | Which run was checked: `surface`, `member`, `project` and `agent` |
+| `check.context.surface` | The surface the run was checked on: the `surface` you sent, else `api` with `project` and `web` without it. Always `agent` with `agent` |
+| `check.context.member` | In a team, the member the run was checked as: `useruuid`, and the member's name as `label`. That is the `member` you sent, else you, and with `project` or `agent` the person who created that API key. `null` in a personal account |
+| `check.context.project` | The project whose API key the run was checked with: `projectid`, and the project's name as `label`. That is the `project` you sent, or for an agent the Wiro project it runs models with. `null` without `project` or `agent` |
+| `check.context.agent` | The agent whose run was checked: `useragentguid`, and the agent's title as `label`. `null` without `agent` |
 
 | Error | Cause |
 |-------|-------|
@@ -6393,6 +6404,12 @@ Each applicable rule comes back shaped like a row of `/ModelAccess/List`, with w
 | `<model> is not a model's owner/slug or id.` | `model` is neither an `owner/slug` nor a number |
 | `<model> is not a model on Wiro.` | No model listed on Wiro has that `owner/slug` or id |
 | `A surface is one of web, api, mcp, llm-gateway, extension, agent.` | Another `surface` |
+| `Name the agent to check its runs.` | `surface` is `agent` and no `agent` was sent |
+| `That API key's project is not in this workspace.` | `project` is not the id of a project of this workspace |
+| `A run made with an API key never counts as the dashboard. Leave surface out or pick another one.` | `project` with `surface` `web` |
+| `That agent is not in this workspace.` | `agent` is not the guid of an agent of this workspace |
+| `That agent has no API key to run models with yet.` | The agent has no Wiro project to run models with yet: connect one with [`/UserAgent/CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) |
+| `That agent runs models with an API key of another workspace, so that workspace's rules decide them.` | The Wiro project the agent runs models with is in another workspace |
 
 ---
 

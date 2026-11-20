@@ -8724,7 +8724,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                       <span class="endpoint-badge post">POST</span>
                       /ModelAccess/Check
                     </h2>
-                    <p>Shows how the rules of the call's workspace decide one model for one run: which rules apply, what each one decides and why, and the refusal the run would get. Nothing runs. A team project's API key reads its team, a personal project's key your personal account, and the dashboard the workspace you have selected. Any team member can call it, and it works with an API key. With only <code>model</code>, it checks a dashboard run of yours.</p>
+                    <p>Shows how the rules of the call's workspace decide one model for one run: which rules apply, what each one decides and why, and the refusal the run would get. Nothing runs. A team project's API key reads its team, a personal project's key your personal account, and the dashboard the workspace you have selected. Any team member can call it, and it works with an API key. With only <code>model</code>, it checks a dashboard run of yours. To check another run, name it with <code>member</code>, <code>project</code>, <code>agent</code> or <code>surface</code>. <code>check.context</code> in the response says which run was checked.</p>
 
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
@@ -8748,25 +8748,25 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                               <td><code>member</code></td>
                               <td>string</td>
                               <td>No</td>
-                              <td>In a team, the <code>useruuid</code> of the member whose run to check. Default: you (with an API key, the person who created its project)</td>
+                              <td>In a team, the <code>useruuid</code> of the member whose dashboard run to check. Default: you (with an API key, the person who created its project). With <code>project</code> or <code>agent</code>, the run is checked as the person who created that API key, and <code>member</code> is not used</td>
                             </tr>
                             <tr>
                               <td><code>project</code></td>
                               <td>string</td>
                               <td>No</td>
-                              <td>A project's <code>id</code>, to check a run made with that project's API key</td>
+                              <td>A project's <code>id</code>, to check a run made with that project's API key, as the person who created the project. The surface is then <code>api</code> unless you name another one, and <code>web</code> is refused: a run made with an API key never counts as the dashboard</td>
                             </tr>
                             <tr>
                               <td><code>surface</code></td>
                               <td>string</td>
                               <td>No</td>
-                              <td>Where the run comes from: <code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code> or <code>agent</code>. Default: <code>web</code>. A run with an API key comes from <code>api</code></td>
+                              <td>Where the run comes from: <code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code> or <code>agent</code>. Default: <code>web</code>, a dashboard run. With <code>project</code> the default is <code>api</code>, and with <code>agent</code> the surface is always <code>agent</code>. The <code>agent</code> surface needs an agent: send its guid in <code>agent</code></td>
                             </tr>
                             <tr>
                               <td><code>agent</code></td>
                               <td>string</td>
                               <td>No</td>
-                              <td>An agent's guid, to check a model run that agent makes. The surface is then <code>agent</code></td>
+                              <td>An agent's guid, to check a model run that agent makes: with the API key it runs models with, as the person who created that key, on the <code>agent</code> surface. <code>project</code> is not used then</td>
                             </tr>
                           </tbody>
                         </table>
@@ -8782,7 +8782,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
 }</code></pre>
 
                     <h3>Response</h3>
-                    <p>Each applicable rule comes back shaped like a row of <code>/ModelAccess/List</code>, with what it decides:</p>
+                    <p>Each applicable rule comes back shaped like a row of <code>/ModelAccess/List</code>, with what it decides. This workspace is a team, so <code>check.context</code> shows the key's run checked as Jane Doe, who created the Production project:</p>
                     <pre><code class="language-json">{
   "result": true,
   "errors": [],
@@ -8830,7 +8830,13 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
         "by": "default",
         "category": null
       }
-    ]
+    ],
+    "context": {
+      "surface": "api",
+      "member": { "useruuid": "3f5a9c20-6d41-4b8e-a1c7-5e9d0f2b4c61", "label": "Jane Doe" },
+      "project": { "projectid": "48211", "label": "Production" },
+      "agent": null
+    }
   }
 }</code></pre>
 
@@ -8880,6 +8886,26 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                               <td><code>check.rules[].category</code></td>
                               <td>The category that decided it when <code>by</code> is <code>category</code>, else <code>null</code></td>
                             </tr>
+                            <tr>
+                              <td><code>check.context</code></td>
+                              <td>Which run was checked: <code>surface</code>, <code>member</code>, <code>project</code> and <code>agent</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>check.context.surface</code></td>
+                              <td>The surface the run was checked on: the <code>surface</code> you sent, else <code>api</code> with <code>project</code> and <code>web</code> without it. Always <code>agent</code> with <code>agent</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>check.context.member</code></td>
+                              <td>In a team, the member the run was checked as: <code>useruuid</code>, and the member's name as <code>label</code>. That is the <code>member</code> you sent, else you, and with <code>project</code> or <code>agent</code> the person who created that API key. <code>null</code> in a personal account</td>
+                            </tr>
+                            <tr>
+                              <td><code>check.context.project</code></td>
+                              <td>The project whose API key the run was checked with: <code>projectid</code>, and the project's name as <code>label</code>. That is the <code>project</code> you sent, or for an agent the Wiro project it runs models with. <code>null</code> without <code>project</code> or <code>agent</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>check.context.agent</code></td>
+                              <td>The agent whose run was checked: <code>useragentguid</code>, and the agent's title as <code>label</code>. <code>null</code> without <code>agent</code></td>
+                            </tr>
                           </tbody>
                         </table>
                       </div>
@@ -8910,6 +8936,30 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                             <tr>
                               <td><code>A surface is one of web, api, mcp, llm-gateway, extension, agent.</code></td>
                               <td>Another <code>surface</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>Name the agent to check its runs.</code></td>
+                              <td><code>surface</code> is <code>agent</code> and no <code>agent</code> was sent</td>
+                            </tr>
+                            <tr>
+                              <td><code>That API key's project is not in this workspace.</code></td>
+                              <td><code>project</code> is not the id of a project of this workspace</td>
+                            </tr>
+                            <tr>
+                              <td><code>A run made with an API key never counts as the dashboard. Leave surface out or pick another one.</code></td>
+                              <td><code>project</code> with <code>surface</code> <code>web</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>That agent is not in this workspace.</code></td>
+                              <td><code>agent</code> is not the guid of an agent of this workspace</td>
+                            </tr>
+                            <tr>
+                              <td><code>That agent has no API key to run models with yet.</code></td>
+                              <td>The agent has no Wiro project to run models with yet: connect one with <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>/UserAgent/CredentialProjectBind</code></a></td>
+                            </tr>
+                            <tr>
+                              <td><code>That agent runs models with an API key of another workspace, so that workspace's rules decide them.</code></td>
+                              <td>The Wiro project the agent runs models with is in another workspace</td>
                             </tr>
                           </tbody>
                         </table>
