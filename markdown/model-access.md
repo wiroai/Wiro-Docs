@@ -6,7 +6,7 @@ Choose which models a personal account or a team can run: allow or block single 
 
 A Model Access rule decides which models a wallet's work can run. Rules work the same way for a personal account's wallet and for a team's wallet. The rules of the workspace a call runs in apply: a team project's API key runs in its team, a personal project's key in your personal account, and the dashboard in the workspace you have selected.
 
-Manage rules on the [Model Access](https://wiro.ai/panel/controls/model-access) page of the dashboard, for your personal account or for the team workspace you have selected, or with the `/ModelAccess` endpoints below. A workspace without rules can run every model. Team allowlists and blocklists set before this system were moved into it as rules for the whole team.
+Manage rules in the dashboard under [Controls > Model Access](https://wiro.ai/panel/controls/model-access), for your personal account or for the team workspace you have selected, or with the `/ModelAccess` endpoints below. A workspace without rules can run every model. Team allowlists and blocklists set before this system were moved into it as rules for the whole team.
 
 ### What a Rule Covers
 
@@ -25,10 +25,10 @@ Each rule covers one scope of the wallet's work, the same scopes as [spend limit
 | Surface | Covers |
 |---------|--------|
 | `web` | The Wiro dashboard, including Studio and the Workflow Agent used there |
-| `api` | Calls with an API key |
-| `mcp` | The [Wiro MCP server](/docs/wiro-mcp-server), hosted or the npm package |
-| `llm-gateway` | The OpenAI and Anthropic compatible [LLM gateway](/docs/completions-api) |
-| `extension` | The Wiro browser extensions |
+| `api` | Calls with an API key, including [`/sync`](/docs/run-a-model#run-sync) and the [Wiro MCP package](/docs/mcp-self-hosted) when you run it yourself |
+| `mcp` | The hosted [Wiro MCP server](/docs/wiro-mcp-server) at `mcp.wiro.ai` |
+| `llm-gateway` | The OpenAI and Anthropic compatible [LLM gateway](/docs/completions-api) at `llm.wiro.ai` |
+| `extension` | Only the Wiro browser extensions |
 | `agent` | Your deployed agents' own runs |
 
 ### Everything Else
@@ -76,14 +76,15 @@ When more than one rule blocks the model, the refusal names the first of them in
 
 ### Where Rules Apply
 
-Rules are checked before work starts, and before the balance and the spend limits:
+Rules are checked before work starts:
 
 - Model runs: `/Run` and its `/sync` wait, realtime sessions, the [LLM gateway](/docs/completions-api), the [MCP server](/docs/wiro-mcp-server), the browser extensions and the dashboard
-- Workflow runs and resumes: every model step that will run must be allowed
-- The models that Studio and your deployed agents run through Wiro
+- Workflow runs and resumes: every model step that will run must be allowed. Steps that will not run, such as the steps after a breakpoint, are not checked
+- The models Studio runs for you, which follow your own rules like the runs you start yourself: the account's or the team's rule, your member rule in a team, the rule of the API key you sent the message with and the rule of the surface you sent it from. The chat of Studio and the Workflow Agent is not checked against the rules, but what it costs counts toward [spend limits](/docs/spend-limits)
+- The models your deployed agents run through Wiro
 - An agent's chat model: choosing one in the agent's settings, or sending `model` with `Message/Send`, follows that agent's own rule. If its rule blocks the model the agent already uses, its model calls are refused and the turn ends with `[MODEL_NOT_ALLOWED]`
 
-A change applies to work that starts after it. Work that is already running is not stopped. Browsing models is not affected: `/Tool/List`, `/Tool/Detail` and the LLM gateway's model list show the same models whatever the rules.
+A change applies to work that starts after it. Work that is already running is not stopped, and a deployed agent's chat model follows a change within about a minute. Browsing models is not affected: `/Tool/List`, `/Tool/Detail` and the LLM gateway's model list show the same models whatever the rules.
 
 ### When a Model Is Blocked
 
@@ -122,14 +123,23 @@ Nothing runs and nothing is charged. Retrying does not help: run a model the rul
 
 ### Who Can Change Rules
 
-- **Personal account**: the account itself
-- **Team**: the organization owner or a team admin. The owner of an agent can also set that agent's own rule
+- **Personal account**: its owner
+- **Team**: a team admin or the organization owner. The person who created the team is one of its admins
 
-Any team member can read the team's rules with `/ModelAccess/List` and `/ModelAccess/Check`, which also work with an API key. `/ModelAccess/Set` and `/ModelAccess/Remove` work only while signed in, in the dashboard or with the user's Bearer token: with an API key they fail with HTTP `401`, so a key can never lift its own rule. A deployed agent's own calls to these endpoints are refused.
+Every team member can read the team's rules with `/ModelAccess/List` and `/ModelAccess/Check`. A member who is not an admin can't change any rule: not their own member rule, and not the rules of the API keys they created or the agents they deployed. A deployed agent's own calls to the `/ModelAccess` endpoints are refused with HTTP `403`, reads included.
+
+### Changing Rules With the API
+
+`/ModelAccess/Set`, `/ModelAccess/Remove` and `/ModelAccess/Preview` work in the dashboard, with a signed-in user's Bearer token and with an API key:
+
+- **With an API key**, the call acts as the person who created the key's project, in that project's workspace: the creator's personal account for a personal project, the team for a team project. The key of a project that a member who is not an admin created can read rules but not change them.
+- **With a Bearer token**, the call acts as you, in your personal account. To work in a team, send the team's guid in the `x-team-guid` header. Calls with an API key ignore this header.
+
+`/ModelAccess/List` and `/ModelAccess/Preview` return the `workspace` they work in, so you can check where a change lands before you make it. Changes made with API keys are limited to 60 per workspace per hour. Each change is recorded with who made it and how.
 
 ## **POST** /ModelAccess/List
 
-Returns the Model Access rules of the call's workspace and the categories a rule can name. A team project's API key reads its team, a personal project's key your personal account, and the dashboard the workspace you have selected. Any team member can call it, and it works with an API key. Send an empty body: `{}`.
+Returns the Model Access rules of the call's workspace, the categories a rule can name, and how the call itself counts. A team project's API key reads its team, a personal project's key your personal account, and the dashboard the workspace you have selected (see [Changing Rules With the API](#changing-rules-with-the-api)). Any team member can call it, and it works with an API key. Send an empty body: `{}`.
 
 ```json
 // Response
@@ -140,6 +150,10 @@ Returns the Model Access rules of the call's workspace and the categories a rule
     "type": "team",
     "teamguid": "0d9aade4-d31b-4b97-88f3-a90482f080ea",
     "canmanage": false
+  },
+  "caller": {
+    "surface": "api",
+    "projectid": "48211"
   },
   "rules": [
     {
@@ -200,7 +214,9 @@ Returns the Model Access rules of the call's workspace and the categories a rule
 |-------|-------------|
 | `workspace.type` | `team` or `personal` |
 | `workspace.teamguid` | The team's guid, or `null` for a personal account |
-| `workspace.canmanage` | Whether the caller can change rules in this workspace. The owner of an agent can still set that agent's own rule when it is `false` |
+| `workspace.canmanage` | Whether the caller can change rules in this workspace: `true` for a personal account's owner, a team admin and the organization owner, also with the API key of a project they created; `false` for other team members and their keys |
+| `caller.surface` | The surface this call counts on, such as `api` for a call with an API key (see [Surfaces](#how-model-access-works)) |
+| `caller.projectid` | The project id of the API key the call used, or `null` without a key |
 | `rules[].guid` | The rule's guid, for `/ModelAccess/Remove` |
 | `rules[].scope` | `account`, `member`, `project`, `surface` or `agent` |
 | `rules[].target` | The member's `useruuid`, the project id, the surface or the agent's guid; `""` for `account` |
@@ -213,7 +229,7 @@ Returns the Model Access rules of the call's workspace and the categories a rule
 
 ## **POST** /ModelAccess/Set
 
-Adds a rule to the call's workspace, or replaces the rule with the same `scope` and `target`. The rule you send replaces the old one as a whole, so a category or model you leave out is no longer named. In a team, only the organization owner or a team admin can call it, and the owner of an agent can set that agent's own rule. It works only while signed in, in the dashboard or with the user's Bearer token: with an API key it fails with HTTP `401`, so a key can never lift its own rule.
+Adds a rule to the call's workspace, or replaces the rule with the same `scope` and `target`. The rule you send replaces the old one as a whole, so a category or model you leave out is no longer named. Only the people who can change rules can call it (see [Who Can Change Rules](#who-can-change-rules)), in the dashboard, with a Bearer token or with an API key. To check a change first, send the same body to [`/ModelAccess/Preview`](#model-access-preview).
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -316,14 +332,87 @@ Adds a rule to the call's workspace, or replaces the rule with the same `scope` 
 | `<model> is not a model's owner/slug or id.` | A model named neither by `owner/slug` nor by a number |
 | `<model> is not a model on Wiro.` | No model listed on Wiro has that `owner/slug` or id |
 | `<model> is named twice.` | `models` names a model twice: by the same name, or by its id and its `owner/slug` with a different `access` |
-| `Only a team admin or the organization owner can change this rule.` | In a team, the caller is not a team admin or the organization owner (or, for an `agent` rule, the agent's owner) |
+| `Only a team admin or the organization owner can change this rule.` | In a team, the caller is not a team admin or the organization owner. With an API key, the caller is the person who created the key's project |
 | `That person is not an active member of this team.` | A `member` rule for someone who is not an active member of the team |
 | `That API key's project is not in this workspace.` | A `project` rule for a project of another workspace |
 | `That agent is not in this workspace.` | An `agent` rule for an agent of another workspace |
 
+## **POST** /ModelAccess/Preview
+
+Shows what `/ModelAccess/Set` would do, and changes nothing. It takes the same body as `/ModelAccess/Set` and checks it the same way, with the same errors, so only the people who can change rules can call it. Use it to see which workspace a change lands in, the rule as it would be saved and the rule it would replace. For an `agent` rule, it also says whether the rule would block the chat model the agent answers with.
+
+### Example
+
+**Let the Support Agent run only image models:**
+
+```json
+{
+  "scope": "agent",
+  "target": "6e4bbd6f-6b73-4421-adae-e9599ba2e317",
+  "access": "block",
+  "categories": [
+    { "category": "image", "access": "allow" }
+  ]
+}
+```
+
+```json
+// Response
+{
+  "result": true,
+  "errors": [],
+  "preview": true,
+  "workspace": {
+    "type": "team",
+    "teamguid": "0d9aade4-d31b-4b97-88f3-a90482f080ea"
+  },
+  "rule": {
+    "guid": "c2f0a9d4-5b7e-4c1a-8e36-9d4b2a7f1e05",
+    "scope": "agent",
+    "target": "6e4bbd6f-6b73-4421-adae-e9599ba2e317",
+    "targetlabel": "Support Agent",
+    "access": "block",
+    "categories": [
+      { "category": "image", "label": "Image Generation", "access": "allow" }
+    ],
+    "models": [],
+    "createdat": 1795195200,
+    "updatedat": 1795195200
+  },
+  "existing": {
+    "guid": "c2f0a9d4-5b7e-4c1a-8e36-9d4b2a7f1e05",
+    "scope": "agent",
+    "target": "6e4bbd6f-6b73-4421-adae-e9599ba2e317",
+    "targetlabel": "Support Agent",
+    "access": "allow",
+    "categories": [
+      { "category": "video", "label": "Video Generation", "access": "block" }
+    ],
+    "models": [],
+    "createdat": 1795195200,
+    "updatedat": 1795195200
+  },
+  "agentchatmodel": {
+    "ref": "openai/gpt-5.6-sol",
+    "model": "openai/gpt-5-6-sol",
+    "blocked": true
+  }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `preview` | Always `true`: nothing was changed |
+| `workspace` | The workspace the change would be made in: `type` and `teamguid`, as in `/ModelAccess/List` |
+| `rule` | The rule as `/ModelAccess/Set` would save it, shaped like a row of `/ModelAccess/List` |
+| `existing` | The current rule with the same `scope` and `target`, which the change would replace, or `null` when there is none |
+| `agentchatmodel` | For an `agent` rule only: the chat model the agent answers with, as its settings name it (`ref`) and by its `owner/slug` on Wiro (`model`), and whether the rule would block it (`blocked`) |
+
+When `agentchatmodel.blocked` is `true`, the agent stops answering once the rule is saved: its turns end with `[MODEL_NOT_ALLOWED]`. Allow its chat model in the rule too, or allow LLM & Chat. The errors are those of `/ModelAccess/Set`.
+
 ## **POST** /ModelAccess/Remove
 
-Removes a rule from the call's workspace. The people who can set a rule can remove it, and only while signed in: with an API key it fails with HTTP `401`.
+Removes a rule from the call's workspace. The people who can change rules can remove one, in the dashboard, with a Bearer token or with an API key.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|

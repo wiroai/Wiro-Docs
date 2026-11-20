@@ -27,7 +27,7 @@ In team context, the pre-run balance check and the [concurrency limit](/docs/con
 
 ## Spend Limits
 
-Spend limits are not a team setting: they work the same way for a personal account's wallet and for a team's wallet. In a team, the organization owner and team admins can cap the whole team, one member, one API key, a surface such as the LLM gateway, or one agent, per month or per day, on the [Spend Limits](https://wiro.ai/panel/wallet/limits) page of the dashboard or with the `/SpendLimit` endpoints. See [Spend Limits](/docs/spend-limits).
+Spend limits are not a team setting: they work the same way for a personal account's wallet and for a team's wallet. In a team, the organization owner and team admins can cap the whole team, one member, one API key, a surface such as the LLM gateway, or one agent, per month or per day, under [Controls > Spend Limits](https://wiro.ai/panel/controls/spend-limits) in the dashboard or with the `/SpendLimit` endpoints, signed in or with the API key of a project they created. Other members can see the team's limits but can't change them, their own member limit included. See [Spend Limits](/docs/spend-limits).
 
 ## Tracking Team Spending
 
@@ -35,7 +35,7 @@ What the team has spent this month or today, by member, API key, surface and age
 
 ## Model Access
 
-Model Access is not a team setting: it works the same way for a personal account's wallet and for a team's wallet. In a team, the organization owner and team admins can allow or block single models and whole categories, such as video generation, for the whole team, one member, one API key, a surface such as the LLM gateway, or one agent, on the [Model Access](https://wiro.ai/panel/controls/model-access) page of the dashboard or with the `/ModelAccess` endpoints. A model a rule blocks is refused with error code `92`. See [Model Access](/docs/model-access).
+Model Access is not a team setting: it works the same way for a personal account's wallet and for a team's wallet. In a team, the organization owner and team admins can allow or block single models and whole categories, such as video generation, for the whole team, one member, one API key, a surface such as the LLM gateway, or one agent, under [Controls > Model Access](https://wiro.ai/panel/controls/model-access) in the dashboard or with the `/ModelAccess` endpoints, signed in or with the API key of a project they created. Other members can see the team's rules but can't change them. A model a rule blocks is refused with error code `92`. See [Model Access](/docs/model-access).
 
 ## **POST** /Team/Update
 

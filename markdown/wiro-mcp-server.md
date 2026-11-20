@@ -825,19 +825,21 @@ The connected project decides the workspace: a personal project uses your
 personal wallet, a team project uses the team wallet. `get_account` shows which
 one, its balance and its spend limits.
 
-Calls through the MCP server count toward the workspace's
-[spend limits](/docs/spend-limits), on the `mcp` surface (the Wiro browser extensions' calls on the `extension`
-surface).
-When a limit refuses work (error code `93`), the tool returns an error with
-Wiro's message and a note: nothing ran and nothing was charged, do not try
-again until the limit resets or someone who manages it raises it, and limits
-are managed at [wiro.ai/panel/wallet/limits](https://wiro.ai/panel/wallet/limits).
+Calls through the hosted MCP server count toward the workspace's
+[spend limits](/docs/spend-limits) on the `mcp` surface, and calls from the Wiro
+browser extensions on the `extension` surface. The
+[self-hosted](/docs/mcp-self-hosted) package's calls count on the `api` surface,
+as calls with its API key. When a limit refuses work (error code `93`), the
+tool returns an error with Wiro's message and a note: nothing ran and nothing
+was charged, and the work should not be tried again until the limit resets or
+someone who manages it raises it. Limits are managed under
+[Controls > Spend Limits](https://wiro.ai/panel/controls/spend-limits).
 
 The workspace's [Model Access](/docs/model-access) rules apply to these calls
 too, on the same surfaces. A model a rule blocks is refused before anything runs
 (error code `92`), and the tool returns an error with Wiro's message, which names
-the rule. Nothing ran and nothing was charged. Rules are managed at
-[wiro.ai/panel/controls/model-access](https://wiro.ai/panel/controls/model-access).
+the rule. Nothing ran and nothing was charged. Rules are managed under
+[Controls > Model Access](https://wiro.ai/panel/controls/model-access).
 
 ## MCP Request and Response Contract
 

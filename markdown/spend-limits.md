@@ -6,7 +6,7 @@ Cap what a personal account or a team can spend in a month or a day: the whole w
 
 A spend limit caps what a wallet can spend in a month or a day. Limits work the same way for a personal account's wallet and for a team's wallet. The limits of the workspace a call runs in apply: a team project's API key runs in its team, a personal project's key in your personal account, and the dashboard in the workspace you have selected.
 
-Manage limits on the [Spend Limits](https://wiro.ai/panel/wallet/limits) page of the dashboard, for your personal account or for the team workspace you have selected, or with the `/SpendLimit` endpoints below. Team and member limits set before this system were moved into it as monthly limits of the same amount.
+Manage limits in the dashboard under [Controls > Spend Limits](https://wiro.ai/panel/controls/spend-limits), for your personal account or for the team workspace you have selected, or with the `/SpendLimit` endpoints below. Team and member limits set before this system were moved into it as monthly limits of the same amount.
 
 ### What a Limit Caps
 
@@ -25,34 +25,42 @@ Each limit caps one scope of the wallet's spending:
 | Surface | Label | Covers |
 |---------|-------|--------|
 | `web` | the dashboard | The Wiro dashboard, including Studio and the Workflow Agent used there |
-| `api` | the API | Calls with an API key |
-| `mcp` | MCP | The [Wiro MCP server](/docs/wiro-mcp-server), hosted or the npm package |
-| `llm-gateway` | the LLM gateway | The OpenAI and Anthropic compatible [LLM gateway](/docs/completions-api) |
-| `extension` | the browser extensions | The Wiro browser extensions |
+| `api` | the API | Calls with an API key, including [`/sync`](/docs/run-a-model#run-sync) and the [Wiro MCP package](/docs/mcp-self-hosted) when you run it yourself |
+| `mcp` | MCP | The hosted [Wiro MCP server](/docs/wiro-mcp-server) at `mcp.wiro.ai` |
+| `llm-gateway` | the LLM gateway | The OpenAI and Anthropic compatible [LLM gateway](/docs/completions-api) at `llm.wiro.ai` |
+| `extension` | the browser extensions | Only the Wiro browser extensions |
 | `agent` | agents | Your deployed agents' own runs |
 
 Studio and Workflow Agent messages count on the surface they were sent from. Refusal messages and `/SpendLimit/Usage` name a surface by its label.
 
 ### Periods and Amounts
 
-A limit's `period` is `month` (the default), which resets on the 1st of each month at 00:00 UTC, or `day`, which resets every day at 00:00 UTC. `amountusd` is a positive amount in USD, rounded to cents. A scope and target can have one monthly limit and one daily limit.
+A limit's `period` is `month` (the default), which resets on the 1st of each month at 00:00 UTC, or `day`, which resets every day at 00:00 UTC. A scope and target can have one monthly limit and one daily limit.
+
+`amountusd` is the limit in USD, rounded to cents. It must be at least `0.01`: a smaller amount is refused. A limit counts everything spent in its current period, also what was spent before the limit was added, so a new limit below that amount is used up at once.
 
 ### What Counts
 
 Every charge to the wallet for usage counts: model runs, workflow runs, realtime sessions, Studio, the Workflow Agent, agent plans, upgrades and credit packs. Deposits are not spending.
 
+The models Studio runs for you are checked and counted like the runs you start yourself: against the account's or the team's limits, your member limit in a team, the limit of the API key you sent the message with and the limit of the surface you sent it from. What the chat of Studio and the Workflow Agent costs counts toward your limits too.
+
 ### When Limits Are Checked
 
 Limits are checked before work starts:
 
-- Model runs, workflow runs and workflow resumes
-- Studio and Workflow Agent messages
+- Model runs, workflow runs and workflow resumes, and each step of a workflow run before the step starts
+- Studio and Workflow Agent messages, and the models Studio runs for you
 - An agent deploy, upgrade, renewal or credit pack purchase that a person starts
 - Messages to an agent, against that agent's own limit
 
-When the price of the work is known before it starts, as for fixed-price models and agent purchases, the work is refused if spending so far plus that price would go over the limit. Otherwise it is refused once spending has reached the limit.
+When the price of the work is known before it starts, as for fixed-price models, workflow runs and agent purchases, the work is refused if spending so far, plus what work in progress holds, plus that price would go over the limit. Otherwise it is refused once the limit has no room left.
 
 Work that is already running finishes and is charged. A realtime session ends after the turn that uses up a limit, the same way it ends when the balance runs out. Automatic monthly renewals of running agents are never refused by a limit, but they still count toward it.
+
+### Work in Progress
+
+A run that starts holds its expected price against every limit that covers it, until it is charged or ends. The next check counts what is held, so runs started at the same time can pass a limit by one run at most. A run whose price is not known before it starts goes ahead while the limit has room. Refusal messages, the `heldusd` of a limit in `/SpendLimit/List` and `/SpendLimit/Usage` show what is held.
 
 ### When a Limit Is Reached
 
@@ -70,7 +78,7 @@ New work the limit covers is refused with HTTP `200`, `result: false` and error 
 }
 ```
 
-When the price of the work is known before it starts, the message says what is left instead, for example `This team's monthly spend limit has $3.10 left of $500.00, and this run costs $4.00. It resets on December 1, 2026 at 00:00 UTC.` A daily limit says `daily` instead of `monthly`, and its message ends with `It resets at 00:00 UTC.`
+When the price of the work is known before it starts, the message says what is left instead, for example `This team's monthly spend limit has $3.10 left of $500.00, and this run costs $4.00. It resets on December 1, 2026 at 00:00 UTC.` A daily limit says `daily` instead of `monthly`, and its message ends with `It resets at 00:00 UTC.` When work in progress holds part of the limit, the message also says how much.
 
 | Limit | The message starts with |
 |-------|-------------------------|
@@ -91,14 +99,23 @@ A personal account's limits email the account. A team's limits email the team's 
 
 ### Who Can Change Limits
 
-- **Personal account**: the account itself
-- **Team**: the organization owner or a team admin. The owner of an agent can also set that agent's own limit
+- **Personal account**: its owner
+- **Team**: a team admin or the organization owner. The person who created the team is one of its admins
 
-Any team member can read the team's limits and usage with `/SpendLimit/List` and `/SpendLimit/Usage`, which also work with an API key. `/SpendLimit/Set` and `/SpendLimit/Remove` work only while signed in, in the dashboard or with the user's Bearer token: with an API key they fail with HTTP `401`, so a key can never lift its own limit.
+Every team member can read the team's limits and spending with `/SpendLimit/List` and `/SpendLimit/Usage`. A member who is not an admin can't change any limit: not their own member limit, and not the limits of the API keys they created or the agents they deployed. A deployed agent's own calls to the `/SpendLimit` endpoints are refused with HTTP `403`, reads included.
+
+### Changing Limits With the API
+
+`/SpendLimit/Set`, `/SpendLimit/Remove` and `/SpendLimit/Preview` work in the dashboard, with a signed-in user's Bearer token and with an API key:
+
+- **With an API key**, the call acts as the person who created the key's project, in that project's workspace: the creator's personal account for a personal project, the team for a team project. The key of a project that a member who is not an admin created can read limits but not change them.
+- **With a Bearer token**, the call acts as you, in your personal account. To work in a team, send the team's guid in the `x-team-guid` header. Calls with an API key ignore this header.
+
+`/SpendLimit/List` and `/SpendLimit/Preview` return the `workspace` they work in, so you can check where a change lands before you make it. Changes made with API keys are limited to 60 per workspace per hour. Each change is recorded with who made it and how.
 
 ## **POST** /SpendLimit/List
 
-Returns the spend limits of the call's workspace, each with what has been spent in its current period. A team project's API key reads its team, a personal project's key your personal account, and the dashboard the workspace you have selected. Any team member can call it, and it works with an API key. Send an empty body: `{}`.
+Returns the spend limits of the call's workspace, each with what has been spent in its current period, and how the call itself counts. A team project's API key reads its team, a personal project's key your personal account, and the dashboard the workspace you have selected (see [Changing Limits With the API](#changing-limits-with-the-api)). Any team member can call it, and it works with an API key. Send an empty body: `{}`.
 
 ```json
 // Response
@@ -109,6 +126,10 @@ Returns the spend limits of the call's workspace, each with what has been spent 
     "type": "team",
     "teamguid": "0d9aade4-d31b-4b97-88f3-a90482f080ea",
     "canmanage": false
+  },
+  "caller": {
+    "surface": "api",
+    "projectid": "48211"
   },
   "limits": [
     {
@@ -123,7 +144,8 @@ Returns the spend limits of the call's workspace, each with what has been spent 
       "resetsat": 1796083200,
       "createdat": 1793805600,
       "updatedat": 1793805600,
-      "spentusd": 248.7
+      "spentusd": 248.7,
+      "heldusd": 3.5
     },
     {
       "guid": "f4134ddb-e837-44a9-9b36-0af44241f3ef",
@@ -161,7 +183,9 @@ Returns the spend limits of the call's workspace, each with what has been spent 
 |-------|-------------|
 | `workspace.type` | `team` or `personal` |
 | `workspace.teamguid` | The team's guid, or `null` for a personal account |
-| `workspace.canmanage` | Whether the caller can change limits in this workspace. The owner of an agent can still set that agent's own limit when it is `false` |
+| `workspace.canmanage` | Whether the caller can change limits in this workspace: `true` for a personal account's owner, a team admin and the organization owner, also with the API key of a project they created; `false` for other team members and their keys |
+| `caller.surface` | The surface this call counts on, such as `api` for a call with an API key (see [Surfaces](#how-spend-limits-work)) |
+| `caller.projectid` | The project id of the API key the call used, or `null` without a key |
 | `limits[].guid` | The limit's guid, for `/SpendLimit/Remove` |
 | `limits[].scope` | `account`, `member`, `project`, `surface` or `agent` |
 | `limits[].target` | The member's `useruuid`, the project id, the surface or the agent's guid; `""` for `account` |
@@ -173,17 +197,18 @@ Returns the spend limits of the call's workspace, each with what has been spent 
 | `limits[].resetsat` | When the current period ends and the limit resets, in Unix seconds |
 | `limits[].createdat`, `limits[].updatedat` | When the limit was added and last changed, in Unix seconds |
 | `limits[].spentusd` | What has been spent in the current period, in USD |
+| `limits[].heldusd` | When work in progress holds part of the limit: how much it holds, in USD (see [Work in Progress](#work-in-progress)) |
 
 ## **POST** /SpendLimit/Set
 
-Adds a spend limit to the call's workspace, or changes the existing limit with the same `scope`, `target` and `period`. Changing a limit re-arms its emails for the current period. In a team, only the organization owner or a team admin can call it, and the owner of an agent can set that agent's own limit. It works only while signed in, in the dashboard or with the user's Bearer token: with an API key it fails with HTTP `401`, so a key can never lift its own limit.
+Adds a spend limit to the call's workspace, or changes the existing limit with the same `scope`, `target` and `period`. Changing a limit re-arms its emails for the current period. Only the people who can change limits can call it (see [Who Can Change Limits](#who-can-change-limits)), in the dashboard, with a Bearer token or with an API key. To check a change first, send the same body to [`/SpendLimit/Preview`](#spend-limit-preview).
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `scope` | string | Yes | `"account"`, `"member"`, `"project"`, `"surface"` or `"agent"`. See [Spend Limits](#how-spend-limits-work) |
 | `target` | string | For every scope but `account` | The member's `useruuid`, the project's `id`, the surface (`web`, `api`, `mcp`, `llm-gateway`, `extension` or `agent`) or the agent's guid. Leave it out for `account` |
 | `period` | string | No | `"month"` or `"day"`. Default: `"month"` |
-| `amountusd` | number | Yes | The limit in USD, a positive number. Rounded to cents |
+| `amountusd` | number | Yes | The limit in USD, at least `0.01`. Rounded to cents |
 | `alertpct` | number | No | When the alert email goes out: `50`, `80` or `90` percent of the limit, or `null` for no alert email. Default: `80` |
 
 ### Examples
@@ -256,15 +281,83 @@ Adds a spend limit to the call's workspace, or changes the existing limit with t
 | `target must be a project id.` | A `project` limit whose `target` is not a project id |
 | `period must be month or day.` | Another `period` |
 | `amountusd must be a positive number.` | `amountusd` is missing, zero or negative |
+| `amountusd is too large.` | `amountusd` is over 10,000,000 |
 | `alertpct must be 50, 80 or 90, or null for no alert.` | Another `alertpct` |
-| `Only a team admin or the organization owner can change this limit.` | In a team, the caller is not a team admin or the organization owner (or, for an `agent` limit, the agent's owner) |
+| `Only a team admin or the organization owner can change this limit.` | In a team, the caller is not a team admin or the organization owner. With an API key, the caller is the person who created the key's project |
 | `That person is not an active member of this team.` | A `member` limit for someone who is not an active member of the team |
 | `That API key's project is not in this workspace.` | A `project` limit for a project of another workspace |
 | `That agent is not in this workspace.` | An `agent` limit for an agent of another workspace |
 
+## **POST** /SpendLimit/Preview
+
+Shows what `/SpendLimit/Set` would do, and changes nothing. It takes the same body as `/SpendLimit/Set` and checks it the same way, with the same errors, so only the people who can change limits can call it. Use it to see which workspace a change lands in, the limit as it would be saved and the limit it would replace.
+
+### Example
+
+**Raise the Production API key's monthly limit to $150:**
+
+```json
+{
+  "scope": "project",
+  "target": "48211",
+  "period": "month",
+  "amountusd": 150
+}
+```
+
+```json
+// Response
+{
+  "result": true,
+  "errors": [],
+  "preview": true,
+  "workspace": {
+    "type": "team",
+    "teamguid": "0d9aade4-d31b-4b97-88f3-a90482f080ea"
+  },
+  "limit": {
+    "guid": "15be7fb3-c602-4ff1-a3f1-3afaa3996974",
+    "scope": "project",
+    "target": "48211",
+    "targetlabel": "Production",
+    "period": "month",
+    "amountusd": 150,
+    "alertpct": 80,
+    "periodstart": 1793491200,
+    "resetsat": 1796083200,
+    "createdat": 1794474300,
+    "updatedat": 1794474300,
+    "spentusd": 88.2
+  },
+  "existing": {
+    "guid": "15be7fb3-c602-4ff1-a3f1-3afaa3996974",
+    "scope": "project",
+    "target": "48211",
+    "targetlabel": "Production",
+    "period": "month",
+    "amountusd": 100,
+    "alertpct": 80,
+    "periodstart": 1793491200,
+    "resetsat": 1796083200,
+    "createdat": 1794474300,
+    "updatedat": 1794474300,
+    "spentusd": 88.2
+  }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `preview` | Always `true`: nothing was changed |
+| `workspace` | The workspace the change would be made in: `type` and `teamguid`, as in `/SpendLimit/List` |
+| `limit` | The limit as `/SpendLimit/Set` would save it, shaped like a row of `/SpendLimit/List`, with what has been spent in its current period |
+| `existing` | The current limit with the same `scope`, `target` and `period`, which the change would replace, or `null` when there is none |
+
+When `limit.spentusd` is already at or above the new amount, the limit is used up as soon as it is saved. The errors are those of `/SpendLimit/Set`.
+
 ## **POST** /SpendLimit/Remove
 
-Removes a spend limit from the call's workspace. The people who can set a limit can remove it, and only while signed in: with an API key it fails with HTTP `401`.
+Removes a spend limit from the call's workspace. The people who can change limits can remove one, in the dashboard, with a Bearer token or with an API key.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
