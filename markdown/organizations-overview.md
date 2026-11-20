@@ -93,7 +93,7 @@ A single user can own multiple organizations, and each organization can contain 
 
 The organization creator is automatically the owner. When the owner creates a team, including the Default Team created with the organization, they are added to it as an admin member. Additional members are invited by email and join once they accept the invitation, signed in with the invited email address, within 72 hours.
 
-On a team agent whose Chat Mode is `"collaborative"`, the team's admins and the agent's owner can watch its [Screen](/docs/agent-overview#screen-and-take-control) in the Wiro panel; other members can't. Nobody can take control of a team agent's computer.
+On a team agent whose Chat Mode is `"collaborative"`, the team's admins and the agent's owner can watch its [Screen](/docs/agent-overview#screen-and-take-control) in the Wiro panel, and an app can show it through a team project's API key that one of them created; other members can't. Nobody can take control of a team agent's computer.
 
 ## Getting Started
 

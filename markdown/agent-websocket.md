@@ -10,7 +10,7 @@ wss://socket.wiro.ai/v1
 
 Connect to this URL after calling the [Message / Send](/docs/agent-messaging) endpoint. Use the `agenttoken` from the send response to subscribe to the agent session. This is the same WebSocket server used for model tasks, so you can subscribe to both task events (`task_info`) and agent events (`agent_info`) on the same connection.
 
-No API key or auth header is required on the WebSocket itself. Authorization is enforced via the `agenttoken`, which is issued by `POST /UserAgent/Message/Send` against your API key and is scoped to a single message run. To follow a whole session instead, use the `sessiontoken` from `Message/History`; see [Following a session](#following-a-session). To follow an agent's Scheduled Tasks and other background runs, use a `runstreamtoken`; see [Following an agent's background runs](#following-an-agents-background-runs).
+No API key or auth header is required on the WebSocket itself. Authorization is enforced via the `agenttoken`, which is issued by `POST /UserAgent/Message/Send` against your API key and is scoped to a single message run. To follow a whole session instead, use the `sessiontoken` from `Message/History`; see [Following a session](#following-a-session). To follow an agent's Scheduled Tasks and other background runs, use a `runstreamtoken`; see [Following an agent's background runs](#following-an-agents-background-runs). The agent's live Screen has a socket of its own, opened with a one-time `screenToken`; see [Screen and Take Control in Your App](/docs/agent-chat-integration#screen-and-take-control-in-your-app).
 
 ## Connection Flow
 

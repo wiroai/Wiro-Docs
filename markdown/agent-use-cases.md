@@ -26,7 +26,7 @@ Every product built on Wiro agents follows one of two patterns. Choosing the rig
 
 Most agents interact with external services: posting to social media, managing ad campaigns, sending emails. These require OAuth tokens or API keys that belong to the end user. Deploy a **separate agent instance** for each of your customers.
 
-**Why:** Each customer connects their own accounts. Credentials are bound to the instance, isolated from other customers.
+**Why:** Each customer connects their own accounts. Credentials are bound to the instance, isolated from other customers. Each instance also has its own computer and browser, so the [Screen](/docs/agent-overview#screen-and-take-control) of a customer's agent shows only that customer's work.
 
 **How:** Call `POST /UserAgent/Deploy` once per customer, then use the [OAuth flow](/docs/agent-credentials) to connect their accounts.
 
@@ -52,7 +52,7 @@ For conversational agents that don't need per-user credentials. One agent instan
 
 **Why:** No third-party accounts to connect. The agent answers questions using its built-in knowledge or pre-configured data sources.
 
-**How:** Deploy one instance via `POST /UserAgent/Deploy`, then send messages with different `sessionkey` values per user. Deploy it with `"chatsetup": "off"`: your users' messages go out with your API key, which carries your rights, so with setup from chat on, a yes from one of them could change the agent's setup. See [Setup From Chat](/docs/agent-messaging#setup-from-chat).
+**How:** Deploy one instance via `POST /UserAgent/Deploy`, then send messages with different `sessionkey` values per user. Deploy it with `"chatsetup": "off"`: your users' messages go out with your API key, which carries your rights, so with setup from chat on, a yes from one of them could change the agent's setup. See [Setup From Chat](/docs/agent-messaging#setup-from-chat). If you show the agent's Screen in your app, show it only to people who may see every user's work, or turn it off with `screen: "off"`: the agent's one computer shows all of their chats, and Take Control reaches every site its browser is signed in to (see [Screen in Your Own App](/docs/agent-overview#screen-in-your-own-app)).
 
 **About `sessionkey`:** This field is optional. If omitted, messages go into a shared `"default"` session. Reuse the same `sessionkey` to continue a conversation (the agent retrieves prior messages as context). Use a fresh UUID to start a new conversation. The common convention is one `sessionkey` per end-user (e.g. `"user-456"`), but you can also use it per-thread (e.g. `"ticket-2025-0817"`) for products that group conversations by topic. See the [Agent Messaging](/docs/agent-messaging) guide for how sessions work. The session key is a label, not a WebSocket channel: you follow a turn with its `agenttoken` and a session with the `sessiontoken` from `Message/History` (see [Agent WebSocket](/docs/agent-websocket)).
 
@@ -103,6 +103,8 @@ The deploy flow has three stages: Deploy, Setup (only when the agent has connect
 See [Agent Overview](/docs/agent-overview) for the full lifecycle state table (`status: 0, 1, 3, 4, 5, 6`).
 
 To let the people who manage an agent set it up from your chat, with setup cards, connect steps and restarts shown in your own UI, keep `chatsetup` at `"all"` and follow [Agent Chat Integration](/docs/agent-chat-integration).
+
+To show the agent's live Screen in your UI, with Take Control for the people you choose, see [Screen and Take Control in Your App](/docs/agent-chat-integration#screen-and-take-control-in-your-app).
 
 ```bash
 # Deploy — prepaid + tier are required for API users (credits debit from your wallet)

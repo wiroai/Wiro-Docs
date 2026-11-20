@@ -13,7 +13,7 @@ Agent messaging follows the same async pattern as [model runs](/docs/run-a-model
 
 This decoupled design means your application never blocks waiting for the agent to think. Send the message, hand the `agenttoken` to your frontend, and stream the response as it arrives.
 
-> **Building a chat in your own product?** [Agent Chat Integration](/docs/agent-chat-integration) walks through the whole cycle with every request and answer: messages, setup cards, connecting each kind of connector, restarts and errors.
+> **Building a chat in your own product?** [Agent Chat Integration](/docs/agent-chat-integration) walks through the whole cycle with every request and answer: messages, setup cards, connecting each kind of connector, restarts, errors, and the agent's live Screen with Take Control.
 
 ### Ordered turn timeline
 

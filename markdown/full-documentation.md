@@ -7513,7 +7513,7 @@ Common questions about using the Wiro API.
 
 **Can I build my own product with Wiro Agents?** Yes. Use the Agent Messaging API to send messages programmatically, receive streaming responses via WebSocket, and get async notifications via webhooks. You can build white-label chat interfaces, webhook-driven pipelines, and multi-agent workflows. See [Agent Use Cases](/docs/agent-use-cases). For a chat in your own product, with setup from chat, follow [Agent Chat Integration](/docs/agent-chat-integration).
 
-**Can I watch my agent work?** Yes. In the Wiro panel, the people who manage an agent can open its Screen beside the chat and watch its computer live (on a team agent, while its Chat Mode is Collaborative). The owner of a personal agent that has never been in a team, or whose browser was reset after it last left one, can also take control and use the keyboard and mouse, for example to sign in to a site for the agent. See [Screen and Take Control](/docs/agent-overview#screen-and-take-control).
+**Can I watch my agent work?** Yes. In the Wiro panel, the people who manage an agent can open its Screen beside the chat and watch its computer live (on a team agent, while its Chat Mode is Collaborative). The owner of a personal agent that has never been in a team, or whose browser was reset after it last left one, can also take control and use the keyboard and mouse, for example to sign in to a site for the agent. Products built on the API can show the same Screen, and Take Control, in their own app and decide which of their users see it; the agent's `screen` setting turns it off for everyone. See [Screen and Take Control](/docs/agent-overview#screen-and-take-control) and [Screen and Take Control in Your App](/docs/agent-chat-integration#screen-and-take-control-in-your-app).
 
 **How do I connect third-party services to an agent?** Agents connect to services like Twitter, Instagram, Google Ads, and HubSpot via OAuth or API keys. Use `POST /UserAgentOAuth/OAuthConnect` with the provider's `credentialkey` to initiate OAuth flows, or set API keys via `/UserAgent/CredentialUpsert`. See [Agent Credentials & OAuth](/docs/agent-credentials). You can also ask the agent in its chat: it proposes a setup card, and an agent admin approves it and gives the key, which the agent never sees. See [Setup From Chat](/docs/agent-messaging#setup-from-chat).
 
@@ -8750,7 +8750,7 @@ Wiro Agents are autonomous AI assistants that keep running on Wiro. Unlike one-s
 The system has two layers:
 
 - **Agent templates** (the catalog): Pre-built agent definitions published by Wiro. Each template defines the agent's default skill set and required credentials, and runs on any of the three plans. Browse the catalog with `POST /Agent/List`.
-- **UserAgent instances** (your deployments): When you deploy an agent template (or build a custom one), Wiro creates a personal instance tied to your account. Each instance runs in its own isolated environment with its own credentials, configuration, conversation history, billing, and per-model token-rate profile, and its own computer in the cloud with a web browser the agent works in. The people who manage the agent can watch that computer from the Wiro panel (see [Screen and Take Control](#screen-and-take-control)).
+- **UserAgent instances** (your deployments): When you deploy an agent template (or build a custom one), Wiro creates a personal instance tied to your account. Each instance runs in its own isolated environment with its own credentials, configuration, conversation history, billing, and per-model token-rate profile, and its own computer in the cloud with a web browser the agent works in. The people who manage the agent can watch that computer from the Wiro panel, and an app built on the API can show it to its own users (see [Screen and Take Control](#screen-and-take-control)).
 
 Every instance is fully isolated. Your credentials, conversations, and data are never shared with other users.
 
@@ -8907,7 +8907,7 @@ A change to only the text or description of an existing custom skill or schedule
 
 Every agent has its own computer in the cloud: a 1920 x 1080 desktop that holds the agent's web browser, where its browser and desktop tools do their work. In the Wiro panel, the people who manage an agent can open its **Screen** beside the chat and watch that computer live while the agent works. The owner of a personal agent that has never been in a team, or whose browser was reset after it last left one, can also press **Take Control** and use the keyboard and mouse there, for example to sign in to a site for the agent or to finish a step by hand.
 
-The Screen is part of the Wiro panel at [wiro.ai/panel/agents](https://wiro.ai/panel/agents) and opens for people signed in there. A project API key can't open it, so the chats people have with the agent through your own app, or in Telegram, Slack and Discord, never show it. In the API you meet the Screen in two places: the `screen` setting on [`UpdateSettings`](#post-useragentupdatesettings) and [`Detail`](#post-useragentdetail), and the rows it adds to the agent's [activity log](#screen-in-the-activity-log). [`ResetBrowser`](#post-useragentresetbrowser) signs the agent's browser out of every site, which is also how an agent that was in a team gets Take Control back (see [Resetting the Browser](#resetting-the-browser)).
+The Screen opens in the Wiro panel at [wiro.ai/panel/agents](https://wiro.ai/panel/agents) for people signed in there, and in your own product through the API: your backend asks for it with your project API key through [`ScreenInfo`](#post-useragentrealtimescreeninfo) and [`ScreenStart`](#post-useragentrealtimescreenstart), and your page shows it, Take Control included (see [Screen in Your Own App](#screen-in-your-own-app)). Chats in Telegram, Slack and Discord never show it. The `screen` setting on [`UpdateSettings`](#post-useragentupdatesettings) and [`Detail`](#post-useragentdetail) turns it off or on for an agent, and the agent's [activity log](#screen-in-the-activity-log) records who watched and who took control. [`ResetBrowser`](#post-useragentresetbrowser) signs the agent's browser out of every site, which is also how an agent that was in a team gets Take Control back (see [Resetting the Browser](#resetting-the-browser)).
 
 ### Who Can Watch
 
@@ -8916,8 +8916,22 @@ The Screen is part of the Wiro panel at [wiro.ai/panel/agents](https://wiro.ai/p
 | Personal agent | Its owner, the person who deployed it. |
 | Team agent whose Chat Mode is `"collaborative"` | The agent's owner, while they are in the team, and the team's admins. The organization owner is an admin of every team they create. Other members can't open it. |
 | Team agent whose Chat Mode is `"private"` | Nobody. One computer shows the work of every chat, so the Screen stays closed to the whole team. |
+| Any of these, through a project API key | The key's owner, the person who created the key's project, on the agents that person can open above. A team project's key opens only that team's agents. Your backend decides which of your users see it: see [Screen in Your Own App](#screen-in-your-own-app). |
 
-The **Screen** button sits in the agent's chat header. It shows only for these people, only while the agent is running (status `4`) and only while its `screen` setting is `"on"`. When the agent stops or restarts, an open Screen closes, and the button comes back once the agent runs again.
+In the Wiro panel, the **Screen** button sits in the agent's chat header. It shows only for these people, only while the agent is running (status `4`) and only while its `screen` setting is `"on"`. When the agent stops or restarts, an open Screen closes, and the button comes back once the agent runs again. Through the API, [`ScreenInfo`](#post-useragentrealtimescreeninfo) answers `available: true` under the same conditions.
+
+### Screen in Your Own App
+
+A product built on the API can show an agent's Screen in its own app, Take Control included. Your backend asks [`ScreenInfo`](#post-useragentrealtimescreeninfo) whether the Screen can open, gets a one-time ticket from [`ScreenStart`](#post-useragentrealtimescreenstart) with your project API key, and hands the ticket to your page, which opens the screen over a WebSocket and draws it with noVNC. [Screen and Take Control in Your App](/docs/agent-chat-integration#screen-and-take-control-in-your-app) walks through every step, with a complete example.
+
+A call made with your API key acts as the key's owner, the person who created its project, under the rules above: it watches the agents that person can watch, and takes control only where that person can, on a personal agent they deployed that has never been in a team, or whose browser was reset after it last left one. A team project's key opens only that team's agents. Your key speaks for your whole product: Wiro gives it a ticket whichever of your users it is for, so what they see is up to you:
+
+- **You decide who sees it.** Ask for a ticket only for the users you allow to watch that agent, and ask for Take Control (`control: true`) only for the users you allow to use its keyboard and mouse.
+- **One computer shows every chat.** An agent has one computer and one browser for all of its chats. Its Screen shows what the agent is doing at that moment in any of them: each of your users' chats, its Telegram, Slack and Discord chats and its Scheduled Tasks, and the agent brings the tab it is working in to the front. On an agent several of your users share, whoever watches can see the others' work.
+- **Take Control reaches every sign-in.** The person in control works in the agent's own browser, signed in wherever any of its chats signed in. What they sign in to there stays in that browser afterwards, where every chat of the agent can use it, your other users' chats included. While they have control, the agent's browser and desktop tools pause for every chat of the agent, not only theirs. Its other tools keep working, and a paused task goes on with that chat's next message or the task's next scheduled run (see [While You Have Control](#while-you-have-control)).
+- **One agent per user keeps each screen to that user.** When each of your customers has an agent of their own, its Screen shows only that customer's work. On an agent many of your users talk to, show the Screen only to people who may see all of their work, or turn it off.
+- **The `screen` setting is the switch.** `screen: "off"` on [`UpdateSettings`](#post-useragentupdatesettings), sent with the same API key by the agent's owner or a team admin, closes the Screen for everyone, your users and the Wiro panel alike, and ends open screens within about half a minute. `"on"` opens it again (see [Turning the Screen Off](#turning-the-screen-off)).
+- **Keep your own record.** The activity log names your key's owner for every screen your key opens, never your users (see [Screen in the Activity Log](#screen-in-the-activity-log)), so note in your own product which of your users got each ticket.
 
 ### Watching the Screen
 
@@ -8940,7 +8954,7 @@ The screen opens in **View Only**: "View only. Your clicks and keys are not sent
 
 ### Take Control
 
-Only the owner of a personal agent that has never been in a team, or whose browser was reset after it last left one, can take control of its computer. It works at any screen size, phones included. Everyone else who can watch keeps **View Only**, and the **Take Control** button doesn't show for them.
+Only the owner of a personal agent that has never been in a team, or whose browser was reset after it last left one, can take control of its computer: in the Wiro panel, or in your own app with an API key of one of their personal projects (see [Screen in Your Own App](#screen-in-your-own-app)). It works at any screen size, phones included. Everyone else who can watch keeps **View Only**, and the **Take Control** button doesn't show for them.
 
 - **Team agents.** Nobody can take control of a team agent, its owner and the team's admins included: its one browser is shared by the whole team, signed in wherever the members' chats signed in. They can still watch while its Chat Mode is `"collaborative"`.
 - **Agents that have been in a team.** An agent that was in a team doesn't get Take Control after it moves back to a personal workspace or returns there because its team or organization was deleted: its browser may still hold team members' sign-ins. Its owner can still watch, and gets Take Control back by resetting the agent's browser once it is personal (see [Resetting the Browser](#resetting-the-browser)).
@@ -9009,17 +9023,19 @@ Control ends when you press **Hand Back** or close the screen, and on its own in
 
 | Limit | Value |
 |-------|-------|
-| Screens open on one agent at once, watching and control together; each browser tab or device counts | 4 |
+| Screens open on one agent at once, watching and control together; each browser tab or device counts, and so does each screen an app opens with an API key | 4 |
 | One watching session | 30 minutes |
 | One Take Control session, from when control starts | 15 minutes |
 | Control without keyboard or mouse input | 2 minutes, counted down for the last 30 seconds |
 | Take Control starts on one agent | 6 in any hour |
 | Screen sessions one person starts, on all agents together | 30 in 10 minutes |
+| Screen sessions started on one agent with API keys of one owner, for all of an app's users together | 30 in 10 minutes |
 
 - When 4 screens are open on an agent, another one is refused with "4 people are watching this agent's screen. Try again in a minute."
 - After 30 minutes a watching session ends with "This session reached its time limit"; **Reconnect** starts a new one.
 - The 6 Take Control starts are counted per agent over a rolling hour. Watching doesn't count, and neither does a start refused with one of the notices above. A reconnect isn't counted either: a start while your control session on the agent is still open in another tab, or within 2 minutes after your control session's connection dropped because the browser tab closed or reloaded, the network went away, or the agent's computer closed the connection or didn't answer. That covers the panel's own retry after a dropped connection. A start within 2 minutes after a control start that was closed before the agent's screen answered, with **Hand Back** or by the panel giving up after 20 seconds, is a reconnect too, since you never had control. After any other end, such as **Hand Back**, closing the screen, the idle end or the time limit, your next start counts, even within 2 minutes of an earlier dropped connection. A start that ends at once because a capture began just then (see [When Control Ends](#when-control-ends)) is counted, and so is the next one. The seventh start in an hour is refused with the hourly notice above, which says how long to wait.
 - Every screen the panel starts counts toward a person's 30 in 10 minutes: opening the Screen, **Reconnect**, each **Take Control** (also one refused for a capture or the hourly limit), the panel's own retry after a dropped connection, and the View Only screen it opens when control ends. Past that, a new one is refused until the 10 minutes are over.
+- With a project API key, every [`ScreenStart`](#post-useragentrealtimescreenstart) your backend makes on an agent counts toward the 30 in 10 minutes that your key owner's API keys share on that agent, whichever of your users a screen is for: each ticket, and each start refused for too many viewers, a capture, a computer that doesn't answer or the hourly limit. Those keys also have their own reconnect window, which works as above and is kept apart from the owner's sessions in the Wiro panel. All of your users share it: one of them taking control while another one's control session from those keys is still open, or within 2 minutes after its connection dropped, is a reconnect. A control session the owner has open in the Wiro panel doesn't make it one.
 
 ### Screen in the Activity Log
 
@@ -9031,7 +9047,7 @@ Three [who-did-what rows](/docs/agent-logs#who-did-what-rows) in the agent's act
 | `AGENT_SCREEN_CONTROLLED` | `Took control of the agent's screen` | Someone took control. At most one row per person and agent every 10 minutes. |
 | `AGENT_SCREEN_CONTROL_ENDED` | `Control of the agent's screen ended after 4 minutes 10 seconds: handed back` | A Take Control session ended. One row for every session. |
 
-`userUuid` and `user` name the person. The first two rows carry no `summary`. `AGENT_SCREEN_CONTROL_ENDED` carries `summary: { seconds, reason }`: how long control lasted, in seconds from when it started, and why it ended:
+`userUuid` and `user` name the person. The first two rows carry no `summary`, unless an API key opened the screen (see below). `AGENT_SCREEN_CONTROL_ENDED` carries `summary: { seconds, reason }`: how long control lasted, in seconds from when it started, and why it ended:
 
 | `reason` | The title ends with | When |
 |----------|---------------------|------|
@@ -9066,9 +9082,11 @@ Three [who-did-what rows](/docs/agent-logs#who-did-what-rows) in the agent's act
 
 Read the rows in the panel under the agent's **Logs**, which its owner and the team's admins can open, or with [`POST /UserAgent/Logs`](/docs/agent-logs#logs-tail) and `LogsFile`, which also take an API key (`LogsList` lists the days that have rows). The owner's Account Activity page at [wiro.ai/panel/account/activity](https://wiro.ai/panel/account/activity) lists them too, by `kind`. A change to the `screen` setting writes an `AGENT_SETTINGS_UPDATED` row: `Agent settings updated: screen off` or `screen on`. A browser reset writes an `AGENT_BROWSER_RESET` row: `Agent browser reset` (see [Resetting the Browser](#resetting-the-browser)).
 
+**With a project API key.** A screen your app opens with a key adds the same rows, named after the key's owner, the person who created its project, whichever of your users it was for. All of your users count as one: on each agent, a project's key writes at most one `Watched the agent's screen` row an hour and one `Took control of the agent's screen` row every 10 minutes, apart from the rows the owner's own sessions in the Wiro panel write. Those two titles end with `(API key "<project name>")` and carry `summary: { "project": "<project name>" }`, or end with `(via API key)` for a personal project's key on a team agent. `AGENT_SCREEN_CONTROL_ENDED` names the key's owner too: its title ends with `(via API key)`, never with the project name, and its `summary` stays `{ seconds, reason }`. Keep your own record of which of your users got each ticket (see [Screen in Your Own App](#screen-in-your-own-app)).
+
 ### Turning the Screen Off
 
-The Screen is on for every agent by default. The agent's owner or a team admin turns it off with the **Screen** switch on the agent's **Settings** tab, or by sending `screen: "off"` to [`UpdateSettings`](#post-useragentupdatesettings). Off closes the Screen for everyone: nobody can watch or take control, the **Screen** button hides, and screens that are open, a Take Control session included, close within about half a minute. Turning it back on brings the button back. A change never restarts the agent, and `null` goes back to `"on"`. Read the value as `screen` on [`Detail`](#post-useragentdetail).
+The Screen is on for every agent by default. The agent's owner or a team admin turns it off with the **Screen** switch on the agent's **Settings** tab, or by sending `screen: "off"` to [`UpdateSettings`](#post-useragentupdatesettings) with a signed-in session or a project API key. Off closes the Screen for everyone, in the Wiro panel and in every app that shows it: nobody can watch or take control, the **Screen** button hides, [`ScreenInfo`](#post-useragentrealtimescreeninfo) answers `reason: "setting_off"`, [`ScreenStart`](#post-useragentrealtimescreenstart) is refused with code `94`, and screens that are open, a Take Control session included, close within about half a minute. Turning it back on brings the button back. A change never restarts the agent, and `null` goes back to `"on"`. Read the value as `screen` on [`Detail`](#post-useragentdetail).
 
 On a team agent whose Chat Mode is `"private"`, the Screen stays closed to the team whatever `screen` says, and the **Settings** tab says so.
 
@@ -9369,6 +9387,7 @@ for the channel contract.
 > | `UserAgent/Detail` | No workspace match; the project's owner must own the agent or be a member of its team |
 > | `UserAgent/Update`, `UserAgent/Start`, `UserAgent/Stop` | No workspace match; the project's owner must own the agent or be an admin of its team (plain members get code `97`) |
 > | `UserAgent/Realtime/WebStart` | The project's owner must have deployed the agent. For a team agent, use that team's project key, or a key whose owner is still a member of the team |
+> | `UserAgent/Realtime/ScreenInfo`, `UserAgent/Realtime/ScreenStart` | The project's owner must have deployed the agent or be an admin of its team. A team project's key opens only that team's agents, and a personal project's key a team agent only while its owner is still a member of the team; a team project's key for a personal agent or another team's agent is refused with code `96` |
 > | `UserAgent/MyAgents` | Lists only the agents in the project's workspace |
 >
 > A mismatch returns `"This agent belongs to a team. Switch to the team context to access it."`, `"This agent is in your personal workspace. Switch to personal context to access it."` or `"This agent belongs to a different team."` Use a team project's key for team agents and a personal project's key for personal agents.
@@ -10118,7 +10137,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `enabledCommands` | `array<string>\|null` | The in-chat slash-command allowlist (camelCase read). `null` = the operator never customized it, so **all** slash commands are available. An array (including `[]`) is an explicit allowlist of command keys (no leading slash); `[]` hides the slash-command menu. Write it via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) with the lowercase `enabledcommands` key. Also present on `MyAgents` / `PinnedAgents` rows. |
 | `wiroApiAllowedPaths` | `array<string>` | The Wiro API endpoints the agent may call with its own Wiro project key (camelCase read), for example `["POST /v1/Run/*/*", "POST /v1/Task/Detail"]`. Always the list that applies: the agent's own list or, when it has none, the default list described under [`UpdateSettings`](#post-useragentupdatesettings). `[]` blocks all of them. Write it via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) or at Deploy with the lowercase `wiroapiallowedpaths` key. Also on the `Deploy` and `Update` responses; not on `MyAgents` / `PinnedAgents` rows. |
 | `chatSetup` | `string\|null` | Setup From Chat as it applies to this agent (camelCase read): `"all"`, `"webchat"` or `"off"`. Write it via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) or at Deploy with the lowercase `chatsetup` key. See [Setup From Chat](/docs/agent-messaging#setup-from-chat). `null` when it could not be read. |
-| `screen` | `string\|null` | The agent's Screen setting: `"on"` or `"off"`. When it is on, the people who manage the agent can watch its computer live from the Wiro panel, and the owner of a personal agent that has never been in a team, or whose browser was reset after it last left one, can take control of it there; `"off"` closes both. On a team agent whose Chat Mode (`teamsessionmode`) is `"private"`, the Screen stays closed to the team even while this reads `"on"`. See [Screen and Take Control](#screen-and-take-control). Write it via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings). `null` when it could not be read. |
+| `screen` | `string\|null` | The agent's Screen setting: `"on"` or `"off"`. When it is on, the people who manage the agent can watch its computer live, in the Wiro panel or in your own app with a project API key, and the owner of a personal agent that has never been in a team, or whose browser was reset after it last left one, can take control of it; `"off"` closes both, everywhere. On a team agent whose Chat Mode (`teamsessionmode`) is `"private"`, the Screen stays closed to the team even while this reads `"on"`. See [Screen and Take Control](#screen-and-take-control). Write it via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings). `null` when it could not be read. |
 
 **Lifecycle**
 
@@ -10212,6 +10231,7 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 > | Sign the agent's browser out of every site (the agent restarts) | [`POST /UserAgent/ResetBrowser`](#post-useragentresetbrowser) |
 > | View / download / delete activity logs | [`POST /UserAgent/Logs`](#post-useragentlogs) · [`LogsList`](#post-useragentlogslist) · [`LogsFile`](#post-useragentlogsfile) · [`LogsDelete`](#post-useragentlogsdelete) |
 > | Follow Scheduled Tasks, background runs and model runs live | [`POST /UserAgent/RunStreamToken`](#post-useragentrunstreamtoken) |
+> | Show the agent's live Screen, and Take Control, in your own app | [`POST /UserAgent/Realtime/ScreenInfo`](#post-useragentrealtimescreeninfo) · [`ScreenStart`](#post-useragentrealtimescreenstart) |
 > | Soft-delete a useragent | [`POST /UserAgent/Delete`](#post-useragentdelete) |
 
 > **Note:** `CredentialUpsert` and `CredentialProjectBind` save connector fields **but do not transition `status: 6` on their own**. After setting up the missing connectors, call `POST /UserAgent/Update` once (any scalar body works, even just `{ "guid": "<useragent-guid>" }`) to trigger the `setuprequired` re-check; that's the call that flips `status: 6 → 0` (Stopped) so the next `Start` succeeds.
@@ -10293,7 +10313,7 @@ A changed `title` on a running agent:
 
 #### **POST** /UserAgent/UpdateSettings
 
-Writes per-agent preference toggles that are not credentials and not skill rows. Exposes `timezone` (operator-selected IANA zone the agent uses for scheduled tasks and voice calls), `teamsessionmode` (the one Chat Mode for team web-chat history and external-channel DMs), the four **model overrides** (`chatmodel`, `cronmodel`, `voiceprepmodel`, `voicepostcallmodel`) that choose which LLM the agent uses for chat replies, scheduled (cron) turns, voice-call prep, and the post-call summary turn, `enabledcommands` (the in-chat slash-command allowlist), `wiroapiallowedpaths` (the Wiro API endpoints the agent may call with its own Wiro project key), `chatsetup` (where people can change the agent's setup from chat), and `screen` (whether the agent's [Screen](#screen-and-take-control) opens in the Wiro panel, for watching its computer live and for Take Control). Submit any subset in the same call: partial updates are supported and untouched fields keep their current value.
+Writes per-agent preference toggles that are not credentials and not skill rows. Exposes `timezone` (operator-selected IANA zone the agent uses for scheduled tasks and voice calls), `teamsessionmode` (the one Chat Mode for team web-chat history and external-channel DMs), the four **model overrides** (`chatmodel`, `cronmodel`, `voiceprepmodel`, `voicepostcallmodel`) that choose which LLM the agent uses for chat replies, scheduled (cron) turns, voice-call prep, and the post-call summary turn, `enabledcommands` (the in-chat slash-command allowlist), `wiroapiallowedpaths` (the Wiro API endpoints the agent may call with its own Wiro project key), `chatsetup` (where people can change the agent's setup from chat), and `screen` (whether the agent's [Screen](#screen-and-take-control) opens, in the Wiro panel and in your own app, for watching its computer live and for Take Control). Submit any subset in the same call: partial updates are supported and untouched fields keep their current value.
 
 **Permission**: owner or team admin only, as for `/UserAgent/Update`. Team members cannot change these settings.
 
@@ -10311,7 +10331,7 @@ Writes per-agent preference toggles that are not credentials and not skill rows.
 | `enabledcommands` | string[] | No | Allowlist of in-chat **slash commands** the agent exposes, as an array of command keys **without** the leading slash (e.g. `["agent_help", "new_session", "agent_status"]`). Validated against the command catalog: an unknown key is rejected with `invalid-command-selection`, a non-array value with `invalid-command-list`. Order is preserved and duplicates are removed. An empty array `[]` is valid and **hides the slash-command menu** entirely. Omit the field to leave the current allowlist untouched. |
 | `wiroapiallowedpaths` | string[]\|null | No | Limits the agent's own calls to the Wiro API, the ones it makes with its Wiro project key (for example through `int-wiro-aimodels`), to the endpoints you list. Each rule is a method in capitals (`GET`, `POST`, `PUT`, `PATCH`, `DELETE` or `HEAD`), one space and a `/v1` path, such as `"POST /v1/Task/Detail"`. A `*` stands for exactly one whole path segment: `"POST /v1/Run/*/*"` allows every model run, while `"POST /v1/Run/x*"` is invalid. Up to 64 rules of at most 200 characters each; duplicates are removed and the order is kept. Calls to endpoints that no rule matches are refused. `[]` refuses every call, model runs included; `null` removes your list, and the agent goes back to the default list. An invalid rule, or a value that isn't an array, is rejected with `invalid-wiro-api-path-rule`, and nothing in the request is saved. Omit the field to keep the current list. An agent with no list of its own uses the default list: `POST /v1/Run/*/*`, `POST /v1/Task/Detail`, `POST /v1/Tool/List`, `POST /v1/Tool/Detail`, `POST /v1/Tool/UploadModelPostImage`, `POST /v1/Tool/GenerateModelPostImage`, `GET /v1/Tool/GenerateModelPostImage` and `POST /v1/UserAgent/Message/UploadAsset`. If a custom skill of yours calls another endpoint, send a list that includes it. |
 | `chatsetup` | string\|null | No | Setup From Chat: where people can change the agent's setup by approving setup cards in chat. `"all"` (the default): in the Wiro web chat and in messages sent with a project API key, such as from your backend or an MCP client. `"webchat"`: only in the Wiro web chat on wiro.ai. `"off"`: never from chat; the agent says that an agent admin makes the change in the agent's settings. `null` goes back to `"all"`, and any other value is rejected with `chatsetup must be off, webchat or all`. Agents that your customers or many people talk to usually choose `"webchat"` or `"off"`; see [Setup From Chat](/docs/agent-messaging#setup-from-chat). Read it back as `chatSetup` on [`UserAgent/Detail`](#post-useragentdetail). |
-| `screen` | string\|null | No | Screen: whether the agent's [Screen](#screen-and-take-control) opens in the Wiro panel, where the people who manage the agent (its owner and the team's admins) watch its computer live beside the chat and the owner of a personal agent that has never been in a team, or whose browser was reset after it last left one, can take control of it. `"on"` (the default) or `"off"`. `"off"` closes it for everyone, watching and Take Control alike, and also closes screens that are open, a Take Control session included, within about half a minute. On a team agent whose Chat Mode is `"private"` the screen stays closed to the team whatever this says. `null` goes back to `"on"`, and any other value is rejected with `screen must be on or off`. It never restarts the agent. Read it back as `screen` on [`UserAgent/Detail`](#post-useragentdetail). |
+| `screen` | string\|null | No | Screen: whether the agent's [Screen](#screen-and-take-control) opens, in the Wiro panel and in your own app through [`ScreenStart`](#post-useragentrealtimescreenstart) with a project API key. The people who manage the agent (its owner and the team's admins) watch its computer live, and the owner of a personal agent that has never been in a team, or whose browser was reset after it last left one, can take control of it. `"on"` (the default) or `"off"`. `"off"` closes it for everyone, watching and Take Control alike, in the panel and in your app, and also closes screens that are open, a Take Control session included, within about half a minute. On a team agent whose Chat Mode is `"private"` the screen stays closed to the team whatever this says. `null` goes back to `"on"`, and any other value is rejected with `screen must be on or off`. It never restarts the agent. Read it back as `screen` on [`UserAgent/Detail`](#post-useragentdetail). |
 
 > **Slash-command catalog.** Valid `enabledcommands` keys are: `agent_help`, `new_session`, `agent_status`, `agent_limits`, `last_scan`, `last_heartbeat`, `agent_restart`, `clear_all_sessions`, `clear_history`. Read the agent's current allowlist from the `enabledCommands` field (camelCase) on [`UserAgent/Detail`](#post-useragentdetail) / `MyAgents` / `PinnedAgents`, where `null` means the operator never customized it (all commands available) and an array (including `[]`) is an explicit allowlist.
 
@@ -11810,13 +11830,15 @@ Returns the latest message GUID per pinned agent. Compare each `lastmessageguid`
 
 ### Voice & Realtime
 
-Endpoints for browser-based realtime voice sessions plus the unified call history for both Web and Twilio channels. Per-channel setup, session handles, and the WebSocket protocol live on the dedicated pages:
+Endpoints for browser-based realtime voice sessions, the unified call history for both Web and Twilio channels, and the agent's live Screen. Per-channel setup, session handles, and the WebSocket protocols live on the dedicated pages:
 
 | Operation | Endpoint |
 |-----------|----------|
 | Start a browser realtime voice session | `POST /UserAgent/Realtime/WebStart`: see [Web Voice](/docs/integration-webvoice-skills) |
 | Cancel a pending realtime session | `POST /UserAgent/Realtime/Cancel`: see [Web Voice, Step 3](/docs/integration-webvoice-skills#step-3-optional-cancel-a-stale-session-with-post-useragentrealtimecancel) |
 | List recent realtime call sessions | `POST /UserAgent/TwilioCallHistory/List`: see [Twilio Voice, Call History](/docs/integration-twiliovoice-skills#call-history) (returns Twilio **and** Web channel sessions despite the Twilio-named path). |
+| Ask whether the agent's Screen can open, and whether Take Control can | [`POST /UserAgent/Realtime/ScreenInfo`](#post-useragentrealtimescreeninfo) |
+| Get a one-time ticket for the Screen socket, to watch or to take control | [`POST /UserAgent/Realtime/ScreenStart`](#post-useragentrealtimescreenstart): see [Screen and Take Control in Your App](/docs/agent-chat-integration#screen-and-take-control-in-your-app) |
 
 #### **POST** /UserAgent/Realtime/WebStart
 
@@ -11943,6 +11965,179 @@ Returns the last N realtime voice sessions for a useragent, covering **both Twil
 | `startedAt` / `endedAt` | number \| null | Unix epoch ms. `endedAt` stays `null` until the call finishes or is rejected. |
 
 Rows are returned newest-first. Rejected sessions (`realtime_session_rejected`) are intermixed and carry `metadata.reason` (visible by reading the same `messageguid` via `Message/Detail`) with values: `concurrent_limit`, `agent_prep_timeout`, `realtime_ws_open_failed`, `realtime_stream_timeout`. Full field reference: [Twilio Voice, Call History](/docs/integration-twiliovoice-skills#call-history).
+
+#### **POST** /UserAgent/Realtime/ScreenInfo
+
+Says whether the agent's [Screen](#screen-and-take-control) can open for the caller now, and whether Take Control can. Ask it before you offer a Screen button. It never refuses an agent: every no is `result: true` with `available: false` and a `reason`.
+
+**Permission**: whoever may watch the agent (see [Who Can Watch](#who-can-watch)), with a project API key. A key acts as its owner, the person who created its project, and a team project's key opens only that team's agents. A signed-in session works only inside the Wiro panel, so from your own product, call it from your backend with your key. Any other caller, a signed-in session from outside the Wiro panel included, gets `available: false` with `reason: "not_allowed"`.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Your UserAgent instance guid. |
+
+##### Request
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Realtime/ScreenInfo" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321"
+  }'
+```
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "available": true,
+  "canControl": true,
+  "reason": null
+}
+```
+
+When the Screen can't open, here because the agent's `screen` setting is `"off"`:
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "available": false,
+  "canControl": false,
+  "reason": "setting_off"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `available` | boolean | `true` when [`ScreenStart`](#post-useragentrealtimescreenstart) can open a view of the agent's screen for this caller now. |
+| `canControl` | boolean | `true` when `ScreenStart` can also open Take Control (`control: true`) for this caller: the owner of a personal agent that has never been in a team, or whose browser was reset after it last left one, in the panel or with an API key of one of their personal projects. Always `false` while `available` is `false`. |
+| `reason` | string\|null | `null` while `available` is `true`; otherwise why not, one of the values below. |
+
+| `reason` | Why `available` is `false` |
+|----------|-----------------------------|
+| `not_allowed` | The caller can't watch this agent: it is Studio or the Workflow Agent, the caller is neither its owner nor an admin of its team (see [Who Can Watch](#who-can-watch)), the key belongs to another workspace than the agent, or a signed-in session called from outside the Wiro panel. It is also the answer when no agent has this guid: it is unknown, or the agent was deleted. |
+| `private_team` | A team agent whose Chat Mode is `"private"`: its Screen stays closed to everyone. |
+| `setting_off` | The agent's `screen` setting is `"off"` (see [Turning the Screen Off](#turning-the-screen-off)). |
+| `not_running` | The agent isn't running. Ask again once [`Detail`](#post-useragentdetail) reads `status: 4`. |
+| `unsupported` | The agent's computer doesn't offer the Screen yet. It does once the agent has restarted. |
+| `disabled` | The Screen is turned off on every agent at the moment. |
+| `error` | The check couldn't finish. Ask again in a few seconds. |
+
+When several apply, `reason` is the first in this order: `disabled`, `not_allowed`, `private_team`, `setting_off`, `not_running`, `unsupported`. The only `result: false` is a missing `useragentguid`: `Request parameter [useragentguid] required` (code `0`).
+
+#### **POST** /UserAgent/Realtime/ScreenStart
+
+Issues a one-time ticket for the agent's [Screen](#screen-and-take-control): to watch it, or with `control: true` to take control of it. Your page opens `wsUrl`, sends the ticket as its first message, and the screen then streams over that socket as RFB, the VNC protocol (see [The Screen socket](/docs/agent-chat-integration#the-screen-socket)). A ticket works once and expires 60 seconds after it is issued, so get a new one for every socket you open. A start also adds the Screen rows to the agent's [activity log](#screen-in-the-activity-log).
+
+**Permission**: as for [`ScreenInfo`](#post-useragentrealtimescreeninfo), and a signed-in session from outside the Wiro panel is refused with HTTP 403. `control: true` needs [Take Control](#take-control): the caller must be the owner of a personal agent that has never been in a team, or whose browser was reset after it last left one, and a key acts as its owner.
+
+Call it from your backend. A browser can't call the API with your key, and must never hold it: hand your page only `wsUrl`, `screenToken` and the numbers.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Your UserAgent instance guid. |
+| `control` | boolean | No | `true` for a Take Control session. Leave it out, or send `false`, to watch. |
+
+##### Request
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Realtime/ScreenStart" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321"
+  }'
+```
+
+Add `"control": true` to the body for Take Control.
+
+##### Response
+
+A view:
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "wsUrl": "wss://socket.wiro.ai/v1/AgentRealtime/Screen",
+  "screenToken": "<one-time screen ticket>",
+  "control": false,
+  "canControl": true,
+  "maxSeconds": 1800
+}
+```
+
+A Take Control session:
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "wsUrl": "wss://socket.wiro.ai/v1/AgentRealtime/Screen",
+  "screenToken": "<one-time screen ticket>",
+  "control": true,
+  "canControl": true,
+  "maxSeconds": 900,
+  "idleSeconds": 120
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `wsUrl` | string | The Screen socket. Open it as given; don't build or hardcode the host. |
+| `screenToken` | string | The one-time ticket. Send it in the socket's first message within 60 seconds. It is opaque: don't parse it, keep it in memory only, and never put it in a URL or a log. |
+| `control` | boolean | `true` when the ticket opens a Take Control session. |
+| `canControl` | boolean | Whether this caller may take control of this agent now, as in `ScreenInfo`. A view's answer tells you whether to offer Take Control. |
+| `maxSeconds` | number | The longest the session can last: `1800` (30 minutes) to watch, `900` (15 minutes) in control. |
+| `idleSeconds` | number | Control only: control ends after this many seconds without a key or pointer event (`120`). |
+
+##### Common errors
+
+A refused start answers `result: false` with one entry in `errors`, and no ticket. Every answer comes with HTTP 200 except the one marked HTTP 403 and the two marked HTTP 429 below. 95, 96 and 97 are the agent access codes the UserAgent endpoints share, and this endpoint gives 95 and 96 a few sentences of its own; 94, 98, 99, 409, 429 and 503 are this endpoint's own. In the [Error Reference](/docs/error-reference), 96, 97, 98 and 99 mean other things.
+
+```json
+{
+  "result": false,
+  "errors": [
+    {
+      "code": 94,
+      "message": "Screen is off in this agent's settings.",
+      "time": 1795201200
+    }
+  ]
+}
+```
+
+| Error | Code | When |
+|-------|------|------|
+| `Request parameter [useragentguid] required` | 0 | `useragentguid` is missing or blank |
+| `Open the Screen from the Wiro panel, or ask for it with a project API key.` | 96 | HTTP 403: a signed-in session from outside the Wiro panel. Call `ScreenStart` from your backend with a project API key |
+| `Screen is turned off.` | 98 | The Screen is turned off on every agent at the moment |
+| `You don't have access to this user agent` | 96 | The agent is Studio or the Workflow Agent, or the caller is neither its owner nor on its team |
+| `User agent not found` | 95 | Unknown guid, or the agent has been deleted |
+| `Only a team admin can perform this action on a team-owned agent.` | 97 | The caller is a plain member of the agent's team |
+| `This API key belongs to another workspace than this agent. Use a key of the agent's own workspace.` | 96 | A team project's key for a personal agent, or for another team's agent |
+| `This agent belongs to a team. Switch to the team context to access it.` | 0 | A personal project's key for a team agent, when the key's owner is no longer a member of the team |
+| `Screen is off for team agents whose chats are private: the screen shows every chat's work.` | 96 | A team agent whose Chat Mode is `"private"` |
+| `The screen could not be checked. Try again.` | 0 | The agent's `screen` setting could not be read. Try again |
+| `Screen is off in this agent's settings.` | 94 | The agent's `screen` setting is `"off"` |
+| `The agent is not running.` | 95 | The agent's status isn't `4` |
+| `Take Control is off for team agents: their browser is shared by the whole team.` | 99 | `control: true` on a team agent |
+| `Take Control is off for an agent that was used in a team, because its browser may still hold team members' sign-ins.` | 99 | `control: true` on an agent that was in a team and whose browser hasn't been reset since it left (see [Resetting the Browser](#resetting-the-browser)) |
+| `Take Control could not start just now. Try again in a minute.` | 99, 503 | `control: true` when a check before control could not finish. Try again in a minute |
+| `Take Control is not available for this agent right now.` | 99 | `control: true` while Take Control can't be used on this agent. Watching still works |
+| `The screen is not available on this agent yet. Restart the agent to turn it on.` | 98 | The agent's computer doesn't offer the Screen yet |
+| `Too many screen sessions started. Try again in a few minutes.` | 429 | HTTP 429: more than 30 starts in 10 minutes (see [Screen Limits](#screen-limits)) |
+| `4 people are watching this agent's screen. Try again in a minute.` | 429 | A view while 4 screens are open on the agent |
+| `The agent's screen is not answering right now. Try again in a minute.` | 98 | `control: true` while the agent's computer doesn't answer |
+| `The agent is capturing its screen right now. Try again in a minute.` | 409 | `control: true` while the agent takes a screenshot or otherwise captures its screen or a tab |
+| `The agent's screen could not be checked. Try again in a moment.` | 503 | `control: true` when the agent's computer didn't say whether it is capturing |
+| `Take Control can be started 6 times an hour on this agent. Try again in 12 minutes.` | 429 | HTTP 429: the seventh Take Control start on the agent in an hour. The wait is the time until the oldest of the 6 starts is an hour old |
+| `The screen could not be started. Try again.` | 0 | Something went wrong. Try again |
 
 ### Extra Credit Packs
 
@@ -12316,6 +12511,7 @@ Agent-specific errors you may encounter:
 | `Pack key required` | `CreateExtraCreditCheckout` without `pack` |
 | `Could not retrieve wallet balance` | Wallet service lookup failed while checking balance |
 | `runstream-unavailable` | `RunStreamToken` while following runs live is not available. Try again later |
+| A Screen refusal, such as `Screen is off in this agent's settings.` (code `94`) or `Take Control is off for team agents: their browser is shared by the whole team.` (code `99`) | `Realtime/ScreenStart` when the agent's Screen, or Take Control, can't open for the caller. These codes are ScreenStart's own: see [its errors](#screenstart-errors) |
 
 ## Code Examples
 
@@ -12831,7 +13027,7 @@ print(response.body);
 - [Agent Skills](/docs/agent-skills): Configure preferences, scheduled tasks, and skill toggles. Includes the registry browser endpoints (`Skills/List`, `Skills/Detail`, `Skills/Capabilities`)
 - [Agent Credentials](/docs/agent-credentials): Integration catalog hub with 20+ dedicated per-provider setup guides (Meta Ads, Facebook, Instagram, LinkedIn, Twitter, and more) plus the registry endpoints (`Credentials/List`, `Credentials/Detail`)
 - [Agent Messaging](/docs/agent-messaging): Send messages and receive responses from running agents
-- [Agent Chat Integration](/docs/agent-chat-integration): Build your own chat for an agent, with setup cards, connections and restarts
+- [Agent Chat Integration](/docs/agent-chat-integration): Build your own chat for an agent, with setup cards, connections, restarts and the agent's live Screen
 - [Agent WebSocket](/docs/agent-websocket): Real-time response streaming
 - [Agent Webhooks](/docs/agent-webhooks): Receive agent responses via HTTP callbacks
 - [Agent Transactions](/docs/agent-transactions): Per-instance credit ledger (deductions, renewals, purchases, grants, refunds)
@@ -13331,7 +13527,7 @@ Agent messaging follows the same async pattern as [model runs](/docs/run-a-model
 
 This decoupled design means your application never blocks waiting for the agent to think. Send the message, hand the `agenttoken` to your frontend, and stream the response as it arrives.
 
-> **Building a chat in your own product?** [Agent Chat Integration](/docs/agent-chat-integration) walks through the whole cycle with every request and answer: messages, setup cards, connecting each kind of connector, restarts and errors.
+> **Building a chat in your own product?** [Agent Chat Integration](/docs/agent-chat-integration) walks through the whole cycle with every request and answer: messages, setup cards, connecting each kind of connector, restarts, errors, and the agent's live Screen with Take Control.
 
 ### Ordered turn timeline
 
@@ -15102,7 +15298,7 @@ wss://socket.wiro.ai/v1
 
 Connect to this URL after calling the [Message / Send](/docs/agent-messaging) endpoint. Use the `agenttoken` from the send response to subscribe to the agent session. This is the same WebSocket server used for model tasks, so you can subscribe to both task events (`task_info`) and agent events (`agent_info`) on the same connection.
 
-No API key or auth header is required on the WebSocket itself. Authorization is enforced via the `agenttoken`, which is issued by `POST /UserAgent/Message/Send` against your API key and is scoped to a single message run. To follow a whole session instead, use the `sessiontoken` from `Message/History`; see [Following a session](#following-a-session). To follow an agent's Scheduled Tasks and other background runs, use a `runstreamtoken`; see [Following an agent's background runs](#following-an-agents-background-runs).
+No API key or auth header is required on the WebSocket itself. Authorization is enforced via the `agenttoken`, which is issued by `POST /UserAgent/Message/Send` against your API key and is scoped to a single message run. To follow a whole session instead, use the `sessiontoken` from `Message/History`; see [Following a session](#following-a-session). To follow an agent's Scheduled Tasks and other background runs, use a `runstreamtoken`; see [Following an agent's background runs](#following-an-agents-background-runs). The agent's live Screen has a socket of its own, opened with a one-time `screenToken`; see [Screen and Take Control in Your App](/docs/agent-chat-integration#screen-and-take-control-in-your-app).
 
 ## Connection Flow
 
@@ -18590,7 +18786,7 @@ Build your own chat for a Wiro agent, setup from chat included: every call, ever
 
 This guide is for products that put a Wiro agent behind their own interface. Your users talk to the agent in your app. Your backend calls the API with your project API key, and your app shows the agent's answers, its setup cards and the connect steps with your own design. Your users never leave your product.
 
-It covers the whole cycle in order: sending messages and showing answers, the setup cards the agent proposes, applying them, connecting each kind of connector, restarts, errors, chats without cards, security, four worked examples and a checklist. Every request and answer is shown as JSON, so the guide can also be handed to a coding assistant that builds the integration for you.
+It covers the whole cycle in order: sending messages and showing answers, the setup cards the agent proposes, applying them, connecting each kind of connector, restarts, errors, chats without cards, the agent's live Screen and Take Control in your app, security, five worked examples and a checklist. Every request and answer is shown as JSON, so the guide can also be handed to a coding assistant that builds the integration for you.
 
 ### What setup from chat is
 
@@ -18628,7 +18824,7 @@ Your app shows "Restarting", then the agent answers again
 
 Every call in this guide is authenticated with a project API key from your Wiro dashboard, sent as the `x-api-key` header (signature-based projects also send `x-nonce` and `x-signature`). See [Authentication](/docs/authentication). Call Wiro from your backend only: never put the key in browser or mobile app code.
 
-Your app may hold two kinds of token, so that the browser follows a chat on the [Agent WebSocket](/docs/agent-websocket) itself: a turn's `agenttoken` and a session's `sessiontoken`. The socket takes no API key, and each token reads only its own turn or session, so give a person only the tokens of their own chats. Or keep the socket on your backend and relay its events.
+Your app may hold two kinds of token, so that the browser follows a chat on the [Agent WebSocket](/docs/agent-websocket) itself: a turn's `agenttoken` and a session's `sessiontoken`. The socket takes no API key, and each token reads only its own turn or session, so give a person only the tokens of their own chats. Or keep the socket on your backend and relay its events. To show the agent's live Screen, the page also gets a one-time `screenToken` for each screen it opens (see [Screen and Take Control in Your App](#screen-and-take-control-in-your-app)).
 
 A call made with your API key acts as the key's owner: the person who created the project. Messages you send are stored as that person's messages, and setup cards are applied with that person's rights. So every row your users write carries the owner's account: `uuid` and the `user` object (first and last name, email, username, avatar) of each message row, and `requestedby` and `actedby` of each card. Never show them as the sender. Keep your own record of who wrote what, for example by `sessionkey` and `messageguid`, and show your own names.
 
@@ -20094,6 +20290,803 @@ Wiro writes these lines in `response`, always in English. They name no site, pag
 
 The full list is in [Wiro's answers](/docs/agent-messaging#setup-reply-lines).
 
+## Screen and Take Control in Your App
+
+Every agent has its own computer in the cloud: a 1920 x 1080 desktop with the web browser the agent works in. Your app can show that computer live, the agent's **Screen**, and let a person take control of it with the keyboard and mouse, for example to sign in to a site for the agent or to finish a step by hand. Your backend gets a one-time ticket with your API key, and your page opens a WebSocket with it and draws the screen with [noVNC](https://github.com/novnc/noVNC), an open source VNC client for the browser. The Wiro panel's own Screen works the same way: [Screen and Take Control](/docs/agent-overview#screen-and-take-control) in the Agent Overview describes it, with what pauses during control, the limits and the activity log rows.
+
+```text
+Your page                   Your backend                        Wiro
+---------                   ------------                        ----
+Show a Screen button?   ->  Realtime/ScreenInfo -------------->  available, canControl, reason
+Person opens it         ->  Realtime/ScreenStart ------------->  wsUrl, screenToken (one use, 60 s)
+new WebSocket(wsUrl), first frame: screen_start ------------->  screen_ready
+noVNC draws the binary frames (RFB 3.8) <-------------------->  the agent's desktop
+Take Control            ->  ScreenStart { control: true } --->  a new ticket for a new socket
+Hand Back: close the control socket, open a view again
+```
+
+### Decide who sees it
+
+A call made with your API key acts as the key's owner, the person who created its project: every screen you open is that person's screen as far as Wiro is concerned. It watches the agents that person may watch, and takes control where that person may. Your key speaks for your whole product, so Wiro gives it a ticket whichever of your users it is for, and who sees what is your product's decision:
+
+- **Who may watch.** Ask for a ticket only for the users you allow to see that agent's computer.
+- **Who may take control.** Offer Take Control, and ask for `control: true`, only to the users you allow to use its keyboard and mouse.
+- **What a shared agent shows.** An agent has one computer and one browser for all of its chats. Its Screen shows what the agent is doing in any of them: each of your users' chats, its Telegram, Slack and Discord chats and its Scheduled Tasks, and the agent brings the tab it is working in to the front. Take Control reaches every site that browser is signed in to, for all of the agent's users, and what a person signs in to during control stays there for all of them. It also pauses the agent's browser and desktop tools in every chat until control ends. With [one agent per customer](#deploy-an-agent), the Screen shows only that customer's work. On an agent several of your users share, show it only to people who may see all of their work.
+- **The switch.** `screen: "off"` on [`UpdateSettings`](/docs/agent-overview#post-useragentupdatesettings) closes the Screen for everyone, your users and the Wiro panel alike, and ends open screens within about half a minute. `"on"` opens it again. Send it with the same API key; the key's owner must be the agent's owner or an admin of its team. It never restarts the agent.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "screen": "off"
+  }'
+```
+
+```json
+{ "result": true, "errors": [] }
+```
+
+Which agents your key opens:
+
+| Your key | Watches | Takes control of |
+|----------|---------|------------------|
+| A personal project's key | Its owner's personal agents, and a team agent in Chat Mode `"collaborative"` while its owner deployed that agent or is an admin of its team, and is still a member | Its owner's personal agents that have never been in a team, or whose browser was reset after they last left one |
+| A team project's key | That team's agents in Chat Mode `"collaborative"`, when its owner deployed the agent or is an admin of the team | Nothing: no one takes control of a team agent |
+
+Team agents in Chat Mode `"private"`, Studio and the Workflow Agent have no Screen. A team project's key never opens a personal agent or another team's agent.
+
+### Ask whether the Screen can open
+
+Before you show a Screen button, your backend asks [`POST /UserAgent/Realtime/ScreenInfo`](/docs/agent-overview#post-useragentrealtimescreeninfo):
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Realtime/ScreenInfo" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321" }'
+```
+
+```json
+{ "result": true, "errors": [], "available": true, "canControl": true, "reason": null }
+```
+
+When the Screen can't open, `available` and `canControl` are `false` and `reason` says why, here because the `screen` setting is off:
+
+```json
+{ "result": true, "errors": [], "available": false, "canControl": false, "reason": "setting_off" }
+```
+
+| Field | Description |
+|-------|-------------|
+| `available` | Show the Screen button. |
+| `canControl` | Offer Take Control once the screen is live, to the people you allow. |
+| `reason` | `null` while `available` is `true`, otherwise why not. |
+
+What to do for each `reason`:
+
+| `reason` | What to do |
+|----------|------------|
+| `not_allowed` | Show no Screen: your key can't open this agent's Screen (see [Decide who sees it](#decide-who-sees-it)), or no agent has this guid, because it is unknown or was deleted. |
+| `private_team` | Show no Screen: a team agent in Chat Mode `"private"` has none. |
+| `setting_off` | Show no Screen. Ask again after the `screen` setting changes; the Wiro panel asks every 60 seconds. |
+| `not_running` | Ask again once [`Detail`](/docs/agent-overview#post-useragentdetail) reads `status: 4`. |
+| `unsupported` | The agent's computer doesn't offer the Screen yet. It does once the agent has restarted. |
+| `disabled` | The Screen is turned off on every agent at the moment. Ask again later. |
+| `error` | Ask again in a few seconds; the Wiro panel tries again after 5 seconds, 30 seconds and 2 minutes. |
+
+ScreenInfo never refuses an agent: only a missing `useragentguid` answers `result: false`. Ask again when the agent starts or stops and when its `screen` setting changes.
+
+### Get a ticket
+
+When a person opens the Screen, your page asks your backend, and your backend calls [`POST /UserAgent/Realtime/ScreenStart`](/docs/agent-overview#post-useragentrealtimescreenstart). Send `{ "useragentguid": "..." }` to watch, and add `"control": true` for Take Control.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Realtime/ScreenStart" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321" }'
+```
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "wsUrl": "wss://socket.wiro.ai/v1/AgentRealtime/Screen",
+  "screenToken": "<one-time screen ticket>",
+  "control": false,
+  "canControl": true,
+  "maxSeconds": 1800
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `wsUrl` | The Screen socket. Pass it to the page as it is; don't build or hardcode the host. |
+| `screenToken` | The one-time ticket. The page sends it as the socket's first message within 60 seconds. Keep it in memory only, never in a URL or a log. |
+| `control` | `true` for a Take Control ticket. |
+| `canControl` | Whether this person may take control now, as far as Wiro goes. Show or hide Take Control by it, together with your own rules. |
+| `maxSeconds` | The longest the session lasts: 1800 seconds to watch, 900 in control. |
+| `idleSeconds` | Control only: control ends after this many seconds without a key or pointer event (120). |
+
+Your backend returns only these fields to the page, never your API key. Ask for a new ticket for every socket: each Reconnect, each Take Control and each view you open again. A refused start answers `result: false` with one sentence in `errors[0].message`, which you can show as it is; every code is listed under [ScreenStart's errors](/docs/agent-overview#screenstart-errors).
+
+```json
+{
+  "result": false,
+  "errors": [
+    {
+      "code": 99,
+      "message": "Take Control is off for team agents: their browser is shared by the whole team.",
+      "time": 1795201200
+    }
+  ]
+}
+```
+
+| `code` | What to do |
+|--------|------------|
+| `94` | The `screen` setting is off: hide the Screen, as for `setting_off`. |
+| `95` | The agent isn't running, or is gone: hide the Screen until it runs again. |
+| `96`, `97` | Your key can't open this agent's Screen: hide it. |
+| `98` | The Screen isn't ready on this agent: show the sentence and let the person try later. |
+| `99` | Take Control isn't available: keep the view, show the sentence, and hide Take Control until `canControl` is `true` again. `Take Control could not start just now. Try again in a minute.` is a check that couldn't finish, so ask `ScreenInfo` again in a minute: its `canControl` says when Take Control is back. |
+| `409` | The agent is capturing its screen: keep the view, show the sentence, and let the person try again in a minute. |
+| `429` | Too many starts, too many viewers or the hourly Take Control limit: show the sentence, which says how long to wait. Two of these come with HTTP 429. |
+| `503` | A check couldn't finish: show the sentence and offer to try again. |
+| `0` | Show the sentence, then ask `ScreenInfo` again and go by its answer. After `This agent belongs to a team. Switch to the team context to access it.` it says `not_allowed`: your key's owner is no longer a member of the agent's team, so hide the Screen. `Request parameter [useragentguid] required` means your backend sent no guid. Any other `0` is a check that couldn't finish: offer to try again. |
+
+95, 96 and 97 are the agent access codes the UserAgent endpoints share, and ScreenStart gives 95 and 96 a few sentences of its own; 94, 98, 99, 409, 429 and 503 are ScreenStart's own. In the [Error Reference](/docs/error-reference), 96, 97, 98 and 99 mean other things.
+
+### The Screen socket
+
+The page opens `wsUrl` with no extra headers, subprotocols or query string. When the socket opens, the page sends the ticket in a text frame, within 10 seconds:
+
+```json
+{ "type": "screen_start", "screenToken": "<screenToken from ScreenStart>" }
+```
+
+The server answers with one text frame:
+
+```json
+{ "type": "screen_ready", "control": true, "maxSeconds": 900, "idleSeconds": 120 }
+```
+
+`idleSeconds` comes only in control. From then on, every frame in both directions is binary: an RFB 3.8 stream (the VNC protocol) with security type None, so there is no password to send. noVNC speaks it; your page hands noVNC these binary frames and nothing else (see [Drawing the screen with noVNC](#drawing-the-screen-with-novnc)). Text frames the page sends after the first are ignored. The server pings every 25 seconds, and browsers answer by themselves.
+
+Right before the server closes a session, it sends one more text frame that says why, then closes the socket with a code:
+
+```json
+{ "type": "screen_end", "reason": "idle", "message": "Control was handed back after a while without keyboard or mouse input." }
+```
+
+| Close code | `reason` | `message` | When |
+|------------|----------|-----------|------|
+| `1000` | none | none | Your page closed the socket, with code `1000`: Hand Back, or the screen was closed. |
+| `1008` | none | none | The first message wasn't a `screen_start` with a `screenToken`, or didn't come within 10 seconds. |
+| `4001` | `error` | `This screen link expired. Open the screen again.` | The ticket is unknown, used or more than 60 seconds old. |
+| `4001` | `error` | `The agent's screen is not available right now.` | The agent was deleted after the ticket was issued. |
+| `4004` | `agent_stopped` | `The agent stopped.` | The agent isn't running, or stopped or restarted during the session. |
+| `4003` | `screen_off` | `Screen was turned off in this agent's settings.` | The `screen` setting is `"off"`, checked at the start and every 25 seconds. |
+| `4029` | `too_many_viewers` | `Too many people are watching this agent's screen.` | 4 screens are already open on the agent. |
+| `4502` | `unavailable` | `The agent's screen is not available right now.` | The agent's computer didn't answer at the start. |
+| `4502` | `upstream_closed` | `The agent's screen closed the connection.` | The agent's computer closed the stream during the session. |
+| `4008` | `time_limit` | `The screen session reached its time limit.` | `maxSeconds` passed. |
+| `4000` | `control_taken` | `Someone else took control of this computer.` | Control only: another Take Control started on the agent, from your app or the Wiro panel. |
+| `4009` | `idle` | `Control was handed back after a while without keyboard or mouse input.` | Control only: no key or pointer event for `idleSeconds`. |
+| `4010` | `bad_input` | `The browser sent input the screen does not accept.` | The page sent an RFB message the screen doesn't take (see [Drawing the screen with noVNC](#drawing-the-screen-with-novnc)). |
+| `4011` | `input_rate` | `Too much keyboard and mouse input arrived at once.` | Control only: more than 500 key and pointer events a second, beyond a short burst. |
+| `4012` | `access_lost` | `You can no longer control this agent's computer.` | Control only: Take Control stopped applying to your key's owner on this agent, for example because it moved into a team. |
+| `4013` | `capturing` | `The agent is capturing its screen right now. Try again in a minute.` | Control only: a capture began just as control was starting. |
+| `1001` | `error` | `The screen connection failed.` | The browser stopped answering the server's pings. |
+| `1011` | `error` | `The screen connection failed.` | The session could not start on the server. |
+
+Your code goes by `reason` first and the close code second, never by `message`: the sentences can change. You can show `message` as it is, or your own words. A connection that drops without a `screen_end` reaches the page as `1006`, or `1001` when the server goes away.
+
+### Drawing the screen with noVNC
+
+Use noVNC 1.7.0, exactly that version: `https://cdn.jsdelivr.net/npm/@novnc/novnc@1.7.0/core/rfb.js`, an ES module under the MPL-2.0 license, or a copy of that release served from your own site. A control session takes only the messages noVNC 1.7.0 sends with the settings below, and another version can send one it refuses, which ends control with `4010`. noVNC needs a secure context: serve the page over HTTPS, or from `localhost` while you build.
+
+The page owns the socket, and noVNC never gets `wsUrl`: the first message must be your `screen_start`, the text frames are for your page, and the close code tells your page why a session ended. Hand noVNC a small channel object instead of the URL, one that passes it only the binary frames (`ScreenChannel` in [the example](#a-complete-example)), and create the `RFB` object only once `screen_ready` has come.
+
+| Setting | Value | Why |
+|---------|-------|-----|
+| `shared` (a constructor option) | `true` | Other people may be watching the same screen. |
+| `viewOnly` | `true` to watch, `false` in control | A view sends no input. |
+| `resizeSession` | `false` | Required. The agent's screen keeps its size, and a resize request in control ends it with `4010`. |
+| `scaleViewport` | `true` | Fits the screen into your element. Don't scale the canvas with a CSS transform: noVNC would then send the pointer to the wrong spot. |
+| `clipViewport` | `false` | The whole screen stays in view. |
+| `qualityLevel`, `compressionLevel` | `6`, `2` | The values the Wiro panel uses. |
+| `focusOnClick` | `true` in control only | A click on the screen gives it the keyboard. |
+
+Keep to these rules too:
+
+- **No clipboard.** The agent's clipboard is closed both ways. Don't offer copy or paste, and don't call `clipboardPasteFrom`, which is dropped. To put text on the agent's screen, type it as keys with `rfb.sendKey`, paced: the Wiro panel sends 200 key events a second, a press and a release for each character.
+- **No power actions or resizing.** Don't call `machineShutdown`, `machineReboot` or `machineReset`, and keep `resizeSession` off. Those messages end the session with `4010`.
+- **Human speed.** More than 500 key and pointer events a second, beyond a short burst, ends control with `4011`.
+- **A way out of the screen.** In control, noVNC takes every key, Tab and Esc included, so a keyboard user can't leave the screen. Give them a way out: the example, like the Wiro panel, moves focus to Hand Back when Esc is pressed twice quickly, and the first Esc still reaches the agent.
+- **Touch screens.** noVNC turns taps and drags into clicks and drags. A phone's keyboard doesn't open for the screen: to let people type there, add a text field of your own and send what they type with `rfb.sendKey`, paced as above.
+- **No blank flash.** noVNC removes its canvas when a session ends. To keep the picture while you switch between watching and control, show a copy of the last frame (`rfb.toDataURL()`) until the next session draws.
+
+### Take Control and Hand Back
+
+Take Control is a new session on a new socket, not a switch on the open one:
+
+1. Offer Take Control only while a view is live and `canControl` is `true`. Ask the person first, for example: "Take control of the agent's computer? Control lasts up to 15 minutes. The agent's browser and desktop tools pause until you hand back."
+2. Your backend calls `ScreenStart` with `"control": true`. Keep the view open meanwhile: if the start is refused, the view stays as it was and you show `errors[0].message`.
+3. Once you have the ticket, close the view's socket and open a new one with the control ticket. Its `screen_ready` says `"control": true`, with `maxSeconds` and `idleSeconds`.
+4. Create noVNC with `viewOnly: false` and `focusOnClick: true`, give the screen the focus, and show that the person has control, with the time left from `maxSeconds`.
+5. **Hand Back** closes the control socket with code `1000`, which gives control back to the agent at once, then gets a view ticket and opens a view.
+
+```json
+{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "control": true }
+```
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "wsUrl": "wss://socket.wiro.ai/v1/AgentRealtime/Screen",
+  "screenToken": "<one-time screen ticket>",
+  "control": true,
+  "canControl": true,
+  "maxSeconds": 900,
+  "idleSeconds": 120
+}
+```
+
+One person has control at a time: a new Take Control on the agent, from any of your users or from the Wiro panel, ends the current one with `4000` and `control_taken`. While control lasts, the agent's browser and desktop tools pause in every chat of the agent, and the agent says it will go on once control is handed back. When control ends, the tools work again at once, and each chat whose browser or desktop step was refused gets a note before its next turn (see [While You Have Control](/docs/agent-overview#while-you-have-control)). Whatever the person signed in to stays in the agent's browser, for every chat of the agent.
+
+### The idle warning
+
+Control ends after `idleSeconds` (120) without a key press, click, touch or mouse movement that reaches the agent; changes on the screen itself don't count. Warn the person before that:
+
+- Note the time when `screen_ready` comes, and again whenever the page sends a key or pointer event: an RFB message of type 4, 5 or 255. The example's `ScreenChannel` calls `onInput` for each.
+- Every second, work out `left = idleSeconds - (now - lastInputAt) / 1000`. While `left` is 30 seconds or less (or half of `idleSeconds`, when that is shorter), show a countdown, for example "Control hands back in 0:25 without input. Move the mouse, tap or type to keep it."
+- At `idleSeconds` the server ends control with `4009` and `idle`. Open a view again, as after every end of control.
+
+### What to show when a screen ends
+
+Read the `screen_end` reason first and the close code second:
+
+| End | What to do |
+|-----|------------|
+| `agent_stopped`, `4004` | Close the screen and hide the button until the agent runs again. |
+| `screen_off` (`4003`) | Close the screen and hide the button: the `screen` setting is off. Ask `ScreenInfo` again later. |
+| `control_taken`, `4000`, in control | Open a view, with a note such as "Control was taken somewhere else. You're watching again." |
+| `idle`, `bad_input`, `input_rate`, `access_lost`, `capturing` (`4009` to `4013`), in control | Open a view and show `message`. After `access_lost`, hide Take Control until a view's `ScreenStart` says `canControl: true` again. |
+| Any of those ending a view | Say the screen stopped, and offer Reconnect. |
+| `time_limit`, `4008` | "This session reached its time limit", with Reconnect. |
+| `4001` | "The connection expired", with Reconnect. |
+| `too_many_viewers`, `4029` | "Too many people are watching", with Reconnect a little later. |
+| `upstream_closed`, `unavailable` (`4502`) | The agent's desktop closed the connection or didn't answer: offer Reconnect. |
+| `1001` or `1006` with no `screen_end` | The connection dropped. Get a fresh ticket and connect again once by yourself, in the same mode, then offer Reconnect. |
+| `error`, `1011`, anything else | "The screen stopped", with Reconnect. |
+
+After control ends, by Hand Back or by the server, always open a view, never control. Reconnect opens a view too. A control session your page connects again within 2 minutes after its connection dropped is a reconnect and doesn't count toward the agent's 6 Take Control starts an hour.
+
+### A complete example
+
+The two files below run as they are. `server.mjs` is your backend: Node.js 18 or later, with no packages to install. It keeps your API key, signs requests for signature-based projects, asks `ScreenInfo` and `ScreenStart`, and gives the page only what it needs. `screen.html` opens the screen, takes control, hands back, warns before the idle end and handles every end above. Put both in one folder, start the server with your key and the agent's guid, and open `http://localhost:3000`. Replace `currentUser`, `mayWatch` and `mayControl` with your own sign-in and rules.
+
+```bash
+WIRO_API_KEY=YOUR_API_KEY WIRO_API_SECRET=YOUR_API_SECRET AGENT_GUID=f8e7d6c5-b4a3-2190-fedc-ba0987654321 node server.mjs
+```
+
+Leave `WIRO_API_SECRET` out for a project that uses API key only authentication.
+
+`server.mjs`:
+
+```javascript
+// server.mjs: your backend. It keeps the API key and hands the page only screen tickets.
+// Run: WIRO_API_KEY=... WIRO_API_SECRET=... AGENT_GUID=... node server.mjs
+// then open http://localhost:3000 (Node.js 18 or later, no packages to install).
+import { createServer } from "node:http";
+import { createHmac } from "node:crypto";
+import { readFile } from "node:fs/promises";
+
+const WIRO = "https://api.wiro.ai/v1";
+const { WIRO_API_KEY, WIRO_API_SECRET = "", AGENT_GUID, PORT = "3000" } = process.env;
+
+// Your own sign-in and rules go here. Wiro gives your key a ticket whichever of
+// your users it is for, so this is where you decide who may watch the agent and
+// who may take control of it.
+function currentUser(req) {
+  return { id: "demo-user" };
+}
+function mayWatch(user, agentGuid) {
+  return agentGuid === AGENT_GUID;
+}
+function mayControl(user, agentGuid) {
+  return mayWatch(user, agentGuid);
+}
+
+async function wiro(path, body) {
+  const headers = { "Content-Type": "application/json", "x-api-key": WIRO_API_KEY };
+  if (WIRO_API_SECRET) {
+    // Signature-based projects: HMAC-SHA256 of secret + nonce, keyed with the API key.
+    const nonce = String(Date.now());
+    headers["x-nonce"] = nonce;
+    headers["x-signature"] = createHmac("sha256", WIRO_API_KEY).update(WIRO_API_SECRET + nonce).digest("hex");
+  }
+  const res = await fetch(WIRO + path, { method: "POST", headers, body: JSON.stringify(body) });
+  return res.json();
+}
+
+function send(res, status, data) {
+  res.writeHead(status, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+  res.end(JSON.stringify(data));
+}
+
+const refused = (message) => ({ result: false, errors: [{ code: 0, message }] });
+
+createServer(async (req, res) => {
+  try {
+    if (req.method === "GET" && (req.url === "/" || req.url === "/screen.html")) {
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      return res.end(await readFile(new URL("./screen.html", import.meta.url)));
+    }
+    if (req.method !== "POST") return send(res, 404, refused("Not found."));
+    let raw = "";
+    for await (const chunk of req) raw += chunk;
+    const body = raw ? JSON.parse(raw) : {};
+    const user = currentUser(req);
+    const agent = AGENT_GUID;
+    if (!mayWatch(user, agent)) return send(res, 403, refused("You can't view this screen."));
+
+    if (req.url === "/api/screen/info") {
+      const info = await wiro("/UserAgent/Realtime/ScreenInfo", { useragentguid: agent });
+      return send(res, 200, {
+        available: info.available === true,
+        canControl: info.canControl === true && mayControl(user, agent),
+        reason: info.reason ?? null,
+      });
+    }
+
+    if (req.url === "/api/screen/start") {
+      const control = body.control === true;
+      if (control && !mayControl(user, agent)) return send(res, 403, refused("You can't take control of this screen."));
+      const t = await wiro("/UserAgent/Realtime/ScreenStart", { useragentguid: agent, control });
+      if (t.result !== true) {
+        return send(res, 200, { result: false, errors: (t.errors || []).map((e) => ({ code: e.code, message: e.message })) });
+      }
+      // Your own record: Wiro's activity log names your key's owner, never this user.
+      console.log(new Date().toISOString(), control ? "control" : "view", "ticket for", user.id);
+      return send(res, 200, {
+        result: true,
+        wsUrl: t.wsUrl,
+        screenToken: t.screenToken,
+        control: t.control,
+        canControl: t.canControl === true && mayControl(user, agent),
+        maxSeconds: t.maxSeconds,
+        idleSeconds: t.idleSeconds,
+      });
+    }
+    send(res, 404, refused("Not found."));
+  } catch (e) {
+    send(res, 500, refused("The screen could not be started. Try again."));
+  }
+}).listen(Number(PORT), () => console.log("Open http://localhost:" + PORT));
+```
+
+`screen.html`, in the same folder:
+
+```html
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent screen</title>
+  <style>
+    body { font: 15px/1.5 system-ui, sans-serif; margin: 24px; }
+    #bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+    #screen { width: 100%; max-width: 960px; aspect-ratio: 16 / 9; background: #1d1d1f; overflow: hidden; }
+    #screen.control { outline: 3px solid #f5a524; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <div id="bar">
+    <button id="open" disabled>Screen</button>
+    <button id="take" hidden>Take Control</button>
+    <button id="back" hidden>Hand Back</button>
+    <button id="close" hidden>Close</button>
+    <span id="status"></span>
+  </div>
+  <div id="screen"></div>
+  <p id="notice" role="status"></p>
+  <p id="idle"></p>
+
+  <script type="module">
+    // noVNC 1.7.0 exactly: a control session accepts only what this version sends.
+    import RFB from "https://cdn.jsdelivr.net/npm/@novnc/novnc@1.7.0/core/rfb.js";
+
+    const $ = (id) => document.getElementById(id);
+    const screenEl = $("screen");
+
+    // Your backend (server.mjs). The page never sees the API key.
+    async function api(path, body = {}) {
+      try {
+        const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        return await res.json();
+      } catch {
+        return { result: false, errors: [{ code: 0, message: "Check your connection, then try again." }] };
+      }
+    }
+
+    // What noVNC reads instead of the socket: binary frames only. One class with no
+    // parent, because noVNC looks for send, close, binaryType, onerror, onmessage,
+    // onopen, protocol and readyState on the object and on its own class.
+    class ScreenChannel {
+      binaryType = "arraybuffer";
+      onopen = null;
+      onerror = null;
+      onclose = null;
+      onInput = null; // called for every key or pointer event that goes up
+      #ws;
+      #receive = null;
+      #held = [];
+      #ended = false;
+      #queued = false;
+
+      constructor(ws) {
+        this.#ws = ws;
+      }
+      get readyState() {
+        return this.#ended ? WebSocket.CLOSED : this.#ws.readyState;
+      }
+      get protocol() {
+        return this.#ws.protocol;
+      }
+      get onmessage() {
+        return this.#receive;
+      }
+      set onmessage(handler) {
+        this.#receive = handler;
+        if (handler && this.#held.length) this.#flush();
+      }
+      send(data) {
+        if (this.#ended) return;
+        this.#ws.send(data);
+        const bytes = ArrayBuffer.isView(data) ? new Uint8Array(data.buffer, data.byteOffset, data.byteLength) : new Uint8Array(data);
+        // RFB KeyEvent (4), PointerEvent (5) and QEMU extended KeyEvent (255): what counts as input.
+        if (bytes.length && (bytes[0] === 4 || bytes[0] === 5 || bytes[0] === 255)) this.onInput?.();
+      }
+      close() {
+        if (!this.#ended) this.#ws.close(1000);
+      }
+      push(buffer) {
+        if (this.#ended) return;
+        if (this.#receive && !this.#held.length) return this.#receive({ data: buffer });
+        this.#held.push(buffer);
+        if (this.#receive) this.#flush();
+      }
+      closed(event) {
+        if (this.#ended) return;
+        this.#ended = true;
+        this.#held = [];
+        this.onclose?.(event);
+      }
+      // A microtask: noVNC sets onmessage inside its constructor, before it reads readyState.
+      #flush() {
+        if (this.#queued) return;
+        this.#queued = true;
+        queueMicrotask(() => {
+          this.#queued = false;
+          while (!this.#ended && this.#receive && this.#held.length) this.#receive({ data: this.#held.shift() });
+        });
+      }
+    }
+
+    // One session, a view or control, on one ticket from ScreenStart.
+    function openScreen(ticket, { onReady, onLive, onInput, onEnd }) {
+      const ws = new WebSocket(ticket.wsUrl); // as given: the ticket never goes in the URL
+      ws.binaryType = "arraybuffer";
+      const channel = new ScreenChannel(ws);
+      channel.onInput = onInput;
+      let rfb = null;
+      let rfbDone = false;
+      let ready = null;
+      let live = false;
+      let done = false;
+      let end = { reason: "", message: "" };
+      const watchdog = setTimeout(() => { if (!live) finish(0); }, 20000);
+
+      ws.onopen = () => ws.send(JSON.stringify({ type: "screen_start", screenToken: ticket.screenToken }));
+      ws.onmessage = (event) => {
+        if (typeof event.data !== "string") return channel.push(event.data);
+        let msg;
+        try { msg = JSON.parse(event.data); } catch { return; }
+        if (msg.type === "screen_ready" && !ready) {
+          ready = msg;
+          const control = msg.control === true;
+          onReady?.(msg);
+          rfb = new RFB(screenEl, channel, { shared: true }); // security type None: no credentials
+          rfb.viewOnly = !control;
+          rfb.focusOnClick = control;
+          rfb.resizeSession = false; // required: the agent's screen keeps its size
+          rfb.scaleViewport = true;
+          rfb.clipViewport = false;
+          rfb.qualityLevel = 6;
+          rfb.compressionLevel = 2;
+          rfb.addEventListener("connect", () => {
+            live = true;
+            clearTimeout(watchdog);
+            if (control) rfb.focus({ preventScroll: true });
+            onLive?.(msg);
+          });
+          rfb.addEventListener("disconnect", () => { rfbDone = true; finish(0); });
+          rfb.addEventListener("credentialsrequired", () => finish(0));
+          rfb.addEventListener("securityfailure", () => finish(0));
+        } else if (msg.type === "screen_end") {
+          end = { reason: String(msg.reason || "error"), message: String(msg.message || "") };
+        }
+      };
+      ws.onclose = (event) => finish(event.code);
+
+      // code: the socket's close code, 0 when this page gave up, -1 for stop().
+      function finish(code) {
+        if (done) return;
+        done = true;
+        clearTimeout(watchdog);
+        ws.onopen = ws.onmessage = ws.onclose = null;
+        if (rfb && !rfbDone) {
+          rfbDone = true;
+          try { rfb.disconnect(); } catch {}
+        }
+        channel.closed({ code: code > 0 ? code : 1000, reason: "", wasClean: true });
+        if (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN) ws.close(1000);
+        if (code !== -1) onEnd?.({ code, ...end, control: ready?.control === true, ready: !!ready });
+      }
+      return { stop: () => finish(-1) };
+    }
+
+    // The page: one session at a time.
+    let current = null; // { control, live, liveAt, handle }
+    let canControl = false;
+    let retried = false;
+    let idleSeconds = 120;
+    let lastInputAt = 0;
+    let idleTimer = null;
+    let infoTimer = null;
+
+    function render() {
+      const open = current !== null;
+      $("open").hidden = open;
+      $("close").hidden = !open;
+      $("take").hidden = !(open && !current.control && current.live && canControl);
+      $("back").hidden = !(open && current.control);
+      screenEl.classList.toggle("control", open && current.control);
+      $("status").textContent = !open ? "" : !current.live ? "Connecting" : current.control ? "You have control" : "View only";
+    }
+
+    function say(text, reconnect = false) {
+      $("notice").textContent = text || "";
+      $("open").textContent = reconnect ? "Reconnect" : "Screen";
+    }
+
+    // No Screen for now: the button stays off, and ScreenInfo is asked again in a
+    // minute, unless the answer can't change by itself.
+    function noScreen(text, askAgain = true) {
+      $("open").disabled = true;
+      say(text);
+      clearTimeout(infoTimer);
+      if (askAgain) infoTimer = setTimeout(checkInfo, 60000);
+    }
+
+    function connect(ticket) {
+      const session = { control: ticket.control === true, live: false, liveAt: 0, handle: null };
+      current = session;
+      session.handle = openScreen(ticket, {
+        onReady: (ready) => {
+          if (session.control) {
+            idleSeconds = ready.idleSeconds || ticket.idleSeconds || 120;
+            lastInputAt = Date.now(); // the idle count starts here
+          }
+        },
+        onLive: () => {
+          if (current !== session) return;
+          session.live = true;
+          session.liveAt = Date.now();
+          if (session.control) startIdleWarning();
+          render();
+        },
+        onInput: () => { lastInputAt = Date.now(); },
+        onEnd: (end) => { if (current === session) ended(session, end); },
+      });
+      render();
+    }
+
+    async function openView(note = "") {
+      const t = await api("/api/screen/start", { control: false });
+      if (t.result !== true) {
+        current = null;
+        render();
+        const error = t.errors?.[0] || {};
+        // The screen setting is off (94) or the agent isn't running (95): no Screen for now.
+        if (error.code === 94 || error.code === 95) return noScreen(error.message);
+        // Your key can't open this agent's Screen (96, 97).
+        if (error.code === 96 || error.code === 97) return noScreen(error.message, false);
+        return say(error.message || "The screen couldn't open. Try again in a moment.", true);
+      }
+      canControl = t.canControl === true;
+      say(note);
+      connect(t);
+    }
+
+    async function takeControl() {
+      const view = current;
+      if (!view || view.control || !view.live || !canControl) return;
+      if (!confirm("Take control of the agent's computer?\n\nControl lasts up to 15 minutes. The agent's browser and desktop tools pause until you hand back.")) return;
+      $("take").disabled = true;
+      const t = await api("/api/screen/start", { control: true }); // the view stays open meanwhile
+      $("take").disabled = false;
+      if (current !== view) return;
+      if (t.result !== true) return say(t.errors?.[0]?.message || "You can't take control right now.");
+      retried = false;
+      say("");
+      view.handle.stop(); // close the view only once control is granted
+      connect(t);
+    }
+
+    async function handBack() {
+      const control = current;
+      if (!control || !control.control) return;
+      current = null;
+      stopIdleWarning();
+      control.handle.stop(); // first, so the agent's tools work again at once
+      retried = false;
+      await openView();
+    }
+
+    function closeScreen() {
+      const session = current;
+      current = null;
+      stopIdleWarning();
+      session?.handle.stop();
+      say("");
+      render();
+    }
+
+    // How a session ended: read screen_end's reason first, then the close code.
+    const CONTROL_ENDS = { control_taken: 4000, idle: 4009, bad_input: 4010, input_rate: 4011, access_lost: 4012, capturing: 4013 };
+
+    async function ended(session, { code, reason, message, control, ready }) {
+      current = null;
+      stopIdleWarning();
+      render();
+      if (session.liveAt && Date.now() - session.liveAt >= 30000) retried = false;
+      if (reason === "agent_stopped" || code === 4004) return noScreen("The agent stopped. Its screen comes back once it runs again.");
+      if (reason === "screen_off" || code === 4003) return noScreen("The screen was turned off for this agent.");
+      const controlEnd = Object.entries(CONTROL_ENDS).find(([r, c]) => reason === r || code === c);
+      if (controlEnd && control) {
+        if (controlEnd[0] === "access_lost") canControl = false; // until a view's ScreenStart says otherwise
+        const note = controlEnd[0] === "control_taken" ? "Control was taken somewhere else. You're watching again." : message;
+        return openView(note); // after control ends, always a view
+      }
+      if (!reason && (code === 1001 || code === 1006) && !retried) {
+        retried = true; // one retry with a fresh ticket, in the same mode
+        if (!control) return openView();
+        const t = await api("/api/screen/start", { control: true });
+        return t.result === true ? connect(t) : openView(t.errors?.[0]?.message || "");
+      }
+      if (reason === "time_limit" || code === 4008) return say("This session reached its time limit.", true);
+      if (code === 4001) return say("The connection expired.", true);
+      if (code === 4029) return say("Too many people are watching. Try again in a moment.", true);
+      if (code === 4502) return say(ready ? "The agent's desktop closed the connection." : "This agent's desktop isn't available right now.", true);
+      say(message || "The screen stopped.", true);
+    }
+
+    // Control hands back after idleSeconds without a key or pointer event: count down first.
+    function startIdleWarning() {
+      stopIdleWarning();
+      idleTimer = setInterval(() => {
+        const left = idleSeconds - (Date.now() - lastInputAt) / 1000;
+        const warn = left <= Math.min(30, idleSeconds / 2) && left > -5;
+        const s = Math.max(0, Math.ceil(left));
+        const time = Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+        $("idle").textContent = warn ? "Control hands back in " + time + " without input. Move the mouse, tap or type to keep it." : "";
+      }, 1000);
+    }
+    function stopIdleWarning() {
+      clearInterval(idleTimer);
+      idleTimer = null;
+      $("idle").textContent = "";
+    }
+
+    // In control noVNC takes every key, Tab and Esc included. Esc twice quickly
+    // moves focus to Hand Back, so keyboard users can leave the screen. The first
+    // Esc still reaches the agent.
+    let lastEsc = 0;
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape" || !current?.control || !screenEl.contains(document.activeElement)) return;
+      if (event.timeStamp - lastEsc < 600) {
+        event.preventDefault();
+        event.stopPropagation();
+        lastEsc = 0;
+        $("back").focus();
+      } else {
+        lastEsc = event.timeStamp;
+      }
+    }, true);
+
+    $("open").onclick = () => { retried = false; say(""); openView(); };
+    $("take").onclick = takeControl;
+    $("back").onclick = handBack;
+    $("close").onclick = closeScreen;
+
+    // Whether there is a Screen to show: asked first, and again after noScreen.
+    async function checkInfo() {
+      clearTimeout(infoTimer);
+      const info = await api("/api/screen/info");
+      if (current) return; // a screen opened meanwhile
+      canControl = info.canControl === true;
+      if (info.available === true) {
+        $("open").disabled = false;
+        say("");
+      } else {
+        const text = info.reason === "not_running" ? "The agent isn't running." : "The screen isn't available for this agent.";
+        noScreen(text, info.reason !== "not_allowed" && info.reason !== "private_team");
+      }
+      render();
+    }
+    checkInfo();
+  </script>
+</body>
+</html>
+```
+
+### Screen limits for your key
+
+Your key owner's API keys count as one person, apart from that person's own sessions in the Wiro panel, so these limits cover all of your users together:
+
+| Limit | Value |
+|-------|-------|
+| Screens open on one agent at once, watching and control together, from your app and the Wiro panel | 4 |
+| One watching session | 30 minutes (`maxSeconds` 1800) |
+| One Take Control session | 15 minutes (`maxSeconds` 900) |
+| Control without a key or pointer event | 2 minutes (`idleSeconds` 120) |
+| Key and pointer events in control | 500 a second, beyond a short burst |
+| Take Control starts on one agent, by everyone | 6 in any hour |
+| Screens started on one agent with the API keys of your key's owner | 30 in 10 minutes |
+
+- A control start with your key while a control session opened with your key owner's API keys is still open on the agent, or within 2 minutes after one's connection dropped, is a reconnect and doesn't count toward the 6 an hour. That covers all of your users: one of them taking control within 2 minutes after another one's control connection dropped is a reconnect too. The owner's own control sessions in the Wiro panel have a window of their own and don't make it one. After Hand Back, the idle end, the time limit or any other end, the next start counts.
+- Every ticket counts toward the 30 in 10 minutes, and so does a start refused for too many viewers, a capture, a computer that doesn't answer or the hourly limit. Past that, `ScreenStart` answers HTTP 429 with `Too many screen sessions started. Try again in a few minutes.` until the 10 minutes are over.
+
+### Screen rows in the activity log
+
+Every screen your key opens adds the [Screen rows](/docs/agent-overview#screen-in-the-activity-log) to the agent's activity log, named after your key's owner, the same rows the Wiro panel writes. Read them with [`POST /UserAgent/Logs`](/docs/agent-logs#logs-tail) and your API key:
+
+```json
+{
+  "ts": "2026-11-20T18:03:05.000Z",
+  "kind": "AGENT_SCREEN_CONTROLLED",
+  "title": "Took control of the agent's screen (API key \"Acme App\")",
+  "ok": true,
+  "summary": { "project": "Acme App" },
+  "userUuid": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
+  "user": {
+    "uuid": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
+    "firstname": "Ada",
+    "lastname": "Lovelace",
+    "email": "ada@example.com",
+    "username": "ada",
+    "avatar": "",
+    "avatarinitials": "AL"
+  }
+}
+```
+
+| `kind` | When | With your key |
+|--------|------|---------------|
+| `AGENT_SCREEN_VIEWED` | `ScreenStart` issued a view ticket. | At most one row an hour on each agent for each project's key, for all of your users together, apart from the rows the owner's own sessions in the Wiro panel write. The title ends with `(API key "<project name>")` and `summary` holds `{ "project": "<project name>" }`, or the title ends with `(via API key)` for a personal project's key on a team agent. |
+| `AGENT_SCREEN_CONTROLLED` | `ScreenStart` issued a Take Control ticket. | At most one row every 10 minutes on each agent for each project's key, with the same title ending and `summary`. |
+| `AGENT_SCREEN_CONTROL_ENDED` | A control session that started has ended. | One row for every session, with `summary: { seconds, reason }`, named after your key's owner; the title ends with `(via API key)`. |
+
+The rows never say which of your users watched or took control. Keep that in your own records, for example a line for every ticket your backend hands out, as `server.mjs` does.
+
 ## Security Rules
 
 - **Keys never go into chat messages.** Collect keys, app keys and tokens in your own forms and send them with `SetupCardApply` `values` or `CredentialUpsert`. The agent never sees them. While setup from chat is on for a message, Wiro takes clear keys out of it before it is stored or reaches the agent: each one reads `[key removed]` in the stored text and in the text the agent gets, and Send answers `contentmasked: true` with that text in `content`. A key pasted as the reply while a `key` connect card is the only `connect` card waiting can be saved to its connector, when that connector is on the agent or a pending `add` card on the same reply brings it, and is then stored as `[key saved to <Connector title>]`. This runs only while setup from chat is on for the message, so treat it as a safety net, never as a way to send keys. See [Keys in chat](/docs/agent-messaging#keys-in-chat).
@@ -20102,12 +21095,14 @@ The full list is in [Wiro's answers](/docs/agent-messaging#setup-reply-lines).
 - **Which service account a key file is.** A saved Google service account file (Google Drive, Google Play and Google Calendar's `serviceaccountjson`, and each Firebase account's) reads as the mask too. So that you can show which account it is, the address people share a Drive folder, the Play Console or a calendar with, the agent's owner and team admins get `_service_account_email` in that connector's group of `credentials`, in `UserAgent/Detail` and in the `Deploy` and `Update` answers: `"_service_account_email": { "serviceaccountjson": "agent@acme-project.iam.gserviceaccount.com" }`, or for Firebase `"_service_account_email": { "accounts": [{ "serviceaccountjson": "push@acme-project.iam.gserviceaccount.com" }] }`, one item per account in the list's order. A value is `""` when nothing is saved or the file doesn't read as a service account key. Only the account's address leaves the file. Leave the key out of what you send back: field names that start with `_` are refused.
 - **Approvals act with your key's rights.** Show Apply only to the people allowed to change the agent, hold back everyone else's typed approvals (see [Typed replies](#typed-replies)), check that a `messageguid` belongs to the session of the person who clicked, and use `chatsetup: "off"` for agents whose users must not change them.
 - **Your key's owner stays in your backend.** Message rows carry your key owner's `uuid` and `user` (name, email, avatar), and cards its `uuid`, whoever of your users wrote: show your own names instead.
-- **Your API key stays on your server.** Your app calls your backend, and your backend calls Wiro. A browser holds at most the `agenttoken` and `sessiontoken` of its own person's chats.
+- **Your API key stays on your server.** Your app calls your backend, and your backend calls Wiro. A browser holds at most the `agenttoken` and `sessiontoken` of its own person's chats, and the one-time `screenToken` of a screen you chose to show that person.
+- **The Screen shows the whole agent.** An agent's Screen shows the work of all of its chats, and Take Control reaches every site its browser is signed in to. Ask for a ticket only for the users you allow to see that agent, and for `control: true` only for the users you allow to use it. Turn the Screen off with `screen: "off"` on agents whose users must not see each other's work (see [Decide who sees it](#decide-who-sees-it)).
+- **A screen ticket is for one socket.** Each `screenToken` works once, within 60 seconds: hand it to one page, keep it out of URLs and logs, and get a new one for every socket.
 - **Sign-ins come back to your page.** The `redirecturl` receives only status parameters and the accounts to pick, never a token or a secret. A callback that can't be matched to a sign-in ends on the API's own neutral page instead (see [Return codes](#return-codes-on-your-redirect-url)).
 
 ## Worked Examples
 
-Each example starts with a person's message in your chat and ends with the change applied. Each one starts from the same agent as it was before any of them: Chat Markdown Reporting is on, and none of the examples' connectors are. The ids are the same throughout: the agent `f8e7d6c5-b4a3-2190-fedc-ba0987654321`, and `5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f`, your key owner's account, on every message and card. The agent's own words vary from turn to turn.
+The first four examples start with a person's message in your chat and end with the change applied, and the fifth shows the agent's Screen with Take Control. Each one starts from the same agent as it was before any of them: Chat Markdown Reporting is on, and none of the examples' connectors are. The ids are the same throughout: the agent `f8e7d6c5-b4a3-2190-fedc-ba0987654321`, and `5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f`, your key owner's account, on every message and card. The agent's own words vary from turn to turn.
 
 ### Google Analytics 4 with your own app keys
 
@@ -20486,9 +21481,64 @@ Message/Send  "<the Serper API key>"
 
 A second `yes` instead of the key applies the `add` card alone and answers `Next: paste your Serper Web Search key as your reply. Send it now and it loads with this same restart.`, with the `connect` card in `setupresult.next`. Even here, a form is safer than the chat: send the key from it with `SetupCardApply` `values`.
 
+### The Screen with Take Control
+
+The agent is a personal agent that your key's owner deployed with a personal project's API key, named `Acme App`, and it has never been in a team, so Take Control applies. Your own rules let the person in this example watch it and take control.
+
+**1. Your app asks whether there is a Screen.** Your backend sends `ScreenInfo` `{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321" }` and gets `{ "result": true, "errors": [], "available": true, "canControl": true, "reason": null }`. The page shows a **Screen** button.
+
+**2. The person opens it.** Your backend sends `ScreenStart` `{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321" }`, notes the ticket against the person in your own records, and gives the page `{ "wsUrl": "wss://socket.wiro.ai/v1/AgentRealtime/Screen", "screenToken": "<one-time screen ticket>", "control": false, "canControl": true, "maxSeconds": 1800 }`.
+
+**3. The page connects.**
+
+```text
+page -> {"type":"screen_start","screenToken":"<one-time screen ticket>"}
+page <- {"type":"screen_ready","control":false,"maxSeconds":1800}
+page <> binary RFB 3.8 frames: noVNC draws the agent's browser, view only
+```
+
+**4. The person takes control.** They press **Take Control** and confirm. Your backend sends `ScreenStart` `{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "control": true }` and gets a control ticket with `"maxSeconds": 900` and `"idleSeconds": 120`. The page closes the view with `1000`, opens a new socket with the control ticket and gets `{"type":"screen_ready","control":true,"maxSeconds":900,"idleSeconds":120}`. noVNC now sends their clicks and keys, and they sign in to their store's admin site in the agent's browser. If the agent reaches for its browser in any chat meanwhile, the call is refused, and the agent says it will continue once control is handed back.
+
+**5. The person looks away.** After 90 seconds without input the page shows "Control hands back in 0:30 without input. Move the mouse, tap or type to keep it." They move the mouse, and the countdown goes away.
+
+**6. They hand back.** **Hand Back** closes the control socket with `1000`. The agent's browser and desktop tools work again at once, and the sign-in stays in its browser. Your backend gets a view ticket, and the page opens the view again.
+
+**7. The activity log.** The day's `events` from `POST /UserAgent/Logs`, read with your API key, hold these three rows, newest first. The view after Hand Back added no row, since one came earlier in the same hour:
+
+```json
+[
+  {
+    "ts": "2026-11-20T18:06:47.000Z",
+    "kind": "AGENT_SCREEN_CONTROL_ENDED",
+    "title": "Control of the agent's screen ended after 3 minutes 40 seconds: handed back (via API key)",
+    "ok": true,
+    "summary": { "seconds": 220, "reason": "hand_back" },
+    "userUuid": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
+  },
+  {
+    "ts": "2026-11-20T18:03:05.000Z",
+    "kind": "AGENT_SCREEN_CONTROLLED",
+    "title": "Took control of the agent's screen (API key \"Acme App\")",
+    "ok": true,
+    "summary": { "project": "Acme App" },
+    "userUuid": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
+  },
+  {
+    "ts": "2026-11-20T18:02:11.000Z",
+    "kind": "AGENT_SCREEN_VIEWED",
+    "title": "Watched the agent's screen (API key \"Acme App\")",
+    "ok": true,
+    "summary": { "project": "Acme App" },
+    "userUuid": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
+  }
+]
+```
+
+Each row also carries `user`, your key owner's account, left out here. The rows name your key's owner, and your own record says which of your users it was.
+
 ## Integration Checklist
 
-- Your backend holds the project API key, and your app talks only to your backend. A browser holds at most the `agenttoken` and `sessiontoken` of its own person's chats.
+- Your backend holds the project API key, and your app talks only to your backend. A browser holds at most the `agenttoken` and `sessiontoken` of its own person's chats, and a `screenToken` for each screen you chose to show that person.
 - One agent per customer, deployed with `useprepaid: true`, and `chatsetup` set: `"all"` for setup cards in your chat, `"off"` for agents whose users must not change them.
 - Each conversation has its own `sessionkey`, and you check that every `messageguid` a person acts on is in their session.
 - Message rows and cards name your key's owner: your UI shows your own names for the sender.
@@ -20506,6 +21556,10 @@ A second `yes` instead of the key applies the `add` card alone and answers `Next
 - Typed approvals and pasted keys from people who must not change the agent never reach Wiro.
 - Keys never go into chat messages; secrets show as "Saved", and the mask sent back is left alone.
 - Your `redirecturl` page handles `<prefix>_connected=true` and `<prefix>_error=<code>`, inside a popup or as a full page, and a popup that never reports back is checked with `OAuthStatus`.
+- Your product decides who may watch each agent's Screen and who may take control, and agents whose users must not see each other's work have `screen` set to `"off"`.
+- The Screen: `ScreenInfo` before the button, a fresh `ScreenStart` from your backend for every socket, `screen_start` as the socket's first frame, and noVNC 1.7.0 created after `screen_ready` and fed only the binary frames, with `resizeSession` off, no clipboard and a way out of the keyboard in control.
+- Take Control opens a new socket while the view stays until it is granted; Hand Back closes it with `1000` and opens a view; a countdown runs before `idleSeconds`; every end of control opens a view, `screen_off` and `agent_stopped` close the screen, and a dropped connection is retried once.
+- Your own records say which of your users got each screen ticket.
 
 ## Related
 
@@ -20514,6 +21568,7 @@ A second `yes` instead of the key applies the `add` card alone and answers `Next
 - [Agent Webhooks](/docs/agent-webhooks): the callback payload.
 - [Agent Credentials & OAuth](/docs/agent-credentials): every credential and OAuth endpoint in detail.
 - [Agent Overview](/docs/agent-overview): Deploy, Detail, UpdateSettings and restarts.
+- [Screen and Take Control](/docs/agent-overview#screen-and-take-control): the agent's Screen in the Wiro panel, with its rules, limits and log rows, and the [`ScreenInfo`](/docs/agent-overview#post-useragentrealtimescreeninfo) and [`ScreenStart`](/docs/agent-overview#post-useragentrealtimescreenstart) reference.
 - The integration pages, such as [Google Analytics 4](/docs/integration-ga4-skills), [Facebook Page](/docs/integration-facebook-skills), [Twitter / X](/docs/integration-twitter-skills) and [Serper Web Search](/docs/integration-serper-search-skills): each connector's own setup.
 
 ---
@@ -22657,7 +23712,7 @@ Every product built on Wiro agents follows one of two patterns. Choosing the rig
 
 Most agents interact with external services: posting to social media, managing ad campaigns, sending emails. These require OAuth tokens or API keys that belong to the end user. Deploy a **separate agent instance** for each of your customers.
 
-**Why:** Each customer connects their own accounts. Credentials are bound to the instance, isolated from other customers.
+**Why:** Each customer connects their own accounts. Credentials are bound to the instance, isolated from other customers. Each instance also has its own computer and browser, so the [Screen](/docs/agent-overview#screen-and-take-control) of a customer's agent shows only that customer's work.
 
 **How:** Call `POST /UserAgent/Deploy` once per customer, then use the [OAuth flow](/docs/agent-credentials) to connect their accounts.
 
@@ -22683,7 +23738,7 @@ For conversational agents that don't need per-user credentials. One agent instan
 
 **Why:** No third-party accounts to connect. The agent answers questions using its built-in knowledge or pre-configured data sources.
 
-**How:** Deploy one instance via `POST /UserAgent/Deploy`, then send messages with different `sessionkey` values per user. Deploy it with `"chatsetup": "off"`: your users' messages go out with your API key, which carries your rights, so with setup from chat on, a yes from one of them could change the agent's setup. See [Setup From Chat](/docs/agent-messaging#setup-from-chat).
+**How:** Deploy one instance via `POST /UserAgent/Deploy`, then send messages with different `sessionkey` values per user. Deploy it with `"chatsetup": "off"`: your users' messages go out with your API key, which carries your rights, so with setup from chat on, a yes from one of them could change the agent's setup. See [Setup From Chat](/docs/agent-messaging#setup-from-chat). If you show the agent's Screen in your app, show it only to people who may see every user's work, or turn it off with `screen: "off"`: the agent's one computer shows all of their chats, and Take Control reaches every site its browser is signed in to (see [Screen in Your Own App](/docs/agent-overview#screen-in-your-own-app)).
 
 **About `sessionkey`:** This field is optional. If omitted, messages go into a shared `"default"` session. Reuse the same `sessionkey` to continue a conversation (the agent retrieves prior messages as context). Use a fresh UUID to start a new conversation. The common convention is one `sessionkey` per end-user (e.g. `"user-456"`), but you can also use it per-thread (e.g. `"ticket-2025-0817"`) for products that group conversations by topic. See the [Agent Messaging](/docs/agent-messaging) guide for how sessions work. The session key is a label, not a WebSocket channel: you follow a turn with its `agenttoken` and a session with the `sessiontoken` from `Message/History` (see [Agent WebSocket](/docs/agent-websocket)).
 
@@ -22734,6 +23789,8 @@ The deploy flow has three stages: Deploy, Setup (only when the agent has connect
 See [Agent Overview](/docs/agent-overview) for the full lifecycle state table (`status: 0, 1, 3, 4, 5, 6`).
 
 To let the people who manage an agent set it up from your chat, with setup cards, connect steps and restarts shown in your own UI, keep `chatsetup` at `"all"` and follow [Agent Chat Integration](/docs/agent-chat-integration).
+
+To show the agent's live Screen in your UI, with Take Control for the people you choose, see [Screen and Take Control in Your App](/docs/agent-chat-integration#screen-and-take-control-in-your-app).
 
 ```bash
 # Deploy — prepaid + tier are required for API users (credits debit from your wallet)
@@ -26548,7 +27605,7 @@ A single user can own multiple organizations, and each organization can contain 
 
 The organization creator is automatically the owner. When the owner creates a team, including the Default Team created with the organization, they are added to it as an admin member. Additional members are invited by email and join once they accept the invitation, signed in with the invited email address, within 72 hours.
 
-On a team agent whose Chat Mode is `"collaborative"`, the team's admins and the agent's owner can watch its [Screen](/docs/agent-overview#screen-and-take-control) in the Wiro panel; other members can't. Nobody can take control of a team agent's computer.
+On a team agent whose Chat Mode is `"collaborative"`, the team's admins and the agent's owner can watch its [Screen](/docs/agent-overview#screen-and-take-control) in the Wiro panel, and an app can show it through a team project's API key that one of them created; other members can't. Nobody can take control of a team agent's computer.
 
 ## Getting Started
 
@@ -26711,7 +27768,7 @@ The invitation can only be accepted by a Wiro account whose email address matche
 
 The organization owner is added as an admin of every team they create, including the Default Team. The owner is always an admin of their teams: nobody, the owner included, can change the owner's role to member, and nobody but the owner can remove the owner from a team. The owner role cannot be transferred.
 
-On a team agent whose Chat Mode is `"collaborative"`, admins and the agent's owner can also watch the agent's [Screen](/docs/agent-overview#screen-and-take-control) in the Wiro panel; other members can't. Nobody can take control of a team agent's computer.
+On a team agent whose Chat Mode is `"collaborative"`, admins and the agent's owner can also watch the agent's [Screen](/docs/agent-overview#screen-and-take-control) in the Wiro panel, or show it in an app through a team project's API key that one of them created; other members can't. Nobody can take control of a team agent's computer.
 
 ## **POST** /Team/Member/List
 
@@ -27124,8 +28181,11 @@ The following agent endpoints enforce context guards:
 - `UserAgent/SkillToggle`: toggle a single skill
 - `UserAgent/CredentialProjectBind`: connect the agent's Wiro project
 - `UserAgent/Realtime/WebStart`: start a web voice session
+- `UserAgent/Realtime/ScreenInfo`, `UserAgent/Realtime/ScreenStart`: open the agent's Screen
 
 `Message/Delete`, `SkillsApply` and `SkillToggle` enforce the context guard for team agents only; a personal agent's owner can call them from any workspace. `Realtime/WebStart` also checks team agents only: the member who deployed the agent can call it from any workspace while they are still an active member of the agent's team, so a website voice backend keeps working on a personal project key. Outside the team's context, a caller who has left the team gets the context mismatch error.
+
+`Realtime/ScreenInfo` and `Realtime/ScreenStart` hold an API key to its own workspace: a team project's key opens only that team's agents, and for a personal agent or another team's agent `ScreenStart` is refused with code `96`, `This API key belongs to another workspace than this agent. Use a key of the agent's own workspace.` (`ScreenInfo` answers `reason: "not_allowed"`). A personal project's key opens a team agent's Screen while its owner is still an active member of the team, as for `Realtime/WebStart`.
 
 `UserAgent/Deploy` creates the agent in your current workspace. With a team project API key the agent is deployed into that team, and the user who created the project must be a team admin. Otherwise the call fails with code `97`: "Only a team admin can perform this action on a team-owned agent."
 

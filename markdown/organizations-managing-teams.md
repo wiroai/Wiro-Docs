@@ -140,7 +140,7 @@ The invitation can only be accepted by a Wiro account whose email address matche
 
 The organization owner is added as an admin of every team they create, including the Default Team. The owner is always an admin of their teams: nobody, the owner included, can change the owner's role to member, and nobody but the owner can remove the owner from a team. The owner role cannot be transferred.
 
-On a team agent whose Chat Mode is `"collaborative"`, admins and the agent's owner can also watch the agent's [Screen](/docs/agent-overview#screen-and-take-control) in the Wiro panel; other members can't. Nobody can take control of a team agent's computer.
+On a team agent whose Chat Mode is `"collaborative"`, admins and the agent's owner can also watch the agent's [Screen](/docs/agent-overview#screen-and-take-control) in the Wiro panel, or show it in an app through a team project's API key that one of them created; other members can't. Nobody can take control of a team agent's computer.
 
 ## **POST** /Team/Member/List
 

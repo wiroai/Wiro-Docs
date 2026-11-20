@@ -100,7 +100,7 @@ Yes. Use the Agent Messaging API to send messages programmatically, receive stre
 
 ### Can I watch my agent work?
 
-Yes. In the Wiro panel, the people who manage an agent can open its Screen beside the chat and watch its computer live (on a team agent, while its Chat Mode is Collaborative). The owner of a personal agent that has never been in a team, or whose browser was reset after it last left one, can also take control and use the keyboard and mouse, for example to sign in to a site for the agent. See [Screen and Take Control](/docs/agent-overview#screen-and-take-control).
+Yes. In the Wiro panel, the people who manage an agent can open its Screen beside the chat and watch its computer live (on a team agent, while its Chat Mode is Collaborative). The owner of a personal agent that has never been in a team, or whose browser was reset after it last left one, can also take control and use the keyboard and mouse, for example to sign in to a site for the agent. Products built on the API can show the same Screen, and Take Control, in their own app and decide which of their users see it; the agent's `screen` setting turns it off for everyone. See [Screen and Take Control](/docs/agent-overview#screen-and-take-control) and [Screen and Take Control in Your App](/docs/agent-chat-integration#screen-and-take-control-in-your-app).
 
 ### How do I connect third-party services to an agent?
 

@@ -88,8 +88,11 @@ The following agent endpoints enforce context guards:
 - `UserAgent/SkillToggle`: toggle a single skill
 - `UserAgent/CredentialProjectBind`: connect the agent's Wiro project
 - `UserAgent/Realtime/WebStart`: start a web voice session
+- `UserAgent/Realtime/ScreenInfo`, `UserAgent/Realtime/ScreenStart`: open the agent's Screen
 
 `Message/Delete`, `SkillsApply` and `SkillToggle` enforce the context guard for team agents only; a personal agent's owner can call them from any workspace. `Realtime/WebStart` also checks team agents only: the member who deployed the agent can call it from any workspace while they are still an active member of the agent's team, so a website voice backend keeps working on a personal project key. Outside the team's context, a caller who has left the team gets the context mismatch error.
+
+`Realtime/ScreenInfo` and `Realtime/ScreenStart` hold an API key to its own workspace: a team project's key opens only that team's agents, and for a personal agent or another team's agent `ScreenStart` is refused with code `96`, `This API key belongs to another workspace than this agent. Use a key of the agent's own workspace.` (`ScreenInfo` answers `reason: "not_allowed"`). A personal project's key opens a team agent's Screen while its owner is still an active member of the team, as for `Realtime/WebStart`.
 
 `UserAgent/Deploy` creates the agent in your current workspace. With a team project API key the agent is deployed into that team, and the user who created the project must be a team admin. Otherwise the call fails with code `97`: "Only a team admin can perform this action on a team-owned agent."
 
