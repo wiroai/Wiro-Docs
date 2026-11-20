@@ -46,8 +46,9 @@ name: discover the exact ID and protocol capabilities first.
   `api.wiro.ai`; see [Run a Model](/docs/run-a-model). It is not a Direct LLM
   protocol.
 - `GET /v1/models` lists verified `llm-tool-call` models and needs no API key.
-  The list is not filtered by a team's Model Access settings; those apply when
-  a model runs. `GET /v1/chat/models` is an equivalent compatibility alias.
+  The list is not filtered by [Model Access](/docs/model-access) rules; they
+  apply when a model runs. `GET /v1/chat/models` is an equivalent compatibility
+  alias.
 - `GET /v1/models/{owner}/{model}` returns one model's exact gateway contract,
   also without a key.
 - `POST`, `GET`, and `DELETE /v1/files` compatibility routes use the
@@ -2127,7 +2128,7 @@ counts the filtered catalog. `links.next` is a relative next-page URL or
 `null`.
 
 The discovery list contains the models verified with the `llm-tool-call`
-category. It is not filtered by team Model Access: a model your team blocks is
+category. It is not filtered by Model Access rules: a model a rule blocks is
 still listed, but calling it fails. Other LLMs are not advertised by this
 endpoint; when you already know an exact `owner/model` ID, you can still submit
 it to a compatible Direct LLM route or use the normal Run API.
@@ -2169,7 +2170,7 @@ curl "https://llm.wiro.ai/v1/models/openai/gpt-5-6-sol"
 
 The detail route returns the same complete model object as the matching list
 entry. Query parameters are rejected on detail routes. An unavailable or
-non-gateway model returns `model_not_found`. Team Model Access is checked when
+non-gateway model returns `model_not_found`. Model Access rules are checked when
 the model runs, not on this route.
 
 ## Generic finite task completion
@@ -2950,13 +2951,26 @@ envelope.
 After a stream starts, inspect SSE events rather than the HTTP status: Chat emits an error `data:` frame followed by `[DONE]`, Responses emits
 `response.failed`, and Anthropic emits `error`.
 
-A model blocked by your team's Model Access settings is refused before it runs
-with HTTP `403` and the message `This model is not available for your team`. Chat and
-Responses return type `permission_error`, code `permission_denied` and param
-`model`; Anthropic routes return type `permission_error`. A streamed Responses
-request is different: its stream is already open, so it answers `200` and ends
-with `response.failed` carrying code `permission_denied` and the same message,
-like other errors that happen when the run is submitted.
+A model that a [Model Access](/docs/model-access) rule of the key's workspace
+blocks (Wiro error code `92`) is refused before it runs with HTTP `403` and
+Wiro's message, which names the rule. Chat and Responses return type
+`permission_error`, code `model_not_allowed` and param `model`; Anthropic routes
+return type `permission_error`. Nothing runs and nothing is charged, and sending
+the request again does not help: use a model the rules allow, or ask someone who
+manages the rule to change it. A streamed Responses request ends with
+`response.failed` carrying code `model_not_allowed` instead, like other errors
+that happen when the run is submitted.
+
+```json
+{
+  "error": {
+    "message": "The LLM gateway can only use selected models, and openai/gpt-6-2-astra is not one of them. Model Access rules decide which models can run.",
+    "type": "permission_error",
+    "code": "model_not_allowed",
+    "param": "model"
+  }
+}
+```
 
 A run refused by a [spend limit](/docs/spend-limits) of
 the key's workspace (Wiro error code `93`) gets HTTP `402` with Wiro's message,

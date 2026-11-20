@@ -175,7 +175,8 @@ A resume runs the remaining steps exactly as the run started them, with the same
 - Nothing is charged when a run starts. Each model step is a normal [model task](/docs/run-a-model), billed when it finishes successfully at that model's price. Failed steps are not charged, and utility steps are free.
 - To start, the wallet must hold $0.50 for each model step the run will execute (up to the breakpoint, when one is set). Otherwise the run is refused with code `97`, `Insufficient balance`. The [concurrency limit](/docs/concurrency-limits) also applies (code `96`).
 - The expected cost of a run is the sum of the model prices for the settings each step uses, from [Tool/Detail](/docs/models). A run's `totalcost` shows the list price of the steps finished so far, and once the run has ended `chargedcost` and `discountamount` show what the wallet paid. `chargedcost` is `null` while a step's charge is still settling.
-- The workspace's [spend limits](/docs/spend-limits) apply when a run starts or resumes: once a limit that covers the run is reached, it is refused with code `93`. In a team workspace, the team's model access rules apply too.
+- The workspace's [spend limits](/docs/spend-limits) apply when a run starts or resumes: once a limit that covers the run is reached, it is refused with code `93`.
+- The workspace's [Model Access](/docs/model-access) rules apply when a run starts or resumes: when a rule blocks the model of a step that will run, the run is refused with code `92` before anything runs, and the message names that model.
 
 ## **POST** /Workflow/List
 

@@ -19,41 +19,43 @@ Complete API documentation for the Wiro AI platform: run AI models through a uni
 13. [Realtime Speech to Text](#realtime-speech-to-text)
 14. [Files](#files)
 15. [Concurrency Limits](#concurrency-limits)
-16. [Error Reference](#error-reference)
-17. [Code Examples](#code-examples)
-18. [Pricing](#pricing)
-19. [FAQ](#faq)
-20. [MCP Server](#mcp-server)
-21. [Self-Hosted MCP](#self-hosted-mcp)
-22. [Node.js Library](#nodejs-library)
-23. [n8n Wiro Integration](#n8n-wiro-integration)
-24. [Workflows](#workflows)
-25. [Workflow Agent](#workflow-agent)
-26. [Studio](#studio)
-27. [Agent Overview](#agent-overview)
-28. [Agent Builder](#agent-builder)
-29. [Agent Messaging](#agent-messaging)
-30. [Agent WebSocket](#agent-websocket)
-31. [Agent Webhooks](#agent-webhooks)
-32. [Agent Credentials & OAuth](#agent-credentials--oauth)
-33. [Agent Chat Integration](#agent-chat-integration)
-34. [Agent Skills](#agent-skills)
-35. [Agent Transactions](#agent-transactions)
-36. [Agent Logs](#agent-logs)
-37. [Agent Use Cases](#agent-use-cases)
-38. [Meta Ads Integration](#meta-ads-integration)
-39. [TikTok Ads Integration](#tiktok-ads-integration)
-40. [Facebook Page Integration](#facebook-page-integration)
-41. [Instagram Integration](#instagram-integration)
-42. [Shopify Integration](#shopify-integration)
-43. [WooCommerce Integration](#woocommerce-integration)
-44. [Reddit Integration](#reddit-integration)
-45. [Google Business Profile Integration](#google-business-profile-integration)
-46. [Organizations & Teams](#organizations--teams)
-47. [Managing Teams](#managing-teams)
-48. [Team Billing & Spending](#team-billing--spending)
-49. [Team API Access](#team-api-access)
-50. [Telegram Integration](#telegram-integration)
+16. [Spend Limits](#spend-limits)
+17. [Model Access](#model-access)
+18. [Error Reference](#error-reference)
+19. [Code Examples](#code-examples)
+20. [Pricing](#pricing)
+21. [FAQ](#faq)
+22. [MCP Server](#mcp-server)
+23. [Self-Hosted MCP](#self-hosted-mcp)
+24. [Node.js Library](#nodejs-library)
+25. [n8n Wiro Integration](#n8n-wiro-integration)
+26. [Workflows](#workflows)
+27. [Workflow Agent](#workflow-agent)
+28. [Studio](#studio)
+29. [Agent Overview](#agent-overview)
+30. [Agent Builder](#agent-builder)
+31. [Agent Messaging](#agent-messaging)
+32. [Agent WebSocket](#agent-websocket)
+33. [Agent Webhooks](#agent-webhooks)
+34. [Agent Credentials & OAuth](#agent-credentials--oauth)
+35. [Agent Chat Integration](#agent-chat-integration)
+36. [Agent Skills](#agent-skills)
+37. [Agent Transactions](#agent-transactions)
+38. [Agent Logs](#agent-logs)
+39. [Agent Use Cases](#agent-use-cases)
+40. [Meta Ads Integration](#meta-ads-integration)
+41. [TikTok Ads Integration](#tiktok-ads-integration)
+42. [Facebook Page Integration](#facebook-page-integration)
+43. [Instagram Integration](#instagram-integration)
+44. [Shopify Integration](#shopify-integration)
+45. [WooCommerce Integration](#woocommerce-integration)
+46. [Reddit Integration](#reddit-integration)
+47. [Google Business Profile Integration](#google-business-profile-integration)
+48. [Organizations & Teams](#organizations--teams)
+49. [Managing Teams](#managing-teams)
+50. [Team Billing & Spending](#team-billing--spending)
+51. [Team API Access](#team-api-access)
+52. [Telegram Integration](#telegram-integration)
 
 ---
 
@@ -777,8 +779,9 @@ name: discover the exact ID and protocol capabilities first.
   `api.wiro.ai`; see [Run a Model](#run-a-model). It is not a Direct LLM
   protocol.
 - `GET /v1/models` lists verified `llm-tool-call` models and needs no API key.
-  The list is not filtered by a team's Model Access settings; those apply when
-  a model runs. `GET /v1/chat/models` is an equivalent compatibility alias.
+  The list is not filtered by [Model Access](/docs/model-access) rules; they
+  apply when a model runs. `GET /v1/chat/models` is an equivalent compatibility
+  alias.
 - `GET /v1/models/{owner}/{model}` returns one model's exact gateway contract,
   also without a key.
 - `POST`, `GET`, and `DELETE /v1/files` compatibility routes use the
@@ -2858,7 +2861,7 @@ counts the filtered catalog. `links.next` is a relative next-page URL or
 `null`.
 
 The discovery list contains the models verified with the `llm-tool-call`
-category. It is not filtered by team Model Access: a model your team blocks is
+category. It is not filtered by Model Access rules: a model a rule blocks is
 still listed, but calling it fails. Other LLMs are not advertised by this
 endpoint; when you already know an exact `owner/model` ID, you can still submit
 it to a compatible Direct LLM route or use the normal Run API.
@@ -2900,7 +2903,7 @@ curl "https://llm.wiro.ai/v1/models/openai/gpt-5-6-sol"
 
 The detail route returns the same complete model object as the matching list
 entry. Query parameters are rejected on detail routes. An unavailable or
-non-gateway model returns `model_not_found`. Team Model Access is checked when
+non-gateway model returns `model_not_found`. Model Access rules are checked when
 the model runs, not on this route.
 
 ## Generic finite task completion
@@ -3681,13 +3684,26 @@ envelope.
 After a stream starts, inspect SSE events rather than the HTTP status: Chat emits an error `data:` frame followed by `[DONE]`, Responses emits
 `response.failed`, and Anthropic emits `error`.
 
-A model blocked by your team's Model Access settings is refused before it runs
-with HTTP `403` and the message `This model is not available for your team`. Chat and
-Responses return type `permission_error`, code `permission_denied` and param
-`model`; Anthropic routes return type `permission_error`. A streamed Responses
-request is different: its stream is already open, so it answers `200` and ends
-with `response.failed` carrying code `permission_denied` and the same message,
-like other errors that happen when the run is submitted.
+A model that a [Model Access](/docs/model-access) rule of the key's workspace
+blocks (Wiro error code `92`) is refused before it runs with HTTP `403` and
+Wiro's message, which names the rule. Chat and Responses return type
+`permission_error`, code `model_not_allowed` and param `model`; Anthropic routes
+return type `permission_error`. Nothing runs and nothing is charged, and sending
+the request again does not help: use a model the rules allow, or ask someone who
+manages the rule to change it. A streamed Responses request ends with
+`response.failed` carrying code `model_not_allowed` instead, like other errors
+that happen when the run is submitted.
+
+```json
+{
+  "error": {
+    "message": "The LLM gateway can only use selected models, and openai/gpt-6-2-astra is not one of them. Model Access rules decide which models can run.",
+    "type": "permission_error",
+    "code": "model_not_allowed",
+    "param": "model"
+  }
+}
+```
 
 A run refused by a [spend limit](/docs/spend-limits) of
 the key's workspace (Wiro error code `93`) gets HTTP `402` with Wiro's message,
@@ -5734,6 +5750,452 @@ For other breakdowns, `/Project/UsageSummary` gives usage per project and `/Task
 
 ---
 
+# Model Access
+
+Choose which models a personal account or a team can run: allow or block single models and whole categories, for the whole wallet, one team member, one API key, a surface such as the LLM gateway, or one agent.
+
+## How Model Access Works
+
+A Model Access rule decides which models a wallet's work can run. Rules work the same way for a personal account's wallet and for a team's wallet. The rules of the workspace a call runs in apply: a team project's API key runs in its team, a personal project's key in your personal account, and the dashboard in the workspace you have selected.
+
+Manage rules on the [Model Access](https://wiro.ai/panel/controls/model-access) page of the dashboard, for your personal account or for the team workspace you have selected, or with the `/ModelAccess` endpoints below. A workspace without rules can run every model. Team allowlists and blocklists set before this system were moved into it as rules for the whole team.
+
+### What a Rule Covers
+
+Each rule covers one scope of the wallet's work, the same scopes as [spend limits](/docs/spend-limits). A scope and target can have one rule:
+
+| Scope | `target` | What it covers |
+|-------|----------|----------------|
+| `account` | None | Everything the wallet runs. In a team, every run in the team |
+| `member` | The member's `useruuid` from `/Team/Member/List` | One team member's runs in the team (team wallets only): their dashboard runs in the team workspace and every run made with the API key of a team project they created |
+| `project` | The project's `id` from `/Project/List` | One API key: the runs made with that project's key |
+| `surface` | `web`, `api`, `mcp`, `llm-gateway`, `extension` or `agent` | One way in (see Surfaces below) |
+| `agent` | The agent's `guid` (its `useragentguid`) | One deployed agent: the models it runs through Wiro and the chat models it answers with |
+
+### Surfaces
+
+| Surface | Covers |
+|---------|--------|
+| `web` | The Wiro dashboard, including Studio and the Workflow Agent used there |
+| `api` | Calls with an API key |
+| `mcp` | The [Wiro MCP server](/docs/wiro-mcp-server), hosted or the npm package |
+| `llm-gateway` | The OpenAI and Anthropic compatible [LLM gateway](/docs/completions-api) |
+| `extension` | The Wiro browser extensions |
+| `agent` | Your deployed agents' own runs |
+
+### Everything Else
+
+Every rule has an Everything Else setting, `access`. It decides the models the rule names neither one by one nor by category:
+
+- `allow` (the default): every model can run except the ones the rule blocks
+- `block`: only the models and categories the rule allows can run
+
+### Categories
+
+A rule can allow or block whole categories of models. Each category groups catalog categories, the values models carry in their `categories` field on [`/Tool/List` and `/Tool/Detail`](/docs/models). A category also covers the models added to it later.
+
+| `category` | Label | Catalog categories |
+|------------|-------|--------------------|
+| `image` | Image Generation | `text-to-image`, `image-to-image`, `image-editing`, `image-to-text` |
+| `video` | Video Generation | `text-to-video`, `image-to-video`, `video-to-video`, `speech-to-video`, `talking-head`, `video-to-text`, `reference-to-video`, `audio-to-video`, `lip-sync` |
+| `audio` | Audio & Speech | `text-to-speech`, `speech-to-text`, `speech-to-speech`, `video-to-music`, `voice-clone`, `text-to-audio`, `image-to-audio`, `realtime-conversation`, `realtime-tts`, `realtime-stt` |
+| `music` | Music Generation | `music-generation`, `text-to-song`, `text-to-music`, `image-to-song`, `image-to-music` |
+| `3d` | 3D Generation | `3d-generation`, `text-to-3d`, `image-to-3d` |
+| `llm` | LLM & Chat | `chat`, `llm`, `partner-llm`, `rag`, `llm-reasoning` |
+| `utilities` | Utilities | `utils` |
+
+A model is in every category that one of its catalog categories belongs to, so it can be in more than one. A model whose catalog categories belong to none of them is decided by its own entry or by Everything Else. `/ModelAccess/List` returns this list, and `/ModelAccess/Check` shows the categories of one model.
+
+### Single Models
+
+A rule can also allow or block single models, named by their `owner/slug`, such as `openai/gpt-6-2-astra`, or by their `id`. A model's own entry comes before its categories, so a rule can block a category and still allow one model in it. A rule can name up to 500 models, and each must be a model listed on Wiro.
+
+### How One Rule Decides
+
+A rule decides a model in this order:
+
+1. **The model**: when the rule names the model, that entry decides
+2. **Its categories**: otherwise, when the rule names one or more of the model's categories, they decide. If one of them is blocked, the model is blocked, even when another one is allowed
+3. **Everything Else**: otherwise the rule's `access` decides
+
+For example, a rule with Everything Else set to `allow`, Video Generation blocked and `bytedance/seedance-v2-5-flash` allowed lets every model run except video models, and Seedance v2.5 Flash is the one video model it lets run.
+
+### When Several Rules Apply
+
+A run can meet several rules of its wallet: the whole account's, the member's in a team, the API key's, the surface's and the agent's. It goes ahead only when every rule that applies allows the model. A narrower rule can't open what a wider one blocks: when the account's rule blocks a model, an API key's rule that allows it does not let it run.
+
+When more than one rule blocks the model, the refusal names the first of them in the order account, member, API key, surface, agent. `/ModelAccess/Check` shows how each rule decides a model.
+
+### Where Rules Apply
+
+Rules are checked before work starts, and before the balance and the spend limits:
+
+- Model runs: `/Run` and its `/sync` wait, realtime sessions, the [LLM gateway](/docs/completions-api), the [MCP server](/docs/wiro-mcp-server), the browser extensions and the dashboard
+- Workflow runs and resumes: every model step that will run must be allowed
+- The models that Studio and your deployed agents run through Wiro
+- An agent's chat model: choosing one in the agent's settings, or sending `model` with `Message/Send`, follows that agent's own rule
+
+A change applies to work that starts after it. Work that is already running is not stopped. Browsing models is not affected: `/Tool/List`, `/Tool/Detail` and the LLM gateway's model list show the same models whatever the rules.
+
+### When a Model Is Blocked
+
+A run of a model that a rule blocks is refused with HTTP `200`, `result: false` and error code `92`, even when the wallet has money. The message names the rule:
+
+```json
+{
+  "result": false,
+  "errors": [
+    {
+      "code": 92,
+      "message": "This API key can only use selected models, and openai/gpt-6-2-astra is not one of them. Model Access rules decide which models can run."
+    }
+  ]
+}
+```
+
+The message also says what blocked the model:
+
+| Blocked by | Example message |
+|------------|-----------------|
+| Everything Else | `This API key can only use selected models, and openai/gpt-6-2-astra is not one of them. Model Access rules decide which models can run.` |
+| The model's own entry | `This API key can't use openai/gpt-6-2-astra. Model Access rules decide which models can run.` |
+| One of the model's categories | `MCP can't use Video Generation models, and bytedance/seedance-v2-5-flash is one of them. Model Access rules decide which models can run.` |
+
+| Rule | The message starts with |
+|------|-------------------------|
+| A personal account's `account` rule | `Your account` |
+| A team's `account` rule | `This team` |
+| `member` | `You`, with `in this team` after the model or category, for example `You can't use openai/gpt-6-2-astra in this team.` |
+| `project` | `This API key` |
+| `surface` | The surface's name: `The dashboard`, `The API`, `MCP`, `The LLM gateway`, `The browser extensions` or `Agents` |
+| `agent` | `This agent` |
+
+Nothing runs and nothing is charged. Retrying does not help: run a model the rules allow, or ask someone who manages the rule to change it. Through the [LLM gateway](/docs/completions-api#gateway-errors) the refusal is an HTTP `403` error with code `model_not_allowed`, and the [MCP server](/docs/wiro-mcp-server) returns it as a tool error.
+
+### Who Can Change Rules
+
+- **Personal account**: the account itself
+- **Team**: the organization owner or a team admin. The owner of an agent can also set that agent's own rule
+
+Any team member can read the team's rules with `/ModelAccess/List` and `/ModelAccess/Check`, which also work with an API key. `/ModelAccess/Set` and `/ModelAccess/Remove` work only while signed in, in the dashboard or with the user's Bearer token: with an API key they fail with HTTP `401`, so a key can never lift its own rule. A deployed agent's own calls to these endpoints are refused.
+
+## **POST** /ModelAccess/List
+
+Returns the Model Access rules of the call's workspace and the categories a rule can name. A team project's API key reads its team, a personal project's key your personal account, and the dashboard the workspace you have selected. Any team member can call it, and it works with an API key. Send an empty body: `{}`.
+
+```json
+// Response
+{
+  "result": true,
+  "errors": [],
+  "workspace": {
+    "type": "team",
+    "teamguid": "0d9aade4-d31b-4b97-88f3-a90482f080ea",
+    "canmanage": false
+  },
+  "rules": [
+    {
+      "guid": "a642eda4-68ef-4fa9-af15-7024f28b0332",
+      "scope": "account",
+      "target": "",
+      "targetlabel": null,
+      "access": "allow",
+      "categories": [
+        { "category": "video", "label": "Video Generation", "access": "block" }
+      ],
+      "models": [
+        { "id": "2062", "model": "bytedance/seedance-v2-5-flash", "title": "Seedance v2.5 Flash Video Generator", "access": "allow" }
+      ],
+      "createdat": 1795180800,
+      "updatedat": 1795180800
+    },
+    {
+      "guid": "a4308936-5441-4012-96ee-f2b32ad3fd40",
+      "scope": "project",
+      "target": "48211",
+      "targetlabel": "Production",
+      "access": "block",
+      "categories": [
+        { "category": "image", "label": "Image Generation", "access": "allow" }
+      ],
+      "models": [],
+      "createdat": 1795184400,
+      "updatedat": 1795188000
+    },
+    {
+      "guid": "9f12fb7e-16f0-4208-83b6-c333b83192d7",
+      "scope": "surface",
+      "target": "mcp",
+      "targetlabel": "MCP",
+      "access": "allow",
+      "categories": [
+        { "category": "video", "label": "Video Generation", "access": "block" }
+      ],
+      "models": [],
+      "createdat": 1795191600,
+      "updatedat": 1795191600
+    }
+  ],
+  "categories": [
+    { "category": "image", "label": "Image Generation", "values": ["text-to-image", "image-to-image", "image-editing", "image-to-text"] },
+    { "category": "video", "label": "Video Generation", "values": ["text-to-video", "image-to-video", "video-to-video", "speech-to-video", "talking-head", "video-to-text", "reference-to-video", "audio-to-video", "lip-sync"] },
+    { "category": "audio", "label": "Audio & Speech", "values": ["text-to-speech", "speech-to-text", "speech-to-speech", "video-to-music", "voice-clone", "text-to-audio", "image-to-audio", "realtime-conversation", "realtime-tts", "realtime-stt"] },
+    { "category": "music", "label": "Music Generation", "values": ["music-generation", "text-to-song", "text-to-music", "image-to-song", "image-to-music"] },
+    { "category": "3d", "label": "3D Generation", "values": ["3d-generation", "text-to-3d", "image-to-3d"] },
+    { "category": "llm", "label": "LLM & Chat", "values": ["chat", "llm", "partner-llm", "rag", "llm-reasoning"] },
+    { "category": "utilities", "label": "Utilities", "values": ["utils"] }
+  ]
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `workspace.type` | `team` or `personal` |
+| `workspace.teamguid` | The team's guid, or `null` for a personal account |
+| `workspace.canmanage` | Whether the caller can change rules in this workspace. The owner of an agent can still set that agent's own rule when it is `false` |
+| `rules[].guid` | The rule's guid, for `/ModelAccess/Remove` |
+| `rules[].scope` | `account`, `member`, `project`, `surface` or `agent` |
+| `rules[].target` | The member's `useruuid`, the project id, the surface or the agent's guid; `""` for `account` |
+| `rules[].targetlabel` | The member's name, the project's name, the agent's title or the surface's label; `null` for `account` |
+| `rules[].access` | Everything Else: `allow` or `block` |
+| `rules[].categories` | The categories the rule names, each with its `label` and `access`, in the order of `categories` below |
+| `rules[].models` | The models the rule names, in `id` order: `id` (a string), `model` (`owner/slug`), `title` and `access`. `model` and `title` are `null` for a model that is no longer on Wiro |
+| `rules[].createdat`, `rules[].updatedat` | When the rule was added and last changed, in Unix seconds |
+| `categories` | The seven categories a rule can name: `category` (the key a rule uses), `label` and `values` (the catalog categories it covers) |
+
+## **POST** /ModelAccess/Set
+
+Adds a rule to the call's workspace, or replaces the rule with the same `scope` and `target`. The rule you send replaces the old one as a whole, so a category or model you leave out is no longer named. In a team, only the organization owner or a team admin can call it, and the owner of an agent can set that agent's own rule. It works only while signed in, in the dashboard or with the user's Bearer token: with an API key it fails with HTTP `401`, so a key can never lift its own rule.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `scope` | string | Yes | `"account"`, `"member"`, `"project"`, `"surface"` or `"agent"`. See [What a Rule Covers](#how-model-access-works) |
+| `target` | string | For every scope but `account` | The member's `useruuid`, the project's `id`, the surface (`web`, `api`, `mcp`, `llm-gateway`, `extension` or `agent`) or the agent's guid. Leave it out for `account` |
+| `access` | string | No | Everything Else: `"allow"` or `"block"`. Default: `"allow"` |
+| `categories` | array or object | No | The categories the rule allows or blocks, as `[{ "category": "video", "access": "block" }]` or as `{ "video": "block" }`. A category is `image`, `video`, `audio`, `music`, `3d`, `llm` or `utilities` |
+| `models` | array or object | No | The single models the rule allows or blocks, as `[{ "model": "openai/gpt-6-2-astra", "access": "block" }]` or as `{ "openai/gpt-6-2-astra": "block" }`. Name a model by its `owner/slug` or its `id`. At most 500 models |
+
+### Examples
+
+**Block video models for the whole account, except one:**
+
+```json
+{
+  "scope": "account",
+  "access": "allow",
+  "categories": [
+    { "category": "video", "access": "block" }
+  ],
+  "models": [
+    { "model": "bytedance/seedance-v2-5-flash", "access": "allow" }
+  ]
+}
+```
+
+**Let one API key run only image models:**
+
+```json
+{
+  "scope": "project",
+  "target": "48211",
+  "access": "block",
+  "categories": [
+    { "category": "image", "access": "allow" }
+  ]
+}
+```
+
+**Keep video models out of MCP:**
+
+```json
+{
+  "scope": "surface",
+  "target": "mcp",
+  "categories": { "video": "block" }
+}
+```
+
+**Block one model for one agent:**
+
+```json
+{
+  "scope": "agent",
+  "target": "6e4bbd6f-6b73-4421-adae-e9599ba2e317",
+  "models": { "openai/gpt-6-2-astra": "block" }
+}
+```
+
+`rule` is the rule as saved, shaped like a row of `/ModelAccess/List`:
+
+```json
+// Response
+{
+  "result": true,
+  "errors": [],
+  "rule": {
+    "guid": "a4308936-5441-4012-96ee-f2b32ad3fd40",
+    "scope": "project",
+    "target": "48211",
+    "targetlabel": "Production",
+    "access": "block",
+    "categories": [
+      { "category": "image", "label": "Image Generation", "access": "allow" }
+    ],
+    "models": [],
+    "createdat": 1795184400,
+    "updatedat": 1795188000
+  }
+}
+```
+
+### Errors
+
+| Error | Cause |
+|-------|-------|
+| `scope must be one of account, member, project, surface, agent.` | `scope` is missing or not one of the five scopes |
+| `Member rules exist only in a team workspace.` | A `member` rule in a personal account |
+| `target is required for this scope.` | No `target` for a `member`, `project`, `surface` or `agent` rule |
+| `A surface is one of web, api, mcp, llm-gateway, extension, agent.` | A `surface` rule with another `target` |
+| `target must be a project id.` | A `project` rule whose `target` is not a project id |
+| `access must be allow or block.` | Another `access` |
+| `categories must be a list of { category, access }.` | `categories` is neither a list nor an object |
+| `A category is one of image, video, audio, music, 3d, llm, utilities.` | A category that is not one of the seven |
+| `A category's access must be allow or block.` | A category with another `access` |
+| `models must be a list of { model, access }.` | `models` is neither a list nor an object |
+| `A rule can name at most 500 models.` | More than 500 models |
+| `Each model needs its owner/slug or id.` | A model entry with no model |
+| `A model's access must be allow or block.` | A model with another `access` |
+| `<model> is not a model's owner/slug or id.` | A model named neither by `owner/slug` nor by a number |
+| `<model> is not a model on Wiro.` | No model listed on Wiro has that `owner/slug` or id |
+| `<model> is named twice.` | `models` names a model twice: by the same name, or by its id and its `owner/slug` with a different `access` |
+| `Only a team admin or the organization owner can change this rule.` | In a team, the caller is not a team admin or the organization owner (or, for an `agent` rule, the agent's owner) |
+| `That person is not an active member of this team.` | A `member` rule for someone who is not an active member of the team |
+| `That API key's project is not in this workspace.` | A `project` rule for a project of another workspace |
+| `That agent is not in this workspace.` | An `agent` rule for an agent of another workspace |
+
+## **POST** /ModelAccess/Remove
+
+Removes a rule from the call's workspace. The people who can set a rule can remove it, and only while signed in: with an API key it fails with HTTP `401`.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `guid` | string | Yes | The rule's `guid` from `/ModelAccess/List` |
+
+```json
+// Response
+{
+  "result": true,
+  "errors": []
+}
+```
+
+| Error | Cause |
+|-------|-------|
+| `guid is required.` | No `guid` was sent |
+| `Rule not found in this workspace.` | The guid is not a rule of the call's workspace, or it was already removed |
+| `Only a team admin or the organization owner can change this rule.` | In a team, the caller can't manage this rule |
+
+## **POST** /ModelAccess/Check
+
+Shows how the rules of the call's workspace decide one model for one run: which rules apply, what each one decides and why, and the refusal the run would get. Nothing runs. A team project's API key reads its team, a personal project's key your personal account, and the dashboard the workspace you have selected. Any team member can call it, and it works with an API key. With only `model`, it checks a dashboard run of yours.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `model` | string | Yes | The model's `owner/slug` or `id` |
+| `member` | string | No | In a team, the `useruuid` of the member whose run to check. Default: you (with an API key, the person who created its project) |
+| `project` | string | No | A project's `id`, to check a run made with that project's API key |
+| `surface` | string | No | Where the run comes from: `web`, `api`, `mcp`, `llm-gateway`, `extension` or `agent`. Default: `web`. A run with an API key comes from `api` |
+| `agent` | string | No | An agent's guid, to check a model run that agent makes. The surface is then `agent` |
+
+### Example
+
+**Can the Production API key run `openai/gpt-6-2-astra`?**
+
+```json
+{
+  "model": "openai/gpt-6-2-astra",
+  "project": "48211",
+  "surface": "api"
+}
+```
+
+Each applicable rule comes back shaped like a row of `/ModelAccess/List`, with what it decides:
+
+```json
+// Response
+{
+  "result": true,
+  "errors": [],
+  "check": {
+    "model": "openai/gpt-6-2-astra",
+    "categories": ["llm"],
+    "allowed": false,
+    "message": "This API key can only use selected models, and openai/gpt-6-2-astra is not one of them. Model Access rules decide which models can run.",
+    "rules": [
+      {
+        "rule": {
+          "guid": "a642eda4-68ef-4fa9-af15-7024f28b0332",
+          "scope": "account",
+          "target": "",
+          "targetlabel": null,
+          "access": "allow",
+          "categories": [
+            { "category": "video", "label": "Video Generation", "access": "block" }
+          ],
+          "models": [
+            { "id": "2062", "model": "bytedance/seedance-v2-5-flash", "title": "Seedance v2.5 Flash Video Generator", "access": "allow" }
+          ],
+          "createdat": 1795180800,
+          "updatedat": 1795180800
+        },
+        "access": "allow",
+        "by": "default",
+        "category": null
+      },
+      {
+        "rule": {
+          "guid": "a4308936-5441-4012-96ee-f2b32ad3fd40",
+          "scope": "project",
+          "target": "48211",
+          "targetlabel": "Production",
+          "access": "block",
+          "categories": [
+            { "category": "image", "label": "Image Generation", "access": "allow" }
+          ],
+          "models": [],
+          "createdat": 1795184400,
+          "updatedat": 1795188000
+        },
+        "access": "block",
+        "by": "default",
+        "category": null
+      }
+    ]
+  }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `check.model` | The model as `owner/slug` |
+| `check.categories` | The categories the model is in, such as `["llm"]`. Empty when it is in none |
+| `check.allowed` | Whether every rule that applies allows the model |
+| `check.message` | The refusal a run would get with code `92`, or `null` when the model is allowed |
+| `check.rules` | The rules that apply, in the order account, member, API key, surface, agent. Empty when none applies |
+| `check.rules[].rule` | The rule, shaped like a row of `/ModelAccess/List` |
+| `check.rules[].access` | What this rule decides: `allow` or `block` |
+| `check.rules[].by` | What decided it: `model` (the model's own entry), `category` (one of its categories) or `default` (Everything Else) |
+| `check.rules[].category` | The category that decided it when `by` is `category`, else `null` |
+
+| Error | Cause |
+|-------|-------|
+| `model is required.` | No `model` was sent |
+| `<model> is not a model's owner/slug or id.` | `model` is neither an `owner/slug` nor a number |
+| `<model> is not a model on Wiro.` | No model listed on Wiro has that `owner/slug` or id |
+| `A surface is one of web, api, mcp, llm-gateway, extension, agent.` | Another `surface` |
+
+---
+
 # Error Reference
 
 Understand API error responses, error codes, and how to handle them.
@@ -5744,6 +6206,7 @@ Understand API error responses, error codes, and how to handle them.
 |------|----------|-------------|
 | `0` | General | Server-side errors, validation failures, missing parameters |
 | `1` | Not Found | Resource not found or not accessible |
+| `92` | Model Access | A Model Access rule of the workspace blocks the model. See [Model Access](/docs/model-access) |
 | `93` | Spend Limit | A spend limit of the workspace is reached. See [Spend Limits](/docs/spend-limits) |
 | `96` | Concurrency Limit | Too many concurrent tasks for your balance |
 | `97` | Insufficient Balance | Not enough funds to run the model |
@@ -5775,13 +6238,13 @@ Public endpoints such as `Tool/List` and `Agent/List` still answer a key whose c
 
 | Code | Message | Action |
 |------|---------|--------|
+| `92` | Model blocked by a Model Access rule (the message names the rule) | Run a model the rules allow, or ask someone who manages the rule to change it on the [Model Access](https://wiro.ai/panel/controls/model-access) page; retrying does not help before that |
 | `93` | Spend limit reached (the message names the limit and when it resets) | Wait for the reset or raise the limit on the [Spend Limits](https://wiro.ai/panel/wallet/limits) page; retrying does not help before that |
 | `96` | Concurrent task limit reached | Wait for task to finish or add funds |
 | `97` | Insufficient balance | Add funds ($0.50 min, $10 for training) |
 | `98` | Sign in required | Model requires registered account |
 | `0` | Parameter required/invalid | Fix request parameters |
 | `1` | Model not found/accessible | Check model slug |
-| `0` | This model is not available for your team | Use a model your team allows |
 
 ## Task Errors (POST /Task)
 
@@ -6869,6 +7332,12 @@ Wiro's message and a note: nothing ran and nothing was charged, do not try
 again until the limit resets or someone who manages it raises it, and limits
 are managed at [wiro.ai/panel/wallet/limits](https://wiro.ai/panel/wallet/limits).
 
+The workspace's [Model Access](/docs/model-access) rules apply to these calls
+too, on the same surfaces. A model a rule blocks is refused before anything runs
+(error code `92`), and the tool returns an error with Wiro's message, which names
+the rule. Nothing ran and nothing was charged. Rules are managed at
+[wiro.ai/panel/controls/model-access](https://wiro.ai/panel/controls/model-access).
+
 If a generation exceeds the wait budget, continue with `wait_for_task` using
 the returned token. Do not call `run_model` again for the same request.
 `task_error` remains non-terminal in Task/Detail; the wait ends only at
@@ -7252,7 +7721,8 @@ A resume runs the remaining steps exactly as the run started them, with the same
 - Nothing is charged when a run starts. Each model step is a normal [model task](/docs/run-a-model), billed when it finishes successfully at that model's price. Failed steps are not charged, and utility steps are free.
 - To start, the wallet must hold $0.50 for each model step the run will execute (up to the breakpoint, when one is set). Otherwise the run is refused with code `97`, `Insufficient balance`. The [concurrency limit](/docs/concurrency-limits) also applies (code `96`).
 - The expected cost of a run is the sum of the model prices for the settings each step uses, from [Tool/Detail](/docs/models). A run's `totalcost` shows the list price of the steps finished so far, and once the run has ended `chargedcost` and `discountamount` show what the wallet paid. `chargedcost` is `null` while a step's charge is still settling.
-- The workspace's [spend limits](/docs/spend-limits) apply when a run starts or resumes: once a limit that covers the run is reached, it is refused with code `93`. In a team workspace, the team's model access rules apply too.
+- The workspace's [spend limits](/docs/spend-limits) apply when a run starts or resumes: once a limit that covers the run is reached, it is refused with code `93`.
+- The workspace's [Model Access](/docs/model-access) rules apply when a run starts or resumes: when a rule blocks the model of a step that will run, the run is refused with code `92` before anything runs, and the message names that model.
 
 ## **POST** /Workflow/List
 
@@ -9834,7 +10304,7 @@ Writes per-agent preference toggles that are not credentials and not skill rows.
 | `useragentguid` | string | Yes | Your UserAgent instance guid. |
 | `timezone` | string\|null | No | IANA timezone identifier (e.g. `"Europe/Istanbul"`, `"America/New_York"`, `"Asia/Tokyo"`). Pass `null`, `""`, or the literal `"UTC"` to **clear** the override; the agent then uses UTC. Unknown zones are rejected with `invalid-timezone`. |
 | `teamsessionmode` | string | No | Unified Chat Mode: `"private"` isolates each team member's Wiro web-chat history and native agent memory plus each approved external-channel DM operator; `"collaborative"` shares both runtime contexts. Personal agents can set it because external-channel DMs can have multiple operators. Web and external-channel message lists remain separate transports; room/thread sessions remain room-scoped. Channel activation remains credential-derived. On a team agent, `"private"` also keeps the agent's Screen closed to the team (see [Who Can Watch](#who-can-watch)). |
-| `chatmodel` | string\|null | No | Canonical model slug for **chat replies** (e.g. `"openai/gpt-5.6-sol"`). Must be a **selectable** model, i.e. `tokenRates.models[<slug>].selectable === true`; an unknown / non-selectable slug is rejected with `invalid-model-selection`. Pass `null` or `""` to clear the override and fall back to the platform default. |
+| `chatmodel` | string\|null | No | Canonical model slug for **chat replies** (e.g. `"openai/gpt-5.6-sol"`). Must be a **selectable** model, i.e. `tokenRates.models[<slug>].selectable === true`; an unknown / non-selectable slug is rejected with `invalid-model-selection`. A model that the agent's own [Model Access](/docs/model-access) rule blocks is refused with code `92`. Pass `null` or `""` to clear the override and fall back to the platform default. |
 | `cronmodel` | string\|null | No | Same rules as `chatmodel`, applied to **scheduled (cron) turns**. |
 | `voiceprepmodel` | string\|null | No | Same rules as `chatmodel`, applied to the **voice-call prep** turn (context assembled before a realtime call). |
 | `voicepostcallmodel` | string\|null | No | Same rules as `chatmodel`, applied to the **post-call summary** turn after a realtime voice call ends. |
@@ -11839,6 +12309,7 @@ Agent-specific errors you may encounter:
 | The sentence for the agent's status: `Agent is stopped. Start it before sending messages.` (status `0`), `Agent is stopping. Please wait a moment and try again.` (status `1`, when the agent is shutting down to stay stopped), `Agent is restarting. Please wait a moment and try again.` (status `1`, when the agent is shutting down to start again, as in a [restart](#automatic-restart)), `Agent is starting up. Please wait a moment and try again.` (status `2` or `3`), `Agent is in error state. Restart it before sending messages.` (status `5`) or `Agent setup is incomplete. Complete the setup before sending messages.` (status `6`) | `Message/Send` while the agent isn't running (any status other than `4`), for every message Wiro doesn't answer itself as a setup reply (see [Replies Wiro handles itself](/docs/agent-messaging#handled-setup-replies)). Response includes `agentstatus` (the integer) so your client can branch on it. |
 | `Agent has no remaining credits. Renew your subscription or buy a credit pack to continue.` | `Message/Send` while `remainingcredits <= 0`. Response includes `agentbalance`, so your client can offer to buy credits. |
 | A spend limit refusal (code `93`), such as `This agent's monthly spend limit is reached ($20.35 of $20.00). It resets on December 1, 2026 at 00:00 UTC.` | `Message/Send` while the agent's own [spend limit](/docs/spend-limits) is used up; the response includes `agentstatus`. Paying from the wallet with `Deploy`, `CreateSubscriptionCheckout`, `UpgradeTier`, `RenewSubscription` or `CreateExtraCreditCheckout` is refused the same way when the price would take spending over a limit of the wallet. Nothing runs and nothing is charged |
+| A Model Access refusal (code `92`), such as `This agent can't use openai/gpt-5-6-sol. Model Access rules decide which models can run.` | `Message/Send` with a `model` that the agent's own [Model Access](/docs/model-access) rule blocks, or `UpdateSettings` with such a model override. Nothing runs and nothing is charged |
 | `Message not found` | `Detail` / `Cancel` with invalid messageguid |
 | `Message cannot be cancelled (status: {status})` | `Cancel` on a message that's already in a terminal state |
 | `Invalid redirect URL` | OAuth `Connect` with non-HTTPS URL |
@@ -12930,7 +13401,7 @@ Accepts either `application/json` (text-only) or `multipart/form-data` (text + f
 | `message` | string | Conditional | The user message text. Required unless sending files via multipart. |
 | `sessionkey` | string | No | Session identifier for conversation continuity. Defaults to `"default"`. |
 | `callbackurl` | string | No | Webhook URL: the system will POST the final response to this URL when the agent finishes. It must be a public `http(s)` address: a host that is, or resolves to, a private, loopback or link-local address gets no webhook. |
-| `model` | string | No | Canonical model slug to run **this turn** on (e.g. `"openai/gpt-5.6-sol"`), chosen from the agent's selectable set. Validated server-side: an unknown or non-selectable slug is rejected in `errors[]` and the turn is **not** sent. Omit to use the agent's configured chat model. |
+| `model` | string | No | Canonical model slug to run **this turn** on (e.g. `"openai/gpt-5.6-sol"`), chosen from the agent's selectable set. Validated server-side: an unknown or non-selectable slug is rejected in `errors[]` and the turn is **not** sent. So is a model that the agent's own [Model Access](/docs/model-access) rule blocks (code `92`). Omit to use the agent's configured chat model. |
 | `attachment` / `attachments[]` | file | No | Multipart only: one or more file attachments that the agent can process. |
 
 > **Per-turn model selection.** `model` selects the chat model for a single turn instead of the agent's configured default. Valid values are the agent's **selectable** slugs: the `tokenRates.models[]` entries where `selectable` is `true`, returned by `UserAgent/Detail` (see [Agent Overview](/docs/agent-overview)). The current set includes `openai/gpt-5.6-sol` (the platform chat default), `openai/gpt-5.6-terra`, `openai/gpt-5.6-luna`, `openai/gpt-5.5`, `openai/gpt-5.5-pro`, `openai/gpt-5.4`, `openai/gpt-5.4-mini`, `openai/gpt-5.2`, `openai/gpt-5.1`, `openai/gpt-5`, and `openai/gpt-5-mini`. Always read the live set from that field. The server applies the chosen model to that turn only.
@@ -26069,8 +26540,8 @@ A single user can own multiple organizations, and each organization can contain 
 | Role | Scope | Permissions |
 |------|-------|-------------|
 | **Owner** | Organization | Create and remove teams; edit, remove, and restore the organization. The owner is added as an admin of every team they create and can't be demoted to member, so they also have all Admin permissions there |
-| **Admin** | Team | Edit team settings (name, model access); set the team's spend limits, member limits included; invite members and cancel invitations; change roles; remove members; deploy and manage team agents; edit and delete team projects; transfer agents, projects, and credit; redeem coupons into the team wallet; set up, change, and turn off the team wallet's auto-pay |
-| **Member** | Team | Run models and create projects in the team workspace (billed to the team wallet), chat with team agents, and view the member list, the team's spend limits and every member's spending |
+| **Admin** | Team | Edit team settings (name and description); set the team's spend limits, member limits included, and its Model Access rules; invite members and cancel invitations; change roles; remove members; deploy and manage team agents; edit and delete team projects; transfer agents, projects, and credit; redeem coupons into the team wallet; set up, change, and turn off the team wallet's auto-pay |
+| **Member** | Team | Run models and create projects in the team workspace (billed to the team wallet), chat with team agents, and view the member list, the team's spend limits and Model Access rules, and every member's spending |
 
 The organization creator is automatically the owner. When the owner creates a team, including the Default Team created with the organization, they are added to it as an admin member. Additional members are invited by email and join once they accept the invitation, signed in with the invited email address, within 72 hours.
 
@@ -26090,7 +26561,7 @@ For step-by-step instructions, see [Managing Teams](/docs/organizations-managing
 ## What's Next
 
 - [Managing Teams](/docs/organizations-managing-teams): Create organizations, invite members, manage roles and permissions
-- [Team Billing & Spending](/docs/organizations-billing): Wallets, spend limits and their alert emails, and model access controls
+- [Team Billing & Spending](/docs/organizations-billing): Wallets, spend limits and their alert emails, and Model Access rules
 - [Team API Access](/docs/organizations-api-access): How workspace context works with API keys and context guards
 
 ---
@@ -26103,7 +26574,7 @@ Creating, changing, deleting or restoring organizations and teams, managing memb
 
 ## **POST** /Organization/Create
 
-Creates a new organization. The caller automatically becomes the organization **owner**, and only the owner can create teams, delete the organization, or restore it after deletion. A team named `Default Team` is created with it automatically: the caller is added as its admin, and it gets its own wallet (starting at $0.00), no spend limits, and access to all models. Use `/Team/Create` only for additional teams.
+Creates a new organization. The caller automatically becomes the organization **owner**, and only the owner can create teams, delete the organization, or restore it after deletion. A team named `Default Team` is created with it automatically: the caller is added as its admin, and it gets its own wallet (starting at $0.00), no spend limits and no [Model Access](/docs/model-access) rules, so it can run every model. Use `/Team/Create` only for additional teams.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -26126,7 +26597,6 @@ Creates a new organization. The caller automatically becomes the organization **
           "guid": "7c1e5a90-2f3b-4d8e-a6c4-9b0d1e2f3a45",
           "organizationguid": "1b43089c-3b56-4638-b4ac-24268bb1d970",
           "name": "Default Team",
-          "modelaccess": "all",
           "status": 1
         }
       ]
@@ -26139,7 +26609,7 @@ You can also create organizations from the [Dashboard](https://wiro.ai/panel/org
 
 ## **POST** /Team/Create
 
-Creates a team inside an organization. Only the organization owner can create teams. The team is created with its own wallet (starting at $0.00) and the caller is automatically added as an admin.
+Creates a team inside an organization. Only the organization owner can create teams. The team is created with its own wallet (starting at $0.00) and the caller is automatically added as an admin. To choose which models the team can run, add [Model Access](/docs/model-access) rules.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -26157,9 +26627,6 @@ Creates a team inside an organization. Only the organization owner can create te
       "organizationguid": "1b43089c-3b56-4638-b4ac-24268bb1d970",
       "name": "Engineering",
       "description": null,
-      "modelaccess": "all",
-      "allowedmodelids": null,
-      "blockedmodelids": null,
       "status": 1
     }
   ]
@@ -26418,14 +26885,14 @@ Credit can be transferred between your personal wallet and team wallets. Transfe
 ## What's Next
 
 - [Organizations & Teams Overview](/docs/organizations-overview): Concepts and workspace hierarchy
-- [Team Billing & Spending](/docs/organizations-billing): Wallets, spend limits, and model access controls
+- [Team Billing & Spending](/docs/organizations-billing): Wallets, spend limits, and Model Access rules
 - [Team API Access](/docs/organizations-api-access): How context works in API requests
 
 ---
 
 # Team Billing & Spending
 
-Manage team wallets, control model access, and track usage across members.
+Manage team wallets, transfer credit, and track usage across members.
 
 ## Team Wallets
 
@@ -26458,97 +26925,19 @@ Spend limits are not a team setting: they work the same way for a personal accou
 
 What the team has spent this month or today, by member, API key, surface and agent, comes from [`/SpendLimit/Usage`](/docs/spend-limits#spend-limit-usage). For other breakdowns, `/Project/UsageSummary` gives usage per project and `/Task/Stat` gives time-series task execution data. Both filter by the active workspace.
 
+## Model Access
+
+Model Access is not a team setting: it works the same way for a personal account's wallet and for a team's wallet. In a team, the organization owner and team admins can allow or block single models and whole categories, such as video generation, for the whole team, one member, one API key, a surface such as the LLM gateway, or one agent, on the [Model Access](https://wiro.ai/panel/controls/model-access) page of the dashboard or with the `/ModelAccess` endpoints. A model a rule blocks is refused with error code `92`. See [Model Access](/docs/model-access).
+
 ## **POST** /Team/Update
 
-Updates team settings, including model access controls. Only the organization owner and team admins can call it, and only while signed in: with an API key it fails with HTTP `401`. Spend limits are not team settings: set them with [`/SpendLimit/Set`](/docs/spend-limits#spend-limit-set).
+Updates a team's name and description. Only the organization owner and team admins can call it, and only while signed in: with an API key it fails with HTTP `401`. Spend limits and Model Access rules are not team settings: set them with [`/SpendLimit/Set`](/docs/spend-limits#spend-limit-set) and [`/ModelAccess/Set`](/docs/model-access#model-access-set).
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `teamguid` | string | Yes | Team guid |
 | `name` | string | No | New team name |
 | `description` | string | No | Team description |
-| `modelaccess` | string | No | Access mode: `"all"`, `"allowlist"`, or `"blocklist"`. Default: `"all"` |
-| `allowedmodelids` | array | No | List of model IDs that are allowed. Used when `modelaccess` is `"allowlist"`. |
-| `blockedmodelids` | array | No | List of model IDs that are blocked. Used when `modelaccess` is `"blocklist"`. |
-
-### Access Modes
-
-| Mode | `modelaccess` value | Behavior |
-|------|---------------------|----------|
-| **All Models** | `"all"` | No restrictions. Team members can run any model on Wiro. This is the default. |
-| **Allowlist** | `"allowlist"` | Only models in `allowedmodelids` can be run. All others are blocked. |
-| **Blocklist** | `"blocklist"` | Models in `blockedmodelids` cannot be run. All others are allowed. |
-
-You configure one mode at a time. Setting `modelaccess` to `"allowlist"` ignores any `blockedmodelids`, and vice versa. Setting it back to `"all"` removes all restrictions regardless of the model ID lists.
-
-Model IDs are the numeric IDs from the model catalog. You can get them from the [Models](/docs/models) endpoint or the dashboard.
-
-### Examples
-
-**Allowlist (only permit specific models):**
-
-```json
-{
-  "teamguid": "your-team-guid",
-  "modelaccess": "allowlist",
-  "allowedmodelids": [598, 412, 305]
-}
-```
-
-Team members can only run models 598, 412, and 305. All other models are blocked.
-
-**Blocklist (block specific expensive models):**
-
-```json
-{
-  "teamguid": "your-team-guid",
-  "modelaccess": "blocklist",
-  "blockedmodelids": [721, 650]
-}
-```
-
-Team members can run any model except 721 and 650.
-
-**Remove all restrictions:**
-
-```json
-{
-  "teamguid": "your-team-guid",
-  "modelaccess": "all"
-}
-```
-
-### Where Access Controls Are Enforced
-
-Model access is checked whenever a model runs in a team context, before the task is queued:
-
-- `/Run` calls made with a team project's API key
-- Runs started from the dashboard while the team workspace is selected
-- Workflow runs in the team context: the whole run is rejected before it starts if any model in it is restricted
-- LLM gateway requests made with a team project's API key: the request fails with HTTP `403` `permission_error` and the message `This model is not available for your team`; a streamed Responses request ends with `response.failed` instead (see [Direct LLM Gateway errors](/docs/completions-api#gateway-errors) for each protocol's error format)
-
-The check compares the requested model's ID against the team's access policy.
-
-Access controls do **not** affect:
-- Browsing the model catalog (`/Tool/List`, `/Tool/Detail`)
-- Viewing model details and pricing
-- Personal projects and the Personal workspace (only team context is restricted)
-
-### Error Response
-
-When a team member tries to run a restricted model through `/Run`, the dashboard or a workflow, the request returns an error and no task is created:
-
-```json
-{
-  "result": false,
-  "errors": [
-    {
-      "code": 0,
-      "message": "This model is not available for your team"
-    }
-  ]
-}
-```
 
 ## **POST** /Team/TransferCredit
 
@@ -26677,7 +27066,7 @@ Create a project inside a team to get a team API key, or use a personal project 
 
 A team project's API key works only while the user who created the project is an active member of the team or the owner of its organization. Once the creator is removed from the team, the key stops working right away, in your apps and in any agent that uses it. The project stays in the team. Requests with the key then fail with HTTP `401` and `The person who created this API key is no longer in its team. Ask a team admin for a new key.` Public endpoints such as `Agent/List` still answer, as if the request had no key. While the key works, runs made with it count toward the creator's member limit (see [Spend Limits](/docs/spend-limits)).
 
-API keys can't change teams or organizations. `Organization/Create`, `Organization/Remove`, `Organization/Restore`, `Team/Create`, `Team/Update`, `Team/Remove`, `Team/Member/Invite`, `Team/Member/CancelInvite`, `Team/Member/UpdateRole`, `Team/Member/Remove`, `Team/TransferAgent`, `Team/TransferProject` and `Team/TransferCredit` need a signed-in user: use the dashboard, or send that user's Bearer token. With any API key, personal or team, they fail with HTTP `401` and `API keys can't manage teams or organizations. Sign in and try again.` Endpoints that only read, such as `Organization/List`, `Team/Member/List`, `SpendLimit/List` and `SpendLimit/Usage`, work with an API key. `SpendLimit/Set` and `SpendLimit/Remove` also need a signed-in user and fail with HTTP `401` with an API key, so a key can never lift its own limit.
+API keys can't change teams or organizations. `Organization/Create`, `Organization/Remove`, `Organization/Restore`, `Team/Create`, `Team/Update`, `Team/Remove`, `Team/Member/Invite`, `Team/Member/CancelInvite`, `Team/Member/UpdateRole`, `Team/Member/Remove`, `Team/TransferAgent`, `Team/TransferProject` and `Team/TransferCredit` need a signed-in user: use the dashboard, or send that user's Bearer token. With any API key, personal or team, they fail with HTTP `401` and `API keys can't manage teams or organizations. Sign in and try again.` Endpoints that only read, such as `Organization/List`, `Team/Member/List`, `SpendLimit/List`, `SpendLimit/Usage`, `ModelAccess/List` and `ModelAccess/Check`, work with an API key. `SpendLimit/Set`, `SpendLimit/Remove`, `ModelAccess/Set` and `ModelAccess/Remove` also need a signed-in user and fail with HTTP `401` with an API key, so a key can never lift its own limit or rule.
 
 ## What Gets Filtered by Context
 
@@ -26696,7 +27085,7 @@ When a workspace context is active, these list endpoints return only resources b
 
 In team context, `Project/List` returns a project's `apikey` only to the user who created the project, team admins and the organization owner. Other members get `apikeymasked` instead, which shows only the first and last four characters of the key. With an API key, this follows the user who created the key's project.
 
-Model listings show the same models in every workspace (only favorites are kept per workspace). Team model access rules apply when a model runs, not when models are listed.
+Model listings show the same models in every workspace (only favorites are kept per workspace). [Model Access](/docs/model-access) rules apply when a model runs, not when models are listed.
 
 ## Agent Context Guards
 
@@ -26796,7 +27185,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
   -d '{"prompt": "A mountain landscape"}'
 ```
 
-The task is created with the team's `teamguid`. The cost is deducted from the team wallet. The task appears in the team's usage statistics. The team's model access rules and spend limits also apply. A model the team doesn't allow fails with "This model is not available for your team", and runs are refused with code `93` once a spend limit that covers them is reached, such as the team's limit, the key creator's member limit or the key's own limit. See [Team Billing & Spending](/docs/organizations-billing).
+The task is created with the team's `teamguid`. The cost is deducted from the team wallet. The task appears in the team's usage statistics. The team's Model Access rules and spend limits also apply. A run is refused with code `92` when a Model Access rule that covers it blocks the model, such as the team's rule, the key creator's member rule or the key's own rule, and with code `93` once a spend limit that covers it is reached, such as the team's limit, the key creator's member limit or the key's own limit. See [Model Access](/docs/model-access) and [Spend Limits](/docs/spend-limits).
 
 ### Listing Team Agents with API Key
 
@@ -26846,7 +27235,7 @@ Runs made with a team project's key are charged to the team wallet and appear in
 
 - [Organizations & Teams Overview](/docs/organizations-overview): Concepts and workspace hierarchy
 - [Managing Teams](/docs/organizations-managing-teams): Create organizations, invite members, manage roles
-- [Team Billing & Spending](/docs/organizations-billing): Wallets, spend limits, and model access controls
+- [Team Billing & Spending](/docs/organizations-billing): Wallets, spend limits, and Model Access rules
 - [Authentication](/docs/authentication): API key setup and authentication methods
 - [Projects](/docs/projects): Project management and API credentials
 

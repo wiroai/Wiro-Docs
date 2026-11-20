@@ -88,8 +88,8 @@ A single user can own multiple organizations, and each organization can contain 
 | Role | Scope | Permissions |
 |------|-------|-------------|
 | **Owner** | Organization | Create and remove teams; edit, remove, and restore the organization. The owner is added as an admin of every team they create and can't be demoted to member, so they also have all Admin permissions there |
-| **Admin** | Team | Edit team settings (name, model access); set the team's spend limits, member limits included; invite members and cancel invitations; change roles; remove members; deploy and manage team agents; edit and delete team projects; transfer agents, projects, and credit; redeem coupons into the team wallet; set up, change, and turn off the team wallet's auto-pay |
-| **Member** | Team | Run models and create projects in the team workspace (billed to the team wallet), chat with team agents, and view the member list, the team's spend limits and every member's spending |
+| **Admin** | Team | Edit team settings (name and description); set the team's spend limits, member limits included, and its Model Access rules; invite members and cancel invitations; change roles; remove members; deploy and manage team agents; edit and delete team projects; transfer agents, projects, and credit; redeem coupons into the team wallet; set up, change, and turn off the team wallet's auto-pay |
+| **Member** | Team | Run models and create projects in the team workspace (billed to the team wallet), chat with team agents, and view the member list, the team's spend limits and Model Access rules, and every member's spending |
 
 The organization creator is automatically the owner. When the owner creates a team, including the Default Team created with the organization, they are added to it as an admin member. Additional members are invited by email and join once they accept the invitation, signed in with the invited email address, within 72 hours.
 
@@ -109,5 +109,5 @@ For step-by-step instructions, see [Managing Teams](/docs/organizations-managing
 ## What's Next
 
 - [Managing Teams](/docs/organizations-managing-teams): Create organizations, invite members, manage roles and permissions
-- [Team Billing & Spending](/docs/organizations-billing): Wallets, spend limits and their alert emails, and model access controls
+- [Team Billing & Spending](/docs/organizations-billing): Wallets, spend limits and their alert emails, and Model Access rules
 - [Team API Access](/docs/organizations-api-access): How workspace context works with API keys and context guards

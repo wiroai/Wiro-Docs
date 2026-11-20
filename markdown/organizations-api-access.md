@@ -33,7 +33,7 @@ Create a project inside a team to get a team API key, or use a personal project 
 
 A team project's API key works only while the user who created the project is an active member of the team or the owner of its organization. Once the creator is removed from the team, the key stops working right away, in your apps and in any agent that uses it. The project stays in the team. Requests with the key then fail with HTTP `401` and `The person who created this API key is no longer in its team. Ask a team admin for a new key.` Public endpoints such as `Agent/List` still answer, as if the request had no key. While the key works, runs made with it count toward the creator's member limit (see [Spend Limits](/docs/spend-limits)).
 
-API keys can't change teams or organizations. `Organization/Create`, `Organization/Remove`, `Organization/Restore`, `Team/Create`, `Team/Update`, `Team/Remove`, `Team/Member/Invite`, `Team/Member/CancelInvite`, `Team/Member/UpdateRole`, `Team/Member/Remove`, `Team/TransferAgent`, `Team/TransferProject` and `Team/TransferCredit` need a signed-in user: use the dashboard, or send that user's Bearer token. With any API key, personal or team, they fail with HTTP `401` and `API keys can't manage teams or organizations. Sign in and try again.` Endpoints that only read, such as `Organization/List`, `Team/Member/List`, `SpendLimit/List` and `SpendLimit/Usage`, work with an API key. `SpendLimit/Set` and `SpendLimit/Remove` also need a signed-in user and fail with HTTP `401` with an API key, so a key can never lift its own limit.
+API keys can't change teams or organizations. `Organization/Create`, `Organization/Remove`, `Organization/Restore`, `Team/Create`, `Team/Update`, `Team/Remove`, `Team/Member/Invite`, `Team/Member/CancelInvite`, `Team/Member/UpdateRole`, `Team/Member/Remove`, `Team/TransferAgent`, `Team/TransferProject` and `Team/TransferCredit` need a signed-in user: use the dashboard, or send that user's Bearer token. With any API key, personal or team, they fail with HTTP `401` and `API keys can't manage teams or organizations. Sign in and try again.` Endpoints that only read, such as `Organization/List`, `Team/Member/List`, `SpendLimit/List`, `SpendLimit/Usage`, `ModelAccess/List` and `ModelAccess/Check`, work with an API key. `SpendLimit/Set`, `SpendLimit/Remove`, `ModelAccess/Set` and `ModelAccess/Remove` also need a signed-in user and fail with HTTP `401` with an API key, so a key can never lift its own limit or rule.
 
 ## What Gets Filtered by Context
 
@@ -52,7 +52,7 @@ When a workspace context is active, these list endpoints return only resources b
 
 In team context, `Project/List` returns a project's `apikey` only to the user who created the project, team admins and the organization owner. Other members get `apikeymasked` instead, which shows only the first and last four characters of the key. With an API key, this follows the user who created the key's project.
 
-Model listings show the same models in every workspace (only favorites are kept per workspace). Team model access rules apply when a model runs, not when models are listed.
+Model listings show the same models in every workspace (only favorites are kept per workspace). [Model Access](/docs/model-access) rules apply when a model runs, not when models are listed.
 
 ## Agent Context Guards
 
@@ -152,7 +152,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
   -d '{"prompt": "A mountain landscape"}'
 ```
 
-The task is created with the team's `teamguid`. The cost is deducted from the team wallet. The task appears in the team's usage statistics. The team's model access rules and spend limits also apply. A model the team doesn't allow fails with "This model is not available for your team", and runs are refused with code `93` once a spend limit that covers them is reached, such as the team's limit, the key creator's member limit or the key's own limit. See [Team Billing & Spending](/docs/organizations-billing).
+The task is created with the team's `teamguid`. The cost is deducted from the team wallet. The task appears in the team's usage statistics. The team's Model Access rules and spend limits also apply. A run is refused with code `92` when a Model Access rule that covers it blocks the model, such as the team's rule, the key creator's member rule or the key's own rule, and with code `93` once a spend limit that covers it is reached, such as the team's limit, the key creator's member limit or the key's own limit. See [Model Access](/docs/model-access) and [Spend Limits](/docs/spend-limits).
 
 ### Listing Team Agents with API Key
 
@@ -202,6 +202,6 @@ Runs made with a team project's key are charged to the team wallet and appear in
 
 - [Organizations & Teams Overview](/docs/organizations-overview): Concepts and workspace hierarchy
 - [Managing Teams](/docs/organizations-managing-teams): Create organizations, invite members, manage roles
-- [Team Billing & Spending](/docs/organizations-billing): Wallets, spend limits, and model access controls
+- [Team Billing & Spending](/docs/organizations-billing): Wallets, spend limits, and Model Access rules
 - [Authentication](/docs/authentication): API key setup and authentication methods
 - [Projects](/docs/projects): Project management and API credentials

@@ -1709,7 +1709,7 @@ data: {
                     <ul>
                       <li><code>POST /v1/Run/{owner}/{project}</code> remains the asynchronous task-creation endpoint on <code>api.wiro.ai</code>.</li>
                       <li><code>POST /v1/Run/{owner}/{project}/sync</code> is the generic finite-model wait on <code>api.wiro.ai</code>; see <a href="/docs/run-a-model" class="docs-link">Run a Model</a>. It is not a Direct LLM protocol.</li>
-                      <li><code>GET /v1/models</code> lists verified <code>llm-tool-call</code> models and needs no API key. The list is not filtered by a team's Model Access settings; those apply when a model runs. <code>GET /v1/chat/models</code> is equivalent.</li>
+                      <li><code>GET /v1/models</code> lists verified <code>llm-tool-call</code> models and needs no API key. The list is not filtered by <a href="/docs/model-access">Model Access</a> rules; they apply when a model runs. <code>GET /v1/chat/models</code> is equivalent.</li>
                       <li><code>GET /v1/models/{owner}/{model}</code> returns one model's contract, also without a key.</li>
                       <li><code>POST</code>, <code>GET</code>, and <code>DELETE /v1/files</code> compatibility routes use the authenticated project's existing Wiro file storage.</li>
                       <li><code>POST /v1/chat/completions</code> uses OpenAI Chat JSON/SSE.</li>
@@ -3460,7 +3460,7 @@ console.log(providerMetadata.wiro.videos[0]); // { taskId, cost, url, mediaType 
                       <li><code>after</code>/<code>after_id</code> or <code>before</code>/<code>before_id</code> cursors</li>
                     </ul>
                     <p>The default order is ascending and the default limit is <code>1000</code>. <code>total_count</code> counts the filtered catalog. <code>links.next</code> is a relative next-page URL or <code>null</code>.</p>
-                    <p>The discovery list contains the models verified with the <code>llm-tool-call</code> category. It is not filtered by team Model Access: a model your team blocks is still listed, but calling it fails. Other LLMs are not advertised by this endpoint; when you already know an exact <code>owner/model</code> ID, you can still submit it to a compatible Direct LLM route or use the normal Run API.</p>
+                    <p>The discovery list contains the models verified with the <code>llm-tool-call</code> category. It is not filtered by Model Access rules: a model a rule blocks is still listed, but calling it fails. Other LLMs are not advertised by this endpoint; when you already know an exact <code>owner/model</code> ID, you can still submit it to a compatible Direct LLM route or use the normal Run API.</p>
                     <p>Before each request:</p>
                     <ol>
                       <li>Confirm <code>anthropic</code>, <code>chat</code>, or <code>responses</code> in <code>capabilities.endpoints</code>.</li>
@@ -3473,7 +3473,7 @@ console.log(providerMetadata.wiro.videos[0]); // { taskId, cost, url, mediaType 
                     <p>Structured-output support is per model, not per family: read <code>structured_output_modes</code> and <code>strict_json_schema</code> on the model you are about to call. Some models declare both <code>json_object</code> and <code>json_schema</code>, some declare only one of them, and some declare no structured output at all. A model whose runtime cannot constrain decoding can promise a valid JSON document but nothing about the schema, so it declares <code>json_object</code> alone. <code>strict_json_schema</code> is separate again: a model can accept <code>json_schema</code> and still refuse <code>"strict": true</code>.</p>
                     <h3><span class="endpoint-badge get">GET</span> /v1/models/{owner}/{model}</h3>
                     <pre><code>curl "https://llm.wiro.ai/v1/models/openai/gpt-5-6-sol"</code></pre>
-                    <p>The detail route returns the same complete model object as the matching list entry. Query parameters are rejected on detail routes. An unavailable or non-gateway model returns <code>model_not_found</code>. Team Model Access is checked when the model runs, not on this route.</p>
+                    <p>The detail route returns the same complete model object as the matching list entry. Query parameters are rejected on detail routes. An unavailable or non-gateway model returns <code>model_not_found</code>. Model Access rules are checked when the model runs, not on this route.</p>
                   </section>
 
                   <section id="gateway-sync">
@@ -3881,7 +3881,15 @@ claude</code></pre>
                     </ul>
                     <p>Generic <code>/sync</code> waits on <code>api.wiro.ai</code> use the normal Wiro <code>result</code>/<code>errors</code> envelope.</p>
                     <p>After a stream starts, inspect SSE events rather than the HTTP status: Chat emits an error <code>data:</code> frame followed by <code>[DONE]</code>, Responses emits <code>response.failed</code>, and Anthropic emits <code>error</code>.</p>
-                    <p>A model blocked by your team's Model Access settings is refused before it runs with HTTP <code>403</code> and the message <code>This model is not available for your team</code>. Chat and Responses return type <code>permission_error</code>, code <code>permission_denied</code> and param <code>model</code>; Anthropic routes return type <code>permission_error</code>. A streamed Responses request is different: its stream is already open, so it answers <code>200</code> and ends with <code>response.failed</code> carrying code <code>permission_denied</code> and the same message, like other errors that happen when the run is submitted.</p>
+                    <p>A model that a <a href="/docs/model-access">Model Access</a> rule of the key's workspace blocks (Wiro error code <code>92</code>) is refused before it runs with HTTP <code>403</code> and Wiro's message, which names the rule. Chat and Responses return type <code>permission_error</code>, code <code>model_not_allowed</code> and param <code>model</code>; Anthropic routes return type <code>permission_error</code>. Nothing runs and nothing is charged, and sending the request again does not help: use a model the rules allow, or ask someone who manages the rule to change it. A streamed Responses request ends with <code>response.failed</code> carrying code <code>model_not_allowed</code> instead, like other errors that happen when the run is submitted.</p>
+                    <pre><code class="language-json">{
+  "error": {
+    "message": "The LLM gateway can only use selected models, and openai/gpt-6-2-astra is not one of them. Model Access rules decide which models can run.",
+    "type": "permission_error",
+    "code": "model_not_allowed",
+    "param": "model"
+  }
+}</code></pre>
                     <p>A run refused by a <a href="/docs/spend-limits">spend limit</a> of the key's workspace (Wiro error code <code>93</code>) gets HTTP <code>402</code> with Wiro's message, which names the limit and when it resets. Chat and Responses return type <code>insufficient_quota</code>, code <code>spend_limit_reached</code> and param <code>null</code>; Anthropic routes return type <code>billing_error</code>. Nothing runs and nothing is charged, and SDKs do not retry it: send the request again only after the limit resets or is raised. A streamed Responses request ends with <code>response.failed</code> carrying code <code>spend_limit_reached</code> instead, like other errors that happen when the run is submitted.</p>
                     <pre><code class="language-json">{
   "error": {
@@ -7734,6 +7742,877 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                 </article>
               </div>
 
+              <div class="docs-page-section" data-page="model-access" style="display: none">
+                <article class="docs-section">
+                  <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="/docs/markdown/model-access.md" target="_blank" class="docs-section-md-btn">View</a> <a href="/docs/markdown/model-access.md" download class="docs-section-md-btn">Download</a></div>
+
+                  <h1>Model Access</h1>
+                  <p class="section-subtitle">Choose which models a personal account or a team can run: allow or block single models and whole categories, for the whole wallet, one team member, one API key, a surface such as the LLM gateway, or one agent.</p>
+
+                  <section id="how-model-access-works">
+                    <h2>How Model Access Works</h2>
+                    <p>A Model Access rule decides which models a wallet's work can run. Rules work the same way for a personal account's wallet and for a team's wallet. The rules of the workspace a call runs in apply: a team project's API key runs in its team, a personal project's key in your personal account, and the dashboard in the workspace you have selected.</p>
+                    <p>Manage rules on the <a href="https://wiro.ai/panel/controls/model-access" target="_blank">Model Access</a> page of the dashboard, for your personal account or for the team workspace you have selected, or with the <code>/ModelAccess</code> endpoints below. A workspace without rules can run every model. Team allowlists and blocklists set before this system were moved into it as rules for the whole team.</p>
+
+                    <h3>What a Rule Covers</h3>
+                    <p>Each rule covers one scope of the wallet's work, the same scopes as <a href="/docs/spend-limits">spend limits</a>. A scope and target can have one rule:</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Scope</th>
+                              <th><code>target</code></th>
+                              <th>What it covers</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>account</code></td>
+                              <td>None</td>
+                              <td>Everything the wallet runs. In a team, every run in the team</td>
+                            </tr>
+                            <tr>
+                              <td><code>member</code></td>
+                              <td>The member's <code>useruuid</code> from <code>/Team/Member/List</code></td>
+                              <td>One team member's runs in the team (team wallets only): their dashboard runs in the team workspace and every run made with the API key of a team project they created</td>
+                            </tr>
+                            <tr>
+                              <td><code>project</code></td>
+                              <td>The project's <code>id</code> from <code>/Project/List</code></td>
+                              <td>One API key: the runs made with that project's key</td>
+                            </tr>
+                            <tr>
+                              <td><code>surface</code></td>
+                              <td><code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code> or <code>agent</code></td>
+                              <td>One way in (see Surfaces below)</td>
+                            </tr>
+                            <tr>
+                              <td><code>agent</code></td>
+                              <td>The agent's <code>guid</code> (its <code>useragentguid</code>)</td>
+                              <td>One deployed agent: the models it runs through Wiro and the chat models it answers with</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <h3>Surfaces</h3>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Surface</th>
+                              <th>Covers</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>web</code></td>
+                              <td>The Wiro dashboard, including Studio and the Workflow Agent used there</td>
+                            </tr>
+                            <tr>
+                              <td><code>api</code></td>
+                              <td>Calls with an API key</td>
+                            </tr>
+                            <tr>
+                              <td><code>mcp</code></td>
+                              <td>The <a href="/docs/wiro-mcp-server">Wiro MCP server</a>, hosted or the npm package</td>
+                            </tr>
+                            <tr>
+                              <td><code>llm-gateway</code></td>
+                              <td>The OpenAI and Anthropic compatible <a href="/docs/completions-api">LLM gateway</a></td>
+                            </tr>
+                            <tr>
+                              <td><code>extension</code></td>
+                              <td>The Wiro browser extensions</td>
+                            </tr>
+                            <tr>
+                              <td><code>agent</code></td>
+                              <td>Your deployed agents' own runs</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <h3>Everything Else</h3>
+                    <p>Every rule has an Everything Else setting, <code>access</code>. It decides the models the rule names neither one by one nor by category:</p>
+                    <ul>
+                      <li><code>allow</code> (the default): every model can run except the ones the rule blocks</li>
+                      <li><code>block</code>: only the models and categories the rule allows can run</li>
+                    </ul>
+
+                    <h3>Categories</h3>
+                    <p>A rule can allow or block whole categories of models. Each category groups catalog categories, the values models carry in their <code>categories</code> field on <a href="/docs/models"><code>/Tool/List</code> and <code>/Tool/Detail</code></a>. A category also covers the models added to it later.</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th><code>category</code></th>
+                              <th>Label</th>
+                              <th>Catalog categories</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>image</code></td>
+                              <td>Image Generation</td>
+                              <td><code>text-to-image</code>, <code>image-to-image</code>, <code>image-editing</code>, <code>image-to-text</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>video</code></td>
+                              <td>Video Generation</td>
+                              <td><code>text-to-video</code>, <code>image-to-video</code>, <code>video-to-video</code>, <code>speech-to-video</code>, <code>talking-head</code>, <code>video-to-text</code>, <code>reference-to-video</code>, <code>audio-to-video</code>, <code>lip-sync</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>audio</code></td>
+                              <td>Audio &amp; Speech</td>
+                              <td><code>text-to-speech</code>, <code>speech-to-text</code>, <code>speech-to-speech</code>, <code>video-to-music</code>, <code>voice-clone</code>, <code>text-to-audio</code>, <code>image-to-audio</code>, <code>realtime-conversation</code>, <code>realtime-tts</code>, <code>realtime-stt</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>music</code></td>
+                              <td>Music Generation</td>
+                              <td><code>music-generation</code>, <code>text-to-song</code>, <code>text-to-music</code>, <code>image-to-song</code>, <code>image-to-music</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>3d</code></td>
+                              <td>3D Generation</td>
+                              <td><code>3d-generation</code>, <code>text-to-3d</code>, <code>image-to-3d</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>llm</code></td>
+                              <td>LLM &amp; Chat</td>
+                              <td><code>chat</code>, <code>llm</code>, <code>partner-llm</code>, <code>rag</code>, <code>llm-reasoning</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>utilities</code></td>
+                              <td>Utilities</td>
+                              <td><code>utils</code></td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p>A model is in every category that one of its catalog categories belongs to, so it can be in more than one. A model whose catalog categories belong to none of them is decided by its own entry or by Everything Else. <code>/ModelAccess/List</code> returns this list, and <code>/ModelAccess/Check</code> shows the categories of one model.</p>
+
+                    <h3>Single Models</h3>
+                    <p>A rule can also allow or block single models, named by their <code>owner/slug</code>, such as <code>openai/gpt-6-2-astra</code>, or by their <code>id</code>. A model's own entry comes before its categories, so a rule can block a category and still allow one model in it. A rule can name up to 500 models, and each must be a model listed on Wiro.</p>
+
+                    <h3>How One Rule Decides</h3>
+                    <p>A rule decides a model in this order:</p>
+                    <ol>
+                      <li><strong>The model</strong>: when the rule names the model, that entry decides</li>
+                      <li><strong>Its categories</strong>: otherwise, when the rule names one or more of the model's categories, they decide. If one of them is blocked, the model is blocked, even when another one is allowed</li>
+                      <li><strong>Everything Else</strong>: otherwise the rule's <code>access</code> decides</li>
+                    </ol>
+                    <p>For example, a rule with Everything Else set to <code>allow</code>, Video Generation blocked and <code>bytedance/seedance-v2-5-flash</code> allowed lets every model run except video models, and Seedance v2.5 Flash is the one video model it lets run.</p>
+
+                    <h3>When Several Rules Apply</h3>
+                    <p>A run can meet several rules of its wallet: the whole account's, the member's in a team, the API key's, the surface's and the agent's. It goes ahead only when every rule that applies allows the model. A narrower rule can't open what a wider one blocks: when the account's rule blocks a model, an API key's rule that allows it does not let it run.</p>
+                    <p>When more than one rule blocks the model, the refusal names the first of them in the order account, member, API key, surface, agent. <code>/ModelAccess/Check</code> shows how each rule decides a model.</p>
+
+                    <h3>Where Rules Apply</h3>
+                    <p>Rules are checked before work starts, and before the balance and the spend limits:</p>
+                    <ul>
+                      <li>Model runs: <code>/Run</code> and its <code>/sync</code> wait, realtime sessions, the <a href="/docs/completions-api">LLM gateway</a>, the <a href="/docs/wiro-mcp-server">MCP server</a>, the browser extensions and the dashboard</li>
+                      <li>Workflow runs and resumes: every model step that will run must be allowed</li>
+                      <li>The models that Studio and your deployed agents run through Wiro</li>
+                      <li>An agent's chat model: choosing one in the agent's settings, or sending <code>model</code> with <code>Message/Send</code>, follows that agent's own rule</li>
+                    </ul>
+                    <p>A change applies to work that starts after it. Work that is already running is not stopped. Browsing models is not affected: <code>/Tool/List</code>, <code>/Tool/Detail</code> and the LLM gateway's model list show the same models whatever the rules.</p>
+
+                    <h3>When a Model Is Blocked</h3>
+                    <p>A run of a model that a rule blocks is refused with HTTP <code>200</code>, <code>result: false</code> and error code <code>92</code>, even when the wallet has money. The message names the rule:</p>
+                    <pre><code class="language-json">{
+  "result": false,
+  "errors": [
+    {
+      "code": 92,
+      "message": "This API key can only use selected models, and openai/gpt-6-2-astra is not one of them. Model Access rules decide which models can run."
+    }
+  ]
+}</code></pre>
+                    <p>The message also says what blocked the model:</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Blocked by</th>
+                              <th>Example message</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td>Everything Else</td>
+                              <td><code>This API key can only use selected models, and openai/gpt-6-2-astra is not one of them. Model Access rules decide which models can run.</code></td>
+                            </tr>
+                            <tr>
+                              <td>The model's own entry</td>
+                              <td><code>This API key can't use openai/gpt-6-2-astra. Model Access rules decide which models can run.</code></td>
+                            </tr>
+                            <tr>
+                              <td>One of the model's categories</td>
+                              <td><code>MCP can't use Video Generation models, and bytedance/seedance-v2-5-flash is one of them. Model Access rules decide which models can run.</code></td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Rule</th>
+                              <th>The message starts with</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td>A personal account's <code>account</code> rule</td>
+                              <td><code>Your account</code></td>
+                            </tr>
+                            <tr>
+                              <td>A team's <code>account</code> rule</td>
+                              <td><code>This team</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>member</code></td>
+                              <td><code>You</code>, with <code>in this team</code> after the model or category, for example <code>You can't use openai/gpt-6-2-astra in this team.</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>project</code></td>
+                              <td><code>This API key</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>surface</code></td>
+                              <td>The surface's name: <code>The dashboard</code>, <code>The API</code>, <code>MCP</code>, <code>The LLM gateway</code>, <code>The browser extensions</code> or <code>Agents</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>agent</code></td>
+                              <td><code>This agent</code></td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p>Nothing runs and nothing is charged. Retrying does not help: run a model the rules allow, or ask someone who manages the rule to change it. Through the <a href="/docs/completions-api#gateway-errors">LLM gateway</a> the refusal is an HTTP <code>403</code> error with code <code>model_not_allowed</code>, and the <a href="/docs/wiro-mcp-server">MCP server</a> returns it as a tool error.</p>
+
+                    <h3>Who Can Change Rules</h3>
+                    <ul>
+                      <li><strong>Personal account</strong>: the account itself</li>
+                      <li><strong>Team</strong>: the organization owner or a team admin. The owner of an agent can also set that agent's own rule</li>
+                    </ul>
+                    <p>Any team member can read the team's rules with <code>/ModelAccess/List</code> and <code>/ModelAccess/Check</code>, which also work with an API key. <code>/ModelAccess/Set</code> and <code>/ModelAccess/Remove</code> work only while signed in, in the dashboard or with the user's Bearer token: with an API key they fail with HTTP <code>401</code>, so a key can never lift its own rule. A deployed agent's own calls to these endpoints are refused.</p>
+                  </section>
+
+                  <section id="model-access-list">
+                    <h2>
+                      <span class="endpoint-badge post">POST</span>
+                      /ModelAccess/List
+                    </h2>
+                    <p>Returns the Model Access rules of the call's workspace and the categories a rule can name. A team project's API key reads its team, a personal project's key your personal account, and the dashboard the workspace you have selected. Any team member can call it, and it works with an API key. Send an empty body: <code>{}</code>.</p>
+
+                    <h3>Response</h3>
+                    <pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "workspace": {
+    "type": "team",
+    "teamguid": "0d9aade4-d31b-4b97-88f3-a90482f080ea",
+    "canmanage": false
+  },
+  "rules": [
+    {
+      "guid": "a642eda4-68ef-4fa9-af15-7024f28b0332",
+      "scope": "account",
+      "target": "",
+      "targetlabel": null,
+      "access": "allow",
+      "categories": [
+        { "category": "video", "label": "Video Generation", "access": "block" }
+      ],
+      "models": [
+        { "id": "2062", "model": "bytedance/seedance-v2-5-flash", "title": "Seedance v2.5 Flash Video Generator", "access": "allow" }
+      ],
+      "createdat": 1795180800,
+      "updatedat": 1795180800
+    },
+    {
+      "guid": "a4308936-5441-4012-96ee-f2b32ad3fd40",
+      "scope": "project",
+      "target": "48211",
+      "targetlabel": "Production",
+      "access": "block",
+      "categories": [
+        { "category": "image", "label": "Image Generation", "access": "allow" }
+      ],
+      "models": [],
+      "createdat": 1795184400,
+      "updatedat": 1795188000
+    },
+    {
+      "guid": "9f12fb7e-16f0-4208-83b6-c333b83192d7",
+      "scope": "surface",
+      "target": "mcp",
+      "targetlabel": "MCP",
+      "access": "allow",
+      "categories": [
+        { "category": "video", "label": "Video Generation", "access": "block" }
+      ],
+      "models": [],
+      "createdat": 1795191600,
+      "updatedat": 1795191600
+    }
+  ],
+  "categories": [
+    { "category": "image", "label": "Image Generation", "values": ["text-to-image", "image-to-image", "image-editing", "image-to-text"] },
+    { "category": "video", "label": "Video Generation", "values": ["text-to-video", "image-to-video", "video-to-video", "speech-to-video", "talking-head", "video-to-text", "reference-to-video", "audio-to-video", "lip-sync"] },
+    { "category": "audio", "label": "Audio &amp; Speech", "values": ["text-to-speech", "speech-to-text", "speech-to-speech", "video-to-music", "voice-clone", "text-to-audio", "image-to-audio", "realtime-conversation", "realtime-tts", "realtime-stt"] },
+    { "category": "music", "label": "Music Generation", "values": ["music-generation", "text-to-song", "text-to-music", "image-to-song", "image-to-music"] },
+    { "category": "3d", "label": "3D Generation", "values": ["3d-generation", "text-to-3d", "image-to-3d"] },
+    { "category": "llm", "label": "LLM &amp; Chat", "values": ["chat", "llm", "partner-llm", "rag", "llm-reasoning"] },
+    { "category": "utilities", "label": "Utilities", "values": ["utils"] }
+  ]
+}</code></pre>
+
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Field</th>
+                              <th>Description</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>workspace.type</code></td>
+                              <td><code>team</code> or <code>personal</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>workspace.teamguid</code></td>
+                              <td>The team's guid, or <code>null</code> for a personal account</td>
+                            </tr>
+                            <tr>
+                              <td><code>workspace.canmanage</code></td>
+                              <td>Whether the caller can change rules in this workspace. The owner of an agent can still set that agent's own rule when it is <code>false</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>rules[].guid</code></td>
+                              <td>The rule's guid, for <code>/ModelAccess/Remove</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>rules[].scope</code></td>
+                              <td><code>account</code>, <code>member</code>, <code>project</code>, <code>surface</code> or <code>agent</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>rules[].target</code></td>
+                              <td>The member's <code>useruuid</code>, the project id, the surface or the agent's guid; <code>""</code> for <code>account</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>rules[].targetlabel</code></td>
+                              <td>The member's name, the project's name, the agent's title or the surface's label; <code>null</code> for <code>account</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>rules[].access</code></td>
+                              <td>Everything Else: <code>allow</code> or <code>block</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>rules[].categories</code></td>
+                              <td>The categories the rule names, each with its <code>label</code> and <code>access</code>, in the order of <code>categories</code> below</td>
+                            </tr>
+                            <tr>
+                              <td><code>rules[].models</code></td>
+                              <td>The models the rule names, in <code>id</code> order: <code>id</code> (a string), <code>model</code> (<code>owner/slug</code>), <code>title</code> and <code>access</code>. <code>model</code> and <code>title</code> are <code>null</code> for a model that is no longer on Wiro</td>
+                            </tr>
+                            <tr>
+                              <td><code>rules[].createdat</code>, <code>rules[].updatedat</code></td>
+                              <td>When the rule was added and last changed, in Unix seconds</td>
+                            </tr>
+                            <tr>
+                              <td><code>categories</code></td>
+                              <td>The seven categories a rule can name: <code>category</code> (the key a rule uses), <code>label</code> and <code>values</code> (the catalog categories it covers)</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section id="model-access-set">
+                    <h2>
+                      <span class="endpoint-badge post">POST</span>
+                      /ModelAccess/Set
+                    </h2>
+                    <p>Adds a rule to the call's workspace, or replaces the rule with the same <code>scope</code> and <code>target</code>. The rule you send replaces the old one as a whole, so a category or model you leave out is no longer named. In a team, only the organization owner or a team admin can call it, and the owner of an agent can set that agent's own rule. It works only while signed in, in the dashboard or with the user's Bearer token: with an API key it fails with HTTP <code>401</code>, so a key can never lift its own rule.</p>
+
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Parameter</th>
+                              <th>Type</th>
+                              <th>Required</th>
+                              <th>Description</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>scope</code></td>
+                              <td>string</td>
+                              <td>Yes</td>
+                              <td><code>"account"</code>, <code>"member"</code>, <code>"project"</code>, <code>"surface"</code> or <code>"agent"</code>. See <a href="#how-model-access-works">What a Rule Covers</a></td>
+                            </tr>
+                            <tr>
+                              <td><code>target</code></td>
+                              <td>string</td>
+                              <td>For every scope but <code>account</code></td>
+                              <td>The member's <code>useruuid</code>, the project's <code>id</code>, the surface (<code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code> or <code>agent</code>) or the agent's guid. Leave it out for <code>account</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>access</code></td>
+                              <td>string</td>
+                              <td>No</td>
+                              <td>Everything Else: <code>"allow"</code> or <code>"block"</code>. Default: <code>"allow"</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>categories</code></td>
+                              <td>array or object</td>
+                              <td>No</td>
+                              <td>The categories the rule allows or blocks, as <code>[{ "category": "video", "access": "block" }]</code> or as <code>{ "video": "block" }</code>. A category is <code>image</code>, <code>video</code>, <code>audio</code>, <code>music</code>, <code>3d</code>, <code>llm</code> or <code>utilities</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>models</code></td>
+                              <td>array or object</td>
+                              <td>No</td>
+                              <td>The single models the rule allows or blocks, as <code>[{ "model": "openai/gpt-6-2-astra", "access": "block" }]</code> or as <code>{ "openai/gpt-6-2-astra": "block" }</code>. Name a model by its <code>owner/slug</code> or its <code>id</code>. At most 500 models</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <h3>Examples</h3>
+                    <p><strong>Block video models for the whole account, except one:</strong></p>
+                    <pre><code class="language-json">{
+  "scope": "account",
+  "access": "allow",
+  "categories": [
+    { "category": "video", "access": "block" }
+  ],
+  "models": [
+    { "model": "bytedance/seedance-v2-5-flash", "access": "allow" }
+  ]
+}</code></pre>
+                    <p><strong>Let one API key run only image models:</strong></p>
+                    <pre><code class="language-json">{
+  "scope": "project",
+  "target": "48211",
+  "access": "block",
+  "categories": [
+    { "category": "image", "access": "allow" }
+  ]
+}</code></pre>
+                    <p><strong>Keep video models out of MCP:</strong></p>
+                    <pre><code class="language-json">{
+  "scope": "surface",
+  "target": "mcp",
+  "categories": { "video": "block" }
+}</code></pre>
+                    <p><strong>Block one model for one agent:</strong></p>
+                    <pre><code class="language-json">{
+  "scope": "agent",
+  "target": "6e4bbd6f-6b73-4421-adae-e9599ba2e317",
+  "models": { "openai/gpt-6-2-astra": "block" }
+}</code></pre>
+
+                    <h3>Response</h3>
+                    <p><code>rule</code> is the rule as saved, shaped like a row of <code>/ModelAccess/List</code>:</p>
+                    <pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "rule": {
+    "guid": "a4308936-5441-4012-96ee-f2b32ad3fd40",
+    "scope": "project",
+    "target": "48211",
+    "targetlabel": "Production",
+    "access": "block",
+    "categories": [
+      { "category": "image", "label": "Image Generation", "access": "allow" }
+    ],
+    "models": [],
+    "createdat": 1795184400,
+    "updatedat": 1795188000
+  }
+}</code></pre>
+
+                    <h3>Errors</h3>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Error</th>
+                              <th>Cause</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>scope must be one of account, member, project, surface, agent.</code></td>
+                              <td><code>scope</code> is missing or not one of the five scopes</td>
+                            </tr>
+                            <tr>
+                              <td><code>Member rules exist only in a team workspace.</code></td>
+                              <td>A <code>member</code> rule in a personal account</td>
+                            </tr>
+                            <tr>
+                              <td><code>target is required for this scope.</code></td>
+                              <td>No <code>target</code> for a <code>member</code>, <code>project</code>, <code>surface</code> or <code>agent</code> rule</td>
+                            </tr>
+                            <tr>
+                              <td><code>A surface is one of web, api, mcp, llm-gateway, extension, agent.</code></td>
+                              <td>A <code>surface</code> rule with another <code>target</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>target must be a project id.</code></td>
+                              <td>A <code>project</code> rule whose <code>target</code> is not a project id</td>
+                            </tr>
+                            <tr>
+                              <td><code>access must be allow or block.</code></td>
+                              <td>Another <code>access</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>categories must be a list of { category, access }.</code></td>
+                              <td><code>categories</code> is neither a list nor an object</td>
+                            </tr>
+                            <tr>
+                              <td><code>A category is one of image, video, audio, music, 3d, llm, utilities.</code></td>
+                              <td>A category that is not one of the seven</td>
+                            </tr>
+                            <tr>
+                              <td><code>A category's access must be allow or block.</code></td>
+                              <td>A category with another <code>access</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>models must be a list of { model, access }.</code></td>
+                              <td><code>models</code> is neither a list nor an object</td>
+                            </tr>
+                            <tr>
+                              <td><code>A rule can name at most 500 models.</code></td>
+                              <td>More than 500 models</td>
+                            </tr>
+                            <tr>
+                              <td><code>Each model needs its owner/slug or id.</code></td>
+                              <td>A model entry with no model</td>
+                            </tr>
+                            <tr>
+                              <td><code>A model's access must be allow or block.</code></td>
+                              <td>A model with another <code>access</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>&lt;model&gt; is not a model's owner/slug or id.</code></td>
+                              <td>A model named neither by <code>owner/slug</code> nor by a number</td>
+                            </tr>
+                            <tr>
+                              <td><code>&lt;model&gt; is not a model on Wiro.</code></td>
+                              <td>No model listed on Wiro has that <code>owner/slug</code> or id</td>
+                            </tr>
+                            <tr>
+                              <td><code>&lt;model&gt; is named twice.</code></td>
+                              <td><code>models</code> names a model twice: by the same name, or by its id and its <code>owner/slug</code> with a different <code>access</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>Only a team admin or the organization owner can change this rule.</code></td>
+                              <td>In a team, the caller is not a team admin or the organization owner (or, for an <code>agent</code> rule, the agent's owner)</td>
+                            </tr>
+                            <tr>
+                              <td><code>That person is not an active member of this team.</code></td>
+                              <td>A <code>member</code> rule for someone who is not an active member of the team</td>
+                            </tr>
+                            <tr>
+                              <td><code>That API key's project is not in this workspace.</code></td>
+                              <td>A <code>project</code> rule for a project of another workspace</td>
+                            </tr>
+                            <tr>
+                              <td><code>That agent is not in this workspace.</code></td>
+                              <td>An <code>agent</code> rule for an agent of another workspace</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section id="model-access-remove">
+                    <h2>
+                      <span class="endpoint-badge post">POST</span>
+                      /ModelAccess/Remove
+                    </h2>
+                    <p>Removes a rule from the call's workspace. The people who can set a rule can remove it, and only while signed in: with an API key it fails with HTTP <code>401</code>.</p>
+
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Parameter</th>
+                              <th>Type</th>
+                              <th>Required</th>
+                              <th>Description</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>guid</code></td>
+                              <td>string</td>
+                              <td>Yes</td>
+                              <td>The rule's <code>guid</code> from <code>/ModelAccess/List</code></td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <h3>Response</h3>
+                    <pre><code class="language-json">{
+  "result": true,
+  "errors": []
+}</code></pre>
+
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Error</th>
+                              <th>Cause</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>guid is required.</code></td>
+                              <td>No <code>guid</code> was sent</td>
+                            </tr>
+                            <tr>
+                              <td><code>Rule not found in this workspace.</code></td>
+                              <td>The guid is not a rule of the call's workspace, or it was already removed</td>
+                            </tr>
+                            <tr>
+                              <td><code>Only a team admin or the organization owner can change this rule.</code></td>
+                              <td>In a team, the caller can't manage this rule</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section id="model-access-check">
+                    <h2>
+                      <span class="endpoint-badge post">POST</span>
+                      /ModelAccess/Check
+                    </h2>
+                    <p>Shows how the rules of the call's workspace decide one model for one run: which rules apply, what each one decides and why, and the refusal the run would get. Nothing runs. A team project's API key reads its team, a personal project's key your personal account, and the dashboard the workspace you have selected. Any team member can call it, and it works with an API key. With only <code>model</code>, it checks a dashboard run of yours.</p>
+
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Parameter</th>
+                              <th>Type</th>
+                              <th>Required</th>
+                              <th>Description</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>model</code></td>
+                              <td>string</td>
+                              <td>Yes</td>
+                              <td>The model's <code>owner/slug</code> or <code>id</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>member</code></td>
+                              <td>string</td>
+                              <td>No</td>
+                              <td>In a team, the <code>useruuid</code> of the member whose run to check. Default: you (with an API key, the person who created its project)</td>
+                            </tr>
+                            <tr>
+                              <td><code>project</code></td>
+                              <td>string</td>
+                              <td>No</td>
+                              <td>A project's <code>id</code>, to check a run made with that project's API key</td>
+                            </tr>
+                            <tr>
+                              <td><code>surface</code></td>
+                              <td>string</td>
+                              <td>No</td>
+                              <td>Where the run comes from: <code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code> or <code>agent</code>. Default: <code>web</code>. A run with an API key comes from <code>api</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>agent</code></td>
+                              <td>string</td>
+                              <td>No</td>
+                              <td>An agent's guid, to check a model run that agent makes. The surface is then <code>agent</code></td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <h3>Example</h3>
+                    <p><strong>Can the Production API key run <code>openai/gpt-6-2-astra</code>?</strong></p>
+                    <pre><code class="language-json">{
+  "model": "openai/gpt-6-2-astra",
+  "project": "48211",
+  "surface": "api"
+}</code></pre>
+
+                    <h3>Response</h3>
+                    <p>Each applicable rule comes back shaped like a row of <code>/ModelAccess/List</code>, with what it decides:</p>
+                    <pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "check": {
+    "model": "openai/gpt-6-2-astra",
+    "categories": ["llm"],
+    "allowed": false,
+    "message": "This API key can only use selected models, and openai/gpt-6-2-astra is not one of them. Model Access rules decide which models can run.",
+    "rules": [
+      {
+        "rule": {
+          "guid": "a642eda4-68ef-4fa9-af15-7024f28b0332",
+          "scope": "account",
+          "target": "",
+          "targetlabel": null,
+          "access": "allow",
+          "categories": [
+            { "category": "video", "label": "Video Generation", "access": "block" }
+          ],
+          "models": [
+            { "id": "2062", "model": "bytedance/seedance-v2-5-flash", "title": "Seedance v2.5 Flash Video Generator", "access": "allow" }
+          ],
+          "createdat": 1795180800,
+          "updatedat": 1795180800
+        },
+        "access": "allow",
+        "by": "default",
+        "category": null
+      },
+      {
+        "rule": {
+          "guid": "a4308936-5441-4012-96ee-f2b32ad3fd40",
+          "scope": "project",
+          "target": "48211",
+          "targetlabel": "Production",
+          "access": "block",
+          "categories": [
+            { "category": "image", "label": "Image Generation", "access": "allow" }
+          ],
+          "models": [],
+          "createdat": 1795184400,
+          "updatedat": 1795188000
+        },
+        "access": "block",
+        "by": "default",
+        "category": null
+      }
+    ]
+  }
+}</code></pre>
+
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Field</th>
+                              <th>Description</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>check.model</code></td>
+                              <td>The model as <code>owner/slug</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>check.categories</code></td>
+                              <td>The categories the model is in, such as <code>["llm"]</code>. Empty when it is in none</td>
+                            </tr>
+                            <tr>
+                              <td><code>check.allowed</code></td>
+                              <td>Whether every rule that applies allows the model</td>
+                            </tr>
+                            <tr>
+                              <td><code>check.message</code></td>
+                              <td>The refusal a run would get with code <code>92</code>, or <code>null</code> when the model is allowed</td>
+                            </tr>
+                            <tr>
+                              <td><code>check.rules</code></td>
+                              <td>The rules that apply, in the order account, member, API key, surface, agent. Empty when none applies</td>
+                            </tr>
+                            <tr>
+                              <td><code>check.rules[].rule</code></td>
+                              <td>The rule, shaped like a row of <code>/ModelAccess/List</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>check.rules[].access</code></td>
+                              <td>What this rule decides: <code>allow</code> or <code>block</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>check.rules[].by</code></td>
+                              <td>What decided it: <code>model</code> (the model's own entry), <code>category</code> (one of its categories) or <code>default</code> (Everything Else)</td>
+                            </tr>
+                            <tr>
+                              <td><code>check.rules[].category</code></td>
+                              <td>The category that decided it when <code>by</code> is <code>category</code>, else <code>null</code></td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Error</th>
+                              <th>Cause</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>model is required.</code></td>
+                              <td>No <code>model</code> was sent</td>
+                            </tr>
+                            <tr>
+                              <td><code>&lt;model&gt; is not a model's owner/slug or id.</code></td>
+                              <td><code>model</code> is neither an <code>owner/slug</code> nor a number</td>
+                            </tr>
+                            <tr>
+                              <td><code>&lt;model&gt; is not a model on Wiro.</code></td>
+                              <td>No model listed on Wiro has that <code>owner/slug</code> or id</td>
+                            </tr>
+                            <tr>
+                              <td><code>A surface is one of web, api, mcp, llm-gateway, extension, agent.</code></td>
+                              <td>Another <code>surface</code></td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </section>
+                </article>
+              </div>
+
               <div class="docs-page-section" data-page="error-reference" style="display: none">
                 <article class="docs-section">
                   <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="/docs/markdown/error-reference.md" target="_blank" class="docs-section-md-btn">View</a> <a href="/docs/markdown/error-reference.md" download class="docs-section-md-btn">Download</a></div>
@@ -7777,6 +8656,11 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                           <td><code>1</code></td>
                           <td>Not Found / Client</td>
                           <td>Resource not found or not accessible</td>
+                        </tr>
+                        <tr>
+                          <td><code>92</code></td>
+                          <td>Model Access</td>
+                          <td>A Model Access rule of the workspace blocks the model. See <a href="/docs/model-access">Model Access</a></td>
                         </tr>
                         <tr>
                           <td><code>93</code></td>
@@ -7926,6 +8810,12 @@ x-nonce: Unix timestamp or random integer</code></pre>
                           <td><a href="https://wiro.ai/panel/billing" target="_blank">Add funds</a>: minimum $0.50 required ($10 for training)</td>
                         </tr>
                         <tr>
+                          <td>Model blocked</td>
+                          <td><code>92</code></td>
+                          <td>This API key can only use selected models, and openai/gpt-6-2-astra is not one of them. Model Access rules decide which models can run.</td>
+                          <td>Run a model the rules allow, or ask someone who manages the rule to change it on the <a href="https://wiro.ai/panel/controls/model-access" target="_blank">Model Access</a> page. The message names the rule. See <a href="/docs/model-access">Model Access</a></td>
+                        </tr>
+                        <tr>
                           <td>Spend limit reached</td>
                           <td><code>93</code></td>
                           <td>This API key's monthly spend limit is reached ($50.20 of $50.00). It resets on December 1, 2026 at 00:00 UTC.</td>
@@ -8015,9 +8905,9 @@ x-nonce: Unix timestamp or random integer</code></pre>
                           <td>You don't have any permission for this action.</td>
                         </tr>
                         <tr>
-                          <td>Model blocked by your team</td>
-                          <td><code>0</code></td>
-                          <td>This model is not available for your team</td>
+                          <td>Model blocked by a <a href="/docs/model-access">Model Access</a> rule</td>
+                          <td><code>92</code></td>
+                          <td>This API key can't use openai/gpt-6-2-astra. Model Access rules decide which models can run.</td>
                         </tr>
                       </tbody>
                     </table>
@@ -8130,6 +9020,9 @@ x-nonce: Unix timestamp or random integer</code></pre>
 if (!data.result) {
   const error = data.errors[0];
   switch (error.code) {
+    case 92:
+      console.log('Model blocked by a Model Access rule: run a model the rules allow');
+      break;
     case 93:
       console.log('Spend limit reached: wait for the reset or raise the limit');
       break;
@@ -8171,6 +9064,11 @@ if (!data.result) {
                           <td><code>1</code></td>
                           <td>No</td>
                           <td>Check model slug or task token</td>
+                        </tr>
+                        <tr>
+                          <td><code>92</code></td>
+                          <td>No</td>
+                          <td>Run a model the rules allow, or ask someone who manages the rule to change it</td>
                         </tr>
                         <tr>
                           <td><code>93</code></td>
@@ -9390,6 +10288,7 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
                     <p>Deleting a workflow, an agent, a conversation or an account connection also waits for <code>confirm: true</code>, and so do connecting an agent to a Wiro project with <code>bind_agent_project</code> and replacing a workflow's steps with <code>update_workflow</code> or <code>save_workflow_from_agent</code>: you see a summary of the change first, with the old and new value of each step input that changes. No tool adds funds or takes a card payment. Funds are added in the Wiro dashboard, and an agent plan paid by card moves to a larger plan or is topped up there.</p>
                     <p>The connected project decides the workspace: a personal project uses your personal wallet, a team project uses the team wallet. <code>get_account</code> shows which one, its balance and its spend limits.</p>
                     <p>Calls through the MCP server count toward the workspace's <a href="/docs/spend-limits">spend limits</a>, on the <code>mcp</code> surface (the Wiro browser extensions' calls on the <code>extension</code> surface). When a limit refuses work (error code <code>93</code>), the tool returns an error with Wiro's message and a note: nothing ran and nothing was charged, do not try again until the limit resets or someone who manages it raises it, and limits are managed at <a href="https://wiro.ai/panel/wallet/limits" target="_blank">wiro.ai/panel/wallet/limits</a>.</p>
+                    <p>The workspace's <a href="/docs/model-access">Model Access</a> rules apply to these calls too, on the same surfaces. A model a rule blocks is refused before anything runs (error code <code>92</code>), and the tool returns an error with Wiro's message, which names the rule. Nothing ran and nothing was charged. Rules are managed at <a href="https://wiro.ai/panel/controls/model-access" target="_blank">wiro.ai/panel/controls/model-access</a>.</p>
                   </section>
 
                   <section id="mcp-contract">
@@ -11407,7 +12306,8 @@ import type {
 <li>Nothing is charged when a run starts. Each model step is a normal <a href="/docs/run-a-model">model task</a>, billed when it finishes successfully at that model's price. Failed steps are not charged, and utility steps are free.</li>
 <li>To start, the wallet must hold $0.50 for each model step the run will execute (up to the breakpoint, when one is set). Otherwise the run is refused with code <code>97</code>, <code>Insufficient balance</code>. The <a href="/docs/concurrency-limits">concurrency limit</a> also applies (code <code>96</code>).</li>
 <li>The expected cost of a run is the sum of the model prices for the settings each step uses, from <a href="/docs/models">Tool/Detail</a>. A run's <code>totalcost</code> shows the list price of the steps finished so far, and once the run has ended <code>chargedcost</code> and <code>discountamount</code> show what the wallet paid. <code>chargedcost</code> is <code>null</code> while a step's charge is still settling.</li>
-<li>The workspace's <a href="/docs/spend-limits">spend limits</a> apply when a run starts or resumes: once a limit that covers the run is reached, it is refused with code <code>93</code>. In a team workspace, the team's model access rules apply too.</li>
+<li>The workspace's <a href="/docs/spend-limits">spend limits</a> apply when a run starts or resumes: once a limit that covers the run is reached, it is refused with code <code>93</code>.</li>
+<li>The workspace's <a href="/docs/model-access">Model Access</a> rules apply when a run starts or resumes: when a rule blocks the model of a step that will run, the run is refused with code <code>92</code> before anything runs, and the message names that model.</li>
 </ul>
 <h2 id="post-workflowlist"><strong>POST</strong> /Workflow/List</h2>
 <p>Lists the workflows of the key's workspace, or searches the public gallery.</p>
@@ -16190,7 +17090,7 @@ import type {
 <td><code>chatmodel</code></td>
 <td>string|null</td>
 <td>No</td>
-<td>Canonical model slug for <strong>chat replies</strong> (e.g. <code>"openai/gpt-5.6-sol"</code>). Must be a <strong>selectable</strong> model, i.e. <code>tokenRates.models[&lt;slug&gt;].selectable === true</code>; an unknown / non-selectable slug is rejected with <code>invalid-model-selection</code>. Pass <code>null</code> or <code>""</code> to clear the override and fall back to the platform default.</td>
+<td>Canonical model slug for <strong>chat replies</strong> (e.g. <code>"openai/gpt-5.6-sol"</code>). Must be a <strong>selectable</strong> model, i.e. <code>tokenRates.models[&lt;slug&gt;].selectable === true</code>; an unknown / non-selectable slug is rejected with <code>invalid-model-selection</code>. A model that the agent's own <a href="/docs/model-access">Model Access</a> rule blocks is refused with code <code>92</code>. Pass <code>null</code> or <code>""</code> to clear the override and fall back to the platform default.</td>
 </tr>
 <tr>
 <td><code>cronmodel</code></td>
@@ -19896,6 +20796,10 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td><code>Message/Send</code> while the agent's own <a href="/docs/spend-limits">spend limit</a> is used up; the response includes <code>agentstatus</code>. Paying from the wallet with <code>Deploy</code>, <code>CreateSubscriptionCheckout</code>, <code>UpgradeTier</code>, <code>RenewSubscription</code> or <code>CreateExtraCreditCheckout</code> is refused the same way when the price would take spending over a limit of the wallet. Nothing runs and nothing is charged</td>
 </tr>
 <tr>
+<td>A Model Access refusal (code <code>92</code>), such as <code>This agent can't use openai/gpt-5-6-sol. Model Access rules decide which models can run.</code></td>
+<td><code>Message/Send</code> with a <code>model</code> that the agent's own <a href="/docs/model-access">Model Access</a> rule blocks, or <code>UpdateSettings</code> with such a model override. Nothing runs and nothing is charged</td>
+</tr>
+<tr>
 <td><code>Message not found</code></td>
 <td><code>Detail</code> / <code>Cancel</code> with invalid messageguid</td>
 </tr>
@@ -20650,7 +21554,7 @@ print(response.body);
 <td><code>model</code></td>
 <td>string</td>
 <td>No</td>
-<td>Canonical model slug to run <strong>this turn</strong> on (e.g. <code>"openai/gpt-5.6-sol"</code>), chosen from the agent's selectable set. Validated server-side: an unknown or non-selectable slug is rejected in <code>errors[]</code> and the turn is <strong>not</strong> sent. Omit to use the agent's configured chat model.</td>
+<td>Canonical model slug to run <strong>this turn</strong> on (e.g. <code>"openai/gpt-5.6-sol"</code>), chosen from the agent's selectable set. Validated server-side: an unknown or non-selectable slug is rejected in <code>errors[]</code> and the turn is <strong>not</strong> sent. So is a model that the agent's own <a href="/docs/model-access">Model Access</a> rule blocks (code <code>92</code>). Omit to use the agent's configured chat model.</td>
 </tr>
 <tr>
 <td><code>attachment</code> / <code>attachments[]</code></td>
@@ -45150,12 +46054,12 @@ Organization (created by you)
                             <tr>
                               <td><strong>Admin</strong></td>
                               <td>Team</td>
-                              <td>Edit team settings (name, model access); set the team's spend limits, member limits included; invite members and cancel invitations; change roles; remove members; deploy and manage team agents; edit and delete team projects; transfer agents, projects, and credit; redeem coupons into the team wallet; set up, change, and turn off the team wallet's auto-pay</td>
+                              <td>Edit team settings (name and description); set the team's spend limits, member limits included, and its Model Access rules; invite members and cancel invitations; change roles; remove members; deploy and manage team agents; edit and delete team projects; transfer agents, projects, and credit; redeem coupons into the team wallet; set up, change, and turn off the team wallet's auto-pay</td>
                             </tr>
                             <tr>
                               <td><strong>Member</strong></td>
                               <td>Team</td>
-                              <td>Run models and create projects in the team workspace (billed to the team wallet), chat with team agents, and view the member list, the team's spend limits and every member's spending</td>
+                              <td>Run models and create projects in the team workspace (billed to the team wallet), chat with team agents, and view the member list, the team's spend limits and Model Access rules, and every member's spending</td>
                             </tr>
                           </tbody>
                         </table>
@@ -45182,7 +46086,7 @@ Organization (created by you)
                     <h2>What's Next</h2>
                     <ul>
                       <li><a href="/docs/organizations-managing-teams">Managing Teams</a>: Create organizations, invite members, manage roles and permissions</li>
-                      <li><a href="/docs/organizations-billing">Team Billing &amp; Spending</a>: Wallets, spend limits and their alert emails, and model access controls</li>
+                      <li><a href="/docs/organizations-billing">Team Billing &amp; Spending</a>: Wallets, spend limits and their alert emails, and Model Access rules</li>
                       <li><a href="/docs/organizations-api-access">Team API Access</a>: How workspace context works with API keys and context guards</li>
                     </ul>
                   </section>
@@ -45203,7 +46107,7 @@ Organization (created by you)
                       <span class="endpoint-badge post">POST</span>
                       /Organization/Create
                     </h2>
-                    <p>Creates a new organization. The caller automatically becomes the organization <strong>owner</strong>, and only the owner can create teams, delete the organization, or restore it after deletion. A team named <code>Default Team</code> is created with it automatically: the caller is added as its admin, and it gets its own wallet (starting at $0.00), no spend limits, and access to all models. Use <code>/Team/Create</code> only for additional teams.</p>
+                    <p>Creates a new organization. The caller automatically becomes the organization <strong>owner</strong>, and only the owner can create teams, delete the organization, or restore it after deletion. A team named <code>Default Team</code> is created with it automatically: the caller is added as its admin, and it gets its own wallet (starting at $0.00), no spend limits and no <a href="/docs/model-access">Model Access</a> rules, so it can run every model. Use <code>/Team/Create</code> only for additional teams.</p>
 
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
@@ -45244,7 +46148,6 @@ Organization (created by you)
           "guid": "7c1e5a90-2f3b-4d8e-a6c4-9b0d1e2f3a45",
           "organizationguid": "1b43089c-3b56-4638-b4ac-24268bb1d970",
           "name": "Default Team",
-          "modelaccess": "all",
           "status": 1
         }
       ]
@@ -45260,7 +46163,7 @@ Organization (created by you)
                       <span class="endpoint-badge post">POST</span>
                       /Team/Create
                     </h2>
-                    <p>Creates a team inside an organization. Only the organization owner can create teams. The team is created with its own wallet (starting at $0.00) and the caller is automatically added as an admin.</p>
+                    <p>Creates a team inside an organization. Only the organization owner can create teams. The team is created with its own wallet (starting at $0.00) and the caller is automatically added as an admin. To choose which models the team can run, add <a href="/docs/model-access">Model Access</a> rules.</p>
 
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
@@ -45301,9 +46204,6 @@ Organization (created by you)
       "organizationguid": "1b43089c-3b56-4638-b4ac-24268bb1d970",
       "name": "Engineering",
       "description": null,
-      "modelaccess": "all",
-      "allowedmodelids": null,
-      "blockedmodelids": null,
       "status": 1
     }
   ]
@@ -45928,7 +46828,7 @@ Organization (created by you)
                     <h2>What's Next</h2>
                     <ul>
                       <li><a href="/docs/organizations-overview">Organizations &amp; Teams Overview</a>: Concepts and workspace hierarchy</li>
-                      <li><a href="/docs/organizations-billing">Team Billing &amp; Spending</a>: Wallets, spend limits, and model access controls</li>
+                      <li><a href="/docs/organizations-billing">Team Billing &amp; Spending</a>: Wallets, spend limits, and Model Access rules</li>
                       <li><a href="/docs/organizations-api-access">Team API Access</a>: How context works in API requests</li>
                     </ul>
                   </section>
@@ -45941,7 +46841,7 @@ Organization (created by you)
                   <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="/docs/markdown/organizations-billing.md" target="_blank" class="docs-section-md-btn">View</a> <a href="/docs/markdown/organizations-billing.md" download class="docs-section-md-btn">Download</a></div>
 
                   <h1>Team Billing &amp; Spending</h1>
-                  <p class="section-subtitle">Manage team wallets, control model access, and track usage across members.</p>
+                  <p class="section-subtitle">Manage team wallets, transfer credit, and track usage across members.</p>
 
                   <section id="team-wallets">
                     <h2>Team Wallets</h2>
@@ -45975,11 +46875,16 @@ Organization (created by you)
                   </section>
 
                   <section id="model-access-controls">
+                    <h2>Model Access</h2>
+                    <p>Model Access is not a team setting: it works the same way for a personal account's wallet and for a team's wallet. In a team, the organization owner and team admins can allow or block single models and whole categories, such as video generation, for the whole team, one member, one API key, a surface such as the LLM gateway, or one agent, on the <a href="https://wiro.ai/panel/controls/model-access" target="_blank">Model Access</a> page of the dashboard or with the <code>/ModelAccess</code> endpoints. A model a rule blocks is refused with error code <code>92</code>. See <a href="/docs/model-access">Model Access</a>.</p>
+                  </section>
+
+                  <section id="team-update">
                     <h2>
                       <span class="endpoint-badge post">POST</span>
                       /Team/Update
                     </h2>
-                    <p>Updates team settings, including model access controls. Only the organization owner and team admins can call it, and only while signed in: with an API key it fails with HTTP <code>401</code>. Spend limits are not team settings: set them with <a href="/docs/spend-limits#spend-limit-set"><code>/SpendLimit/Set</code></a>.</p>
+                    <p>Updates a team's name and description. Only the organization owner and team admins can call it, and only while signed in: with an API key it fails with HTTP <code>401</code>. Spend limits and Model Access rules are not team settings: set them with <a href="/docs/spend-limits#spend-limit-set"><code>/SpendLimit/Set</code></a> and <a href="/docs/model-access#model-access-set"><code>/ModelAccess/Set</code></a>.</p>
 
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
@@ -46011,111 +46916,10 @@ Organization (created by you)
                               <td>No</td>
                               <td>Team description</td>
                             </tr>
-                            <tr>
-                              <td><code>modelaccess</code></td>
-                              <td>string</td>
-                              <td>No</td>
-                              <td>Access mode: <code>"all"</code>, <code>"allowlist"</code>, or <code>"blocklist"</code>. Default: <code>"all"</code></td>
-                            </tr>
-                            <tr>
-                              <td><code>allowedmodelids</code></td>
-                              <td>array</td>
-                              <td>No</td>
-                              <td>List of model IDs that are allowed. Used when <code>modelaccess</code> is <code>"allowlist"</code>.</td>
-                            </tr>
-                            <tr>
-                              <td><code>blockedmodelids</code></td>
-                              <td>array</td>
-                              <td>No</td>
-                              <td>List of model IDs that are blocked. Used when <code>modelaccess</code> is <code>"blocklist"</code>.</td>
-                            </tr>
                           </tbody>
                         </table>
                       </div>
                     </div>
-
-                    <h3>Access Modes</h3>
-                    <div class="docs-param-table">
-                      <div class="docs-param-table-wrapper">
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Mode</th>
-                              <th><code>modelaccess</code> value</th>
-                              <th>Behavior</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              <td><strong>All Models</strong></td>
-                              <td><code>"all"</code></td>
-                              <td>No restrictions. Team members can run any model on Wiro. This is the default.</td>
-                            </tr>
-                            <tr>
-                              <td><strong>Allowlist</strong></td>
-                              <td><code>"allowlist"</code></td>
-                              <td>Only models in <code>allowedmodelids</code> can be run. All others are blocked.</td>
-                            </tr>
-                            <tr>
-                              <td><strong>Blocklist</strong></td>
-                              <td><code>"blocklist"</code></td>
-                              <td>Models in <code>blockedmodelids</code> cannot be run. All others are allowed.</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                    <p>You configure one mode at a time. Setting <code>modelaccess</code> to <code>"allowlist"</code> ignores any <code>blockedmodelids</code>, and vice versa. Setting it back to <code>"all"</code> removes all restrictions regardless of the model ID lists.</p>
-                    <p>Model IDs are the numeric IDs from the model catalog. You can get them from the <a href="/docs/models">Models</a> endpoint or the dashboard.</p>
-
-                    <h3>Examples</h3>
-                    <p><strong>Allowlist (only permit specific models):</strong></p>
-                    <pre><code class="language-json">{
-  "teamguid": "your-team-guid",
-  "modelaccess": "allowlist",
-  "allowedmodelids": [598, 412, 305]
-}</code></pre>
-                    <p>Team members can only run models 598, 412, and 305. All other models are blocked.</p>
-                    <p><strong>Blocklist (block specific expensive models):</strong></p>
-                    <pre><code class="language-json">{
-  "teamguid": "your-team-guid",
-  "modelaccess": "blocklist",
-  "blockedmodelids": [721, 650]
-}</code></pre>
-                    <p>Team members can run any model except 721 and 650.</p>
-                    <p><strong>Remove all restrictions:</strong></p>
-                    <pre><code class="language-json">{
-  "teamguid": "your-team-guid",
-  "modelaccess": "all"
-}</code></pre>
-
-                    <h3>Where Access Controls Are Enforced</h3>
-                    <p>Model access is checked whenever a model runs in a team context, before the task is queued:</p>
-                    <ul>
-                      <li><code>/Run</code> calls made with a team project's API key</li>
-                      <li>Runs started from the dashboard while the team workspace is selected</li>
-                      <li>Workflow runs in the team context: the whole run is rejected before it starts if any model in it is restricted</li>
-                      <li>LLM gateway requests made with a team project's API key: the request fails with HTTP <code>403</code> <code>permission_error</code> and the message <code>This model is not available for your team</code>; a streamed Responses request ends with <code>response.failed</code> instead (see <a href="/docs/completions-api#gateway-errors">Direct LLM Gateway errors</a> for each protocol's error format)</li>
-                    </ul>
-                    <p>The check compares the requested model's ID against the team's access policy.</p>
-                    <p>Access controls do <strong>not</strong> affect:</p>
-                    <ul>
-                      <li>Browsing the model catalog (<code>/Tool/List</code>, <code>/Tool/Detail</code>)</li>
-                      <li>Viewing model details and pricing</li>
-                      <li>Personal projects and the Personal workspace (only team context is restricted)</li>
-                    </ul>
-
-                    <h3>Error Response</h3>
-                    <p>When a team member tries to run a restricted model through <code>/Run</code>, the dashboard or a workflow, the request returns an error and no task is created:</p>
-                    <pre><code class="language-json">{
-  "result": false,
-  "errors": [
-    {
-      "code": 0,
-      "message": "This model is not available for your team"
-    }
-  ]
-}</code></pre>
                   </section>
 
                   <section id="credit-transfer">
@@ -46298,7 +47102,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
                     <p>These examples use API-key-only authentication. For projects that use signature authentication, also send <code>x-nonce</code> and <code>x-signature</code> (see <a href="/docs/authentication">Authentication</a>).</p>
                     <p>Create a project inside a team to get a team API key, or use a personal project for personal context. The same <code>x-api-key</code> header works for both, with no extra configuration needed.</p>
                     <p>A team project's API key works only while the user who created the project is an active member of the team or the owner of its organization. Once the creator is removed from the team, the key stops working right away, in your apps and in any agent that uses it. The project stays in the team. Requests with the key then fail with HTTP <code>401</code> and <code>The person who created this API key is no longer in its team. Ask a team admin for a new key.</code> Public endpoints such as <code>Agent/List</code> still answer, as if the request had no key. While the key works, runs made with it count toward the creator's member limit (see <a href="/docs/spend-limits">Spend Limits</a>).</p>
-                    <p>API keys can't change teams or organizations. <code>Organization/Create</code>, <code>Organization/Remove</code>, <code>Organization/Restore</code>, <code>Team/Create</code>, <code>Team/Update</code>, <code>Team/Remove</code>, <code>Team/Member/Invite</code>, <code>Team/Member/CancelInvite</code>, <code>Team/Member/UpdateRole</code>, <code>Team/Member/Remove</code>, <code>Team/TransferAgent</code>, <code>Team/TransferProject</code> and <code>Team/TransferCredit</code> need a signed-in user: use the dashboard, or send that user's Bearer token. With any API key, personal or team, they fail with HTTP <code>401</code> and <code>API keys can't manage teams or organizations. Sign in and try again.</code> Endpoints that only read, such as <code>Organization/List</code>, <code>Team/Member/List</code>, <code>SpendLimit/List</code> and <code>SpendLimit/Usage</code>, work with an API key. <code>SpendLimit/Set</code> and <code>SpendLimit/Remove</code> also need a signed-in user and fail with HTTP <code>401</code> with an API key, so a key can never lift its own limit.</p>
+                    <p>API keys can't change teams or organizations. <code>Organization/Create</code>, <code>Organization/Remove</code>, <code>Organization/Restore</code>, <code>Team/Create</code>, <code>Team/Update</code>, <code>Team/Remove</code>, <code>Team/Member/Invite</code>, <code>Team/Member/CancelInvite</code>, <code>Team/Member/UpdateRole</code>, <code>Team/Member/Remove</code>, <code>Team/TransferAgent</code>, <code>Team/TransferProject</code> and <code>Team/TransferCredit</code> need a signed-in user: use the dashboard, or send that user's Bearer token. With any API key, personal or team, they fail with HTTP <code>401</code> and <code>API keys can't manage teams or organizations. Sign in and try again.</code> Endpoints that only read, such as <code>Organization/List</code>, <code>Team/Member/List</code>, <code>SpendLimit/List</code>, <code>SpendLimit/Usage</code>, <code>ModelAccess/List</code> and <code>ModelAccess/Check</code>, work with an API key. <code>SpendLimit/Set</code>, <code>SpendLimit/Remove</code>, <code>ModelAccess/Set</code> and <code>ModelAccess/Remove</code> also need a signed-in user and fail with HTTP <code>401</code> with an API key, so a key can never lift its own limit or rule.</p>
                   </section>
 
                   <section id="filtered-endpoints">
@@ -46360,7 +47164,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
                       </div>
                     </div>
                     <p>In team context, <code>Project/List</code> returns a project's <code>apikey</code> only to the user who created the project, team admins and the organization owner. Other members get <code>apikeymasked</code> instead, which shows only the first and last four characters of the key. With an API key, this follows the user who created the key's project.</p>
-                    <p>Model listings show the same models in every workspace (only favorites are kept per workspace). Team model access rules apply when a model runs, not when models are listed.</p>
+                    <p>Model listings show the same models in every workspace (only favorites are kept per workspace). <a href="/docs/model-access">Model Access</a> rules apply when a model runs, not when models are listed.</p>
                   </section>
 
                   <section id="agent-context-guards">
@@ -46475,7 +47279,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_TEAM_PROJECT_API_KEY" \
   -d '{"prompt": "A mountain landscape"}'</code></pre>
-                    <p>The task is created with the team's <code>teamguid</code>. The cost is deducted from the team wallet. The task appears in the team's usage statistics. The team's model access rules and spend limits also apply. A model the team doesn't allow fails with "This model is not available for your team", and runs are refused with code <code>93</code> once a spend limit that covers them is reached, such as the team's limit, the key creator's member limit or the key's own limit. See <a href="/docs/organizations-billing">Team Billing &amp; Spending</a>.</p>
+                    <p>The task is created with the team's <code>teamguid</code>. The cost is deducted from the team wallet. The task appears in the team's usage statistics. The team's Model Access rules and spend limits also apply. A run is refused with code <code>92</code> when a Model Access rule that covers it blocks the model, such as the team's rule, the key creator's member rule or the key's own rule, and with code <code>93</code> once a spend limit that covers it is reached, such as the team's limit, the key creator's member limit or the key's own limit. See <a href="/docs/model-access">Model Access</a> and <a href="/docs/spend-limits">Spend Limits</a>.</p>
 
                     <h3>Listing Team Agents with API Key</h3>
                     <p>Use a team project API key to list agents deployed in the team:</p>
@@ -46519,7 +47323,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
                     <ul>
                       <li><a href="/docs/organizations-overview">Organizations &amp; Teams Overview</a>: Concepts and workspace hierarchy</li>
                       <li><a href="/docs/organizations-managing-teams">Managing Teams</a>: Create organizations, invite members, manage roles</li>
-                      <li><a href="/docs/organizations-billing">Team Billing &amp; Spending</a>: Wallets, spend limits, and model access controls</li>
+                      <li><a href="/docs/organizations-billing">Team Billing &amp; Spending</a>: Wallets, spend limits, and Model Access rules</li>
                       <li><a href="/docs/authentication">Authentication</a>: API key setup and authentication methods</li>
                       <li><a href="/docs/projects">Projects</a>: Project management and API credentials</li>
                     </ul>

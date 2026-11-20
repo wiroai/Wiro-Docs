@@ -833,6 +833,12 @@ Wiro's message and a note: nothing ran and nothing was charged, do not try
 again until the limit resets or someone who manages it raises it, and limits
 are managed at [wiro.ai/panel/wallet/limits](https://wiro.ai/panel/wallet/limits).
 
+The workspace's [Model Access](/docs/model-access) rules apply to these calls
+too, on the same surfaces. A model a rule blocks is refused before anything runs
+(error code `92`), and the tool returns an error with Wiro's message, which names
+the rule. Nothing ran and nothing was charged. Rules are managed at
+[wiro.ai/panel/controls/model-access](https://wiro.ai/panel/controls/model-access).
+
 ## MCP Request and Response Contract
 
 Every tool advertises typed MCP `inputSchema` and `outputSchema` values. Successful calls return both:

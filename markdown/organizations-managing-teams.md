@@ -6,7 +6,7 @@ Creating, changing, deleting or restoring organizations and teams, managing memb
 
 ## **POST** /Organization/Create
 
-Creates a new organization. The caller automatically becomes the organization **owner**, and only the owner can create teams, delete the organization, or restore it after deletion. A team named `Default Team` is created with it automatically: the caller is added as its admin, and it gets its own wallet (starting at $0.00), no spend limits, and access to all models. Use `/Team/Create` only for additional teams.
+Creates a new organization. The caller automatically becomes the organization **owner**, and only the owner can create teams, delete the organization, or restore it after deletion. A team named `Default Team` is created with it automatically: the caller is added as its admin, and it gets its own wallet (starting at $0.00), no spend limits and no [Model Access](/docs/model-access) rules, so it can run every model. Use `/Team/Create` only for additional teams.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -29,7 +29,6 @@ Creates a new organization. The caller automatically becomes the organization **
           "guid": "7c1e5a90-2f3b-4d8e-a6c4-9b0d1e2f3a45",
           "organizationguid": "1b43089c-3b56-4638-b4ac-24268bb1d970",
           "name": "Default Team",
-          "modelaccess": "all",
           "status": 1
         }
       ]
@@ -42,7 +41,7 @@ You can also create organizations from the [Dashboard](https://wiro.ai/panel/org
 
 ## **POST** /Team/Create
 
-Creates a team inside an organization. Only the organization owner can create teams. The team is created with its own wallet (starting at $0.00) and the caller is automatically added as an admin.
+Creates a team inside an organization. Only the organization owner can create teams. The team is created with its own wallet (starting at $0.00) and the caller is automatically added as an admin. To choose which models the team can run, add [Model Access](/docs/model-access) rules.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -60,9 +59,6 @@ Creates a team inside an organization. Only the organization owner can create te
       "organizationguid": "1b43089c-3b56-4638-b4ac-24268bb1d970",
       "name": "Engineering",
       "description": null,
-      "modelaccess": "all",
-      "allowedmodelids": null,
-      "blockedmodelids": null,
       "status": 1
     }
   ]
@@ -321,5 +317,5 @@ Credit can be transferred between your personal wallet and team wallets. Transfe
 ## What's Next
 
 - [Organizations & Teams Overview](/docs/organizations-overview): Concepts and workspace hierarchy
-- [Team Billing & Spending](/docs/organizations-billing): Wallets, spend limits, and model access controls
+- [Team Billing & Spending](/docs/organizations-billing): Wallets, spend limits, and Model Access rules
 - [Team API Access](/docs/organizations-api-access): How context works in API requests

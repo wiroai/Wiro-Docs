@@ -1,6 +1,6 @@
 # Team Billing & Spending
 
-Manage team wallets, control model access, and track usage across members.
+Manage team wallets, transfer credit, and track usage across members.
 
 ## Team Wallets
 
@@ -33,97 +33,19 @@ Spend limits are not a team setting: they work the same way for a personal accou
 
 What the team has spent this month or today, by member, API key, surface and agent, comes from [`/SpendLimit/Usage`](/docs/spend-limits#spend-limit-usage). For other breakdowns, `/Project/UsageSummary` gives usage per project and `/Task/Stat` gives time-series task execution data. Both filter by the active workspace.
 
+## Model Access
+
+Model Access is not a team setting: it works the same way for a personal account's wallet and for a team's wallet. In a team, the organization owner and team admins can allow or block single models and whole categories, such as video generation, for the whole team, one member, one API key, a surface such as the LLM gateway, or one agent, on the [Model Access](https://wiro.ai/panel/controls/model-access) page of the dashboard or with the `/ModelAccess` endpoints. A model a rule blocks is refused with error code `92`. See [Model Access](/docs/model-access).
+
 ## **POST** /Team/Update
 
-Updates team settings, including model access controls. Only the organization owner and team admins can call it, and only while signed in: with an API key it fails with HTTP `401`. Spend limits are not team settings: set them with [`/SpendLimit/Set`](/docs/spend-limits#spend-limit-set).
+Updates a team's name and description. Only the organization owner and team admins can call it, and only while signed in: with an API key it fails with HTTP `401`. Spend limits and Model Access rules are not team settings: set them with [`/SpendLimit/Set`](/docs/spend-limits#spend-limit-set) and [`/ModelAccess/Set`](/docs/model-access#model-access-set).
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `teamguid` | string | Yes | Team guid |
 | `name` | string | No | New team name |
 | `description` | string | No | Team description |
-| `modelaccess` | string | No | Access mode: `"all"`, `"allowlist"`, or `"blocklist"`. Default: `"all"` |
-| `allowedmodelids` | array | No | List of model IDs that are allowed. Used when `modelaccess` is `"allowlist"`. |
-| `blockedmodelids` | array | No | List of model IDs that are blocked. Used when `modelaccess` is `"blocklist"`. |
-
-### Access Modes
-
-| Mode | `modelaccess` value | Behavior |
-|------|---------------------|----------|
-| **All Models** | `"all"` | No restrictions. Team members can run any model on Wiro. This is the default. |
-| **Allowlist** | `"allowlist"` | Only models in `allowedmodelids` can be run. All others are blocked. |
-| **Blocklist** | `"blocklist"` | Models in `blockedmodelids` cannot be run. All others are allowed. |
-
-You configure one mode at a time. Setting `modelaccess` to `"allowlist"` ignores any `blockedmodelids`, and vice versa. Setting it back to `"all"` removes all restrictions regardless of the model ID lists.
-
-Model IDs are the numeric IDs from the model catalog. You can get them from the [Models](/docs/models) endpoint or the dashboard.
-
-### Examples
-
-**Allowlist (only permit specific models):**
-
-```json
-{
-  "teamguid": "your-team-guid",
-  "modelaccess": "allowlist",
-  "allowedmodelids": [598, 412, 305]
-}
-```
-
-Team members can only run models 598, 412, and 305. All other models are blocked.
-
-**Blocklist (block specific expensive models):**
-
-```json
-{
-  "teamguid": "your-team-guid",
-  "modelaccess": "blocklist",
-  "blockedmodelids": [721, 650]
-}
-```
-
-Team members can run any model except 721 and 650.
-
-**Remove all restrictions:**
-
-```json
-{
-  "teamguid": "your-team-guid",
-  "modelaccess": "all"
-}
-```
-
-### Where Access Controls Are Enforced
-
-Model access is checked whenever a model runs in a team context, before the task is queued:
-
-- `/Run` calls made with a team project's API key
-- Runs started from the dashboard while the team workspace is selected
-- Workflow runs in the team context: the whole run is rejected before it starts if any model in it is restricted
-- LLM gateway requests made with a team project's API key: the request fails with HTTP `403` `permission_error` and the message `This model is not available for your team`; a streamed Responses request ends with `response.failed` instead (see [Direct LLM Gateway errors](/docs/completions-api#gateway-errors) for each protocol's error format)
-
-The check compares the requested model's ID against the team's access policy.
-
-Access controls do **not** affect:
-- Browsing the model catalog (`/Tool/List`, `/Tool/Detail`)
-- Viewing model details and pricing
-- Personal projects and the Personal workspace (only team context is restricted)
-
-### Error Response
-
-When a team member tries to run a restricted model through `/Run`, the dashboard or a workflow, the request returns an error and no task is created:
-
-```json
-{
-  "result": false,
-  "errors": [
-    {
-      "code": 0,
-      "message": "This model is not available for your team"
-    }
-  ]
-}
-```
 
 ## **POST** /Team/TransferCredit
 
