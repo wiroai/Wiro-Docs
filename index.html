@@ -3879,7 +3879,7 @@ claude</code></pre>
                     <p>Generic <code>/sync</code> waits on <code>api.wiro.ai</code> use the normal Wiro <code>result</code>/<code>errors</code> envelope.</p>
                     <p>After a stream starts, inspect SSE events rather than the HTTP status: Chat emits an error <code>data:</code> frame followed by <code>[DONE]</code>, Responses emits <code>response.failed</code>, and Anthropic emits <code>error</code>.</p>
                     <p>A model blocked by your team's Model Access settings is refused before it runs with HTTP <code>403</code> and the message <code>This model is not available for your team</code>. Chat and Responses return type <code>permission_error</code>, code <code>permission_denied</code> and param <code>model</code>; Anthropic routes return type <code>permission_error</code>. A streamed Responses request is different: its stream is already open, so it answers <code>200</code> and ends with <code>response.failed</code> carrying code <code>permission_denied</code> and the same message, like other errors that happen when the run is submitted.</p>
-                    <p>A run refused by a <a href="/docs/organizations-billing#spend-limits">spend limit</a> of the key's workspace (Wiro error code <code>93</code>) gets HTTP <code>402</code> with Wiro's message, which names the limit and when it resets. Chat and Responses return type <code>insufficient_quota</code>, code <code>spend_limit_reached</code> and param <code>null</code>; Anthropic routes return type <code>billing_error</code>. Nothing runs and nothing is charged, and SDKs do not retry it: send the request again only after the limit resets or is raised. A streamed Responses request ends with <code>response.failed</code> carrying code <code>spend_limit_reached</code> instead, like other errors that happen when the run is submitted.</p>
+                    <p>A run refused by a <a href="/docs/spend-limits">spend limit</a> of the key's workspace (Wiro error code <code>93</code>) gets HTTP <code>402</code> with Wiro's message, which names the limit and when it resets. Chat and Responses return type <code>insufficient_quota</code>, code <code>spend_limit_reached</code> and param <code>null</code>; Anthropic routes return type <code>billing_error</code>. Nothing runs and nothing is charged, and SDKs do not retry it: send the request again only after the limit resets or is raised. A streamed Responses request ends with <code>response.failed</code> carrying code <code>spend_limit_reached</code> instead, like other errors that happen when the run is submitted.</p>
                     <pre><code class="language-json">{
   "error": {
     "message": "This API key's monthly spend limit is reached ($50.20 of $50.00). It resets on December 1, 2026 at 00:00 UTC.",
@@ -6879,7 +6879,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                     <p>View your overall balance, usage history, and billing details in the <a href="https://wiro.ai/panel/billing" target="_blank">Dashboard</a>.</p>
 
                     <h3>Spend Limits</h3>
-                    <p>To cap what you spend, set monthly or daily spend limits on the <a href="https://wiro.ai/panel/wallet/limits" target="_blank">Spend Limits</a> page or with the <code>/SpendLimit</code> endpoints: for the whole wallet, one API key, one team member, one way in such as the API or the LLM gateway, or one agent. Once a limit is reached, new work it covers is refused with error code <code>93</code>, and an alert email can warn you before that. See <a href="/docs/organizations-billing#spend-limits">Spend Limits</a>.</p>
+                    <p>To cap what you spend, set monthly or daily spend limits on the <a href="https://wiro.ai/panel/wallet/limits" target="_blank">Spend Limits</a> page or with the <code>/SpendLimit</code> endpoints: for the whole wallet, one API key, one team member, one way in such as the API or the LLM gateway, or one agent. Once a limit is reached, new work it covers is refused with error code <code>93</code>, and an alert email can warn you before that. See <a href="/docs/spend-limits">Spend Limits</a>.</p>
                   </section>
                 </article>
               </div>
@@ -7078,6 +7078,659 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                 </script>
               </div>
 
+              <div class="docs-page-section" data-page="spend-limits" style="display: none">
+                <article class="docs-section">
+                  <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="/docs/markdown/spend-limits.md" target="_blank" class="docs-section-md-btn">View</a> <a href="/docs/markdown/spend-limits.md" download class="docs-section-md-btn">Download</a></div>
+
+                  <h1>Spend Limits</h1>
+                  <p class="section-subtitle">Cap what a personal account or a team can spend in a month or a day: the whole wallet, one team member, one API key, a surface such as the LLM gateway, or one agent.</p>
+
+                  <section id="how-spend-limits-work">
+                    <h2>How Spend Limits Work</h2>
+                    <p>A spend limit caps what a wallet can spend in a month or a day. Limits work the same way for a personal account's wallet and for a team's wallet. The limits of the workspace a call runs in apply: a team project's API key runs in its team, a personal project's key in your personal account, and the dashboard in the workspace you have selected.</p>
+                    <p>Manage limits on the <a href="https://wiro.ai/panel/wallet/limits" target="_blank">Spend Limits</a> page of the dashboard, for your personal account or for the team workspace you have selected, or with the <code>/SpendLimit</code> endpoints below. Team and member limits set before this system were moved into it as monthly limits of the same amount.</p>
+
+                    <h3>What a Limit Caps</h3>
+                    <p>Each limit caps one scope of the wallet's spending:</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Scope</th>
+                              <th><code>target</code></th>
+                              <th>What it caps</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>account</code></td>
+                              <td>None</td>
+                              <td>The whole wallet. In a team, the whole team's spending</td>
+                            </tr>
+                            <tr>
+                              <td><code>member</code></td>
+                              <td>The member's <code>useruuid</code> from <code>/Team/Member/List</code></td>
+                              <td>One team member's spending in the team (team wallets only). A member's spending includes their dashboard runs in the team workspace and every run made with the API key of a team project they created</td>
+                            </tr>
+                            <tr>
+                              <td><code>project</code></td>
+                              <td>The project's <code>id</code> from <code>/Project/List</code></td>
+                              <td>One API key: what is spent with that project's key</td>
+                            </tr>
+                            <tr>
+                              <td><code>surface</code></td>
+                              <td><code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code> or <code>agent</code></td>
+                              <td>One way in (see Surfaces below)</td>
+                            </tr>
+                            <tr>
+                              <td><code>agent</code></td>
+                              <td>The agent's <code>guid</code> (its <code>useragentguid</code>)</td>
+                              <td>One deployed agent: what the agent itself spends, its own model runs and the credits its replies use (100 credits = $1). Its plan, upgrades and credit packs count toward the wallet's other limits, not this one</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <h3>Surfaces</h3>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Surface</th>
+                              <th>Label</th>
+                              <th>Covers</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>web</code></td>
+                              <td>the dashboard</td>
+                              <td>The Wiro dashboard, including Studio and the Workflow Agent used there</td>
+                            </tr>
+                            <tr>
+                              <td><code>api</code></td>
+                              <td>the API</td>
+                              <td>Calls with an API key</td>
+                            </tr>
+                            <tr>
+                              <td><code>mcp</code></td>
+                              <td>MCP</td>
+                              <td>The <a href="/docs/wiro-mcp-server">Wiro MCP server</a>, hosted or the npm package</td>
+                            </tr>
+                            <tr>
+                              <td><code>llm-gateway</code></td>
+                              <td>the LLM gateway</td>
+                              <td>The OpenAI and Anthropic compatible <a href="/docs/completions-api">LLM gateway</a></td>
+                            </tr>
+                            <tr>
+                              <td><code>extension</code></td>
+                              <td>the browser extensions</td>
+                              <td>The Wiro browser extensions</td>
+                            </tr>
+                            <tr>
+                              <td><code>agent</code></td>
+                              <td>agents</td>
+                              <td>Your deployed agents' own runs</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p>Studio and Workflow Agent messages count on the surface they were sent from. Refusal messages and <code>/SpendLimit/Usage</code> name a surface by its label.</p>
+
+                    <h3>Periods and Amounts</h3>
+                    <p>A limit's <code>period</code> is <code>month</code> (the default), which resets on the 1st of each month at 00:00 UTC, or <code>day</code>, which resets every day at 00:00 UTC. <code>amountusd</code> is a positive amount in USD, rounded to cents. A scope and target can have one monthly limit and one daily limit.</p>
+
+                    <h3>What Counts</h3>
+                    <p>Every charge to the wallet for usage counts: model runs, workflow runs, realtime sessions, Studio, the Workflow Agent, agent plans, upgrades and credit packs. Deposits are not spending.</p>
+
+                    <h3>When Limits Are Checked</h3>
+                    <p>Limits are checked before work starts:</p>
+                    <ul>
+                      <li>Model runs, workflow runs and workflow resumes</li>
+                      <li>Studio and Workflow Agent messages</li>
+                      <li>An agent deploy, upgrade, renewal or credit pack purchase that a person starts</li>
+                      <li>Messages to an agent, against that agent's own limit</li>
+                    </ul>
+                    <p>When the price of the work is known before it starts, as for fixed-price models and agent purchases, the work is refused if spending so far plus that price would go over the limit. Otherwise it is refused once spending has reached the limit.</p>
+                    <p>Work that is already running finishes and is charged. A realtime session ends after the turn that uses up a limit, the same way it ends when the balance runs out. Automatic monthly renewals of running agents are never refused by a limit, but they still count toward it.</p>
+
+                    <h3>When a Limit Is Reached</h3>
+                    <p>New work the limit covers is refused with HTTP <code>200</code>, <code>result: false</code> and error code <code>93</code>. The message names the limit and says when it resets:</p>
+                    <pre><code class="language-json">{
+  "result": false,
+  "errors": [
+    {
+      "code": 93,
+      "message": "This API key's monthly spend limit is reached ($50.20 of $50.00). It resets on December 1, 2026 at 00:00 UTC."
+    }
+  ]
+}</code></pre>
+                    <p>When the price of the work is known before it starts, the message says what is left instead, for example <code>This team's monthly spend limit has $3.10 left of $500.00, and this run costs $4.00. It resets on December 1, 2026 at 00:00 UTC.</code> A daily limit says <code>daily</code> instead of <code>monthly</code>, and its message ends with <code>It resets at 00:00 UTC.</code></p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Limit</th>
+                              <th>The message starts with</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td>A personal account's <code>account</code> limit</td>
+                              <td><code>Your monthly spend limit</code></td>
+                            </tr>
+                            <tr>
+                              <td>A team's <code>account</code> limit</td>
+                              <td><code>This team's monthly spend limit</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>member</code></td>
+                              <td><code>Your monthly spend limit in this team</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>project</code></td>
+                              <td><code>This API key's monthly spend limit</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>surface</code></td>
+                              <td><code>The monthly spend limit for</code> and the surface's label, for example <code>The monthly spend limit for the LLM gateway</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>agent</code></td>
+                              <td><code>This agent's monthly spend limit</code></td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p>Nothing runs and nothing is charged. Retrying does not help until the limit resets or someone who manages it raises it. Through the <a href="/docs/completions-api#gateway-errors">LLM gateway</a> the refusal is an HTTP <code>402</code> error with code <code>spend_limit_reached</code>, and the <a href="/docs/wiro-mcp-server">MCP server</a> returns it as a tool error.</p>
+
+                    <h3>Alert Emails</h3>
+                    <p>A limit sends an alert email when spending reaches its <code>alertpct</code>: 50, 80 (the default) or 90 percent of the limit, or <code>null</code> for no alert email. It sends a used-up email when the limit is reached. Each email goes out once per limit and period, and changing the limit re-arms both for the current period.</p>
+                    <p>A personal account's limits email the account. A team's limits email the team's admins and the organization owner, and also the member a member limit is for, the person who created the API key a key limit is for, and the owner of the agent an agent limit is for.</p>
+
+                    <h3>Who Can Change Limits</h3>
+                    <ul>
+                      <li><strong>Personal account</strong>: the account itself</li>
+                      <li><strong>Team</strong>: the organization owner or a team admin. The owner of an agent can also set that agent's own limit</li>
+                    </ul>
+                    <p>Any team member can read the team's limits and usage with <code>/SpendLimit/List</code> and <code>/SpendLimit/Usage</code>, which also work with an API key. <code>/SpendLimit/Set</code> and <code>/SpendLimit/Remove</code> work only while signed in, in the dashboard or with the user's Bearer token: with an API key they fail with HTTP <code>401</code>, so a key can never lift its own limit.</p>
+                  </section>
+
+                  <section id="spend-limit-list">
+                    <h2>
+                      <span class="endpoint-badge post">POST</span>
+                      /SpendLimit/List
+                    </h2>
+                    <p>Returns the spend limits of the call's workspace, each with what has been spent in its current period. A team project's API key reads its team, a personal project's key your personal account, and the dashboard the workspace you have selected. Any team member can call it, and it works with an API key. Send an empty body: <code>{}</code>.</p>
+
+                    <h3>Response</h3>
+                    <pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "workspace": {
+    "type": "team",
+    "teamguid": "0d9aade4-d31b-4b97-88f3-a90482f080ea",
+    "canmanage": false
+  },
+  "limits": [
+    {
+      "guid": "e93fc393-aedd-4828-a6be-fbc2853d3202",
+      "scope": "account",
+      "target": "",
+      "targetlabel": null,
+      "period": "month",
+      "amountusd": 500,
+      "alertpct": 90,
+      "periodstart": 1793491200,
+      "resetsat": 1796083200,
+      "createdat": 1793805600,
+      "updatedat": 1793805600,
+      "spentusd": 248.7
+    },
+    {
+      "guid": "f4134ddb-e837-44a9-9b36-0af44241f3ef",
+      "scope": "member",
+      "target": "3f5a9c20-6d41-4b8e-a1c7-5e9d0f2b4c61",
+      "targetlabel": "Jane Doe",
+      "period": "month",
+      "amountusd": 150,
+      "alertpct": 80,
+      "periodstart": 1793491200,
+      "resetsat": 1796083200,
+      "createdat": 1793805600,
+      "updatedat": 1793805600,
+      "spentusd": 120.5
+    },
+    {
+      "guid": "15be7fb3-c602-4ff1-a3f1-3afaa3996974",
+      "scope": "project",
+      "target": "48211",
+      "targetlabel": "Production",
+      "period": "month",
+      "amountusd": 100,
+      "alertpct": 80,
+      "periodstart": 1793491200,
+      "resetsat": 1796083200,
+      "createdat": 1794474300,
+      "updatedat": 1794474300,
+      "spentusd": 88.2
+    }
+  ]
+}</code></pre>
+
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Field</th>
+                              <th>Description</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>workspace.type</code></td>
+                              <td><code>team</code> or <code>personal</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>workspace.teamguid</code></td>
+                              <td>The team's guid, or <code>null</code> for a personal account</td>
+                            </tr>
+                            <tr>
+                              <td><code>workspace.canmanage</code></td>
+                              <td>Whether the caller can change limits in this workspace. The owner of an agent can still set that agent's own limit when it is <code>false</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>limits[].guid</code></td>
+                              <td>The limit's guid, for <code>/SpendLimit/Remove</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>limits[].scope</code></td>
+                              <td><code>account</code>, <code>member</code>, <code>project</code>, <code>surface</code> or <code>agent</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>limits[].target</code></td>
+                              <td>The member's <code>useruuid</code>, the project id, the surface or the agent's guid; <code>""</code> for <code>account</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>limits[].targetlabel</code></td>
+                              <td>The member's name, the project's name, the agent's title or the surface's label; <code>null</code> for <code>account</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>limits[].period</code></td>
+                              <td><code>month</code> or <code>day</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>limits[].amountusd</code></td>
+                              <td>The limit in USD</td>
+                            </tr>
+                            <tr>
+                              <td><code>limits[].alertpct</code></td>
+                              <td><code>50</code>, <code>80</code> or <code>90</code>, or <code>null</code> for no alert email</td>
+                            </tr>
+                            <tr>
+                              <td><code>limits[].periodstart</code></td>
+                              <td>Start of the current period, in Unix seconds</td>
+                            </tr>
+                            <tr>
+                              <td><code>limits[].resetsat</code></td>
+                              <td>When the current period ends and the limit resets, in Unix seconds</td>
+                            </tr>
+                            <tr>
+                              <td><code>limits[].createdat</code>, <code>limits[].updatedat</code></td>
+                              <td>When the limit was added and last changed, in Unix seconds</td>
+                            </tr>
+                            <tr>
+                              <td><code>limits[].spentusd</code></td>
+                              <td>What has been spent in the current period, in USD</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section id="spend-limit-set">
+                    <h2>
+                      <span class="endpoint-badge post">POST</span>
+                      /SpendLimit/Set
+                    </h2>
+                    <p>Adds a spend limit to the call's workspace, or changes the existing limit with the same <code>scope</code>, <code>target</code> and <code>period</code>. Changing a limit re-arms its emails for the current period. In a team, only the organization owner or a team admin can call it, and the owner of an agent can set that agent's own limit. It works only while signed in, in the dashboard or with the user's Bearer token: with an API key it fails with HTTP <code>401</code>, so a key can never lift its own limit.</p>
+
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Parameter</th>
+                              <th>Type</th>
+                              <th>Required</th>
+                              <th>Description</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>scope</code></td>
+                              <td>string</td>
+                              <td>Yes</td>
+                              <td><code>"account"</code>, <code>"member"</code>, <code>"project"</code>, <code>"surface"</code> or <code>"agent"</code>. See <a href="#how-spend-limits-work">Spend Limits</a></td>
+                            </tr>
+                            <tr>
+                              <td><code>target</code></td>
+                              <td>string</td>
+                              <td>For every scope but <code>account</code></td>
+                              <td>The member's <code>useruuid</code>, the project's <code>id</code>, the surface (<code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code> or <code>agent</code>) or the agent's guid. Leave it out for <code>account</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>period</code></td>
+                              <td>string</td>
+                              <td>No</td>
+                              <td><code>"month"</code> or <code>"day"</code>. Default: <code>"month"</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>amountusd</code></td>
+                              <td>number</td>
+                              <td>Yes</td>
+                              <td>The limit in USD, a positive number. Rounded to cents</td>
+                            </tr>
+                            <tr>
+                              <td><code>alertpct</code></td>
+                              <td>number</td>
+                              <td>No</td>
+                              <td>When the alert email goes out: <code>50</code>, <code>80</code> or <code>90</code> percent of the limit, or <code>null</code> for no alert email. Default: <code>80</code></td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <h3>Examples</h3>
+                    <p><strong>Cap the whole wallet at $500 a month, with the alert at 90%:</strong></p>
+                    <pre><code class="language-json">{
+  "scope": "account",
+  "amountusd": 500,
+  "alertpct": 90
+}</code></pre>
+                    <p><strong>Cap one API key at $100 a month:</strong></p>
+                    <pre><code class="language-json">{
+  "scope": "project",
+  "target": "48211",
+  "period": "month",
+  "amountusd": 100
+}</code></pre>
+                    <p><strong>Cap the LLM gateway at $25 a day, with no alert email:</strong></p>
+                    <pre><code class="language-json">{
+  "scope": "surface",
+  "target": "llm-gateway",
+  "period": "day",
+  "amountusd": 25,
+  "alertpct": null
+}</code></pre>
+
+                    <h3>Response</h3>
+                    <p><code>limit</code> is the limit as saved, shaped like a row of <code>/SpendLimit/List</code>:</p>
+                    <pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "limit": {
+    "guid": "15be7fb3-c602-4ff1-a3f1-3afaa3996974",
+    "scope": "project",
+    "target": "48211",
+    "targetlabel": "Production",
+    "period": "month",
+    "amountusd": 100,
+    "alertpct": 80,
+    "periodstart": 1793491200,
+    "resetsat": 1796083200,
+    "createdat": 1794474300,
+    "updatedat": 1794474300,
+    "spentusd": 61.4
+  }
+}</code></pre>
+
+                    <h3>Errors</h3>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Error</th>
+                              <th>Cause</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>scope must be one of account, member, project, surface, agent.</code></td>
+                              <td><code>scope</code> is missing or not one of the five scopes</td>
+                            </tr>
+                            <tr>
+                              <td><code>Member limits exist only in a team workspace.</code></td>
+                              <td>A <code>member</code> limit in a personal account</td>
+                            </tr>
+                            <tr>
+                              <td><code>target is required for this scope.</code></td>
+                              <td>No <code>target</code> for a <code>member</code>, <code>project</code>, <code>surface</code> or <code>agent</code> limit</td>
+                            </tr>
+                            <tr>
+                              <td><code>A surface is one of web, api, mcp, llm-gateway, extension, agent.</code></td>
+                              <td>A <code>surface</code> limit with another <code>target</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>target must be a project id.</code></td>
+                              <td>A <code>project</code> limit whose <code>target</code> is not a project id</td>
+                            </tr>
+                            <tr>
+                              <td><code>period must be month or day.</code></td>
+                              <td>Another <code>period</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>amountusd must be a positive number.</code></td>
+                              <td><code>amountusd</code> is missing, zero or negative</td>
+                            </tr>
+                            <tr>
+                              <td><code>alertpct must be 50, 80 or 90, or null for no alert.</code></td>
+                              <td>Another <code>alertpct</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>Only a team admin or the organization owner can change this limit.</code></td>
+                              <td>In a team, the caller is not a team admin or the organization owner (or, for an <code>agent</code> limit, the agent's owner)</td>
+                            </tr>
+                            <tr>
+                              <td><code>That person is not an active member of this team.</code></td>
+                              <td>A <code>member</code> limit for someone who is not an active member of the team</td>
+                            </tr>
+                            <tr>
+                              <td><code>That API key's project is not in this workspace.</code></td>
+                              <td>A <code>project</code> limit for a project of another workspace</td>
+                            </tr>
+                            <tr>
+                              <td><code>That agent is not in this workspace.</code></td>
+                              <td>An <code>agent</code> limit for an agent of another workspace</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section id="spend-limit-remove">
+                    <h2>
+                      <span class="endpoint-badge post">POST</span>
+                      /SpendLimit/Remove
+                    </h2>
+                    <p>Removes a spend limit from the call's workspace. The people who can set a limit can remove it, and only while signed in: with an API key it fails with HTTP <code>401</code>.</p>
+
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Parameter</th>
+                              <th>Type</th>
+                              <th>Required</th>
+                              <th>Description</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>guid</code></td>
+                              <td>string</td>
+                              <td>Yes</td>
+                              <td>The limit's <code>guid</code> from <code>/SpendLimit/List</code></td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <h3>Response</h3>
+                    <pre><code class="language-json">{
+  "result": true,
+  "errors": []
+}</code></pre>
+
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Error</th>
+                              <th>Cause</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>guid is required.</code></td>
+                              <td>No <code>guid</code> was sent</td>
+                            </tr>
+                            <tr>
+                              <td><code>Limit not found in this workspace.</code></td>
+                              <td>The guid is not a limit of the call's workspace, or it was already removed</td>
+                            </tr>
+                            <tr>
+                              <td><code>Only a team admin or the organization owner can change this limit.</code></td>
+                              <td>In a team, the caller can't manage this limit</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section id="spend-limit-usage">
+                    <h2>
+                      <span class="endpoint-badge post">POST</span>
+                      /SpendLimit/Usage
+                    </h2>
+                    <p>Returns what the call's workspace has spent this month or today, in total and by surface, member, API key and agent. A team project's API key reads its team, a personal project's key your personal account, and the dashboard the workspace you have selected. Any team member can call it, and it works with an API key.</p>
+
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Parameter</th>
+                              <th>Type</th>
+                              <th>Required</th>
+                              <th>Description</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>period</code></td>
+                              <td>string</td>
+                              <td>No</td>
+                              <td><code>"month"</code> or <code>"day"</code>. Default: <code>"month"</code></td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <h3>Response</h3>
+                    <pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "usage": {
+    "period": "month",
+    "periodstart": 1793491200,
+    "resetsat": 1796083200,
+    "totalusd": 248.7,
+    "surfaces": [
+      { "surface": "web", "label": "the dashboard", "spentusd": 40.1 },
+      { "surface": "api", "label": "the API", "spentusd": 168.2 },
+      { "surface": "mcp", "label": "MCP", "spentusd": 12.5 },
+      { "surface": "llm-gateway", "label": "the LLM gateway", "spentusd": 7.9 },
+      { "surface": "extension", "label": "the browser extensions", "spentusd": 0 },
+      { "surface": "agent", "label": "agents", "spentusd": 20 }
+    ],
+    "members": [
+      { "useruuid": "3f5a9c20-6d41-4b8e-a1c7-5e9d0f2b4c61", "label": "Jane Doe", "spentusd": 120.5 },
+      { "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", "label": "John Doe", "spentusd": 108.2 }
+    ],
+    "projects": [
+      { "projectid": "48211", "label": "Production", "spentusd": 88.2 },
+      { "projectid": "48377", "label": "Staging", "spentusd": 80 }
+    ],
+    "agents": [
+      { "useragentguid": "6e4bbd6f-6b73-4421-adae-e9599ba2e317", "label": "Support Agent", "spentusd": 20 }
+    ]
+  }
+}</code></pre>
+
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Field</th>
+                              <th>Description</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>usage.period</code></td>
+                              <td><code>month</code> or <code>day</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>usage.periodstart</code>, <code>usage.resetsat</code></td>
+                              <td>Start and end of the period, in Unix seconds</td>
+                            </tr>
+                            <tr>
+                              <td><code>usage.totalusd</code></td>
+                              <td>What the wallet has spent in the period, in USD</td>
+                            </tr>
+                            <tr>
+                              <td><code>usage.surfaces</code></td>
+                              <td>One row per surface, always in the order <code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code>, <code>agent</code>, with its label</td>
+                            </tr>
+                            <tr>
+                              <td><code>usage.members</code></td>
+                              <td>Spending per team member, with the member's name as <code>label</code>. Empty for a personal account</td>
+                            </tr>
+                            <tr>
+                              <td><code>usage.projects</code></td>
+                              <td>Spending per API key, with the project's name as <code>label</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>usage.agents</code></td>
+                              <td>Spending per deployed agent, with the agent's title as <code>label</code></td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p>For other breakdowns, <code>/Project/UsageSummary</code> gives usage per project and <code>/Task/Stat</code> gives time-series task execution data. Both filter by the active workspace.</p>
+                  </section>
+                </article>
+              </div>
+
               <div class="docs-page-section" data-page="error-reference" style="display: none">
                 <article class="docs-section">
                   <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="/docs/markdown/error-reference.md" target="_blank" class="docs-section-md-btn">View</a> <a href="/docs/markdown/error-reference.md" download class="docs-section-md-btn">Download</a></div>
@@ -7125,7 +7778,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                         <tr>
                           <td><code>93</code></td>
                           <td>Spend Limit</td>
-                          <td>A spend limit of the workspace is reached. See <a href="/docs/organizations-billing#spend-limits">Spend Limits</a></td>
+                          <td>A spend limit of the workspace is reached. See <a href="/docs/spend-limits">Spend Limits</a></td>
                         </tr>
                         <tr>
                           <td><code>96</code></td>
@@ -7273,7 +7926,7 @@ x-nonce: Unix timestamp or random integer</code></pre>
                           <td>Spend limit reached</td>
                           <td><code>93</code></td>
                           <td>This API key's monthly spend limit is reached ($50.20 of $50.00). It resets on December 1, 2026 at 00:00 UTC.</td>
-                          <td>Wait for the limit to reset, or raise it on the <a href="https://wiro.ai/panel/wallet/limits" target="_blank">Spend Limits</a> page. The message names the limit. See <a href="/docs/organizations-billing#spend-limits">Spend Limits</a></td>
+                          <td>Wait for the limit to reset, or raise it on the <a href="https://wiro.ai/panel/wallet/limits" target="_blank">Spend Limits</a> page. The message names the limit. See <a href="/docs/spend-limits">Spend Limits</a></td>
                         </tr>
                         <tr>
                           <td>Concurrent task limit</td>
@@ -8733,7 +9386,7 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
                     <p>Agent plans, moves to a larger plan and credit packs are charged to your wallet, so <code>deploy_agent</code> and <code>manage_agent_billing</code> first return the price (for a move inside a billing period, the amount Wiro works out for the time left). They act only when they are called again with <code>confirm: true</code> and <code>confirm_charge_usd</code>, the approved amount, after you agree. If the price changed in between, nothing is charged and you get a new quote. Turning an agent's skills on or off with <code>apply_agent_skills</code> costs nothing, since every plan includes every skill, and a move to a smaller plan starts with the next renewal, with nothing charged or refunded.</p>
                     <p>Deleting a workflow, an agent, a conversation or an account connection also waits for <code>confirm: true</code>, and so do connecting an agent to a Wiro project with <code>bind_agent_project</code> and replacing a workflow's steps with <code>update_workflow</code> or <code>save_workflow_from_agent</code>: you see a summary of the change first, with the old and new value of each step input that changes. No tool adds funds or takes a card payment. Funds are added in the Wiro dashboard, and an agent plan paid by card moves to a larger plan or is topped up there.</p>
                     <p>The connected project decides the workspace: a personal project uses your personal wallet, a team project uses the team wallet. <code>get_account</code> shows which one, its balance and its spend limits.</p>
-                    <p>Calls through the MCP server count toward the workspace's <a href="/docs/organizations-billing#spend-limits">spend limits</a>, on the <code>mcp</code> surface (the Wiro browser extensions' calls on the <code>extension</code> surface). When a limit refuses work (error code <code>93</code>), the tool returns an error with Wiro's message and a note: nothing ran and nothing was charged, do not try again until the limit resets or someone who manages it raises it, and limits are managed at <a href="https://wiro.ai/panel/wallet/limits" target="_blank">wiro.ai/panel/wallet/limits</a>.</p>
+                    <p>Calls through the MCP server count toward the workspace's <a href="/docs/spend-limits">spend limits</a>, on the <code>mcp</code> surface (the Wiro browser extensions' calls on the <code>extension</code> surface). When a limit refuses work (error code <code>93</code>), the tool returns an error with Wiro's message and a note: nothing ran and nothing was charged, do not try again until the limit resets or someone who manages it raises it, and limits are managed at <a href="https://wiro.ai/panel/wallet/limits" target="_blank">wiro.ai/panel/wallet/limits</a>.</p>
                   </section>
 
                   <section id="mcp-contract">
@@ -10751,7 +11404,7 @@ import type {
 <li>Nothing is charged when a run starts. Each model step is a normal <a href="/docs/run-a-model">model task</a>, billed when it finishes successfully at that model's price. Failed steps are not charged, and utility steps are free.</li>
 <li>To start, the wallet must hold $0.50 for each model step the run will execute (up to the breakpoint, when one is set). Otherwise the run is refused with code <code>97</code>, <code>Insufficient balance</code>. The <a href="/docs/concurrency-limits">concurrency limit</a> also applies (code <code>96</code>).</li>
 <li>The expected cost of a run is the sum of the model prices for the settings each step uses, from <a href="/docs/models">Tool/Detail</a>. A run's <code>totalcost</code> shows the list price of the steps finished so far, and once the run has ended <code>chargedcost</code> and <code>discountamount</code> show what the wallet paid. <code>chargedcost</code> is <code>null</code> while a step's charge is still settling.</li>
-<li>The workspace's <a href="/docs/organizations-billing#spend-limits">spend limits</a> apply when a run starts or resumes: once a limit that covers the run is reached, it is refused with code <code>93</code>. In a team workspace, the team's model access rules apply too.</li>
+<li>The workspace's <a href="/docs/spend-limits">spend limits</a> apply when a run starts or resumes: once a limit that covers the run is reached, it is refused with code <code>93</code>. In a team workspace, the team's model access rules apply too.</li>
 </ul>
 <h2 id="post-workflowlist"><strong>POST</strong> /Workflow/List</h2>
 <p>Lists the workflows of the key's workspace, or searches the public gallery.</p>
@@ -12034,7 +12687,7 @@ import type {
 <tr>
 <td>A spend limit refusal, such as <code>Your monthly spend limit is reached ($100.40 of $100.00). It resets on December 1, 2026 at 00:00 UTC.</code></td>
 <td>93</td>
-<td>Send or SendForm while a <a href="/docs/organizations-billing#spend-limits">spend limit</a> that covers the message is used up. Nothing is charged.</td>
+<td>Send or SendForm while a <a href="/docs/spend-limits">spend limit</a> that covers the message is used up. Nothing is charged.</td>
 </tr>
 <tr>
 <td><code>Request parameter [message] required</code></td>
@@ -12851,7 +13504,7 @@ import type {
 <tr>
 <td>A spend limit refusal, such as <code>Your monthly spend limit is reached ($100.40 of $100.00). It resets on December 1, 2026 at 00:00 UTC.</code></td>
 <td>93</td>
-<td>Send or SendForm while a <a href="/docs/organizations-billing#spend-limits">spend limit</a> that covers the message is used up. Nothing is charged.</td>
+<td>Send or SendForm while a <a href="/docs/spend-limits">spend limit</a> that covers the message is used up. Nothing is charged.</td>
 </tr>
 <tr>
 <td><code>Request parameter [message] required</code></td>
@@ -19237,7 +19890,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </tr>
 <tr>
 <td>A spend limit refusal (code <code>93</code>), such as <code>This agent's monthly spend limit is reached ($20.35 of $20.00). It resets on December 1, 2026 at 00:00 UTC.</code></td>
-<td><code>Message/Send</code> while the agent's own <a href="/docs/organizations-billing#spend-limits">spend limit</a> is used up; the response includes <code>agentstatus</code>. Paying from the wallet with <code>Deploy</code>, <code>CreateSubscriptionCheckout</code>, <code>UpgradeTier</code>, <code>RenewSubscription</code> or <code>CreateExtraCreditCheckout</code> is refused the same way when the price would take spending over a limit of the wallet. Nothing runs and nothing is charged</td>
+<td><code>Message/Send</code> while the agent's own <a href="/docs/spend-limits">spend limit</a> is used up; the response includes <code>agentstatus</code>. Paying from the wallet with <code>Deploy</code>, <code>CreateSubscriptionCheckout</code>, <code>UpgradeTier</code>, <code>RenewSubscription</code> or <code>CreateExtraCreditCheckout</code> is refused the same way when the price would take spending over a limit of the wallet. Nothing runs and nothing is charged</td>
 </tr>
 <tr>
 <td><code>Message not found</code></td>
@@ -45001,7 +45654,7 @@ Organization (created by you)
                         </table>
                       </div>
                     </div>
-                    <p>The call changes only the role. To cap what a member can spend in the team, add a member limit with <a href="/docs/organizations-billing#spend-limit-set"><code>/SpendLimit/Set</code></a> (<code>scope: "member"</code>, with the member's <code>useruuid</code> as <code>target</code>), or on the <a href="https://wiro.ai/panel/wallet/limits" target="_blank">Spend Limits</a> page.</p>
+                    <p>The call changes only the role. To cap what a member can spend in the team, add a member limit with <a href="/docs/spend-limits#spend-limit-set"><code>/SpendLimit/Set</code></a> (<code>scope: "member"</code>, with the member's <code>useruuid</code> as <code>target</code>), or on the <a href="https://wiro.ai/panel/wallet/limits" target="_blank">Spend Limits</a> page.</p>
                   </section>
 
                   <section id="deleting-a-team">
@@ -45261,7 +45914,7 @@ Organization (created by you)
                   <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="/docs/markdown/organizations-billing.md" target="_blank" class="docs-section-md-btn">View</a> <a href="/docs/markdown/organizations-billing.md" download class="docs-section-md-btn">Download</a></div>
 
                   <h1>Team Billing &amp; Spending</h1>
-                  <p class="section-subtitle">Manage team wallets, set spend limits for personal accounts and teams, control model access, and track usage across members.</p>
+                  <p class="section-subtitle">Manage team wallets, control model access, and track usage across members.</p>
 
                   <section id="team-wallets">
                     <h2>Team Wallets</h2>
@@ -45286,646 +45939,12 @@ Organization (created by you)
 
                   <section id="spend-limits">
                     <h2>Spend Limits</h2>
-                    <p>A spend limit caps what a wallet can spend in a month or a day. Limits work the same way for a personal account's wallet and for a team's wallet. The limits of the workspace a call runs in apply: a team project's API key runs in its team, a personal project's key in your personal account, and the dashboard in the workspace you have selected.</p>
-                    <p>Manage limits on the <a href="https://wiro.ai/panel/wallet/limits" target="_blank">Spend Limits</a> page of the dashboard, for your personal account or for the team workspace you have selected, or with the <code>/SpendLimit</code> endpoints below. Team and member limits set before this system were moved into it as monthly limits of the same amount.</p>
-
-                    <h3>What a Limit Caps</h3>
-                    <p>Each limit caps one scope of the wallet's spending:</p>
-                    <div class="docs-param-table">
-                      <div class="docs-param-table-wrapper">
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Scope</th>
-                              <th><code>target</code></th>
-                              <th>What it caps</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              <td><code>account</code></td>
-                              <td>None</td>
-                              <td>The whole wallet. In a team, the whole team's spending</td>
-                            </tr>
-                            <tr>
-                              <td><code>member</code></td>
-                              <td>The member's <code>useruuid</code> from <code>/Team/Member/List</code></td>
-                              <td>One team member's spending in the team (team wallets only). A member's spending includes their dashboard runs in the team workspace and every run made with the API key of a team project they created</td>
-                            </tr>
-                            <tr>
-                              <td><code>project</code></td>
-                              <td>The project's <code>id</code> from <code>/Project/List</code></td>
-                              <td>One API key: what is spent with that project's key</td>
-                            </tr>
-                            <tr>
-                              <td><code>surface</code></td>
-                              <td><code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code> or <code>agent</code></td>
-                              <td>One way in (see Surfaces below)</td>
-                            </tr>
-                            <tr>
-                              <td><code>agent</code></td>
-                              <td>The agent's <code>guid</code> (its <code>useragentguid</code>)</td>
-                              <td>One deployed agent: what the agent itself spends, its own model runs and the credits its replies use (100 credits = $1). Its plan, upgrades and credit packs count toward the wallet's other limits, not this one</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-
-                    <h3>Surfaces</h3>
-                    <div class="docs-param-table">
-                      <div class="docs-param-table-wrapper">
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Surface</th>
-                              <th>Label</th>
-                              <th>Covers</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              <td><code>web</code></td>
-                              <td>the dashboard</td>
-                              <td>The Wiro dashboard, including Studio and the Workflow Agent used there</td>
-                            </tr>
-                            <tr>
-                              <td><code>api</code></td>
-                              <td>the API</td>
-                              <td>Calls with an API key</td>
-                            </tr>
-                            <tr>
-                              <td><code>mcp</code></td>
-                              <td>MCP</td>
-                              <td>The <a href="/docs/wiro-mcp-server">Wiro MCP server</a>, hosted or the npm package</td>
-                            </tr>
-                            <tr>
-                              <td><code>llm-gateway</code></td>
-                              <td>the LLM gateway</td>
-                              <td>The OpenAI and Anthropic compatible <a href="/docs/completions-api">LLM gateway</a></td>
-                            </tr>
-                            <tr>
-                              <td><code>extension</code></td>
-                              <td>the browser extensions</td>
-                              <td>The Wiro browser extensions</td>
-                            </tr>
-                            <tr>
-                              <td><code>agent</code></td>
-                              <td>agents</td>
-                              <td>Your deployed agents' own runs</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                    <p>Studio and Workflow Agent messages count on the surface they were sent from. Refusal messages and <code>/SpendLimit/Usage</code> name a surface by its label.</p>
-
-                    <h3>Periods and Amounts</h3>
-                    <p>A limit's <code>period</code> is <code>month</code> (the default), which resets on the 1st of each month at 00:00 UTC, or <code>day</code>, which resets every day at 00:00 UTC. <code>amountusd</code> is a positive amount in USD, rounded to cents. A scope and target can have one monthly limit and one daily limit.</p>
-
-                    <h3>What Counts</h3>
-                    <p>Every charge to the wallet for usage counts: model runs, workflow runs, realtime sessions, Studio, the Workflow Agent, agent plans, upgrades and credit packs. Deposits are not spending.</p>
-
-                    <h3>When Limits Are Checked</h3>
-                    <p>Limits are checked before work starts:</p>
-                    <ul>
-                      <li>Model runs, workflow runs and workflow resumes</li>
-                      <li>Studio and Workflow Agent messages</li>
-                      <li>An agent deploy, upgrade, renewal or credit pack purchase that a person starts</li>
-                      <li>Messages to an agent, against that agent's own limit</li>
-                    </ul>
-                    <p>When the price of the work is known before it starts, as for fixed-price models and agent purchases, the work is refused if spending so far plus that price would go over the limit. Otherwise it is refused once spending has reached the limit.</p>
-                    <p>Work that is already running finishes and is charged. A realtime session ends after the turn that uses up a limit, the same way it ends when the balance runs out. Automatic monthly renewals of running agents are never refused by a limit, but they still count toward it.</p>
-
-                    <h3>When a Limit Is Reached</h3>
-                    <p>New work the limit covers is refused with HTTP <code>200</code>, <code>result: false</code> and error code <code>93</code>. The message names the limit and says when it resets:</p>
-                    <pre><code class="language-json">{
-  "result": false,
-  "errors": [
-    {
-      "code": 93,
-      "message": "This API key's monthly spend limit is reached ($50.20 of $50.00). It resets on December 1, 2026 at 00:00 UTC."
-    }
-  ]
-}</code></pre>
-                    <p>When the price of the work is known before it starts, the message says what is left instead, for example <code>This team's monthly spend limit has $3.10 left of $500.00, and this run costs $4.00. It resets on December 1, 2026 at 00:00 UTC.</code> A daily limit says <code>daily</code> instead of <code>monthly</code>, and its message ends with <code>It resets at 00:00 UTC.</code></p>
-                    <div class="docs-param-table">
-                      <div class="docs-param-table-wrapper">
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Limit</th>
-                              <th>The message starts with</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              <td>A personal account's <code>account</code> limit</td>
-                              <td><code>Your monthly spend limit</code></td>
-                            </tr>
-                            <tr>
-                              <td>A team's <code>account</code> limit</td>
-                              <td><code>This team's monthly spend limit</code></td>
-                            </tr>
-                            <tr>
-                              <td><code>member</code></td>
-                              <td><code>Your monthly spend limit in this team</code></td>
-                            </tr>
-                            <tr>
-                              <td><code>project</code></td>
-                              <td><code>This API key's monthly spend limit</code></td>
-                            </tr>
-                            <tr>
-                              <td><code>surface</code></td>
-                              <td><code>The monthly spend limit for</code> and the surface's label, for example <code>The monthly spend limit for the LLM gateway</code></td>
-                            </tr>
-                            <tr>
-                              <td><code>agent</code></td>
-                              <td><code>This agent's monthly spend limit</code></td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                    <p>Nothing runs and nothing is charged. Retrying does not help until the limit resets or someone who manages it raises it. Through the <a href="/docs/completions-api#gateway-errors">LLM gateway</a> the refusal is an HTTP <code>402</code> error with code <code>spend_limit_reached</code>, and the <a href="/docs/wiro-mcp-server">MCP server</a> returns it as a tool error.</p>
-
-                    <h3>Alert Emails</h3>
-                    <p>A limit sends an alert email when spending reaches its <code>alertpct</code>: 50, 80 (the default) or 90 percent of the limit, or <code>null</code> for no alert email. It sends a used-up email when the limit is reached. Each email goes out once per limit and period, and changing the limit re-arms both for the current period.</p>
-                    <p>A personal account's limits email the account. A team's limits email the team's admins and the organization owner, and also the member a member limit is for, the person who created the API key a key limit is for, and the owner of the agent an agent limit is for.</p>
-
-                    <h3>Who Can Change Limits</h3>
-                    <ul>
-                      <li><strong>Personal account</strong>: the account itself</li>
-                      <li><strong>Team</strong>: the organization owner or a team admin. The owner of an agent can also set that agent's own limit</li>
-                    </ul>
-                    <p>Any team member can read the team's limits and usage with <code>/SpendLimit/List</code> and <code>/SpendLimit/Usage</code>, which also work with an API key. <code>/SpendLimit/Set</code> and <code>/SpendLimit/Remove</code> work only while signed in, in the dashboard or with the user's Bearer token: with an API key they fail with HTTP <code>401</code>, so a key can never lift its own limit.</p>
-                  </section>
-
-                  <section id="spend-limit-list">
-                    <h2>
-                      <span class="endpoint-badge post">POST</span>
-                      /SpendLimit/List
-                    </h2>
-                    <p>Returns the spend limits of the call's workspace, each with what has been spent in its current period. A team project's API key reads its team, a personal project's key your personal account, and the dashboard the workspace you have selected. Any team member can call it, and it works with an API key. Send an empty body: <code>{}</code>.</p>
-
-                    <h3>Response</h3>
-                    <pre><code class="language-json">{
-  "result": true,
-  "errors": [],
-  "workspace": {
-    "type": "team",
-    "teamguid": "0d9aade4-d31b-4b97-88f3-a90482f080ea",
-    "canmanage": false
-  },
-  "limits": [
-    {
-      "guid": "e93fc393-aedd-4828-a6be-fbc2853d3202",
-      "scope": "account",
-      "target": "",
-      "targetlabel": null,
-      "period": "month",
-      "amountusd": 500,
-      "alertpct": 90,
-      "periodstart": 1793491200,
-      "resetsat": 1796083200,
-      "createdat": 1793805600,
-      "updatedat": 1793805600,
-      "spentusd": 248.7
-    },
-    {
-      "guid": "f4134ddb-e837-44a9-9b36-0af44241f3ef",
-      "scope": "member",
-      "target": "3f5a9c20-6d41-4b8e-a1c7-5e9d0f2b4c61",
-      "targetlabel": "Jane Doe",
-      "period": "month",
-      "amountusd": 150,
-      "alertpct": 80,
-      "periodstart": 1793491200,
-      "resetsat": 1796083200,
-      "createdat": 1793805600,
-      "updatedat": 1793805600,
-      "spentusd": 120.5
-    },
-    {
-      "guid": "15be7fb3-c602-4ff1-a3f1-3afaa3996974",
-      "scope": "project",
-      "target": "48211",
-      "targetlabel": "Production",
-      "period": "month",
-      "amountusd": 100,
-      "alertpct": 80,
-      "periodstart": 1793491200,
-      "resetsat": 1796083200,
-      "createdat": 1794474300,
-      "updatedat": 1794474300,
-      "spentusd": 88.2
-    }
-  ]
-}</code></pre>
-
-                    <div class="docs-param-table">
-                      <div class="docs-param-table-wrapper">
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Field</th>
-                              <th>Description</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              <td><code>workspace.type</code></td>
-                              <td><code>team</code> or <code>personal</code></td>
-                            </tr>
-                            <tr>
-                              <td><code>workspace.teamguid</code></td>
-                              <td>The team's guid, or <code>null</code> for a personal account</td>
-                            </tr>
-                            <tr>
-                              <td><code>workspace.canmanage</code></td>
-                              <td>Whether the caller can change limits in this workspace. The owner of an agent can still set that agent's own limit when it is <code>false</code></td>
-                            </tr>
-                            <tr>
-                              <td><code>limits[].guid</code></td>
-                              <td>The limit's guid, for <code>/SpendLimit/Remove</code></td>
-                            </tr>
-                            <tr>
-                              <td><code>limits[].scope</code></td>
-                              <td><code>account</code>, <code>member</code>, <code>project</code>, <code>surface</code> or <code>agent</code></td>
-                            </tr>
-                            <tr>
-                              <td><code>limits[].target</code></td>
-                              <td>The member's <code>useruuid</code>, the project id, the surface or the agent's guid; <code>""</code> for <code>account</code></td>
-                            </tr>
-                            <tr>
-                              <td><code>limits[].targetlabel</code></td>
-                              <td>The member's name, the project's name, the agent's title or the surface's label; <code>null</code> for <code>account</code></td>
-                            </tr>
-                            <tr>
-                              <td><code>limits[].period</code></td>
-                              <td><code>month</code> or <code>day</code></td>
-                            </tr>
-                            <tr>
-                              <td><code>limits[].amountusd</code></td>
-                              <td>The limit in USD</td>
-                            </tr>
-                            <tr>
-                              <td><code>limits[].alertpct</code></td>
-                              <td><code>50</code>, <code>80</code> or <code>90</code>, or <code>null</code> for no alert email</td>
-                            </tr>
-                            <tr>
-                              <td><code>limits[].periodstart</code></td>
-                              <td>Start of the current period, in Unix seconds</td>
-                            </tr>
-                            <tr>
-                              <td><code>limits[].resetsat</code></td>
-                              <td>When the current period ends and the limit resets, in Unix seconds</td>
-                            </tr>
-                            <tr>
-                              <td><code>limits[].createdat</code>, <code>limits[].updatedat</code></td>
-                              <td>When the limit was added and last changed, in Unix seconds</td>
-                            </tr>
-                            <tr>
-                              <td><code>limits[].spentusd</code></td>
-                              <td>What has been spent in the current period, in USD</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </section>
-
-                  <section id="spend-limit-set">
-                    <h2>
-                      <span class="endpoint-badge post">POST</span>
-                      /SpendLimit/Set
-                    </h2>
-                    <p>Adds a spend limit to the call's workspace, or changes the existing limit with the same <code>scope</code>, <code>target</code> and <code>period</code>. Changing a limit re-arms its emails for the current period. In a team, only the organization owner or a team admin can call it, and the owner of an agent can set that agent's own limit. It works only while signed in, in the dashboard or with the user's Bearer token: with an API key it fails with HTTP <code>401</code>, so a key can never lift its own limit.</p>
-
-                    <div class="docs-param-table">
-                      <div class="docs-param-table-wrapper">
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Parameter</th>
-                              <th>Type</th>
-                              <th>Required</th>
-                              <th>Description</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              <td><code>scope</code></td>
-                              <td>string</td>
-                              <td>Yes</td>
-                              <td><code>"account"</code>, <code>"member"</code>, <code>"project"</code>, <code>"surface"</code> or <code>"agent"</code>. See <a href="#spend-limits">Spend Limits</a></td>
-                            </tr>
-                            <tr>
-                              <td><code>target</code></td>
-                              <td>string</td>
-                              <td>For every scope but <code>account</code></td>
-                              <td>The member's <code>useruuid</code>, the project's <code>id</code>, the surface (<code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code> or <code>agent</code>) or the agent's guid. Leave it out for <code>account</code></td>
-                            </tr>
-                            <tr>
-                              <td><code>period</code></td>
-                              <td>string</td>
-                              <td>No</td>
-                              <td><code>"month"</code> or <code>"day"</code>. Default: <code>"month"</code></td>
-                            </tr>
-                            <tr>
-                              <td><code>amountusd</code></td>
-                              <td>number</td>
-                              <td>Yes</td>
-                              <td>The limit in USD, a positive number. Rounded to cents</td>
-                            </tr>
-                            <tr>
-                              <td><code>alertpct</code></td>
-                              <td>number</td>
-                              <td>No</td>
-                              <td>When the alert email goes out: <code>50</code>, <code>80</code> or <code>90</code> percent of the limit, or <code>null</code> for no alert email. Default: <code>80</code></td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-
-                    <h3>Examples</h3>
-                    <p><strong>Cap the whole wallet at $500 a month, with the alert at 90%:</strong></p>
-                    <pre><code class="language-json">{
-  "scope": "account",
-  "amountusd": 500,
-  "alertpct": 90
-}</code></pre>
-                    <p><strong>Cap one API key at $100 a month:</strong></p>
-                    <pre><code class="language-json">{
-  "scope": "project",
-  "target": "48211",
-  "period": "month",
-  "amountusd": 100
-}</code></pre>
-                    <p><strong>Cap the LLM gateway at $25 a day, with no alert email:</strong></p>
-                    <pre><code class="language-json">{
-  "scope": "surface",
-  "target": "llm-gateway",
-  "period": "day",
-  "amountusd": 25,
-  "alertpct": null
-}</code></pre>
-
-                    <h3>Response</h3>
-                    <p><code>limit</code> is the limit as saved, shaped like a row of <code>/SpendLimit/List</code>:</p>
-                    <pre><code class="language-json">{
-  "result": true,
-  "errors": [],
-  "limit": {
-    "guid": "15be7fb3-c602-4ff1-a3f1-3afaa3996974",
-    "scope": "project",
-    "target": "48211",
-    "targetlabel": "Production",
-    "period": "month",
-    "amountusd": 100,
-    "alertpct": 80,
-    "periodstart": 1793491200,
-    "resetsat": 1796083200,
-    "createdat": 1794474300,
-    "updatedat": 1794474300,
-    "spentusd": 61.4
-  }
-}</code></pre>
-
-                    <h3>Errors</h3>
-                    <div class="docs-param-table">
-                      <div class="docs-param-table-wrapper">
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Error</th>
-                              <th>Cause</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              <td><code>scope must be one of account, member, project, surface, agent.</code></td>
-                              <td><code>scope</code> is missing or not one of the five scopes</td>
-                            </tr>
-                            <tr>
-                              <td><code>Member limits exist only in a team workspace.</code></td>
-                              <td>A <code>member</code> limit in a personal account</td>
-                            </tr>
-                            <tr>
-                              <td><code>target is required for this scope.</code></td>
-                              <td>No <code>target</code> for a <code>member</code>, <code>project</code>, <code>surface</code> or <code>agent</code> limit</td>
-                            </tr>
-                            <tr>
-                              <td><code>A surface is one of web, api, mcp, llm-gateway, extension, agent.</code></td>
-                              <td>A <code>surface</code> limit with another <code>target</code></td>
-                            </tr>
-                            <tr>
-                              <td><code>target must be a project id.</code></td>
-                              <td>A <code>project</code> limit whose <code>target</code> is not a project id</td>
-                            </tr>
-                            <tr>
-                              <td><code>period must be month or day.</code></td>
-                              <td>Another <code>period</code></td>
-                            </tr>
-                            <tr>
-                              <td><code>amountusd must be a positive number.</code></td>
-                              <td><code>amountusd</code> is missing, zero or negative</td>
-                            </tr>
-                            <tr>
-                              <td><code>alertpct must be 50, 80 or 90, or null for no alert.</code></td>
-                              <td>Another <code>alertpct</code></td>
-                            </tr>
-                            <tr>
-                              <td><code>Only a team admin or the organization owner can change this limit.</code></td>
-                              <td>In a team, the caller is not a team admin or the organization owner (or, for an <code>agent</code> limit, the agent's owner)</td>
-                            </tr>
-                            <tr>
-                              <td><code>That person is not an active member of this team.</code></td>
-                              <td>A <code>member</code> limit for someone who is not an active member of the team</td>
-                            </tr>
-                            <tr>
-                              <td><code>That API key's project is not in this workspace.</code></td>
-                              <td>A <code>project</code> limit for a project of another workspace</td>
-                            </tr>
-                            <tr>
-                              <td><code>That agent is not in this workspace.</code></td>
-                              <td>An <code>agent</code> limit for an agent of another workspace</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </section>
-
-                  <section id="spend-limit-remove">
-                    <h2>
-                      <span class="endpoint-badge post">POST</span>
-                      /SpendLimit/Remove
-                    </h2>
-                    <p>Removes a spend limit from the call's workspace. The people who can set a limit can remove it, and only while signed in: with an API key it fails with HTTP <code>401</code>.</p>
-
-                    <div class="docs-param-table">
-                      <div class="docs-param-table-wrapper">
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Parameter</th>
-                              <th>Type</th>
-                              <th>Required</th>
-                              <th>Description</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              <td><code>guid</code></td>
-                              <td>string</td>
-                              <td>Yes</td>
-                              <td>The limit's <code>guid</code> from <code>/SpendLimit/List</code></td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-
-                    <h3>Response</h3>
-                    <pre><code class="language-json">{
-  "result": true,
-  "errors": []
-}</code></pre>
-
-                    <div class="docs-param-table">
-                      <div class="docs-param-table-wrapper">
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Error</th>
-                              <th>Cause</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              <td><code>guid is required.</code></td>
-                              <td>No <code>guid</code> was sent</td>
-                            </tr>
-                            <tr>
-                              <td><code>Limit not found in this workspace.</code></td>
-                              <td>The guid is not a limit of the call's workspace, or it was already removed</td>
-                            </tr>
-                            <tr>
-                              <td><code>Only a team admin or the organization owner can change this limit.</code></td>
-                              <td>In a team, the caller can't manage this limit</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
+                    <p>Spend limits are not a team setting: they work the same way for a personal account's wallet and for a team's wallet. In a team, the organization owner and team admins can cap the whole team, one member, one API key, a surface such as the LLM gateway, or one agent, per month or per day, on the <a href="https://wiro.ai/panel/wallet/limits" target="_blank">Spend Limits</a> page of the dashboard or with the <code>/SpendLimit</code> endpoints. See <a href="/docs/spend-limits">Spend Limits</a>.</p>
                   </section>
 
                   <section id="spending-tracking">
-                    <h2>
-                      <span class="endpoint-badge post">POST</span>
-                      /SpendLimit/Usage
-                    </h2>
-                    <p>Returns what the call's workspace has spent this month or today, in total and by surface, member, API key and agent. A team project's API key reads its team, a personal project's key your personal account, and the dashboard the workspace you have selected. Any team member can call it, and it works with an API key.</p>
-
-                    <div class="docs-param-table">
-                      <div class="docs-param-table-wrapper">
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Parameter</th>
-                              <th>Type</th>
-                              <th>Required</th>
-                              <th>Description</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              <td><code>period</code></td>
-                              <td>string</td>
-                              <td>No</td>
-                              <td><code>"month"</code> or <code>"day"</code>. Default: <code>"month"</code></td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-
-                    <h3>Response</h3>
-                    <pre><code class="language-json">{
-  "result": true,
-  "errors": [],
-  "usage": {
-    "period": "month",
-    "periodstart": 1793491200,
-    "resetsat": 1796083200,
-    "totalusd": 248.7,
-    "surfaces": [
-      { "surface": "web", "label": "the dashboard", "spentusd": 40.1 },
-      { "surface": "api", "label": "the API", "spentusd": 168.2 },
-      { "surface": "mcp", "label": "MCP", "spentusd": 12.5 },
-      { "surface": "llm-gateway", "label": "the LLM gateway", "spentusd": 7.9 },
-      { "surface": "extension", "label": "the browser extensions", "spentusd": 0 },
-      { "surface": "agent", "label": "agents", "spentusd": 20 }
-    ],
-    "members": [
-      { "useruuid": "3f5a9c20-6d41-4b8e-a1c7-5e9d0f2b4c61", "label": "Jane Doe", "spentusd": 120.5 },
-      { "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", "label": "John Doe", "spentusd": 108.2 }
-    ],
-    "projects": [
-      { "projectid": "48211", "label": "Production", "spentusd": 88.2 },
-      { "projectid": "48377", "label": "Staging", "spentusd": 80 }
-    ],
-    "agents": [
-      { "useragentguid": "6e4bbd6f-6b73-4421-adae-e9599ba2e317", "label": "Support Agent", "spentusd": 20 }
-    ]
-  }
-}</code></pre>
-
-                    <div class="docs-param-table">
-                      <div class="docs-param-table-wrapper">
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Field</th>
-                              <th>Description</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              <td><code>usage.period</code></td>
-                              <td><code>month</code> or <code>day</code></td>
-                            </tr>
-                            <tr>
-                              <td><code>usage.periodstart</code>, <code>usage.resetsat</code></td>
-                              <td>Start and end of the period, in Unix seconds</td>
-                            </tr>
-                            <tr>
-                              <td><code>usage.totalusd</code></td>
-                              <td>What the wallet has spent in the period, in USD</td>
-                            </tr>
-                            <tr>
-                              <td><code>usage.surfaces</code></td>
-                              <td>One row per surface, always in the order <code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code>, <code>agent</code>, with its label</td>
-                            </tr>
-                            <tr>
-                              <td><code>usage.members</code></td>
-                              <td>Spending per team member, with the member's name as <code>label</code>. Empty for a personal account</td>
-                            </tr>
-                            <tr>
-                              <td><code>usage.projects</code></td>
-                              <td>Spending per API key, with the project's name as <code>label</code></td>
-                            </tr>
-                            <tr>
-                              <td><code>usage.agents</code></td>
-                              <td>Spending per deployed agent, with the agent's title as <code>label</code></td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                    <p>For other breakdowns, <code>/Project/UsageSummary</code> gives usage per project and <code>/Task/Stat</code> gives time-series task execution data. Both filter by the active workspace.</p>
+                    <h2>Tracking Team Spending</h2>
+                    <p>What the team has spent this month or today, by member, API key, surface and agent, comes from <a href="/docs/spend-limits#spend-limit-usage"><code>/SpendLimit/Usage</code></a>. For other breakdowns, <code>/Project/UsageSummary</code> gives usage per project and <code>/Task/Stat</code> gives time-series task execution data. Both filter by the active workspace.</p>
                   </section>
 
                   <section id="model-access-controls">
@@ -45933,7 +45952,7 @@ Organization (created by you)
                       <span class="endpoint-badge post">POST</span>
                       /Team/Update
                     </h2>
-                    <p>Updates team settings, including model access controls. Only the organization owner and team admins can call it, and only while signed in: with an API key it fails with HTTP <code>401</code>. Spend limits are not team settings: set them with <a href="#spend-limit-set"><code>/SpendLimit/Set</code></a>.</p>
+                    <p>Updates team settings, including model access controls. Only the organization owner and team admins can call it, and only while signed in: with an API key it fails with HTTP <code>401</code>. Spend limits are not team settings: set them with <a href="/docs/spend-limits#spend-limit-set"><code>/SpendLimit/Set</code></a>.</p>
 
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
@@ -46251,7 +46270,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
   -d '{"prompt": "Hello"}'</code></pre>
                     <p>These examples use API-key-only authentication. For projects that use signature authentication, also send <code>x-nonce</code> and <code>x-signature</code> (see <a href="/docs/authentication">Authentication</a>).</p>
                     <p>Create a project inside a team to get a team API key, or use a personal project for personal context. The same <code>x-api-key</code> header works for both, with no extra configuration needed.</p>
-                    <p>A team project's API key works only while the user who created the project is an active member of the team or the owner of its organization. Once the creator is removed from the team, the key stops working right away, in your apps and in any agent that uses it. The project stays in the team. Requests with the key then fail with HTTP <code>401</code> and <code>The person who created this API key is no longer in its team. Ask a team admin for a new key.</code> Public endpoints such as <code>Agent/List</code> still answer, as if the request had no key. While the key works, runs made with it count toward the creator's member limit (see <a href="/docs/organizations-billing#spend-limits">Spend Limits</a>).</p>
+                    <p>A team project's API key works only while the user who created the project is an active member of the team or the owner of its organization. Once the creator is removed from the team, the key stops working right away, in your apps and in any agent that uses it. The project stays in the team. Requests with the key then fail with HTTP <code>401</code> and <code>The person who created this API key is no longer in its team. Ask a team admin for a new key.</code> Public endpoints such as <code>Agent/List</code> still answer, as if the request had no key. While the key works, runs made with it count toward the creator's member limit (see <a href="/docs/spend-limits">Spend Limits</a>).</p>
                     <p>API keys can't change teams or organizations. <code>Organization/Create</code>, <code>Organization/Remove</code>, <code>Organization/Restore</code>, <code>Team/Create</code>, <code>Team/Update</code>, <code>Team/Remove</code>, <code>Team/Member/Invite</code>, <code>Team/Member/CancelInvite</code>, <code>Team/Member/UpdateRole</code>, <code>Team/Member/Remove</code>, <code>Team/TransferAgent</code>, <code>Team/TransferProject</code> and <code>Team/TransferCredit</code> need a signed-in user: use the dashboard, or send that user's Bearer token. With any API key, personal or team, they fail with HTTP <code>401</code> and <code>API keys can't manage teams or organizations. Sign in and try again.</code> Endpoints that only read, such as <code>Organization/List</code>, <code>Team/Member/List</code>, <code>SpendLimit/List</code> and <code>SpendLimit/Usage</code>, work with an API key. <code>SpendLimit/Set</code> and <code>SpendLimit/Remove</code> also need a signed-in user and fail with HTTP <code>401</code> with an API key, so a key can never lift its own limit.</p>
                   </section>
 

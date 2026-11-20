@@ -194,7 +194,7 @@ Business errors come back with HTTP 200, `result: false` and an `errors` array. 
 | Message | Code | When |
 |---------|------|------|
 | `Insufficient balance` | 97 | Send or SendForm with less than $10 spendable. The response adds `walletUsd` and `minTopup`. |
-| A spend limit refusal, such as `Your monthly spend limit is reached ($100.40 of $100.00). It resets on December 1, 2026 at 00:00 UTC.` | 93 | Send or SendForm while a [spend limit](/docs/organizations-billing#spend-limits) that covers the message is used up. Nothing is charged. |
+| A spend limit refusal, such as `Your monthly spend limit is reached ($100.40 of $100.00). It resets on December 1, 2026 at 00:00 UTC.` | 93 | Send or SendForm while a [spend limit](/docs/spend-limits) that covers the message is used up. Nothing is charged. |
 | `Request parameter [message] required` | 0 | No message, and no file on SendForm. |
 | `message exceeds the 16KB limit.` | 0 | The message is longer than 16 KB. |
 | `sessionkey has invalid format` | 0 | A session name with other characters, `:cron:`, or more than 100 characters. |

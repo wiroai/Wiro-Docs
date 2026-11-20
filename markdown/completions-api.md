@@ -2958,7 +2958,7 @@ request is different: its stream is already open, so it answers `200` and ends
 with `response.failed` carrying code `permission_denied` and the same message,
 like other errors that happen when the run is submitted.
 
-A run refused by a [spend limit](/docs/organizations-billing#spend-limits) of
+A run refused by a [spend limit](/docs/spend-limits) of
 the key's workspace (Wiro error code `93`) gets HTTP `402` with Wiro's message,
 which names the limit and when it resets. Chat and Responses return type
 `insufficient_quota`, code `spend_limit_reached` and param `null`; Anthropic

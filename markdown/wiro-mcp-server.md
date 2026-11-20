@@ -826,7 +826,7 @@ personal wallet, a team project uses the team wallet. `get_account` shows which
 one, its balance and its spend limits.
 
 Calls through the MCP server count toward the workspace's
-[spend limits](/docs/organizations-billing#spend-limits), on the `mcp` surface (the Wiro browser extensions' calls on the `extension`
+[spend limits](/docs/spend-limits), on the `mcp` surface (the Wiro browser extensions' calls on the `extension`
 surface).
 When a limit refuses work (error code `93`), the tool returns an error with
 Wiro's message and a note: nothing ran and nothing was charged, do not try

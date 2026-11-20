@@ -22,6 +22,7 @@
 - [Realtime Speech to Text](https://wiro.ai/docs/realtime-speech-to-text): Stream mic audio, receive live transcripts (client → server audio, JSON back)
 - [Files](https://wiro.ai/docs/files): Upload files for model inputs
 - [Pricing](https://wiro.ai/docs/pricing): Pay-per-use credit system
+- [Spend Limits](https://wiro.ai/docs/spend-limits): Monthly or daily caps for a personal account or a team: the whole wallet, a team member, an API key, a surface or an agent; code 93 when one is used up
 - [Error Reference](https://wiro.ai/docs/error-reference): Error codes and troubleshooting
 
 ## Workflow & Studio API Docs
@@ -87,7 +88,7 @@ API key integrations:
 
 - [Overview](https://wiro.ai/docs/organizations-overview): Workspace hierarchy of personal, organization, and team contexts
 - [Managing Teams](https://wiro.ai/docs/organizations-managing-teams): Create organizations, invite members, roles, transfers
-- [Team Billing](https://wiro.ai/docs/organizations-billing): Team wallets, spend limits for personal accounts and teams (with alert emails), model access controls
+- [Team Billing](https://wiro.ai/docs/organizations-billing): Team wallets, model access controls, credit transfers, coupons
 - [Team API Access](https://wiro.ai/docs/organizations-api-access): Context resolution via API keys, resource filtering, agent context guards
 
 ## Integrations
@@ -948,7 +949,7 @@ Fallback: when no dynamicprice, cost = elapsed_seconds × cps. `approximatelycos
 
 Only successful runs billed (pexit "0"). Server errors, queue time, cancelled tasks = free.
 Pricing page: https://wiro.ai/product/pricing
-Spend limits: monthly or daily caps on a wallet, an API key, a team member, a surface or an agent (see Organizations & Teams below); a reached limit refuses new work with code 93.
+Spend limits: monthly or daily caps on a wallet, an API key, a team member, a surface or an agent (https://wiro.ai/docs/spend-limits; details under Organizations & Teams below); a reached limit refuses new work with code 93.
 
 ## Concurrency Limits
 
@@ -1280,7 +1281,7 @@ Endpoints:
 
 Model access: `modelaccess` field is `"all"` (default, no restrictions), `"allowlist"` (only allowedmodelids) or `"blocklist"` (block blockedmodelids). Enforced on every run in a team workspace (team project API keys and the team workspace in the dashboard), including each model step of a workflow and LLM gateway requests; a blocked model fails with "This model is not available for your team" (on the LLM gateway: HTTP 403 `permission_error`; a streamed Responses request ends with `response.failed`). Personal workspaces and catalog browsing (Tool/List, Tool/Detail) are not affected.
 
-Spend limits: one system for every wallet, personal or team; the limits of the call's workspace apply (a team project's key: its team; a personal key: the personal account; the dashboard: the selected workspace). Each limit caps one scope over a period: `account` (the whole wallet; in a team, the whole team), `member` (one team member's spending in the team: their dashboard runs in the team workspace and every run with the key of a team project they created; team wallets only; target = their `useruuid`), `project` (one API key; target = the project `id`), `surface` (one way in; target `web` = the dashboard including Studio and the Workflow Agent used there, `api` = calls with an API key, `mcp` = the Wiro MCP server, hosted or npm, `llm-gateway` = the OpenAI and Anthropic compatible LLM gateway, `extension` = the Wiro browser extensions, `agent` = your deployed agents' own runs; Studio and Workflow Agent messages count on the surface they were sent from) or `agent` (one deployed agent, target = its guid: its own model runs and the credits its replies use, 100 credits = $1; its plan, upgrades and credit packs count toward the wallet's other limits). `period`: `month` (default; resets on the 1st at 00:00 UTC) or `day` (resets at 00:00 UTC); one monthly and one daily limit per scope and target. `amountusd`: positive, rounded to cents. `alertpct`: 50, 80 (default) or 90, or null for no alert email.
+Spend limits (https://wiro.ai/docs/spend-limits): one system for every wallet, personal or team; the limits of the call's workspace apply (a team project's key: its team; a personal key: the personal account; the dashboard: the selected workspace). Each limit caps one scope over a period: `account` (the whole wallet; in a team, the whole team), `member` (one team member's spending in the team: their dashboard runs in the team workspace and every run with the key of a team project they created; team wallets only; target = their `useruuid`), `project` (one API key; target = the project `id`), `surface` (one way in; target `web` = the dashboard including Studio and the Workflow Agent used there, `api` = calls with an API key, `mcp` = the Wiro MCP server, hosted or npm, `llm-gateway` = the OpenAI and Anthropic compatible LLM gateway, `extension` = the Wiro browser extensions, `agent` = your deployed agents' own runs; Studio and Workflow Agent messages count on the surface they were sent from) or `agent` (one deployed agent, target = its guid: its own model runs and the credits its replies use, 100 credits = $1; its plan, upgrades and credit packs count toward the wallet's other limits). `period`: `month` (default; resets on the 1st at 00:00 UTC) or `day` (resets at 00:00 UTC); one monthly and one daily limit per scope and target. `amountusd`: positive, rounded to cents. `alertpct`: 50, 80 (default) or 90, or null for no alert email.
 
 What counts: every charge to the wallet for usage (model runs, workflow runs, realtime sessions, Studio, the Workflow Agent, agent plans, upgrades and credit packs); deposits are not spending. Checked before work starts: model runs, workflow runs and resumes, Studio and Workflow Agent messages, an agent deploy, upgrade, renewal or credit pack purchase a person starts, and messages to an agent (its own limit). A known price (fixed-price models, agent purchases) is refused if spending so far plus the price would go over the limit; otherwise work is refused once spending has reached it. Work already running finishes and is charged; a realtime session ends after the turn that uses up a limit; automatic monthly renewals of running agents are never refused (they still count).
 

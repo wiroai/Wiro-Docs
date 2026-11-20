@@ -210,7 +210,7 @@ Updates a member's role in the team. Team admins and the organization owner can 
 | `teammemberguid` | string | Yes | The member's `guid` from `/Team/Member/List` |
 | `role` | string | Yes | New role: `"admin"` or `"member"` |
 
-The call changes only the role. To cap what a member can spend in the team, add a member limit with [`/SpendLimit/Set`](/docs/organizations-billing#spend-limit-set) (`scope: "member"`, with the member's `useruuid` as `target`), or on the [Spend Limits](https://wiro.ai/panel/wallet/limits) page.
+The call changes only the role. To cap what a member can spend in the team, add a member limit with [`/SpendLimit/Set`](/docs/spend-limits#spend-limit-set) (`scope: "member"`, with the member's `useruuid` as `target`), or on the [Spend Limits](https://wiro.ai/panel/wallet/limits) page.
 
 ## **POST** /Team/Remove
 
