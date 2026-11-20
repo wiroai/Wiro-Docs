@@ -211,9 +211,9 @@ A turn that fails ends with `status: "agent_error"`, and a cancelled one with `"
 | `[SECURITY_BLOCKED]` | `agent_error` | The agent's security rules blocked the message: ask the person to change it. |
 | `[SAFETY_POLICY_BLOCKED]` | `agent_error` | The model's provider declined the request: ask the person to rephrase it. |
 | `[TURN_INTERRUPTED]` | `agent_error` | A restart cut the turn short: offer to send it again. |
-| `[SPEND_LIMIT_REACHED]` | `agent_error` | The agent's spend limit is used up: say it runs again when the limit resets or is raised. |
+| `[SPEND_LIMIT_REACHED]` | `agent_error` | The agent's spend limit is used up: show the sentence as it is. |
 | `[USAGE_CEILING_REACHED]` | `agent_error` | The agent reached its hourly or daily safety ceiling for AI model calls: say it runs again when that hour or day is over. |
-| `[MODEL_NOT_ALLOWED]` | `agent_error` | The agent's Model Access rule blocks the model it uses: say the model has to be allowed on the Model Access page, or another model chosen. |
+| `[MODEL_NOT_ALLOWED]` | `agent_error` | The agent's Model Access rule blocks the model it uses: show the sentence as it is. |
 | `[AGENT_UNAVAILABLE]` | `agent_error` | Anything else, a message that couldn't be queued included: offer to try again shortly. |
 | `[REQUEST_CANCELLED]` | `agent_cancel` | The turn was cancelled. |
 

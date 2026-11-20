@@ -33,7 +33,7 @@ A session is one conversation with its own memory. `sessionkey` names it, and `"
 
 - **$10 to start a turn.** Send and SendForm need at least $10 spendable in the wallet of the key's workspace. Below that, the message is refused with code `97` (`Insufficient balance`), with `walletUsd` and `minTopup` in the response, and nothing is charged.
 - **Chat.** Each turn is charged after it ends for the tokens it used, at the chat model's rates in [StudioWorkflow/Status](#post-studioworkflowstatus) (credits per 1M tokens; 1 credit is $0.01). The reply's `tokencost` shows the charge in credits: `tokencost / 100` is the amount in USD.
-- **Spend limits.** The chat counts toward your workspace's [spend limits](/docs/spend-limits). It is not checked against [Model Access](/docs/model-access) rules.
+- **Spend limits.** The chat counts toward your workspace's [spend limits](/docs/spend-limits).
 - The agent only reads the catalog, so its turns start no model runs. Saving a proposal is free, and running the saved workflow is billed like any [workflow run](/docs/workflows#costs).
 - [StudioWorkflow/Transactions](#post-studioworkflowtransactions) lists the charges.
 

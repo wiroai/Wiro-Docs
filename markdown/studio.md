@@ -37,7 +37,7 @@ A session is one conversation with its own memory. `sessionkey` names it, and `"
 - **What a turn costs.** A turn's cost depends on the models Studio runs for it, and can be more than $10.
 - **Chat.** Each turn is charged for the tokens it used, at the chat model's rates in [Studio/Status](#post-studiostatus) (credits per 1M tokens; 1 credit is $0.01). The reply shows the chat charge in `tokencost`, in credits: `tokencost / 100` is the amount in USD.
 - **Model runs.** Each model run Studio starts is charged at that model's price when it succeeds. Failed and cancelled runs are not charged. [Studio/Tasks](#post-studiotasks) shows each run's `totalcost`.
-- **Spend limits and Model Access.** The models Studio runs for you follow your workspace's [spend limits](/docs/spend-limits) and [Model Access](/docs/model-access) rules, the same as the runs you start yourself: the account's or the team's, your own in a team, and those of the API key and the surface you sent the message with. The chat itself is not checked against Model Access rules, but its cost counts toward spend limits.
+- **Spend limits and Model Access.** The models Studio runs for you follow your workspace's [spend limits](/docs/spend-limits) and [Model Access](/docs/model-access) rules, the same as the runs you start yourself: the account's or the team's, your own in a team, and those of the API key and the surface you sent the message with. What the chat costs counts toward spend limits too.
 - Charges are made within about a minute of the work finishing. [Studio/Transactions](#post-studiotransactions) lists them, and they also appear in the wallet's transactions.
 
 ## **POST** /Studio/Status

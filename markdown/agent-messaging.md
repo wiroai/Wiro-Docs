@@ -64,9 +64,9 @@ The full texts:
 [SECURITY_BLOCKED] The agent's security rules blocked this message. Change it and send it again.
 [SAFETY_POLICY_BLOCKED] The model's provider declined this request under its safety policy. Rephrase it and send it again.
 [TURN_INTERRUPTED] This request was interrupted by a restart before it finished. Please send it again.
-[SPEND_LIMIT_REACHED] This agent's spend limit is used up, so it paused. It runs again when the limit resets or its owner raises it.
+[SPEND_LIMIT_REACHED] This agent's spend limit is used up, so it paused. It runs again when the limit resets or is raised.
 [USAGE_CEILING_REACHED] This agent reached its hourly or daily safety ceiling for AI model calls, so it paused. It runs again when that hour or day is over.
-[MODEL_NOT_ALLOWED] This agent's Model Access rule blocks the model it uses, so it stopped. Its owner can allow the model on the Model Access page or choose another one.
+[MODEL_NOT_ALLOWED] This agent's Model Access rule blocks the model it uses, so it stopped. It runs again once the model is allowed or another one is chosen.
 [AGENT_UNAVAILABLE] Agent is temporarily unavailable. Please try again shortly.
 [REQUEST_CANCELLED] Request cancelled.
 ```

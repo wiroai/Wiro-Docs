@@ -8082,7 +8082,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                     <ul>
                       <li>Model runs: <code>/Run</code> and its <code>/sync</code> wait, realtime sessions, the <a href="/docs/completions-api">LLM gateway</a>, the <a href="/docs/wiro-mcp-server">MCP server</a>, the browser extensions and the dashboard</li>
                       <li>Workflow runs and resumes: every model step that will run must be allowed. Steps that will not run, such as the steps after a breakpoint, are not checked</li>
-                      <li>The models Studio runs for you, which follow your own rules like the runs you start yourself: the account's or the team's rule, your member rule in a team, the rule of the API key you sent the message with and the rule of the surface you sent it from. The chat of Studio and the Workflow Agent is not checked against the rules, but what it costs counts toward <a href="/docs/spend-limits">spend limits</a></li>
+                      <li>The models Studio runs for you, which follow your own rules like the runs you start yourself: the account's or the team's rule, your member rule in a team, the rule of the API key you sent the message with and the rule of the surface you sent it from</li>
                       <li>The models your deployed agents run through Wiro</li>
                       <li>An agent's chat model: choosing one in the agent's settings, or sending <code>model</code> with <code>Message/Send</code>, follows that agent's own rule. If its rule blocks the model the agent already uses, its model calls are refused and the turn ends with <code>[MODEL_NOT_ALLOWED]</code></li>
                     </ul>
@@ -13747,7 +13747,7 @@ import type {
 <ul>
 <li><strong>$10 to start a turn.</strong> Send and SendForm need at least $10 spendable in the wallet of the key's workspace. Below that, the message is refused with code <code>97</code> (<code>Insufficient balance</code>), with <code>walletUsd</code> and <code>minTopup</code> in the response, and nothing is charged.</li>
 <li><strong>Chat.</strong> Each turn is charged after it ends for the tokens it used, at the chat model's rates in <a href="#post-studioworkflowstatus">StudioWorkflow/Status</a> (credits per 1M tokens; 1 credit is $0.01). The reply's <code>tokencost</code> shows the charge in credits: <code>tokencost / 100</code> is the amount in USD.</li>
-<li><strong>Spend limits.</strong> The chat counts toward your workspace's <a href="/docs/spend-limits">spend limits</a>. It is not checked against <a href="/docs/model-access">Model Access</a> rules.</li>
+<li><strong>Spend limits.</strong> The chat counts toward your workspace's <a href="/docs/spend-limits">spend limits</a>.</li>
 <li>The agent only reads the catalog, so its turns start no model runs. Saving a proposal is free, and running the saved workflow is billed like any <a href="/docs/workflows#costs">workflow run</a>.</li>
 <li><a href="#post-studioworkflowtransactions">StudioWorkflow/Transactions</a> lists the charges.</li>
 </ul>
@@ -14135,7 +14135,7 @@ import type {
 <li><strong>What a turn costs.</strong> A turn's cost depends on the models Studio runs for it, and can be more than $10.</li>
 <li><strong>Chat.</strong> Each turn is charged for the tokens it used, at the chat model's rates in <a href="#post-studiostatus">Studio/Status</a> (credits per 1M tokens; 1 credit is $0.01). The reply shows the chat charge in <code>tokencost</code>, in credits: <code>tokencost / 100</code> is the amount in USD.</li>
 <li><strong>Model runs.</strong> Each model run Studio starts is charged at that model's price when it succeeds. Failed and cancelled runs are not charged. <a href="#post-studiotasks">Studio/Tasks</a> shows each run's <code>totalcost</code>.</li>
-<li><strong>Spend limits and Model Access.</strong> The models Studio runs for you follow your workspace's <a href="/docs/spend-limits">spend limits</a> and <a href="/docs/model-access">Model Access</a> rules, the same as the runs you start yourself: the account's or the team's, your own in a team, and those of the API key and the surface you sent the message with. The chat itself is not checked against Model Access rules, but its cost counts toward spend limits.</li>
+<li><strong>Spend limits and Model Access.</strong> The models Studio runs for you follow your workspace's <a href="/docs/spend-limits">spend limits</a> and <a href="/docs/model-access">Model Access</a> rules, the same as the runs you start yourself: the account's or the team's, your own in a team, and those of the API key and the surface you sent the message with. What the chat costs counts toward spend limits too.</li>
 <li>Charges are made within about a minute of the work finishing. <a href="#post-studiotransactions">Studio/Transactions</a> lists them, and they also appear in the wallet's transactions.</li>
 </ul>
 <h2 id="post-studiostatus"><strong>POST</strong> /Studio/Status</h2>
@@ -22346,9 +22346,9 @@ print(response.body);
 <pre><code class="language-text">[SECURITY_BLOCKED] The agent's security rules blocked this message. Change it and send it again.
 [SAFETY_POLICY_BLOCKED] The model's provider declined this request under its safety policy. Rephrase it and send it again.
 [TURN_INTERRUPTED] This request was interrupted by a restart before it finished. Please send it again.
-[SPEND_LIMIT_REACHED] This agent's spend limit is used up, so it paused. It runs again when the limit resets or its owner raises it.
+[SPEND_LIMIT_REACHED] This agent's spend limit is used up, so it paused. It runs again when the limit resets or is raised.
 [USAGE_CEILING_REACHED] This agent reached its hourly or daily safety ceiling for AI model calls, so it paused. It runs again when that hour or day is over.
-[MODEL_NOT_ALLOWED] This agent's Model Access rule blocks the model it uses, so it stopped. Its owner can allow the model on the Model Access page or choose another one.
+[MODEL_NOT_ALLOWED] This agent's Model Access rule blocks the model it uses, so it stopped. It runs again once the model is allowed or another one is chosen.
 [AGENT_UNAVAILABLE] Agent is temporarily unavailable. Please try again shortly.
 [REQUEST_CANCELLED] Request cancelled.
 </code></pre>
@@ -30172,7 +30172,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <tr>
 <td><code>[SPEND_LIMIT_REACHED]</code></td>
 <td><code>agent_error</code></td>
-<td>The agent's spend limit is used up: say it runs again when the limit resets or is raised.</td>
+<td>The agent's spend limit is used up: show the sentence as it is.</td>
 </tr>
 <tr>
 <td><code>[USAGE_CEILING_REACHED]</code></td>
@@ -30182,7 +30182,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <tr>
 <td><code>[MODEL_NOT_ALLOWED]</code></td>
 <td><code>agent_error</code></td>
-<td>The agent's Model Access rule blocks the model it uses: say the model has to be allowed on the Model Access page, or another model chosen.</td>
+<td>The agent's Model Access rule blocks the model it uses: show the sentence as it is.</td>
 </tr>
 <tr>
 <td><code>[AGENT_UNAVAILABLE]</code></td>

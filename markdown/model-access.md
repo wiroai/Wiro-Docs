@@ -80,7 +80,7 @@ Rules are checked before work starts:
 
 - Model runs: `/Run` and its `/sync` wait, realtime sessions, the [LLM gateway](/docs/completions-api), the [MCP server](/docs/wiro-mcp-server), the browser extensions and the dashboard
 - Workflow runs and resumes: every model step that will run must be allowed. Steps that will not run, such as the steps after a breakpoint, are not checked
-- The models Studio runs for you, which follow your own rules like the runs you start yourself: the account's or the team's rule, your member rule in a team, the rule of the API key you sent the message with and the rule of the surface you sent it from. The chat of Studio and the Workflow Agent is not checked against the rules, but what it costs counts toward [spend limits](/docs/spend-limits)
+- The models Studio runs for you, which follow your own rules like the runs you start yourself: the account's or the team's rule, your member rule in a team, the rule of the API key you sent the message with and the rule of the surface you sent it from
 - The models your deployed agents run through Wiro
 - An agent's chat model: choosing one in the agent's settings, or sending `model` with `Message/Send`, follows that agent's own rule. If its rule blocks the model the agent already uses, its model calls are refused and the turn ends with `[MODEL_NOT_ALLOWED]`
 
