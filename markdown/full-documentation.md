@@ -6668,7 +6668,7 @@ Common questions about using the Wiro API.
 
 **Can I build my own product with Wiro Agents?** Yes. Use the Agent Messaging API to send messages programmatically, receive streaming responses via WebSocket, and get async notifications via webhooks. You can build white-label chat interfaces, webhook-driven pipelines, and multi-agent workflows. See [Agent Use Cases](/docs/agent-use-cases). For a chat in your own product, with setup from chat, follow [Agent Chat Integration](/docs/agent-chat-integration).
 
-**Can I watch my agent work?** Yes. In the Wiro panel, the people who manage an agent can open its Screen beside the chat and watch its computer live (on a team agent, while its Chat Mode is Collaborative). The owner of a personal agent that has never been in a team can also take control and use the keyboard and mouse, for example to sign in to a site for the agent. See [Screen and Take Control](/docs/agent-overview#screen-and-take-control).
+**Can I watch my agent work?** Yes. In the Wiro panel, the people who manage an agent can open its Screen beside the chat and watch its computer live (on a team agent, while its Chat Mode is Collaborative). The owner of a personal agent that has never been in a team, or whose browser was reset after it last left one, can also take control and use the keyboard and mouse, for example to sign in to a site for the agent. See [Screen and Take Control](/docs/agent-overview#screen-and-take-control).
 
 **How do I connect third-party services to an agent?** Agents connect to services like Twitter, Instagram, Google Ads, and HubSpot via OAuth or API keys. Use `POST /UserAgentOAuth/OAuthConnect` with the provider's `credentialkey` to initiate OAuth flows, or set API keys via `/UserAgent/CredentialUpsert`. See [Agent Credentials & OAuth](/docs/agent-credentials). You can also ask the agent in its chat: it proposes a setup card, and an agent admin approves it and gives the key, which the agent never sees. See [Setup From Chat](/docs/agent-messaging#setup-from-chat).
 
@@ -8049,7 +8049,7 @@ When you mutate an agent's configuration while it is **starting** (status `3`) o
 
 This means you can update credentials, toggle skills, or change a custom skill on a running agent without manually stopping and starting it.
 
-These calls restart a starting or running agent when they change something: `CredentialUpsert` (except the sign-in case below), `CredentialFileUpload`, `CredentialProjectBind` (when the project changes), an OAuth sign-in, direct `OAuthConnect` probe or `SetPickerAccounts` save that completes a connection, `OAuthDisconnect` (when it removes a token or the connection was complete), `SkillsApply`, `SkillToggle`, `CustomSkillUpsert` (a new custom skill or scheduled task, a new `interval`, an `enabled` change, or a change to `cs-approval-policy`), `CustomSkillRename`, `CustomSkillDelete`, `CustomSkillRevert`, `UpdateSettings` (a new time zone, Chat Mode, model, slash-command list or Wiro API path list, or turning `chatsetup` on or off), `Update` (a changed `title`, or a body that names no field), and a setup card applied from chat (see [Setup From Chat](/docs/agent-messaging#setup-from-chat)). A restart takes about a minute. A change saved while a restart is still stopping or queued loads with that restart instead of starting another one.
+These calls restart a starting or running agent when they change something: `CredentialUpsert` (except the sign-in case below), `CredentialFileUpload`, `CredentialProjectBind` (when the project changes), an OAuth sign-in, direct `OAuthConnect` probe or `SetPickerAccounts` save that completes a connection, `OAuthDisconnect` (when it removes a token or the connection was complete), `SkillsApply`, `SkillToggle`, `CustomSkillUpsert` (a new custom skill or scheduled task, a new `interval`, an `enabled` change, or a change to `cs-approval-policy`), `CustomSkillRename`, `CustomSkillDelete`, `CustomSkillRevert`, `UpdateSettings` (a new time zone, Chat Mode, model, slash-command list or Wiro API path list, or turning `chatsetup` on or off), `Update` (a changed `title`, or a body that names no field), and a setup card applied from chat (see [Setup From Chat](/docs/agent-messaging#setup-from-chat)). [`ResetBrowser`](#post-useragentresetbrowser) restarts a starting or running agent every time: the browser is reset as the agent starts again. A restart takes about a minute. A change saved while a restart is still stopping or queued loads with that restart instead of starting another one.
 
 **Sign-in connectors restart the agent once, when the connection is complete.** A connection is complete when its mode has a token and, for a credential with an account picker, at least one account is saved. Saving own-mode app keys, a System User token or `authmethod` with `CredentialUpsert` for a sign-in credential (one with an `oauth_provider`) that isn't connected before or after the save restarts nothing. A first sign-in or token check that leaves accounts to pick restarts nothing, and the `SetPickerAccounts` save restarts the agent once. One with nothing to pick (X, TikTok, LinkedIn, HubSpot, Mailchimp, Reddit, Shopify, an Instagram Login, or a Google account with a single YouTube channel) restarts it when it finishes. A reconnect that keeps the saved accounts restarts it at the sign-in, so the agent loads the new token. Saving the same accounts again restarts nothing, and a failed token check restarts the agent only when it cleared a connection that was complete. While nothing that is on uses the credential, a connection restarts nothing: turning on the connector that uses it restarts the agent once, with the connection. A direct `OAuthConnect` and `SetPickerAccounts` answer `restart` (`"scheduled"` or `"none"`), and `flow.restart` in `OAuthStatus` says what the sign-in did.
 
@@ -8057,9 +8057,9 @@ A change to only the text or description of an existing custom skill or schedule
 
 ## Screen and Take Control
 
-Every agent has its own computer in the cloud: a 1920 x 1080 desktop that holds the agent's web browser, where its browser and desktop tools do their work. In the Wiro panel, the people who manage an agent can open its **Screen** beside the chat and watch that computer live while the agent works. The owner of a personal agent that has never been in a team can also press **Take Control** and use the keyboard and mouse there, for example to sign in to a site for the agent or to finish a step by hand.
+Every agent has its own computer in the cloud: a 1920 x 1080 desktop that holds the agent's web browser, where its browser and desktop tools do their work. In the Wiro panel, the people who manage an agent can open its **Screen** beside the chat and watch that computer live while the agent works. The owner of a personal agent that has never been in a team, or whose browser was reset after it last left one, can also press **Take Control** and use the keyboard and mouse there, for example to sign in to a site for the agent or to finish a step by hand.
 
-The Screen is part of the Wiro panel at [wiro.ai/panel/agents](https://wiro.ai/panel/agents) and opens for people signed in there. A project API key can't open it, so the chats people have with the agent through your own app, or in Telegram, Slack and Discord, never show it. In the API you meet the Screen in two places: the `screen` setting on [`UpdateSettings`](#post-useragentupdatesettings) and [`Detail`](#post-useragentdetail), and the rows it adds to the agent's [activity log](#screen-in-the-activity-log).
+The Screen is part of the Wiro panel at [wiro.ai/panel/agents](https://wiro.ai/panel/agents) and opens for people signed in there. A project API key can't open it, so the chats people have with the agent through your own app, or in Telegram, Slack and Discord, never show it. In the API you meet the Screen in two places: the `screen` setting on [`UpdateSettings`](#post-useragentupdatesettings) and [`Detail`](#post-useragentdetail), and the rows it adds to the agent's [activity log](#screen-in-the-activity-log). [`ResetBrowser`](#post-useragentresetbrowser) signs the agent's browser out of every site, which is also how an agent that was in a team gets Take Control back (see [Resetting the Browser](#resetting-the-browser)).
 
 ### Who Can Watch
 
@@ -8092,10 +8092,10 @@ The screen opens in **View Only**: "View only. Your clicks and keys are not sent
 
 ### Take Control
 
-Only the owner of a personal agent that has never been in a team can take control of its computer. It works at any screen size, phones included. Everyone else who can watch keeps **View Only**, and the **Take Control** button doesn't show for them.
+Only the owner of a personal agent that has never been in a team, or whose browser was reset after it last left one, can take control of its computer. It works at any screen size, phones included. Everyone else who can watch keeps **View Only**, and the **Take Control** button doesn't show for them.
 
 - **Team agents.** Nobody can take control of a team agent, its owner and the team's admins included: its one browser is shared by the whole team, signed in wherever the members' chats signed in. They can still watch while its Chat Mode is `"collaborative"`.
-- **Agents that have been in a team.** An agent that was ever in a team doesn't get Take Control, even after it moves back to a personal workspace or returns there because its team or organization was deleted: its browser may still hold team members' sign-ins. Its owner can still watch.
+- **Agents that have been in a team.** An agent that was in a team doesn't get Take Control after it moves back to a personal workspace or returns there because its team or organization was deleted: its browser may still hold team members' sign-ins. Its owner can still watch, and gets Take Control back by resetting the agent's browser once it is personal (see [Resetting the Browser](#resetting-the-browser)).
 
 To take control:
 
@@ -8125,7 +8125,7 @@ When Take Control can't start, the screen stays as it was and a notice under its
 | "You can't take control right now." | The panel got no answer, for example because your connection dropped. Try again. |
 | "Too many screen sessions started. Try again in a few minutes." | You started 30 screen sessions in 10 minutes. |
 | "Take Control is off for team agents: their browser is shared by the whole team." | The agent is in a team. |
-| "Take Control is off for an agent that was used in a team, because its browser may still hold team members' sign-ins." | The agent has been in a team. |
+| "Take Control is off for an agent that was used in a team, because its browser may still hold team members' sign-ins." | The agent has been in a team, and its browser hasn't been reset since it left. Reset its browser to get Take Control back (see [Resetting the Browser](#resetting-the-browser)). |
 | "Take Control is not available for this agent right now." | Take Control can't be used on this agent at the moment. Watching still works. |
 
 ### While You Have Control
@@ -8170,7 +8170,7 @@ Control ends when you press **Hand Back** or close the screen, and on its own in
 
 - When 4 screens are open on an agent, another one is refused with "4 people are watching this agent's screen. Try again in a minute."
 - After 30 minutes a watching session ends with "This session reached its time limit"; **Reconnect** starts a new one.
-- The 6 Take Control starts are counted per agent over a rolling hour. Watching doesn't count, and neither does a start refused with one of the notices above. A start within 2 minutes after your control session on the agent ended, or while it is still open in another tab, is a reconnect and isn't counted, which covers the panel's own retry after a dropped connection. A start that ends at once because a capture began just then (see [When Control Ends](#when-control-ends)) is counted, and taking control again within 2 minutes is then a reconnect. The seventh start in an hour is refused with the hourly notice above, which says how long to wait.
+- The 6 Take Control starts are counted per agent over a rolling hour. Watching doesn't count, and neither does a start refused with one of the notices above. A reconnect isn't counted either: a start while your control session on the agent is still open in another tab, or within 2 minutes after your control session's connection dropped because the browser tab closed or reloaded, the network went away, or the agent's computer closed the connection or didn't answer. That covers the panel's own retry after a dropped connection. A start within 2 minutes after a control start that was closed before the agent's screen answered, with **Hand Back** or by the panel giving up after 20 seconds, is a reconnect too, since you never had control. After any other end, such as **Hand Back**, closing the screen, the idle end or the time limit, your next start counts, even within 2 minutes of an earlier dropped connection. A start that ends at once because a capture began just then (see [When Control Ends](#when-control-ends)) is counted, and so is the next one. The seventh start in an hour is refused with the hourly notice above, which says how long to wait.
 - Every screen the panel starts counts toward a person's 30 in 10 minutes: opening the Screen, **Reconnect**, each **Take Control** (also one refused for a capture or the hourly limit), the panel's own retry after a dropped connection, and the View Only screen it opens when control ends. Past that, a new one is refused until the 10 minutes are over.
 
 ### Screen in the Activity Log
@@ -8216,13 +8216,21 @@ Three [who-did-what rows](/docs/agent-logs#who-did-what-rows) in the agent's act
 }
 ```
 
-Read the rows in the panel under the agent's **Logs**, which its owner and the team's admins can open, or with [`POST /UserAgent/Logs`](/docs/agent-logs#logs-tail) and `LogsFile`, which also take an API key (`LogsList` lists the days that have rows). The owner's Account Activity page at [wiro.ai/panel/account/activity](https://wiro.ai/panel/account/activity) lists them too, by `kind`. A change to the `screen` setting writes an `AGENT_SETTINGS_UPDATED` row: `Agent settings updated: screen off` or `screen on`.
+Read the rows in the panel under the agent's **Logs**, which its owner and the team's admins can open, or with [`POST /UserAgent/Logs`](/docs/agent-logs#logs-tail) and `LogsFile`, which also take an API key (`LogsList` lists the days that have rows). The owner's Account Activity page at [wiro.ai/panel/account/activity](https://wiro.ai/panel/account/activity) lists them too, by `kind`. A change to the `screen` setting writes an `AGENT_SETTINGS_UPDATED` row: `Agent settings updated: screen off` or `screen on`. A browser reset writes an `AGENT_BROWSER_RESET` row: `Agent browser reset` (see [Resetting the Browser](#resetting-the-browser)).
 
 ### Turning the Screen Off
 
 The Screen is on for every agent by default. The agent's owner or a team admin turns it off with the **Screen** switch on the agent's **Settings** tab, or by sending `screen: "off"` to [`UpdateSettings`](#post-useragentupdatesettings). Off closes the Screen for everyone: nobody can watch or take control, the **Screen** button hides, and screens that are open, a Take Control session included, close within about half a minute. Turning it back on brings the button back. A change never restarts the agent, and `null` goes back to `"on"`. Read the value as `screen` on [`Detail`](#post-useragentdetail).
 
 On a team agent whose Chat Mode is `"private"`, the Screen stays closed to the team whatever `screen` says, and the **Settings** tab says so.
+
+### Resetting the Browser
+
+The agent's browser keeps every sign-in made there, by the agent's chats and by people in control. **Reset Browser** signs it out of every site: the agent's whole browser profile is deleted, with its sign-ins, cookies, history and saved site data, and the agent restarts with a fresh browser. Its files, memory and Connectors stay as they are.
+
+The agent's owner or a team admin resets it with **Reset Browser** in the **Browser** row of the agent's **Settings** tab, under **Screen**, or with [`ResetBrowser`](#post-useragentresetbrowser). The button works while the agent is starting or running; otherwise the row says "Start the agent to reset its browser." The panel asks first: "Reset this agent's browser?", followed by "The browser is signed out of every site, and its history and saved site data are cleared. The agent restarts. Connectors stay connected." Press **Reset Browser** there to go ahead. The panel then shows "Browser reset. Agent restarting…", and the agent runs again in about a minute. Each reset adds an `AGENT_BROWSER_RESET` row, `Agent browser reset`, to the agent's activity log, with who did it.
+
+**Getting Take Control back.** A reset is how an agent that was in a team gets [Take Control](#take-control) back. Reset its browser once the agent is in its owner's personal workspace; when it runs again, its owner can take control. A reset made while the agent was still in a team doesn't count once it leaves, and moving it into a team again turns Take Control off until the next reset.
 
 ## Endpoints
 
@@ -9261,8 +9269,8 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `agentModel` | `object` | The resolved model slugs this instance runs: `{ chatModel, cronModel, voicePrepModel, voicePostcallModel }` (camelCase). Each falls back to the platform default when the operator hasn't overridden it. Change them via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) using the lowercase keys `chatmodel` / `cronmodel` / `voiceprepmodel` / `voicepostcallmodel`. |
 | `enabledCommands` | `array<string>\|null` | The in-chat slash-command allowlist (camelCase read). `null` = the operator never customized it, so **all** slash commands are available. An array (including `[]`) is an explicit allowlist of command keys (no leading slash); `[]` hides the slash-command menu. Write it via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) with the lowercase `enabledcommands` key. Also present on `MyAgents` / `PinnedAgents` rows. |
 | `wiroApiAllowedPaths` | `array<string>` | The Wiro API endpoints the agent may call with its own Wiro project key (camelCase read), for example `["POST /v1/Run/*/*", "POST /v1/Task/Detail"]`. Always the list that applies: the agent's own list or, when it has none, the default list described under [`UpdateSettings`](#post-useragentupdatesettings). `[]` blocks all of them. Write it via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) or at Deploy with the lowercase `wiroapiallowedpaths` key. Also on the `Deploy` and `Update` responses; not on `MyAgents` / `PinnedAgents` rows. |
-| `chatSetup` | `string` | Setup From Chat as it applies to this agent (camelCase read): `"all"`, `"webchat"` or `"off"`. Write it via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) or at Deploy with the lowercase `chatsetup` key. See [Setup From Chat](/docs/agent-messaging#setup-from-chat). |
-| `screen` | `string\|null` | The agent's Screen setting: `"on"` or `"off"`. When it is on, the people who manage the agent can watch its computer live from the Wiro panel, and the owner of a personal agent that has never been in a team can take control of it there; `"off"` closes both. On a team agent whose Chat Mode (`teamsessionmode`) is `"private"`, the Screen stays closed to the team even while this reads `"on"`. See [Screen and Take Control](#screen-and-take-control). Write it via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings). `null` when it could not be read. |
+| `chatSetup` | `string\|null` | Setup From Chat as it applies to this agent (camelCase read): `"all"`, `"webchat"` or `"off"`. Write it via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) or at Deploy with the lowercase `chatsetup` key. See [Setup From Chat](/docs/agent-messaging#setup-from-chat). `null` when it could not be read. |
+| `screen` | `string\|null` | The agent's Screen setting: `"on"` or `"off"`. When it is on, the people who manage the agent can watch its computer live from the Wiro panel, and the owner of a personal agent that has never been in a team, or whose browser was reset after it last left one, can take control of it there; `"off"` closes both. On a team agent whose Chat Mode (`teamsessionmode`) is `"private"`, the Screen stays closed to the team even while this reads `"on"`. See [Screen and Take Control](#screen-and-take-control). Write it via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings). `null` when it could not be read. |
 
 **Lifecycle**
 
@@ -9353,6 +9361,7 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 > | Change the plan (Starter, Pro or Max) | [`POST /UserAgent/UpgradeTier`](#post-useragentupgradetier) |
 > | Upload a cover image (multipart) | [`POST /UserAgent/Cover`](#post-useragentcover) |
 > | Per-agent settings: time zone, Chat Mode, models, slash commands, Wiro API paths, Setup From Chat and Screen | [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) |
+> | Sign the agent's browser out of every site (the agent restarts) | [`POST /UserAgent/ResetBrowser`](#post-useragentresetbrowser) |
 > | View / download / delete activity logs | [`POST /UserAgent/Logs`](#post-useragentlogs) · [`LogsList`](#post-useragentlogslist) · [`LogsFile`](#post-useragentlogsfile) · [`LogsDelete`](#post-useragentlogsdelete) |
 > | Follow Scheduled Tasks, background runs and model runs live | [`POST /UserAgent/RunStreamToken`](#post-useragentrunstreamtoken) |
 > | Soft-delete a useragent | [`POST /UserAgent/Delete`](#post-useragentdelete) |
@@ -9453,8 +9462,8 @@ Writes per-agent preference toggles that are not credentials and not skill rows.
 | `voicepostcallmodel` | string\|null | No | Same rules as `chatmodel`, applied to the **post-call summary** turn after a realtime voice call ends. |
 | `enabledcommands` | string[] | No | Allowlist of in-chat **slash commands** the agent exposes, as an array of command keys **without** the leading slash (e.g. `["agent_help", "new_session", "agent_status"]`). Validated against the command catalog: an unknown key is rejected with `invalid-command-selection`, a non-array value with `invalid-command-list`. Order is preserved and duplicates are removed. An empty array `[]` is valid and **hides the slash-command menu** entirely. Omit the field to leave the current allowlist untouched. |
 | `wiroapiallowedpaths` | string[]\|null | No | Limits the agent's own calls to the Wiro API, the ones it makes with its Wiro project key (for example through `int-wiro-aimodels`), to the endpoints you list. Each rule is a method in capitals (`GET`, `POST`, `PUT`, `PATCH`, `DELETE` or `HEAD`), one space and a `/v1` path, such as `"POST /v1/Task/Detail"`. A `*` stands for exactly one whole path segment: `"POST /v1/Run/*/*"` allows every model run, while `"POST /v1/Run/x*"` is invalid. Up to 64 rules of at most 200 characters each; duplicates are removed and the order is kept. Calls to endpoints that no rule matches are refused. `[]` refuses every call, model runs included; `null` removes your list, and the agent goes back to the default list. An invalid rule, or a value that isn't an array, is rejected with `invalid-wiro-api-path-rule`, and nothing in the request is saved. Omit the field to keep the current list. An agent with no list of its own uses the default list: `POST /v1/Run/*/*`, `POST /v1/Task/Detail`, `POST /v1/Tool/List`, `POST /v1/Tool/Detail`, `POST /v1/Tool/UploadModelPostImage`, `POST /v1/Tool/GenerateModelPostImage`, `GET /v1/Tool/GenerateModelPostImage` and `POST /v1/UserAgent/Message/UploadAsset`. If a custom skill of yours calls another endpoint, send a list that includes it. |
-| `chatsetup` | string\|null | No | Setup From Chat: where people can change the agent's setup by approving setup cards in chat. `"all"` (the default): in the Wiro web chat and in messages sent with a project API key, such as from your backend or an MCP client. `"webchat"`: only in the Wiro web chat on wiro.ai. `"off"`: never from chat; the agent says that an agent admin makes the change in the agent's settings. `null` goes back to `"all"`, and any other value is rejected. Agents that your customers or many people talk to usually choose `"webchat"` or `"off"`; see [Setup From Chat](/docs/agent-messaging#setup-from-chat). Read it back as `chatSetup` on [`UserAgent/Detail`](#post-useragentdetail). |
-| `screen` | string\|null | No | Screen: whether the agent's [Screen](#screen-and-take-control) opens in the Wiro panel, where the people who manage the agent (its owner and the team's admins) watch its computer live beside the chat and the owner of a personal agent that has never been in a team can take control of it. `"on"` (the default) or `"off"`. `"off"` closes it for everyone, watching and Take Control alike, and also closes screens that are open, a Take Control session included, within about half a minute. On a team agent whose Chat Mode is `"private"` the screen stays closed to the team whatever this says. `null` goes back to `"on"`, and any other value is rejected with `screen must be on or off`. It never restarts the agent. Read it back as `screen` on [`UserAgent/Detail`](#post-useragentdetail). |
+| `chatsetup` | string\|null | No | Setup From Chat: where people can change the agent's setup by approving setup cards in chat. `"all"` (the default): in the Wiro web chat and in messages sent with a project API key, such as from your backend or an MCP client. `"webchat"`: only in the Wiro web chat on wiro.ai. `"off"`: never from chat; the agent says that an agent admin makes the change in the agent's settings. `null` goes back to `"all"`, and any other value is rejected with `chatsetup must be off, webchat or all`. Agents that your customers or many people talk to usually choose `"webchat"` or `"off"`; see [Setup From Chat](/docs/agent-messaging#setup-from-chat). Read it back as `chatSetup` on [`UserAgent/Detail`](#post-useragentdetail). |
+| `screen` | string\|null | No | Screen: whether the agent's [Screen](#screen-and-take-control) opens in the Wiro panel, where the people who manage the agent (its owner and the team's admins) watch its computer live beside the chat and the owner of a personal agent that has never been in a team, or whose browser was reset after it last left one, can take control of it. `"on"` (the default) or `"off"`. `"off"` closes it for everyone, watching and Take Control alike, and also closes screens that are open, a Take Control session included, within about half a minute. On a team agent whose Chat Mode is `"private"` the screen stays closed to the team whatever this says. `null` goes back to `"on"`, and any other value is rejected with `screen must be on or off`. It never restarts the agent. Read it back as `screen` on [`UserAgent/Detail`](#post-useragentdetail). |
 
 > **Slash-command catalog.** Valid `enabledcommands` keys are: `agent_help`, `new_session`, `agent_status`, `agent_limits`, `last_scan`, `last_heartbeat`, `agent_restart`, `clear_all_sessions`, `clear_history`. Read the agent's current allowlist from the `enabledCommands` field (camelCase) on [`UserAgent/Detail`](#post-useragentdetail) / `MyAgents` / `PinnedAgents`, where `null` means the operator never customized it (all commands available) and an array (including `[]`) is an explicit allowlist.
 
@@ -9575,10 +9584,76 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
 | 400 | `invalid-command-list` | `enabledcommands` was present but not an array. |
 | 400 | `invalid-command-selection` | `enabledcommands` contained a key that isn't in the slash-command catalog. |
 | 400 | `invalid-wiro-api-path-rule` | `wiroapiallowedpaths` was not an array, or a rule broke the format or the limits above. |
+| 400 | `chatsetup must be off, webchat or all` | `chatsetup` wasn't `"all"`, `"webchat"`, `"off"` or `null`. |
 | 400 | `screen must be on or off` | `screen` wasn't `"on"`, `"off"` or `null`. |
 | 403 | `useragent-access-denied` | Caller is neither the owner nor on the agent's team. |
 | 403 | `useragent-team-admin-required` | Caller is a member of the agent's team but not a team admin. Carries `errors[0].code: 97`. |
 | 500 | `failed-to-update-useragent` | DB write failed (transient, safe to retry). |
+
+#### **POST** /UserAgent/ResetBrowser
+
+Signs the agent's browser out of every site. The agent's whole browser profile is deleted, with its sign-ins, cookies, history and saved site data, and the agent restarts with a fresh browser. Its files, memory and Connectors stay as they are. A reset is also how an agent that was in a team gets Take Control back: see [Resetting the Browser](#resetting-the-browser).
+
+**Permission**: owner or team admin only, as for `UpdateSettings`, with a signed-in session or a project API key. Team members can't reset it.
+
+**Restart**: only a **starting (status `3`)** or **running (status `4`)** agent can be reset. The call moves it to Stopping (status `1`), and its browser is reset as it starts again, about a minute later (see [Automatic Restart](#automatic-restart)). An agent in any other status is refused, and a refused call restarts nothing.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Your UserAgent instance guid. |
+
+##### Request
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/ResetBrowser" \
+  -H "Authorization: Bearer $WIRO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321"
+  }'
+```
+
+##### Response
+
+```json
+{
+  "result": true,
+  "restarting": true,
+  "errors": []
+}
+```
+
+`restarting` is `true` once the agent is restarting for the reset; read [`Detail`](#post-useragentdetail) to follow its `status` from Stopping back to Running. Each reset adds an `AGENT_BROWSER_RESET` row, `Agent browser reset`, to the agent's activity log, with who did it (see [Who-did-what rows](/docs/agent-logs#who-did-what-rows)).
+
+##### Common errors
+
+A refused call answers `result: false` and `restarting: false` with one entry in `errors`, and restarts nothing:
+
+```json
+{
+  "result": false,
+  "restarting": false,
+  "errors": [
+    {
+      "code": 0,
+      "message": "The agent is not running. Start it, then reset its browser.",
+      "time": 1795113000
+    }
+  ]
+}
+```
+
+| Error | Code | When |
+|-------|------|------|
+| `Request parameter [useragentguid] required` | 0 | `useragentguid` is missing or blank |
+| `This agent's browser can't be reset.` | 96 | The agent is Studio or the Workflow Agent |
+| `User agent not found` | 95 | Unknown guid, or the agent has been deleted |
+| `You don't have access to this user agent` | 96 | The caller is neither the agent's owner nor on its team |
+| `Only a team admin can perform this action on a team-owned agent.` | 97 | The caller is a plain member of the agent's team |
+| `The agent is not running. Start it, then reset its browser.` | 0 | The agent is stopped (status `0`), in error (`5`) or in Setup Required (`6`) |
+| `The agent is starting or stopping. Try again once it is running.` | 0 | The agent is stopping (status `1`) or queued (`2`) |
+| `Reset Browser is not available for this agent yet. Try again later.` | 0 | Reset Browser can't be used on this agent at the moment |
+| `The browser could not be reset just now. Try again in a minute.` | 0 | The reset could not be started. Try again in a minute |
 
 #### **POST** /UserAgent/Cover
 
@@ -21077,7 +21152,7 @@ Every Wiro agent appends one structured `ActivityEvent` JSON line per tool call,
 
 A daily JSONL file is written for each calendar day; files older than 7 days are gzipped, files older than 180 days are deleted by the agent's daily maintenance cron.
 
-The feed also lists what people and API keys did to the agent: starts and stops, renames, skill, connector and billing changes, connections, Screen views and Take Control sessions, and deleted log days, each with who did it. These [who-did-what rows](#who-did-what-rows) don't depend on the agent running.
+The feed also lists what people and API keys did to the agent: starts and stops, renames, skill, connector and billing changes, connections, Screen views and Take Control sessions, browser resets, and deleted log days, each with who did it. These [who-did-what rows](#who-did-what-rows) don't depend on the agent running.
 
 The endpoints below are **owner-or-team-admin** scoped. Plain members of the agent's team receive `useragent-team-admin-required` (code `97`); outside callers receive `useragent-access-denied`.
 
@@ -21221,6 +21296,7 @@ A `token_usage` event records the token spend and credit deduction for one bille
 | `AGENT_LOG_DAY_DELETED` | `Activity log day deleted: 2026-05-02` |
 | `AGENT_SCREEN_VIEWED`, `AGENT_SCREEN_CONTROLLED` | `Watched the agent's screen`, `Took control of the agent's screen` |
 | `AGENT_SCREEN_CONTROL_ENDED` | `Control of the agent's screen ended after 4 minutes 10 seconds: handed back` (`summary: { seconds, reason }`; see [Screen in the Activity Log](/docs/agent-overview#screen-in-the-activity-log)) |
+| `AGENT_BROWSER_RESET` | `Agent browser reset` (see [Resetting the Browser](/docs/agent-overview#resetting-the-browser)) |
 
 #### Note rows
 
@@ -25582,7 +25658,7 @@ Projects and agents can be transferred between workspaces:
 - **Team → Personal**: move a project you created, or an agent you deployed, from a team you have admin access to back to your personal workspace. Only the original creator or deployer can do this.
 - **Team → Team**: move a project or agent between teams you have admin access to in the same or different organizations
 
-When a resource is transferred, its billing context changes immediately. Future tasks on a transferred project will be billed to the new workspace's wallet. Transfer operations are available in the dashboard and via the API. An agent that has been in a team doesn't get [Take Control](/docs/agent-overview#take-control), even after it moves back to a personal workspace: its browser may still hold team members' sign-ins.
+When a resource is transferred, its billing context changes immediately. Future tasks on a transferred project will be billed to the new workspace's wallet. Transfer operations are available in the dashboard and via the API. An agent that has been in a team doesn't get [Take Control](/docs/agent-overview#take-control) after it moves back to a personal workspace until its owner [resets its browser](/docs/agent-overview#resetting-the-browser): the browser may still hold team members' sign-ins.
 
 > **Important:** Agents can only access projects in the same workspace. If you transfer a project out of a team, agents in that team can no longer use it.
 
@@ -25860,7 +25936,7 @@ Deletes a team. Only the organization owner can delete a team. Deleting a team:
 
 - Soft-deletes the team (sets status to `0`)
 - Removes all team members and cancels pending invitations
-- Moves each team agent back to the personal workspace of the user who deployed it; its active subscriptions and credit purchases move with it, the agent is restarted, and future agent billing goes to that user's personal wallet; [Take Control](/docs/agent-overview#take-control) stays off for it, as for any agent that has been in a team
+- Moves each team agent back to the personal workspace of the user who deployed it; its active subscriptions and credit purchases move with it, the agent is restarted, and future agent billing goes to that user's personal wallet; [Take Control](/docs/agent-overview#take-control) stays off for it until that user [resets its browser](/docs/agent-overview#resetting-the-browser), as for any agent that has been in a team
 - Moves each team project back to the personal workspace of the user who created it; its API key keeps working and future tasks are billed to that user's personal wallet
 
 The team's wallet balance is not automatically transferred. Move it out with [Transfer Credit](/docs/organizations-billing) before deleting the team; after deletion, contact support to recover it.
@@ -25871,7 +25947,7 @@ The team's wallet balance is not automatically transferred. Move it out with [Tr
 
 ## **POST** /Organization/Remove
 
-Deletes an organization. Only the organization owner can delete an organization. Deleting an organization soft-deletes it and archives the teams and members that are active at that moment, so `/Organization/Restore` can bring exactly those back. Each team is removed the same way as with `/Team/Remove`: members are removed, pending invitations are cancelled, agents go back to the personal workspace of the user who deployed them (with [Take Control](/docs/agent-overview#take-control) off, as for any agent that has been in a team), and projects go back to the personal workspace of the user who created them. Team wallet balances are not moved.
+Deletes an organization. Only the organization owner can delete an organization. Deleting an organization soft-deletes it and archives the teams and members that are active at that moment, so `/Organization/Restore` can bring exactly those back. Each team is removed the same way as with `/Team/Remove`: members are removed, pending invitations are cancelled, agents go back to the personal workspace of the user who deployed them (with [Take Control](/docs/agent-overview#take-control) off until that user [resets the agent's browser](/docs/agent-overview#resetting-the-browser), as for any agent that has been in a team), and projects go back to the personal workspace of the user who created them. Team wallet balances are not moved.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -25938,7 +26014,7 @@ When an agent is transferred:
 - Its chat history moves with it
 - The agent is restarted with the new context
 - Future billing is charged to the new workspace's wallet
-- [Take Control](/docs/agent-overview#take-control) stays off for an agent that has been in a team, even after it moves back to a personal workspace: its browser goes with it, signed in wherever the team's chats signed in
+- [Take Control](/docs/agent-overview#take-control) stays off for an agent that has been in a team after it moves back to a personal workspace, until its owner [resets its browser](/docs/agent-overview#resetting-the-browser): the browser goes with it, signed in wherever the team's chats signed in
 
 ## **POST** /Team/TransferProject
 

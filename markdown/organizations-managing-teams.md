@@ -224,7 +224,7 @@ Deletes a team. Only the organization owner can delete a team. Deleting a team:
 
 - Soft-deletes the team (sets status to `0`)
 - Removes all team members and cancels pending invitations
-- Moves each team agent back to the personal workspace of the user who deployed it; its active subscriptions and credit purchases move with it, the agent is restarted, and future agent billing goes to that user's personal wallet; [Take Control](/docs/agent-overview#take-control) stays off for it, as for any agent that has been in a team
+- Moves each team agent back to the personal workspace of the user who deployed it; its active subscriptions and credit purchases move with it, the agent is restarted, and future agent billing goes to that user's personal wallet; [Take Control](/docs/agent-overview#take-control) stays off for it until that user [resets its browser](/docs/agent-overview#resetting-the-browser), as for any agent that has been in a team
 - Moves each team project back to the personal workspace of the user who created it; its API key keeps working and future tasks are billed to that user's personal wallet
 
 The team's wallet balance is not automatically transferred. Move it out with [Transfer Credit](/docs/organizations-billing) before deleting the team; after deletion, contact support to recover it.
@@ -235,7 +235,7 @@ The team's wallet balance is not automatically transferred. Move it out with [Tr
 
 ## **POST** /Organization/Remove
 
-Deletes an organization. Only the organization owner can delete an organization. Deleting an organization soft-deletes it and archives the teams and members that are active at that moment, so `/Organization/Restore` can bring exactly those back. Each team is removed the same way as with `/Team/Remove`: members are removed, pending invitations are cancelled, agents go back to the personal workspace of the user who deployed them (with [Take Control](/docs/agent-overview#take-control) off, as for any agent that has been in a team), and projects go back to the personal workspace of the user who created them. Team wallet balances are not moved.
+Deletes an organization. Only the organization owner can delete an organization. Deleting an organization soft-deletes it and archives the teams and members that are active at that moment, so `/Organization/Restore` can bring exactly those back. Each team is removed the same way as with `/Team/Remove`: members are removed, pending invitations are cancelled, agents go back to the personal workspace of the user who deployed them (with [Take Control](/docs/agent-overview#take-control) off until that user [resets the agent's browser](/docs/agent-overview#resetting-the-browser), as for any agent that has been in a team), and projects go back to the personal workspace of the user who created them. Team wallet balances are not moved.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -302,7 +302,7 @@ When an agent is transferred:
 - Its chat history moves with it
 - The agent is restarted with the new context
 - Future billing is charged to the new workspace's wallet
-- [Take Control](/docs/agent-overview#take-control) stays off for an agent that has been in a team, even after it moves back to a personal workspace: its browser goes with it, signed in wherever the team's chats signed in
+- [Take Control](/docs/agent-overview#take-control) stays off for an agent that has been in a team after it moves back to a personal workspace, until its owner [resets its browser](/docs/agent-overview#resetting-the-browser): the browser goes with it, signed in wherever the team's chats signed in
 
 ## **POST** /Team/TransferProject
 

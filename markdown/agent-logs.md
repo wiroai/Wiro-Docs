@@ -8,7 +8,7 @@ Every Wiro agent appends one structured `ActivityEvent` JSON line per tool call,
 
 A daily JSONL file is written for each calendar day; files older than 7 days are gzipped, files older than 180 days are deleted by the agent's daily maintenance cron.
 
-The feed also lists what people and API keys did to the agent: starts and stops, renames, skill, connector and billing changes, connections, Screen views and Take Control sessions, and deleted log days, each with who did it. These [who-did-what rows](#who-did-what-rows) don't depend on the agent running.
+The feed also lists what people and API keys did to the agent: starts and stops, renames, skill, connector and billing changes, connections, Screen views and Take Control sessions, browser resets, and deleted log days, each with who did it. These [who-did-what rows](#who-did-what-rows) don't depend on the agent running.
 
 The endpoints below are **owner-or-team-admin** scoped. Plain members of the agent's team receive `useragent-team-admin-required` (code `97`); outside callers receive `useragent-access-denied`.
 
@@ -152,6 +152,7 @@ A `token_usage` event records the token spend and credit deduction for one bille
 | `AGENT_LOG_DAY_DELETED` | `Activity log day deleted: 2026-05-02` |
 | `AGENT_SCREEN_VIEWED`, `AGENT_SCREEN_CONTROLLED` | `Watched the agent's screen`, `Took control of the agent's screen` |
 | `AGENT_SCREEN_CONTROL_ENDED` | `Control of the agent's screen ended after 4 minutes 10 seconds: handed back` (`summary: { seconds, reason }`; see [Screen in the Activity Log](/docs/agent-overview#screen-in-the-activity-log)) |
+| `AGENT_BROWSER_RESET` | `Agent browser reset` (see [Resetting the Browser](/docs/agent-overview#resetting-the-browser)) |
 
 #### Note rows
 
