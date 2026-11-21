@@ -431,7 +431,7 @@ Business errors come back with HTTP 200, `result: false` and an `errors` array, 
 | A spend limit refusal, such as `Your monthly spend limit is reached ($100.40 of $100.00). It resets on December 1, 2026 at 00:00 UTC.` | 93 | Send or SendForm while a [spend limit](/docs/spend-limits) that covers the message is used up. Nothing is charged. |
 | A Model Access refusal, such as `This team can't use openai/gpt-5-6-terra. Model Access rules decide which models can run.` | 92 | Send or SendForm when a [Model Access](/docs/model-access) rule that covers the message blocks its chat model: the `model` it names, or the default chat model when it names none. It is checked before the balance and the spend limits. Nothing is sent or charged. |
 | `Request parameter [message] required` | 0 | Send without a message, or SendForm with neither a message nor a file. |
-| `Invalid model: <model> is not in the selectable model allowlist.` | 0 | `model` is not a selectable slug in Studio/Status. |
+| `Invalid model: <model> is not in the selectable model allowlist.` | 0 | `model` is not one of the chat models Studio offers. A model your Model Access rules block gets code `92` instead. |
 | `A Studio session name may contain only letters, digits, ".", "_", ":" and "-", at most 128 characters, and cannot end in "-r" followed by a number. Nothing was sent or charged.` | 0 | Send or SendForm with a session name outside that rule. |
 | `You already have a Studio session with this name in different capitals. Use its exact name, or another name. Nothing was sent or charged.` | 0 | Send or SendForm with a new session name that differs only in capitals from one of your sessions. |
 | `Reserved sessionkey` | 0 | The session name contains `:cron:`. |

@@ -522,6 +522,7 @@ function endSession() {
     "task_stream_end": "Transcription stream ended",
     "task_cost": "Cost per turn + cumulative",
     "task_output": "TRANSCRIPT_USER:<transcribed text>",
+    "task_session_stopped": "A spend limit or the balance is ending the session",
     "task_session_end": "Send to end session",
     "task_end": "Server ended session",
     "task_postprocess_end": "Post-processing complete — safe to close"

@@ -36,6 +36,7 @@ The following statuses are exclusive to realtime models (voice conversation, tex
 | `task_stream_ready` | Realtime model is ready to receive audio/text input, so you can start sending data |
 | `task_stream_end` | Realtime session has ended: the model finished speaking or the session was closed |
 | `task_cost` | Real-time cost update emitted during execution: shows the running cost of the task |
+| `task_session_stopped` | The server is ending the session after the turn that reached a [spend limit](/docs/spend-limits) (`reason` `spend_limit`, `code` `93`) or used up the balance (`reason` `balance`, `code` `97`). It is not a failure: the usual closing events follow (see [Realtime Voice](/docs/realtime-voice-conversation#realtime-end-session)) |
 
 ## Determining Success or Failure
 

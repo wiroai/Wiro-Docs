@@ -203,7 +203,7 @@ Business errors come back with HTTP 200, `result: false` and an `errors` array. 
 | `workflowContext exceeds the 40KB limit.` | 0 | The attached workflow is too large. |
 | `workflowContext must be a WorkflowContents object.`, `workflowContext must be valid JSON data.`, `workflowContext protocolVersion must be 1.`, `workflowContext source has an invalid shape.`, `workflowContext has an invalid WorkflowContents shape.` | 0 | The `workflowContext` does not have the shape described above. |
 | `This project already has 2 Workflow Agent replies in progress. Wait for one to finish before sending another message.` | 0 | A third turn while two of the project's turns are queued or running. |
-| `Invalid model: <model> is not in the selectable model allowlist.` | 0 | `model` is not a selectable slug. |
+| `Invalid model: <model> is not in the selectable model allowlist.` | 0 | `model` is not one of the chat models the Workflow Agent offers. A model your Model Access rules block gets code `92` instead. |
 | `Too many files (max 8)`, `File too large (max 50MB): <name>` | 0 | SendForm attachment limits. |
 | `Message not found` | 0 | Detail or Cancel with an unknown message, or one from another session or project. |
 | `The main session cannot be deleted.` | 0 | DeleteSession on `"default"`. |

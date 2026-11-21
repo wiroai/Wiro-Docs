@@ -4107,6 +4107,7 @@ The following statuses are exclusive to realtime models (voice conversation, tex
 | `task_stream_ready` | Realtime model is ready to receive audio/text input, so you can start sending data    |
 | `task_stream_end`   | Realtime session has ended: the model finished speaking or the session was closed  |
 | `task_cost`         | Real-time cost update emitted during execution: shows the running cost of the task |
+| `task_session_stopped` | The server is ending the session after the turn that reached a [spend limit](/docs/spend-limits) (`reason` `spend_limit`, `code` `93`) or used up the balance (`reason` `balance`, `code` `97`). It is not a failure: the usual closing events follow (see [Realtime Voice](/docs/realtime-voice-conversation#realtime-end-session)) |
 
 ## Determining Success or Failure
 
@@ -5528,7 +5529,7 @@ Limits are checked before work starts:
 
 When the price of the work is known before it starts, as for fixed-price models, workflow runs and agent purchases, the work is refused if spending so far, plus what work in progress holds, plus that price would go over the limit. Otherwise it is refused once the limit has no room left.
 
-Work that is already running finishes and is charged, with two exceptions. A realtime session, an agent's voice call included, ends after the turn that uses up a limit, the same way it ends when the balance runs out: its clients get a `task_session_stopped` event with `reason` `spend_limit`, code `93` and the refusal `/Run` would give (see [Realtime Voice](/docs/realtime-voice-conversation#realtime-end-session)), and a caller on the phone hears a short notice before the call ends. An agent whose own limit is used up pauses at its next model call, even in the middle of a reply (see below).
+Work that is already running finishes and is charged, with two exceptions. A realtime session ends after the turn that uses up a limit, the same way it ends when the balance runs out: its WebSocket clients get a `task_session_stopped` event with `reason` `spend_limit`, code `93` and the refusal `/Run` would give (see [Realtime Voice](/docs/realtime-voice-conversation#realtime-end-session)). An agent's voice call is a realtime session too and ends the same way: a web voice call then gets `session_end` with `reason` `spend_limit` (see [Web Voice](/docs/integration-webvoice-skills#websocket-protocol)), and a caller on the phone hears a short notice before the call ends. An agent whose own limit is used up pauses at its next model call, even in the middle of a reply (see below).
 
 Automatic monthly renewals of running agents are never refused by a limit. They count toward the account's limit and, in a team, toward the limit of the member who started the plan, never toward a surface, API key or agent limit.
 
@@ -8645,7 +8646,7 @@ Business errors come back with HTTP 200, `result: false` and an `errors` array. 
 | `workflowContext exceeds the 40KB limit.` | 0 | The attached workflow is too large. |
 | `workflowContext must be a WorkflowContents object.`, `workflowContext must be valid JSON data.`, `workflowContext protocolVersion must be 1.`, `workflowContext source has an invalid shape.`, `workflowContext has an invalid WorkflowContents shape.` | 0 | The `workflowContext` does not have the shape described above. |
 | `This project already has 2 Workflow Agent replies in progress. Wait for one to finish before sending another message.` | 0 | A third turn while two of the project's turns are queued or running. |
-| `Invalid model: <model> is not in the selectable model allowlist.` | 0 | `model` is not a selectable slug. |
+| `Invalid model: <model> is not in the selectable model allowlist.` | 0 | `model` is not one of the chat models the Workflow Agent offers. A model your Model Access rules block gets code `92` instead. |
 | `Too many files (max 8)`, `File too large (max 50MB): <name>` | 0 | SendForm attachment limits. |
 | `Message not found` | 0 | Detail or Cancel with an unknown message, or one from another session or project. |
 | `The main session cannot be deleted.` | 0 | DeleteSession on `"default"`. |
@@ -9090,7 +9091,7 @@ Business errors come back with HTTP 200, `result: false` and an `errors` array, 
 | A spend limit refusal, such as `Your monthly spend limit is reached ($100.40 of $100.00). It resets on December 1, 2026 at 00:00 UTC.` | 93 | Send or SendForm while a [spend limit](/docs/spend-limits) that covers the message is used up. Nothing is charged. |
 | A Model Access refusal, such as `This team can't use openai/gpt-5-6-terra. Model Access rules decide which models can run.` | 92 | Send or SendForm when a [Model Access](/docs/model-access) rule that covers the message blocks its chat model: the `model` it names, or the default chat model when it names none. It is checked before the balance and the spend limits. Nothing is sent or charged. |
 | `Request parameter [message] required` | 0 | Send without a message, or SendForm with neither a message nor a file. |
-| `Invalid model: <model> is not in the selectable model allowlist.` | 0 | `model` is not a selectable slug in Studio/Status. |
+| `Invalid model: <model> is not in the selectable model allowlist.` | 0 | `model` is not one of the chat models Studio offers. A model your Model Access rules block gets code `92` instead. |
 | `A Studio session name may contain only letters, digits, ".", "_", ":" and "-", at most 128 characters, and cannot end in "-r" followed by a number. Nothing was sent or charged.` | 0 | Send or SendForm with a session name outside that rule. |
 | `You already have a Studio session with this name in different capitals. Use its exact name, or another name. Nothing was sent or charged.` | 0 | Send or SendForm with a new session name that differs only in capitals from one of your sessions. |
 | `Reserved sessionkey` | 0 | The session name contains `:cron:`. |
