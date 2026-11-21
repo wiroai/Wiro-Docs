@@ -53,15 +53,15 @@ For full details, see [Authentication](/docs/authentication).
 
 ## Pricing Model: Plans, Credits & Token Billing
 
-Every agent runs on one of three monthly plans, and the plan alone sets its price and its monthly credits. Templates and custom builds use the same plans, and the skills an agent has never change the price. Each turn the agent runs then spends credits by the tokens its model uses.
+Every agent runs on one of three monthly plans, and the plan alone sets its price, its monthly credits and its disk space. Templates and custom builds use the same plans, and the skills an agent has never change the price. Each turn the agent runs then spends credits by the tokens its model uses.
 
 ### Plans
 
-| Plan | `tier` | Price | Monthly credits |
-|------|--------|-------|-----------------|
-| **Starter** | `"starter"` | $5 a month | 500 |
-| **Pro** | `"pro"` | $30 a month | 3,000 |
-| **Max** | `"max"` | $100 a month | 10,000 |
+| Plan | `tier` | Price | Monthly credits | Disk |
+|------|--------|-------|-----------------|------|
+| **Starter** | `"starter"` | $5 a month | 500 | 250 MB |
+| **Pro** | `"pro"` | $30 a month | 3,000 | 500 MB |
+| **Max** | `"max"` | $100 a month | 10,000 | 1 GB |
 
 Every plan carries 100 credits per dollar (1 credit = $0.01). A plan is bought per agent: pass `tier` to [`Deploy`](#post-useragentdeploy) or [`CreateSubscriptionCheckout`](#post-useragentcreatesubscriptioncheckout). Catalog and instance responses list the three plans under `tiers`:
 
@@ -73,13 +73,23 @@ Every plan carries 100 credits per dollar (1 credit = $0.01). A plan is bought p
 }
 ```
 
-Instance responses (`agent.plans`) and `PricingPreview` (`plans`) also list them with their names, as `{ key, title, priceUsd, monthlyCredits }`.
+Instance responses (`agent.plans`) and `PricingPreview` (`plans`) also list them with their names, as `{ key, title, priceUsd, monthlyCredits, diskMb }`, where `diskMb` is the plan's disk space in MB (`250`, `500` or `1024`, which is 1 GB; see [Disk Space](#disk-space)).
 
 A wallet plan renews every 30 days, and a plan paid by card in the Wiro dashboard renews on its monthly card cycle. Every renewal grants the plan's credits in full. Credits a period leaves unused don't carry over; credits from extra credit packs keep their own 6-month expiry.
 
 ### What a Plan Includes
 
 Every skill and connector works on every plan. Turning a skill on or off with [`SkillsApply`](#post-useragentskillsapply) is free: the plan's price and credits stay as they are. The work a skill does still uses credits, since its replies and scheduled tasks are agent turns billed by tokens like any other. A skill that runs Wiro models, such as `int-wiro-aimodels` or `util-video-creator`, pays for those runs from the wallet of the Wiro project you connect to the agent.
+
+### Disk Space
+
+Each plan gives the agent disk space for its files: 250 MB on Starter, 500 MB on Pro and 1 GB on Max. What counts is the agent's workspace, the media it generates and its temporary files. Chat history and the agent's system files don't count.
+
+Downloads and temporary files outside the workspace are cleared when the agent restarts. They are also cleared when they pass 1 GB, on every plan: the agent then restarts on its own, which takes about a minute, and the files in its workspace stay.
+
+When the agent's files reach the plan's size, the disk is full: the agent can't save new files until some are deleted or the agent moves to a bigger plan. A full disk deletes nothing. A move to a higher plan with [`UpgradeTier`](#post-useragentupgradetier) gives the agent the bigger disk as soon as the new plan starts. A move to a lower plan brings its smaller disk at the renewal where that plan starts: if the agent's files are bigger than that, they all stay, and the disk reads full until some are deleted.
+
+[`UserAgent/Detail`](#post-useragentdetail) shows the agent's usage in `disk` (see [Disk object](#disk-object)): its `state` reads `"almost_full"` from 80% of the plan's size and `"full"` from 100%. The agent's activity log gets an `AGENT_DISK_ALMOST_FULL` row when its files pass 80%, an `AGENT_DISK_FULL` row when they reach the plan's size, and an `AGENT_DISK_TEMP_CLEARED` row when a restart clears temporary files that passed 1 GB (see [Who-did-what rows](/docs/agent-logs#who-did-what-rows)).
 
 ### Changing Plans
 
@@ -417,14 +427,14 @@ Lists available agents in the catalog. This is a **public endpoint**, so no auth
     }
   ],
   "plans": [
-    { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500 },
-    { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000 },
-    { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000 }
+    { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500,   "diskMb": 250 },
+    { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000,  "diskMb": 500 },
+    { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000, "diskMb": 1024 }
   ]
 }
 ```
 
-> `Agent/List` returns the catalog fields plus inlined `tiers`, so a catalog card can show the price without a per-row `Agent/Detail` call. The top-level `plans` lists the three plans in order with their names (`key`, `title`, `priceUsd`, `monthlyCredits`), the same for every agent. Call `POST /Agent/Detail` with `type: "full"` when you need the full template (skills map, credential schema, custom skills, scheduled tasks).
+> `Agent/List` returns the catalog fields plus inlined `tiers`, so a catalog card can show the price without a per-row `Agent/Detail` call. The top-level `plans` lists the three plans in order with their names (`key`, `title`, `priceUsd`, `monthlyCredits`, `diskMb`), the same for every agent. Call `POST /Agent/Detail` with `type: "full"` when you need the full template (skills map, credential schema, custom skills, scheduled tasks).
 
 #### **POST** /Agent/Detail
 
@@ -460,9 +470,9 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
         "max":     { "priceUsd": 100, "credits": 10000 }
       },
       "plans": [
-        { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500 },
-        { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000 },
-        { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000 }
+        { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500,   "diskMb": 250 },
+        { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000,  "diskMb": 500 },
+        { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000, "diskMb": 1024 }
       ],
       "tokenRates": {
         "default_model": "openai/gpt-5.6-sol",
@@ -786,9 +796,9 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
           "max":     { "priceUsd": 100, "credits": 10000 }
         },
         "plans": [
-          { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500 },
-          { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000 },
-          { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000 }
+          { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500,   "diskMb": 250 },
+          { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000,  "diskMb": 500 },
+          { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000, "diskMb": 1024 }
         ],
         "extracreditpacks": [
           { "packkey": "small",  "credits": 1000,  "priceusd": 10,  "enabled": true },
@@ -1324,6 +1334,13 @@ Retrieves full details for a single deployed agent instance, including subscript
       },
       "chatSetup": "all",
       "screen": "on",
+      "disk": {
+        "limitMb": 500,
+        "limitBytes": 524288000,
+        "usedBytes": 103809024,
+        "state": "ok",
+        "measuredAt": "2026-05-03T00:45:00.000Z"
+      },
       "subscription": {
         "plan": "agent",
         "status": "active",
@@ -1350,9 +1367,9 @@ Retrieves full details for a single deployed agent instance, including subscript
           "max":     { "priceUsd": 100, "credits": 10000 }
         },
         "plans": [
-          { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500 },
-          { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000 },
-          { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000 }
+          { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500,   "diskMb": 250 },
+          { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000,  "diskMb": 500 },
+          { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000, "diskMb": 1024 }
         ],
         "extracreditpacks": [
           { "packkey": "small",  "credits": 1000,  "priceusd": 10,  "enabled": true },
@@ -1412,6 +1429,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `wiroApiAllowedPaths` | `array<string>` | The Wiro API endpoints the agent may call with its own Wiro project key (camelCase read), for example `["POST /v1/Run/*/*", "POST /v1/Task/Detail"]`. Always the list that applies: the agent's own list or, when it has none, the default list described under [`UpdateSettings`](#post-useragentupdatesettings). `[]` blocks all of them. Write it via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) or at Deploy with the lowercase `wiroapiallowedpaths` key. Also on the `Deploy` and `Update` responses; not on `MyAgents` / `PinnedAgents` rows. |
 | `chatSetup` | `string\|null` | Setup From Chat as it applies to this agent (camelCase read): `"all"`, `"webchat"` or `"off"`. Write it via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) or at Deploy with the lowercase `chatsetup` key. See [Setup From Chat](/docs/agent-messaging#setup-from-chat). `null` when it could not be read. |
 | `screen` | `string\|null` | The agent's Screen setting: `"on"` or `"off"`. When it is on, the people who manage the agent can watch its computer live, in the Wiro panel or in your own app with a project API key, and the owner of a personal agent that has never been in a team, or whose browser was reset after it last left one, can take control of it; `"off"` closes both, everywhere. On a team agent whose Chat Mode (`teamsessionmode`) is `"private"`, the Screen stays closed to the team even while this reads `"on"`. See [Screen and Take Control](#screen-and-take-control). Write it via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings). `null` when it could not be read. |
+| `disk` | `object` | The agent's disk space and how much of it its files use: `{ limitMb, limitBytes, usedBytes, state, measuredAt }` (see "Disk object" below). The limit follows the agent's `tier`. See [Disk Space](#disk-space). |
 
 **Lifecycle**
 
@@ -1474,6 +1492,16 @@ Every provider entry under `credentials.<key>` carries:
 | `daysremaining` | `number` | Days until `currentperiodend`. |
 | `pendingdowngrade` | `string\|null` | `"cancel"` after `CancelSubscription`; `null` for normal active subs. A move to a lower plan shows in the agent's `nextplan`, not here. |
 | `provider` | `string` | `"prepaid"` for every API-deployed subscription. |
+
+##### Disk object
+
+| Sub-field | Type | Description |
+|-----------|------|-------------|
+| `limitMb` | `number` | The plan's disk space in MB: `250` on Starter, `500` on Pro, `1024` (1 GB) on Max. It follows the agent's `tier`, so a move to a higher plan raises it as soon as the new plan starts. |
+| `limitBytes` | `number` | The same limit in bytes: `limitMb` × 1024², for example `262144000` for 250 MB. |
+| `usedBytes` | `number\|null` | The size of the agent's files at the last measurement: its workspace, the media it generated and its temporary files. Chat history and system files don't count. `null` before the first measurement. |
+| `state` | `string\|null` | `"ok"` below 80% of the limit, `"almost_full"` from 80% and `"full"` from 100%. While it is `"full"`, the agent can't save new files until some are deleted or the agent moves to a bigger plan. `null` before the first measurement. |
+| `measuredAt` | `string\|null` | ISO-8601 time of the last measurement. The files are measured about every 15 minutes while the agent runs. `null` before the first measurement. |
 
 #### **POST** /UserAgent/Update
 
@@ -1558,9 +1586,9 @@ A changed `title` on a running agent:
           "max":     { "priceUsd": 100, "credits": 10000 }
         },
         "plans": [
-          { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500 },
-          { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000 },
-          { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000 }
+          { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500,   "diskMb": 250 },
+          { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000,  "diskMb": 500 },
+          { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000, "diskMb": 1024 }
         ],
         "extracreditpacks": [
           { "packkey": "small",  "credits": 1000,  "priceusd": 10,  "enabled": true },
@@ -2555,9 +2583,9 @@ A Pro agent on a wallet plan, previewing Max with 15 days left of 30:
     "max":     { "priceUsd": 100, "credits": 10000 }
   },
   "plans": [
-    { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500 },
-    { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000 },
-    { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000 }
+    { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500,   "diskMb": 250 },
+    { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000,  "diskMb": 500 },
+    { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000, "diskMb": 1024 }
   ],
   "nextplan": null,
   "planChange": {
@@ -3715,6 +3743,7 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
 |-----------|--------|-------|
 | **Plan price** | `tiers.{starter,pro,max}.priceUsd` | $5, $30 or $100 a month, the same for every template and custom build. The agent's own price is `monthlypriceusd`. |
 | **Monthly credits** | `tiers.{starter,pro,max}.credits` | 500, 3,000 or 10,000. Every renewal grants a plan's credits in full: the current plan's (`renewalcredits`), or the scheduled plan's when `nextplan` is set. `monthlycredits` is what the current period grants. |
+| **Disk** | `plans[].diskMb` | 250 MB, 500 MB or 1 GB for the agent's files: its workspace, generated media and temporary files. The agent's usage is `disk` on `UserAgent/Detail`. |
 | **Skills** | `Skills/List` | Every plan includes every skill. Turning one on or off costs nothing. |
 | **Per-turn token cost** | `tokenRates` (per-model) | Each chat / cron / voice-prep turn deducts credits metered by the tokens its model consumes (1 credit = $0.01). The same on every plan: a larger plan buys a larger monthly credit pool. |
 | **Extra credit packs** | `agent.extracreditpacks[]` | The same on every plan: `small` 1,000 credits for $10, `medium` 5,000 for $50, `large` 20,000 for $200. They expire 6 months after purchase. |

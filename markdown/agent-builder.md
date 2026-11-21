@@ -141,9 +141,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
     "max":     { "priceUsd": 100, "credits": 10000 }
   },
   "plans": [
-    { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500 },
-    { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000 },
-    { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000 }
+    { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500,   "diskMb": 250 },
+    { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000,  "diskMb": 500 },
+    { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000, "diskMb": 1024 }
   ]
 }
 ```
@@ -151,7 +151,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
 Read the response:
 
 - `tiers` → the three plans: what your wallet is charged each month and the credits each one grants. The skills don't change these numbers.
-- `plans` → the same three plans as a list with their names (`key`, `title`, `priceUsd`, `monthlyCredits`).
+- `plans` → the same three plans as a list with their names (`key`, `title`, `priceUsd`, `monthlyCredits`) and their disk space in MB (`diskMb`).
 - `totalPriceUsd` and `totalMonthlyCredits` → the plan you passed in `tier`.
 - `tokenRates` → per-model token rates (credits per 1M input / output / cached-input tokens). Each conversation turn is metered against these (see [token billing](/docs/agent-overview#token-billing)).
 - `skillBreakdown[]` → each skill with `priceUsd: 0`, since every plan includes every skill.
@@ -266,9 +266,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
           "max":     { "priceUsd": 100, "credits": 10000 }
         },
         "plans": [
-          { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500 },
-          { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000 },
-          { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000 }
+          { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500,   "diskMb": 250 },
+          { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000,  "diskMb": 500 },
+          { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000, "diskMb": 1024 }
         ],
         "extracreditpacks": [
           { "packkey": "small",  "credits": 1000,  "priceusd": 10,  "enabled": true },

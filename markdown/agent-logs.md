@@ -153,6 +153,8 @@ A `token_usage` event records the token spend and credit deduction for one bille
 | `AGENT_SCREEN_VIEWED`, `AGENT_SCREEN_CONTROLLED` | `Watched the agent's screen`, `Took control of the agent's screen` |
 | `AGENT_SCREEN_CONTROL_ENDED` | `Control of the agent's screen ended after 4 minutes 10 seconds: handed back` (`summary: { seconds, reason }`; see [Screen in the Activity Log](/docs/agent-overview#screen-in-the-activity-log)) |
 | `AGENT_BROWSER_RESET` | `Agent browser reset` (see [Resetting the Browser](/docs/agent-overview#resetting-the-browser)) |
+| `AGENT_DISK_ALMOST_FULL`, `AGENT_DISK_FULL` | `Disk almost full: 210 MB of 250 MB used.`, `Disk full: 260 MB of 250 MB used. The agent can't save new files until some are deleted.` (see [Disk Space](/docs/agent-overview#disk-space)) |
+| `AGENT_DISK_TEMP_CLEARED`, `AGENT_DISK_HOST_RESTART` | `Temporary files passed 1 GB, so the agent restarted and cleared them.`, `The agent restarted to clear its temporary files.` (see [Disk Space](/docs/agent-overview#disk-space)) |
 
 #### Note rows
 

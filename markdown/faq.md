@@ -94,6 +94,10 @@ Pick a template in the [agent catalog](https://wiro.ai/agents) or build your own
 
 Each agent runs on one of three monthly plans: Starter ($5 a month with 500 credits), Pro ($30 with 3,000) or Max ($100 with 10,000). Every plan includes every skill and connector, so turning one on or off costs nothing. Each turn the agent runs uses credits by the tokens its model uses, and extra credit packs add 1,000 credits for $10, 5,000 for $50 or 20,000 for $200. A higher plan starts at once; a lower plan starts at the next renewal. See [Pricing Model](/docs/agent-overview#pricing-model-plans-credits-token-billing).
 
+### How much disk space does my agent have?
+
+Starter gives an agent 250 MB, Pro 500 MB and Max 1 GB for its files: the workspace, generated media and temporary files. Chat history and system files don't count. Downloads and temporary files outside the workspace are cleared when the agent restarts, and when they pass 1 GB. When the disk is full, the agent can't save new files until some are deleted or it moves to a bigger plan. `UserAgent/Detail` shows the usage in `disk`. See [Disk Space](/docs/agent-overview#disk-space).
+
 ### Can I build my own product with Wiro Agents?
 
 Yes. Use the Agent Messaging API to send messages programmatically, receive streaming responses via WebSocket, and get async notifications via webhooks. You can build white-label chat interfaces, webhook-driven pipelines, and multi-agent workflows. See [Agent Use Cases](/docs/agent-use-cases). For a chat in your own product, with setup from chat, follow [Agent Chat Integration](/docs/agent-chat-integration).

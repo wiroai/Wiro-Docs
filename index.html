@@ -9752,6 +9752,15 @@ if (!data.result) {
                     </div>
 
                     <div class="faq-item">
+                      <button class="faq-question">How much disk space does my agent have?</button>
+                      <div class="faq-answer">
+                        <div class="faq-answer-inner">
+                          <p>Starter gives an agent 250 MB, Pro 500 MB and Max 1 GB for its files: the workspace, generated media and temporary files. Chat history and system files don't count. Downloads and temporary files outside the workspace are cleared when the agent restarts, and when they pass 1 GB. When the disk is full, the agent can't save new files until some are deleted or it moves to a bigger plan. <code>UserAgent/Detail</code> shows the usage in <code>disk</code>. See <a href="/docs/agent-overview#disk-space">Disk Space</a>.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="faq-item">
                       <button class="faq-question">Can I build my own product with Wiro Agents?</button>
                       <div class="faq-answer">
                         <div class="faq-answer-inner">
@@ -15250,7 +15259,7 @@ import type {
 <p><strong>Authenticated endpoints</strong>: All <code>UserAgent/*</code> endpoints require a valid API key.</p>
 <p>For full details, see <a href="/docs/authentication">Authentication</a>.</p>
 <h2 id="pricing-model-plans-credits-token-billing">Pricing Model: Plans, Credits &amp; Token Billing</h2>
-<p>Every agent runs on one of three monthly plans, and the plan alone sets its price and its monthly credits. Templates and custom builds use the same plans, and the skills an agent has never change the price. Each turn the agent runs then spends credits by the tokens its model uses.</p>
+<p>Every agent runs on one of three monthly plans, and the plan alone sets its price, its monthly credits and its disk space. Templates and custom builds use the same plans, and the skills an agent has never change the price. Each turn the agent runs then spends credits by the tokens its model uses.</p>
 <h3 id="plans">Plans</h3>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -15261,6 +15270,7 @@ import type {
 <th><code>tier</code></th>
 <th>Price</th>
 <th>Monthly credits</th>
+<th>Disk</th>
 </tr>
 </thead>
 <tbody>
@@ -15269,18 +15279,21 @@ import type {
 <td><code>"starter"</code></td>
 <td>$5 a month</td>
 <td>500</td>
+<td>250 MB</td>
 </tr>
 <tr>
 <td><strong>Pro</strong></td>
 <td><code>"pro"</code></td>
 <td>$30 a month</td>
 <td>3,000</td>
+<td>500 MB</td>
 </tr>
 <tr>
 <td><strong>Max</strong></td>
 <td><code>"max"</code></td>
 <td>$100 a month</td>
 <td>10,000</td>
+<td>1 GB</td>
 </tr>
 </tbody>
 </table>
@@ -15293,10 +15306,15 @@ import type {
   &quot;max&quot;:     { &quot;priceUsd&quot;: 100, &quot;credits&quot;: 10000 }
 }
 </code></pre>
-<p>Instance responses (<code>agent.plans</code>) and <code>PricingPreview</code> (<code>plans</code>) also list them with their names, as <code>{ key, title, priceUsd, monthlyCredits }</code>.</p>
+<p>Instance responses (<code>agent.plans</code>) and <code>PricingPreview</code> (<code>plans</code>) also list them with their names, as <code>{ key, title, priceUsd, monthlyCredits, diskMb }</code>, where <code>diskMb</code> is the plan's disk space in MB (<code>250</code>, <code>500</code> or <code>1024</code>, which is 1 GB; see <a href="#disk-space">Disk Space</a>).</p>
 <p>A wallet plan renews every 30 days, and a plan paid by card in the Wiro dashboard renews on its monthly card cycle. Every renewal grants the plan's credits in full. Credits a period leaves unused don't carry over; credits from extra credit packs keep their own 6-month expiry.</p>
 <h3 id="what-a-plan-includes">What a Plan Includes</h3>
 <p>Every skill and connector works on every plan. Turning a skill on or off with <a href="#post-useragentskillsapply"><code>SkillsApply</code></a> is free: the plan's price and credits stay as they are. The work a skill does still uses credits, since its replies and scheduled tasks are agent turns billed by tokens like any other. A skill that runs Wiro models, such as <code>int-wiro-aimodels</code> or <code>util-video-creator</code>, pays for those runs from the wallet of the Wiro project you connect to the agent.</p>
+<h3 id="disk-space">Disk Space</h3>
+<p>Each plan gives the agent disk space for its files: 250 MB on Starter, 500 MB on Pro and 1 GB on Max. What counts is the agent's workspace, the media it generates and its temporary files. Chat history and the agent's system files don't count.</p>
+<p>Downloads and temporary files outside the workspace are cleared when the agent restarts. They are also cleared when they pass 1 GB, on every plan: the agent then restarts on its own, which takes about a minute, and the files in its workspace stay.</p>
+<p>When the agent's files reach the plan's size, the disk is full: the agent can't save new files until some are deleted or the agent moves to a bigger plan. A full disk deletes nothing. A move to a higher plan with <a href="#post-useragentupgradetier"><code>UpgradeTier</code></a> gives the agent the bigger disk as soon as the new plan starts. A move to a lower plan brings its smaller disk at the renewal where that plan starts: if the agent's files are bigger than that, they all stay, and the disk reads full until some are deleted.</p>
+<p><a href="#post-useragentdetail"><code>UserAgent/Detail</code></a> shows the agent's usage in <code>disk</code> (see <a href="#disk-object">Disk object</a>): its <code>state</code> reads <code>"almost_full"</code> from 80% of the plan's size and <code>"full"</code> from 100%. The agent's activity log gets an <code>AGENT_DISK_ALMOST_FULL</code> row when its files pass 80%, an <code>AGENT_DISK_FULL</code> row when they reach the plan's size, and an <code>AGENT_DISK_TEMP_CLEARED</code> row when a restart clears temporary files that passed 1 GB (see <a href="/docs/agent-logs#who-did-what-rows">Who-did-what rows</a>).</p>
 <h3 id="changing-plans">Changing Plans</h3>
 <p><a href="#post-useragentupgradetier"><code>POST /UserAgent/UpgradeTier</code></a> moves an agent to another plan:</p>
 <ul>
@@ -15880,14 +15898,14 @@ import type {
     }
   ],
   &quot;plans&quot;: [
-    { &quot;key&quot;: &quot;starter&quot;, &quot;title&quot;: &quot;Starter&quot;, &quot;priceUsd&quot;: 5,   &quot;monthlyCredits&quot;: 500 },
-    { &quot;key&quot;: &quot;pro&quot;,     &quot;title&quot;: &quot;Pro&quot;,     &quot;priceUsd&quot;: 30,  &quot;monthlyCredits&quot;: 3000 },
-    { &quot;key&quot;: &quot;max&quot;,     &quot;title&quot;: &quot;Max&quot;,     &quot;priceUsd&quot;: 100, &quot;monthlyCredits&quot;: 10000 }
+    { &quot;key&quot;: &quot;starter&quot;, &quot;title&quot;: &quot;Starter&quot;, &quot;priceUsd&quot;: 5,   &quot;monthlyCredits&quot;: 500,   &quot;diskMb&quot;: 250 },
+    { &quot;key&quot;: &quot;pro&quot;,     &quot;title&quot;: &quot;Pro&quot;,     &quot;priceUsd&quot;: 30,  &quot;monthlyCredits&quot;: 3000,  &quot;diskMb&quot;: 500 },
+    { &quot;key&quot;: &quot;max&quot;,     &quot;title&quot;: &quot;Max&quot;,     &quot;priceUsd&quot;: 100, &quot;monthlyCredits&quot;: 10000, &quot;diskMb&quot;: 1024 }
   ]
 }
 </code></pre>
 <blockquote>
-<p><code>Agent/List</code> returns the catalog fields plus inlined <code>tiers</code>, so a catalog card can show the price without a per-row <code>Agent/Detail</code> call. The top-level <code>plans</code> lists the three plans in order with their names (<code>key</code>, <code>title</code>, <code>priceUsd</code>, <code>monthlyCredits</code>), the same for every agent. Call <code>POST /Agent/Detail</code> with <code>type: "full"</code> when you need the full template (skills map, credential schema, custom skills, scheduled tasks).</p>
+<p><code>Agent/List</code> returns the catalog fields plus inlined <code>tiers</code>, so a catalog card can show the price without a per-row <code>Agent/Detail</code> call. The top-level <code>plans</code> lists the three plans in order with their names (<code>key</code>, <code>title</code>, <code>priceUsd</code>, <code>monthlyCredits</code>, <code>diskMb</code>), the same for every agent. Call <code>POST /Agent/Detail</code> with <code>type: "full"</code> when you need the full template (skills map, credential schema, custom skills, scheduled tasks).</p>
 </blockquote>
 <h4 id="post-agentdetail"><strong>POST</strong> /Agent/Detail</h4>
 <p>Retrieves details for a single agent by guid or slug. This is a <strong>public endpoint</strong>, so no authentication is required.</p>
@@ -15948,9 +15966,9 @@ import type {
         &quot;max&quot;:     { &quot;priceUsd&quot;: 100, &quot;credits&quot;: 10000 }
       },
       &quot;plans&quot;: [
-        { &quot;key&quot;: &quot;starter&quot;, &quot;title&quot;: &quot;Starter&quot;, &quot;priceUsd&quot;: 5,   &quot;monthlyCredits&quot;: 500 },
-        { &quot;key&quot;: &quot;pro&quot;,     &quot;title&quot;: &quot;Pro&quot;,     &quot;priceUsd&quot;: 30,  &quot;monthlyCredits&quot;: 3000 },
-        { &quot;key&quot;: &quot;max&quot;,     &quot;title&quot;: &quot;Max&quot;,     &quot;priceUsd&quot;: 100, &quot;monthlyCredits&quot;: 10000 }
+        { &quot;key&quot;: &quot;starter&quot;, &quot;title&quot;: &quot;Starter&quot;, &quot;priceUsd&quot;: 5,   &quot;monthlyCredits&quot;: 500,   &quot;diskMb&quot;: 250 },
+        { &quot;key&quot;: &quot;pro&quot;,     &quot;title&quot;: &quot;Pro&quot;,     &quot;priceUsd&quot;: 30,  &quot;monthlyCredits&quot;: 3000,  &quot;diskMb&quot;: 500 },
+        { &quot;key&quot;: &quot;max&quot;,     &quot;title&quot;: &quot;Max&quot;,     &quot;priceUsd&quot;: 100, &quot;monthlyCredits&quot;: 10000, &quot;diskMb&quot;: 1024 }
       ],
       &quot;tokenRates&quot;: {
         &quot;default_model&quot;: &quot;openai/gpt-5.6-sol&quot;,
@@ -16433,9 +16451,9 @@ import type {
           &quot;max&quot;:     { &quot;priceUsd&quot;: 100, &quot;credits&quot;: 10000 }
         },
         &quot;plans&quot;: [
-          { &quot;key&quot;: &quot;starter&quot;, &quot;title&quot;: &quot;Starter&quot;, &quot;priceUsd&quot;: 5,   &quot;monthlyCredits&quot;: 500 },
-          { &quot;key&quot;: &quot;pro&quot;,     &quot;title&quot;: &quot;Pro&quot;,     &quot;priceUsd&quot;: 30,  &quot;monthlyCredits&quot;: 3000 },
-          { &quot;key&quot;: &quot;max&quot;,     &quot;title&quot;: &quot;Max&quot;,     &quot;priceUsd&quot;: 100, &quot;monthlyCredits&quot;: 10000 }
+          { &quot;key&quot;: &quot;starter&quot;, &quot;title&quot;: &quot;Starter&quot;, &quot;priceUsd&quot;: 5,   &quot;monthlyCredits&quot;: 500,   &quot;diskMb&quot;: 250 },
+          { &quot;key&quot;: &quot;pro&quot;,     &quot;title&quot;: &quot;Pro&quot;,     &quot;priceUsd&quot;: 30,  &quot;monthlyCredits&quot;: 3000,  &quot;diskMb&quot;: 500 },
+          { &quot;key&quot;: &quot;max&quot;,     &quot;title&quot;: &quot;Max&quot;,     &quot;priceUsd&quot;: 100, &quot;monthlyCredits&quot;: 10000, &quot;diskMb&quot;: 1024 }
         ],
         &quot;extracreditpacks&quot;: [
           { &quot;packkey&quot;: &quot;small&quot;,  &quot;credits&quot;: 1000,  &quot;priceusd&quot;: 10,  &quot;enabled&quot;: true },
@@ -17036,6 +17054,13 @@ import type {
       },
       &quot;chatSetup&quot;: &quot;all&quot;,
       &quot;screen&quot;: &quot;on&quot;,
+      &quot;disk&quot;: {
+        &quot;limitMb&quot;: 500,
+        &quot;limitBytes&quot;: 524288000,
+        &quot;usedBytes&quot;: 103809024,
+        &quot;state&quot;: &quot;ok&quot;,
+        &quot;measuredAt&quot;: &quot;2026-05-03T00:45:00.000Z&quot;
+      },
       &quot;subscription&quot;: {
         &quot;plan&quot;: &quot;agent&quot;,
         &quot;status&quot;: &quot;active&quot;,
@@ -17062,9 +17087,9 @@ import type {
           &quot;max&quot;:     { &quot;priceUsd&quot;: 100, &quot;credits&quot;: 10000 }
         },
         &quot;plans&quot;: [
-          { &quot;key&quot;: &quot;starter&quot;, &quot;title&quot;: &quot;Starter&quot;, &quot;priceUsd&quot;: 5,   &quot;monthlyCredits&quot;: 500 },
-          { &quot;key&quot;: &quot;pro&quot;,     &quot;title&quot;: &quot;Pro&quot;,     &quot;priceUsd&quot;: 30,  &quot;monthlyCredits&quot;: 3000 },
-          { &quot;key&quot;: &quot;max&quot;,     &quot;title&quot;: &quot;Max&quot;,     &quot;priceUsd&quot;: 100, &quot;monthlyCredits&quot;: 10000 }
+          { &quot;key&quot;: &quot;starter&quot;, &quot;title&quot;: &quot;Starter&quot;, &quot;priceUsd&quot;: 5,   &quot;monthlyCredits&quot;: 500,   &quot;diskMb&quot;: 250 },
+          { &quot;key&quot;: &quot;pro&quot;,     &quot;title&quot;: &quot;Pro&quot;,     &quot;priceUsd&quot;: 30,  &quot;monthlyCredits&quot;: 3000,  &quot;diskMb&quot;: 500 },
+          { &quot;key&quot;: &quot;max&quot;,     &quot;title&quot;: &quot;Max&quot;,     &quot;priceUsd&quot;: 100, &quot;monthlyCredits&quot;: 10000, &quot;diskMb&quot;: 1024 }
         ],
         &quot;extracreditpacks&quot;: [
           { &quot;packkey&quot;: &quot;small&quot;,  &quot;credits&quot;: 1000,  &quot;priceusd&quot;: 10,  &quot;enabled&quot;: true },
@@ -17244,6 +17269,11 @@ import type {
 <td><code>screen</code></td>
 <td><code>string|null</code></td>
 <td>The agent's Screen setting: <code>"on"</code> or <code>"off"</code>. When it is on, the people who manage the agent can watch its computer live, in the Wiro panel or in your own app with a project API key, and the owner of a personal agent that has never been in a team, or whose browser was reset after it last left one, can take control of it; <code>"off"</code> closes both, everywhere. On a team agent whose Chat Mode (<code>teamsessionmode</code>) is <code>"private"</code>, the Screen stays closed to the team even while this reads <code>"on"</code>. See <a href="#screen-and-take-control">Screen and Take Control</a>. Write it via <a href="#post-useragentupdatesettings"><code>POST /UserAgent/UpdateSettings</code></a>. <code>null</code> when it could not be read.</td>
+</tr>
+<tr>
+<td><code>disk</code></td>
+<td><code>object</code></td>
+<td>The agent's disk space and how much of it its files use: <code>{ limitMb, limitBytes, usedBytes, state, measuredAt }</code> (see "Disk object" below). The limit follows the agent's <code>tier</code>. See <a href="#disk-space">Disk Space</a>.</td>
 </tr>
 </tbody>
 </table>
@@ -17505,6 +17535,47 @@ import type {
 </table>
 </div>
 </div>
+<h5 id="disk-object">Disk object</h5>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Sub-field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>limitMb</code></td>
+<td><code>number</code></td>
+<td>The plan's disk space in MB: <code>250</code> on Starter, <code>500</code> on Pro, <code>1024</code> (1 GB) on Max. It follows the agent's <code>tier</code>, so a move to a higher plan raises it as soon as the new plan starts.</td>
+</tr>
+<tr>
+<td><code>limitBytes</code></td>
+<td><code>number</code></td>
+<td>The same limit in bytes: <code>limitMb</code> × 1024², for example <code>262144000</code> for 250 MB.</td>
+</tr>
+<tr>
+<td><code>usedBytes</code></td>
+<td><code>number|null</code></td>
+<td>The size of the agent's files at the last measurement: its workspace, the media it generated and its temporary files. Chat history and system files don't count. <code>null</code> before the first measurement.</td>
+</tr>
+<tr>
+<td><code>state</code></td>
+<td><code>string|null</code></td>
+<td><code>"ok"</code> below 80% of the limit, <code>"almost_full"</code> from 80% and <code>"full"</code> from 100%. While it is <code>"full"</code>, the agent can't save new files until some are deleted or the agent moves to a bigger plan. <code>null</code> before the first measurement.</td>
+</tr>
+<tr>
+<td><code>measuredAt</code></td>
+<td><code>string|null</code></td>
+<td>ISO-8601 time of the last measurement. The files are measured about every 15 minutes while the agent runs. <code>null</code> before the first measurement.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 <h4 id="post-useragentupdate"><strong>POST</strong> /UserAgent/Update</h4>
 <p>Updates an agent instance's <strong>scalar fields only</strong> (title, description, categories, cover URL). A <strong>starting (status <code>3</code>)</strong> or <strong>running (status <code>4</code>)</strong> agent restarts in two cases: the call changes its <code>title</code>, or the body names none of those four fields, which is how you ask for a restart (<code>{ "guid": "&lt;useragent-guid&gt;" }</code>). The agent is moved to Stopping and re-queued after it fully stops. A description, categories or cover edit, or a <code>title</code> equal to the saved one, doesn't restart it. <code>restarting</code> in the response says which happened.</p>
 <div class="docs-param-table">
@@ -17680,9 +17751,9 @@ import type {
           &quot;max&quot;:     { &quot;priceUsd&quot;: 100, &quot;credits&quot;: 10000 }
         },
         &quot;plans&quot;: [
-          { &quot;key&quot;: &quot;starter&quot;, &quot;title&quot;: &quot;Starter&quot;, &quot;priceUsd&quot;: 5,   &quot;monthlyCredits&quot;: 500 },
-          { &quot;key&quot;: &quot;pro&quot;,     &quot;title&quot;: &quot;Pro&quot;,     &quot;priceUsd&quot;: 30,  &quot;monthlyCredits&quot;: 3000 },
-          { &quot;key&quot;: &quot;max&quot;,     &quot;title&quot;: &quot;Max&quot;,     &quot;priceUsd&quot;: 100, &quot;monthlyCredits&quot;: 10000 }
+          { &quot;key&quot;: &quot;starter&quot;, &quot;title&quot;: &quot;Starter&quot;, &quot;priceUsd&quot;: 5,   &quot;monthlyCredits&quot;: 500,   &quot;diskMb&quot;: 250 },
+          { &quot;key&quot;: &quot;pro&quot;,     &quot;title&quot;: &quot;Pro&quot;,     &quot;priceUsd&quot;: 30,  &quot;monthlyCredits&quot;: 3000,  &quot;diskMb&quot;: 500 },
+          { &quot;key&quot;: &quot;max&quot;,     &quot;title&quot;: &quot;Max&quot;,     &quot;priceUsd&quot;: 100, &quot;monthlyCredits&quot;: 10000, &quot;diskMb&quot;: 1024 }
         ],
         &quot;extracreditpacks&quot;: [
           { &quot;packkey&quot;: &quot;small&quot;,  &quot;credits&quot;: 1000,  &quot;priceusd&quot;: 10,  &quot;enabled&quot;: true },
@@ -19441,9 +19512,9 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
     &quot;max&quot;:     { &quot;priceUsd&quot;: 100, &quot;credits&quot;: 10000 }
   },
   &quot;plans&quot;: [
-    { &quot;key&quot;: &quot;starter&quot;, &quot;title&quot;: &quot;Starter&quot;, &quot;priceUsd&quot;: 5,   &quot;monthlyCredits&quot;: 500 },
-    { &quot;key&quot;: &quot;pro&quot;,     &quot;title&quot;: &quot;Pro&quot;,     &quot;priceUsd&quot;: 30,  &quot;monthlyCredits&quot;: 3000 },
-    { &quot;key&quot;: &quot;max&quot;,     &quot;title&quot;: &quot;Max&quot;,     &quot;priceUsd&quot;: 100, &quot;monthlyCredits&quot;: 10000 }
+    { &quot;key&quot;: &quot;starter&quot;, &quot;title&quot;: &quot;Starter&quot;, &quot;priceUsd&quot;: 5,   &quot;monthlyCredits&quot;: 500,   &quot;diskMb&quot;: 250 },
+    { &quot;key&quot;: &quot;pro&quot;,     &quot;title&quot;: &quot;Pro&quot;,     &quot;priceUsd&quot;: 30,  &quot;monthlyCredits&quot;: 3000,  &quot;diskMb&quot;: 500 },
+    { &quot;key&quot;: &quot;max&quot;,     &quot;title&quot;: &quot;Max&quot;,     &quot;priceUsd&quot;: 100, &quot;monthlyCredits&quot;: 10000, &quot;diskMb&quot;: 1024 }
   ],
   &quot;nextplan&quot;: null,
   &quot;planChange&quot;: {
@@ -21644,6 +21715,11 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td><strong>Monthly credits</strong></td>
 <td><code>tiers.{starter,pro,max}.credits</code></td>
 <td>500, 3,000 or 10,000. Every renewal grants a plan's credits in full: the current plan's (<code>renewalcredits</code>), or the scheduled plan's when <code>nextplan</code> is set. <code>monthlycredits</code> is what the current period grants.</td>
+</tr>
+<tr>
+<td><strong>Disk</strong></td>
+<td><code>plans[].diskMb</code></td>
+<td>250 MB, 500 MB or 1 GB for the agent's files: its workspace, generated media and temporary files. The agent's usage is <code>disk</code> on <code>UserAgent/Detail</code>.</td>
 </tr>
 <tr>
 <td><strong>Skills</strong></td>
@@ -35829,16 +35905,16 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
     &quot;max&quot;:     { &quot;priceUsd&quot;: 100, &quot;credits&quot;: 10000 }
   },
   &quot;plans&quot;: [
-    { &quot;key&quot;: &quot;starter&quot;, &quot;title&quot;: &quot;Starter&quot;, &quot;priceUsd&quot;: 5,   &quot;monthlyCredits&quot;: 500 },
-    { &quot;key&quot;: &quot;pro&quot;,     &quot;title&quot;: &quot;Pro&quot;,     &quot;priceUsd&quot;: 30,  &quot;monthlyCredits&quot;: 3000 },
-    { &quot;key&quot;: &quot;max&quot;,     &quot;title&quot;: &quot;Max&quot;,     &quot;priceUsd&quot;: 100, &quot;monthlyCredits&quot;: 10000 }
+    { &quot;key&quot;: &quot;starter&quot;, &quot;title&quot;: &quot;Starter&quot;, &quot;priceUsd&quot;: 5,   &quot;monthlyCredits&quot;: 500,   &quot;diskMb&quot;: 250 },
+    { &quot;key&quot;: &quot;pro&quot;,     &quot;title&quot;: &quot;Pro&quot;,     &quot;priceUsd&quot;: 30,  &quot;monthlyCredits&quot;: 3000,  &quot;diskMb&quot;: 500 },
+    { &quot;key&quot;: &quot;max&quot;,     &quot;title&quot;: &quot;Max&quot;,     &quot;priceUsd&quot;: 100, &quot;monthlyCredits&quot;: 10000, &quot;diskMb&quot;: 1024 }
   ]
 }
 </code></pre>
 <p>Read the response:</p>
 <ul>
 <li><code>tiers</code> → the three plans: what your wallet is charged each month and the credits each one grants. The skills don't change these numbers.</li>
-<li><code>plans</code> → the same three plans as a list with their names (<code>key</code>, <code>title</code>, <code>priceUsd</code>, <code>monthlyCredits</code>).</li>
+<li><code>plans</code> → the same three plans as a list with their names (<code>key</code>, <code>title</code>, <code>priceUsd</code>, <code>monthlyCredits</code>) and their disk space in MB (<code>diskMb</code>).</li>
 <li><code>totalPriceUsd</code> and <code>totalMonthlyCredits</code> → the plan you passed in <code>tier</code>.</li>
 <li><code>tokenRates</code> → per-model token rates (credits per 1M input / output / cached-input tokens). Each conversation turn is metered against these (see <a href="/docs/agent-overview#token-billing">token billing</a>).</li>
 <li><code>skillBreakdown[]</code> → each skill with <code>priceUsd: 0</code>, since every plan includes every skill.</li>
@@ -35948,9 +36024,9 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
           &quot;max&quot;:     { &quot;priceUsd&quot;: 100, &quot;credits&quot;: 10000 }
         },
         &quot;plans&quot;: [
-          { &quot;key&quot;: &quot;starter&quot;, &quot;title&quot;: &quot;Starter&quot;, &quot;priceUsd&quot;: 5,   &quot;monthlyCredits&quot;: 500 },
-          { &quot;key&quot;: &quot;pro&quot;,     &quot;title&quot;: &quot;Pro&quot;,     &quot;priceUsd&quot;: 30,  &quot;monthlyCredits&quot;: 3000 },
-          { &quot;key&quot;: &quot;max&quot;,     &quot;title&quot;: &quot;Max&quot;,     &quot;priceUsd&quot;: 100, &quot;monthlyCredits&quot;: 10000 }
+          { &quot;key&quot;: &quot;starter&quot;, &quot;title&quot;: &quot;Starter&quot;, &quot;priceUsd&quot;: 5,   &quot;monthlyCredits&quot;: 500,   &quot;diskMb&quot;: 250 },
+          { &quot;key&quot;: &quot;pro&quot;,     &quot;title&quot;: &quot;Pro&quot;,     &quot;priceUsd&quot;: 30,  &quot;monthlyCredits&quot;: 3000,  &quot;diskMb&quot;: 500 },
+          { &quot;key&quot;: &quot;max&quot;,     &quot;title&quot;: &quot;Max&quot;,     &quot;priceUsd&quot;: 100, &quot;monthlyCredits&quot;: 10000, &quot;diskMb&quot;: 1024 }
         ],
         &quot;extracreditpacks&quot;: [
           { &quot;packkey&quot;: &quot;small&quot;,  &quot;credits&quot;: 1000,  &quot;priceusd&quot;: 10,  &quot;enabled&quot;: true },
@@ -36765,6 +36841,8 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
                             <tr><td><code>AGENT_SCREEN_VIEWED</code>, <code>AGENT_SCREEN_CONTROLLED</code></td><td><code>Watched the agent's screen</code>, <code>Took control of the agent's screen</code></td></tr>
                             <tr><td><code>AGENT_SCREEN_CONTROL_ENDED</code></td><td><code>Control of the agent's screen ended after 4 minutes 10 seconds: handed back</code> (<code>summary: { seconds, reason }</code>; see <a href="/docs/agent-overview#screen-in-the-activity-log">Screen in the Activity Log</a>)</td></tr>
                             <tr><td><code>AGENT_BROWSER_RESET</code></td><td><code>Agent browser reset</code> (see <a href="/docs/agent-overview#resetting-the-browser">Resetting the Browser</a>)</td></tr>
+                            <tr><td><code>AGENT_DISK_ALMOST_FULL</code>, <code>AGENT_DISK_FULL</code></td><td><code>Disk almost full: 210 MB of 250 MB used.</code>, <code>Disk full: 260 MB of 250 MB used. The agent can't save new files until some are deleted.</code> (see <a href="/docs/agent-overview#disk-space">Disk Space</a>)</td></tr>
+                            <tr><td><code>AGENT_DISK_TEMP_CLEARED</code>, <code>AGENT_DISK_HOST_RESTART</code></td><td><code>Temporary files passed 1 GB, so the agent restarted and cleared them.</code>, <code>The agent restarted to clear its temporary files.</code> (see <a href="/docs/agent-overview#disk-space">Disk Space</a>)</td></tr>
                           </tbody>
                         </table>
                       </div>
