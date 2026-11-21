@@ -18,7 +18,7 @@ Each rule covers one scope of the wallet's work, the same scopes as [spend limit
 | `member` | The member's `useruuid` from `/Team/Member/List` | One team member's runs in the team (team wallets only): their dashboard runs in the team workspace and every run made with the API key of a team project they created |
 | `project` | The project's `id` from `/Project/List` | One API key: the runs made with that project's key |
 | `surface` | `web`, `api`, `mcp`, `llm-gateway`, `extension` or `agent` | One way in (see Surfaces below) |
-| `agent` | The agent's `guid` (its `useragentguid`) | One deployed agent: the models it runs through Wiro and the chat models it answers with |
+| `agent` | The agent's `guid` (its `useragentguid`) | One deployed agent: the models it runs through Wiro, the chat models it answers with and its built-in voice |
 
 ### Surfaces
 
@@ -80,11 +80,12 @@ Rules are checked before work starts:
 
 - Model runs: `/Run` and its `/sync` wait, realtime sessions, the [LLM gateway](/docs/completions-api), the [MCP server](/docs/wiro-mcp-server), the browser extensions and the dashboard
 - Workflow runs and resumes: every model step that will run must be allowed. Steps that will not run, such as the steps after a breakpoint, are not checked
-- The models Studio runs for you, which follow your own rules like the runs you start yourself: the account's or the team's rule, your member rule in a team, the rule of the API key you sent the message with and the rule of the surface you sent it from
+- Studio and the Workflow Agent: the models Studio runs for you, and the chat model of each message you send to Studio or the Workflow Agent, follow your own rules like the runs you start yourself: the account's or the team's rule, your member rule in a team, the rule of the API key you sent the message with and the rule of the surface you sent it from. A message whose chat model a rule blocks, the `model` it names or the default chat model when it names none, is refused with code `92` before anything runs. Chat models are LLM & Chat models: a rule that blocks LLM & Chat blocks them unless it allows the chat model by name, and a rule that lets only selected models run blocks them unless it allows LLM & Chat or the chat model. The Workflow Agent runs nothing but its chat model. [`/Studio/Status`](/docs/studio#post-studiostatus) and [`/StudioWorkflow/Status`](/docs/workflow-agent#post-studioworkflowstatus) list the chat models your rules block
 - The models your deployed agents run through Wiro
-- An agent's chat model: choosing one in the agent's settings, or sending `model` with `Message/Send`, follows that agent's own rule. If its rule blocks the model the agent already uses, its model calls are refused and the turn ends with `[MODEL_NOT_ALLOWED]`
+- An agent's chat model: choosing one in the agent's settings, or sending `model` with `Message/Send`, follows that agent's own rule. If its rule blocks the model the agent already uses, its model calls are refused and the turn ends with `[MODEL_NOT_ALLOWED]`. A Scheduled Task whose model the rule blocks is paused rather than failed, and runs again at its next scheduled time once the model is allowed or another one is chosen
+- An agent's built-in voice: transcription of the voice notes people send the agent, and the voice replies it sends, follow that agent's own rule as Audio & Speech models. A rule that blocks Audio & Speech, or that lets only selected models run without allowing Audio & Speech, blocks them, even when it allows LLM & Chat. Voice notes are then not transcribed, and the agent replies in text. An agent that chats on a Gemini model has its voice notes transcribed by `google/gemini-3-flash`, so a rule that names that model decides them too
 
-A change applies to work that starts after it. Work that is already running is not stopped, and a deployed agent's chat model follows a change within about a minute. Browsing models is not affected: `/Tool/List`, `/Tool/Detail` and the LLM gateway's model list show the same models whatever the rules.
+A change applies to work that starts after it. Work that is already running is not stopped, and a deployed agent's chat model and voice follow a change within about a minute. Browsing models is not affected: `/Tool/List`, `/Tool/Detail` and the LLM gateway's model list show the same models whatever the rules.
 
 ### When a Model Is Blocked
 
@@ -169,7 +170,8 @@ Returns the Model Access rules of the call's workspace, the categories a rule ca
         { "id": "2062", "model": "bytedance/seedance-v2-5-flash", "title": "Seedance v2.5 Flash Video Generator", "access": "allow" }
       ],
       "createdat": 1795180800,
-      "updatedat": 1795180800
+      "updatedat": 1795180800,
+      "updatedby": { "useruuid": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f", "label": "the organization owner" }
     },
     {
       "guid": "a4308936-5441-4012-96ee-f2b32ad3fd40",
@@ -182,7 +184,8 @@ Returns the Model Access rules of the call's workspace, the categories a rule ca
       ],
       "models": [],
       "createdat": 1795184400,
-      "updatedat": 1795188000
+      "updatedat": 1795188000,
+      "updatedby": { "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", "label": "John Doe" }
     },
     {
       "guid": "9f12fb7e-16f0-4208-83b6-c333b83192d7",
@@ -195,7 +198,8 @@ Returns the Model Access rules of the call's workspace, the categories a rule ca
       ],
       "models": [],
       "createdat": 1795191600,
-      "updatedat": 1795191600
+      "updatedat": 1795191600,
+      "updatedby": { "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", "label": "John Doe" }
     }
   ],
   "categories": [
@@ -225,6 +229,7 @@ Returns the Model Access rules of the call's workspace, the categories a rule ca
 | `rules[].categories` | The categories the rule names, each with its `label` and `access`, in the order of `categories` below |
 | `rules[].models` | The models the rule names, in `id` order: `id` (a string), `model` (`owner/slug`), `title` and `access`. `model` and `title` are `null` for a model that is no longer on Wiro |
 | `rules[].createdat`, `rules[].updatedat` | When the rule was added and last changed, in Unix seconds |
+| `rules[].updatedby` | Who changed the rule last: `useruuid` and `label`, the person's name, or their email when they have no name. In a team, the owner of its organization who is not a member of the team is labeled `the organization owner`, and someone who has left the team has a `null` label. A change made with an API key names the person who created the key's project. `updatedby` is `null` when Wiro changed the rule last, as for the team allowlists and blocklists moved into this system |
 | `categories` | The seven categories a rule can name: `category` (the key a rule uses), `label` and `values` (the catalog categories it covers) |
 
 ## **POST** /ModelAccess/Set
@@ -307,7 +312,8 @@ Adds a rule to the call's workspace, or replaces the rule with the same `scope` 
     ],
     "models": [],
     "createdat": 1795184400,
-    "updatedat": 1795188000
+    "updatedat": 1795188000,
+    "updatedby": { "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", "label": "John Doe" }
   }
 }
 ```
@@ -381,7 +387,8 @@ Shows what `/ModelAccess/Set` would do, and changes nothing. It takes the same b
     ],
     "models": [],
     "createdat": 1795195200,
-    "updatedat": null
+    "updatedat": null,
+    "updatedby": null
   },
   "existing": {
     "guid": "c2f0a9d4-5b7e-4c1a-8e36-9d4b2a7f1e05",
@@ -394,7 +401,8 @@ Shows what `/ModelAccess/Set` would do, and changes nothing. It takes the same b
     ],
     "models": [],
     "createdat": 1795195200,
-    "updatedat": 1795195200
+    "updatedat": 1795195200,
+    "updatedby": { "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", "label": "John Doe" }
   },
   "agentchatmodel": {
     "ref": "openai/gpt-5.6-sol",
@@ -408,7 +416,7 @@ Shows what `/ModelAccess/Set` would do, and changes nothing. It takes the same b
 |-------|-------------|
 | `preview` | Always `true`: nothing was changed |
 | `workspace` | The workspace the change would be made in, as in `/ModelAccess/List`: `type`, `teamguid` and `canmanage`, which is always `true` here |
-| `rule` | The rule as `/ModelAccess/Set` would save it, shaped like a row of `/ModelAccess/List`. Its `guid` and `createdat` are those of the rule it would replace, or `null` for a new rule, and its `updatedat` is `null` |
+| `rule` | The rule as `/ModelAccess/Set` would save it, shaped like a row of `/ModelAccess/List`. Its `guid` and `createdat` are those of the rule it would replace, or `null` for a new rule, and its `updatedat` and `updatedby` are `null` |
 | `existing` | The current rule with the same `scope` and `target`, which the change would replace, or `null` when there is none |
 | `agentchatmodel` | For an `agent` rule only: the chat model the agent answers with, as its settings name it (`ref`) and by its `owner/slug` on Wiro (`model`), and whether the rule would block it (`blocked`) |
 
@@ -490,7 +498,8 @@ Each applicable rule comes back shaped like a row of `/ModelAccess/List`, with w
             { "id": "2062", "model": "bytedance/seedance-v2-5-flash", "title": "Seedance v2.5 Flash Video Generator", "access": "allow" }
           ],
           "createdat": 1795180800,
-          "updatedat": 1795180800
+          "updatedat": 1795180800,
+          "updatedby": { "useruuid": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f", "label": "the organization owner" }
         },
         "access": "allow",
         "by": "default",
@@ -508,7 +517,8 @@ Each applicable rule comes back shaped like a row of `/ModelAccess/List`, with w
           ],
           "models": [],
           "createdat": 1795184400,
-          "updatedat": 1795188000
+          "updatedat": 1795188000,
+          "updatedby": { "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", "label": "John Doe" }
         },
         "access": "block",
         "by": "default",

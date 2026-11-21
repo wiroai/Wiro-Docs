@@ -4726,6 +4726,8 @@ includes `turnCost`, `cumulativeCost`, and a provider-specific realtime `usage`
 payload. That payload is separate from normalized structured finite-LLM
 `message.usage` and can omit `total_tokens` or detail objects.
 
+`task_session_stopped` comes once, right after the `task_cost` of the turn that reached a [spend limit](/docs/spend-limits) (`reason` `spend_limit`, `code` `93`) or used up the balance (`reason` `balance`, `code` `97`). It is not a failure: the session then closes with the usual events. See [Realtime Voice](/docs/realtime-voice-conversation#realtime-end-session).
+
 ## Binary Frames
 
 For **realtime models** that return audio (voice conversation and text-to-speech), the WebSocket may send binary frames containing raw audio data. Check if the received message is a `Blob` (browser) or `Buffer` (Node.js) before parsing as JSON.
@@ -4818,6 +4820,7 @@ During a realtime session, you'll receive these WebSocket events:
 | `task_stream_end`        | server → client | AI finished speaking for this turn: you can speak again                 |
 | `task_cost`              | server → client | Cost update per turn: includes `turnCost`, `cumulativeCost`, and `usage` (raw cost breakdown from the model provider). On models priced by tokens a turn is one reply; on models priced by time it is the time since the previous update. |
 | `task_output`            | server → client | Transcript messages prefixed with `TRANSCRIPT_USER:` or `TRANSCRIPT_AI:` |
+| `task_session_stopped`   | server → client | The server is ending the session after the turn that reached a spend limit or used up the balance: `reason` is `spend_limit` or `balance`, with `code` and `message`. The closing events follow (see Ending a Session) |
 | `task_end`               | server → client | The model process has exited. Post-processing follows. Wait for `task_postprocess_end` to close the connection. |
 | `task_postprocess_end`   | server → client | Post-processing complete: safe to close the WebSocket connection        |
 | `task_session_end`       | client → server | Gracefully end the session                                               |
@@ -4923,11 +4926,29 @@ To gracefully end a realtime session, send `task_session_end`:
 
 After sending this, the server will process any remaining audio, send final cost/transcript events, and then emit `task_postprocess_end`. Wait for `task_postprocess_end` before closing the WebSocket.
 
-The server can also end a session on its own: after a period without speech, or when your balance runs out (see below). It then sends the same closing events, ending with `task_postprocess_end`. The server never sends `task_session_end`; that message only goes from the client to the server.
+The server can also end a session on its own: after a period without speech, or after the turn that uses up your balance or reaches a [spend limit](/docs/spend-limits) (see below). It then sends the same closing events, ending with `task_postprocess_end`. The server never sends `task_session_end`; that message only goes from the client to the server.
+
+When a spend limit or the balance ends the session, the server first sends `task_session_stopped`, right after that turn's `task_cost`:
+
+```json
+{
+  "type": "task_session_stopped",
+  "id": "534574",
+  "reason": "spend_limit",
+  "code": 93,
+  "message": "This team's monthly spend limit is reached ($50.00 of $50.00). It resets on December 1, 2026 at 00:00 UTC.",
+  "result": true,
+  "success": null,
+  "terminal": false,
+  "exitCode": null
+}
+```
+
+`reason` is `spend_limit`, with `code` `93`, or `balance`, with `code` `97`. For a spend limit, `message` is the refusal [`/Run`](/docs/run-a-model) would give for that limit, which names it and says when it resets. For the balance it is `The balance ran out, so the session ended.` The event is not a failure: the usual closing events follow, and `task_postprocess_end` reports success. When it arrives, stop sending microphone audio, show `message` and keep listening until `task_postprocess_end`. You don't need to send `task_session_end`. The event can also come after you sent `task_session_end`, when that last turn uses up the limit or the balance; the session ends either way. No `task_session_stopped` is sent when a session ends for any other reason.
 
 > **Safety:** If the client disconnects without sending `task_session_end`, the server automatically terminates the session to prevent the pipeline from running indefinitely (and the provider from continuing to charge). Always send `task_session_end` explicitly for a clean shutdown.
 
-> **Insufficient balance:** The session is charged turn by turn as it runs. When a charged turn uses up your available balance (the team wallet's balance when you use a team project's API key), the server stops the session right after that turn. That turn is charged in full, and so is any final usage reported while the session closes, so your balance can end slightly below zero. You still receive the final `task_cost` and `task_end` events.
+> **Insufficient balance:** The session is charged turn by turn as it runs. When a charged turn uses up your available balance (the team wallet's balance when you use a team project's API key), the server stops the session right after that turn. That turn is charged in full, and so is any final usage reported while the session closes, so your balance can end slightly below zero. You still receive the final `task_cost` and `task_end` events, and `task_session_stopped` with `reason` `balance` and `code` `97` says why the session ended.
 
 ---
 
@@ -4986,6 +5007,7 @@ During a realtime TTS session, you'll receive these WebSocket events:
 | `task_stream_ready`    | Session is ready: the model is generating audio and will begin sending chunks                   |
 | `task_stream_end`      | The model finished generating audio for the current segment                                      |
 | `task_cost`            | Cost update: includes `turnCost`, `cumulativeCost`, and `usage` (raw cost breakdown)            |
+| `task_session_stopped` | The server is ending the session after the turn that reached a spend limit or used up the balance: `reason` is `spend_limit` or `balance`, with `code` and `message`. The closing events follow (see Ending a Session) |
 | `task_end`             | The model process has exited. Post-processing follows. Wait for `task_postprocess_end` to close |
 | `task_postprocess_end` | Post-processing is complete. Safe to close the WebSocket connection                              |
 
@@ -5035,9 +5057,29 @@ After sending this, the server will finish any in-progress generation, send fina
 
 For TTS sessions, the stream often ends naturally when the model finishes generating audio for the provided text. In this case, you'll receive `task_stream_end` followed by `task_end` without needing to send `task_session_end`. However, it's good practice to send it explicitly for a clean shutdown, especially if you want to stop playback early.
 
+The server can also end a session on its own, after the turn that uses up your balance or reaches a [spend limit](/docs/spend-limits). It then sends the same closing events, ending with `task_postprocess_end`.
+
+When a spend limit or the balance ends the session, the server first sends `task_session_stopped`, right after that turn's `task_cost`:
+
+```json
+{
+  "type": "task_session_stopped",
+  "id": "534574",
+  "reason": "spend_limit",
+  "code": 93,
+  "message": "This team's monthly spend limit is reached ($50.00 of $50.00). It resets on December 1, 2026 at 00:00 UTC.",
+  "result": true,
+  "success": null,
+  "terminal": false,
+  "exitCode": null
+}
+```
+
+`reason` is `spend_limit`, with `code` `93`, or `balance`, with `code` `97`. For a spend limit, `message` is the refusal [`/Run`](/docs/run-a-model) would give for that limit, which names it and says when it resets. For the balance it is `The balance ran out, so the session ended.` The event is not a failure: the usual closing events follow, and `task_postprocess_end` reports success. When it arrives, let the audio you already have finish playing, show `message` and keep listening until `task_postprocess_end`. You don't need to send `task_session_end`. The event can also come after you sent `task_session_end`, when that last turn uses up the limit or the balance; the session ends either way. No `task_session_stopped` is sent when a session ends for any other reason.
+
 > **Safety:** If the client disconnects without sending `task_session_end`, the server automatically terminates the session to prevent the pipeline from running indefinitely. Always send `task_session_end` explicitly for a clean shutdown.
 
-> **Insufficient balance:** The session is charged turn by turn as it runs. When a charged turn uses up your available balance (the team wallet's balance when you use a team project's API key), the server stops the session right after that turn. That turn is charged in full, and so is any final usage reported while the session closes, so your balance can end slightly below zero. You still receive the final `task_cost` and `task_end` events.
+> **Insufficient balance:** The session is charged turn by turn as it runs. When a charged turn uses up your available balance (the team wallet's balance when you use a team project's API key), the server stops the session right after that turn. That turn is charged in full, and so is any final usage reported while the session closes, so your balance can end slightly below zero. You still receive the final `task_cost` and `task_end` events, and `task_session_stopped` with `reason` `balance` and `code` `97` says why the session ended.
 
 ---
 
@@ -5098,6 +5140,7 @@ During a realtime speech-to-text session, you'll receive these WebSocket events:
 | `task_output`          | server → client | Transcript text prefixed with `TRANSCRIPT_USER:`                                    |
 | `task_stream_end`      | server → client | Transcription stream has ended: no more transcripts will arrive                    |
 | `task_cost`            | server → client | Cost update: includes `turnCost`, `cumulativeCost`, and `usage` breakdown. On models priced by time, each update covers the time since the previous one. |
+| `task_session_stopped` | server → client | The server is ending the session after the turn that reached a spend limit or used up the balance: `reason` is `spend_limit` or `balance`, with `code` and `message`. The closing events follow (see Ending a Session) |
 | `task_end`             | server → client | The model process has exited. Post-processing follows                               |
 | `task_postprocess_end` | server → client | Post-processing complete: safe to close the WebSocket now                          |
 
@@ -5183,11 +5226,29 @@ To gracefully end a realtime session, send `task_session_end`:
 
 After sending this, the server processes any remaining buffered audio, sends final transcript and cost events, and then emits `task_postprocess_end`. Wait for `task_postprocess_end` before closing the WebSocket.
 
-The server can also end a session on its own: after a period without speech, or when your balance runs out (see below). It then sends the same closing events, ending with `task_postprocess_end`. The server never sends `task_session_end`; that message only goes from the client to the server.
+The server can also end a session on its own: after a period without speech, or after the turn that uses up your balance or reaches a [spend limit](/docs/spend-limits) (see below). It then sends the same closing events, ending with `task_postprocess_end`. The server never sends `task_session_end`; that message only goes from the client to the server.
+
+When a spend limit or the balance ends the session, the server first sends `task_session_stopped`, right after that turn's `task_cost`:
+
+```json
+{
+  "type": "task_session_stopped",
+  "id": "534574",
+  "reason": "spend_limit",
+  "code": 93,
+  "message": "This team's monthly spend limit is reached ($50.00 of $50.00). It resets on December 1, 2026 at 00:00 UTC.",
+  "result": true,
+  "success": null,
+  "terminal": false,
+  "exitCode": null
+}
+```
+
+`reason` is `spend_limit`, with `code` `93`, or `balance`, with `code` `97`. For a spend limit, `message` is the refusal [`/Run`](/docs/run-a-model) would give for that limit, which names it and says when it resets. For the balance it is `The balance ran out, so the session ended.` The event is not a failure: the usual closing events follow, and `task_postprocess_end` reports success. When it arrives, stop sending microphone audio, show `message` and keep listening until `task_postprocess_end`. You don't need to send `task_session_end`. The event can also come after you sent `task_session_end`, when that last turn uses up the limit or the balance; the session ends either way. No `task_session_stopped` is sent when a session ends for any other reason.
 
 > **Safety:** If the client disconnects without sending `task_session_end`, the server automatically terminates the session to prevent the pipeline from running indefinitely. Always send `task_session_end` explicitly for a clean shutdown.
 
-> **Insufficient balance:** The session is charged turn by turn as it runs. When a charged turn uses up your available balance (the team wallet's balance when you use a team project's API key), the server stops the session right after that turn. That turn is charged in full, and so is any final usage reported while the session closes, so your balance can end slightly below zero. You still receive the final `task_cost` and `task_end` events.
+> **Insufficient balance:** The session is charged turn by turn as it runs. When a charged turn uses up your available balance (the team wallet's balance when you use a team project's API key), the server stops the session right after that turn. That turn is charged in full, and so is any final usage reported while the session closes, so your balance can end slightly below zero. You still receive the final `task_cost` and `task_end` events, and `task_session_stopped` with `reason` `balance` and `code` `97` says why the session ended.
 
 ---
 
@@ -5467,7 +5528,9 @@ Limits are checked before work starts:
 
 When the price of the work is known before it starts, as for fixed-price models, workflow runs and agent purchases, the work is refused if spending so far, plus what work in progress holds, plus that price would go over the limit. Otherwise it is refused once the limit has no room left.
 
-Work that is already running finishes and is charged. A realtime session ends after the turn that uses up a limit, the same way it ends when the balance runs out. Automatic monthly renewals of running agents are never refused by a limit, but they still count toward it.
+Work that is already running finishes and is charged, with two exceptions. A realtime session, an agent's voice call included, ends after the turn that uses up a limit, the same way it ends when the balance runs out: its clients get a `task_session_stopped` event with `reason` `spend_limit`, code `93` and the refusal `/Run` would give (see [Realtime Voice](/docs/realtime-voice-conversation#realtime-end-session)), and a caller on the phone hears a short notice before the call ends. An agent whose own limit is used up pauses at its next model call, even in the middle of a reply (see below).
+
+Automatic monthly renewals of running agents are never refused by a limit. They count toward the account's limit and, in a team, toward the limit of the member who started the plan, never toward a surface, API key or agent limit.
 
 ### Work in Progress
 
@@ -5502,9 +5565,11 @@ When the price of the work is known before it starts, the message says what is l
 
 Nothing runs and nothing is charged. Retrying does not help until the limit resets or someone who manages it raises it. Through the [LLM gateway](/docs/completions-api#gateway-errors) the refusal is an HTTP `402` error with code `spend_limit_reached`, and the [MCP server](/docs/wiro-mcp-server) returns it as a tool error.
 
+When an agent's own limit is used up, the agent pauses. A turn that is running stops at its next model call (see [Failed turns](/docs/agent-messaging#failed-turns)), new messages to the agent are refused, and its Scheduled Tasks are paused rather than failed. In Telegram, Slack and Discord it tells people so in a plain sentence, with the time the limit resets when that is known. Once the limit resets, is raised or is removed, the agent answers again and each Scheduled Task runs at its next scheduled time, with no restart.
+
 ### Alert Emails
 
-A limit sends an alert email when spending reaches its `alertpct`: 50, 80 (the default) or 90 percent of the limit, or `null` for no alert email. It sends a used-up email when the limit is reached. Each email goes out once per limit and period, and changing the limit re-arms both for the current period.
+A limit sends an alert email when spending reaches its `alertpct`: 50, 80 (the default) or 90 percent of the limit, or `null` for no alert email. It sends a used-up email when the limit is reached. Each email goes out once per limit and period, and changing the limit re-arms both for the current period. The emails link to the Spend Limits page of the workspace the limit belongs to.
 
 A personal account's limits email the account. A team's limits email the team's admins and the organization owner, and also the member a member limit is for, the person who created the API key a key limit is for, and the owner of the agent an agent limit is for.
 
@@ -5555,6 +5620,7 @@ Returns the spend limits of the call's workspace, each with what has been spent 
       "resetsat": 1796083200,
       "createdat": 1793805600,
       "updatedat": 1793805600,
+      "updatedby": { "useruuid": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f", "label": "the organization owner" },
       "spentusd": 248.7,
       "heldusd": 3.5
     },
@@ -5570,6 +5636,7 @@ Returns the spend limits of the call's workspace, each with what has been spent 
       "resetsat": 1796083200,
       "createdat": 1793805600,
       "updatedat": 1793805600,
+      "updatedby": null,
       "spentusd": 120.5
     },
     {
@@ -5584,6 +5651,7 @@ Returns the spend limits of the call's workspace, each with what has been spent 
       "resetsat": 1796083200,
       "createdat": 1794474300,
       "updatedat": 1794474300,
+      "updatedby": { "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", "label": "John Doe" },
       "spentusd": 88.2
     }
   ]
@@ -5607,6 +5675,7 @@ Returns the spend limits of the call's workspace, each with what has been spent 
 | `limits[].periodstart` | Start of the current period, in Unix seconds |
 | `limits[].resetsat` | When the current period ends and the limit resets, in Unix seconds |
 | `limits[].createdat`, `limits[].updatedat` | When the limit was added and last changed, in Unix seconds |
+| `limits[].updatedby` | Who changed the limit last: `useruuid` and `label`, the person's name, or their email when they have no name. In a team, the owner of its organization who is not a member of the team is labeled `the organization owner`, and someone who has left the team has a `null` label. A change made with an API key names the person who created the key's project. `updatedby` is `null` when Wiro changed the limit last, as for the team and member limits moved into this system |
 | `limits[].spentusd` | What has been spent in the current period, in USD |
 | `limits[].heldusd` | When work in progress holds part of the limit: how much it holds, in USD (see [Work in Progress](#work-in-progress)) |
 
@@ -5676,6 +5745,7 @@ Adds a spend limit to the call's workspace, or changes the existing limit with t
     "resetsat": 1796083200,
     "createdat": 1794474300,
     "updatedat": 1794474300,
+    "updatedby": { "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", "label": "John Doe" },
     "spentusd": 61.4
   }
 }
@@ -5743,6 +5813,7 @@ Shows what `/SpendLimit/Set` would do, and changes nothing. It takes the same bo
     "resetsat": 1796083200,
     "createdat": 1794474300,
     "updatedat": null,
+    "updatedby": null,
     "spentusd": 88.2
   },
   "existing": {
@@ -5757,6 +5828,7 @@ Shows what `/SpendLimit/Set` would do, and changes nothing. It takes the same bo
     "resetsat": 1796083200,
     "createdat": 1794474300,
     "updatedat": 1794474300,
+    "updatedby": { "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", "label": "John Doe" },
     "spentusd": 88.2
   }
 }
@@ -5766,7 +5838,7 @@ Shows what `/SpendLimit/Set` would do, and changes nothing. It takes the same bo
 |-------|-------------|
 | `preview` | Always `true`: nothing was changed |
 | `workspace` | The workspace the change would be made in, as in `/SpendLimit/List`: `type`, `teamguid` and `canmanage`, which is always `true` here |
-| `limit` | The limit as `/SpendLimit/Set` would save it, shaped like a row of `/SpendLimit/List`, with what has been spent in its current period. Its `guid` and `createdat` are those of the limit it would replace, or `null` for a new limit, and its `updatedat` is `null` |
+| `limit` | The limit as `/SpendLimit/Set` would save it, shaped like a row of `/SpendLimit/List`, with what has been spent in its current period. Its `guid` and `createdat` are those of the limit it would replace, or `null` for a new limit, and its `updatedat` and `updatedby` are `null` |
 | `existing` | The current limit with the same `scope`, `target` and `period`, which the change would replace, or `null` when there is none |
 
 When `limit.spentusd` is already at or above the new amount, the limit is used up as soon as it is saved. The errors are those of `/SpendLimit/Set`, except that Preview does not count toward the hourly cap on changes made with API keys.
@@ -5850,6 +5922,8 @@ Returns what the call's workspace has spent this month or today, in total and by
 | `usage.agents` | Spending per deployed agent, with the agent's title as `label` |
 | `heldusd` in a row of `usage.surfaces`, `usage.members`, `usage.projects` or `usage.agents` | What work in progress holds for that row, present only when it holds something. A member, API key or agent whose only spending so far is held work is listed with `spentusd` `0` |
 
+An agent plan's automatic renewal counts in `totalusd` and, in a team, in the row of the member who started the plan, but in no row of `usage.surfaces`, `usage.projects` or `usage.agents`, so those rows can add up to less than `totalusd`.
+
 For other breakdowns, `/Project/UsageSummary` gives usage per project and `/Task/Stat` gives time-series task execution data. Both filter by the active workspace.
 
 ---
@@ -5874,7 +5948,7 @@ Each rule covers one scope of the wallet's work, the same scopes as [spend limit
 | `member` | The member's `useruuid` from `/Team/Member/List` | One team member's runs in the team (team wallets only): their dashboard runs in the team workspace and every run made with the API key of a team project they created |
 | `project` | The project's `id` from `/Project/List` | One API key: the runs made with that project's key |
 | `surface` | `web`, `api`, `mcp`, `llm-gateway`, `extension` or `agent` | One way in (see Surfaces below) |
-| `agent` | The agent's `guid` (its `useragentguid`) | One deployed agent: the models it runs through Wiro and the chat models it answers with |
+| `agent` | The agent's `guid` (its `useragentguid`) | One deployed agent: the models it runs through Wiro, the chat models it answers with and its built-in voice |
 
 ### Surfaces
 
@@ -5936,11 +6010,12 @@ Rules are checked before work starts:
 
 - Model runs: `/Run` and its `/sync` wait, realtime sessions, the [LLM gateway](/docs/completions-api), the [MCP server](/docs/wiro-mcp-server), the browser extensions and the dashboard
 - Workflow runs and resumes: every model step that will run must be allowed. Steps that will not run, such as the steps after a breakpoint, are not checked
-- The models Studio runs for you, which follow your own rules like the runs you start yourself: the account's or the team's rule, your member rule in a team, the rule of the API key you sent the message with and the rule of the surface you sent it from
+- Studio and the Workflow Agent: the models Studio runs for you, and the chat model of each message you send to Studio or the Workflow Agent, follow your own rules like the runs you start yourself: the account's or the team's rule, your member rule in a team, the rule of the API key you sent the message with and the rule of the surface you sent it from. A message whose chat model a rule blocks, the `model` it names or the default chat model when it names none, is refused with code `92` before anything runs. Chat models are LLM & Chat models: a rule that blocks LLM & Chat blocks them unless it allows the chat model by name, and a rule that lets only selected models run blocks them unless it allows LLM & Chat or the chat model. The Workflow Agent runs nothing but its chat model. [`/Studio/Status`](/docs/studio#post-studiostatus) and [`/StudioWorkflow/Status`](/docs/workflow-agent#post-studioworkflowstatus) list the chat models your rules block
 - The models your deployed agents run through Wiro
-- An agent's chat model: choosing one in the agent's settings, or sending `model` with `Message/Send`, follows that agent's own rule. If its rule blocks the model the agent already uses, its model calls are refused and the turn ends with `[MODEL_NOT_ALLOWED]`
+- An agent's chat model: choosing one in the agent's settings, or sending `model` with `Message/Send`, follows that agent's own rule. If its rule blocks the model the agent already uses, its model calls are refused and the turn ends with `[MODEL_NOT_ALLOWED]`. A Scheduled Task whose model the rule blocks is paused rather than failed, and runs again at its next scheduled time once the model is allowed or another one is chosen
+- An agent's built-in voice: transcription of the voice notes people send the agent, and the voice replies it sends, follow that agent's own rule as Audio & Speech models. A rule that blocks Audio & Speech, or that lets only selected models run without allowing Audio & Speech, blocks them, even when it allows LLM & Chat. Voice notes are then not transcribed, and the agent replies in text. An agent that chats on a Gemini model has its voice notes transcribed by `google/gemini-3-flash`, so a rule that names that model decides them too
 
-A change applies to work that starts after it. Work that is already running is not stopped, and a deployed agent's chat model follows a change within about a minute. Browsing models is not affected: `/Tool/List`, `/Tool/Detail` and the LLM gateway's model list show the same models whatever the rules.
+A change applies to work that starts after it. Work that is already running is not stopped, and a deployed agent's chat model and voice follow a change within about a minute. Browsing models is not affected: `/Tool/List`, `/Tool/Detail` and the LLM gateway's model list show the same models whatever the rules.
 
 ### When a Model Is Blocked
 
@@ -6025,7 +6100,8 @@ Returns the Model Access rules of the call's workspace, the categories a rule ca
         { "id": "2062", "model": "bytedance/seedance-v2-5-flash", "title": "Seedance v2.5 Flash Video Generator", "access": "allow" }
       ],
       "createdat": 1795180800,
-      "updatedat": 1795180800
+      "updatedat": 1795180800,
+      "updatedby": { "useruuid": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f", "label": "the organization owner" }
     },
     {
       "guid": "a4308936-5441-4012-96ee-f2b32ad3fd40",
@@ -6038,7 +6114,8 @@ Returns the Model Access rules of the call's workspace, the categories a rule ca
       ],
       "models": [],
       "createdat": 1795184400,
-      "updatedat": 1795188000
+      "updatedat": 1795188000,
+      "updatedby": { "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", "label": "John Doe" }
     },
     {
       "guid": "9f12fb7e-16f0-4208-83b6-c333b83192d7",
@@ -6051,7 +6128,8 @@ Returns the Model Access rules of the call's workspace, the categories a rule ca
       ],
       "models": [],
       "createdat": 1795191600,
-      "updatedat": 1795191600
+      "updatedat": 1795191600,
+      "updatedby": { "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", "label": "John Doe" }
     }
   ],
   "categories": [
@@ -6081,6 +6159,7 @@ Returns the Model Access rules of the call's workspace, the categories a rule ca
 | `rules[].categories` | The categories the rule names, each with its `label` and `access`, in the order of `categories` below |
 | `rules[].models` | The models the rule names, in `id` order: `id` (a string), `model` (`owner/slug`), `title` and `access`. `model` and `title` are `null` for a model that is no longer on Wiro |
 | `rules[].createdat`, `rules[].updatedat` | When the rule was added and last changed, in Unix seconds |
+| `rules[].updatedby` | Who changed the rule last: `useruuid` and `label`, the person's name, or their email when they have no name. In a team, the owner of its organization who is not a member of the team is labeled `the organization owner`, and someone who has left the team has a `null` label. A change made with an API key names the person who created the key's project. `updatedby` is `null` when Wiro changed the rule last, as for the team allowlists and blocklists moved into this system |
 | `categories` | The seven categories a rule can name: `category` (the key a rule uses), `label` and `values` (the catalog categories it covers) |
 
 ## **POST** /ModelAccess/Set
@@ -6163,7 +6242,8 @@ Adds a rule to the call's workspace, or replaces the rule with the same `scope` 
     ],
     "models": [],
     "createdat": 1795184400,
-    "updatedat": 1795188000
+    "updatedat": 1795188000,
+    "updatedby": { "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", "label": "John Doe" }
   }
 }
 ```
@@ -6237,7 +6317,8 @@ Shows what `/ModelAccess/Set` would do, and changes nothing. It takes the same b
     ],
     "models": [],
     "createdat": 1795195200,
-    "updatedat": null
+    "updatedat": null,
+    "updatedby": null
   },
   "existing": {
     "guid": "c2f0a9d4-5b7e-4c1a-8e36-9d4b2a7f1e05",
@@ -6250,7 +6331,8 @@ Shows what `/ModelAccess/Set` would do, and changes nothing. It takes the same b
     ],
     "models": [],
     "createdat": 1795195200,
-    "updatedat": 1795195200
+    "updatedat": 1795195200,
+    "updatedby": { "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", "label": "John Doe" }
   },
   "agentchatmodel": {
     "ref": "openai/gpt-5.6-sol",
@@ -6264,7 +6346,7 @@ Shows what `/ModelAccess/Set` would do, and changes nothing. It takes the same b
 |-------|-------------|
 | `preview` | Always `true`: nothing was changed |
 | `workspace` | The workspace the change would be made in, as in `/ModelAccess/List`: `type`, `teamguid` and `canmanage`, which is always `true` here |
-| `rule` | The rule as `/ModelAccess/Set` would save it, shaped like a row of `/ModelAccess/List`. Its `guid` and `createdat` are those of the rule it would replace, or `null` for a new rule, and its `updatedat` is `null` |
+| `rule` | The rule as `/ModelAccess/Set` would save it, shaped like a row of `/ModelAccess/List`. Its `guid` and `createdat` are those of the rule it would replace, or `null` for a new rule, and its `updatedat` and `updatedby` are `null` |
 | `existing` | The current rule with the same `scope` and `target`, which the change would replace, or `null` when there is none |
 | `agentchatmodel` | For an `agent` rule only: the chat model the agent answers with, as its settings name it (`ref`) and by its `owner/slug` on Wiro (`model`), and whether the rule would block it (`blocked`) |
 
@@ -6346,7 +6428,8 @@ Each applicable rule comes back shaped like a row of `/ModelAccess/List`, with w
             { "id": "2062", "model": "bytedance/seedance-v2-5-flash", "title": "Seedance v2.5 Flash Video Generator", "access": "allow" }
           ],
           "createdat": 1795180800,
-          "updatedat": 1795180800
+          "updatedat": 1795180800,
+          "updatedby": { "useruuid": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f", "label": "the organization owner" }
         },
         "access": "allow",
         "by": "default",
@@ -6364,7 +6447,8 @@ Each applicable rule comes back shaped like a row of `/ModelAccess/List`, with w
           ],
           "models": [],
           "createdat": 1795184400,
-          "updatedat": 1795188000
+          "updatedat": 1795188000,
+          "updatedby": { "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", "label": "John Doe" }
         },
         "access": "block",
         "by": "default",
@@ -7572,7 +7656,9 @@ also managed under
 The workspace's [Model Access](/docs/model-access) rules apply to these calls
 too, on the same surfaces. A model a rule blocks is refused before anything runs
 (error code `92`), and the tool returns an error with Wiro's message, which names
-the rule. Nothing ran and nothing was charged. `check_model_access` shows why
+the rule. A message to Studio or the Workflow Agent is refused the same way when
+a rule blocks its chat model, the one it names or the default. Nothing ran and
+nothing was charged. `check_model_access` shows why
 the model is blocked, and `manage_model_access` changes the rule after a change
 summary. Rules are also managed under
 [Controls > Model Access](https://wiro.ai/panel/controls/model-access).
@@ -8389,13 +8475,13 @@ A session is one conversation with its own memory. `sessionkey` names it, and `"
 
 - **$10 to start a turn.** Send and SendForm need at least $10 spendable in the wallet of the key's workspace. Below that, the message is refused with code `97` (`Insufficient balance`), with `walletUsd` and `minTopup` in the response, and nothing is charged.
 - **Chat.** Each turn is charged after it ends for the tokens it used, at the chat model's rates in [StudioWorkflow/Status](#post-studioworkflowstatus) (credits per 1M tokens; 1 credit is $0.01). The reply's `tokencost` shows the charge in credits: `tokencost / 100` is the amount in USD.
-- **Spend limits.** The chat counts toward your workspace's [spend limits](/docs/spend-limits).
+- **Spend limits and Model Access.** The chat counts toward your workspace's [spend limits](/docs/spend-limits), and its chat model follows your [Model Access](/docs/model-access) rules: the account's or the team's, your own in a team, and those of the API key and the surface you sent the message with. A message whose chat model a rule blocks is refused with code `92` before anything runs.
 - The agent only reads the catalog, so its turns start no model runs. Saving a proposal is free, and running the saved workflow is billed like any [workflow run](/docs/workflows#costs).
 - [StudioWorkflow/Transactions](#post-studioworkflowtransactions) lists the charges.
 
 ## **POST** /StudioWorkflow/Status
 
-Returns the wallet check and the chat models the agent can use, after settling your pending Workflow Agent charges. It takes no request fields, and its fields are the same as [Studio/Status](/docs/studio#post-studiostatus): `walletUsd`, `needsTopup`, `minTopup` (`10`), `tokenRates` and `agentModel.chatModel`. `title` is `"Workflow Agent"`.
+Returns the wallet check and the chat models the agent can use, after settling your pending Workflow Agent charges. It takes no request fields, and its fields are the same as [Studio/Status](/docs/studio#post-studiostatus): `walletUsd`, `needsTopup`, `minTopup` (`10`), `tokenRates`, `agentModel.chatModel`, `blockedModels`, `agentModelBlocked` and `agentModelMessage`. `title` is `"Workflow Agent"`.
 
 ## **POST** /StudioWorkflow/Message/Send
 
@@ -8405,7 +8491,7 @@ Sends a message to the Workflow Agent and returns at once with the turn's `messa
 |-----------|------|----------|-------------|
 | `message` | string | Yes | The brief, at most 16 KB (UTF-8). Say what the workflow should do, what people will give it as input and which results they want back. Pass on limits such as budget, speed, quality or a model. |
 | `sessionkey` | string | No | The session. Defaults to `"default"`, the project's main session. |
-| `model` | string | No | The chat model for this turn: a slug whose `selectable` is `true` in [StudioWorkflow/Status](#post-studioworkflowstatus). Leave it out to use the default. |
+| `model` | string | No | The chat model for this turn: a slug whose `selectable` is `true` in [StudioWorkflow/Status](#post-studioworkflowstatus). Leave it out to use the default chat model, `agentModel.chatModel`. A chat model your [Model Access](/docs/model-access) rules block is refused with code `92`, the default included. |
 | `workflowContext` | object | No | A workflow for the agent to edit, at most 40 KB of JSON. See [Editing a workflow](#editing-a-workflow). |
 
 ### Response
@@ -8552,6 +8638,7 @@ Business errors come back with HTTP 200, `result: false` and an `errors` array. 
 |---------|------|------|
 | `Insufficient balance` | 97 | Send or SendForm with less than $10 spendable. The response adds `walletUsd` and `minTopup`. |
 | A spend limit refusal, such as `Your monthly spend limit is reached ($100.40 of $100.00). It resets on December 1, 2026 at 00:00 UTC.` | 93 | Send or SendForm while a [spend limit](/docs/spend-limits) that covers the message is used up. Nothing is charged. |
+| A Model Access refusal, such as `This team can't use openai/gpt-5-6-terra. Model Access rules decide which models can run.` | 92 | Send or SendForm when a [Model Access](/docs/model-access) rule that covers the message blocks its chat model: the `model` it names, or the default chat model when it names none. It is checked before the balance and the spend limits. Nothing is sent or charged. |
 | `Request parameter [message] required` | 0 | No message, and no file on SendForm. |
 | `message exceeds the 16KB limit.` | 0 | The message is longer than 16 KB. |
 | `sessionkey has invalid format` | 0 | A session name with other characters, `:cron:`, or more than 100 characters. |
@@ -8609,7 +8696,7 @@ A session is one conversation with its own memory. `sessionkey` names it, and `"
 - **What a turn costs.** A turn's cost depends on the models Studio runs for it, and can be more than $10.
 - **Chat.** Each turn is charged for the tokens it used, at the chat model's rates in [Studio/Status](#post-studiostatus) (credits per 1M tokens; 1 credit is $0.01). The reply shows the chat charge in `tokencost`, in credits: `tokencost / 100` is the amount in USD.
 - **Model runs.** Each model run Studio starts is charged at that model's price when it succeeds. Failed and cancelled runs are not charged. [Studio/Tasks](#post-studiotasks) shows each run's `totalcost`.
-- **Spend limits and Model Access.** The models Studio runs for you follow your workspace's [spend limits](/docs/spend-limits) and [Model Access](/docs/model-access) rules, the same as the runs you start yourself: the account's or the team's, your own in a team, and those of the API key and the surface you sent the message with. What the chat costs counts toward spend limits too.
+- **Spend limits and Model Access.** The models Studio runs for you follow your workspace's [spend limits](/docs/spend-limits) and [Model Access](/docs/model-access) rules, the same as the runs you start yourself: the account's or the team's, your own in a team, and those of the API key and the surface you sent the message with. So does the chat: what it costs counts toward spend limits, and a message whose chat model a Model Access rule blocks is refused with code `92` before anything runs.
 - Charges are made within about a minute of the work finishing. [Studio/Transactions](#post-studiotransactions) lists them, and they also appear in the wallet's transactions.
 
 ## **POST** /Studio/Status
@@ -8621,8 +8708,11 @@ Returns the wallet check and the chat models Studio can use. It settles your pen
 | `walletUsd` | number | Spendable balance of the workspace wallet in USD. |
 | `needsTopup` | boolean | `true` when `walletUsd` is below `minTopup`. |
 | `minTopup` | number | The balance a turn needs to start: `10`. |
-| `tokenRates` | object | Chat model rates. `default_model` is the default chat model, and `models` is keyed by model slug: each entry has `input_per_1m` and `output_per_1m` (credits per 1M tokens), optional cached-input, cache-write and long-context rates, a `label`, and `selectable: true` when you can pick it with `model`. |
+| `tokenRates` | object | Chat model rates. `default_model` is the default chat model, and `models` is keyed by model slug: each entry has `input_per_1m` and `output_per_1m` (credits per 1M tokens), optional cached-input, cache-write and long-context rates, a `label`, and `selectable: true` when you can pick it with `model`. A model you could pick that your [Model Access](/docs/model-access) rules block reads `selectable: false` and `blocked: true`. |
 | `agentModel.chatModel` | string | The chat model a turn uses when you leave `model` out. |
+| `blockedModels` | string[] | The chat models you could pick that your Model Access rules block. `[]` when none is blocked. |
+| `agentModelBlocked` | boolean | `true` when your rules block `agentModel.chatModel`: a message that leaves `model` out is then refused with code `92`. |
+| `agentModelMessage` | string \| null | The refusal such a message gets when `agentModelBlocked` is `true`, else `null`. |
 | `title` | string | The agent's name. |
 | `status` | number | Always `4`. |
 
@@ -8660,9 +8750,47 @@ The response also carries fields that Wiro's own apps use. Ignore the ones not l
   },
   "agentModel": {
     "chatModel": "openai/gpt-5.6-sol"
-  }
+  },
+  "blockedModels": [],
+  "agentModelBlocked": false,
+  "agentModelMessage": null
 }
 ```
+
+When a rule blocks a chat model, Status says so. With a team rule that blocks `openai/gpt-5-6-sol`, Studio's default chat model, these fields read:
+
+```json
+{
+  "tokenRates": {
+    "default_model": "openai/gpt-5.6-sol",
+    "models": {
+      "openai/gpt-5.6-sol": {
+        "input_per_1m": 625,
+        "output_per_1m": 3750,
+        "cached_input_per_1m": 62.5,
+        "selectable": false,
+        "label": "GPT-5.6 Sol",
+        "blocked": true
+      },
+      "openai/gpt-5.4-mini": {
+        "input_per_1m": 93.75,
+        "output_per_1m": 562.5,
+        "cached_input_per_1m": 9.375,
+        "selectable": true,
+        "label": "GPT-5.4 Mini"
+      }
+    }
+  },
+  "agentModel": {
+    "chatModel": "openai/gpt-5.6-sol"
+  },
+  "blockedModels": ["openai/gpt-5.6-sol"],
+  "agentModelBlocked": true,
+  "agentModelMessage": "This team can't use openai/gpt-5-6-sol. Model Access rules decide which models can run."
+}
+```
+
+A message that leaves `model` out is then refused with `agentModelMessage`. Send a model that is still selectable, such as `openai/gpt-5.4-mini`.
 
 ## **POST** /Studio/Message/Send
 
@@ -8672,7 +8800,7 @@ Sends a message to Studio. It returns at once with the turn's `messageguid` and 
 |-----------|------|----------|-------------|
 | `message` | string | Yes | Your request, as you would type it in Studio. Say what the result is for, the look (subject, style, format or aspect ratio, length for video and audio) and how many results you want. Quote any exact text that must appear in an image or be spoken. |
 | `sessionkey` | string | No | The session to send to. Defaults to `"default"`, the main Studio chat. |
-| `model` | string | No | The chat model for this turn: a slug whose `selectable` is `true` in [Studio/Status](#post-studiostatus). Leave it out to use Studio's default. Use the same `model` on every turn of a session; when it differs from the previous turn, the response includes `modelChangeMarker`, as in [Agent Messaging](/docs/agent-messaging). |
+| `model` | string | No | The chat model for this turn: a slug whose `selectable` is `true` in [Studio/Status](#post-studiostatus). Leave it out to use Studio's default chat model, `agentModel.chatModel`. A chat model your [Model Access](/docs/model-access) rules block is refused with code `92`, the default included. Use the same `model` on every turn of a session; when it differs from the previous turn, the response includes `modelChangeMarker`, as in [Agent Messaging](/docs/agent-messaging). |
 
 To attach files, use [Message/SendForm](#post-studiomessagesendform).
 
@@ -8696,6 +8824,15 @@ A wallet below the minimum gets:
   "errors": [{ "code": 97, "message": "Insufficient balance", "time": 1761902400 }],
   "walletUsd": 6.4,
   "minTopup": 10
+}
+```
+
+A message whose chat model a Model Access rule blocks gets code `92`, and nothing is sent or charged:
+
+```json
+{
+  "result": false,
+  "errors": [{ "code": 92, "message": "This team can't use openai/gpt-5-6-terra. Model Access rules decide which models can run.", "time": 1761902400 }]
 }
 ```
 
@@ -8951,6 +9088,7 @@ Business errors come back with HTTP 200, `result: false` and an `errors` array, 
 |---------|------|------|
 | `Insufficient balance` | 97 | Send or SendForm with less than $10 spendable. The response adds `walletUsd` and `minTopup`. |
 | A spend limit refusal, such as `Your monthly spend limit is reached ($100.40 of $100.00). It resets on December 1, 2026 at 00:00 UTC.` | 93 | Send or SendForm while a [spend limit](/docs/spend-limits) that covers the message is used up. Nothing is charged. |
+| A Model Access refusal, such as `This team can't use openai/gpt-5-6-terra. Model Access rules decide which models can run.` | 92 | Send or SendForm when a [Model Access](/docs/model-access) rule that covers the message blocks its chat model: the `model` it names, or the default chat model when it names none. It is checked before the balance and the spend limits. Nothing is sent or charged. |
 | `Request parameter [message] required` | 0 | Send without a message, or SendForm with neither a message nor a file. |
 | `Invalid model: <model> is not in the selectable model allowlist.` | 0 | `model` is not a selectable slug in Studio/Status. |
 | `A Studio session name may contain only letters, digits, ".", "_", ":" and "-", at most 128 characters, and cannot end in "-r" followed by a number. Nothing was sent or charged.` | 0 | Send or SendForm with a session name outside that rule. |
@@ -11791,7 +11929,7 @@ Poll every 30 seconds or more.
 | `events[].title` | string | Human-readable one-line description (always present). |
 | `events[].summary` | object \| null | Structured event-specific payload. Treat as opaque and render as JSON when expanding. Secret values (`apikey`, `apppassword`, `clientsecret`, `bearer`, `token`, …) are masked before the event is written. Keys vary per `kind`/`tool`. |
 | `events[].durationMs` | number \| null | Wall-clock duration in milliseconds. Populated on `tool_completed`, `turn_ended`, `cron_finished` and `token_usage` events. |
-| `events[].ok` | boolean \| null | `true` on success, `false` on failure. Populated on `tool_completed`, `turn_ended` and `cron_finished` events, and always `false` on `tool_blocked`. Pair with `error` for failures. It is always `true` on `AGENT_*` rows. A `turn_ended` for a turn the caller cancelled has no `ok`, and its title reads `Agent turn cancelled`. |
+| `events[].ok` | boolean \| null | `true` on success, `false` on failure. Populated on `tool_completed`, `turn_ended` and `cron_finished` events, and always `false` on `tool_blocked`. Pair with `error` for failures. It is always `true` on `AGENT_*` rows. A `turn_ended` for a turn the caller cancelled has no `ok`, and its title reads `Agent turn cancelled`. A `cron_finished` for a Scheduled Task run that the agent's spend limit or Model Access rule paused has no `ok` either, and its title starts with `Paused by a spend limit:` or `Paused by a Model Access rule:`. |
 | `events[].error` | string \| null | One-line failure message (when `ok: false`). |
 | `events[].model` | string \| null | Canonical model slug billed for the turn. Present on `token_usage` / `token_usage_idempotent` events. |
 | `events[].tokens` | object \| null | Token breakdown on `token_usage` events: `{ input, output, cacheRead, cacheWrite, total }`, **nested camelCase** (distinct from the flat lowercase `inputtokens` / `outputtokens` / … columns on message + transaction rows; same underlying data, different shape). |
@@ -12203,7 +12341,7 @@ Returns the last N realtime voice sessions for a useragent, covering **both Twil
 | `callerInfo` | object | Twilio rows: `{ number, country }` (E.164 + ISO-2). Web rows: `{ page_url, display_identifier? }`, where `display_identifier` is only present when the embedding page validated a phone-style identifier; `page_url` is the page hosting the widget. |
 | `callerProfile` | string \| null | Free-text summary of the caller that the agent writes before the call. `null` until it is ready. |
 | `status` | string | `realtime_session_incoming` (call accepted, prep in flight) → `realtime_session_active` (audio flowing) → `realtime_session` (completed normally) or `realtime_session_rejected` (rejected before active state, with `metadata.reason`). |
-| `endReason` | string \| null | Set on `realtime_session` rows only. One of: `wiro_completed`, `wiro_cancelled`, `wiro_disconnect`, `wiro_error`, `twilio_disconnect`, `browser_disconnect`, `max_duration`. `null` while the call is still in flight or rejected. |
+| `endReason` | string \| null | Set on `realtime_session` rows only. One of: `wiro_completed`, `wiro_cancelled`, `wiro_disconnect`, `wiro_error`, `twilio_disconnect`, `browser_disconnect`, `max_duration`, `spend_limit` (a [spend limit](/docs/spend-limits) was reached during the call), `balance` (the balance ran out during the call). `null` while the call is still in flight or rejected. |
 | `durationSeconds` | number \| null | Total elapsed seconds. `null` until end. |
 | `modelSlug` | string \| null | Realtime model slug used for this call (e.g. `gpt-realtime-mini`). |
 | `startedAt` / `endedAt` | number \| null | Unix epoch ms. `endedAt` stays `null` until the call finishes or is rejected. |
@@ -13810,7 +13948,7 @@ When a turn ends with `agent_error` or `agent_cancel`, `response` and `debugoutp
 | `[SECURITY_BLOCKED]` | `agent_error` | The agent's security rules blocked the message. | Change the message and send it again. |
 | `[SAFETY_POLICY_BLOCKED]` | `agent_error` | The model's provider declined the request under its usage or safety policy. | Rephrase the request and send it again. |
 | `[TURN_INTERRUPTED]` | `agent_error` | The agent restarted while the turn was running. | Send the message again. |
-| `[SPEND_LIMIT_REACHED]` | `agent_error` | The agent's own [spend limit](/docs/spend-limits) is used up, so its model calls were refused. | Wait for the limit to reset, or have someone who manages the workspace's spend limits raise it under [Controls > Spend Limits](https://wiro.ai/panel/controls/spend-limits): the account owner, or in a team a team admin or the organization owner. |
+| `[SPEND_LIMIT_REACHED]` | `agent_error` | The agent's own [spend limit](/docs/spend-limits) is used up, so its model calls were refused. A turn that is already running stops at its next model call. | Wait for the limit to reset, or have someone who manages the workspace's spend limits raise it under [Controls > Spend Limits](https://wiro.ai/panel/controls/spend-limits): the account owner, or in a team a team admin or the organization owner. |
 | `[USAGE_CEILING_REACHED]` | `agent_error` | The agent reached its hourly or daily safety ceiling for AI model calls. | Wait until that hour or day is over. |
 | `[MODEL_NOT_ALLOWED]` | `agent_error` | The agent's own [Model Access](/docs/model-access) rule blocks the model it uses, so its model calls were refused. | Have someone who manages the workspace's Model Access rules allow the model under [Controls > Model Access](https://wiro.ai/panel/controls/model-access), or choose another model for the agent. |
 | `[AGENT_UNAVAILABLE]` | `agent_error` | Any other failure. | Try again after a short wait. |
@@ -13830,6 +13968,8 @@ The full texts:
 ```
 
 Match the code in brackets, never the sentence after it, which can change. Turns that failed before the codes existed are returned in the same form.
+
+In Telegram, Slack and Discord the agent says the same without the code in brackets, when a turn stops and when a message arrives while its spend limit is used up or its rule blocks its model. The spend limit sentence also names the limit's period and when it resets, when the agent knows them: `This agent's daily spend limit is used up, so it paused. It runs again when the limit resets at 00:00 UTC or is raised.`
 
 ## **POST** /UserAgent/Message/Send
 
@@ -23364,13 +23504,13 @@ Every event is a JSON object with this base shape:
 | `title` | `string` | Human-readable one-line description of what happened (e.g. `"Posted carousel: \"Brand voice teaser\""`, `"Fetched https://…"`, `"Token Usage"`). Always present. |
 | `summary` | `object?` | Structured event-specific payload. Opaque on the wire, so render it as JSON when expanding the row. Secret values (`apikey`, `apppassword`, `clientsecret`, `bearer`, `token`, …) are masked before the event is written. Common keys: `file`, `method`, `host`, `path`, `preview`, `messageCount`, `jobId`, `status`, `reason`. |
 | `durationMs` | `number?` | Wall-clock duration in milliseconds. Populated on `tool_completed`, `turn_ended`, `cron_finished` and `token_usage` events. |
-| `ok` | `boolean?` | `true` for a successful completion, `false` for a failure. Populated on `tool_completed`, `turn_ended` and `cron_finished` events, and always `false` on `tool_blocked`. Pair with `error` for failure rows. It is always `true` on `AGENT_*` rows. A `turn_ended` for a turn the caller cancelled has no `ok`, and its title reads `Agent turn cancelled`. |
+| `ok` | `boolean?` | `true` for a successful completion, `false` for a failure. Populated on `tool_completed`, `turn_ended` and `cron_finished` events, and always `false` on `tool_blocked`. Pair with `error` for failure rows. It is always `true` on `AGENT_*` rows. A `turn_ended` for a turn the caller cancelled has no `ok`, and its title reads `Agent turn cancelled`. A `cron_finished` for a Scheduled Task run that the agent's spend limit or Model Access rule paused has no `ok` either, and its title starts with `Paused by a spend limit:` or `Paused by a Model Access rule:`. |
 | `error` | `string?` | One-line failure message (when `ok: false`). |
 | `cost` | `object?` | Legacy per-action credit charge, `{ credits, skill, action }`. Only events recorded before agents switched to per-turn token billing can carry it; current events never do. See the `token_usage` event for what a turn cost. |
 | `userUuid` | `string?` | UUID of the actor who triggered the event. `"system"` for cron / internal events. May be missing on older rows, in which case the server falls back to the agent owner. |
 | `user` | `object\|null` | Resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. `null` when `userUuid` is `"system"` (automation / cron) or when the user record was deleted. |
 
-> **What is `summary` for?** Tool events carry a short summary of the call: for example the file path for file tools, the program for `exec`, or the method, host and path for web requests. Turn events carry a short `preview` (plus `messageCount` on `turn_ended`); `cron_finished` carries `{ jobId, status }`; `user_message` carries `{ preview }`; `tool_blocked` carries the `reason`. Treat the object as opaque and render-on-expand, since its shape depends on the tool and may change without a docs revision.
+> **What is `summary` for?** Tool events carry a short summary of the call: for example the file path for file tools, the program for `exec`, or the method, host and path for web requests. Turn events carry a short `preview` (plus `messageCount` on `turn_ended`); `cron_finished` carries `{ jobId, status }`, plus `reason` (`spend_limit` or `model_access`) when `status` is `paused`; `user_message` carries `{ preview }`; `tool_blocked` carries the `reason`. Treat the object as opaque and render-on-expand, since its shape depends on the tool and may change without a docs revision.
 
 To tell what a tool call is doing, read `toolintegration` and `toolaction` instead of parsing `title` or `summary`. Both are missing when no word fits the step, and `tool_blocked` events don't carry them.
 

@@ -33,13 +33,13 @@ A session is one conversation with its own memory. `sessionkey` names it, and `"
 
 - **$10 to start a turn.** Send and SendForm need at least $10 spendable in the wallet of the key's workspace. Below that, the message is refused with code `97` (`Insufficient balance`), with `walletUsd` and `minTopup` in the response, and nothing is charged.
 - **Chat.** Each turn is charged after it ends for the tokens it used, at the chat model's rates in [StudioWorkflow/Status](#post-studioworkflowstatus) (credits per 1M tokens; 1 credit is $0.01). The reply's `tokencost` shows the charge in credits: `tokencost / 100` is the amount in USD.
-- **Spend limits.** The chat counts toward your workspace's [spend limits](/docs/spend-limits).
+- **Spend limits and Model Access.** The chat counts toward your workspace's [spend limits](/docs/spend-limits), and its chat model follows your [Model Access](/docs/model-access) rules: the account's or the team's, your own in a team, and those of the API key and the surface you sent the message with. A message whose chat model a rule blocks is refused with code `92` before anything runs.
 - The agent only reads the catalog, so its turns start no model runs. Saving a proposal is free, and running the saved workflow is billed like any [workflow run](/docs/workflows#costs).
 - [StudioWorkflow/Transactions](#post-studioworkflowtransactions) lists the charges.
 
 ## **POST** /StudioWorkflow/Status
 
-Returns the wallet check and the chat models the agent can use, after settling your pending Workflow Agent charges. It takes no request fields, and its fields are the same as [Studio/Status](/docs/studio#post-studiostatus): `walletUsd`, `needsTopup`, `minTopup` (`10`), `tokenRates` and `agentModel.chatModel`. `title` is `"Workflow Agent"`.
+Returns the wallet check and the chat models the agent can use, after settling your pending Workflow Agent charges. It takes no request fields, and its fields are the same as [Studio/Status](/docs/studio#post-studiostatus): `walletUsd`, `needsTopup`, `minTopup` (`10`), `tokenRates`, `agentModel.chatModel`, `blockedModels`, `agentModelBlocked` and `agentModelMessage`. `title` is `"Workflow Agent"`.
 
 ## **POST** /StudioWorkflow/Message/Send
 
@@ -49,7 +49,7 @@ Sends a message to the Workflow Agent and returns at once with the turn's `messa
 |-----------|------|----------|-------------|
 | `message` | string | Yes | The brief, at most 16 KB (UTF-8). Say what the workflow should do, what people will give it as input and which results they want back. Pass on limits such as budget, speed, quality or a model. |
 | `sessionkey` | string | No | The session. Defaults to `"default"`, the project's main session. |
-| `model` | string | No | The chat model for this turn: a slug whose `selectable` is `true` in [StudioWorkflow/Status](#post-studioworkflowstatus). Leave it out to use the default. |
+| `model` | string | No | The chat model for this turn: a slug whose `selectable` is `true` in [StudioWorkflow/Status](#post-studioworkflowstatus). Leave it out to use the default chat model, `agentModel.chatModel`. A chat model your [Model Access](/docs/model-access) rules block is refused with code `92`, the default included. |
 | `workflowContext` | object | No | A workflow for the agent to edit, at most 40 KB of JSON. See [Editing a workflow](#editing-a-workflow). |
 
 ### Response
@@ -196,6 +196,7 @@ Business errors come back with HTTP 200, `result: false` and an `errors` array. 
 |---------|------|------|
 | `Insufficient balance` | 97 | Send or SendForm with less than $10 spendable. The response adds `walletUsd` and `minTopup`. |
 | A spend limit refusal, such as `Your monthly spend limit is reached ($100.40 of $100.00). It resets on December 1, 2026 at 00:00 UTC.` | 93 | Send or SendForm while a [spend limit](/docs/spend-limits) that covers the message is used up. Nothing is charged. |
+| A Model Access refusal, such as `This team can't use openai/gpt-5-6-terra. Model Access rules decide which models can run.` | 92 | Send or SendForm when a [Model Access](/docs/model-access) rule that covers the message blocks its chat model: the `model` it names, or the default chat model when it names none. It is checked before the balance and the spend limits. Nothing is sent or charged. |
 | `Request parameter [message] required` | 0 | No message, and no file on SendForm. |
 | `message exceeds the 16KB limit.` | 0 | The message is longer than 16 KB. |
 | `sessionkey has invalid format` | 0 | A session name with other characters, `:cron:`, or more than 100 characters. |

@@ -72,6 +72,7 @@ During a realtime speech-to-text session, you'll receive these WebSocket events:
 | `task_output` | server → client | Transcript text prefixed with `TRANSCRIPT_USER:` |
 | `task_stream_end` | server → client | Transcription stream has ended: no more transcripts will arrive |
 | `task_cost` | server → client | Cost update: includes `turnCost`, `cumulativeCost`, and `usage` breakdown. On models priced by time, each update covers the time since the previous one. |
+| `task_session_stopped` | server → client | The server is ending the session after the turn that reached a spend limit or used up the balance: `reason` is `spend_limit` or `balance`, with `code` and `message`. The closing events follow (see Ending a Session) |
 | `task_end` | server → client | The model process has exited. Post-processing follows. Wait for `task_postprocess_end` before closing. |
 | `task_postprocess_end` | server → client | Post-processing complete: safe to close the WebSocket now. |
 
@@ -172,11 +173,29 @@ To gracefully end a realtime session, send `task_session_end`:
 
 After sending this, the server processes any remaining buffered audio, sends final transcript and cost events, and then emits `task_postprocess_end`. Wait for `task_postprocess_end` before closing the WebSocket.
 
-The server can also end a session on its own: after a period without speech, or when your balance runs out (see below). It then sends the same closing events, ending with `task_postprocess_end`. The server never sends `task_session_end`; that message only goes from the client to the server.
+The server can also end a session on its own: after a period without speech, or after the turn that uses up your balance or reaches a [spend limit](/docs/spend-limits) (see below). It then sends the same closing events, ending with `task_postprocess_end`. The server never sends `task_session_end`; that message only goes from the client to the server.
+
+When a spend limit or the balance ends the session, the server first sends `task_session_stopped`, right after that turn's `task_cost`:
+
+```json
+{
+  "type": "task_session_stopped",
+  "id": "534574",
+  "reason": "spend_limit",
+  "code": 93,
+  "message": "This team's monthly spend limit is reached ($50.00 of $50.00). It resets on December 1, 2026 at 00:00 UTC.",
+  "result": true,
+  "success": null,
+  "terminal": false,
+  "exitCode": null
+}
+```
+
+`reason` is `spend_limit`, with `code` `93`, or `balance`, with `code` `97`. For a spend limit, `message` is the refusal [`/Run`](/docs/run-a-model) would give for that limit, which names it and says when it resets. For the balance it is `The balance ran out, so the session ended.` The event is not a failure: the usual closing events follow, and `task_postprocess_end` reports success. When it arrives, stop sending microphone audio, show `message` and keep listening until `task_postprocess_end`. You don't need to send `task_session_end`. The event can also come after you sent `task_session_end`, when that last turn uses up the limit or the balance; the session ends either way. No `task_session_stopped` is sent when a session ends for any other reason.
 
 > **Safety:** If the client disconnects without sending `task_session_end`, the server automatically terminates the session to prevent the pipeline from running indefinitely (and the provider from continuing to charge). Always send `task_session_end` explicitly for a clean shutdown.
 
-> **Insufficient balance:** The session is charged turn by turn as it runs. When a charged turn uses up your available balance (the team wallet's balance when you use a team project's API key), the server stops the session right after that turn. That turn is charged in full, and so is any final usage reported while the session closes, so your balance can end slightly below zero. You still receive the final `task_cost` and `task_end` events.
+> **Insufficient balance:** The session is charged turn by turn as it runs. When a charged turn uses up your available balance (the team wallet's balance when you use a team project's API key), the server stops the session right after that turn. That turn is charged in full, and so is any final usage reported while the session closes, so your balance can end slightly below zero. You still receive the final `task_cost` and `task_end` events, and `task_session_stopped` with `reason` `balance` and `code` `97` says why the session ended.
 
 ## Code Examples
 

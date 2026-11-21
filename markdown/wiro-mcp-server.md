@@ -859,7 +859,9 @@ also managed under
 The workspace's [Model Access](/docs/model-access) rules apply to these calls
 too, on the same surfaces. A model a rule blocks is refused before anything runs
 (error code `92`), and the tool returns an error with Wiro's message, which names
-the rule. Nothing ran and nothing was charged. `check_model_access` shows why
+the rule. A message to Studio or the Workflow Agent is refused the same way when
+a rule blocks its chat model, the one it names or the default. Nothing ran and
+nothing was charged. `check_model_access` shows why
 the model is blocked, and `manage_model_access` changes the rule after a change
 summary. Rules are also managed under
 [Controls > Model Access](https://wiro.ai/panel/controls/model-access).

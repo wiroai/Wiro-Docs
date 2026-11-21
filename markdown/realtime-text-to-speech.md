@@ -70,6 +70,7 @@ During a realtime TTS session, you'll receive these WebSocket events:
 | `task_stream_ready` | Session is ready: the model is generating audio and will begin sending chunks |
 | `task_stream_end` | The model finished generating audio for the current segment |
 | `task_cost` | Cost update: includes `turnCost`, `cumulativeCost`, and `usage` (raw cost breakdown from the model provider) |
+| `task_session_stopped` | The server is ending the session after the turn that reached a spend limit or used up the balance: `reason` is `spend_limit` or `balance`, with `code` and `message`. The closing events follow (see Ending a Session) |
 | `task_end` | The model process has exited. Post-processing follows. Wait for `task_postprocess_end` to close the connection. |
 | `task_postprocess_end` | Post-processing is complete. Safe to close the WebSocket connection. |
 
@@ -150,9 +151,29 @@ After sending this, the server will finish any in-progress generation, send fina
 
 For TTS sessions, the stream often ends naturally when the model finishes generating audio for the provided text. In this case, you'll receive `task_stream_end` followed by `task_end` without needing to send `task_session_end`. However, it's good practice to send it explicitly for a clean shutdown, especially if you want to stop playback early.
 
+The server can also end a session on its own, after the turn that uses up your balance or reaches a [spend limit](/docs/spend-limits). It then sends the same closing events, ending with `task_postprocess_end`.
+
+When a spend limit or the balance ends the session, the server first sends `task_session_stopped`, right after that turn's `task_cost`:
+
+```json
+{
+  "type": "task_session_stopped",
+  "id": "534574",
+  "reason": "spend_limit",
+  "code": 93,
+  "message": "This team's monthly spend limit is reached ($50.00 of $50.00). It resets on December 1, 2026 at 00:00 UTC.",
+  "result": true,
+  "success": null,
+  "terminal": false,
+  "exitCode": null
+}
+```
+
+`reason` is `spend_limit`, with `code` `93`, or `balance`, with `code` `97`. For a spend limit, `message` is the refusal [`/Run`](/docs/run-a-model) would give for that limit, which names it and says when it resets. For the balance it is `The balance ran out, so the session ended.` The event is not a failure: the usual closing events follow, and `task_postprocess_end` reports success. When it arrives, let the audio you already have finish playing, show `message` and keep listening until `task_postprocess_end`. You don't need to send `task_session_end`. The event can also come after you sent `task_session_end`, when that last turn uses up the limit or the balance; the session ends either way. No `task_session_stopped` is sent when a session ends for any other reason.
+
 > **Safety:** If the client disconnects without sending `task_session_end`, the server automatically terminates the session to prevent the pipeline from running indefinitely (and the provider from continuing to charge). Always send `task_session_end` explicitly for a clean shutdown.
 
-> **Insufficient balance:** The session is charged turn by turn as it runs. When a charged turn uses up your available balance (the team wallet's balance when you use a team project's API key), the server stops the session right after that turn. That turn is charged in full, and so is any final usage reported while the session closes, so your balance can end slightly below zero. You still receive the final `task_cost` and `task_end` events.
+> **Insufficient balance:** The session is charged turn by turn as it runs. When a charged turn uses up your available balance (the team wallet's balance when you use a team project's API key), the server stops the session right after that turn. That turn is charged in full, and so is any final usage reported while the session closes, so your balance can end slightly below zero. You still receive the final `task_cost` and `task_end` events, and `task_session_stopped` with `reason` `balance` and `code` `97` says why the session ended.
 
 ## Code Examples
 

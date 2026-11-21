@@ -274,11 +274,26 @@ These events are exclusive to realtime models ([voice conversation](/docs/realti
   "usage": { "input_tokens": 150, "output_tokens": 89 },
   "result": true
 }
+
+// The session is ending: a spend limit was reached or the balance ran out
+{
+  "type": "task_session_stopped",
+  "id": "534574",
+  "reason": "spend_limit",
+  "code": 93,
+  "message": "This team's monthly spend limit is reached ($50.00 of $50.00). It resets on December 1, 2026 at 00:00 UTC.",
+  "result": true,
+  "success": null,
+  "terminal": false,
+  "exitCode": null
+}
 ```
 
 `task_cost.usage` is the provider-specific realtime usage payload for that
 turn. It is separate from the normalized structured finite-LLM `message.usage`
 contract described above and can omit `total_tokens` or detail objects.
+
+`task_session_stopped` comes once, right after the `task_cost` of the turn that reached a [spend limit](/docs/spend-limits) (`reason` `spend_limit`, `code` `93`) or used up the balance (`reason` `balance`, `code` `97`). It is not a failure: the session then closes with the usual events. See [Realtime Voice](/docs/realtime-voice-conversation#realtime-end-session).
 
 ## Binary Frames
 

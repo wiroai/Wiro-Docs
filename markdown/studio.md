@@ -37,7 +37,7 @@ A session is one conversation with its own memory. `sessionkey` names it, and `"
 - **What a turn costs.** A turn's cost depends on the models Studio runs for it, and can be more than $10.
 - **Chat.** Each turn is charged for the tokens it used, at the chat model's rates in [Studio/Status](#post-studiostatus) (credits per 1M tokens; 1 credit is $0.01). The reply shows the chat charge in `tokencost`, in credits: `tokencost / 100` is the amount in USD.
 - **Model runs.** Each model run Studio starts is charged at that model's price when it succeeds. Failed and cancelled runs are not charged. [Studio/Tasks](#post-studiotasks) shows each run's `totalcost`.
-- **Spend limits and Model Access.** The models Studio runs for you follow your workspace's [spend limits](/docs/spend-limits) and [Model Access](/docs/model-access) rules, the same as the runs you start yourself: the account's or the team's, your own in a team, and those of the API key and the surface you sent the message with. What the chat costs counts toward spend limits too.
+- **Spend limits and Model Access.** The models Studio runs for you follow your workspace's [spend limits](/docs/spend-limits) and [Model Access](/docs/model-access) rules, the same as the runs you start yourself: the account's or the team's, your own in a team, and those of the API key and the surface you sent the message with. So does the chat: what it costs counts toward spend limits, and a message whose chat model a Model Access rule blocks is refused with code `92` before anything runs.
 - Charges are made within about a minute of the work finishing. [Studio/Transactions](#post-studiotransactions) lists them, and they also appear in the wallet's transactions.
 
 ## **POST** /Studio/Status
@@ -49,8 +49,11 @@ Returns the wallet check and the chat models Studio can use. It settles your pen
 | `walletUsd` | number | Spendable balance of the workspace wallet in USD. |
 | `needsTopup` | boolean | `true` when `walletUsd` is below `minTopup`. |
 | `minTopup` | number | The balance a turn needs to start: `10`. |
-| `tokenRates` | object | Chat model rates. `default_model` is the default chat model, and `models` is keyed by model slug: each entry has `input_per_1m` and `output_per_1m` (credits per 1M tokens), optional cached-input, cache-write and long-context rates, a `label`, and `selectable: true` when you can pick it with `model`. |
+| `tokenRates` | object | Chat model rates. `default_model` is the default chat model, and `models` is keyed by model slug: each entry has `input_per_1m` and `output_per_1m` (credits per 1M tokens), optional cached-input, cache-write and long-context rates, a `label`, and `selectable: true` when you can pick it with `model`. A model you could pick that your [Model Access](/docs/model-access) rules block reads `selectable: false` and `blocked: true`. |
 | `agentModel.chatModel` | string | The chat model a turn uses when you leave `model` out. |
+| `blockedModels` | string[] | The chat models you could pick that your Model Access rules block. `[]` when none is blocked. |
+| `agentModelBlocked` | boolean | `true` when your rules block `agentModel.chatModel`: a message that leaves `model` out is then refused with code `92`. |
+| `agentModelMessage` | string \| null | The refusal such a message gets when `agentModelBlocked` is `true`, else `null`. |
 | `title` | string | The agent's name. |
 | `status` | number | Always `4`. |
 
@@ -88,9 +91,47 @@ The response also carries fields that Wiro's own apps use. Ignore the ones not l
   },
   "agentModel": {
     "chatModel": "openai/gpt-5.6-sol"
-  }
+  },
+  "blockedModels": [],
+  "agentModelBlocked": false,
+  "agentModelMessage": null
 }
 ```
+
+When a rule blocks a chat model, Status says so. With a team rule that blocks `openai/gpt-5-6-sol`, Studio's default chat model, these fields read:
+
+```json
+{
+  "tokenRates": {
+    "default_model": "openai/gpt-5.6-sol",
+    "models": {
+      "openai/gpt-5.6-sol": {
+        "input_per_1m": 625,
+        "output_per_1m": 3750,
+        "cached_input_per_1m": 62.5,
+        "selectable": false,
+        "label": "GPT-5.6 Sol",
+        "blocked": true
+      },
+      "openai/gpt-5.4-mini": {
+        "input_per_1m": 93.75,
+        "output_per_1m": 562.5,
+        "cached_input_per_1m": 9.375,
+        "selectable": true,
+        "label": "GPT-5.4 Mini"
+      }
+    }
+  },
+  "agentModel": {
+    "chatModel": "openai/gpt-5.6-sol"
+  },
+  "blockedModels": ["openai/gpt-5.6-sol"],
+  "agentModelBlocked": true,
+  "agentModelMessage": "This team can't use openai/gpt-5-6-sol. Model Access rules decide which models can run."
+}
+```
+
+A message that leaves `model` out is then refused with `agentModelMessage`. Send a model that is still selectable, such as `openai/gpt-5.4-mini`.
 
 ## **POST** /Studio/Message/Send
 
@@ -100,7 +141,7 @@ Sends a message to Studio. It returns at once with the turn's `messageguid` and 
 |-----------|------|----------|-------------|
 | `message` | string | Yes | Your request, as you would type it in Studio. Say what the result is for, the look (subject, style, format or aspect ratio, length for video and audio) and how many results you want. Quote any exact text that must appear in an image or be spoken. |
 | `sessionkey` | string | No | The session to send to. Defaults to `"default"`, the main Studio chat. |
-| `model` | string | No | The chat model for this turn: a slug whose `selectable` is `true` in [Studio/Status](#post-studiostatus). Leave it out to use Studio's default. Use the same `model` on every turn of a session; when it differs from the previous turn, the response includes `modelChangeMarker`, as in [Agent Messaging](/docs/agent-messaging). |
+| `model` | string | No | The chat model for this turn: a slug whose `selectable` is `true` in [Studio/Status](#post-studiostatus). Leave it out to use Studio's default chat model, `agentModel.chatModel`. A chat model your [Model Access](/docs/model-access) rules block is refused with code `92`, the default included. Use the same `model` on every turn of a session; when it differs from the previous turn, the response includes `modelChangeMarker`, as in [Agent Messaging](/docs/agent-messaging). |
 
 To attach files, use [Message/SendForm](#post-studiomessagesendform).
 
@@ -124,6 +165,15 @@ A wallet below the minimum gets:
   "errors": [{ "code": 97, "message": "Insufficient balance", "time": 1761902400 }],
   "walletUsd": 6.4,
   "minTopup": 10
+}
+```
+
+A message whose chat model a Model Access rule blocks gets code `92`, and nothing is sent or charged:
+
+```json
+{
+  "result": false,
+  "errors": [{ "code": 92, "message": "This team can't use openai/gpt-5-6-terra. Model Access rules decide which models can run.", "time": 1761902400 }]
 }
 ```
 
@@ -379,6 +429,7 @@ Business errors come back with HTTP 200, `result: false` and an `errors` array, 
 |---------|------|------|
 | `Insufficient balance` | 97 | Send or SendForm with less than $10 spendable. The response adds `walletUsd` and `minTopup`. |
 | A spend limit refusal, such as `Your monthly spend limit is reached ($100.40 of $100.00). It resets on December 1, 2026 at 00:00 UTC.` | 93 | Send or SendForm while a [spend limit](/docs/spend-limits) that covers the message is used up. Nothing is charged. |
+| A Model Access refusal, such as `This team can't use openai/gpt-5-6-terra. Model Access rules decide which models can run.` | 92 | Send or SendForm when a [Model Access](/docs/model-access) rule that covers the message blocks its chat model: the `model` it names, or the default chat model when it names none. It is checked before the balance and the spend limits. Nothing is sent or charged. |
 | `Request parameter [message] required` | 0 | Send without a message, or SendForm with neither a message nor a file. |
 | `Invalid model: <model> is not in the selectable model allowlist.` | 0 | `model` is not a selectable slug in Studio/Status. |
 | `A Studio session name may contain only letters, digits, ".", "_", ":" and "-", at most 128 characters, and cannot end in "-r" followed by a number. Nothing was sent or charged.` | 0 | Send or SendForm with a session name outside that rule. |

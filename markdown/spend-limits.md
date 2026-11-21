@@ -56,7 +56,9 @@ Limits are checked before work starts:
 
 When the price of the work is known before it starts, as for fixed-price models, workflow runs and agent purchases, the work is refused if spending so far, plus what work in progress holds, plus that price would go over the limit. Otherwise it is refused once the limit has no room left.
 
-Work that is already running finishes and is charged. A realtime session ends after the turn that uses up a limit, the same way it ends when the balance runs out. Automatic monthly renewals of running agents are never refused by a limit, but they still count toward it.
+Work that is already running finishes and is charged, with two exceptions. A realtime session, an agent's voice call included, ends after the turn that uses up a limit, the same way it ends when the balance runs out: its clients get a `task_session_stopped` event with `reason` `spend_limit`, code `93` and the refusal `/Run` would give (see [Realtime Voice](/docs/realtime-voice-conversation#realtime-end-session)), and a caller on the phone hears a short notice before the call ends. An agent whose own limit is used up pauses at its next model call, even in the middle of a reply (see below).
+
+Automatic monthly renewals of running agents are never refused by a limit. They count toward the account's limit and, in a team, toward the limit of the member who started the plan, never toward a surface, API key or agent limit.
 
 ### Work in Progress
 
@@ -91,9 +93,11 @@ When the price of the work is known before it starts, the message says what is l
 
 Nothing runs and nothing is charged. Retrying does not help until the limit resets or someone who manages it raises it. Through the [LLM gateway](/docs/completions-api#gateway-errors) the refusal is an HTTP `402` error with code `spend_limit_reached`, and the [MCP server](/docs/wiro-mcp-server) returns it as a tool error.
 
+When an agent's own limit is used up, the agent pauses. A turn that is running stops at its next model call (see [Failed turns](/docs/agent-messaging#failed-turns)), new messages to the agent are refused, and its Scheduled Tasks are paused rather than failed. In Telegram, Slack and Discord it tells people so in a plain sentence, with the time the limit resets when that is known. Once the limit resets, is raised or is removed, the agent answers again and each Scheduled Task runs at its next scheduled time, with no restart.
+
 ### Alert Emails
 
-A limit sends an alert email when spending reaches its `alertpct`: 50, 80 (the default) or 90 percent of the limit, or `null` for no alert email. It sends a used-up email when the limit is reached. Each email goes out once per limit and period, and changing the limit re-arms both for the current period.
+A limit sends an alert email when spending reaches its `alertpct`: 50, 80 (the default) or 90 percent of the limit, or `null` for no alert email. It sends a used-up email when the limit is reached. Each email goes out once per limit and period, and changing the limit re-arms both for the current period. The emails link to the Spend Limits page of the workspace the limit belongs to.
 
 A personal account's limits email the account. A team's limits email the team's admins and the organization owner, and also the member a member limit is for, the person who created the API key a key limit is for, and the owner of the agent an agent limit is for.
 
@@ -144,6 +148,7 @@ Returns the spend limits of the call's workspace, each with what has been spent 
       "resetsat": 1796083200,
       "createdat": 1793805600,
       "updatedat": 1793805600,
+      "updatedby": { "useruuid": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f", "label": "the organization owner" },
       "spentusd": 248.7,
       "heldusd": 3.5
     },
@@ -159,6 +164,7 @@ Returns the spend limits of the call's workspace, each with what has been spent 
       "resetsat": 1796083200,
       "createdat": 1793805600,
       "updatedat": 1793805600,
+      "updatedby": null,
       "spentusd": 120.5
     },
     {
@@ -173,6 +179,7 @@ Returns the spend limits of the call's workspace, each with what has been spent 
       "resetsat": 1796083200,
       "createdat": 1794474300,
       "updatedat": 1794474300,
+      "updatedby": { "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", "label": "John Doe" },
       "spentusd": 88.2
     }
   ]
@@ -196,6 +203,7 @@ Returns the spend limits of the call's workspace, each with what has been spent 
 | `limits[].periodstart` | Start of the current period, in Unix seconds |
 | `limits[].resetsat` | When the current period ends and the limit resets, in Unix seconds |
 | `limits[].createdat`, `limits[].updatedat` | When the limit was added and last changed, in Unix seconds |
+| `limits[].updatedby` | Who changed the limit last: `useruuid` and `label`, the person's name, or their email when they have no name. In a team, the owner of its organization who is not a member of the team is labeled `the organization owner`, and someone who has left the team has a `null` label. A change made with an API key names the person who created the key's project. `updatedby` is `null` when Wiro changed the limit last, as for the team and member limits moved into this system |
 | `limits[].spentusd` | What has been spent in the current period, in USD |
 | `limits[].heldusd` | When work in progress holds part of the limit: how much it holds, in USD (see [Work in Progress](#work-in-progress)) |
 
@@ -265,6 +273,7 @@ Adds a spend limit to the call's workspace, or changes the existing limit with t
     "resetsat": 1796083200,
     "createdat": 1794474300,
     "updatedat": 1794474300,
+    "updatedby": { "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", "label": "John Doe" },
     "spentusd": 61.4
   }
 }
@@ -332,6 +341,7 @@ Shows what `/SpendLimit/Set` would do, and changes nothing. It takes the same bo
     "resetsat": 1796083200,
     "createdat": 1794474300,
     "updatedat": null,
+    "updatedby": null,
     "spentusd": 88.2
   },
   "existing": {
@@ -346,6 +356,7 @@ Shows what `/SpendLimit/Set` would do, and changes nothing. It takes the same bo
     "resetsat": 1796083200,
     "createdat": 1794474300,
     "updatedat": 1794474300,
+    "updatedby": { "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", "label": "John Doe" },
     "spentusd": 88.2
   }
 }
@@ -355,7 +366,7 @@ Shows what `/SpendLimit/Set` would do, and changes nothing. It takes the same bo
 |-------|-------------|
 | `preview` | Always `true`: nothing was changed |
 | `workspace` | The workspace the change would be made in, as in `/SpendLimit/List`: `type`, `teamguid` and `canmanage`, which is always `true` here |
-| `limit` | The limit as `/SpendLimit/Set` would save it, shaped like a row of `/SpendLimit/List`, with what has been spent in its current period. Its `guid` and `createdat` are those of the limit it would replace, or `null` for a new limit, and its `updatedat` is `null` |
+| `limit` | The limit as `/SpendLimit/Set` would save it, shaped like a row of `/SpendLimit/List`, with what has been spent in its current period. Its `guid` and `createdat` are those of the limit it would replace, or `null` for a new limit, and its `updatedat` and `updatedby` are `null` |
 | `existing` | The current limit with the same `scope`, `target` and `period`, which the change would replace, or `null` when there is none |
 
 When `limit.spentusd` is already at or above the new amount, the limit is used up as soon as it is saved. The errors are those of `/SpendLimit/Set`, except that Preview does not count toward the hourly cap on changes made with API keys.
@@ -438,5 +449,7 @@ Returns what the call's workspace has spent this month or today, in total and by
 | `usage.projects` | Spending per API key, with the project's name as `label` |
 | `usage.agents` | Spending per deployed agent, with the agent's title as `label` |
 | `heldusd` in a row of `usage.surfaces`, `usage.members`, `usage.projects` or `usage.agents` | What work in progress holds for that row, present only when it holds something. A member, API key or agent whose only spending so far is held work is listed with `spentusd` `0` |
+
+An agent plan's automatic renewal counts in `totalusd` and, in a team, in the row of the member who started the plan, but in no row of `usage.surfaces`, `usage.projects` or `usage.agents`, so those rows can add up to less than `totalusd`.
 
 For other breakdowns, `/Project/UsageSummary` gives usage per project and `/Task/Stat` gives time-series task execution data. Both filter by the active workspace.
