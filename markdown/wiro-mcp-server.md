@@ -229,7 +229,7 @@ your `claude_desktop_config.json`:
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.9.0"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@latest"],
       "env": {
         "WIRO_API_KEY": "YOUR_API_KEY",
         "WIRO_API_SECRET": "YOUR_API_SECRET"
@@ -243,8 +243,9 @@ For API Key Only authentication, keep `WIRO_API_KEY` and remove the
 `WIRO_API_SECRET` entry completely. Save the file, fully quit Claude Desktop,
 and reopen it.
 
-Pin the current published version (`@wiro-ai/wiro-mcp@1.9.0`) in `args`.
-Unversioned `npx` can keep an older cached build after a package update. To always start the newest release instead, use `@wiro-ai/wiro-mcp@latest` (for example `npx -y @wiro-ai/wiro-mcp@latest`): `npx` then looks up the latest version on npm when the client starts the server.
+Keep `@latest` in `args`: `npx` then looks up the newest version on npm each
+time the client starts the server. Without it, `npx` can keep running an older
+cached build after a package update.
 
 This setup runs the open-source
 [`@wiro-ai/wiro-mcp`](https://www.npmjs.com/package/@wiro-ai/wiro-mcp) bridge on
@@ -257,8 +258,8 @@ your machine and calls Wiro with your project credentials. See
   `"type": "stdio"`, `command`, `args`, and `env` exactly as shown above.
 - **The Wiro tools do not appear**: confirm `node --version` reports 20 or
   later, then fully quit and reopen Claude Desktop.
-- **Tools appear but every call fails immediately**: pin
-  `@wiro-ai/wiro-mcp@1.9.0` as shown above so `npx` does not reuse an older
+- **Tools appear but every call fails immediately**: use
+  `@wiro-ai/wiro-mcp@latest` as shown above so `npx` does not reuse an older
   cached package, then fully quit and reopen Claude Desktop.
 - **A generation reaches Claude's tool timeout**: Wiro waits for at most 45
   seconds per call. If the task is still running, the response contains

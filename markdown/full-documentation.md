@@ -7224,7 +7224,7 @@ Or install Node.js 20 or later and add this local stdio entry to
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.9.0"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@latest"],
       "env": {
         "WIRO_API_KEY": "YOUR_API_KEY",
         "WIRO_API_SECRET": "YOUR_API_SECRET"
@@ -7235,9 +7235,10 @@ Or install Node.js 20 or later and add this local stdio entry to
 ```
 
 For API Key Only authentication, remove `WIRO_API_SECRET` completely. Fully quit
-and reopen Claude Desktop after saving. Pin `@wiro-ai/wiro-mcp@1.9.0` in `args`
-so `npx` does not reuse an older cached build. This runs the local package
-and provides the same Wiro tools. To always start the newest release instead, use `@wiro-ai/wiro-mcp@latest` (for example `npx -y @wiro-ai/wiro-mcp@latest`): `npx` then looks up the latest version on npm when the client starts the server.
+and reopen Claude Desktop after saving. The `@latest` in `args`
+makes `npx` look up the newest version on npm at every start, so it does not
+reuse an older cached build. This runs the local package and provides the same
+Wiro tools.
 
 Claude Desktop may enforce a fixed client-side tool timeout. Wiro returns from
 each generation wait within 45 seconds; when `nextAction.tool` is
@@ -7702,7 +7703,7 @@ Run the Wiro MCP server locally on your own machine using npx.
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.9.0"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@latest"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -7714,8 +7715,9 @@ Run the Wiro MCP server locally on your own machine using npx.
 
 The self-hosted server exposes the same 54 tools, playbooks and prompts as
 the hosted server, including bounded `run_model`, `wait_for_task`, and optional short waits through
-`get_task.wait_seconds`. Pin `@wiro-ai/wiro-mcp@1.9.0` in the npx `args` so
-clients do not reuse an older cached package. To always start the newest release instead, use `@wiro-ai/wiro-mcp@latest` (for example `npx -y @wiro-ai/wiro-mcp@latest`): `npx` then looks up the latest version on npm when the client starts the server.
+`get_task.wait_seconds`. The `@latest` in the npx `args` makes
+`npx` look up the newest version on npm at every start, so clients do not
+reuse an older cached package.
 
 ## Environment Variables
 
