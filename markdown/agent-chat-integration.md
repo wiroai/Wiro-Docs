@@ -214,6 +214,7 @@ A turn that fails ends with `status: "agent_error"`, and a cancelled one with `"
 | `[SPEND_LIMIT_REACHED]` | `agent_error` | The agent's spend limit is used up: show the sentence as it is. |
 | `[USAGE_CEILING_REACHED]` | `agent_error` | The agent reached its hourly or daily safety ceiling for AI model calls: say it runs again when that hour or day is over. |
 | `[MODEL_NOT_ALLOWED]` | `agent_error` | The agent's Model Access rule blocks the model it uses: show the sentence as it is. |
+| `[CREDITS_EXHAUSTED]` | `agent_error` | The agent has no credits left: say it runs again once credits are added or its plan renews, and don't offer to try again before that. |
 | `[AGENT_UNAVAILABLE]` | `agent_error` | Anything else, a message that couldn't be queued included: offer to try again shortly. |
 | `[REQUEST_CANCELLED]` | `agent_cancel` | The turn was cancelled. |
 

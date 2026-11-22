@@ -55,6 +55,7 @@ When a turn ends with `agent_error` or `agent_cancel`, `response` and `debugoutp
 | `[SPEND_LIMIT_REACHED]` | `agent_error` | The agent's own [spend limit](/docs/spend-limits) is used up, so its model calls were refused. A turn that is already running stops at its next model call. | Wait for the limit to reset, or have someone who manages the workspace's spend limits raise it under [Controls > Spend Limits](https://wiro.ai/panel/controls/spend-limits): the account owner, or in a team a team admin or the organization owner. |
 | `[USAGE_CEILING_REACHED]` | `agent_error` | The agent reached its hourly or daily safety ceiling for AI model calls. | Wait until that hour or day is over. |
 | `[MODEL_NOT_ALLOWED]` | `agent_error` | The agent's own [Model Access](/docs/model-access) rule blocks the model it uses, so its model calls were refused. | Have someone who manages the workspace's Model Access rules allow the model under [Controls > Model Access](https://wiro.ai/panel/controls/model-access), or choose another model for the agent. |
+| `[CREDITS_EXHAUSTED]` | `agent_error` | The agent has no credits left, so its model calls were refused. Every try fails until credits are added. | Buy extra credits for the agent with [CreateExtraCreditCheckout](/docs/agent-overview#post-useragentcreateextracreditcheckout), or wait for its plan to renew. Don't send the message again before that. |
 | `[AGENT_UNAVAILABLE]` | `agent_error` | Any other failure. | Try again after a short wait. |
 | `[REQUEST_CANCELLED]` | `agent_cancel` | The turn was cancelled, while it ran or while it was still queued. | Nothing to do. |
 
@@ -67,6 +68,7 @@ The full texts:
 [SPEND_LIMIT_REACHED] This agent's spend limit is used up, so it paused. It runs again when the limit resets or is raised.
 [USAGE_CEILING_REACHED] This agent reached its hourly or daily safety ceiling for AI model calls, so it paused. It runs again when that hour or day is over.
 [MODEL_NOT_ALLOWED] This agent's Model Access rule blocks the model it uses, so it stopped. It runs again once the model is allowed or another one is chosen.
+[CREDITS_EXHAUSTED] This agent has no credits left, so it paused. It runs again once credits are added or its plan renews.
 [AGENT_UNAVAILABLE] Agent is temporarily unavailable. Please try again shortly.
 [REQUEST_CANCELLED] Request cancelled.
 ```
