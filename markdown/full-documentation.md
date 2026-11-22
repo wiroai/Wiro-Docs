@@ -18815,7 +18815,7 @@ A credential is a set of values an agent keeps for something it is, rather than 
 | Telegram, Slack, Discord | `telegram`, `slack`, `discord` | The agent's own external chat channels. See [Communication Channels](#communication-channels). |
 | Twilio Voice | `twilio-voice` | The phone line the agent answers. See [Twilio Voice Channel](/docs/integration-twiliovoice-skills). |
 | Wiro project | `wiro` | The project whose wallet pays for the Wiro model runs the agent makes, such as video and voice. See [The agent's Wiro project](#the-agents-wiro-project). |
-| Settings | `var-support-email`, `var-website` | Values the agent's skills read: the support email it gives customers, and its website addresses. |
+| Settings | `var-support-email`, `var-website`, `var-newsletter-test-email` | Values the agent's skills read: the support email it gives customers, its website addresses, and the inbox that gets a test copy of each newsletter before it goes out. |
 
 The services an agent works with (Google Ads, Shopify, HubSpot, Serper and the rest) are **connectors**, not credentials: browse, connect and disconnect them with the calls on [Agent Connectors](/docs/agent-connectors). `CredentialUpsert` doesn't take a connector's values.
 
@@ -18940,7 +18940,7 @@ Lists every credential in the registry: the channels, Twilio Voice, the Wiro pro
 {
   "result": true,
   "errors": [],
-  "total": 13,
+  "total": 14,
   "credentials": [
     {
       "key": "telegram",
