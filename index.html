@@ -30698,7 +30698,7 @@ Completing the required fields again reactivates it automatically.</p>
 <h3 id="your-product-shows-everything">Your product shows everything</h3>
 <p>Wiro's answers in a chat sent with a project API key name no site, page or link. When something still has to be connected, the answer says so in a plain sentence and returns the same information as data, the <code>next</code> array, so your product shows its own Connect button. Keys, app keys and tokens go into your own forms and reach Wiro through the API, never through the chat. When a connector signs in, the vendor's consent screen shows your organization or your own app, and the browser comes back to a page on your own site (see <a href="/docs/agent-connectors#who-your-customer-sees">Who your customer sees</a>, which also says where the API's own address can still show).</p>
 <p>A few fields are for your backend, not for your users: every message row and every card names your API key's owner as the person who sent, asked or applied (see <a href="#api-key">API key</a>), and the tokens and ids are your own references. Show your users your own names and words.</p>
-<p>Connector titles name their vendors, such as Google Analytics 4 or WordPress. Two things carry Wiro's name: the agent's Wiro project (the credential <code>wiro</code>, which pays for the models its skills run, such as Video Creator's or a voice channel's) and the <code>wiro</code> connector, which gives the agent Wiro's own tools. That name comes wherever the API names them, in the card listing and in <code>summary</code> too. An agent that runs models can also write their public links in an answer, such as a model's page on wiro.ai or an output file on cdn1.wiro.ai. Your product may show its own label for them, as for any title the API gives.</p>
+<p>Connector titles name their vendors, such as Google Analytics 4 or WordPress. Two things carry Wiro's name: the agent's Wiro project (the credential <code>wiro</code>, which pays for the models its skills run, such as Video Creator's or a voice channel's) and the Wiro AI Models (<code>wiro</code>) connector, which gives the agent Wiro's own tools. That name comes wherever the API names them, in the card listing and in <code>summary</code> too. An agent that runs models can also write their public links in an answer, such as a model's page on wiro.ai or an output file on cdn1.wiro.ai. Your product may show its own label for them, as for any title the API gives.</p>
 <p>A connector that signs in connects from its card too: <code>SetupCardApply</code> on its <code>connect</code> card answers the vendor's sign-in address, <code>authorizeUrl</code>, and the browser comes back to your <code>redirecturl</code> through one callback on the API host. A sign-in started with your API key always runs as your product: the consent screen names your organization, or the app of your own whose keys you send, never Wiro's own app. Send your own <code>redirecturl</code> with every sign-in: without one, the browser comes back to Wiro's return page on wiro.ai. The same connectors also connect on your own settings screens with the <a href="/docs/agent-connectors">Agent Connectors</a> calls.</p>
 <h3 id="the-flow-at-a-glance">The flow at a glance</h3>
 <pre><code class="language-text">Your user types           Your backend                     Wiro
@@ -30974,7 +30974,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
       {
         &quot;guid&quot;: &quot;c3d4e5f6-a7b8-9012-cdef-345678901234&quot;,
         &quot;content&quot;: &quot;Can you report our website traffic every Monday?&quot;,
-        &quot;response&quot;: &quot;I can do that once Google Analytics 4 is connected. Sign in to it with the card below, then I will set up the weekly report.&quot;,
+        &quot;response&quot;: &quot;I can send a traffic report every Monday at 09:00 with last week's sessions, users and top pages. Reply yes to set it up.&quot;,
         &quot;status&quot;: &quot;agent_end&quot;
       }
     ],
@@ -31020,7 +31020,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 </table>
 </div>
 </div>
-<p>A message added between turns has no turn of its own: nothing streams on an <code>agenttoken</code> for it and no webhook is called. A scheduled task's report goes to the session the agent's latest message is in, so on an agent that several of your users share it can reach any of their chats. To get it live, follow the session with the <code>sessiontoken</code> above: send <code>{ "type": "agent_session_subscribe", "sessiontoken": "Lp4vQ8sWn2KxT7cRb1YhZ6mDg9FjA3uEo5iNk0wXyHt" }</code> on the socket, and each new row arrives as an <code>agent_message_inserted</code> frame. Follows end with the connection, so after a reconnect subscribe again and read History once. See <a href="/docs/agent-websocket#following-a-session">Following a session</a>. The weekly report of the GA4 example below reaches your chat this way.</p>
+<p>A message added between turns has no turn of its own: nothing streams on an <code>agenttoken</code> for it and no webhook is called. A scheduled task's report goes to the session the agent's latest message is in, so on an agent that several of your users share it can reach any of their chats. To get it live, follow the session with the <code>sessiontoken</code> above: send <code>{ "type": "agent_session_subscribe", "sessiontoken": "Lp4vQ8sWn2KxT7cRb1YhZ6mDg9FjA3uEo5iNk0wXyHt" }</code> on the socket, and each new row arrives as an <code>agent_message_inserted</code> frame. Follows end with the connection, so after a reconnect subscribe again and read History once. See <a href="/docs/agent-websocket#following-a-session">Following a session</a>. The reports of the scheduled task Weekly traffic report, from the card above, reach your chat this way.</p>
 <p>To list a customer's conversations, call <a href="/docs/agent-messaging#post-useragentmessagesessions"><code>POST /UserAgent/Message/Sessions</code></a> with the <code>useragentguid</code>: it answers each session's <code>sessionkey</code>, <code>messagecount</code>, <code>updatedat</code>, <code>lastmessage</code> and, once named with <code>RenameSession</code>, <code>name</code>. It lists every session of the agent that your key's owner can read, so on an agent that several of your users share, show each person only the sessions your own records give them.</p>
 <h3 id="render-the-timeline">Render the timeline</h3>
 <p>A reply is an ordered list of blocks. Keep a map keyed by <code>blockid</code>, keep a block only when its <code>version</code> is newer than the one you hold, and draw the blocks sorted by <code>callindex</code>, then <code>contentindex</code>, then <code>blockid</code>.</p>
@@ -31113,7 +31113,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
       {
         &quot;name&quot;: &quot;apikey&quot;,
         &quot;label&quot;: &quot;Serper API Key&quot;,
-        &quot;description&quot;: &quot;1. Sign up at [serper.dev](https://serper.dev). No credit card; new accounts get **2,500 free searches**.\n2. Open the dashboard and copy your **API key** from the **API Key** section.\n3. Paste it here.&quot;,
+        &quot;description&quot;: &quot;Real Google web-search results as clean JSON, via [Serper.dev](https://serper.dev). Google's own Custom Search JSON API is being retired (shuts down 2027-01-01), so this connector uses Serper, which returns the same Google results with none of the Google Cloud setup.\n\n1. Sign up at [serper.dev](https://serper.dev). No credit card; new accounts get **2,500 free searches**.\n2. Open the dashboard and copy your **API key** from the **API Key** section.\n3. Paste it here. There is no Google Cloud project, no `cx`, and no key restriction to configure.\n\nAfter the free tier Serper is about $1 per 1,000 searches (cheaper at scale). Asking for more than 10 results per query counts as 2 searches.&quot;,
         &quot;required&quot;: true,
         &quot;secret&quot;: true,
         &quot;format&quot;: &quot;password&quot;,
@@ -31243,7 +31243,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <tr>
 <td><code>mode</code></td>
 <td><code>connect</code></td>
-<td>Written by Wiro: how the card connects, <code>key</code> (the values its <code>fields</code> ask for), <code>signin</code> (the vendor's sign-in) or <code>project</code> (a Wiro project for the <code>wiro</code> connector). See <a href="#modes">Modes</a>.</td>
+<td>Written by Wiro: how the card connects, <code>key</code> (the values its <code>fields</code> ask for), <code>signin</code> (the vendor's sign-in) or <code>project</code>, a Wiro project picked for Wiro AI Models (<code>wiro</code>). See <a href="#modes">Modes</a>.</td>
 </tr>
 <tr>
 <td><code>fields</code></td>
@@ -31358,13 +31358,13 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
   &quot;authtype&quot;: &quot;fields&quot;,
   &quot;mode&quot;: &quot;key&quot;,
   &quot;fields&quot;: [
-    { &quot;name&quot;: &quot;apikey&quot;, &quot;label&quot;: &quot;Serper API Key&quot;, &quot;description&quot;: &quot;1. Sign up at [serper.dev](https://serper.dev) ...&quot;, &quot;required&quot;: true, &quot;secret&quot;: true, &quot;format&quot;: &quot;password&quot;, &quot;placeholder&quot;: &quot;your Serper.dev API key&quot; }
+    { &quot;name&quot;: &quot;apikey&quot;, &quot;label&quot;: &quot;Serper API Key&quot;, &quot;description&quot;: &quot;Real Google web-search results as clean JSON, via [Serper.dev](https://serper.dev) ...&quot;, &quot;required&quot;: true, &quot;secret&quot;: true, &quot;format&quot;: &quot;password&quot;, &quot;placeholder&quot;: &quot;your Serper.dev API key&quot; }
   ],
   &quot;requestedby&quot;: &quot;5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f&quot;,
   &quot;createdat&quot;: 1794654811
 }
 </code></pre>
-<p>A connector that signs in gets a <code>signin</code> card: see <a href="#sign-in-hubspot">Sign-in: HubSpot</a>. The <code>wiro</code> connector gets a <code>project</code> card: see <a href="#project-wiro-ai-models">Project: Wiro AI Models</a>.</p>
+<p>A connector that signs in gets a <code>signin</code> card: see <a href="#sign-in-hubspot">Sign-in: HubSpot</a>. Wiro AI Models (<code>wiro</code>) gets a <code>project</code> card: see <a href="#project-wiro-ai-models">Project: Wiro AI Models</a>.</p>
 <p><code>disconnect</code> disconnects a connector the agent has a connection for, and carries its <code>title</code>:</p>
 <pre><code class="language-json">{
   &quot;v&quot;: 1,
@@ -31505,7 +31505,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <tr>
 <td><code>disconnect</code></td>
 <td>"Disconnect <code>&lt;title&gt;</code>"</td>
-<td>Say that the connection is removed and the agent loses the connector's tools until it is connected again</td>
+<td>Say that the connection is removed and the agent loses the connector's tools until it is connected again. For Wiro AI Models (<code>wiro</code>), also say that the agent keeps its Wiro project, which the models of its skills still use: only its <code>wiro__*</code> tools go</td>
 <td>Disconnect, Dismiss</td>
 </tr>
 <tr>
@@ -31667,7 +31667,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <td><code>wiroprojectguid</code></td>
 <td>string</td>
 <td>No</td>
-<td>A <code>project</code> card, the <code>wiro</code> connector's: the id of one of your projects, from <a href="/docs/projects"><code>POST /Project/List</code></a>. It becomes the agent's own Wiro project, as <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>CredentialProjectBind</code></a> binds it. Left out, a call made with your project API key binds that key's own project.</td>
+<td>A <code>project</code> card, the one of Wiro AI Models (<code>wiro</code>): the id of one of your projects, from <a href="/docs/projects"><code>POST /Project/List</code></a>. It becomes the agent's own Wiro project, as <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>CredentialProjectBind</code></a> binds it. Left out, a call made with your project API key binds that key's own project.</td>
 </tr>
 </tbody>
 </table>
@@ -31797,7 +31797,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 </tr>
 <tr>
 <td><code>project</code></td>
-<td>One of your Wiro projects, picked for the <code>wiro</code> connector. It becomes the agent's own Wiro project.</td>
+<td>One of your Wiro projects, picked for Wiro AI Models (<code>wiro</code>). It becomes the agent's own Wiro project.</td>
 <td>A picker of your projects (<a href="/docs/projects"><code>POST /Project/List</code></a>) for its one <code>source: "wiro_project"</code> field, and a Connect button</td>
 <td><code>SetupCardApply</code> with the project's id as <code>wiroprojectguid</code> and no <code>values</code>: the project is bound, the connector connects and the card is applied</td>
 </tr>
@@ -31805,7 +31805,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 </table>
 </div>
 </div>
-<p>A card's <code>mode</code> follows its connector in the catalog: <code>oauth</code> and <code>provider-oauth</code> connectors sign in, the <code>wiro</code> connector, whose one field is a Wiro project, gets a <code>project</code> card, and the other <code>fields</code>, <code>headers</code> and <code>none</code> connectors take a key. More modes can be added: show a card whose <code>mode</code> you don't know with Dismiss only, and connect its connector from your settings screen.</p>
+<p>A card's <code>mode</code> follows its connector in the catalog: <code>oauth</code> and <code>provider-oauth</code> connectors sign in, Wiro AI Models (<code>wiro</code>), whose one field is a Wiro project, gets a <code>project</code> card, and the other <code>fields</code>, <code>headers</code> and <code>none</code> connectors take a key. More modes can be added: show a card whose <code>mode</code> you don't know with Dismiss only, and connect its connector from your settings screen.</p>
 <h3 id="key-serper">Key: Serper</h3>
 <p>A key connector takes its fields as <code>values</code> on its <code>connect</code> card. Serper has one field, <code>apikey</code> (label "Serper API Key"). Wiro connects it as <a href="/docs/agent-connectors#connect-with-fields"><code>ConnectorConnect</code></a> does, with the same checks, and the agent never sees the key:</p>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply&quot; \
@@ -31831,7 +31831,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
     &quot;authtype&quot;: &quot;fields&quot;,
     &quot;mode&quot;: &quot;key&quot;,
     &quot;fields&quot;: [
-      { &quot;name&quot;: &quot;apikey&quot;, &quot;label&quot;: &quot;Serper API Key&quot;, &quot;description&quot;: &quot;1. Sign up at [serper.dev](https://serper.dev) ...&quot;, &quot;required&quot;: true, &quot;secret&quot;: true, &quot;format&quot;: &quot;password&quot;, &quot;placeholder&quot;: &quot;your Serper.dev API key&quot; }
+      { &quot;name&quot;: &quot;apikey&quot;, &quot;label&quot;: &quot;Serper API Key&quot;, &quot;description&quot;: &quot;Real Google web-search results as clean JSON, via [Serper.dev](https://serper.dev) ...&quot;, &quot;required&quot;: true, &quot;secret&quot;: true, &quot;format&quot;: &quot;password&quot;, &quot;placeholder&quot;: &quot;your Serper.dev API key&quot; }
     ],
     &quot;requestedby&quot;: &quot;5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f&quot;,
     &quot;createdat&quot;: 1794654811,
@@ -31845,7 +31845,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 </code></pre>
 <p>A value Wiro refuses (a required field missing, a format that doesn't fit, or a key the vendor refused) saves nothing: the answer is <code>result: false</code> with the sentence, and the card stays pending for the person to try again.</p>
 <h3 id="project-wiro-ai-models">Project: Wiro AI Models</h3>
-<p>The <code>wiro</code> connector gets a <code>project</code> card. Its one field has <code>source: "wiro_project"</code>: show a picker of your projects (<a href="/docs/projects"><code>POST /Project/List</code></a>) instead of an input, and never a box to type a key in:</p>
+<p>Wiro AI Models (<code>wiro</code>) gets a <code>project</code> card. Its one field has <code>source: "wiro_project"</code>: show a picker of your projects (<a href="/docs/projects"><code>POST /Project/List</code></a>) instead of an input, and never a box to type a key in:</p>
 <pre><code class="language-json">{
   &quot;v&quot;: 1,
   &quot;id&quot;: &quot;p4r7t2w9k3mz&quot;,
@@ -32013,7 +32013,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <li>A connector with account pickers, such as Facebook Pages, lists its candidates once it is connected. Let the person choose them on your settings screen with <a href="/docs/agent-connectors#post-useragentconnectoraccounts"><code>ConnectorAccounts</code></a> and <a href="/docs/agent-connectors#post-useragentconnectorsetaccounts"><code>ConnectorSetAccounts</code></a>: no card picks accounts.</li>
 </ul>
 <h3 id="connecting-on-your-settings-screen">Connecting on your settings screen</h3>
-<p>Every connector also connects without a card, on your own settings screens, with the Agent Connectors calls: <a href="/docs/agent-connectors#connect-with-fields">fields</a>, a <a href="/docs/agent-connectors#connect-with-a-key-instead-of-a-sign-in">key instead of a sign-in</a>, or the vendor's <a href="/docs/agent-connectors#connect-with-a-sign-in">sign-in</a> with a <code>redirecturl</code> on your own site, then its <a href="/docs/agent-connectors#account-pickers">account pickers</a>. Each answers <code>restart</code> (or <code>connector_connected=true</code> on your page after a sign-in): see <a href="#showing-a-restart">Showing a restart</a>. A pending <code>connect</code> card for a connector connected there is recorded applied when you apply it, with no values, or the next time a card of the same person's in that chat is applied or dismissed. A channel is saved with <a href="/docs/agent-overview#post-useragentcredentialupsert"><code>CredentialUpsert</code></a>: no card saves it. The agent's Wiro project is bound with <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>CredentialProjectBind</code></a>, or by the <code>wiro</code> connector's <code>project</code> card, which binds it the same way.</p>
+<p>Every connector also connects without a card, on your own settings screens, with the Agent Connectors calls: <a href="/docs/agent-connectors#connect-with-fields">fields</a>, a <a href="/docs/agent-connectors#connect-with-a-key-instead-of-a-sign-in">key instead of a sign-in</a>, or the vendor's <a href="/docs/agent-connectors#connect-with-a-sign-in">sign-in</a> with a <code>redirecturl</code> on your own site, then its <a href="/docs/agent-connectors#account-pickers">account pickers</a>. Each answers <code>restart</code> (or <code>connector_connected=true</code> on your page after a sign-in): see <a href="#showing-a-restart">Showing a restart</a>. A pending <code>connect</code> card for a connector connected there is recorded applied when you apply it, with no values, or the next time a card of the same person's in that chat is applied or dismissed. A channel is saved with <a href="/docs/agent-overview#post-useragentcredentialupsert"><code>CredentialUpsert</code></a>: no card saves it. The agent's Wiro project is bound with <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>CredentialProjectBind</code></a>, or by the <code>project</code> card of Wiro AI Models (<code>wiro</code>), which binds it the same way.</p>
 <h2 id="your-own-connect-button">Your Own Connect Button</h2>
 <h3 id="where-next-appears">Where next appears</h3>
 <p><code>next</code> is the list of connectors still to connect, as data for your own buttons. It comes in four places:</p>

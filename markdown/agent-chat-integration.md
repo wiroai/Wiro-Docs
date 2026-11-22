@@ -20,7 +20,7 @@ Wiro's answers in a chat sent with a project API key name no site, page or link.
 
 A few fields are for your backend, not for your users: every message row and every card names your API key's owner as the person who sent, asked or applied (see [API key](#api-key)), and the tokens and ids are your own references. Show your users your own names and words.
 
-Connector titles name their vendors, such as Google Analytics 4 or WordPress. Two things carry Wiro's name: the agent's Wiro project (the credential `wiro`, which pays for the models its skills run, such as Video Creator's or a voice channel's) and the `wiro` connector, which gives the agent Wiro's own tools. That name comes wherever the API names them, in the card listing and in `summary` too. An agent that runs models can also write their public links in an answer, such as a model's page on wiro.ai or an output file on cdn1.wiro.ai. Your product may show its own label for them, as for any title the API gives.
+Connector titles name their vendors, such as Google Analytics 4 or WordPress. Two things carry Wiro's name: the agent's Wiro project (the credential `wiro`, which pays for the models its skills run, such as Video Creator's or a voice channel's) and the Wiro AI Models (`wiro`) connector, which gives the agent Wiro's own tools. That name comes wherever the API names them, in the card listing and in `summary` too. An agent that runs models can also write their public links in an answer, such as a model's page on wiro.ai or an output file on cdn1.wiro.ai. Your product may show its own label for them, as for any title the API gives.
 
 A connector that signs in connects from its card too: `SetupCardApply` on its `connect` card answers the vendor's sign-in address, `authorizeUrl`, and the browser comes back to your `redirecturl` through one callback on the API host. A sign-in started with your API key always runs as your product: the consent screen names your organization, or the app of your own whose keys you send, never Wiro's own app. Send your own `redirecturl` with every sign-in: without one, the browser comes back to Wiro's return page on wiro.ai. The same connectors also connect on your own settings screens with the [Agent Connectors](/docs/agent-connectors) calls.
 
@@ -290,7 +290,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/History" \
       {
         "guid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
         "content": "Can you report our website traffic every Monday?",
-        "response": "I can do that once Google Analytics 4 is connected. Sign in to it with the card below, then I will set up the weekly report.",
+        "response": "I can send a traffic report every Monday at 09:00 with last week's sessions, users and top pages. Reply yes to set it up.",
         "status": "agent_end"
       }
     ],
@@ -310,7 +310,7 @@ The row is shortened here; a whole one has the fields of a [`Message/Detail`](/d
 | A message added between turns | `content` is empty, the text is in `response`, `metadata.type` is `"subagent"` or `"system"` | The agent's message with no message of the person's above it: a scheduled task's report, files sent after an answer, or, for `"subagent"`, the result of work the agent finished in the background. |
 | A model switch | `status` is `"agent_done"`, `metadata.type` is `"model_change"` | A thin separator, or nothing. It comes only when you pick a per-turn `model`. |
 
-A message added between turns has no turn of its own: nothing streams on an `agenttoken` for it and no webhook is called. A scheduled task's report goes to the session the agent's latest message is in, so on an agent that several of your users share it can reach any of their chats. To get it live, follow the session with the `sessiontoken` above: send `{ "type": "agent_session_subscribe", "sessiontoken": "Lp4vQ8sWn2KxT7cRb1YhZ6mDg9FjA3uEo5iNk0wXyHt" }` on the socket, and each new row arrives as an `agent_message_inserted` frame. Follows end with the connection, so after a reconnect subscribe again and read History once. See [Following a session](/docs/agent-websocket#following-a-session). The weekly report of the GA4 example below reaches your chat this way.
+A message added between turns has no turn of its own: nothing streams on an `agenttoken` for it and no webhook is called. A scheduled task's report goes to the session the agent's latest message is in, so on an agent that several of your users share it can reach any of their chats. To get it live, follow the session with the `sessiontoken` above: send `{ "type": "agent_session_subscribe", "sessiontoken": "Lp4vQ8sWn2KxT7cRb1YhZ6mDg9FjA3uEo5iNk0wXyHt" }` on the socket, and each new row arrives as an `agent_message_inserted` frame. Follows end with the connection, so after a reconnect subscribe again and read History once. See [Following a session](/docs/agent-websocket#following-a-session). The reports of the scheduled task Weekly traffic report, from the card above, reach your chat this way.
 
 To list a customer's conversations, call [`POST /UserAgent/Message/Sessions`](/docs/agent-messaging#post-useragentmessagesessions) with the `useragentguid`: it answers each session's `sessionkey`, `messagecount`, `updatedat`, `lastmessage` and, once named with `RenameSession`, `name`. It lists every session of the agent that your key's owner can read, so on an agent that several of your users share, show each person only the sessions your own records give them.
 
@@ -394,7 +394,7 @@ A setup block has the usual block fields, `type: "setup"`, `text: null` and a `s
       {
         "name": "apikey",
         "label": "Serper API Key",
-        "description": "1. Sign up at [serper.dev](https://serper.dev). No credit card; new accounts get **2,500 free searches**.\n2. Open the dashboard and copy your **API key** from the **API Key** section.\n3. Paste it here.",
+        "description": "Real Google web-search results as clean JSON, via [Serper.dev](https://serper.dev). Google's own Custom Search JSON API is being retired (shuts down 2027-01-01), so this connector uses Serper, which returns the same Google results with none of the Google Cloud setup.\n\n1. Sign up at [serper.dev](https://serper.dev). No credit card; new accounts get **2,500 free searches**.\n2. Open the dashboard and copy your **API key** from the **API Key** section.\n3. Paste it here. There is no Google Cloud project, no `cx`, and no key restriction to configure.\n\nAfter the free tier Serper is about $1 per 1,000 searches (cheaper at scale). Asking for more than 10 results per query counts as 2 searches.",
         "required": true,
         "secret": true,
         "format": "password",
@@ -438,7 +438,7 @@ A setup block has the usual block fields, `type: "setup"`, `text: null` and a `s
 | `connector` | `connect`, `disconnect` | The connector's slug as [`POST /AgentConnector/List`](/docs/agent-connectors#post-agentconnectorlist) lists it, such as `serper` or `hubspot`. A card names only connectors of the catalog: never a channel or a credential, and never a key's value. |
 | `title` | `connect`, `disconnect`, `schedule`, `skill` | `connect` and `disconnect`: the connector's title, written by Wiro, up to 120 characters. `schedule` and `skill`: optional, one line, up to 80 characters. |
 | `authtype` | `connect` | Written by Wiro: the connector's `authtype` in the catalog, `fields`, `headers`, `none`, `oauth` or `provider-oauth`. |
-| `mode` | `connect` | Written by Wiro: how the card connects, `key` (the values its `fields` ask for), `signin` (the vendor's sign-in) or `project` (a Wiro project for the `wiro` connector). See [Modes](#modes). |
+| `mode` | `connect` | Written by Wiro: how the card connects, `key` (the values its `fields` ask for), `signin` (the vendor's sign-in) or `project`, a Wiro project picked for Wiro AI Models (`wiro`). See [Modes](#modes). |
 | `fields` | `connect` | Written by Wiro: what the card's form asks for, at most 30, in the shape of `credentialfields` on [`AgentConnector/Detail`](/docs/agent-connectors#connect-card-fields): `name`, `label`, `description` (Markdown), `required`, `secret`, `format`, and `options`, `placeholder`, `pattern`, `maxlength`, `serveronly`, `mode` or `source` where they apply. On a `key` card, the connector's Connect fields. On a `project` card, one field with `source: "wiro_project"`: a project picker, never an input. On a `signin` card, the fields its sign-in takes: for a connector that signs in with an app of your own, that app's keys (`serveronly: true`), and any other field the sign-in needs, such as Shopify's Shop Domain. The fields of a connector's key way are never on a `signin` card. Empty when there is nothing to enter. |
 | `wiroapp` | `connect` | Written by Wiro, only on a card from a Wiro web chat turn: `true` when its connector signs in there with Wiro's own app. Never on a card from a chat sent with your API key, whose sign-in always takes your own app's keys. |
 | `cron` | `schedule` | Five fields, in the agent's time zone. Always on `create`, optional on `update`. A task set up from chat runs at most once an hour. |
@@ -500,14 +500,14 @@ When `needs` names connectors, Wiro stores a `connect` card for each of them on 
   "authtype": "fields",
   "mode": "key",
   "fields": [
-    { "name": "apikey", "label": "Serper API Key", "description": "1. Sign up at [serper.dev](https://serper.dev) ...", "required": true, "secret": true, "format": "password", "placeholder": "your Serper.dev API key" }
+    { "name": "apikey", "label": "Serper API Key", "description": "Real Google web-search results as clean JSON, via [Serper.dev](https://serper.dev) ...", "required": true, "secret": true, "format": "password", "placeholder": "your Serper.dev API key" }
   ],
   "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
   "createdat": 1794654811
 }
 ```
 
-A connector that signs in gets a `signin` card: see [Sign-in: HubSpot](#sign-in-hubspot). The `wiro` connector gets a `project` card: see [Project: Wiro AI Models](#project-wiro-ai-models).
+A connector that signs in gets a `signin` card: see [Sign-in: HubSpot](#sign-in-hubspot). Wiro AI Models (`wiro`) gets a `project` card: see [Project: Wiro AI Models](#project-wiro-ai-models).
 
 `disconnect` disconnects a connector the agent has a connection for, and carries its `title`:
 
@@ -613,7 +613,7 @@ Whenever a card is applied, dismissed or fails, Wiro also marks applied the same
 | `add` | "Add `<title>`", the `title` of `key` in `Skills/List` | `with` as "Also turns on", `pauses` and `resumes`, and each entry of `needs` with its `connect` card | Apply, Dismiss, and the buttons of its `connect` cards; see [Buttons](#buttons) |
 | `remove` | "Remove `<title>`" | `with` as "Also turns off", `pauses` and `resumes` | Apply, Dismiss |
 | `connect` | "Connect `<title>`" | By `mode`: for `key`, a form from `fields`; for `signin`, a form from `fields` when the card has any: your own app's keys (`serveronly: true`) and any other field the sign-in needs, such as LinkedIn's Organization ID or Shopify's Shop Domain; for `project`, a picker of your projects | Save for `key` (Connect when no field is required), Sign in for `signin`, Connect for `project`, and Dismiss |
-| `disconnect` | "Disconnect `<title>`" | Say that the connection is removed and the agent loses the connector's tools until it is connected again | Disconnect, Dismiss |
+| `disconnect` | "Disconnect `<title>`" | Say that the connection is removed and the agent loses the connector's tools until it is connected again. For Wiro AI Models (`wiro`), also say that the agent keeps its Wiro project, which the models of its skills still use: only its `wiro__*` tools go | Disconnect, Dismiss |
 | `schedule` | "Create", "Change", "Pause", "Resume" or "Delete" scheduled task `<title or key>` | The schedule in words, in the agent's time zone, and `instructions` | Apply, Dismiss |
 | `skill` | "Create", "Change", "Add to", "Undo the last change to", "Turn off" or "Turn on" custom skill `<title or key>` | `instructions`; for `update`, `append` and `revert`, `before` next to the text after the change | Apply, Dismiss |
 | `timezone` | "Set the time zone to `<timezone>`" | The current zone, `timezone` on `UserAgent/Detail` (`null` means UTC) | Apply, Dismiss |
@@ -663,7 +663,7 @@ Show `note`, when there is one, under the title.
 | `values` | object | No | `{ "<name>": value }` for the card's `fields`. On a `key` card: the connector's Connect fields. On a `signin` card: the fields its sign-in takes, such as your own app's keys. A `project` card takes none: send `wiroprojectguid`. Wiro checks them as [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect) does: required fields, `format`, `pattern` and `maxlength` (see [Connect card fields](/docs/agent-connectors#connect-card-fields) for the limits), and a `json` field also takes an object. A field left out keeps a value saved before. On an `add` card whose `needs` has one pending `key` card: that card's values, and Wiro applies both cards in one step. Never returned and never shown to the agent. |
 | `signin` | boolean | No | `true` on an `add` card whose `needs` has one pending `signin` card, once that card's sign-in has connected the connector: Wiro applies both cards in one step. Not together with `values`. |
 | `redirecturl` | string | No | A `signin` card: where the browser comes back after the sign-in, with the rules of [The redirect URL](/docs/agent-connectors#the-redirect-url). Send a page on your own site: without one, the browser comes back to Wiro's return page on wiro.ai. |
-| `wiroprojectguid` | string | No | A `project` card, the `wiro` connector's: the id of one of your projects, from [`POST /Project/List`](/docs/projects). It becomes the agent's own Wiro project, as [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) binds it. Left out, a call made with your project API key binds that key's own project. |
+| `wiroprojectguid` | string | No | A `project` card, the one of Wiro AI Models (`wiro`): the id of one of your projects, from [`POST /Project/List`](/docs/projects). It becomes the agent's own Wiro project, as [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) binds it. Left out, a call made with your project API key binds that key's own project. |
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
@@ -741,9 +741,9 @@ A `connect` card connects its connector through `SetupCardApply`, with the check
 |--------|-----------------|---------|-------|
 | `key` | The values the vendor issues, such as an API key, typed by the person. A card with no required field connects with none. | A form from `setup.fields`, with masked inputs for `secret` fields | `SetupCardApply` with `values`: the connector connects and the card is applied |
 | `signin` | The vendor's consent screen, in the browser | A form from `setup.fields` when the card has any (your own app's keys and any other field the sign-in needs), and a Sign in button | `SetupCardApply` with your `redirecturl`, and the card's field values in `values`, answers `authorizeUrl`. Once the browser is back on your page, `SetupCardApply` again records the card applied |
-| `project` | One of your Wiro projects, picked for the `wiro` connector. It becomes the agent's own Wiro project. | A picker of your projects ([`POST /Project/List`](/docs/projects)) for its one `source: "wiro_project"` field, and a Connect button | `SetupCardApply` with the project's id as `wiroprojectguid` and no `values`: the project is bound, the connector connects and the card is applied |
+| `project` | One of your Wiro projects, picked for Wiro AI Models (`wiro`). It becomes the agent's own Wiro project. | A picker of your projects ([`POST /Project/List`](/docs/projects)) for its one `source: "wiro_project"` field, and a Connect button | `SetupCardApply` with the project's id as `wiroprojectguid` and no `values`: the project is bound, the connector connects and the card is applied |
 
-A card's `mode` follows its connector in the catalog: `oauth` and `provider-oauth` connectors sign in, the `wiro` connector, whose one field is a Wiro project, gets a `project` card, and the other `fields`, `headers` and `none` connectors take a key. More modes can be added: show a card whose `mode` you don't know with Dismiss only, and connect its connector from your settings screen.
+A card's `mode` follows its connector in the catalog: `oauth` and `provider-oauth` connectors sign in, Wiro AI Models (`wiro`), whose one field is a Wiro project, gets a `project` card, and the other `fields`, `headers` and `none` connectors take a key. More modes can be added: show a card whose `mode` you don't know with Dismiss only, and connect its connector from your settings screen.
 
 ### Key: Serper
 
@@ -775,7 +775,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
     "authtype": "fields",
     "mode": "key",
     "fields": [
-      { "name": "apikey", "label": "Serper API Key", "description": "1. Sign up at [serper.dev](https://serper.dev) ...", "required": true, "secret": true, "format": "password", "placeholder": "your Serper.dev API key" }
+      { "name": "apikey", "label": "Serper API Key", "description": "Real Google web-search results as clean JSON, via [Serper.dev](https://serper.dev) ...", "required": true, "secret": true, "format": "password", "placeholder": "your Serper.dev API key" }
     ],
     "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
     "createdat": 1794654811,
@@ -792,7 +792,7 @@ A value Wiro refuses (a required field missing, a format that doesn't fit, or a 
 
 ### Project: Wiro AI Models
 
-The `wiro` connector gets a `project` card. Its one field has `source: "wiro_project"`: show a picker of your projects ([`POST /Project/List`](/docs/projects)) instead of an input, and never a box to type a key in:
+Wiro AI Models (`wiro`) gets a `project` card. Its one field has `source: "wiro_project"`: show a picker of your projects ([`POST /Project/List`](/docs/projects)) instead of an input, and never a box to type a key in:
 
 ```json
 {
@@ -984,7 +984,7 @@ The agent already restarted when the sign-in came back, so `restarting` is `fals
 
 ### Connecting on your settings screen
 
-Every connector also connects without a card, on your own settings screens, with the Agent Connectors calls: [fields](/docs/agent-connectors#connect-with-fields), a [key instead of a sign-in](/docs/agent-connectors#connect-with-a-key-instead-of-a-sign-in), or the vendor's [sign-in](/docs/agent-connectors#connect-with-a-sign-in) with a `redirecturl` on your own site, then its [account pickers](/docs/agent-connectors#account-pickers). Each answers `restart` (or `connector_connected=true` on your page after a sign-in): see [Showing a restart](#showing-a-restart). A pending `connect` card for a connector connected there is recorded applied when you apply it, with no values, or the next time a card of the same person's in that chat is applied or dismissed. A channel is saved with [`CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert): no card saves it. The agent's Wiro project is bound with [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind), or by the `wiro` connector's `project` card, which binds it the same way.
+Every connector also connects without a card, on your own settings screens, with the Agent Connectors calls: [fields](/docs/agent-connectors#connect-with-fields), a [key instead of a sign-in](/docs/agent-connectors#connect-with-a-key-instead-of-a-sign-in), or the vendor's [sign-in](/docs/agent-connectors#connect-with-a-sign-in) with a `redirecturl` on your own site, then its [account pickers](/docs/agent-connectors#account-pickers). Each answers `restart` (or `connector_connected=true` on your page after a sign-in): see [Showing a restart](#showing-a-restart). A pending `connect` card for a connector connected there is recorded applied when you apply it, with no values, or the next time a card of the same person's in that chat is applied or dismissed. A channel is saved with [`CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert): no card saves it. The agent's Wiro project is bound with [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind), or by the `project` card of Wiro AI Models (`wiro`), which binds it the same way.
 
 ## Your Own Connect Button
 
