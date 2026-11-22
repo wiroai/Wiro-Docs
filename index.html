@@ -30935,7 +30935,7 @@ Completing the required fields again reactivates it automatically.</p>
 <h3 id="your-product-shows-everything">Your product shows everything</h3>
 <p>Wiro's answers in a chat sent with a project API key name no site, page or link. When something still has to be connected, the answer says so in a plain sentence and returns the same information as data, the <code>next</code> array, so your product shows its own Connect button. Keys, app keys and tokens go into your own forms and reach Wiro through the API, never through the chat. When a connector signs in, the vendor's consent screen shows your organization or your own app, and the browser comes back to a page on your own site (see <a href="/docs/agent-connectors#who-your-customer-sees">Who your customer sees</a>, which also says where the API's own address can still show).</p>
 <p>A few fields are for your backend, not for your users: every message row and every card names your API key's owner as the person who sent, asked or applied (see <a href="#api-key">API key</a>), and the tokens and ids are your own references. Show your users your own names and words.</p>
-<p>Connector titles name their vendors, such as Google Analytics 4 or WordPress. Two things carry Wiro's name: the agent's Wiro project (the credential <code>wiro</code>, which pays for the models its skills run, such as Video Creator's or a voice channel's) and the <code>wiro</code> connector, which gives the agent Wiro's own tools. That name comes wherever the API names them, in the card listing and in <code>summary</code> too. An agent that runs models can also write their public links in an answer, such as a model's page on wiro.ai or an output file on cdn1.wiro.ai. Your product may show its own label for them, as for any title the API gives.</p>
+<p>Connector titles name their vendors, such as Google Analytics 4 or WordPress. Two things carry Wiro's name: the agent's Wiro project (the credential <code>wiro</code>, which pays for the models its skills run, such as Video Creator's or a voice channel's) and the Wiro AI Models (<code>wiro</code>) connector, which gives the agent Wiro's own tools. That name comes wherever the API names them, in the card listing and in <code>summary</code> too. An agent that runs models can also write their public links in an answer, such as a model's page on wiro.ai or an output file on cdn1.wiro.ai. Your product may show its own label for them, as for any title the API gives.</p>
 <p>A connector that signs in connects from its card too: <code>SetupCardApply</code> on its <code>connect</code> card answers the vendor's sign-in address, <code>authorizeUrl</code>, and the browser comes back to your <code>redirecturl</code> through one callback on the API host. A sign-in started with your API key always runs as your product: the consent screen names your organization, or the app of your own whose keys you send, never Wiro's own app. Send your own <code>redirecturl</code> with every sign-in: without one, the browser comes back to Wiro's return page on wiro.ai. The same connectors also connect on your own settings screens with the <a href="/docs/agent-connectors">Agent Connectors</a> calls.</p>
 <h3 id="the-flow-at-a-glance">The flow at a glance</h3>
 <pre><code class="language-text">Your user types           Your backend                     Wiro
@@ -30967,6 +30967,15 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
   &quot;chatsetup&quot;: &quot;all&quot;
 }
 </code></pre>
+<p><code>useprepaid: true</code> pays the plan from the balance of your key's workspace: Starter $5, Pro $30 or Max $100 a month, each including its own price in AI usage, and every renewal is paid from that balance too. When the balance is short, Deploy creates nothing, charges nothing and answers code <code>97</code> with <code>neededusd</code>, the amount to add: add funds (see <a href="/docs/agent-overview#adding-funds">Adding Funds</a>) and send the same Deploy again.</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: false,
+  &quot;useragents&quot;: [],
+  &quot;errors&quot;: [{ &quot;code&quot;: 97, &quot;message&quot;: &quot;Your balance is $3.10; this plan needs $30.00. Add funds to continue.&quot;, &quot;time&quot;: 1794654000 }],
+  &quot;neededusd&quot;: 26.9
+}
+</code></pre>
+<p>Code <code>110</code>, <code>The wallet was charged $30.00, but the plan could not be saved. Please contact support and do not try again.</code>, means the balance paid and the plan was not saved: never send the Deploy again, since a retry charges again (see <a href="/docs/agent-overview#paying-for-plans">Paying for Plans</a> and <a href="/docs/agent-overview#post-useragentdeploy">Deploy</a>).</p>
 <h3 id="allow-setup-cards-in-api-chats">Allow setup cards in API chats</h3>
 <p>Where setup cards can be proposed and applied is the agent's <code>chatsetup</code> setting. Wiro reads every request sent with a project API key as an API chat:</p>
 <div class="docs-param-table">
@@ -31053,10 +31062,31 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
   &quot;agenttoken&quot;: null,
   &quot;status&quot;: null,
   &quot;agentstatus&quot;: 4,
-  &quot;agentusage&quot;: { &quot;period&quot;: &quot;2026-11&quot;, &quot;resetsat&quot;: 1796083200, &quot;includedusd&quot;: 30, &quot;usedusd&quot;: 30, &quot;leftusd&quot;: 0, &quot;renewalusd&quot;: 30, &quot;frombalanceusd&quot;: 12.85, &quot;balanceusd&quot;: 0.31, &quot;wallet&quot;: &quot;personal&quot;, &quot;minbalanceusd&quot;: 0.5, &quot;paused&quot;: true, &quot;pausedreason&quot;: &quot;balance&quot; }
+  &quot;agentusage&quot;: { &quot;period&quot;: &quot;2026-11&quot;, &quot;resetsat&quot;: 1796083200, &quot;includedusd&quot;: 30, &quot;usedusd&quot;: 30, &quot;leftusd&quot;: 0, &quot;renewalusd&quot;: 30, &quot;frombalanceusd&quot;: 0, &quot;balanceusd&quot;: 0.31, &quot;wallet&quot;: &quot;personal&quot;, &quot;minbalanceusd&quot;: 0.5, &quot;paused&quot;: true, &quot;pausedreason&quot;: &quot;balance&quot; }
 }
 </code></pre>
-<p>That sentence speaks to whoever pays for the agent, which is you; it leaves out the date when the plan's renewal can't be read. Detect the refusal by <code>agentusage</code>, show your users your own words, and add funds to the balance of the agent's workspace (see <a href="/docs/agent-overview#adding-funds">Adding Funds</a>), or move the agent to a larger plan with <a href="/docs/agent-overview#post-useragentupgradetier"><code>UpgradeTier</code></a>. The agent answers again as soon as the balance is back at $0.50 or more. Your users in Telegram, Slack and Discord read <code>This agent is paused for now. It runs again once its owner adds funds or its plan renews.</code> instead, with no amount. Setup replies that Wiro answers itself still work while the agent is paused: see <a href="#replies-the-api-answers-itself">Replies the API answers itself</a>.</p>
+<p>That sentence speaks to whoever pays for the agent, which is you; it leaves out the date when the plan's renewal can't be read. Detect the refusal by <code>agentusage</code> with <code>pausedreason: "balance"</code>, show your users your own words, and add funds to the balance of the agent's workspace (see <a href="/docs/agent-overview#adding-funds">Adding Funds</a>). While its plan is live, the agent answers again as soon as the balance is back at $0.50 or more. A larger plan, with <a href="/docs/agent-overview#post-useragentupgradetier"><code>UpgradeTier</code></a>, gives the agent more AI usage at once but is paid from the same balance, so add funds first: while the balance is short, UpgradeTier answers code <code>97</code> with <code>neededusd</code>. On this refusal <code>frombalanceusd</code> is always <code>0</code>: read what the balance paid this period from <code>usage</code> on <a href="/docs/agent-overview#post-useragentdetail"><code>UserAgent/Detail</code></a>. Your users in Telegram, Slack and Discord read <code>This agent's plan usage and its owner's balance are used up.</code> when they write while it is paused, or <code>This agent is paused for now. It runs again once its owner adds funds or its plan renews.</code> when a reply is cut off, with no amount. Setup replies that Wiro answers itself still work while the agent is paused: see <a href="#replies-the-api-answers-itself">Replies the API answers itself</a>.</p>
+<p>An agent runs only with a live plan. When its plan ends, cancelled or with a renewal the balance couldn't pay, the agent stops whatever the balance holds, and adding funds doesn't start it again. Send then answers <code>Agent is stopped. Start it before sending messages.</code> with <code>agentstatus: 0</code>, and <a href="/docs/agent-overview#post-useragentstart"><code>Start</code></a> answers <code>Subscription required — please subscribe to this agent before starting it.</code> (code <code>0</code>). Renew the plan with <a href="/docs/agent-overview#post-useragentrenewsubscription"><code>RenewSubscription</code></a>, or start a new one with <a href="/docs/agent-overview#post-useragentcreatesubscriptioncheckout"><code>CreateSubscriptionCheckout</code></a> and <code>useprepaid: true</code>: both are paid from the balance, and either one queues the agent to start by itself. A Send that reaches the agent before it has stopped answers code <code>97</code> with <code>agentusage.pausedreason: "plan"</code> and <code>&lt;agent&gt; has no active plan. Choose a plan to keep it running.</code>, and your users in Telegram, Slack and Discord read <code>This agent has no active plan, so it paused.</code>: offer a plan there, not funds.</p>
+<p>When a <a href="/docs/spend-limits">spend limit</a> that covers the agent is used up, Send answers <code>result: false</code> with code <code>93</code> and <code>agentstatus</code>. The limit is the agent's own or, once its plan's included AI usage is used up, the account's or team's limit or the <code>agent</code> surface's limit:</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: false,
+  &quot;errors&quot;: [{ &quot;code&quot;: 93, &quot;message&quot;: &quot;This agent's monthly spend limit is reached ($20.35 of $20.00). It resets on December 1, 2026 at 00:00 UTC.&quot;, &quot;time&quot;: 1794654900 }],
+  &quot;messageguid&quot;: null,
+  &quot;agenttoken&quot;: null,
+  &quot;status&quot;: null,
+  &quot;agentstatus&quot;: 4
+}
+</code></pre>
+<p>When a <a href="/docs/model-access">Model Access</a> rule for the agent blocks the <code>model</code> you send for the turn (its own rule, the account's or team's rule, or the <code>agent</code> surface's rule), Send answers <code>result: false</code> with code <code>92</code>:</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: false,
+  &quot;errors&quot;: [{ &quot;code&quot;: 92, &quot;message&quot;: &quot;This agent can't use openai/gpt-5-6-sol. Model Access rules decide which models can run.&quot;, &quot;time&quot;: 1794654900 }],
+  &quot;messageguid&quot;: null,
+  &quot;agenttoken&quot;: null,
+  &quot;status&quot;: null
+}
+</code></pre>
+<p>In both cases nothing runs and nothing is charged. Show the sentence as it is, or your own words, and branch on the code.</p>
 <h3 id="follow-the-turn">Follow the turn</h3>
 <p>Use one of three ways:</p>
 <ol>
@@ -31130,7 +31160,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <tr>
 <td><code>[SPEND_LIMIT_REACHED]</code></td>
 <td><code>agent_error</code></td>
-<td>The agent's spend limit is used up: show the sentence as it is.</td>
+<td>A spend limit that covers the agent is used up: its own or, once its plan's included AI usage is used up, the account's or team's or the <code>agent</code> surface's. Show the sentence as it is.</td>
 </tr>
 <tr>
 <td><code>[USAGE_CEILING_REACHED]</code></td>
@@ -31140,7 +31170,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <tr>
 <td><code>[MODEL_NOT_ALLOWED]</code></td>
 <td><code>agent_error</code></td>
-<td>The agent's Model Access rule blocks the model it uses: show the sentence as it is.</td>
+<td>A Model Access rule for the agent blocks the model it uses (its own, the account's or team's, or the <code>agent</code> surface's): show the sentence as it is.</td>
 </tr>
 <tr>
 <td><code>[CREDITS_EXHAUSTED]</code></td>
@@ -31181,7 +31211,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
       {
         &quot;guid&quot;: &quot;c3d4e5f6-a7b8-9012-cdef-345678901234&quot;,
         &quot;content&quot;: &quot;Can you report our website traffic every Monday?&quot;,
-        &quot;response&quot;: &quot;I can do that once Google Analytics 4 is connected. Sign in to it with the card below, then I will set up the weekly report.&quot;,
+        &quot;response&quot;: &quot;I can send a traffic report every Monday at 09:00 with last week's sessions, users and top pages. Reply yes to set it up.&quot;,
         &quot;status&quot;: &quot;agent_end&quot;
       }
     ],
@@ -31227,7 +31257,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 </table>
 </div>
 </div>
-<p>A message added between turns has no turn of its own: nothing streams on an <code>agenttoken</code> for it and no webhook is called. A scheduled task's report goes to the session the agent's latest message is in, so on an agent that several of your users share it can reach any of their chats. To get it live, follow the session with the <code>sessiontoken</code> above: send <code>{ "type": "agent_session_subscribe", "sessiontoken": "Lp4vQ8sWn2KxT7cRb1YhZ6mDg9FjA3uEo5iNk0wXyHt" }</code> on the socket, and each new row arrives as an <code>agent_message_inserted</code> frame. Follows end with the connection, so after a reconnect subscribe again and read History once. See <a href="/docs/agent-websocket#following-a-session">Following a session</a>. The weekly report of the GA4 example below reaches your chat this way.</p>
+<p>A message added between turns has no turn of its own: nothing streams on an <code>agenttoken</code> for it and no webhook is called. A scheduled task's report goes to the session the agent's latest message is in, so on an agent that several of your users share it can reach any of their chats. To get it live, follow the session with the <code>sessiontoken</code> above: send <code>{ "type": "agent_session_subscribe", "sessiontoken": "Lp4vQ8sWn2KxT7cRb1YhZ6mDg9FjA3uEo5iNk0wXyHt" }</code> on the socket, and each new row arrives as an <code>agent_message_inserted</code> frame. Follows end with the connection, so after a reconnect subscribe again and read History once. See <a href="/docs/agent-websocket#following-a-session">Following a session</a>. The reports of the scheduled task Weekly traffic report, from the card above, reach your chat this way.</p>
 <p>To list a customer's conversations, call <a href="/docs/agent-messaging#post-useragentmessagesessions"><code>POST /UserAgent/Message/Sessions</code></a> with the <code>useragentguid</code>: it answers each session's <code>sessionkey</code>, <code>messagecount</code>, <code>updatedat</code>, <code>lastmessage</code> and, once named with <code>RenameSession</code>, <code>name</code>. It lists every session of the agent that your key's owner can read, so on an agent that several of your users share, show each person only the sessions your own records give them.</p>
 <h3 id="render-the-timeline">Render the timeline</h3>
 <p>A reply is an ordered list of blocks. Keep a map keyed by <code>blockid</code>, keep a block only when its <code>version</code> is newer than the one you hold, and draw the blocks sorted by <code>callindex</code>, then <code>contentindex</code>, then <code>blockid</code>.</p>
@@ -31320,7 +31350,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
       {
         &quot;name&quot;: &quot;apikey&quot;,
         &quot;label&quot;: &quot;Serper API Key&quot;,
-        &quot;description&quot;: &quot;1. Sign up at [serper.dev](https://serper.dev). No credit card; new accounts get **2,500 free searches**.\n2. Open the dashboard and copy your **API key** from the **API Key** section.\n3. Paste it here.&quot;,
+        &quot;description&quot;: &quot;Real Google web-search results as clean JSON, via [Serper.dev](https://serper.dev). Google's own Custom Search JSON API is being retired (shuts down 2027-01-01), so this connector uses Serper, which returns the same Google results with none of the Google Cloud setup.\n\n1. Sign up at [serper.dev](https://serper.dev). No credit card; new accounts get **2,500 free searches**.\n2. Open the dashboard and copy your **API key** from the **API Key** section.\n3. Paste it here. There is no Google Cloud project, no `cx`, and no key restriction to configure.\n\nAfter the free tier Serper is about $1 per 1,000 searches (cheaper at scale). Asking for more than 10 results per query counts as 2 searches.&quot;,
         &quot;required&quot;: true,
         &quot;secret&quot;: true,
         &quot;format&quot;: &quot;password&quot;,
@@ -31450,12 +31480,12 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <tr>
 <td><code>mode</code></td>
 <td><code>connect</code></td>
-<td>Written by Wiro: how the card connects, <code>key</code> (the values its <code>fields</code> ask for), <code>signin</code> (the vendor's sign-in) or <code>project</code> (a Wiro project for the <code>wiro</code> connector). See <a href="#modes">Modes</a>.</td>
+<td>Written by Wiro: how the card connects, <code>key</code> (the values its <code>fields</code> ask for), <code>signin</code> (the vendor's sign-in) or <code>project</code>, a Wiro project picked for Wiro AI Models (<code>wiro</code>). See <a href="#modes">Modes</a>.</td>
 </tr>
 <tr>
 <td><code>fields</code></td>
 <td><code>connect</code></td>
-<td>Written by Wiro: what the card's form asks for, at most 30, in the shape of <code>credentialfields</code> on <a href="/docs/agent-connectors#connect-card-fields"><code>AgentConnector/Detail</code></a>: <code>name</code>, <code>label</code>, <code>description</code> (Markdown), <code>required</code>, <code>secret</code>, <code>format</code>, and <code>options</code>, <code>placeholder</code>, <code>pattern</code>, <code>maxlength</code>, <code>serveronly</code>, <code>mode</code> or <code>source</code> where they apply. On a <code>key</code> card, the connector's Connect fields. On a <code>project</code> card, one field with <code>source: "wiro_project"</code>: a project picker, never an input. On a <code>signin</code> card, the fields its sign-in takes: for a connector that signs in with an app of your own, that app's keys (<code>serveronly: true</code>). The fields of a connector's key way are never on a <code>signin</code> card. Empty when there is nothing to enter.</td>
+<td>Written by Wiro: what the card's form asks for, at most 30, in the shape of <code>credentialfields</code> on <a href="/docs/agent-connectors#connect-card-fields"><code>AgentConnector/Detail</code></a>: <code>name</code>, <code>label</code>, <code>description</code> (Markdown), <code>required</code>, <code>secret</code>, <code>format</code>, and <code>options</code>, <code>placeholder</code>, <code>pattern</code>, <code>maxlength</code>, <code>serveronly</code>, <code>mode</code> or <code>source</code> where they apply. On a <code>key</code> card, the connector's Connect fields. On a <code>project</code> card, one field with <code>source: "wiro_project"</code>: a project picker, never an input. On a <code>signin</code> card, the fields its sign-in takes: for a connector that signs in with an app of your own, that app's keys (<code>serveronly: true</code>), and any other field the sign-in needs, such as Shopify's Shop Domain. The fields of a connector's key way are never on a <code>signin</code> card. Empty when there is nothing to enter.</td>
 </tr>
 <tr>
 <td><code>wiroapp</code></td>
@@ -31533,7 +31563,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 </div>
 <p>A <code>connect</code> card carries everything its form needs, so you can draw it without another call. Fields that don't apply to a card's kind are absent, and a missing list reads as empty. More kinds, actions and fields can be added later.</p>
 <h3 id="every-kind">Every kind</h3>
-<p><code>add</code> turns on a skill. This one turns on Video Creator and the skills that come with it:</p>
+<p><code>add</code> turns on a skill. This one turns on Video Creator and the skills that come with it, on an agent that has Wiro AI Models connected:</p>
 <pre><code class="language-json">{
   &quot;v&quot;: 1,
   &quot;id&quot;: &quot;m5t8c2w6r3pe&quot;,
@@ -31545,6 +31575,33 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 }
 </code></pre>
 <p>When <code>needs</code> names connectors, Wiro stores a <code>connect</code> card for each of them on the same message, right after the <code>add</code> card, whatever its <code>mode</code>, while the message has room for it (three cards at most) and has no pending <code>connect</code> card for it yet. Show them together: see <a href="#buttons">Buttons</a>.</p>
+<p>Google Play Promotional Content needs Google Play Console. On an agent that doesn't have it connected, the <code>add</code> card is the message's first setup block, and the <code>connect</code> card Wiro stores right after it is the second, whose block's <code>next</code> is <code>[{ "connector": "google-play", "title": "Google Play Console", "mode": "key" }]</code>:</p>
+<pre><code class="language-json">{
+  &quot;v&quot;: 1,
+  &quot;id&quot;: &quot;g7p2k5m9w4ta&quot;,
+  &quot;kind&quot;: &quot;add&quot;,
+  &quot;key&quot;: &quot;util-googleplay-events&quot;,
+  &quot;needs&quot;: [{ &quot;connector&quot;: &quot;google-play&quot;, &quot;title&quot;: &quot;Google Play Console&quot;, &quot;mode&quot;: &quot;key&quot; }],
+  &quot;requestedby&quot;: &quot;5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f&quot;,
+  &quot;createdat&quot;: 1794656000
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;v&quot;: 1,
+  &quot;id&quot;: &quot;c2v8n4q6x1pd&quot;,
+  &quot;kind&quot;: &quot;connect&quot;,
+  &quot;connector&quot;: &quot;google-play&quot;,
+  &quot;title&quot;: &quot;Google Play Console&quot;,
+  &quot;authtype&quot;: &quot;fields&quot;,
+  &quot;mode&quot;: &quot;key&quot;,
+  &quot;fields&quot;: [
+    { &quot;name&quot;: &quot;serviceaccountjson&quot;, &quot;label&quot;: &quot;Service Account JSON&quot;, &quot;description&quot;: &quot;1. Go to [Google Cloud Console → IAM &amp; Admin → Service Accounts](https://console.cloud.google.com/iam-admin/serviceaccounts) ...&quot;, &quot;required&quot;: true, &quot;secret&quot;: true, &quot;format&quot;: &quot;json&quot; }
+  ],
+  &quot;requestedby&quot;: &quot;5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f&quot;,
+  &quot;createdat&quot;: 1794656000
+}
+</code></pre>
+<p>Both apply in one step: see <a href="#add-and-connect">Add and Connect</a>.</p>
 <p><code>remove</code> turns one off:</p>
 <pre><code class="language-json">{
   &quot;v&quot;: 1,
@@ -31565,13 +31622,13 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
   &quot;authtype&quot;: &quot;fields&quot;,
   &quot;mode&quot;: &quot;key&quot;,
   &quot;fields&quot;: [
-    { &quot;name&quot;: &quot;apikey&quot;, &quot;label&quot;: &quot;Serper API Key&quot;, &quot;description&quot;: &quot;1. Sign up at [serper.dev](https://serper.dev) ...&quot;, &quot;required&quot;: true, &quot;secret&quot;: true, &quot;format&quot;: &quot;password&quot;, &quot;placeholder&quot;: &quot;your Serper.dev API key&quot; }
+    { &quot;name&quot;: &quot;apikey&quot;, &quot;label&quot;: &quot;Serper API Key&quot;, &quot;description&quot;: &quot;Real Google web-search results as clean JSON, via [Serper.dev](https://serper.dev) ...&quot;, &quot;required&quot;: true, &quot;secret&quot;: true, &quot;format&quot;: &quot;password&quot;, &quot;placeholder&quot;: &quot;your Serper.dev API key&quot; }
   ],
   &quot;requestedby&quot;: &quot;5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f&quot;,
   &quot;createdat&quot;: 1794654811
 }
 </code></pre>
-<p>A connector that signs in gets a <code>signin</code> card: see <a href="#sign-in-hubspot">Sign-in: HubSpot</a>. The <code>wiro</code> connector gets a <code>project</code> card: see <a href="#project-wiro-ai-models">Project: Wiro AI Models</a>.</p>
+<p>A connector that signs in gets a <code>signin</code> card: see <a href="#sign-in-hubspot">Sign-in: HubSpot</a>. Wiro AI Models (<code>wiro</code>) gets a <code>project</code> card: see <a href="#project-wiro-ai-models">Project: Wiro AI Models</a>.</p>
 <p><code>disconnect</code> disconnects a connector the agent has a connection for, and carries its <code>title</code>:</p>
 <pre><code class="language-json">{
   &quot;v&quot;: 1,
@@ -31706,13 +31763,13 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <tr>
 <td><code>connect</code></td>
 <td>"Connect <code>&lt;title&gt;</code>"</td>
-<td>By <code>mode</code>: for <code>key</code>, a form from <code>fields</code>; for <code>signin</code>, the <code>serveronly</code> fields when the card has them, such as your own app's keys; for <code>project</code>, a picker of your projects</td>
+<td>By <code>mode</code>: for <code>key</code>, a form from <code>fields</code>; for <code>signin</code>, a form from <code>fields</code> when the card has any: your own app's keys (<code>serveronly: true</code>) and any other field the sign-in needs, such as LinkedIn's Organization ID or Shopify's Shop Domain; for <code>project</code>, a picker of your projects</td>
 <td>Save for <code>key</code> (Connect when no field is required), Sign in for <code>signin</code>, Connect for <code>project</code>, and Dismiss</td>
 </tr>
 <tr>
 <td><code>disconnect</code></td>
 <td>"Disconnect <code>&lt;title&gt;</code>"</td>
-<td>Say that the connection is removed and the agent loses the connector's tools until it is connected again</td>
+<td>Say that the connection is removed and the agent loses the connector's tools until it is connected again. For Wiro AI Models (<code>wiro</code>), also say that the agent keeps its Wiro project, which the models of its skills still use: only its <code>wiro__*</code> tools go</td>
 <td>Disconnect, Dismiss</td>
 </tr>
 <tr>
@@ -31804,11 +31861,11 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <li><strong>Apply</strong>: <code>SetupCardApply</code> with <code>action: "apply"</code>.</li>
 <li><strong>Dismiss</strong>: <code>SetupCardApply</code> with <code>action: "dismiss"</code>. A <code>connect</code> card connects its connector on its own, so dismissing an <code>add</code> card leaves its <code>connect</code> cards pending: dismiss them too when the person turns the whole change down.</li>
 <li><strong>A <code>key</code> card</strong>: show its <code>fields</code> and <strong>Save</strong>: <code>SetupCardApply</code> with the values in <code>values</code>. A card whose fields hold no required field connects with <strong>Connect</strong> and no <code>values</code>.</li>
-<li><strong>A <code>signin</code> card</strong>: show its <code>serveronly</code> fields when it has them, and <strong>Sign in</strong>: <code>SetupCardApply</code> with those keys in <code>values</code> and your <code>redirecturl</code>. Open the answer's <code>authorizeUrl</code>. Once the browser is back on your <code>redirecturl</code> with <code>connector_connected=true</code>, call <code>SetupCardApply</code> on the card again, with no <code>values</code>: it records the card applied. See <a href="#sign-in-hubspot">Sign-in: HubSpot</a>.</li>
+<li><strong>A <code>signin</code> card</strong>: show every field in its <code>fields</code> (your own app's keys are the <code>serveronly: true</code> ones; some sign-ins need more, such as LinkedIn's Organization ID, Reddit's Developer Profile Username or Shopify's Shop Domain), and <strong>Sign in</strong>: <code>SetupCardApply</code> with their values in <code>values</code> and your <code>redirecturl</code>. Open the answer's <code>authorizeUrl</code>. Once the browser is back on your <code>redirecturl</code> with <code>connector_connected=true</code>, call <code>SetupCardApply</code> on the card again, with no <code>values</code>: it records the card applied. It records the card only while the connector reads connected: if it doesn't yet, the same call starts a new sign-in and answers a new <code>authorizeUrl</code>, with the card still pending. After <code>connector_error=&lt;code&gt;</code>, show that code's sentence and offer <strong>Sign in</strong> again instead. See <a href="#sign-in-hubspot">Sign-in: HubSpot</a>.</li>
 <li><strong>A <code>project</code> card</strong>: show a picker of your projects and <strong>Connect</strong>: <code>SetupCardApply</code> with the chosen project's id as <code>wiroprojectguid</code>, and no <code>values</code>. See <a href="#project-wiro-ai-models">Project: Wiro AI Models</a>.</li>
 <li><strong>An <code>add</code> card with its <code>connect</code> cards</strong>: the <code>connect</code> cards on the same message whose <code>connector</code> is in the <code>add</code> card's <code>needs</code> belong to it. Show them inside the <code>add</code> card.</li>
-<li><strong>Add and connect, with a key</strong>: when the <code>add</code> card has one <code>key</code> card, show its fields and <strong>Add and connect</strong>: <code>SetupCardApply</code> on the <code>add</code> card with the values in <code>values</code>. Both cards apply in one step, with one restart.</li>
-<li><strong>Add and connect, with a sign-in</strong>: when the <code>add</code> card has one <code>signin</code> card, run <strong>Sign in</strong> on that <code>connect</code> card first, as above. Once the browser is back, <strong>Add</strong>: <code>SetupCardApply</code> on the <code>add</code> card with <code>signin: true</code> applies both cards, once the connector reads connected.</li>
+<li><strong>Add and connect, with a key</strong>: when the <code>add</code> card has one <code>key</code> card, show its fields and <strong>Add and connect</strong>: <code>SetupCardApply</code> on the <code>add</code> card with the values in <code>values</code>. Both cards apply in one step, with one restart. See <a href="#add-and-connect">Add and Connect</a>.</li>
+<li><strong>Add and connect, with a sign-in</strong>: when the <code>add</code> card has one <code>signin</code> card, run <strong>Sign in</strong> on that <code>connect</code> card first, as above. Once the browser is back, <strong>Add</strong>: <code>SetupCardApply</code> on the <code>add</code> card with <code>signin: true</code> applies both cards, once the connector reads connected. See <a href="#add-and-connect">Add and Connect</a>.</li>
 <li><strong>Add, then pick a project</strong>: a <code>project</code> card takes its own step. Offer <strong>Add</strong> on the <code>add</code> card, and <strong>Connect</strong> on the <code>project</code> card, in either order.</li>
 <li><strong>Several <code>connect</code> cards</strong>: offer <strong>Add</strong> alone, then each <code>connect</code> card's own button.</li>
 <li><strong>Add now, connect later</strong>: <code>SetupCardApply</code> on the <code>add</code> card alone, whose answer's <code>next</code> names the <code>connect</code> cards to finish later.</li>
@@ -31874,7 +31931,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <td><code>wiroprojectguid</code></td>
 <td>string</td>
 <td>No</td>
-<td>A <code>project</code> card, the <code>wiro</code> connector's: the id of one of your projects, from <a href="/docs/projects"><code>POST /Project/List</code></a>. It becomes the agent's own Wiro project, as <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>CredentialProjectBind</code></a> binds it. Left out, a call made with your project API key binds that key's own project.</td>
+<td>A <code>project</code> card, the one of Wiro AI Models (<code>wiro</code>): the id of one of your projects, from <a href="/docs/projects"><code>POST /Project/List</code></a>. It becomes the agent's own Wiro project, as <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>CredentialProjectBind</code></a> binds it. Left out, a call made with your project API key binds that key's own project.</td>
 </tr>
 </tbody>
 </table>
@@ -31963,7 +32020,45 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 </table>
 </div>
 </div>
-<p>Dismissing answers the card with <code>status: "dismissed"</code>, <code>restarting: false</code> and an empty <code>summary</code>.</p>
+<p>Dismissing answers the card with <code>status: "dismissed"</code>, <code>restarting: false</code> and an empty <code>summary</code>. Dismissing the <code>timezone</code> card <code>z4x8c1v6b3nm</code> (<code>"action": "dismiss"</code>) answers:</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;setup&quot;: {
+    &quot;v&quot;: 1,
+    &quot;id&quot;: &quot;z4x8c1v6b3nm&quot;,
+    &quot;kind&quot;: &quot;timezone&quot;,
+    &quot;timezone&quot;: &quot;Europe/Istanbul&quot;,
+    &quot;requestedby&quot;: &quot;5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f&quot;,
+    &quot;createdat&quot;: 1794654811,
+    &quot;status&quot;: &quot;dismissed&quot;,
+    &quot;actedat&quot;: 1794654870,
+    &quot;actedby&quot;: &quot;5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f&quot;
+  },
+  &quot;restarting&quot;: false,
+  &quot;summary&quot;: &quot;&quot;
+}
+</code></pre>
+<p>Applying the <code>disconnect</code> card <code>b7k1m4t9w2zs</code> on a running agent answers:</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;setup&quot;: {
+    &quot;v&quot;: 1,
+    &quot;id&quot;: &quot;b7k1m4t9w2zs&quot;,
+    &quot;kind&quot;: &quot;disconnect&quot;,
+    &quot;connector&quot;: &quot;serper&quot;,
+    &quot;title&quot;: &quot;Serper&quot;,
+    &quot;requestedby&quot;: &quot;5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f&quot;,
+    &quot;createdat&quot;: 1794654811,
+    &quot;status&quot;: &quot;applied&quot;,
+    &quot;actedat&quot;: 1794654870,
+    &quot;actedby&quot;: &quot;5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f&quot;
+  },
+  &quot;restarting&quot;: true,
+  &quot;summary&quot;: &quot;Serper disconnected&quot;
+}
+</code></pre>
 <p>Everyone subscribed to the turn's <code>agenttoken</code> gets the card's new block as an <code>agent_timeline_delta</code>, and so does a <code>connect</code> card applied with an <code>add</code> card. Update your copy from the answer's <code>setup</code> right away, and from the block when it arrives.</p>
 <h3 id="who-may-call-it">Who may call it</h3>
 <p>With your project API key, a call acts as the key's owner, and works when all of these hold:</p>
@@ -31999,12 +32094,12 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <tr>
 <td><code>signin</code></td>
 <td>The vendor's consent screen, in the browser</td>
-<td>The <code>serveronly</code> fields when the card has them (your own app's keys), and a Sign in button</td>
-<td><code>SetupCardApply</code> with your <code>redirecturl</code>, and the app's keys in <code>values</code>, answers <code>authorizeUrl</code>. Once the browser is back on your page, <code>SetupCardApply</code> again records the card applied</td>
+<td>A form from <code>setup.fields</code> when the card has any (your own app's keys and any other field the sign-in needs), and a Sign in button</td>
+<td><code>SetupCardApply</code> with your <code>redirecturl</code>, and the card's field values in <code>values</code>, answers <code>authorizeUrl</code>. Once the browser is back on your page, <code>SetupCardApply</code> again records the card applied</td>
 </tr>
 <tr>
 <td><code>project</code></td>
-<td>One of your Wiro projects, picked for the <code>wiro</code> connector. It becomes the agent's own Wiro project.</td>
+<td>One of your Wiro projects, picked for Wiro AI Models (<code>wiro</code>). It becomes the agent's own Wiro project.</td>
 <td>A picker of your projects (<a href="/docs/projects"><code>POST /Project/List</code></a>) for its one <code>source: "wiro_project"</code> field, and a Connect button</td>
 <td><code>SetupCardApply</code> with the project's id as <code>wiroprojectguid</code> and no <code>values</code>: the project is bound, the connector connects and the card is applied</td>
 </tr>
@@ -32012,7 +32107,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 </table>
 </div>
 </div>
-<p>A card's <code>mode</code> follows its connector in the catalog: <code>oauth</code> and <code>provider-oauth</code> connectors sign in, the <code>wiro</code> connector, whose one field is a Wiro project, gets a <code>project</code> card, and the other <code>fields</code>, <code>headers</code> and <code>none</code> connectors take a key. More modes can be added: show a card whose <code>mode</code> you don't know with Dismiss only, and connect its connector from your settings screen.</p>
+<p>A card's <code>mode</code> follows its connector in the catalog: <code>oauth</code> and <code>provider-oauth</code> connectors sign in, Wiro AI Models (<code>wiro</code>), whose one field is a Wiro project, gets a <code>project</code> card, and the other <code>fields</code>, <code>headers</code> and <code>none</code> connectors take a key. More modes can be added: show a card whose <code>mode</code> you don't know with Dismiss only, and connect its connector from your settings screen.</p>
 <h3 id="key-serper">Key: Serper</h3>
 <p>A key connector takes its fields as <code>values</code> on its <code>connect</code> card. Serper has one field, <code>apikey</code> (label "Serper API Key"). Wiro connects it as <a href="/docs/agent-connectors#connect-with-fields"><code>ConnectorConnect</code></a> does, with the same checks, and the agent never sees the key:</p>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply&quot; \
@@ -32038,7 +32133,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
     &quot;authtype&quot;: &quot;fields&quot;,
     &quot;mode&quot;: &quot;key&quot;,
     &quot;fields&quot;: [
-      { &quot;name&quot;: &quot;apikey&quot;, &quot;label&quot;: &quot;Serper API Key&quot;, &quot;description&quot;: &quot;1. Sign up at [serper.dev](https://serper.dev) ...&quot;, &quot;required&quot;: true, &quot;secret&quot;: true, &quot;format&quot;: &quot;password&quot;, &quot;placeholder&quot;: &quot;your Serper.dev API key&quot; }
+      { &quot;name&quot;: &quot;apikey&quot;, &quot;label&quot;: &quot;Serper API Key&quot;, &quot;description&quot;: &quot;Real Google web-search results as clean JSON, via [Serper.dev](https://serper.dev) ...&quot;, &quot;required&quot;: true, &quot;secret&quot;: true, &quot;format&quot;: &quot;password&quot;, &quot;placeholder&quot;: &quot;your Serper.dev API key&quot; }
     ],
     &quot;requestedby&quot;: &quot;5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f&quot;,
     &quot;createdat&quot;: 1794654811,
@@ -32050,9 +32145,31 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
   &quot;summary&quot;: &quot;Serper connected&quot;
 }
 </code></pre>
-<p>A value Wiro refuses (a required field missing, a format that doesn't fit, or a key the vendor refused) saves nothing: the answer is <code>result: false</code> with the sentence, and the card stays pending for the person to try again.</p>
+<p>A value Wiro refuses (a required field missing, a format that doesn't fit, or a key the vendor refused) saves nothing: the answer is <code>result: false</code> with the sentence, and the card stays pending for the person to try again. Sent with an empty <code>apikey</code>, the card stays pending, and <code>next</code> names it:</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: false,
+  &quot;errors&quot;: [{ &quot;code&quot;: 0, &quot;message&quot;: &quot;Serper API Key is required.&quot;, &quot;time&quot;: 1794654900 }],
+  &quot;setup&quot;: {
+    &quot;v&quot;: 1,
+    &quot;id&quot;: &quot;h6w3k9p2m5tc&quot;,
+    &quot;kind&quot;: &quot;connect&quot;,
+    &quot;connector&quot;: &quot;serper&quot;,
+    &quot;title&quot;: &quot;Serper&quot;,
+    &quot;authtype&quot;: &quot;fields&quot;,
+    &quot;mode&quot;: &quot;key&quot;,
+    &quot;fields&quot;: [
+      { &quot;name&quot;: &quot;apikey&quot;, &quot;label&quot;: &quot;Serper API Key&quot;, &quot;description&quot;: &quot;Real Google web-search results as clean JSON, via [Serper.dev](https://serper.dev) ...&quot;, &quot;required&quot;: true, &quot;secret&quot;: true, &quot;format&quot;: &quot;password&quot;, &quot;placeholder&quot;: &quot;your Serper.dev API key&quot; }
+    ],
+    &quot;requestedby&quot;: &quot;5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f&quot;,
+    &quot;createdat&quot;: 1794654811
+  },
+  &quot;restarting&quot;: false,
+  &quot;summary&quot;: &quot;&quot;,
+  &quot;next&quot;: [{ &quot;connector&quot;: &quot;serper&quot;, &quot;title&quot;: &quot;Serper&quot;, &quot;mode&quot;: &quot;key&quot;, &quot;cardid&quot;: &quot;h6w3k9p2m5tc&quot;, &quot;messageguid&quot;: &quot;c3d4e5f6-a7b8-9012-cdef-345678901234&quot; }]
+}
+</code></pre>
 <h3 id="project-wiro-ai-models">Project: Wiro AI Models</h3>
-<p>The <code>wiro</code> connector gets a <code>project</code> card. Its one field has <code>source: "wiro_project"</code>: show a picker of your projects (<a href="/docs/projects"><code>POST /Project/List</code></a>) instead of an input, and never a box to type a key in:</p>
+<p>Wiro AI Models (<code>wiro</code>) gets a <code>project</code> card. Its one field has <code>source: "wiro_project"</code>: show a picker of your projects (<a href="/docs/projects"><code>POST /Project/List</code></a>) instead of an input, and never a box to type a key in:</p>
 <pre><code class="language-json">{
   &quot;v&quot;: 1,
   &quot;id&quot;: &quot;p4r7t2w9k3mz&quot;,
@@ -32187,7 +32304,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 </code></pre>
 <p><strong>2. Open <code>authorizeUrl</code></strong> in the person's browser, in a popup or the same window. HubSpot's consent screen shows the app whose keys you sent. The address works for 10 minutes and once: a new <strong>Sign in</strong> gets a fresh one.</p>
 <p><strong>3. The browser comes back.</strong> HubSpot sends the browser to the API's callback, which stores the tokens, marks the connection <code>connected</code>, restarts the agent and sends the browser on to your <code>redirecturl</code> with <code>connector_connected=true</code>, or with <code>connector_error=&lt;code&gt;</code> when the sign-in didn't finish (see <a href="/docs/agent-connectors#the-callback-and-your-redirect-url">The callback and your redirect URL</a>).</p>
-<p><strong>4. Record the card.</strong> Call <code>SetupCardApply</code> on the card again, with no <code>values</code>:</p>
+<p><strong>4. Record the card.</strong> Once the browser is back with <code>connector_connected=true</code>, call <code>SetupCardApply</code> on the card again, with no <code>values</code>. Make this call only then: while the connector doesn't read connected, after <code>connector_error=&lt;code&gt;</code> or a closed window, it starts a new sign-in instead and answers a new <code>authorizeUrl</code>. It answers the card applied:</p>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
   &quot;errors&quot;: [],
@@ -32216,11 +32333,218 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <p>The agent already restarted when the sign-in came back, so <code>restarting</code> is <code>false</code>. Without this call, the card is recorded applied the next time a card of the same person's is applied or dismissed in that chat; until then it still shows its Sign in.</p>
 <ul>
 <li>A card from a chat sent with your API key never carries <code>wiroapp: true</code>: its sign-in always uses your own app, and HubSpot's consent screen shows that app. Send the app's keys with the first sign-in; a later sign-in of the same connection may leave them out and use the saved ones. Without them, the answer is <code>Client ID is required. Client Secret is required.</code> and the card stays pending.</li>
-<li>An <code>oauth</code> connector, a vendor's own MCP server with its own sign-in such as TikTok Ads, has no fields on its card: send <code>redirecturl</code> only. Its consent screen names your organization.</li>
-<li>A connector with account pickers, such as Facebook Pages, lists its candidates once it is connected. Let the person choose them on your settings screen with <a href="/docs/agent-connectors#post-useragentconnectoraccounts"><code>ConnectorAccounts</code></a> and <a href="/docs/agent-connectors#post-useragentconnectorsetaccounts"><code>ConnectorSetAccounts</code></a>: no card picks accounts.</li>
+<li>An <code>oauth</code> connector, a vendor's own MCP server with its own sign-in such as TikTok Ads, has no fields on its card: send <code>redirecturl</code> only. Its consent screen names your organization. Its card and answers are in <a href="#add-and-connect">Add and Connect</a>.</li>
+<li>A connector with account pickers, such as Facebook Pages, lists its candidates once it is connected, and acts on no account until a selection is saved. After its card is applied, read <code>accountpickers</code> on <a href="/docs/agent-connectors#post-agentconnectordetail"><code>AgentConnector/Detail</code></a>: when <code>accounts</code> on <a href="/docs/agent-connectors#post-useragentconnectorlist"><code>ConnectorList</code></a> holds nothing for a picker, let the person choose on your settings screen with <a href="/docs/agent-connectors#post-useragentconnectoraccounts"><code>ConnectorAccounts</code></a> and <a href="/docs/agent-connectors#post-useragentconnectorsetaccounts"><code>ConnectorSetAccounts</code></a>: no card picks accounts.</li>
+<li>A connection can later need a new sign-in: <code>ConnectorList</code> reads <code>reauth</code> when the sign-in expired or was revoked, and until the agent's next restart the connector's tools answer <code>The sign-in for this connector expired or was revoked, so it has to be connected again. Ask the agent's operator to reconnect it.</code> ConnectorAccounts refuses it with code <code>"reauth"</code> and the same sentence. Offer Reconnect. The agent may propose a new <code>connect</code> card for it, which signs in again like any <code>signin</code> card and reuses the saved app keys when <code>values</code> leaves them out, or you start a new sign-in with ConnectorConnect on your settings screen.</li>
 </ul>
+<h3 id="add-and-connect">Add and Connect</h3>
+<p>An <code>add</code> card can apply together with one of its <code>connect</code> cards in one call: its one pending <code>key</code> card, with that card's values in <code>values</code>, or its one pending <code>signin</code> card, with <code>signin: true</code> once that card's sign-in has connected the connector. A <code>project</code> card always takes its own step. <a href="#buttons">Buttons</a> says which buttons to show.</p>
+<p><strong>With a key.</strong> Send the <code>add</code> card with the <code>connect</code> card's values. For Google Play Promotional Content and its Google Play Console card, from <a href="#every-kind">Every kind</a>, the one field is JSON, and a <code>json</code> field also takes an object:</p>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
+    &quot;messageguid&quot;: &quot;d8e9f0a1-b2c3-4567-d890-123456789abc&quot;,
+    &quot;cardid&quot;: &quot;g7p2k5m9w4ta&quot;,
+    &quot;action&quot;: &quot;apply&quot;,
+    &quot;values&quot;: { &quot;serviceaccountjson&quot;: { &quot;type&quot;: &quot;service_account&quot;, &quot;client_email&quot;: &quot;play-agent@acme-apps.iam.gserviceaccount.com&quot;, &quot;private_key&quot;: &quot;...&quot; } }
+  }'
+</code></pre>
+<p>Both cards apply, with one restart, and <code>paired</code> is the <code>connect</code> card after the call:</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;setup&quot;: {
+    &quot;v&quot;: 1,
+    &quot;id&quot;: &quot;g7p2k5m9w4ta&quot;,
+    &quot;kind&quot;: &quot;add&quot;,
+    &quot;key&quot;: &quot;util-googleplay-events&quot;,
+    &quot;needs&quot;: [{ &quot;connector&quot;: &quot;google-play&quot;, &quot;title&quot;: &quot;Google Play Console&quot;, &quot;mode&quot;: &quot;key&quot; }],
+    &quot;requestedby&quot;: &quot;5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f&quot;,
+    &quot;createdat&quot;: 1794656000,
+    &quot;status&quot;: &quot;applied&quot;,
+    &quot;actedat&quot;: 1794656090,
+    &quot;actedby&quot;: &quot;5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f&quot;
+  },
+  &quot;restarting&quot;: true,
+  &quot;summary&quot;: &quot;Google Play Promotional Content added. Google Play Console connected.&quot;,
+  &quot;paired&quot;: [
+    {
+      &quot;setup&quot;: {
+        &quot;v&quot;: 1,
+        &quot;id&quot;: &quot;c2v8n4q6x1pd&quot;,
+        &quot;kind&quot;: &quot;connect&quot;,
+        &quot;connector&quot;: &quot;google-play&quot;,
+        &quot;title&quot;: &quot;Google Play Console&quot;,
+        &quot;authtype&quot;: &quot;fields&quot;,
+        &quot;mode&quot;: &quot;key&quot;,
+        &quot;fields&quot;: [
+          { &quot;name&quot;: &quot;serviceaccountjson&quot;, &quot;label&quot;: &quot;Service Account JSON&quot;, &quot;description&quot;: &quot;1. Go to [Google Cloud Console → IAM &amp; Admin → Service Accounts](https://console.cloud.google.com/iam-admin/serviceaccounts) ...&quot;, &quot;required&quot;: true, &quot;secret&quot;: true, &quot;format&quot;: &quot;json&quot; }
+        ],
+        &quot;requestedby&quot;: &quot;5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f&quot;,
+        &quot;createdat&quot;: 1794656000,
+        &quot;status&quot;: &quot;applied&quot;,
+        &quot;actedat&quot;: 1794656090,
+        &quot;actedby&quot;: &quot;5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f&quot;
+      },
+      &quot;result&quot;: true,
+      &quot;error&quot;: null
+    }
+  ]
+}
+</code></pre>
+<p>A value that fails the field's checks, such as a required field left out, applies neither card: the answer is <code>result: false</code> with the sentence, both cards stay pending, and <code>paired</code> holds the <code>connect</code> card with the same sentence in <code>error</code>. A key the vendor refuses once the skill is added leaves the <code>add</code> card applied (<code>result: true</code>, <code>summary</code> names only the skill) and the <code>connect</code> card pending: <code>paired[0]</code> has <code>result: false</code> and the vendor's sentence in <code>error</code>, and <code>next</code> names the <code>connect</code> card for the person to try again.</p>
+<p><strong>With a sign-in.</strong> On an agent that has Google Ads and Meta Ads connected, Ads Manager Common Rules needs only TikTok Ads. TikTok Ads signs in on the vendor's own MCP server (<code>authtype: "oauth"</code>), so its card has no fields:</p>
+<pre><code class="language-json">{
+  &quot;v&quot;: 1,
+  &quot;id&quot;: &quot;a3d6s9m2k7qe&quot;,
+  &quot;kind&quot;: &quot;add&quot;,
+  &quot;key&quot;: &quot;util-ads-manager-common&quot;,
+  &quot;needs&quot;: [{ &quot;connector&quot;: &quot;tiktok-ads&quot;, &quot;title&quot;: &quot;TikTok Ads&quot;, &quot;mode&quot;: &quot;signin&quot; }],
+  &quot;requestedby&quot;: &quot;5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f&quot;,
+  &quot;createdat&quot;: 1794657000
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;v&quot;: 1,
+  &quot;id&quot;: &quot;t5k8a1d4s7wn&quot;,
+  &quot;kind&quot;: &quot;connect&quot;,
+  &quot;connector&quot;: &quot;tiktok-ads&quot;,
+  &quot;title&quot;: &quot;TikTok Ads&quot;,
+  &quot;authtype&quot;: &quot;oauth&quot;,
+  &quot;mode&quot;: &quot;signin&quot;,
+  &quot;fields&quot;: [],
+  &quot;requestedby&quot;: &quot;5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f&quot;,
+  &quot;createdat&quot;: 1794657000
+}
+</code></pre>
+<p><strong>1. Sign in on the <code>connect</code> card</strong>, with your <code>redirecturl</code> only:</p>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
+    &quot;messageguid&quot;: &quot;e1f2a3b4-c5d6-7890-e123-4567890abcde&quot;,
+    &quot;cardid&quot;: &quot;t5k8a1d4s7wn&quot;,
+    &quot;action&quot;: &quot;apply&quot;,
+    &quot;redirecturl&quot;: &quot;https://app.example.com/agents/42/chat?card=t5k8a1d4s7wn&quot;
+  }'
+</code></pre>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;setup&quot;: {
+    &quot;v&quot;: 1,
+    &quot;id&quot;: &quot;t5k8a1d4s7wn&quot;,
+    &quot;kind&quot;: &quot;connect&quot;,
+    &quot;connector&quot;: &quot;tiktok-ads&quot;,
+    &quot;title&quot;: &quot;TikTok Ads&quot;,
+    &quot;authtype&quot;: &quot;oauth&quot;,
+    &quot;mode&quot;: &quot;signin&quot;,
+    &quot;fields&quot;: [],
+    &quot;requestedby&quot;: &quot;5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f&quot;,
+    &quot;createdat&quot;: 1794657000
+  },
+  &quot;restarting&quot;: false,
+  &quot;summary&quot;: &quot;&quot;,
+  &quot;authorizeUrl&quot;: &quot;https://business-api.tiktok.com/portal/mcp-tt4b-authorize?response_type=code&amp;client_id=...&amp;redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FAgentConnector%2FOAuthCallback&amp;state=...&amp;code_challenge=...&amp;code_challenge_method=S256&amp;resource=...&amp;scope=mcp%3Att4b&quot;,
+  &quot;next&quot;: [{ &quot;connector&quot;: &quot;tiktok-ads&quot;, &quot;title&quot;: &quot;TikTok Ads&quot;, &quot;mode&quot;: &quot;signin&quot;, &quot;cardid&quot;: &quot;t5k8a1d4s7wn&quot;, &quot;messageguid&quot;: &quot;e1f2a3b4-c5d6-7890-e123-4567890abcde&quot; }]
+}
+</code></pre>
+<p><strong>2. Open <code>authorizeUrl</code>.</strong> The browser signs in on TikTok's page and comes back to your <code>redirecturl</code> with <code>connector_connected=true</code>, and the agent restarts with TikTok Ads' tools.</p>
+<p><strong>3. Add.</strong> Send the <code>add</code> card with <code>signin: true</code>:</p>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
+    &quot;messageguid&quot;: &quot;e1f2a3b4-c5d6-7890-e123-4567890abcde&quot;,
+    &quot;cardid&quot;: &quot;a3d6s9m2k7qe&quot;,
+    &quot;action&quot;: &quot;apply&quot;,
+    &quot;signin&quot;: true
+  }'
+</code></pre>
+<p>Both cards are recorded applied:</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;setup&quot;: {
+    &quot;v&quot;: 1,
+    &quot;id&quot;: &quot;a3d6s9m2k7qe&quot;,
+    &quot;kind&quot;: &quot;add&quot;,
+    &quot;key&quot;: &quot;util-ads-manager-common&quot;,
+    &quot;needs&quot;: [{ &quot;connector&quot;: &quot;tiktok-ads&quot;, &quot;title&quot;: &quot;TikTok Ads&quot;, &quot;mode&quot;: &quot;signin&quot; }],
+    &quot;requestedby&quot;: &quot;5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f&quot;,
+    &quot;createdat&quot;: 1794657000,
+    &quot;status&quot;: &quot;applied&quot;,
+    &quot;actedat&quot;: 1794657180,
+    &quot;actedby&quot;: &quot;5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f&quot;
+  },
+  &quot;restarting&quot;: true,
+  &quot;summary&quot;: &quot;Ads Manager Common Rules added. TikTok Ads connected.&quot;,
+  &quot;paired&quot;: [
+    {
+      &quot;setup&quot;: {
+        &quot;v&quot;: 1,
+        &quot;id&quot;: &quot;t5k8a1d4s7wn&quot;,
+        &quot;kind&quot;: &quot;connect&quot;,
+        &quot;connector&quot;: &quot;tiktok-ads&quot;,
+        &quot;title&quot;: &quot;TikTok Ads&quot;,
+        &quot;authtype&quot;: &quot;oauth&quot;,
+        &quot;mode&quot;: &quot;signin&quot;,
+        &quot;fields&quot;: [],
+        &quot;requestedby&quot;: &quot;5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f&quot;,
+        &quot;createdat&quot;: 1794657000,
+        &quot;status&quot;: &quot;applied&quot;,
+        &quot;actedat&quot;: 1794657180,
+        &quot;actedby&quot;: &quot;5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f&quot;
+      },
+      &quot;result&quot;: true,
+      &quot;error&quot;: null
+    }
+  ]
+}
+</code></pre>
+<p>Sent before the sign-in came back, it applies nothing, and <code>errorcode</code> says why:</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: false,
+  &quot;errors&quot;: [{ &quot;code&quot;: 0, &quot;message&quot;: &quot;TikTok Ads is not connected yet. Finish the sign-in on the card first.&quot;, &quot;time&quot;: 1794657100 }],
+  &quot;setup&quot;: {
+    &quot;v&quot;: 1,
+    &quot;id&quot;: &quot;a3d6s9m2k7qe&quot;,
+    &quot;kind&quot;: &quot;add&quot;,
+    &quot;key&quot;: &quot;util-ads-manager-common&quot;,
+    &quot;needs&quot;: [{ &quot;connector&quot;: &quot;tiktok-ads&quot;, &quot;title&quot;: &quot;TikTok Ads&quot;, &quot;mode&quot;: &quot;signin&quot; }],
+    &quot;requestedby&quot;: &quot;5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f&quot;,
+    &quot;createdat&quot;: 1794657000
+  },
+  &quot;restarting&quot;: false,
+  &quot;summary&quot;: &quot;&quot;,
+  &quot;errorcode&quot;: &quot;not_connected&quot;,
+  &quot;paired&quot;: [
+    {
+      &quot;setup&quot;: {
+        &quot;v&quot;: 1,
+        &quot;id&quot;: &quot;t5k8a1d4s7wn&quot;,
+        &quot;kind&quot;: &quot;connect&quot;,
+        &quot;connector&quot;: &quot;tiktok-ads&quot;,
+        &quot;title&quot;: &quot;TikTok Ads&quot;,
+        &quot;authtype&quot;: &quot;oauth&quot;,
+        &quot;mode&quot;: &quot;signin&quot;,
+        &quot;fields&quot;: [],
+        &quot;requestedby&quot;: &quot;5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f&quot;,
+        &quot;createdat&quot;: 1794657000
+      },
+      &quot;result&quot;: false,
+      &quot;error&quot;: &quot;TikTok Ads is not connected yet. Finish the sign-in on the card first.&quot;
+    }
+  ]
+}
+</code></pre>
+<p>TikTok Ads acts on the advertisers picked for it: list and save them next, as in <a href="/docs/agent-connectors#tiktok-ads-sign-in-then-pick-advertisers">TikTok Ads: sign in, then pick advertisers</a>.</p>
 <h3 id="connecting-on-your-settings-screen">Connecting on your settings screen</h3>
-<p>Every connector also connects without a card, on your own settings screens, with the Agent Connectors calls: <a href="/docs/agent-connectors#connect-with-fields">fields</a>, a <a href="/docs/agent-connectors#connect-with-a-key-instead-of-a-sign-in">key instead of a sign-in</a>, or the vendor's <a href="/docs/agent-connectors#connect-with-a-sign-in">sign-in</a> with a <code>redirecturl</code> on your own site, then its <a href="/docs/agent-connectors#account-pickers">account pickers</a>. Each answers <code>restart</code> (or <code>connector_connected=true</code> on your page after a sign-in): see <a href="#showing-a-restart">Showing a restart</a>. A pending <code>connect</code> card for a connector connected there is recorded applied when you apply it, with no values, or the next time a card of the same person's in that chat is applied or dismissed. A channel is saved with <a href="/docs/agent-overview#post-useragentcredentialupsert"><code>CredentialUpsert</code></a>: no card saves it. The agent's Wiro project is bound with <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>CredentialProjectBind</code></a>, or by the <code>wiro</code> connector's <code>project</code> card, which binds it the same way.</p>
+<p>Every connector also connects without a card, on your own settings screens, with the Agent Connectors calls: <a href="/docs/agent-connectors#connect-with-fields">fields</a>, a <a href="/docs/agent-connectors#connect-with-a-key-instead-of-a-sign-in">key instead of a sign-in</a>, or the vendor's <a href="/docs/agent-connectors#connect-with-a-sign-in">sign-in</a> with a <code>redirecturl</code> on your own site, then its <a href="/docs/agent-connectors#account-pickers">account pickers</a>. Each answers <code>restart</code> (or <code>connector_connected=true</code> on your page after a sign-in): see <a href="#showing-a-restart">Showing a restart</a>. A pending <code>connect</code> card for a connector connected there is recorded applied when you apply it, with no values, or the next time a card of the same person's in that chat is applied or dismissed. A channel is saved with <a href="/docs/agent-overview#post-useragentcredentialupsert"><code>CredentialUpsert</code></a>: no card saves it. The agent's Wiro project is bound with <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>CredentialProjectBind</code></a>, or by the <code>project</code> card of Wiro AI Models (<code>wiro</code>), which binds it the same way.</p>
 <h2 id="your-own-connect-button">Your Own Connect Button</h2>
 <h3 id="where-next-appears">Where next appears</h3>
 <p><code>next</code> is the list of connectors still to connect, as data for your own buttons. It comes in four places:</p>
@@ -32307,13 +32631,14 @@ async function connectFromNext(entry, useragentguid, own) {
     return setupCardApply({ useragentguid, messageguid, cardid, action: &quot;apply&quot;, values });
   }
   if (entry.mode === &quot;signin&quot;) {
-    const values = await askForAppKeys(entry.connector); // the card's serveronly fields, when it has any
+    const values = await askForFields(entry.connector); // every field of the card, or Detail's credentialfields with mode &quot;oauth&quot; or none
     const redirecturl = returnPageFor(entry.connector);  // a page on your own site
     const started = cardid
       ? await setupCardApply({ useragentguid, messageguid, cardid, action: &quot;apply&quot;, values, redirecturl })
       : await connectorConnect({ useragentguid, slug: entry.connector, values, redirecturl });
     if (!started.result || !started.authorizeUrl) return started; // a refusal, or already connected
-    await openAndWaitForReturn(started.authorizeUrl); // connector_connected=true on your redirecturl
+    const back = await openAndWaitForReturn(started.authorizeUrl); // the query your redirecturl received
+    if (back.connector_connected !== &quot;true&quot;) return back; // connector_error=&lt;code&gt;: show it, offer Sign in again
     if (cardid) return setupCardApply({ useragentguid, messageguid, cardid, action: &quot;apply&quot; }); // records the card
     return started;
   }
@@ -32372,8 +32697,8 @@ async function connectFromNext(entry, useragentguid, own) {
 <td>Show the card from <code>setup</code> in its state.</td>
 </tr>
 <tr>
-<td><code>This card is being applied. Try again in a moment.</code>, <code>The card could not be applied right now. Try again in a moment.</code></td>
-<td>Someone is acting on this card, or on the agent's setup, right now. Let the person try again after a few seconds.</td>
+<td><code>This card is being applied. Try again in a moment.</code>, <code>The card could not be applied right now. Try again in a moment.</code>, <code>Another change to this agent's connectors or skills is being applied. Try again in a moment.</code></td>
+<td>Someone is acting on this card, or on the agent's setup, right now (an <code>add</code> or <code>remove</code> card waits for another skill change; the card stays pending). Let the person try again after a few seconds.</td>
 </tr>
 <tr>
 <td><code>This card takes no key. Apply it without one.</code>, <code>This card brings more than one key. Apply it, then add each key on its own card.</code></td>
@@ -32451,7 +32776,7 @@ async function connectFromNext(entry, useragentguid, own) {
 </table>
 </div>
 </div>
-<p>A restart takes about a minute. If the poll reads <code>0</code> (stopped), <code>5</code> (error) or <code>6</code> (setup required) instead, the agent won't start by itself: stop polling and say so. <code>0</code> and <code>5</code> start again with <a href="/docs/agent-overview#post-useragentstart"><code>POST /UserAgent/Start</code></a>, and <code>6</code> needs its missing required credential first (a connector never holds an agent at <code>6</code>); see <a href="/docs/agent-overview#useragent-statuses">UserAgent Statuses</a>.</p>
+<p>A restart takes about a minute. If the poll reads <code>0</code> (stopped), <code>5</code> (error) or <code>6</code> (setup required) instead, the agent won't start by itself: stop polling and say so. <code>0</code> and <code>5</code> start again with <a href="/docs/agent-overview#post-useragentstart"><code>POST /UserAgent/Start</code></a>, unless the agent's plan has ended: Start then answers <code>Subscription required — please subscribe to this agent before starting it.</code>, and renewing the plan starts the agent (see <a href="#send-a-message">Send a message</a>). <code>6</code> needs its missing required credential first (a connector never holds an agent at <code>6</code>); see <a href="/docs/agent-overview#useragent-statuses">UserAgent Statuses</a>.</p>
 <h3 id="showing-a-restart">Showing a restart</h3>
 <p>When an answer says the agent restarts, show a line such as "Restarting to load the change, about a minute" above the message box, and poll <code>UserAgent/Detail</code> every five seconds until <code>status</code> is <code>4</code>. Then hide the line. You can leave the message box on: a message sent too early gets a clear refusal you can show.</p>
 <p>Each call says it in its own field:</p>
@@ -33918,12 +34243,12 @@ page &lt;&gt; binary RFB 3.8 frames: noVNC draws the agent's browser, view only
 <li>Each conversation has its own <code>sessionkey</code>, and you check that every <code>messageguid</code> a person acts on is in their session.</li>
 <li>Message rows and cards name your key's owner: your UI shows your own names for the sender.</li>
 <li>Messages go out with <code>Message/Send</code>; replies are followed on the WebSocket or with <code>Message/Detail</code>, and loaded with <code>Message/History</code>; rows added between turns arrive on the session's <code>sessiontoken</code>.</li>
-<li>Failed turns are told apart by their bracketed code, and the refusal of an agent paused for its balance by <code>agentusage</code>.</li>
+<li>Failed turns are told apart by their bracketed code. Send's refusals are told apart by <code>agentstatus</code>, by <code>agentusage</code> and its <code>pausedreason</code> (<code>"balance"</code> or <code>"plan"</code>), and by codes <code>93</code> (spend limit) and <code>92</code> (Model Access).</li>
 <li>Timeline blocks are merged by <code>blockid</code> and newer <code>version</code>, sorted by <code>callindex</code>, <code>contentindex</code>, <code>blockid</code>, and drawn by <code>type</code>; unknown types and kinds are skipped.</li>
 <li>Replies Wiro answers itself (<code>agenttoken: null</code>, <code>status: "agent_end"</code>) show <code>response</code> as plain text.</li>
 <li>Setup cards show the right title, body and buttons for their kind and state, <code>add</code> cards together with their <code>connect</code> cards.</li>
 <li>Apply waits for the reply to finish; Apply and Dismiss call <code>SetupCardApply</code>, and the card updates from the answer's <code>setup</code> (which can be <code>null</code>) and from later <code>version</code> 2 blocks.</li>
-<li>Each connect mode has its flow: <code>key</code> (the card's <code>fields</code> as <code>values</code>), <code>signin</code> (<code>SetupCardApply</code> with your <code>redirecturl</code> and your app's keys, the browser sign-in, then <code>SetupCardApply</code> again to record the card) and <code>project</code> (your project picker, then <code>SetupCardApply</code> with <code>wiroprojectguid</code>); any connector also connects on your settings screens with the <a href="/docs/agent-connectors">Agent Connectors</a> calls, account pickers included.</li>
+<li>Each connect mode has its flow: <code>key</code> (the card's <code>fields</code> as <code>values</code>), <code>signin</code> (<code>SetupCardApply</code> with your <code>redirecturl</code> and the card's <code>fields</code> as <code>values</code>, your app's keys among them, the browser sign-in, then <code>SetupCardApply</code> again to record the card, only after <code>connector_connected=true</code>) and <code>project</code> (your project picker, then <code>SetupCardApply</code> with <code>wiroprojectguid</code>); any connector also connects on your settings screens with the <a href="/docs/agent-connectors">Agent Connectors</a> calls, account pickers included.</li>
 <li><code>next</code> from blocks, <code>SetupCardApply</code> answers, <code>setupresult</code> and webhooks turns into your own Connect buttons.</li>
 <li>Every <code>result: false</code> shows its sentence or your own words; code branches on codes and statuses, never on sentences.</li>
 <li>Every restart signal (<code>restarting</code>, <code>restart</code>, <code>connector_connected=true</code>, and the saves that answer none) shows a restarting line until <code>UserAgent/Detail</code> reads <code>status: 4</code>, and the poll stops at <code>0</code>, <code>5</code> or <code>6</code>; Send refusals during a restart are shown as they are.</li>
