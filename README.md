@@ -80,49 +80,15 @@ One row per page, in sidebar order. Each path is live under `https://wiro.ai`.
 | Agent Messaging | `/docs/agent-messaging` | [agent-messaging.md](./markdown/agent-messaging.md) |
 | Agent WebSocket | `/docs/agent-websocket` | [agent-websocket.md](./markdown/agent-websocket.md) |
 | Agent Webhooks | `/docs/agent-webhooks` | [agent-webhooks.md](./markdown/agent-webhooks.md) |
-| Agent Credentials & OAuth | `/docs/agent-credentials` | [agent-credentials.md](./markdown/agent-credentials.md) |
+| Agent Connectors | `/docs/agent-connectors` | [agent-connectors.md](./markdown/agent-connectors.md) |
+| Agent Credentials | `/docs/agent-credentials` | [agent-credentials.md](./markdown/agent-credentials.md) |
 | Agent Chat Integration | `/docs/agent-chat-integration` | [agent-chat-integration.md](./markdown/agent-chat-integration.md) |
 | Agent Skills | `/docs/agent-skills` | [agent-skills.md](./markdown/agent-skills.md) |
 | Agent Transactions | `/docs/agent-transactions` | [agent-transactions.md](./markdown/agent-transactions.md) |
 | Agent Logs | `/docs/agent-logs` | [agent-logs.md](./markdown/agent-logs.md) |
 | Agent Use Cases | `/docs/agent-use-cases` | [agent-use-cases.md](./markdown/agent-use-cases.md) |
-| **Skills Integration** | | |
-| Meta Ads | `/docs/integration-metaads-skills` | [integration-metaads-skills.md](./markdown/integration-metaads-skills.md) |
-| TikTok Ads | `/docs/integration-tiktokads-skills` | [integration-tiktokads-skills.md](./markdown/integration-tiktokads-skills.md) |
-| Shopify | `/docs/integration-shopify-skills` | [integration-shopify-skills.md](./markdown/integration-shopify-skills.md) |
-| WooCommerce | `/docs/integration-woocommerce-skills` | [integration-woocommerce-skills.md](./markdown/integration-woocommerce-skills.md) |
-| Reddit | `/docs/integration-reddit-skills` | [integration-reddit-skills.md](./markdown/integration-reddit-skills.md) |
-| Facebook Page | `/docs/integration-facebook-skills` | [integration-facebook-skills.md](./markdown/integration-facebook-skills.md) |
-| Instagram | `/docs/integration-instagram-skills` | [integration-instagram-skills.md](./markdown/integration-instagram-skills.md) |
-| LinkedIn | `/docs/integration-linkedin-skills` | [integration-linkedin-skills.md](./markdown/integration-linkedin-skills.md) |
-| Twitter / X | `/docs/integration-twitter-skills` | [integration-twitter-skills.md](./markdown/integration-twitter-skills.md) |
-| TikTok | `/docs/integration-tiktok-skills` | [integration-tiktok-skills.md](./markdown/integration-tiktok-skills.md) |
-| Google Ads | `/docs/integration-googleads-skills` | [integration-googleads-skills.md](./markdown/integration-googleads-skills.md) |
-| YouTube | `/docs/integration-youtube-skills` | [integration-youtube-skills.md](./markdown/integration-youtube-skills.md) |
-| Google Analytics 4 | `/docs/integration-ga4-skills` | [integration-ga4-skills.md](./markdown/integration-ga4-skills.md) |
-| Roasit | `/docs/integration-roasit-skills` | [integration-roasit-skills.md](./markdown/integration-roasit-skills.md) |
-| Merchant Center | `/docs/integration-merchantcenter-skills` | [integration-merchantcenter-skills.md](./markdown/integration-merchantcenter-skills.md) |
-| Google Business Profile | `/docs/integration-googlebusiness-skills` | [integration-googlebusiness-skills.md](./markdown/integration-googlebusiness-skills.md) |
-| Google Search Console | `/docs/integration-searchconsole-skills` | [integration-searchconsole-skills.md](./markdown/integration-searchconsole-skills.md) |
-| DataForSEO | `/docs/integration-dataforseo-skills` | [integration-dataforseo-skills.md](./markdown/integration-dataforseo-skills.md) |
-| Keepa | `/docs/integration-keepa-skills` | [integration-keepa-skills.md](./markdown/integration-keepa-skills.md) |
-| RevenueCat | `/docs/integration-revenuecat-skills` | [integration-revenuecat-skills.md](./markdown/integration-revenuecat-skills.md) |
-| Adapty | `/docs/integration-adapty-skills` | [integration-adapty-skills.md](./markdown/integration-adapty-skills.md) |
-| HubSpot | `/docs/integration-hubspot-skills` | [integration-hubspot-skills.md](./markdown/integration-hubspot-skills.md) |
-| Mailchimp | `/docs/integration-mailchimp-skills` | [integration-mailchimp-skills.md](./markdown/integration-mailchimp-skills.md) |
-| Google Drive | `/docs/integration-googledrive-skills` | [integration-googledrive-skills.md](./markdown/integration-googledrive-skills.md) |
-| Google Calendar | `/docs/integration-google-calendar-skills` | [integration-google-calendar-skills.md](./markdown/integration-google-calendar-skills.md) |
-| Serper Web Search | `/docs/integration-serper-search-skills` | [integration-serper-search-skills.md](./markdown/integration-serper-search-skills.md) |
-| Gmail | `/docs/integration-gmail-skills` | [integration-gmail-skills.md](./markdown/integration-gmail-skills.md) |
+| **Agent Channels** | | |
 | Telegram | `/docs/integration-telegram-skills` | [integration-telegram-skills.md](./markdown/integration-telegram-skills.md) |
-| Firebase | `/docs/integration-firebase-skills` | [integration-firebase-skills.md](./markdown/integration-firebase-skills.md) |
-| WordPress | `/docs/integration-wordpress-skills` | [integration-wordpress-skills.md](./markdown/integration-wordpress-skills.md) |
-| App Store Connect | `/docs/integration-appstore-skills` | [integration-appstore-skills.md](./markdown/integration-appstore-skills.md) |
-| Google Play | `/docs/integration-googleplay-skills` | [integration-googleplay-skills.md](./markdown/integration-googleplay-skills.md) |
-| Apollo | `/docs/integration-apollo-skills` | [integration-apollo-skills.md](./markdown/integration-apollo-skills.md) |
-| Lemlist | `/docs/integration-lemlist-skills` | [integration-lemlist-skills.md](./markdown/integration-lemlist-skills.md) |
-| Brevo | `/docs/integration-brevo-skills` | [integration-brevo-skills.md](./markdown/integration-brevo-skills.md) |
-| SendGrid | `/docs/integration-sendgrid-skills` | [integration-sendgrid-skills.md](./markdown/integration-sendgrid-skills.md) |
 | Twilio Voice | `/docs/integration-twiliovoice-skills` | [integration-twiliovoice-skills.md](./markdown/integration-twiliovoice-skills.md) |
 | Web Voice | `/docs/integration-webvoice-skills` | [integration-webvoice-skills.md](./markdown/integration-webvoice-skills.md) |
 | **Organizations & Teams** | | |

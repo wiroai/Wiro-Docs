@@ -133,48 +133,14 @@
   <url><loc>https://wiro.ai/docs/agent-messaging</loc></url>
   <url><loc>https://wiro.ai/docs/agent-websocket</loc></url>
   <url><loc>https://wiro.ai/docs/agent-webhooks</loc></url>
+  <url><loc>https://wiro.ai/docs/agent-connectors</loc></url>
   <url><loc>https://wiro.ai/docs/agent-credentials</loc></url>
   <url><loc>https://wiro.ai/docs/agent-chat-integration</loc></url>
   <url><loc>https://wiro.ai/docs/agent-skills</loc></url>
   <url><loc>https://wiro.ai/docs/agent-transactions</loc></url>
   <url><loc>https://wiro.ai/docs/agent-logs</loc></url>
   <url><loc>https://wiro.ai/docs/agent-use-cases</loc></url>
-  <url><loc>https://wiro.ai/docs/integration-metaads-skills</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-tiktokads-skills</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-shopify-skills</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-woocommerce-skills</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-reddit-skills</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-facebook-skills</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-instagram-skills</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-linkedin-skills</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-twitter-skills</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-tiktok-skills</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-googleads-skills</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-youtube-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-ga4-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-roasit-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-merchantcenter-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-googlebusiness-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-searchconsole-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-dataforseo-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-keepa-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-revenuecat-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-adapty-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-hubspot-skills</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-mailchimp-skills</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-googledrive-skills</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-google-calendar-skills</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-serper-search-skills</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-gmail-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://wiro.ai/docs/integration-telegram-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-firebase-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-wordpress-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-appstore-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-googleplay-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-apollo-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-lemlist-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-brevo-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-sendgrid-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://wiro.ai/docs/integration-twiliovoice-skills</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://wiro.ai/docs/integration-webvoice-skills</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://wiro.ai/docs/organizations-overview</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
