@@ -15802,7 +15802,7 @@ import type {
 <tr>
 <td><code>6</code></td>
 <td>Setup Required</td>
-<td>Agent needs credentials or configuration before it can start. Provide them via <code>CredentialUpsert</code> / <code>CredentialProjectBind</code> / <code>CustomSkillUpsert</code> / <code>SkillsApply</code>, then call <code>POST /UserAgent/Update</code>.</td>
+<td>The agent has no plan yet: it was deployed without <code>useprepaid: true</code>, and nothing was charged. Pay its plan with <a href="#post-useragentcreatesubscriptioncheckout"><code>CreateSubscriptionCheckout</code></a> (<code>useprepaid: true</code>), which queues it (status <code>2</code>). Credentials and connectors never hold an agent here. An agent that has never had a plan and has never started is deleted about an hour after Deploy.</td>
 </tr>
 </tbody>
 </table>
@@ -16567,7 +16567,7 @@ for the channel contract.</p>
 <td><code>useprepaid</code></td>
 <td>boolean</td>
 <td>Yes</td>
-<td>Must be <code>true</code>. Pays the plan's price from your Wiro balance in a single server-side call.</td>
+<td>Send <code>true</code>: the plan's price is paid from your Wiro balance in this call, and the agent is queued. Without it, Deploy still creates the agent and charges nothing: the agent stays at status <code>6</code> with no plan until <a href="#post-useragentcreatesubscriptioncheckout"><code>CreateSubscriptionCheckout</code></a> (<code>useprepaid: true</code>) pays it, and if it still has no plan about an hour after Deploy, it is deleted.</td>
 </tr>
 <tr>
 <td><code>tier</code></td>
@@ -16798,8 +16798,8 @@ for the channel contract.</p>
       ],
       &quot;enabledChannels&quot;: [],
       &quot;teamsessionmode&quot;: &quot;private&quot;,
-      &quot;status&quot;: 6,
-      &quot;setuprequired&quot;: true,
+      &quot;status&quot;: 2,
+      &quot;setuprequired&quot;: false,
       &quot;pinned&quot;: false,
       &quot;agent&quot;: {
         &quot;guid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;,
@@ -16838,7 +16838,7 @@ for the channel contract.</p>
 <tbody>
 <tr>
 <td><code>status: 6</code></td>
-<td><strong>Setup Required</strong>: initial state for every fresh Deploy. With <code>useprepaid: true</code>, auto-queues to <code>status: 2</code> as soon as the subscription is provisioned, regardless of credential completeness. The agent then starts even if a required credential is still missing, and <code>UserAgent/Detail</code> reads <code>setuprequired: true</code> until it is filled. Fill a missing credential, such as a channel or the Wiro project the template doesn't mark optional, with <code>POST /UserAgent/CredentialUpsert</code> or <code>POST /UserAgent/CredentialProjectBind</code>: a running agent restarts to pick it up. Connectors never hold an agent at Setup Required. A row still at <code>status: 6</code> needs <code>POST /UserAgent/Update</code> first (any scalar body, even just <code>{ "guid": "&lt;useragent-guid&gt;" }</code>) to flip it to <code>status: 0</code> (Stopped): <code>Update</code> is the endpoint that performs the <code>setuprequired</code> re-check and the <code>6 → 0</code> transition.</td>
+<td><strong>Setup Required</strong>: initial state for every fresh Deploy. With <code>useprepaid: true</code>, auto-queues to <code>status: 2</code> as soon as the subscription is provisioned, regardless of credential completeness. The agent then starts even if a required credential is still missing, and <code>UserAgent/Detail</code> reads <code>setuprequired: true</code> until it is filled. Fill a missing credential, such as a channel or the Wiro project the template doesn't mark optional, with <code>POST /UserAgent/CredentialUpsert</code> or <code>POST /UserAgent/CredentialProjectBind</code>: a running agent restarts to pick it up. Connectors never hold an agent at Setup Required. A row still at <code>status: 6</code> has no plan, because it was deployed without <code>useprepaid: true</code>. <a href="#post-useragentcreatesubscriptioncheckout"><code>CreateSubscriptionCheckout</code></a> with <code>useprepaid: true</code> pays it and queues the agent (<code>status: 2</code>).</td>
 </tr>
 <tr>
 <td><code>status: 2</code></td>
@@ -16850,7 +16850,7 @@ for the channel contract.</p>
 </tr>
 <tr>
 <td><code>setuprequired: false</code></td>
-<td>All non-optional credentials are set up and the row has left <code>status: 6</code>. A row sitting at Setup Required reads <code>true</code> until a <code>POST /UserAgent/Update</code> call flips it 6 → 0; <code>Start</code> then launches it normally.</td>
+<td>All non-optional credentials are set up and the row has left <code>status: 6</code>. A row sitting at Setup Required reads <code>true</code> until it leaves <code>status: 6</code>.</td>
 </tr>
 </tbody>
 </table>
@@ -18070,7 +18070,7 @@ for the channel contract.</p>
 </table>
 </div>
 </div>
-<p><strong>Note:</strong> <code>CredentialUpsert</code> and <code>CredentialProjectBind</code> save credential fields <strong>but do not transition <code>status: 6</code> on their own</strong>. After setting up the missing credentials, call <code>POST /UserAgent/Update</code> once (any scalar body works, even just <code>{ "guid": "&lt;useragent-guid&gt;" }</code>) to trigger the <code>setuprequired</code> re-check; that's the call that flips <code>status: 6 → 0</code> (Stopped) so the next <code>Start</code> succeeds.</p>
+<p><strong>Note:</strong> <code>CredentialUpsert</code> and <code>CredentialProjectBind</code> never change <code>status</code>. An agent at <code>status: 6</code> has no plan: pay it with <a href="#post-useragentcreatesubscriptioncheckout"><code>CreateSubscriptionCheckout</code></a> (<code>useprepaid: true</code>), which queues it.</p>
 </blockquote>
 <h5 id="response_4">Response</h5>
 <p>A changed <code>title</code> on a running agent:</p>
@@ -18819,7 +18819,7 @@ channel-enable endpoint or persisted switch.</p>
 </div>
 </div>
 <p>Binding the project an agent already has changes nothing and restarts nothing. The <a href="/docs/agent-connectors#the-wiro-connector"><code>wiro</code> connector</a> always acts with the project bound here, and connecting it with <code>ConnectorConnect</code> and a <code>wiroprojectguid</code> binds a project the same way. Changing a project's IP whitelist gives the project a new API secret; to load it, restart the agent with <code>POST /UserAgent/Update</code> and a body of <code>{ "guid": "&lt;useragent-guid&gt;" }</code>.</p>
-<p>On an agent at <code>status: 6</code> (Setup Required), call <code>POST /UserAgent/Update</code> with <code>{ "guid": "&lt;useragent-guid&gt;" }</code> after binding, as after <code>CredentialUpsert</code>. Binding doesn't change <code>status</code>: <code>Update</code> moves the agent to <code>status: 0</code> (Stopped) once every required credential is set up, and <code>Start</code> refuses it until then.</p>
+<p>Binding doesn't change <code>status</code>. An agent at <code>status: 6</code> (Setup Required) has no plan: pay it with <a href="#post-useragentcreatesubscriptioncheckout"><code>CreateSubscriptionCheckout</code></a> (<code>useprepaid: true</code>), which queues it.</p>
 <p>If you already hold a project's key, <a href="#post-useragentcredentialupsert"><code>CredentialUpsert</code></a> with <code>credentialkey</code> <code>wiro</code> and <code>fieldname</code> <code>apikey</code> saves it too.</p>
 <h5 id="credentialprojectbind-errors">Common errors</h5>
 <p>Each of these comes back with <code>result: false</code>, and nothing is saved.</p>
@@ -20057,7 +20057,7 @@ channel-enable endpoint or persisted switch.</p>
 <ul>
 <li>The agent is already running or queued</li>
 <li>The agent is currently stopping</li>
-<li>Setup is incomplete (status <code>6</code>)</li>
+<li>The agent is at status <code>6</code>, with no plan yet: <code>Agent setup is not complete. Fill in the agent's required settings before starting.</code> Pay its plan with <code>CreateSubscriptionCheckout</code> (<code>useprepaid: true</code>), which queues it</li>
 <li>The agent has no active plan: <code>Subscription required — please subscribe to this agent before starting it.</code>, whatever its balance</li>
 <li>The agent has used the AI usage its plan includes and the balance is under $0.50: code <code>97</code>, with the same message as <code>Message/Send</code> and the agent's <code>usage</code> as <code>agentusage</code> (see <a href="#ai-usage-and-the-balance">AI Usage and the Balance</a>)</li>
 <li>The caller is a plain member of the agent's team: code <code>97</code>, <code>Only a team admin can perform this action on a team-owned agent.</code>, with no <code>agentusage</code></li>
@@ -22056,7 +22056,7 @@ channel-enable endpoint or persisted switch.</p>
 </tr>
 <tr>
 <td><code>Agent setup is not complete. Fill in the agent's required settings before starting.</code></td>
-<td>Status is <code>6</code>: save the agent's missing required credentials with <code>CredentialUpsert</code> or <code>CredentialProjectBind</code>, then call <code>POST /UserAgent/Update</code> to move the agent to status <code>0</code>. Connectors never hold an agent at status <code>6</code>.</td>
+<td>Status is <code>6</code>: the agent has no plan. Pay it with <code>CreateSubscriptionCheckout</code> (<code>useprepaid: true</code>), which queues it. Credentials and connectors never hold an agent at status <code>6</code>.</td>
 </tr>
 <tr>
 <td><code>Subscription required — please subscribe to this agent before starting it.</code></td>

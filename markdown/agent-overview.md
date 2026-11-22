@@ -205,7 +205,7 @@ Every deployed agent instance has a numeric status that reflects its current sta
 | `3` | Starting | The agent is starting up. |
 | `4` | Running | Agent is live and ready to receive messages. |
 | `5` | Error | Agent encountered an error during execution. Call Start to retry. |
-| `6` | Setup Required | Agent needs credentials or configuration before it can start. Provide them via `CredentialUpsert` / `CredentialProjectBind` / `CustomSkillUpsert` / `SkillsApply`, then call `POST /UserAgent/Update`. |
+| `6` | Setup Required | The agent has no plan yet: it was deployed without `useprepaid: true`, and nothing was charged. Pay its plan with [`CreateSubscriptionCheckout`](#post-useragentcreatesubscriptioncheckout) (`useprepaid: true`), which queues it (status `2`). Credentials and connectors never hold an agent here. An agent that has never had a plan and has never started is deleted about an hour after Deploy. |
 
 ### Automatic Restart
 
@@ -654,7 +654,7 @@ for the channel contract.
 | `title` | string | Yes | Display name for your instance. |
 | `description` | string | No | Optional description (custom builds: free-text describing what the agent does). |
 | `cover` | string | No | Optional cover image URL. Custom builds only. Template deploys clone the agent's cover automatically. |
-| `useprepaid` | boolean | Yes | Must be `true`. Pays the plan's price from your Wiro balance in a single server-side call. |
+| `useprepaid` | boolean | Yes | Send `true`: the plan's price is paid from your Wiro balance in this call, and the agent is queued. Without it, Deploy still creates the agent and charges nothing: the agent stays at status `6` with no plan until [`CreateSubscriptionCheckout`](#post-useragentcreatesubscriptioncheckout) (`useprepaid: true`) pays it, and if it still has no plan about an hour after Deploy, it is deleted. |
 | `tier` | string | No | The plan: `"starter"` (default, $5 a month, including $5 of AI usage a month), `"pro"` ($30, including $30) or `"max"` ($100, including $100). It sets the price taken from your balance at deploy time and the AI usage included each month. The param name is `tier`. Leave it out for Starter. Any other value is refused with `tier must be starter, pro or max`, and nothing is created or charged. |
 | `credentials` | object | No | Inline credential groups. If a communication-channel group is included, its matching `credentials[credential_key]` object must contain all channel `required_fields`; completeness activates that channel automatically. |
 | `skills` | object | No | Inline skill toggles `{ "skillname": true \| false }`. For custom builds this seeds the initial skill set; for template deploys it overlays the template defaults. |
@@ -780,8 +780,8 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
       ],
       "enabledChannels": [],
       "teamsessionmode": "private",
-      "status": 6,
-      "setuprequired": true,
+      "status": 2,
+      "setuprequired": false,
       "pinned": false,
       "agent": {
         "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
@@ -813,10 +813,10 @@ The Deploy response reflects the same composed shape you get from `UserAgent/Det
 
 | Field | Meaning |
 |-------|---------|
-| `status: 6` | **Setup Required**: initial state for every fresh Deploy. With `useprepaid: true`, auto-queues to `status: 2` as soon as the subscription is provisioned, regardless of credential completeness. The agent then starts even if a required credential is still missing, and `UserAgent/Detail` reads `setuprequired: true` until it is filled. Fill a missing credential, such as a channel or the Wiro project the template doesn't mark optional, with `POST /UserAgent/CredentialUpsert` or `POST /UserAgent/CredentialProjectBind`: a running agent restarts to pick it up. Connectors never hold an agent at Setup Required. A row still at `status: 6` needs `POST /UserAgent/Update` first (any scalar body, even just `{ "guid": "<useragent-guid>" }`) to flip it to `status: 0` (Stopped): `Update` is the endpoint that performs the `setuprequired` re-check and the `6 → 0` transition. |
+| `status: 6` | **Setup Required**: initial state for every fresh Deploy. With `useprepaid: true`, auto-queues to `status: 2` as soon as the subscription is provisioned, regardless of credential completeness. The agent then starts even if a required credential is still missing, and `UserAgent/Detail` reads `setuprequired: true` until it is filled. Fill a missing credential, such as a channel or the Wiro project the template doesn't mark optional, with `POST /UserAgent/CredentialUpsert` or `POST /UserAgent/CredentialProjectBind`: a running agent restarts to pick it up. Connectors never hold an agent at Setup Required. A row still at `status: 6` has no plan, because it was deployed without `useprepaid: true`. [`CreateSubscriptionCheckout`](#post-useragentcreatesubscriptioncheckout) with `useprepaid: true` pays it and queues the agent (`status: 2`). |
 | `status: 2` | **Queued**: `useprepaid: true` charged the wallet, the subscription was provisioned, and Wiro will start the agent. No manual `UserAgent/Start` is required. |
 | `setuprequired: true` | A non-optional credential is missing, or the row is still at `status: 6`. At `status: 6`, `Start` rejects with `Agent setup is not complete. Fill in the agent's required settings before starting.` |
-| `setuprequired: false` | All non-optional credentials are set up and the row has left `status: 6`. A row sitting at Setup Required reads `true` until a `POST /UserAgent/Update` call flips it 6 → 0; `Start` then launches it normally. |
+| `setuprequired: false` | All non-optional credentials are set up and the row has left `status: 6`. A row sitting at Setup Required reads `true` until it leaves `status: 6`. |
 
 > **Subscription on deploy:** the `subscription` object is **not** included in the Deploy response. A prepaid subscription (`plan: "agent"`, provider `prepaid`, `tier` matches what you passed) is created server-side during the Deploy call. Call `POST /UserAgent/Detail` with the returned `guid` to read the subscription object back.
 
@@ -1451,7 +1451,7 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 > | Show the agent's live Screen, and Take Control, in your own app | [`POST /UserAgent/Realtime/ScreenInfo`](#post-useragentrealtimescreeninfo) · [`ScreenStart`](#post-useragentrealtimescreenstart) |
 > | Soft-delete a useragent | [`POST /UserAgent/Delete`](#post-useragentdelete) |
 
-> **Note:** `CredentialUpsert` and `CredentialProjectBind` save credential fields **but do not transition `status: 6` on their own**. After setting up the missing credentials, call `POST /UserAgent/Update` once (any scalar body works, even just `{ "guid": "<useragent-guid>" }`) to trigger the `setuprequired` re-check; that's the call that flips `status: 6 → 0` (Stopped) so the next `Start` succeeds.
+> **Note:** `CredentialUpsert` and `CredentialProjectBind` never change `status`. An agent at `status: 6` has no plan: pay it with [`CreateSubscriptionCheckout`](#post-useragentcreatesubscriptioncheckout) (`useprepaid: true`), which queues it.
 
 ##### Response
 
@@ -1901,7 +1901,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialProjectBind" \
 
 Binding the project an agent already has changes nothing and restarts nothing. The [`wiro` connector](/docs/agent-connectors#the-wiro-connector) always acts with the project bound here, and connecting it with `ConnectorConnect` and a `wiroprojectguid` binds a project the same way. Changing a project's IP whitelist gives the project a new API secret; to load it, restart the agent with `POST /UserAgent/Update` and a body of `{ "guid": "<useragent-guid>" }`.
 
-On an agent at `status: 6` (Setup Required), call `POST /UserAgent/Update` with `{ "guid": "<useragent-guid>" }` after binding, as after `CredentialUpsert`. Binding doesn't change `status`: `Update` moves the agent to `status: 0` (Stopped) once every required credential is set up, and `Start` refuses it until then.
+Binding doesn't change `status`. An agent at `status: 6` (Setup Required) has no plan: pay it with [`CreateSubscriptionCheckout`](#post-useragentcreatesubscriptioncheckout) (`useprepaid: true`), which queues it.
 
 If you already hold a project's key, [`CredentialUpsert`](#post-useragentcredentialupsert) with `credentialkey` `wiro` and `fieldname` `apikey` saves it too.
 
@@ -2572,7 +2572,7 @@ Start will fail (returns `{ "result": false, "errors": [...] }`) if:
 
 - The agent is already running or queued
 - The agent is currently stopping
-- Setup is incomplete (status `6`)
+- The agent is at status `6`, with no plan yet: `Agent setup is not complete. Fill in the agent's required settings before starting.` Pay its plan with `CreateSubscriptionCheckout` (`useprepaid: true`), which queues it
 - The agent has no active plan: `Subscription required — please subscribe to this agent before starting it.`, whatever its balance
 - The agent has used the AI usage its plan includes and the balance is under $0.50: code `97`, with the same message as `Message/Send` and the agent's `usage` as `agentusage` (see [AI Usage and the Balance](#ai-usage-and-the-balance))
 - The caller is a plain member of the agent's team: code `97`, `Only a team admin can perform this action on a team-owned agent.`, with no `agentusage`
@@ -3658,7 +3658,7 @@ Agent-specific errors you may encounter:
 | A sentence that says what is wrong and what to write, such as `This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.` or `This schedule never comes up: February has no 30th. Pick a day February has, such as 28.` | `CustomSkillUpsert` with an `interval` the agent can't run on a scheduled task, or one whose date never comes. Nothing is saved. |
 | `<skillkey>:` followed by the same sentence | `Deploy` with a `customskills` entry whose `interval` the agent can't run, or whose date never comes. Nothing is created or charged. |
 | `A deploy takes up to 50 entries in customskills, and this one sent <n>. Send at most 50, then add the rest with /UserAgent/CustomSkillUpsert once the agent is deployed.` | `Deploy` with more than 50 `customskills` entries. Nothing is created or charged. |
-| `Agent setup is not complete. Fill in the agent's required settings before starting.` | Status is `6`: save the agent's missing required credentials with `CredentialUpsert` or `CredentialProjectBind`, then call `POST /UserAgent/Update` to move the agent to status `0`. Connectors never hold an agent at status `6`. |
+| `Agent setup is not complete. Fill in the agent's required settings before starting.` | Status is `6`: the agent has no plan. Pay it with `CreateSubscriptionCheckout` (`useprepaid: true`), which queues it. Credentials and connectors never hold an agent at status `6`. |
 | `Subscription required — please subscribe to this agent before starting it.` | `Start` called on an agent with no active plan, whatever its balance. Renew a plan that ended with `RenewSubscription` (`{ guid }`). For an agent that never had a plan, `RenewSubscription` answers `No expired subscription found to renew`: start one with `CreateSubscriptionCheckout` (`useprepaid: true`). |
 | `Subscription already active for this useragent. Cancel or modify the existing subscription instead.` | `CreateSubscriptionCheckout` called when a sub already exists |
 | `Change the plan with UpgradeTier.` | `SkillsApply` with a `tier` other than the agent's current plan |
