@@ -25,8 +25,8 @@ Each limit caps one scope of the wallet's spending:
 | Surface | Label | Covers |
 |---------|-------|--------|
 | `web` | the dashboard | The Wiro dashboard, and calls with a signed-in user's Bearer token |
-| `api` | the API | Calls with an API key, including [`/sync`](/docs/run-a-model#run-sync) and, for now, the [Wiro MCP package](/docs/mcp-self-hosted) when you run it yourself |
-| `mcp` | MCP | The hosted [Wiro MCP server](/docs/wiro-mcp-server) at `mcp.wiro.ai`, and the Wiro MCP package when it names itself (see [Surfaces](/docs/tasks#task-surfaces)) |
+| `api` | the API | Calls with an API key, including [`/sync`](/docs/run-a-model#run-sync), and the [Wiro MCP package](/docs/mcp-self-hosted) you run yourself, before 2.0.0 |
+| `mcp` | MCP | The hosted [Wiro MCP server](/docs/wiro-mcp-server) at `mcp.wiro.ai`, and the Wiro MCP package you run yourself, 2.0.0 and later (see [Surfaces](/docs/tasks#task-surfaces)) |
 | `llm-gateway` | the LLM gateway | The OpenAI and Anthropic compatible [LLM gateway](/docs/completions-api) at `llm.wiro.ai` |
 | `extension` | the browser extensions | Only the Wiro browser extensions |
 | `agent` | agents | Your deployed agents: their plan payments, the AI usage their balance pays and the models they run |

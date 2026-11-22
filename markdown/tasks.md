@@ -142,8 +142,8 @@ Every task records its surface: the way its work came in, such as an API key, MC
 | `surface` | Label | Covers |
 |-----------|-------|--------|
 | `web` | Dashboard | The Wiro dashboard, and calls with a signed-in user's Bearer token |
-| `api` | API | Calls with an API key, including [`/sync`](/docs/run-a-model#run-sync) and, for now, the [Wiro MCP package](/docs/mcp-self-hosted) when you run it yourself |
-| `mcp` | MCP | The hosted [Wiro MCP server](/docs/wiro-mcp-server) at `mcp.wiro.ai`, and the Wiro MCP package when it names itself (see below) |
+| `api` | API | Calls with an API key, including [`/sync`](/docs/run-a-model#run-sync), and the [Wiro MCP package](/docs/mcp-self-hosted) you run yourself, before 2.0.0 |
+| `mcp` | MCP | The hosted [Wiro MCP server](/docs/wiro-mcp-server) at `mcp.wiro.ai`, and the Wiro MCP package you run yourself, 2.0.0 and later (see below) |
 | `llm-gateway` | LLM Gateway | The OpenAI and Anthropic compatible [LLM gateway](/docs/completions-api) at `llm.wiro.ai` |
 | `extension` | Browser Extension | The Wiro browser extensions |
 | `agent` | Agent | Your deployed agents' own runs |
@@ -166,7 +166,7 @@ So a model run started with an API key counts as `api`, a message to Studio sent
 
 ### Clients That Name Themselves
 
-The Wiro MCP package (`@wiro-ai/wiro-mcp`) counts as `mcp` when it names itself with the header `x-wiro-client: wiro-mcp/<version>`. The package does not send this header yet, so the runs of a package you run yourself count as `api` for now. A client's name for itself is its own word: anyone who holds the API key can leave the header out. A spend limit or Model Access rule that must hold whoever uses a key belongs on the key itself, with scope `project`.
+The Wiro MCP package (`@wiro-ai/wiro-mcp`) counts as `mcp`: from 2.0.0 its command names itself with the header `x-wiro-client: wiro-mcp/<version>`. Versions before 2.0.0 send no such header, so their runs count as `api`. A client's name for itself is its own word: anyone who holds the API key can leave the header out. A spend limit or Model Access rule that must hold whoever uses a key belongs on the key itself, with scope `project`.
 
 ### Older Tasks
 

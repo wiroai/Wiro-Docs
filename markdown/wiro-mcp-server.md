@@ -854,10 +854,10 @@ Model Access rules in full.
 Calls through the hosted MCP server count toward the workspace's
 [spend limits](/docs/spend-limits) on the `mcp` surface, and calls from the Wiro
 browser extensions on the `extension` surface. The
-[self-hosted](/docs/mcp-self-hosted) package's calls count on the `api` surface
-for now, as calls with its API key. Messages to Studio and the Workflow Agent
-count on the `studio` and `workflow-agent` surfaces, and workflow runs on
-`workflow`, whichever way they are sent (see
+[self-hosted](/docs/mcp-self-hosted) package's calls count on the `mcp` surface
+too (before 2.0.0: `api`, as calls with its API key). Messages to Studio and the
+Workflow Agent count on the `studio` and `workflow-agent` surfaces, and workflow
+runs on `workflow`, whichever way they are sent (see
 [Surfaces](/docs/tasks#task-surfaces)). The tools of an agent's Wiro AI Models
 connector also reach Wiro through this server, but their calls are the agent's
 own and count on the `agent` surface, under that agent's spend limits and Model

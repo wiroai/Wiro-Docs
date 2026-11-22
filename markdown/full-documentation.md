@@ -4186,8 +4186,8 @@ Every task records its surface: the way its work came in, such as an API key, MC
 | `surface` | Label | Covers |
 |-----------|-------|--------|
 | `web` | Dashboard | The Wiro dashboard, and calls with a signed-in user's Bearer token |
-| `api` | API | Calls with an API key, including [`/sync`](/docs/run-a-model#run-sync) and, for now, the [Wiro MCP package](/docs/mcp-self-hosted) when you run it yourself |
-| `mcp` | MCP | The hosted [Wiro MCP server](/docs/wiro-mcp-server) at `mcp.wiro.ai`, and the Wiro MCP package when it names itself (see below) |
+| `api` | API | Calls with an API key, including [`/sync`](/docs/run-a-model#run-sync), and the [Wiro MCP package](/docs/mcp-self-hosted) you run yourself, before 2.0.0 |
+| `mcp` | MCP | The hosted [Wiro MCP server](/docs/wiro-mcp-server) at `mcp.wiro.ai`, and the Wiro MCP package you run yourself, 2.0.0 and later (see below) |
 | `llm-gateway` | LLM Gateway | The OpenAI and Anthropic compatible [LLM gateway](/docs/completions-api) at `llm.wiro.ai` |
 | `extension` | Browser Extension | The Wiro browser extensions |
 | `agent` | Agent | Your deployed agents' own runs |
@@ -4210,7 +4210,7 @@ So a model run started with an API key counts as `api`, a message to Studio sent
 
 ### Clients That Name Themselves
 
-The Wiro MCP package (`@wiro-ai/wiro-mcp`) counts as `mcp` when it names itself with the header `x-wiro-client: wiro-mcp/<version>`. The package does not send this header yet, so the runs of a package you run yourself count as `api` for now. A client's name for itself is its own word: anyone who holds the API key can leave the header out. A spend limit or Model Access rule that must hold whoever uses a key belongs on the key itself, with scope `project`.
+The Wiro MCP package (`@wiro-ai/wiro-mcp`) counts as `mcp`: from 2.0.0 its command names itself with the header `x-wiro-client: wiro-mcp/<version>`. Versions before 2.0.0 send no such header, so their runs count as `api`. A client's name for itself is its own word: anyone who holds the API key can leave the header out. A spend limit or Model Access rule that must hold whoever uses a key belongs on the key itself, with scope `project`.
 
 ### Older Tasks
 
@@ -5613,8 +5613,8 @@ Each limit caps one scope of the wallet's spending:
 | Surface | Label | Covers |
 |---------|-------|--------|
 | `web` | the dashboard | The Wiro dashboard, and calls with a signed-in user's Bearer token |
-| `api` | the API | Calls with an API key, including [`/sync`](/docs/run-a-model#run-sync) and, for now, the [Wiro MCP package](/docs/mcp-self-hosted) when you run it yourself |
-| `mcp` | MCP | The hosted [Wiro MCP server](/docs/wiro-mcp-server) at `mcp.wiro.ai`, and the Wiro MCP package when it names itself (see [Surfaces](/docs/tasks#task-surfaces)) |
+| `api` | the API | Calls with an API key, including [`/sync`](/docs/run-a-model#run-sync), and the [Wiro MCP package](/docs/mcp-self-hosted) you run yourself, before 2.0.0 |
+| `mcp` | MCP | The hosted [Wiro MCP server](/docs/wiro-mcp-server) at `mcp.wiro.ai`, and the Wiro MCP package you run yourself, 2.0.0 and later (see [Surfaces](/docs/tasks#task-surfaces)) |
 | `llm-gateway` | the LLM gateway | The OpenAI and Anthropic compatible [LLM gateway](/docs/completions-api) at `llm.wiro.ai` |
 | `extension` | the browser extensions | Only the Wiro browser extensions |
 | `agent` | agents | Your deployed agents: their plan payments, the AI usage their balance pays and the models they run |
@@ -6083,8 +6083,8 @@ Each rule covers one scope of the wallet's work, the same scopes as [spend limit
 | Surface | Covers |
 |---------|--------|
 | `web` | The Wiro dashboard, and calls with a signed-in user's Bearer token |
-| `api` | Calls with an API key, including [`/sync`](/docs/run-a-model#run-sync) and, for now, the [Wiro MCP package](/docs/mcp-self-hosted) when you run it yourself |
-| `mcp` | The hosted [Wiro MCP server](/docs/wiro-mcp-server) at `mcp.wiro.ai`, and the Wiro MCP package when it names itself (see [Surfaces](/docs/tasks#task-surfaces)) |
+| `api` | Calls with an API key, including [`/sync`](/docs/run-a-model#run-sync), and the [Wiro MCP package](/docs/mcp-self-hosted) you run yourself, before 2.0.0 |
+| `mcp` | The hosted [Wiro MCP server](/docs/wiro-mcp-server) at `mcp.wiro.ai`, and the Wiro MCP package you run yourself, 2.0.0 and later (see [Surfaces](/docs/tasks#task-surfaces)) |
 | `llm-gateway` | The OpenAI and Anthropic compatible [LLM gateway](/docs/completions-api) at `llm.wiro.ai` |
 | `extension` | Only the Wiro browser extensions |
 | `agent` | Your deployed agents: the models they run through Wiro, the chat models they answer with and their built-in voice |
@@ -7787,10 +7787,10 @@ how much to add on wiro.ai. `buy_credits` is retired and charges nothing.
 Calls through the hosted MCP server count toward the workspace's
 [spend limits](/docs/spend-limits) on the `mcp` surface, and calls from the Wiro
 browser extensions on the `extension` surface. The
-[self-hosted](/docs/mcp-self-hosted) package's calls count on the `api` surface
-for now, as calls with its API key. Messages to Studio and the Workflow Agent
-count on the `studio` and `workflow-agent` surfaces, and workflow runs on
-`workflow`, whichever way they are sent (see
+[self-hosted](/docs/mcp-self-hosted) package's calls count on the `mcp` surface
+too (before 2.0.0: `api`, as calls with its API key). Messages to Studio and the
+Workflow Agent count on the `studio` and `workflow-agent` surfaces, and workflow
+runs on `workflow`, whichever way they are sent (see
 [Surfaces](/docs/tasks#task-surfaces)). The tools of an agent's Wiro AI Models
 connector also reach Wiro through this server, but their calls are the agent's
 own and count on the `agent` surface, under that agent's spend limits and Model
@@ -7880,8 +7880,8 @@ reuse an older cached package.
 `workflows` also brings the model search tools it needs. The conversation tools
 for Studio and the Workflow Agent come with either `workflows` or `agents`, and
 `controls` loads the four Controls tools, which come with 1.9.0 and later. The
-self-hosted server's calls count on the `api` surface of [spend limits](/docs/spend-limits) and
-[Model Access](/docs/model-access) rules for now, as calls with its API key,
+self-hosted server's calls count on the `mcp` surface of [spend limits](/docs/spend-limits) and
+[Model Access](/docs/model-access) rules (before 2.0.0: `api`, as calls with its API key),
 except its messages to Studio and the Workflow Agent and its workflow runs,
 which count on `studio`, `workflow-agent` and `workflow` (see
 [Surfaces](/docs/tasks#task-surfaces)).
