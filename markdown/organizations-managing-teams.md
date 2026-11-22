@@ -214,7 +214,7 @@ Deletes a team. Only the organization owner can delete a team. Deleting a team:
 
 - Soft-deletes the team (sets status to `0`)
 - Removes all team members and cancels pending invitations
-- Moves each team agent back to the personal workspace of the user who deployed it; its active subscriptions and credit purchases move with it, the agent is restarted, and future agent billing goes to that user's personal wallet; [Take Control](/docs/agent-overview#take-control) stays off for it until that user [resets its browser](/docs/agent-overview#resetting-the-browser), as for any agent that has been in a team
+- Moves each team agent back to the personal workspace of the user who deployed it; its active subscriptions move with it, the agent is restarted, and from then on its plan and its AI usage past the plan are paid from that user's personal wallet; [Take Control](/docs/agent-overview#take-control) stays off for it until that user [resets its browser](/docs/agent-overview#resetting-the-browser), as for any agent that has been in a team
 - Moves each team project back to the personal workspace of the user who created it; its API key keeps working and future tasks are billed to that user's personal wallet
 
 The team's wallet balance is not automatically transferred. Move it out with [Transfer Credit](/docs/organizations-billing) before deleting the team; after deletion, contact support to recover it.
@@ -289,7 +289,7 @@ Transfers an agent instance between workspaces: personal to team, team to person
 When an agent is transferred:
 
 - The agent's `teamguid` is updated
-- Active subscriptions and credit purchases move with the agent
+- Active subscriptions move with the agent, and its plan and its AI usage past the plan are paid from the wallet of its new workspace
 - Its chat history moves with it
 - The agent is restarted with the new context
 - Future billing is charged to the new workspace's wallet

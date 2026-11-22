@@ -110,7 +110,7 @@ Frames flow in two directions. `↓` = server → client, `↑` = client → ser
 | ↓ | `agent_end` | Terminal success event. Same payload shape as `agent_output` but contains the final complete text with total metrics. Emits at most once. |
 | ↓ | `agent_error` | Terminal failure event. `message` is a plain string: the turn's coded failure message, the same text `response` holds (see [Failed turns](/docs/agent-messaging#failed-turns)). Emits at most once. |
 | ↓ | `agent_cancel` | Terminal cancel event. Fires **only** when an already-active message is aborted mid-stream (via `Message/Cancel` or upstream abort). Cancels against a still-queued message do **not** broadcast this event, so check `Message/Detail` for those. Emits at most once. |
-| ↓ | `agent_usage_report` | Post-terminal usage/billing frame. Fires once, ~250-500 ms after a successful `agent_end`, on the same `agenttoken`. Carries the final token counts, `model`, `tokencost`, and `remainingcredits` for the message identified by `messageguid`. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns); follow those on the [run stream](#following-an-agents-background-runs). |
+| ↓ | `agent_usage_report` | Post-terminal usage/billing frame. Fires once, ~250-500 ms after a successful `agent_end`, on the same `agenttoken`. Carries the final token counts, `model` and `tokencost` for the message identified by `messageguid`. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns); follow those on the [run stream](#following-an-agents-background-runs). |
 | ↓ | `agent_wiroai_runtask` | Model-run discovery frame. Fires whenever the agent itself launches a Wiro model run during a turn (e.g. generating an image or video for a skill or through the `wiro` connector). Arrives on the `agenttoken` of the turn that launched the run, carrying the new task's `socketaccesstoken` so you can subscribe to that run's `task_*` lifecycle and collect its outputs. See [Model runs the agent triggers](#model-runs-the-agent-triggers). |
 | ↑ | `agent_session_subscribe` | Follow a session with the `sessiontoken` from `Message/History`. See [Following a session](#following-a-session). |
 | ↓ | `agent_session_subscribed` | Session follow acknowledged. |
@@ -406,8 +406,7 @@ A post-terminal frame that reports the final token usage and billing for the tur
     "totaltokens": 6670,
     "model": "openai/gpt-5.6-sol",
     "tokencost": 5,
-    "processedms": 4200,
-    "remainingcredits": 9995
+    "processedms": 4200
   }
 }
 ```
@@ -423,11 +422,11 @@ The frame's `agenttoken` identifies the turn; the `message.messageguid` identifi
 | `cachewritetokens` | number | Prompt tokens written to the provider's prompt cache during this turn. |
 | `totaltokens` | number | Exact sum of input, output, cache-read, and cache-write tokens for the turn. |
 | `model` | string | Provider/model slug used for this turn (e.g. `"openai/gpt-5.6-sol"`). |
-| `tokencost` | number | Credits charged for this turn. |
+| `tokencost` | number | The turn's AI usage, in cents (`5` is $0.05). |
 | `processedms` | number | Server-side processing time for the turn, in milliseconds. |
-| `remainingcredits` | number | Your account credit balance after this turn was billed. |
+| `remainingcredits` | number | Deprecated: kept for older clients and will be removed. Read the agent's AI usage and balance from `usage` on [`UserAgent/Detail`](/docs/agent-overview#usage-object). |
 
-Use it to patch the per-message token columns and the live credit balance **without re-fetching `Message/History`**: when the frame arrives, look up the row by `messageguid` and write the token counts, `model`, `tokencost`, and `remainingcredits` straight onto it.
+Use it to patch the per-message token columns **without re-fetching `Message/History`**: when the frame arrives, look up the row by `messageguid` and write the token counts, `model` and `tokencost` straight onto it.
 
 Like `agent_output`, it is a live broadcast: it is **not** replayed to clients that subscribe after it has already fired. If you reconnect after the fact, read usage from `POST /UserAgent/Message/Detail` (or `Message/History`) instead.
 
@@ -926,7 +925,7 @@ ws.onopen = () => {
 ←  agent_timeline_delta { message: { messageguid: "c3d4...", block: { blockid: "c0:i1", callindex: 0, contentindex: 1, type: "answer", version: 1 } } }
 ←  agent_output      { message: { raw: "Quantum computing uses qubits...", wordCount: 28 } }
 ←  agent_end         { message: { raw: "Quantum computing uses qubits that...", wordCount: 118 } }
-←  agent_usage_report { result: true, message: { messageguid: "c3d4...", totaltokens: 6670, remainingcredits: 9994 } }
+←  agent_usage_report { result: true, message: { messageguid: "c3d4...", totaltokens: 6670, tokencost: 5 } }
 ```
 
 `←` = server → client, `→` = client → server. `agent_output` contains provisional full accumulated answer text. Replace (don't append) that typing surface; merge timeline blocks independently.
@@ -1478,8 +1477,7 @@ channel.stream.listen((message) {
     "messageguid": "c3d4e5f6-...",
     "totaltokens": 6670,
     "model": "openai/gpt-5.4",
-    "tokencost": 5,
-    "remainingcredits": 9995
+    "tokencost": 5
   }
 }
 ```
@@ -1571,7 +1569,7 @@ ws.onmessage = (event) => {
       updateUI(uiMessageId, { final: msg.message.raw, status: 'agent_end' })
       break
     case 'agent_usage_report':
-      updateUI(uiMessageId, { usage: msg.message, remainingCredits: msg.message.remainingcredits })
+      updateUI(uiMessageId, { usage: msg.message })
       tokenToMessageId.delete(msg.agenttoken)
       break
     case 'agent_error':
@@ -1696,7 +1694,7 @@ An `agenttoken` is issued per message by `POST /UserAgent/Message/Send` and stay
 | Timeline block changes | Emits one `agent_timeline_delta` update with `{ messageguid, block }`; the persisted row keeps the merged ordered timeline. |
 | Each SSE chunk | Emits `agent_output` to every active subscriber (with full accumulated `raw`). |
 | Stream finishes | Emits `agent_end` with the final `progressGenerate` payload, or `agent_error` with the public failure message when the turn failed; the message's `status` becomes terminal. |
-| Usage billed | ~250-500 ms after a successful `agent_end`, emits `agent_usage_report` with final token counts, `model`, `tokencost`, and `remainingcredits`. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns), which you follow on the [run stream](#following-an-agents-background-runs). |
+| Usage billed | ~250-500 ms after a successful `agent_end`, emits `agent_usage_report` with final token counts, `model` and `tokencost`. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns), which you follow on the [run stream](#following-an-agents-background-runs). |
 | Bridge exception | Emits `agent_error` with the public failure message; the message's `status` becomes `agent_error`, and `response` and `debugoutput` hold the same text. |
 | `Message/Cancel` during active stream | Bridge aborts, emits `agent_cancel`; the message's `status` becomes `agent_cancel`. |
 | `Message/Cancel` while queued | The message's `status` becomes `agent_cancel` immediately. **No WebSocket event is broadcast** (the bridge never started). Clients checking via the socket must consult `Message/Detail` for queued-state cancels. |

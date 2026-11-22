@@ -31,7 +31,7 @@ The services an agent works with (Google Ads, Shopify, HubSpot, Serper and the r
 | Read version history of a credential | [`POST /UserAgent/CredentialFieldHistory`](/docs/agent-overview#post-useragentcredentialfieldhistory) |
 | Connect a service the agent works with | [Agent Connectors](/docs/agent-connectors) |
 
-> Read responses from `POST /UserAgent/Detail` expose the composed `credentials` tree (each credential with its `_connected` / `optional` / `extra` / `_editable` / `_schema` flags), the `customskills[]` array, the `scheduledskills[]` array (scheduled tasks), the `skills[]` array of enabled skill names, the `tokenRates` + `agentModel` objects, and the flat credit fields (`monthlycredits`, `extracredits`, `usedcredits`, `remainingcredits`, `creditperiod`, `creditsyncat`) as **top-level fields** on the useragent object. `POST /UserAgent/MyAgents` rows carry `tokenRates`, `agentModel` and the credit fields, without the composed children. See [Agent Overview](/docs/agent-overview) for the full endpoint catalog.
+> Read responses from `POST /UserAgent/Detail` expose the composed `credentials` tree (each credential with its `_connected` / `optional` / `extra` / `_editable` / `_schema` flags), the `customskills[]` array, the `scheduledskills[]` array (scheduled tasks), the `skills[]` array of enabled skill names, the `tokenRates` + `agentModel` objects, and the agent's AI usage and balance (`usage`) and this month's cost (`spend`) as **top-level fields** on the useragent object. `POST /UserAgent/MyAgents` rows carry `tokenRates`, `agentModel`, `usage` and `spend`, without the composed children. See [Agent Overview](/docs/agent-overview) for the full endpoint catalog.
 
 ## Communication Channels
 

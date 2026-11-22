@@ -1,32 +1,31 @@
 # Agent Transactions
 
-Per-instance credit ledger: every credit deduction, renewal, purchase, refund, grant, and cancel for a useragent in a single immutable feed.
+What an agent cost, in dollars: its AI usage, the models it ran, its plan payments and the funds added for it, in one list.
 
 ## Overview
 
-Wiro keeps a complete, append-only **agent transaction ledger** for every UserAgent instance. Whenever credits move (the agent runtime burns them on a chat turn, a subscription renews, the user buys an extra-credit pack or moves to a higher plan mid-period), a row is inserted into the ledger and surfaced through `POST /UserAgent/TransactionList`.
+Every charge an agent makes is a row of the wallet transactions of its workspace, the same ledger as your model runs. `POST /UserAgent/TransactionList` lists the rows of one agent, newest first, with a summary of the current month. It powers the agent's **Transactions** view in the Wiro dashboard.
 
-The ledger is the single source of truth for "where did my credits go?" and powers the **Transactions** view in your dashboard.
+| `kind` | What the row is |
+|--------|-----------------|
+| `ai-usage` | The tokens the agent's own model used: one or more calls of one model, with the tokens and the cost of each kind (input, cache read, cache write, output). `paidfrom` says whether the plan's included usage covered it (`"plan"`) or the balance paid it (`"balance"` or `"coupon"`). |
+| `model-run` | A model the agent ran through Wiro, such as an image or a video, paid from the balance at the model's own price. |
+| `plan` | A plan payment: the plan the agent was deployed on, a move to a higher plan or a renewal. |
+| `funds` | Funds added to the balance from the agent's page in the dashboard, and what was left of a pack bought before packs were retired. They go to the workspace's balance like any deposit. |
+| `other` | Anything else recorded for the agent. |
 
-| Transaction `type` | Source | When it fires |
-|--------------------|--------|---------------|
-| `deduct` | Agent runtime | Per-turn LLM token charge (`action: "tokens"`) for every chat, cron, and voice post-call turn. Negative `amount`. |
-| `renewal` | Subscription cron | At each 30-day rollover when the wallet successfully covers the renewal. Positive `amount` = monthly credits granted. |
-| `purchase` | Extra-credit checkout | When `POST /UserAgent/CreateExtraCreditCheckout` (`useprepaid: true`) succeeds. Positive `amount` = pack credits. |
-| `grant` | Plan change / skill change | When a move to a higher plan lifts this period's credits. Positive `amount`: what this period gained. `metadata.creditsFromRenewal` is what each renewal grants. A skill change through `SkillsApply` or `SkillToggle` also writes a `grant` row with `amount: 0`: `action: "skill-toggle"` (`metadata: { skill, enabled }`) or `"skills-apply"` (`metadata: { diff, idempotencyKey }`). A skill change row with a non-zero `amount` or a `metadata.usedCreditsUsd` is from before skill changes became free. |
-| `expired` | Subscription end | When a cancelled subscription rolls past `currentperiodend` and the cron revokes any remaining monthly leftover (`action: "subscription"`). Negative `amount`. Rows from before skill changes became free can also come from a skill turned off mid-period (`action: "skill-toggle"` or `"skills-apply"`, with `metadata.usedCreditsUsd`). |
-| `refund` | Server-side refund | Issued by Wiro support when a previous charge is reversed. Positive `amount`. |
-| `adjust` | Wiro support | A record for Wiro support. Rows with `amount: 0` and `action: "skill-change-not-undone"` (a failed skill change that could not be taken back) or `"skill-credit-failed"` (a skill credit that was not added to the wallet) are from before skill changes became free. |
+AI usage that the plan covers is listed so you can see what the plan paid for, but it doesn't change the balance: the plan payment already paid for it. It counts in `summary.aiusageplanusd`, never in what the balance paid.
 
-> **The ledger is append-only.** There is no delete endpoint. Each row carries a stable `guid` that the server uses for deduplication (so a duplicate retry of the same deduct event is a no-op).
+> **Rows from before dollar billing.** The agent's usage and plan records from before agents were billed in dollars are listed too, with `legacy: true` and their amounts converted to dollars. Renewals of a plan that was paid by card are always listed this way: they never touched the balance.
 
 ## **POST** /UserAgent/TransactionList
 
-Returns the ledger rows for a single useragent sorted **newest-first**, plus a snapshot summary of the current balance.
+Returns one agent's rows, newest first, and a summary of the current calendar month (UTC).
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | The useragent instance guid. |
+| `kind` | string | No | `"all"` (the default), `"ai-usage"`, `"model-run"`, `"plan"` or `"funds"`: only the rows of that kind. Any other value lists all rows. |
 | `limit` | number | No | Max rows to return. Default `50`, max `500`. |
 | `start` | number | No | Offset for pagination. Default `0`. |
 
@@ -38,7 +37,7 @@ Returns the ledger rows for a single useragent sorted **newest-first**, plus a s
 curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
   -H "x-api-key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "limit": 50 }'
+  -d '{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "kind": "all", "limit": 50 }'
 ```
 
 ##### Response
@@ -47,249 +46,178 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 {
   "result": true,
   "errors": [],
-  "total": 312,
+  "kind": "all",
+  "rowstotal": 214,
   "summary": {
-    "monthlycredits": 3000,
-    "extracredits": 5000,
-    "usedcredits": 1450,
-    "remainingcredits": 6550,
-    "renewalcredits": 3000,
-    "creditperiod": "2026-05",
-    "creditsyncat": 1714694410,
-    "byModel": [
-      { "model": "openai/gpt-5.4", "inputtokens": 1011250, "outputtokens": 241300, "cachereadtokens": 149800, "cachewritetokens": 0, "totaltokens": 1402350, "tokencost": 1443, "turncount": 288 },
-      { "model": "unknown", "inputtokens": 4200, "outputtokens": 900, "cachereadtokens": 0, "cachewritetokens": 0, "totaltokens": 5100, "tokencost": 7, "turncount": 3 }
-    ]
+    "month": "2026-11",
+    "planusd": 30,
+    "aiusageplanusd": 12.4,
+    "aiusagebalanceusd": 0,
+    "modelrunsusd": 3.2,
+    "fundsaddedusd": 20,
+    "includedusd": 30,
+    "usage": {
+      "period": "2026-11",
+      "resetsat": 1797724800,
+      "includedusd": 30,
+      "usedusd": 12.4,
+      "leftusd": 17.6,
+      "renewalusd": 30,
+      "frombalanceusd": 0,
+      "balanceusd": 42.1,
+      "wallet": "personal",
+      "minbalanceusd": 0.5,
+      "paused": false,
+      "pausedreason": null
+    }
   },
-  "transactions": [
+  "rows": [
     {
-      "guid": "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e01",
-      "type": "deduct",
-      "action": "tokens",
-      "amount": -5,
-      "balanceafter": null,
+      "id": "wt-918273",
+      "createdat": 1795167000,
+      "kind": "ai-usage",
+      "title": "AI Usage",
+      "description": "AI usage: Sales Desk (openai/gpt-5.6-terra, 54,969 tokens)",
+      "model": "openai/gpt-5.6-terra",
+      "tokens": { "input": 6, "cacheRead": 50147, "cacheWrite": 4683, "output": 133 },
+      "costs": { "input": 0.0000132, "cacheRead": 0.0110323, "cacheWrite": 0.0128783, "output": 0.0017556 },
+      "amountusd": 0.02,
+      "paidfrom": "plan",
+      "direction": "out",
+      "surface": "agent",
+      "taskid": null,
+      "legacy": false
+    },
+    {
+      "id": "wt-918240",
+      "createdat": 1795132800,
+      "kind": "model-run",
+      "title": "Model Run",
+      "description": null,
+      "model": "google/nano-banana",
+      "tokens": null,
+      "costs": null,
+      "amountusd": 0.15,
+      "paidfrom": "balance",
+      "direction": "out",
+      "surface": "agent",
+      "taskid": "8812345",
+      "legacy": false
+    },
+    {
+      "id": "wt-917002",
+      "createdat": 1793491200,
+      "kind": "plan",
+      "title": "Agent renewal: Pro plan (Sales Desk)",
+      "description": "Agent renewal: Pro plan (Sales Desk)",
+      "model": null,
+      "tokens": null,
+      "costs": null,
+      "amountusd": 30,
+      "paidfrom": "balance",
+      "direction": "out",
+      "surface": "agent",
+      "taskid": null,
+      "legacy": false
+    },
+    {
+      "id": "ut-3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e01",
+      "createdat": 1792886400,
+      "kind": "ai-usage",
+      "title": "AI Usage",
       "description": "LLM openai/gpt-5.4 (uncached in 3450, cached in 512, out 820, total 4782 tokens)",
-      "sessionkey": "default",
-      "agentsessionkey": "default",
-      "messageguid": "5d6e7f80-9a1b-4c2d-8e3f-4a5b6c7d8e01",
-      "inputtokens": 3450,
-      "outputtokens": 820,
-      "cachereadtokens": 512,
-      "cachewritetokens": 0,
-      "totaltokens": 4782,
-      "tokencost": 5,
-      "processedms": 4120,
       "model": "openai/gpt-5.4",
-      "provider": "agent",
-      "providerref": null,
-      "metadata": null,
-      "uuid": "ada-uuid",
-      "user": {
-        "uuid": "ada-uuid",
-        "firstname": "Ada",
-        "lastname": "Lovelace",
-        "email": "ada@example.com",
-        "username": "ada",
-        "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
-        "avatarinitials": "AL"
-      },
-      "createdat": 1714694400
-    },
-    {
-      "guid": "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e02",
-      "type": "purchase",
-      "action": "medium",
-      "amount": 5000,
-      "balanceafter": 6555,
-      "description": "Extra credits — medium (wallet)",
-      "sessionkey": null,
-      "messageguid": null,
-      "inputtokens": null,
-      "outputtokens": null,
-      "cachereadtokens": null,
-      "cachewritetokens": null,
-      "totaltokens": null,
-      "tokencost": null,
-      "processedms": null,
-      "model": null,
-      "provider": "prepaid",
-      "providerref": null,
-      "metadata": { "price": 50, "currency": "usd" },
-      "uuid": "ada-uuid",
-      "user": {
-        "uuid": "ada-uuid",
-        "firstname": "Ada",
-        "lastname": "Lovelace",
-        "email": "ada@example.com",
-        "username": "ada",
-        "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
-        "avatarinitials": "AL"
-      },
-      "createdat": 1714692800
-    },
-    {
-      "guid": "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e03",
-      "type": "renewal",
-      "action": "monthly",
-      "amount": 3000,
-      "balanceafter": 3000,
-      "description": "Subscription renewal",
-      "sessionkey": null,
-      "messageguid": null,
-      "inputtokens": null,
-      "outputtokens": null,
-      "cachereadtokens": null,
-      "cachewritetokens": null,
-      "totaltokens": null,
-      "tokencost": null,
-      "processedms": null,
-      "model": null,
-      "provider": "prepaid",
-      "providerref": null,
-      "metadata": { "period": "2026-05", "priceUsd": 30 },
-      "uuid": "ada-uuid",
-      "user": {
-        "uuid": "ada-uuid",
-        "firstname": "Ada",
-        "lastname": "Lovelace",
-        "email": "ada@example.com",
-        "username": "ada",
-        "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
-        "avatarinitials": "AL"
-      },
-      "createdat": 1714608000
-    },
-    {
-      "guid": "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e04",
-      "type": "grant",
-      "action": "tier-change",
-      "amount": 1250,
-      "balanceafter": 1430,
-      "description": "Plan Starter to Pro",
-      "sessionkey": null,
-      "messageguid": null,
-      "inputtokens": null,
-      "outputtokens": null,
-      "cachereadtokens": null,
-      "cachewritetokens": null,
-      "totaltokens": null,
-      "tokencost": null,
-      "processedms": null,
-      "model": null,
-      "provider": "prepaid",
-      "providerref": null,
-      "metadata": {
-        "fromTier": "starter",
-        "toTier": "pro",
-        "previousPriceUsd": 5,
-        "newPriceUsd": 30,
-        "proratedCharge": 12.5,
-        "creditsFromRenewal": 3000
-      },
-      "uuid": "ada-uuid",
-      "user": {
-        "uuid": "ada-uuid",
-        "firstname": "Ada",
-        "lastname": "Lovelace",
-        "email": "ada@example.com",
-        "username": "ada",
-        "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
-        "avatarinitials": "AL"
-      },
-      "createdat": 1712880000
+      "tokens": { "input": 3450, "cacheRead": 512, "cacheWrite": 0, "output": 820 },
+      "costs": null,
+      "amountusd": 0.05,
+      "paidfrom": "plan",
+      "direction": "out",
+      "surface": null,
+      "taskid": null,
+      "legacy": true
     }
   ]
 }
 ```
 
-> The `user` object is the resolved actor that triggered the ledger entry: `uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`. Every row is recorded for an account `uuid` (renewals, expiry sweeps and other automated rows carry the agent owner's), so `user` is `null` only when that user record has been deleted.
-
-**Summary fields** (snapshot of the useragent row):
+**Summary fields** (the current calendar month, UTC, in USD):
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `monthlycredits` | `number` | The credits this period grants. |
-| `renewalcredits` | `number` | The credits a renewal grants on the agent's current plan. When the agent has a `nextplan` (on `UserAgent/Detail`), the next renewal grants that plan's credits instead. |
-| `extracredits` | `number` | Active extra-credit balance (sum of non-expired packs). |
-| `usedcredits` | `number` | Consumed during the current period (reported by the runtime). |
-| `remainingcredits` | `number` | `max(0, monthlycredits + extracredits - usedcredits)`. |
-| `creditperiod` | `string` | `'YYYY-MM'` billing window. Rolls over on subscription renewal. |
-| `creditsyncat` | `number\|null` | Unix seconds of the last monthly usage reset, the start of the current credit period; `byModel` counts turns from this moment on (`null` until the first reset). |
-| `extrapacks` | `array` | The agent's extra-credit packs: `{ id, credits, remainingcredits, status, provider, purchasedat, expiresat }`. Active packs are used oldest first. |
-| `byModel` | `array` | Per-model token rollup for the **current billing period**, aggregating only `action: "tokens"` rows, sorted by `tokencost` descending. A `null` or empty `model` is bucketed as `"unknown"`. Each entry: `{ model, inputtokens, outputtokens, cachereadtokens, cachewritetokens, totaltokens, tokencost, turncount }`. Within a period that stays inside `monthlycredits`, the `tokencost` values add up to `usedcredits`; credits spent from extra packs are counted here but come off `extracredits` instead. |
+| `month` | `string` | The month the figures cover, `'YYYY-MM'`. |
+| `planusd` | `number` | Plan payments for the agent. |
+| `aiusageplanusd` | `number` | AI usage the plan's included usage covered. |
+| `aiusagebalanceusd` | `number` | AI usage paid from the balance. |
+| `modelrunsusd` | `number` | Models the agent ran. |
+| `fundsaddedusd` | `number` | Funds added from the agent's page. |
+| `includedusd` | `number` | The AI usage the plan includes this period. |
+| `usage` | `object` | The agent's `usage`, as on [`UserAgent/Detail`](/docs/agent-overview#usage-object). |
 
-**Transaction fields:**
+The summary also still carries the credit counts it had before dollar billing (`monthlycredits`, `renewalcredits`, `extracredits`, `usedcredits`, `remainingcredits`, `extrapacks`, `byModel` and the period fields), and the answer still carries the old `transactions` list and its `total`. They are deprecated and will be removed: read `rows`, `rowstotal` and the fields above.
+
+**Row fields:**
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `guid` | `string` | Stable id of the ledger row. Daemon retries reuse this guid for idempotency. |
-| `type` | `string` | One of `"deduct"`, `"renewal"`, `"purchase"`, `"grant"`, `"expired"`, `"refund"`, `"adjust"`. There is no `"cancel"` type: a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until `currentperiodend` is reached, at which point the cron writes the ledger row as `type: "expired"`, `action: "subscription"`. |
-| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"tokens"` (deduct: the per-turn LLM token charge Wiro records for every chat, cron, and voice post-call turn); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"upgrade"`, `"tier-change"` (grant: a move to a higher plan); `"skill-toggle"`, `"skills-apply"` (grant: a skill change, with `amount: 0`; grant or expired rows with a non-zero `amount` are from before skill changes became free); `"subscription"` (expired, end-of-period cancel rollover; refund); `"skill-change-not-undone"`, `"skill-credit-failed"` (adjust, rows from before skill changes became free). Legacy deduct rows may also carry `"message"`, `"create"`, `"modify"`, or `"regenerate"`. |
-| `amount` | `number` | Signed credit delta: negative for deductions, positive for grants. |
-| `balanceafter` | `number\|null` | Remaining credit balance snapshot written at the time of the event. `null` on per-turn `deduct` rows. |
-| `description` | `string\|null` | Human-readable label. On an `action: "tokens"` row it spells the counts out: `LLM <model> (uncached in N, cached in N, out N, cache write N, total N tokens)`, where `cached in` and `cache write` appear only above 0. |
-| `sessionkey` | `string\|null` | Session the deduct belongs to (deduct rows only). |
-| `agentsessionkey` | `string\|null` | Alias of `sessionkey` (same value), present on every row for a unified per-session attribution key across `TaskList` / `TransactionList` / wallet responses. |
-| `messageguid` | `string\|null` | Agent message that triggered the deduct (deduct rows only). |
-| `inputtokens` | `number\|null` | Uncached prompt tokens billed at the model's input rate (`action: "tokens"` rows only). |
-| `outputtokens` | `number\|null` | Completion tokens billed for the turn (`action: "tokens"` rows only). |
-| `cachereadtokens` | `number\|null` | Prompt tokens served from cache for the turn (`action: "tokens"` rows only). |
-| `cachewritetokens` | `number\|null` | Prompt tokens written to cache for the turn (`action: "tokens"` rows only). |
-| `totaltokens` | `number\|null` | Exact `inputtokens + outputtokens + cachereadtokens + cachewritetokens` sum (`action: "tokens"` rows only). |
-| `tokencost` | `number\|null` | Credit cost for the turn; equals `abs(amount)` (`action: "tokens"` rows only). |
-| `processedms` | `number\|null` | Model processing time for the turn, in milliseconds (`action: "tokens"` rows only). |
-| `model` | `string\|null` | Model id that served the turn, e.g. `"openai/gpt-5.4"` (`action: "tokens"` rows only). |
-| `provider` | `string\|null` | `"agent"` (runtime deduct) or `"prepaid"` (wallet-backed change). API-deployed agents always run on the prepaid path. |
-| `providerref` | `string\|null` | Provider-side reference id. Always populated for `prepaid` rows (wallet transaction id); `null` for `agent` runtime deducts. |
-| `metadata` | `object\|null` | Arbitrary JSON context attached at write time (plan change, period, prorated charge, …). |
-| `uuid` | `string\|null` | UUID of the account the row is recorded for: the user who acted, or the agent's owner for renewals and other automated rows. Never a `"system"` placeholder. |
-| `user` | `object\|null` | Resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. `null` when the user record was deleted. |
+| `id` | `string` | The row's id, unique in the list. Read it as an opaque value. |
 | `createdat` | `number` | Unix seconds. |
+| `kind` | `string` | `"ai-usage"`, `"model-run"`, `"plan"`, `"funds"` or `"other"` (see the [Overview](#tx-overview)). |
+| `title` | `string` | A short line that says what the row is, such as `AI Usage`, `Model Run` or the plan payment's line. Show it as it is: its wording can change. |
+| `description` | `string\|null` | The ledger's own line for the row, when it has one, such as `AI usage: Sales Desk (openai/gpt-5.6-terra, 54,969 tokens)`. |
+| `model` | `string\|null` | `ai-usage` rows: the model that served the calls. `model-run` rows: the model that ran, by its `owner/slug`. `null` otherwise. |
+| `tokens` | `object\|null` | `ai-usage` rows: `{ input, cacheRead, cacheWrite, output }` token counts, where `input` is uncached input. `null` otherwise. |
+| `costs` | `object\|null` | `ai-usage` rows: what each kind of token cost, in USD, exact to 7 decimals: `{ input, cacheRead, cacheWrite, output }`. `null` on other rows and on legacy rows. |
+| `amountusd` | `number` | The row's amount in USD, in whole cents. On an `ai-usage` row the exact `costs` can leave a fraction of a cent: it carries to the agent's next row, so `amountusd` can differ from their sum by less than a cent. |
+| `paidfrom` | `string\|null` | How the row was paid: `"plan"` (the plan's included usage), `"balance"` (the Wiro balance), `"coupon"` (coupon credit in the balance) or `"card"` (a card payment, such as a plan renewal from before plans moved to the balance, or funds added by card). |
+| `direction` | `string` | `"out"` for spending, `"in"` for funds added and other credits. |
+| `surface` | `string\|null` | The surface the row was charged on, such as `"agent"`. `null` on older rows. |
+| `taskid` | `string\|null` | `model-run` rows: the task of the run (see [Tasks](/docs/tasks)). `null` otherwise. |
+| `legacy` | `boolean` | `true` on rows from before dollar billing, converted to dollars. |
 
-> **Pagination.** The endpoint returns `total` so you can render a precise paginator. Default page size is 50, max is 500. Use `start` to skip rows.
+> **Pagination.** `rowstotal` is the number of rows the `kind` lists, so you can render a precise paginator. Default page size is 50, max is 500. Use `start` to skip rows.
 
-## Reading the Ledger: Patterns
+## Reading the List: Patterns
 
-### Daily / weekly reports
+### Daily AI usage
 
-Filter client-side on `createdat` to bucket transactions per day or per skill:
+Add up the `ai-usage` rows per day, split by what paid for them:
 
 ```python
 import requests
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 
 resp = requests.post(
     "https://api.wiro.ai/v1/UserAgent/TransactionList",
     headers={"x-api-key": "YOUR_API_KEY", "Content-Type": "application/json"},
-    json={"useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "limit": 500}
+    json={"useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "kind": "ai-usage", "limit": 500}
 ).json()
 
-per_day_burn = defaultdict(int)
-for tx in resp["transactions"]:
-    if tx["type"] == "deduct":
-        day = datetime.utcfromtimestamp(tx["createdat"]).strftime("%Y-%m-%d")
-        per_day_burn[day] += abs(tx["amount"])
+per_day = defaultdict(lambda: {"plan": 0.0, "balance": 0.0})
+for row in resp["rows"]:
+    day = datetime.fromtimestamp(row["createdat"], timezone.utc).strftime("%Y-%m-%d")
+    source = "plan" if row["paidfrom"] == "plan" else "balance"
+    per_day[day][source] += row["amountusd"]
 
-for day in sorted(per_day_burn):
-    print(f"{day}: {per_day_burn[day]} credits")
+for day in sorted(per_day):
+    print(f"{day}: ${per_day[day]['plan']:.2f} from the plan, ${per_day[day]['balance']:.2f} from the balance")
 ```
 
-### Audit a billing-period rollover
+### Cost by token kind
 
-`type: "renewal"` rows are written exactly once per billing-period rollover. Pair them with the most recent `summary.creditperiod` to confirm the new period started on time.
+Each `ai-usage` row says what each kind of token cost, so you can see whether cache reads, cache writes or output drive the bill:
 
 ```javascript
-const renewals = transactions.filter(t => t.type === 'renewal');
-const lastRenewal = renewals[0];   // newest-first ordering
-console.log('Last renewal:', new Date(lastRenewal.createdat * 1000).toISOString());
-console.log('Granted:', lastRenewal.amount, 'credits');
-console.log('Now in period:', summary.creditperiod);
+const totals = { input: 0, cacheRead: 0, cacheWrite: 0, output: 0 };
+for (const row of rows.filter(r => r.kind === 'ai-usage' && r.costs)) {
+  for (const k of Object.keys(totals)) totals[k] += row.costs[k] || 0;
+}
+console.log(totals);
 ```
 
 ### Reconcile a plan change
 
-When the user moves to a higher plan mid-period, the ledger gets one `grant` row for the credits the move added to this period. For a wallet-billed (prepaid) agent, `UpgradeTier` writes `action: "tier-change"` with those credits as `amount` (the monthly difference for the time left in the period), a description like `"Plan Pro to Max"` and `metadata: { fromTier, toTier, previousPriceUsd, newPriceUsd, proratedCharge, creditsFromRenewal }`; a card-billed upgrade writes `action: "upgrade"`. A move to a lower plan takes effect at the renewal, and that `renewal` row grants the lower plan's credits. Use these rows to render a plan history in your UI.
+Every plan payment is a `plan` row: the deploy, a move to a higher plan (the prorated difference) and each renewal, with the plan's name in its `title`. A move to a lower plan charges nothing when it is asked for: the renewal that starts it is a `plan` row at the lower price. Use these rows to render a plan history in your UI.
 
 ## Errors
 
@@ -299,18 +227,24 @@ When the user moves to a higher plan mid-period, the ledger gets one `grant` row
 | `useragent-access-denied` | Caller is neither the owner nor on the agent's team |
 | `useragent-team-admin-required` | Caller is a member of the agent's team but not a team admin (code `97`) |
 | `Invalid credentials` | API key is missing or doesn't resolve to a valid Wiro user |
-| `transactions-list-failed` | `TransactionList` server-side error (DB): surfaced loudly so it's distinguishable from "empty ledger" |
+| `transactions-list-failed` | `TransactionList` server-side error (DB): surfaced loudly so it's distinguishable from an empty list |
 
 ## Code Examples
 
 ### curl
 
 ```bash
-# Latest 50 transactions for a useragent
+# Latest 50 rows for a useragent
 curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
   -H "x-api-key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "limit": 50 }'
+
+# Only the plan payments
+curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "kind": "plan" }'
 
 # Page 2 (next 50)
 curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
@@ -332,12 +266,13 @@ resp = requests.post(
     json={"useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "limit": 100}
 ).json()
 
-print(f"Balance — remaining: {resp['summary']['remainingcredits']}/{resp['summary']['monthlycredits']}")
-print(f"Total ledger rows: {resp['total']}")
+s = resp["summary"]
+print(f"{s['month']}: plan ${s['planusd']:.2f}, AI usage from the balance ${s['aiusagebalanceusd']:.2f}, model runs ${s['modelrunsusd']:.2f}")
+print(f"Rows: {resp['rowstotal']}")
 
-for tx in resp["transactions"][:10]:
-    sign = "+" if tx["amount"] > 0 else ""
-    print(f"  [{tx['type']:>9}] {sign}{tx['amount']:>6}  {tx['description']}")
+for row in resp["rows"][:10]:
+    sign = "+" if row["direction"] == "in" else "-"
+    print(f"  [{row['kind']:>9}] {sign}${row['amountusd']:.2f}  {row['title']}  ({row['paidfrom']})")
 ```
 
 ### Node.js
@@ -353,12 +288,12 @@ const { data } = await axios.post(
   { headers }
 );
 
-console.log(`Balance: ${data.summary.remainingcredits}/${data.summary.monthlycredits}`);
-console.log(`Period: ${data.summary.creditperiod}`);
+const { summary } = data;
+console.log(`AI usage this month: $${summary.aiusageplanusd} from the plan, $${summary.aiusagebalanceusd} from the balance`);
 
-data.transactions.slice(0, 10).forEach(tx => {
-  const sign = tx.amount > 0 ? '+' : '';
-  console.log(`  [${tx.type.padStart(9)}] ${sign}${tx.amount}  ${tx.description}`);
+data.rows.slice(0, 10).forEach(row => {
+  const sign = row.direction === 'in' ? '+' : '-';
+  console.log(`  [${row.kind.padStart(9)}] ${sign}$${row.amountusd.toFixed(2)}  ${row.title}`);
 });
 ```
 
@@ -380,15 +315,16 @@ curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 $resp = json_decode(curl_exec($ch), true);
 curl_close($ch);
 
-echo "Balance: {$resp['summary']['remainingcredits']}/{$resp['summary']['monthlycredits']}\n";
-foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
-    $sign = $tx['amount'] > 0 ? '+' : '';
-    echo "[{$tx['type']}] {$sign}{$tx['amount']} {$tx['description']}\n";
+$s = $resp['summary'];
+echo "Plan: \${$s['planusd']}, model runs: \${$s['modelrunsusd']}\n";
+foreach (array_slice($resp['rows'], 0, 10) as $row) {
+    $sign = $row['direction'] === 'in' ? '+' : '-';
+    printf("[%s] %s$%.2f %s\n", $row['kind'], $sign, $row['amountusd'], $row['title']);
 }
 ```
 
 ## What's Next
 
 - [Agent Logs](/docs/agent-logs): Activity feed (tool calls, cron runs, message exchanges) for the same useragent
-- [Agent Overview](/docs/agent-overview): Full agent endpoint catalog, including subscription / billing operations
-- [Agent Builder](/docs/agent-builder): Build a custom agent and watch the ledger fill up as it runs
+- [Agent Overview](/docs/agent-overview): Full agent endpoint catalog, including plans, AI usage and the balance
+- [Agent Builder](/docs/agent-builder): Build a custom agent and watch its usage come in as it runs

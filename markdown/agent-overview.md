@@ -51,35 +51,43 @@ Agents use the same authentication as the rest of the Wiro API. Include your key
 
 For full details, see [Authentication](/docs/authentication).
 
-## Pricing Model: Plans, Credits & Token Billing
+## Pricing Model: Plans, AI Usage & Balance
 
-Every agent runs on one of three monthly plans, and the plan alone sets its price, its monthly credits and its disk space. Templates and custom builds use the same plans, and the skills an agent has never change the price. Each turn the agent runs then spends credits by the tokens its model uses.
+Every agent runs on one of three monthly plans, and the plan alone sets its price, the AI usage it includes and its disk space. Templates and custom builds use the same plans, and the skills an agent has never change the price. AI usage is what the agent's own model uses on each turn, priced by its tokens. Once the plan's included usage for the period is used up, the agent runs on the Wiro balance of its workspace, the same balance your model runs use.
 
 ### Plans
 
-| Plan | `tier` | Price | Monthly credits | Disk |
-|------|--------|-------|-----------------|------|
-| **Starter** | `"starter"` | $5 a month | 500 | 250 MB |
-| **Pro** | `"pro"` | $30 a month | 3,000 | 500 MB |
-| **Max** | `"max"` | $100 a month | 10,000 | 1 GB |
+| Plan | `tier` | Price | AI usage included | Disk |
+|------|--------|-------|-------------------|------|
+| **Starter** | `"starter"` | $5 a month | $5 a month | 250 MB |
+| **Pro** | `"pro"` | $30 a month | $30 a month | 500 MB |
+| **Max** | `"max"` | $100 a month | $100 a month | 1 GB |
 
-Every plan carries 100 credits per dollar (1 credit = $0.01). A plan is bought per agent: pass `tier` to [`Deploy`](#post-useragentdeploy) or [`CreateSubscriptionCheckout`](#post-useragentcreatesubscriptioncheckout). Catalog and instance responses list the three plans under `tiers`:
+Each plan includes its own price in AI usage: Pro costs $30 a month and includes $30 of AI usage a month. A plan is bought per agent and paid from the Wiro balance: pass `tier` to [`Deploy`](#post-useragentdeploy) or [`CreateSubscriptionCheckout`](#post-useragentcreatesubscriptioncheckout). Catalog responses, instance responses (`agent.plans`) and `PricingPreview` list the three plans in order under `plans`:
+
+```json
+"plans": [
+  { "key": "starter", "title": "Starter", "priceUsd": 5,   "includedUsageUsd": 5,   "diskMb": 250 },
+  { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "includedUsageUsd": 30,  "diskMb": 500 },
+  { "key": "max",     "title": "Max",     "priceUsd": 100, "includedUsageUsd": 100, "diskMb": 1024 }
+]
+```
+
+`priceUsd` is the plan's monthly price, `includedUsageUsd` the AI usage it includes each month, in USD, and `diskMb` its disk space in MB (`250`, `500` or `1024`, which is 1 GB; see [Disk Space](#disk-space)). The same responses also key the plans by `tier` under `tiers`, each with its `priceUsd`:
 
 ```json
 "tiers": {
-  "starter": { "priceUsd": 5,   "credits": 500 },
-  "pro":     { "priceUsd": 30,  "credits": 3000 },
-  "max":     { "priceUsd": 100, "credits": 10000 }
+  "starter": { "priceUsd": 5 },
+  "pro":     { "priceUsd": 30 },
+  "max":     { "priceUsd": 100 }
 }
 ```
 
-Instance responses (`agent.plans`) and `PricingPreview` (`plans`) also list them with their names, as `{ key, title, priceUsd, monthlyCredits, diskMb }`, where `diskMb` is the plan's disk space in MB (`250`, `500` or `1024`, which is 1 GB; see [Disk Space](#disk-space)).
-
-A wallet plan renews every 30 days, and a plan paid by card in the Wiro dashboard renews on its monthly card cycle. Every renewal grants the plan's credits in full. Credits a period leaves unused don't carry over; credits from extra credit packs keep their own 6-month expiry.
+A plan renews every 30 days from the balance, and every renewal includes the plan's AI usage in full. Included usage that a period leaves unused doesn't carry over.
 
 ### What a Plan Includes
 
-Every skill and connector works on every plan. Turning a skill on or off with [`SkillsApply`](#post-useragentskillsapply) is free: the plan's price and credits stay as they are. The work a skill does still uses credits, since its replies and scheduled tasks are agent turns billed by tokens like any other. A skill that runs Wiro models, such as `util-video-creator`, pays for those runs from the wallet of the Wiro project you connect to the agent. Connectors are included too: connecting one never changes the plan's price (see [Agent Connectors](/docs/agent-connectors)).
+Every skill and connector works on every plan. Turning a skill on or off with [`SkillsApply`](#post-useragentskillsapply) is free: the plan's price and included AI usage stay as they are. The work a skill does still uses AI usage, since its replies and scheduled tasks are agent turns billed by tokens like any other. A skill that runs Wiro models, such as `util-video-creator`, pays for those runs from the wallet of the Wiro project you connect to the agent. Connectors are included too: connecting one never changes the plan's price (see [Agent Connectors](/docs/agent-connectors)).
 
 ### Disk Space
 
@@ -95,27 +103,41 @@ When the agent's files reach the plan's size, the disk is full: the agent can't 
 
 [`POST /UserAgent/UpgradeTier`](#post-useragentupgradetier) moves an agent to another plan:
 
-- **A higher plan starts now.** On a wallet plan, the wallet pays the monthly difference for the time left in the period, by the second, rounded up to the cent and at least one day's worth, and the period gains the difference in credits for that same time. Every renewal after that grants the new plan in full. Example: a Pro agent moving to Max with 15 days left of 30 pays $35.00 and gains 3,500 credits now, then renews at $100 with 10,000 credits.
-- **A lower plan starts at the next renewal.** Ask for it with `allowDowngrade: true`: without it, a lower plan is refused and nothing changes. Nothing is charged or refunded. The agent keeps its current plan, price and credits until the period ends, and its `nextplan` field names the plan it will renew on.
+- **A higher plan starts now.** The balance pays the monthly difference for the time left in the period, by the second, rounded up to the cent and at least one day's worth, and the period's included AI usage grows by the difference for that same time. Every renewal after that includes the new plan in full. Example: a Pro agent moving to Max with 15 days left of 30 pays $35.00 now, and its included AI usage for the period goes from $30 to $65; it then renews at $100 with $100 of AI usage.
+- **A lower plan starts at the next renewal.** Ask for it with `allowDowngrade: true`: without it, a lower plan is refused and nothing changes. Nothing is charged or refunded. The agent keeps its current plan, price and included AI usage until the period ends, and its `nextplan` field names the plan it will renew on.
 - **Asking for the agent's current plan** cancels a scheduled move to a lower plan.
 
-Moving to a higher plan while a lower one is scheduled cancels the scheduled move first, and cancelling the subscription clears it too. On a plan paid by card, a higher plan goes through a card checkout: nothing changes until it is paid, and then a new full period starts with the plan's full credits. A lower plan on a card plan applies from the next card renewal.
+Moving to a higher plan while a lower one is scheduled cancels the scheduled move first, and cancelling the subscription clears it too.
 
-### Extra Credits
+### Paying for Plans
 
-An agent with an active plan can buy extra credits at any time, on every plan. The packs are the same for every agent:
+Agent plans are paid from the Wiro balance of the agent's workspace: your personal balance for a personal agent, the team's balance for a team agent. A new plan, a move to a higher plan, every renewal and a plan started again after it ended are all charged there, in the dashboard, the API and MCP alike. An agent plan has no card subscription: a card only adds funds to the balance (see [Adding Funds](#adding-funds)).
 
-| Pack | Credits | Price |
-|------|---------|-------|
-| `small` | 1,000 | $10 |
-| `medium` | 5,000 | $50 |
-| `large` | 20,000 | $200 |
+When the balance can't pay a plan's price, `Deploy`, `CreateSubscriptionCheckout`, `UpgradeTier` and `RenewSubscription` are refused with code `97`, and nothing is created or charged. The message says what the balance holds and what the plan needs, and `neededusd` is the amount to add, never less than the smallest deposit:
 
-Pack credits are spent after the month's plan credits and expire 6 months after purchase. See [Extra Credit Packs](#extra-credit-packs).
+```json
+{
+  "result": false,
+  "errors": [
+    { "code": 97, "message": "Your balance is $3.10; this plan needs $100.00. Add funds to continue." }
+  ],
+  "neededusd": 96.9
+}
+```
+
+Add at least `neededusd` to the balance, then send the same call again.
+
+A plan that was paid by card before agent plans moved to the balance keeps its current period as paid. At the end of that period it renews from the balance like every other plan, or ends when the balance can't pay the renewal. Until then its `subscription` reads `provider: "stripe"` with `nextprovider: "prepaid"`, and a move to a higher plan is paid from the balance. The switch itself charges and refunds nothing.
+
+### Adding Funds
+
+An agent has no balance of its own: past its plan's included usage it uses the Wiro balance of its workspace, which also pays its plan. Add funds to that balance as a normal wallet deposit in the Wiro dashboard, under **Credit Balance** ([add funds](https://wiro.ai/panel/wallet/deposit/credit-card)), with the agent's workspace selected. A team's balance is funded the same way (see [Team Billing](/docs/organizations-billing)). Funds added from an agent's page in the dashboard land in the same balance and are also listed in that agent's [Transactions](/docs/agent-transactions). Automatic Payment tops the balance up when it runs low, agent usage included.
+
+Extra credit packs are retired: [`CreateExtraCreditCheckout`](#post-useragentcreateextracreditcheckout) charges nothing and only answers that they are. What was left of a pack bought earlier moved to the balance that paid for it, as a deposit that keeps the pack's expiry date.
 
 ### Token Billing
 
-The monthly plan buys a **credit pool**; each turn the agent runs (a chat reply, a scheduled cron tick, or a voice-prep turn) deducts credits from that pool, **metered by the tokens its model consumes**. There are no flat per-action costs: what a turn costs depends on the model and how many input / output / cached tokens it used.
+AI usage is metered by the tokens the agent's own model uses on each turn: a chat reply, a scheduled task run or a voice-prep turn. There are no flat per-action costs: what a turn costs depends on the model and on its input, cache read, cache write and output tokens, each priced at its own rate.
 
 Per-model rates live in the `tokenRates` object, present on `Agent/Detail`, `UserAgent/Detail`, `MyAgents`, `PinnedAgents`, and `PricingPreview`. The marketplace catalog (`Agent/Detail`) and `PricingPreview` return only the **selectable** models; a deployed instance's `UserAgent/Detail` / `MyAgents` / `PinnedAgents` return the **full** model map (so historical model-change markers and token-usage tooltips can still resolve a model that was later marked non-selectable). Internal metadata (`$`-prefixed keys) is stripped from every response:
 
@@ -131,31 +153,39 @@ Per-model rates live in the `tokenRates` object, present on `Agent/Detail`, `Use
 }
 ```
 
-Rates are quoted in **credits per 1,000,000 tokens**, and **1 credit = $0.01** (100 credits = $1). Wiro prices every LLM call against the model that actually served that call, sums each token category across the turn, and rounds the four aggregate categories up independently:
+Rates are in **cents per 1,000,000 tokens**: `"input_per_1m": 625` is $6.25 per million input tokens. `input_per_1m` prices uncached input, `cached_input_per_1m` cache reads, `cache_write_per_1m` cache writes and `output_per_1m` output. Wiro prices every LLM call exactly, at the rates of the model that actually served it, and charges the AI usage in whole cents.
 
-```
-tokencost = ceil(Σ call_input_cost)
-          + ceil(Σ call_output_cost)
-          + ceil(Σ call_cache_read_cost)
-          + ceil(Σ call_cache_write_cost)
-```
+Cache-read and cache-write tokens are charged only when the model's rate defines them. `inputtokens` contains only uncached input; `totaltokens` is always the exact sum of input, output, cache-read, and cache-write tokens. For models with `long_context_threshold_tokens`, Wiro selects the long-context rate **per LLM call** using `input + cacheRead + cacheWrite`. You don't send anything. The agent's [Transactions](/docs/agent-transactions#tx-transactionlist) list its AI usage as `ai-usage` rows, each with its model and its tokens and cost by kind. Per-turn token counts and cost also ride on each assistant message (`inputtokens` / `outputtokens` / `cachereadtokens` / `cachewritetokens` / `totaltokens` / `tokencost` / `model`, with `tokencost` in cents, see [Agent Messaging](/docs/agent-messaging)).
 
-Cache-read and cache-write categories are charged only when the selected model rate defines them. `inputtokens` contains only uncached input; `totaltokens` is always the exact sum of input, output, cache-read, and cache-write tokens. For models with `long_context_threshold_tokens`, Wiro selects the long-context rate **per LLM call** using `input + cacheRead + cacheWrite`. You don't send anything. Each billed turn appears once as a ledger row with `action: "tokens"` (see [`POST /UserAgent/TransactionList`](/docs/agent-transactions#tx-transactionlist)). Per-turn token counts and cost also ride on each assistant message (`inputtokens` / `outputtokens` / `cachereadtokens` / `cachewritetokens` / `totaltokens` / `tokencost` / `model`, see [Agent Messaging](/docs/agent-messaging)).
+AI usage comes from the plan's included usage for the period first, then from the balance. A new turn needs included usage left or a balance of at least $0.50. When both are short, the agent pauses: [`POST /UserAgent/Message/Send`](/docs/agent-messaging#post-useragentmessagesend) and [`POST /UserAgent/Start`](#post-useragentstart) are refused until funds are added or the plan renews (see [AI Usage and the Balance](#ai-usage-and-the-balance)).
 
-When the credit pool is exhausted, [`POST /UserAgent/Message/Send`](/docs/agent-messaging#post-useragentmessagesend) and [`POST /UserAgent/Start`](#post-useragentstart) refuse with an `Agent has no remaining credits…` error plus an `agentbalance` snapshot; renew the subscription or buy an extra credit pack to continue.
-
-> **Voice realtime audio is billed separately.** Live voice-call audio (for `util-voice-receptionist` agents) is **not** charged to the platform credit pool. It is billed to the wallet of the agent's Wiro project (the `wiro` credential, see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)). The voice-prep turn before the call and the post-call text turn are billed as normal token deducts.
+> **Voice realtime audio is billed separately.** Live voice-call audio (for `util-voice-receptionist` agents) is **not** the agent's AI usage. It is billed to the wallet of the agent's Wiro project (the `wiro` credential, see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)). The voice-prep turn before the call and the post-call text turn are AI usage like any other turn.
 
 ### Live Pricing Preview
 
-Before you deploy, change the plan or change skills, call [`POST /UserAgent/PricingPreview`](#post-useragentpricingpreview). It writes nothing and returns the three plans under `tiers`, the `tokenRates`, and `enabledSkills` with every transitive `depends_on` resolved. For an agent with an active plan it also returns `planChange`: what a different `tier` would charge now and when it starts. A skill change has no price, so its `planChange` shows no charge and no credit change.
+Before you deploy, change the plan or change skills, call [`POST /UserAgent/PricingPreview`](#post-useragentpricingpreview). It writes nothing and returns the three plans under `plans` and `tiers`, the `tokenRates`, and `enabledSkills` with every transitive `depends_on` resolved. For an agent with an active plan it also returns `planChange`: what a different `tier` would charge now and when it starts. A skill change has no price, so its `planChange` shows no charge.
+
+### Fields Kept for Older Clients
+
+Before agents were billed in dollars, these fields counted credits. They still come back for older clients, but they are deprecated and will be removed: don't build on them, and read the fields on the right instead.
+
+| Deprecated | Where | Read instead |
+|------------|-------|--------------|
+| `monthlycredits`, `renewalcredits`, `usedcredits`, `remainingcredits` | Agent rows: `Deploy`, `MyAgents`, `Detail`, `Update`, `Cover`, `PinnedAgents` | [`usage`](#usage-object): `includedusd`, `renewalusd`, `usedusd`, `leftusd` |
+| `extracredits`, `extracreditsexpiry` | Agent rows | Nothing: an agent has no balance of its own |
+| `credits` in `tiers`, `monthlyCredits` in `plans` | Catalog, agent rows, `PricingPreview` | `includedUsageUsd` in `plans` |
+| `extracreditpacks` | `Agent/Detail`, `agent` on agent rows | Nothing: it is always `[]` |
+| Credit counts in plan answers, such as `totalMonthlyCredits`, `creditsNow`, `creditsThisPeriod`, `creditsFromRenewal`, `newMonthlyCredits` and `monthlycredits` | `PricingPreview`, `SkillsApply`, `UpgradeTier`, `CreateSubscriptionCheckout`, `RenewSubscription` | The answer's USD fields, and `usage` on `Detail` once the change is made |
+| `remainingcredits` | `agent_usage_report` frames, `token_usage` log events | `usage` on `Detail` |
+| `agentbalance` | The `Message/Send` refusal for AI usage | `agentusage` |
+| `transactions`, `total` and the credit counts of `summary` | [`TransactionList`](/docs/agent-transactions#tx-transactionlist) | `rows`, `rowstotal` and the dollar fields of `summary` |
 
 ## Agent Lifecycle
 
 Deploying and running an agent follows this flow:
 
 1. **Browse**: call `POST /Agent/List` to discover available agents in the catalog
-2. **Deploy**: call `POST /UserAgent/Deploy` with `useprepaid: true` and `tier` (`"starter"`, `"pro"` or `"max"`). The plan's price is debited from your prepaid wallet immediately and a 30-day subscription row is created.
+2. **Deploy**: call `POST /UserAgent/Deploy` with `useprepaid: true` and `tier` (`"starter"`, `"pro"` or `"max"`). The plan's price is taken from your Wiro balance immediately and a 30-day subscription row is created.
 3. **Configure**: connect the services the agent works with through [Agent Connectors](/docs/agent-connectors) (`POST /UserAgent/ConnectorConnect`; a template's `suggestedconnectors` on [`Agent/Detail`](#post-agentdetail) lists the ones it works with), set optional Telegram, Slack, or Discord credentials with `POST /UserAgent/CredentialUpsert`, connect the Wiro project the agent runs models with using `POST /UserAgent/CredentialProjectBind`, and set preferences with `POST /UserAgent/CustomSkillUpsert`. An agent admin can also approve the setup cards the agent proposes in its chat (see [Setup From Chat](/docs/agent-messaging#setup-from-chat)). See [Agent Credentials](/docs/agent-credentials) for details
 4. **Start**: the prepaid Deploy already queued the agent, and Wiro starts it. Call `POST /UserAgent/Start` only for a stopped (status `0`) or errored (status `5`) agent
 5. **Running**: the agent starts and becomes available for conversation
@@ -185,7 +215,7 @@ These calls restart a starting or running agent when they change something: `Cre
 
 **Connectors restart the agent when the connection changes.** A connect that saves new values or tokens, a new account selection and a disconnect of a connected connector answer `restart: "scheduled"` on a running agent; the same values sent again answer `applied: 0` and restart nothing. A sign-in restarts the agent when it comes back to your `redirecturl` with `connector_connected=true`.
 
-A change to only the text or description of an existing custom skill or scheduled task, through `CustomSkillUpsert` or a setup card, reaches a running agent right away, without a restart. These never restart a running agent: a plan change, a credit pack, a renewal or a cancellation, moving `chatsetup` between `"all"` and `"webchat"`, a `screen` change through `UpdateSettings`, and a description, categories or cover edit through `Update`.
+A change to only the text or description of an existing custom skill or scheduled task, through `CustomSkillUpsert` or a setup card, reaches a running agent right away, without a restart. These never restart a running agent: a plan change, a renewal or a cancellation, moving `chatsetup` between `"all"` and `"webchat"`, a `screen` change through `UpdateSettings`, and a description, categories or cover edit through `Update`.
 
 ## Screen and Take Control
 
@@ -278,7 +308,7 @@ When Take Control can't start, the screen stays as it was and a notice under its
 
 - From the moment control starts until it ends, the agent's browser and desktop tools pause: the agent starts no new browser or desktop step. The rest of the agent keeps running: it answers chats in every channel, its Scheduled Tasks run, and its other tools and Connectors work.
 - The agent isn't interrupted when you take control. If it reaches for its browser or desktop meanwhile, the call is refused with a message that a person has control of the computer, which asks the agent not to retry in that turn and to tell whoever it is talking to that it will continue once control is handed back. The message names no one and doesn't mention Wiro, so the agent can pass it on in any channel.
-- When control ends and no other session holds it, each chat whose browser or desktop call was refused gets one note: control is back and the tools work again. The agent reads it at the start of that chat's next turn, when the chat's next message comes in, and can pick up the paused task then. In the Wiro web chat and in chats through your own app, the note waits up to 6 hours. The note starts no turn of its own, so it spends no credits by itself; that next turn is billed as usual. A chat that didn't reach for those tools gets no note. Neither does a Scheduled Task run: a run whose browser or desktop call was refused ends without that step, and the task runs again at its next scheduled time.
+- When control ends and no other session holds it, each chat whose browser or desktop call was refused gets one note: control is back and the tools work again. The agent reads it at the start of that chat's next turn, when the chat's next message comes in, and can pick up the paused task then. In the Wiro web chat and in chats through your own app, the note waits up to 6 hours. The note starts no turn of its own, so it uses no AI usage by itself; that next turn is billed as usual. A chat that didn't reach for those tools gets no note. Neither does a Scheduled Task run: a run whose browser or desktop call was refused ends without that step, and the task runs again at its next scheduled time.
 - You work in the agent's own browser, the one all of its chats use, signed in wherever they signed in. What you sign in to or change there stays in the agent's browser after you hand back, and the agent can use it.
 
 **The agent's browser.** For safety, it saves no passwords and fills in no addresses or payment cards, the browser itself can't be signed in to an account or synced, and its settings pages, developer tools and local files stay closed. Signing in to websites works as usual. The desktop holds only the browser; if you close its last window, it opens again by itself within about 15 seconds. Your clipboard stays on your device, and on a phone or tablet, text you paste into **Keyboard** is typed in.
@@ -417,9 +447,9 @@ Lists available agents in the catalog. This is a **public endpoint**, so no auth
       "categories": ["social-media", "marketing"],
       "samples": ["https://cdn.wiro.ai/uploads/agents/instagram-manager-sample-1.webp"],
       "tiers": {
-        "starter": { "priceUsd": 5,   "credits": 500 },
-        "pro":     { "priceUsd": 30,  "credits": 3000 },
-        "max":     { "priceUsd": 100, "credits": 10000 }
+        "starter": { "priceUsd": 5 },
+        "pro":     { "priceUsd": 30 },
+        "max":     { "priceUsd": 100 }
       },
       "status": 1,
       "createdat": "1711929600",
@@ -427,14 +457,14 @@ Lists available agents in the catalog. This is a **public endpoint**, so no auth
     }
   ],
   "plans": [
-    { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500,   "diskMb": 250 },
-    { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000,  "diskMb": 500 },
-    { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000, "diskMb": 1024 }
+    { "key": "starter", "title": "Starter", "priceUsd": 5,   "includedUsageUsd": 5,   "diskMb": 250 },
+    { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "includedUsageUsd": 30,  "diskMb": 500 },
+    { "key": "max",     "title": "Max",     "priceUsd": 100, "includedUsageUsd": 100, "diskMb": 1024 }
   ]
 }
 ```
 
-> `Agent/List` returns the catalog fields plus inlined `tiers`, so a catalog card can show the price without a per-row `Agent/Detail` call. The top-level `plans` lists the three plans in order with their names (`key`, `title`, `priceUsd`, `monthlyCredits`, `diskMb`), the same for every agent. Call `POST /Agent/Detail` with `type: "full"` when you need the full template (skills map, credential schema, custom skills, scheduled tasks).
+> `Agent/List` returns the catalog fields plus inlined `tiers`, so a catalog card can show the price without a per-row `Agent/Detail` call. The top-level `plans` lists the three plans in order with their names (`key`, `title`, `priceUsd`, `includedUsageUsd`, `diskMb`), the same for every agent. Call `POST /Agent/Detail` with `type: "full"` when you need the full template (skills map, credential schema, custom skills, scheduled tasks).
 
 #### **POST** /Agent/Detail
 
@@ -444,7 +474,7 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
 |-----------|------|----------|-------------|
 | `guid` | string | No* | Agent guid. |
 | `slug` | string | No* | Agent slug (e.g. `"instagram-manager"`). |
-| `type` | string | No | Pass `"full"` to also include `customskills` (the template's strategies a deployer can edit) and `scheduledskills` (every scheduled task) in the response. Without `type: "full"`, the response carries the catalog header + `tiers` + `plans` + `tokenRates` + `credentials` + `skills` + `skillsmeta` + `suggestedconnectors` + `communicationChannels` + `extracreditpacks` only. |
+| `type` | string | No | Pass `"full"` to also include `customskills` (the template's strategies a deployer can edit) and `scheduledskills` (every scheduled task) in the response. Without `type: "full"`, the response carries the catalog header + `tiers` + `plans` + `tokenRates` + `credentials` + `skills` + `skillsmeta` + `suggestedconnectors` + `communicationChannels` only. |
 
 > **Note:** You must provide either `guid` or `slug`. If both are provided, `slug` takes priority. Pass `type: "full"` when you need to preview custom skill keys and scheduled task cron expressions before deploying; omit it for a lightweight catalog detail call.
 
@@ -465,14 +495,14 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
       "categories": ["social-media", "marketing"],
       "samples": ["https://cdn.wiro.ai/uploads/agents/instagram-manager-sample-1.webp"],
       "tiers": {
-        "starter": { "priceUsd": 5,   "credits": 500 },
-        "pro":     { "priceUsd": 30,  "credits": 3000 },
-        "max":     { "priceUsd": 100, "credits": 10000 }
+        "starter": { "priceUsd": 5 },
+        "pro":     { "priceUsd": 30 },
+        "max":     { "priceUsd": 100 }
       },
       "plans": [
-        { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500,   "diskMb": 250 },
-        { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000,  "diskMb": 500 },
-        { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000, "diskMb": 1024 }
+        { "key": "starter", "title": "Starter", "priceUsd": 5,   "includedUsageUsd": 5,   "diskMb": 250 },
+        { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "includedUsageUsd": 30,  "diskMb": 500 },
+        { "key": "max",     "title": "Max",     "priceUsd": 100, "includedUsageUsd": 100, "diskMb": 1024 }
       ],
       "tokenRates": {
         "default_model": "openai/gpt-5.6-sol",
@@ -546,11 +576,6 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
           }
         }
       },
-      "extracreditpacks": [
-        { "packkey": "small",  "credits": 1000,  "priceusd": 10,  "enabled": true },
-        { "packkey": "medium", "credits": 5000,  "priceusd": 50,  "enabled": true },
-        { "packkey": "large",  "credits": 20000, "priceusd": 200, "enabled": true }
-      ],
       "status": 1,
       "createdat": "1711929600",
       "updatedat": "1714521600"
@@ -561,7 +586,7 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
 
 > `suggestedconnectors` lists the connectors the template works with, by their catalog slugs, such as `instagram`. Nothing connects by itself: after Deploy, connect each one you want with [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect) (its fields and tools are on [`AgentConnector/Detail`](/docs/agent-connectors#post-agentconnectordetail)). A template's scheduled task that needs a connector stays off until that connector is connected, and a connector that isn't connected never holds the agent at status `6`.
 
-> `Agent/Detail` describes the **template**, so its `credentials` block only carries the `optional` / `extra` meta flags (when the template sets them) plus the registry-driven `_schema` (field labels / types) and `_editable` map. It holds no saved values, whoever calls it and whatever `type` is sent. The `_connected` flag is per-instance and appears on `UserAgent/Detail` and the `Deploy` and `Update` responses, not on the catalog endpoint. `plans` lists the three plans with their names, and `extracreditpacks` the three extra credit packs every plan can buy, so a visitor sees both before deploying. A deployed agent's `UserAgent/Detail` carries the same lists under `agent` (see [Extra Credit Packs](#extra-credit-packs)).
+> `Agent/Detail` describes the **template**, so its `credentials` block only carries the `optional` / `extra` meta flags (when the template sets them) plus the registry-driven `_schema` (field labels / types) and `_editable` map. It holds no saved values, whoever calls it and whatever `type` is sent. The `_connected` flag is per-instance and appears on `UserAgent/Detail` and the `Deploy` and `Update` responses, not on the catalog endpoint. `plans` lists the three plans with their names, prices and included AI usage, so a visitor sees them before deploying. A deployed agent's `UserAgent/Detail` carries the same list under `agent`.
 
 **Credential response flags** (on `UserAgent/Detail` and the `Deploy` and `Update` responses): every credential object in the top-level `credentials` tree on the per-instance endpoints carries:
 
@@ -606,7 +631,7 @@ All endpoints below require authentication.
 
 Creates a new agent instance from a catalog template, **or** builds a brand-new custom agent (no template).
 
-> **API agent deployment is prepaid-only.** Pass `useprepaid: true` + `tier`. The subscription cost is deducted from your prepaid wallet immediately and the instance is created server-side in one call. There is no API path that accepts a credit card directly; subscriptions from a card can only be created through the Wiro dashboard at [wiro.ai/panel/agents](https://wiro.ai/panel/agents). Top up your wallet on [wiro.ai/panel/billing](https://wiro.ai/panel/billing) before calling Deploy.
+> **Agent plans are paid from your Wiro balance.** Pass `useprepaid: true` + `tier`. The plan's price is taken from the balance of the workspace you deploy into, and the instance is created server-side in one call. An agent plan has no card payment, in the dashboard or the API. Add funds to your balance on [wiro.ai/panel/billing](https://wiro.ai/panel/billing) before calling Deploy: when the balance is short, Deploy is refused with code `97` and `neededusd` (see [Paying for Plans](#paying-for-plans)).
 
 Prepaid deploy (`useprepaid: true` + `tier`) charges your wallet for the chosen plan's price immediately and inserts a 30-day subscription row (`plan: "agent"`, `provider: "prepaid"`). **Every fresh Deploy lands at `status: 6` first**. The row is then auto-queued to `status: 2` (Queued) once the prepaid subscription is provisioned. No manual `UserAgent/Start` is needed for prepaid deploys; Wiro starts the agent from the queue.
 
@@ -627,8 +652,8 @@ for the channel contract.
 | `title` | string | Yes | Display name for your instance. |
 | `description` | string | No | Optional description (custom builds: free-text describing what the agent does). |
 | `cover` | string | No | Optional cover image URL. Custom builds only. Template deploys clone the agent's cover automatically. |
-| `useprepaid` | boolean | Yes | Must be `true` for API deploys. Pays the plan's price from your wallet balance in a single server-side call. |
-| `tier` | string | No | The plan: `"starter"` (default, $5 a month with 500 credits), `"pro"` ($30 with 3,000) or `"max"` ($100 with 10,000). It sets the price debited from your wallet at deploy time and the monthly credits. The param name is `tier`. Leave it out for Starter. Any other value is refused with `tier must be starter, pro or max`, and nothing is created or charged. |
+| `useprepaid` | boolean | Yes | Must be `true`. Pays the plan's price from your Wiro balance in a single server-side call. |
+| `tier` | string | No | The plan: `"starter"` (default, $5 a month, including $5 of AI usage a month), `"pro"` ($30, including $30) or `"max"` ($100, including $100). It sets the price taken from your balance at deploy time and the AI usage included each month. The param name is `tier`. Leave it out for Starter. Any other value is refused with `tier must be starter, pro or max`, and nothing is created or charged. |
 | `credentials` | object | No | Inline credential groups. If a communication-channel group is included, its matching `credentials[credential_key]` object must contain all channel `required_fields`; completeness activates that channel automatically. |
 | `skills` | object | No | Inline skill toggles `{ "skillname": true \| false }`. For custom builds this seeds the initial skill set; for template deploys it overlays the template defaults. |
 | `customskills` | array | No | Inline custom skill rows. Each entry: `{ key, value?, interval?, enabled?, description?, _user_created? }`. A scheduled task's `interval` must be a schedule the agent can run, as in [`CustomSkillUpsert`](#post-useragentcustomskillupsert), and `"manual"` means no schedule. Otherwise Deploy fails before anything is created or charged, and the error starts with the skill's key. Up to 50 entries; add more with [`CustomSkillUpsert`](#post-useragentcustomskillupsert) once the agent is deployed. |
@@ -644,7 +669,7 @@ for the channel contract.
 > | `UserAgent/Deploy` | A team project's credentials deploy into that team; the project's owner must be a team admin |
 > | `UserAgent/Message/Send`, `Message/History`, `Message/Sessions`, `Message/DeleteSession`, `Message/RenameSession` | The project's workspace must match the agent's workspace |
 > | `UserAgent/Message/Delete` | For team agents, the project's workspace must match the agent's workspace; it only hides messages sent by the project's owner |
-> | `UserAgent/CancelSubscription`, `UserAgent/CreateExtraCreditCheckout`, `UserAgent/UpgradeTier`, `UserAgent/RenewSubscription`, `UserAgent/CreateSubscriptionCheckout`, `UserAgent/PricingPreview`, `UserAgent/SkillsApply`, `UserAgent/SkillToggle`, `UserAgent/CredentialProjectBind` | The project's workspace must match the agent's workspace |
+> | `UserAgent/CancelSubscription`, `UserAgent/UpgradeTier`, `UserAgent/RenewSubscription`, `UserAgent/CreateSubscriptionCheckout`, `UserAgent/PricingPreview`, `UserAgent/SkillsApply`, `UserAgent/SkillToggle`, `UserAgent/CredentialProjectBind` | The project's workspace must match the agent's workspace |
 > | `UserAgent/Message/Detail`, `Message/Cancel` | No workspace match; they only return or cancel messages sent by the project's owner |
 > | `UserAgent/Detail` | No workspace match; the project's owner must own the agent or be a member of its team |
 > | `UserAgent/Update`, `UserAgent/Start`, `UserAgent/Stop` | No workspace match; the project's owner must own the agent or be an admin of its team (plain members get code `97`) |
@@ -730,12 +755,7 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
       "skills": ["util-social-posting-common", "util-anti-ai-human-copy"],
       "customskills": [],
       "scheduledskills": [],
-      "monthlycredits": 500,
       "monthlypriceusd": 5,
-      "extracredits": 0,
-      "usedcredits": 0,
-      "remainingcredits": 500,
-      "renewalcredits": 500,
       "creditperiod": "2026-05",
       "creditsyncat": null,
       "tokenRates": {
@@ -768,19 +788,14 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
         "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
         "categories": ["social-media", "marketing"],
         "tiers": {
-          "starter": { "priceUsd": 5,   "credits": 500 },
-          "pro":     { "priceUsd": 30,  "credits": 3000 },
-          "max":     { "priceUsd": 100, "credits": 10000 }
+          "starter": { "priceUsd": 5 },
+          "pro":     { "priceUsd": 30 },
+          "max":     { "priceUsd": 100 }
         },
         "plans": [
-          { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500,   "diskMb": 250 },
-          { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000,  "diskMb": 500 },
-          { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000, "diskMb": 1024 }
-        ],
-        "extracreditpacks": [
-          { "packkey": "small",  "credits": 1000,  "priceusd": 10,  "enabled": true },
-          { "packkey": "medium", "credits": 5000,  "priceusd": 50,  "enabled": true },
-          { "packkey": "large",  "credits": 20000, "priceusd": 200, "enabled": true }
+          { "key": "starter", "title": "Starter", "priceUsd": 5,   "includedUsageUsd": 5,   "diskMb": 250 },
+          { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "includedUsageUsd": 30,  "diskMb": 500 },
+          { "key": "max",     "title": "Max",     "priceUsd": 100, "includedUsageUsd": 100, "diskMb": 1024 }
         ]
       },
       "createdat": 1714608000,
@@ -865,13 +880,31 @@ Lists all agent instances deployed under your account.
       "tier": "pro",
       "nextplan": null,
       "monthlypriceusd": 30,
-      "monthlycredits": 3000,
-      "extracredits": 5000,
-      "usedcredits": 1450,
-      "remainingcredits": 6550,
-      "renewalcredits": 3000,
       "creditperiod": "2026-05",
       "creditsyncat": 1714694410,
+      "usage": {
+        "period": "2026-05",
+        "resetsat": 1717200000,
+        "includedusd": 30,
+        "usedusd": 12.4,
+        "leftusd": 17.6,
+        "renewalusd": 30,
+        "frombalanceusd": 0,
+        "balanceusd": 42.1,
+        "wallet": "personal",
+        "minbalanceusd": 0.5,
+        "paused": false,
+        "pausedreason": null
+      },
+      "spend": {
+        "month": "2026-05",
+        "planusd": 30,
+        "aiusagebalanceusd": 0,
+        "aiusageplanusd": 12.4,
+        "modelrunsusd": 3.2,
+        "fundsaddedusd": 20,
+        "totalusd": 33.2
+      },
       "status": 4,
       "pinned": true,
       "teamsessionmode": "private",
@@ -895,9 +928,9 @@ Lists all agent instances deployed under your account.
         "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
         "categories": ["social-media", "marketing"],
         "tiers": {
-          "starter": { "priceUsd": 5,   "credits": 500 },
-          "pro":     { "priceUsd": 30,  "credits": 3000 },
-          "max":     { "priceUsd": 100, "credits": 10000 }
+          "starter": { "priceUsd": 5 },
+          "pro":     { "priceUsd": 30 },
+          "max":     { "priceUsd": 100 }
         }
       },
       "enabledSkills": ["util-social-posting-common", "util-anti-ai-human-copy", "util-chat-markdown-reporting"],
@@ -916,7 +949,6 @@ Lists all agent instances deployed under your account.
         "voicePrepModel": "openai/gpt-5.4-mini",
         "voicePostcallModel": "openai/gpt-5.4"
       },
-      "extracreditsexpiry": 1730419200,
       "lastactivityat": 1714698000,
       "createdat": 1714608000,
       "updatedat": 1714694400,
@@ -931,13 +963,13 @@ Lists all agent instances deployed under your account.
 }
 ```
 
-> **`MyAgents` returns one row per useragent with its scalar fields, the trimmed `agent` template summary (no `extracreditpacks`), `subscription`, `setuprequired` (status-based check only), `extracredits` / `remainingcredits` / `renewalcredits` / `extracreditsexpiry`, `lastactivityat`, the resolved `enabledSkills` (template defaults ∪ user overrides, including transitive `depends_on` closure), `tokenRates` (per-model token rates, the same map as `UserAgent/Detail.tokenRates`), `agentModel` (the resolved chat / cron / voice-prep / voice-postcall model slugs), and `enabledCommands` (the slash-command allowlist, `null` when uncustomized).** Heavier composed children (`credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `communicationChannels`, `enabledChannels`) are **not** included. Call `UserAgent/Detail` on a single guid for the full composed shape.
+> **`MyAgents` returns one row per useragent with its scalar fields, the trimmed `agent` template summary, `subscription`, `setuprequired` (status-based check only), `usage` (the agent's AI usage and balance, see [Usage object](#usage-object)), `spend` (what it cost this month, see [Spend object](#spend-object)), `lastactivityat`, the resolved `enabledSkills` (template defaults ∪ user overrides, including transitive `depends_on` closure), `tokenRates` (per-model token rates, the same map as `UserAgent/Detail.tokenRates`), `agentModel` (the resolved chat / cron / voice-prep / voice-postcall model slugs), and `enabledCommands` (the slash-command allowlist, `null` when uncustomized).** Heavier composed children (`credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `communicationChannels`, `enabledChannels`) are **not** included. Call `UserAgent/Detail` on a single guid for the full composed shape.
 
 > **`enabledSkills`, `tokenRates`, and `agentModel`** ride on each list row so a chat or pinned-agents UI can decide whether to show the realtime voice-call button (`enabledSkills` includes `util-web-channel`) and render the model picker + live token-rate card without round-tripping `UserAgent/Detail` per row.
 
 #### **POST** /UserAgent/Detail
 
-Retrieves full details for a single deployed agent instance, including subscription info, the per-instance credit ledger summary, the resolved per-model token-rate table (`tokenRates`) plus model selection (`agentModel`), and the `extracreditpacks` catalog.
+Retrieves full details for a single deployed agent instance, including subscription info, its AI usage and balance (`usage`), what it cost this month (`spend`), and the resolved per-model token-rate table (`tokenRates`) plus model selection (`agentModel`).
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -1134,14 +1166,32 @@ Retrieves full details for a single deployed agent instance, including subscript
           "description": "Structured markdown report format for the chat channel (Telegram / web chat / API chat): tables, code blocks for readability, character limits, split logic. Channel-agnostic."
         }
       },
-      "monthlycredits": 3000,
       "monthlypriceusd": 30,
-      "extracredits": 5000,
-      "usedcredits": 1450,
-      "remainingcredits": 6550,
-      "renewalcredits": 3000,
       "creditperiod": "2026-05",
       "creditsyncat": 1714694410,
+      "usage": {
+        "period": "2026-05",
+        "resetsat": 1717200000,
+        "includedusd": 30,
+        "usedusd": 12.4,
+        "leftusd": 17.6,
+        "renewalusd": 30,
+        "frombalanceusd": 0,
+        "balanceusd": 42.1,
+        "wallet": "personal",
+        "minbalanceusd": 0.5,
+        "paused": false,
+        "pausedreason": null
+      },
+      "spend": {
+        "month": "2026-05",
+        "planusd": 30,
+        "aiusagebalanceusd": 0,
+        "aiusageplanusd": 12.4,
+        "modelrunsusd": 3.2,
+        "fundsaddedusd": 20,
+        "totalusd": 33.2
+      },
       "tokenRates": {
         "default_model": "openai/gpt-5.6-sol",
         "fallback_rate": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25 },
@@ -1187,22 +1237,16 @@ Retrieves full details for a single deployed agent instance, including subscript
         "icon": "https://cdn.wiro.ai/uploads/agents/instagram-manager-icon.webp",
         "categories": ["social-media", "marketing"],
         "tiers": {
-          "starter": { "priceUsd": 5,   "credits": 500 },
-          "pro":     { "priceUsd": 30,  "credits": 3000 },
-          "max":     { "priceUsd": 100, "credits": 10000 }
+          "starter": { "priceUsd": 5 },
+          "pro":     { "priceUsd": 30 },
+          "max":     { "priceUsd": 100 }
         },
         "plans": [
-          { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500,   "diskMb": 250 },
-          { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000,  "diskMb": 500 },
-          { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000, "diskMb": 1024 }
-        ],
-        "extracreditpacks": [
-          { "packkey": "small",  "credits": 1000,  "priceusd": 10,  "enabled": true },
-          { "packkey": "medium", "credits": 5000,  "priceusd": 50,  "enabled": true },
-          { "packkey": "large",  "credits": 20000, "priceusd": 200, "enabled": true }
+          { "key": "starter", "title": "Starter", "priceUsd": 5,   "includedUsageUsd": 5,   "diskMb": 250 },
+          { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "includedUsageUsd": 30,  "diskMb": 500 },
+          { "key": "max",     "title": "Max",     "priceUsd": 100, "includedUsageUsd": 100, "diskMb": 1024 }
         ]
       },
-      "extracreditsexpiry": 1730419200,
       "lastactivityat": 1714698000,
       "createdat": 1714608000,
       "updatedat": 1714694400,
@@ -1233,22 +1277,18 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `categories` | `array<string>` | Inherited from the template at deploy; editable via `Update`. |
 | `pinned` | `boolean` | `true` when the user pinned this instance to the global header dropdown. Mutate via `Pin`. |
 
-**Plan & credits**
+**Plan & AI usage**
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `tier` | `string` | The agent's plan: `"starter"`, `"pro"` or `"max"`. |
 | `nextplan` | `string\|null` | The plan the agent moves to at its next renewal, set by a move to a lower plan with [`UpgradeTier`](#post-useragentupgradetier). An agent subscribed before the three plans also shows here the plan it renews on. `null` when no change is scheduled. Also on `MyAgents` and `PinnedAgents` rows. |
-| `monthlypriceusd` | `number` | The monthly USD price the agent pays, set at deploy, at a plan change and at renewal. Mirrors `subscription.amount`. Once a wallet plan has ended, it shows the price the plan renews at, with that plan in `tier`: [`RenewSubscription`](#post-useragentrenewsubscription) never charges more. |
-| `monthlycredits` | `number` | The credits this period grants. After a move to a higher plan inside a period it reads below `renewalcredits` until the next renewal: the difference in credits comes only for the time left. |
-| `renewalcredits` | `number` | The credits a renewal grants on the agent's current plan. When `nextplan` is set, the next renewal grants that plan's credits instead, as `planChange.creditsFromRenewal` on [`PricingPreview`](#post-useragentpricingpreview) shows. |
-| `extracredits` | `number` | Active extra-credit balance (sum of non-expired packs from `CreateExtraCreditCheckout`). |
-| `extracreditsexpiry` | `number\|null` | Unix timestamp when the earliest extra credit pack expires. `null` when no extras are active. |
-| `usedcredits` | `number` | Credits consumed during the current billing period, reported by the agent runtime. |
-| `remainingcredits` | `number` | Computed: `max(0, monthlycredits + extracredits - usedcredits)`. |
-| `creditperiod` | `string` | `'YYYY-MM'` tag of the current billing window. Rolls over on subscription renewal. |
-| `creditsyncat` | `number\|null` | Unix seconds of the last monthly usage reset, which starts the current credit period (`null` until the first reset). |
-| `tokenRates` | `object\|null` | Per-model token-billing rates (credits per 1,000,000 tokens). Shape: `{ default_model, fallback_rate, models: { "<slug>": { input_per_1m, output_per_1m, cached_input_per_1m?, cache_write_per_1m?, selectable?, label?, tier? } } }`. Each turn's cost is metered from these rates (1 credit = $0.01). See [Token Billing](#token-billing). `null` only on registry-read failure. |
+| `monthlypriceusd` | `number` | The monthly USD price the agent pays, set at deploy, at a plan change and at renewal. Mirrors `subscription.amount`. Once a plan has ended, it shows the price the plan renews at, with that plan in `tier`: [`RenewSubscription`](#post-useragentrenewsubscription) never charges more. |
+| `usage` | `object` | The agent's AI usage this period and the balance it runs on once the included usage is used up: `{ period, resetsat, includedusd, usedusd, leftusd, renewalusd, frombalanceusd, balanceusd, wallet, minbalanceusd, paused, pausedreason }` (see [Usage object](#usage-object)). Also on `MyAgents` and `PinnedAgents` rows. |
+| `spend` | `object` | What the agent cost this calendar month: `{ month, planusd, aiusageplanusd, aiusagebalanceusd, modelrunsusd, fundsaddedusd, totalusd }` (see [Spend object](#spend-object)). Also on `MyAgents` and `PinnedAgents` rows. |
+| `creditperiod` | `string` | `'YYYY-MM'` tag of the current billing period. Rolls over on subscription renewal. |
+| `creditsyncat` | `number\|null` | Unix seconds of the last monthly usage reset, which starts the current billing period (`null` until the first reset). |
+| `tokenRates` | `object\|null` | Per-model token rates, in cents per 1,000,000 tokens. Shape: `{ default_model, fallback_rate, models: { "<slug>": { input_per_1m, output_per_1m, cached_input_per_1m?, cache_write_per_1m?, selectable?, label?, tier? } } }`. Each turn's AI usage is priced from these rates. See [Token Billing](#token-billing). `null` only on registry-read failure. |
 | `agentModel` | `object` | The resolved model slugs this instance runs: `{ chatModel, cronModel, voicePrepModel, voicePostcallModel }` (camelCase). Each falls back to the platform default when the operator hasn't overridden it. Change them via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) using the lowercase keys `chatmodel` / `cronmodel` / `voiceprepmodel` / `voicepostcallmodel`. |
 | `enabledCommands` | `array<string>\|null` | The in-chat slash-command allowlist (camelCase read). `null` = the operator never customized it, so **all** slash commands are available. An array (including `[]`) is an explicit allowlist of command keys (no leading slash); `[]` hides the slash-command menu. Write it via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) with the lowercase `enabledcommands` key. Also present on `MyAgents` / `PinnedAgents` rows. |
 | `wiroApiAllowedPaths` | `array<string>` | The Wiro API endpoints the agent may call with its own Wiro project key (camelCase read), for example `["POST /v1/Run/*/*", "POST /v1/Task/Detail"]`. Always the list that applies: the agent's own list or, when it has none, the default list described under [`UpdateSettings`](#post-useragentupdatesettings). `[]` blocks all of them. Write it via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) or at Deploy with the lowercase `wiroapiallowedpaths` key. Also on the `Deploy` and `Update` responses; not on `MyAgents` / `PinnedAgents` rows. |
@@ -1263,7 +1303,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `status` | `number` | Current status code (see [UserAgent Statuses](#useragent-statuses)). |
 | `setuprequired` | `boolean` | `true` if any required credential is missing or incomplete. Mirrors `status: 6` plus a fresh check against the live credential rows. |
 | `createdat` / `updatedat` / `queuedat` / `startedat` / `runningat` / `stoppingat` / `stopdat` / `errordat` | `number\|null` | Unix seconds for each lifecycle transition. `null` until the corresponding state is reached. |
-| `lastactivityat` | `number\|null` | Unix seconds of the agent's last activity: the later of its newest message that isn't deleted and its newest token charge in the [credit ledger](/docs/agent-transactions). `null` when it has neither yet. Also on `MyAgents` rows; not on `PinnedAgents` rows. |
+| `lastactivityat` | `number\|null` | Unix seconds of the agent's last activity: the later of its newest message that isn't deleted and its newest AI usage charge (see [Agent Transactions](/docs/agent-transactions)). `null` when it has neither yet. Also on `MyAgents` rows; not on `PinnedAgents` rows. |
 
 **Composed children**
 
@@ -1283,8 +1323,8 @@ Retrieves full details for a single deployed agent instance, including subscript
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `subscription` | `object\|null` | Active subscription info (see "Subscription object" below), or `null` when the agent has no active subscription. For API-deployed instances this is always `provider: "prepaid"`, `plan: "agent"`. |
-| `agent` | `object` | Parent template summary: `{ guid, title, slug, headline, description, cover, icon, categories, tiers, plans, extracreditpacks }`. For custom builds (`agent.custom: true`) it's a synthesized placeholder instead: `{ custom: true, slug, cover: null, icon: null, tiers, plans, extracreditpacks }`, with no `guid`, `title`, `headline`, `description` or `categories`. Read the agent's title and cover from the useragent itself. |
+| `subscription` | `object\|null` | Active subscription info (see "Subscription object" below), or `null` when the agent has no active subscription. It reads `plan: "agent"` and, since plans are paid from the Wiro balance, `provider: "prepaid"` (see [Paying for Plans](#paying-for-plans) for a plan that was paid by card). |
+| `agent` | `object` | Parent template summary: `{ guid, title, slug, headline, description, cover, icon, categories, tiers, plans }`. For custom builds (`agent.custom: true`) it's a synthesized placeholder instead: `{ custom: true, slug, cover: null, icon: null, tiers, plans }`, with no `guid`, `title`, `headline`, `description` or `categories`. Read the agent's title and cover from the useragent itself. |
 
 ##### Credential object shape
 
@@ -1303,6 +1343,39 @@ Every provider entry under `credentials.<key>` carries:
 | `tokenexpiresat` | `string\|null` | ISO timestamp when the current token expires, or an empty value when the provider reports no fixed expiry. |
 | `<fieldname>` | `string\|number\|boolean\|array` | The field value as you saved it, returned to the agent's owner and team admins. A saved secret (a `password` or `fileinput-base64` field, or such a key in a list's entries) reads `"••••••••"` instead, for every caller, and one with nothing saved reads `""`. Field types match `_schema.fields[].type`. Never returned: Wiro-managed fields, and a value the agent template holds on a field Wiro stores encrypted: such a field reads empty until you save your own. |
 
+##### Usage object
+
+`usage` says where the agent stands this billing period. Amounts are in USD.
+
+| Sub-field | Type | Description |
+|-----------|------|-------------|
+| `period` | `string` | `'YYYY-MM'` tag of the current billing period. |
+| `resetsat` | `number\|null` | Unix seconds when the plan renews and its included AI usage starts again. `null` when it isn't known, as in the `Message/Send` refusal. |
+| `includedusd` | `number` | The AI usage this period includes. After a move to a higher plan inside the period, the higher plan counts only for the time left, so it reads between the two plans' amounts until the next renewal. |
+| `usedusd` | `number` | The included AI usage used this period. |
+| `leftusd` | `number` | The included AI usage left this period. |
+| `renewalusd` | `number` | The AI usage the next renewal includes: the agent's plan's, or the scheduled plan's when `nextplan` is set. |
+| `frombalanceusd` | `number` | The AI usage charged to the balance this period, after the included usage ran out. |
+| `balanceusd` | `number` | The spendable balance of the wallet the agent uses. |
+| `wallet` | `string` | `"personal"` (the owner's balance) or `"team"` (the team's balance). |
+| `minbalanceusd` | `number` | The balance a new turn needs once the included usage is used up: `0.5`. |
+| `paused` | `boolean` | `true` while the agent takes no new turns. |
+| `pausedreason` | `string\|null` | `"balance"`: the included usage is used up and the balance is under `minbalanceusd`. `"spendlimit"`: a [spend limit](/docs/spend-limits) that covers the agent is reached. `null` while it runs. |
+
+##### Spend object
+
+`spend` says what the agent cost in the current calendar month (UTC), in USD.
+
+| Sub-field | Type | Description |
+|-----------|------|-------------|
+| `month` | `string` | The month the figures cover, `'YYYY-MM'`. |
+| `planusd` | `number` | Plan payments for the agent: a new plan, moves to a higher plan and renewals. |
+| `aiusageplanusd` | `number` | AI usage covered by the plan's included usage. The plan payment already paid for it, so it is not in `totalusd`. |
+| `aiusagebalanceusd` | `number` | AI usage paid from the balance. |
+| `modelrunsusd` | `number` | Models the agent ran, such as images and video. |
+| `fundsaddedusd` | `number` | Funds added to the balance from the agent's page. Not spending. |
+| `totalusd` | `number` | What the agent cost: `planusd` + `aiusagebalanceusd` + `modelrunsusd`. |
+
 ##### Subscription object
 
 | Sub-field | Type | Description |
@@ -1315,7 +1388,8 @@ Every provider entry under `credentials.<key>` carries:
 | `renewaldate` | `string\|null` | ISO-8601 string of the same period-end timestamp (convenience for display). |
 | `daysremaining` | `number` | Days until `currentperiodend`. |
 | `pendingdowngrade` | `string\|null` | `"cancel"` after `CancelSubscription`; `null` for normal active subs. A move to a lower plan shows in the agent's `nextplan`, not here. |
-| `provider` | `string` | `"prepaid"` for every API-deployed subscription. |
+| `provider` | `string` | `"prepaid"`: the plan is paid from the Wiro balance. `"stripe"` only on a plan paid by card before agent plans moved to the balance, until its period ends. |
+| `nextprovider` | `string\|null` | `"prepaid"` on a plan paid by card: it renews from the balance at the end of its period. `null` otherwise. |
 
 ##### Disk object
 
@@ -1384,11 +1458,6 @@ A changed `title` on a running agent:
       "categories": ["social-media", "marketing"],
       "tier": "starter",
       "monthlypriceusd": 5,
-      "monthlycredits": 500,
-      "extracredits": 0,
-      "usedcredits": 80,
-      "remainingcredits": 420,
-      "renewalcredits": 500,
       "creditperiod": "2026-05",
       "creditsyncat": 1714694400,
       "status": 1,
@@ -1406,19 +1475,14 @@ A changed `title` on a running agent:
         "icon": "https://cdn.wiro.ai/uploads/agents/instagram-manager-icon.webp",
         "categories": ["social-media", "marketing"],
         "tiers": {
-          "starter": { "priceUsd": 5,   "credits": 500 },
-          "pro":     { "priceUsd": 30,  "credits": 3000 },
-          "max":     { "priceUsd": 100, "credits": 10000 }
+          "starter": { "priceUsd": 5 },
+          "pro":     { "priceUsd": 30 },
+          "max":     { "priceUsd": 100 }
         },
         "plans": [
-          { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500,   "diskMb": 250 },
-          { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000,  "diskMb": 500 },
-          { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000, "diskMb": 1024 }
-        ],
-        "extracreditpacks": [
-          { "packkey": "small",  "credits": 1000,  "priceusd": 10,  "enabled": true },
-          { "packkey": "medium", "credits": 5000,  "priceusd": 50,  "enabled": true },
-          { "packkey": "large",  "credits": 20000, "priceusd": 200, "enabled": true }
+          { "key": "starter", "title": "Starter", "priceUsd": 5,   "includedUsageUsd": 5,   "diskMb": 250 },
+          { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "includedUsageUsd": 30,  "diskMb": 500 },
+          { "key": "max",     "title": "Max",     "priceUsd": 100, "includedUsageUsd": 100, "diskMb": 1024 }
         ]
       },
       "createdat": 1714608000,
@@ -1434,7 +1498,7 @@ A changed `title` on a running agent:
 }
 ```
 
-> **`Update` returns the full composed useragent shape**: same composition path as `UserAgent/Detail`, so `credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `tokenRates`, `agentModel`, `communicationChannels`, `enabledChannels`, and the `agent` template summary (with `tiers`, `plans` and `extracreditpacks`) are all included. The fields `Update` cannot safely populate without an extra round-trip (`subscription`, `extracreditsexpiry`, `lastactivityat`) stay omitted. Call `UserAgent/Detail` next if you need them. Otherwise the response is suitable for an in-place panel re-render without a follow-up call.
+> **`Update` returns the full composed useragent shape**: same composition path as `UserAgent/Detail`, so `credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `tokenRates`, `agentModel`, `communicationChannels`, `enabledChannels`, and the `agent` template summary (with `tiers` and `plans`) are all included. The fields `Update` cannot safely populate without an extra round-trip (`subscription`, `lastactivityat`) stay omitted. Call `UserAgent/Detail` next if you need them, or the agent's `usage` and `spend`. Otherwise the response is suitable for an in-place panel re-render without a follow-up call.
 
 > **`restarting`.** `true` when this call restarts the agent, `false` otherwise. With `true`, the row shows the transition mid-flight: `status: 1` (Stopping) with a fresh `stoppingat` timestamp. Wiro re-queues the agent once it has stopped, so it comes back with the new title. A restart request that can't be carried out answers `Failed to restart user agent`; try again.
 
@@ -1682,11 +1746,6 @@ If you already have a hosted URL, use `POST /UserAgent/Update` with `cover: "<ur
       "categories": ["social-media", "marketing"],
       "tier": "starter",
       "monthlypriceusd": 5,
-      "monthlycredits": 500,
-      "extracredits": 0,
-      "usedcredits": 80,
-      "remainingcredits": 420,
-      "renewalcredits": 500,
       "creditperiod": "2026-05",
       "creditsyncat": 1714694400,
       "status": 4,
@@ -1715,7 +1774,7 @@ If you already have a hosted URL, use `POST /UserAgent/Update` with `cover: "<ur
 }
 ```
 
-> **Cover returns scalar useragent fields + the `agent` template summary only.** Its credit fields read as on `Detail` (`monthlycredits` for this period, `renewalcredits`, `extracredits`, `usedcredits`, `remainingcredits`). It does **not** include `setuprequired`, `tokenRates`, `agentModel`, or any composed children (`credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `subscription`). The endpoint is optimised for the cover refresh round-trip; call `UserAgent/Detail` afterwards if you need the full composed shape.
+> **Cover returns scalar useragent fields + the `agent` template summary only.** It does **not** include `setuprequired`, `tokenRates`, `agentModel`, or any composed children (`credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `subscription`). The endpoint is optimised for the cover refresh round-trip; call `UserAgent/Detail` afterwards if you need the full composed shape, the agent's `usage` and `spend` included.
 
 #### **POST** /UserAgent/CredentialUpsert
 
@@ -2230,7 +2289,7 @@ Returns the per-field write history for one credential group on a useragent. Sen
 
 Applies a batch of skill toggles in a single transactional unit. **This is the only skill-toggle endpoint API consumers should use**. Even when you're flipping a single skill, send it as a one-entry `skills` map. The single-skill `SkillToggle` endpoint also exists, but `SkillsApply` is the one to use from the API.
 
-Every plan includes every skill, so a skill change never moves money: the plan's price and credits stay as they are, and the agent needs no active plan for it. Change the plan itself with [`UpgradeTier`](#post-useragentupgradetier).
+Every plan includes every skill, so a skill change never moves money: the plan's price and included AI usage stay as they are, and the agent needs no active plan for it. Change the plan itself with [`UpgradeTier`](#post-useragentupgradetier).
 
 Designed for both the Skill Editor modal (multiple toggles in one save) and one-off API mutations:
 
@@ -2281,12 +2340,6 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
     "newPriceUsd": 30,
     "delta": 0,
     "deltaUsd": 0,
-    "previousMonthlyCredits": 3000,
-    "newMonthlyCredits": 3000,
-    "deltaCredits": 0,
-    "creditsNow": 0,
-    "creditsThisPeriod": 3000,
-    "creditsFromRenewal": 3000,
     "periodEnd": null,
     "stripeProrationApplied": false,
     "prepaidWalletDelta": null,
@@ -2315,7 +2368,7 @@ When every entry in your `skills` map already matches the persisted state, the e
 | `restartTriggered` | `boolean` | `true` when the call changed the skill set: a starting or running agent restarts to load it, and a stopped one loads it at its next start. `false` when nothing on the agent changed. |
 | `restartedAt` | `number\|null` | Unix seconds when the change was saved and the restart was asked for. `null` when `restartTriggered` is `false`. |
 | `pricing.enabledSkills` | `array<string>` | Final enabled skill set including transitive `depends_on` closure, as a flat array of skill names. The matching `useragent.skills` array on the next `Detail` call is an object array (`{name, enabled, _edited?, _user_created?}`); take `.name` from each entry to compare. |
-| `pricing.delta` / `deltaUsd` / `deltaCredits` / `creditsNow` | `number` | Always `0`: a skill change moves no money and no credits. The rest of `pricing` is kept for older clients and repeats the plan as it stands: its price in `previousPriceUsd` and `newPriceUsd`, its credits in `previousMonthlyCredits`, `newMonthlyCredits`, `creditsThisPeriod` and `creditsFromRenewal`, and `periodEnd: null`. `stripeProrationApplied` is always `false`, `prepaidWalletDelta` `null` and `usedCreditsUsd` `0`, in `pricing` and at the top level. |
+| `pricing.delta` / `deltaUsd` | `number` | Always `0`: a skill change moves no money. The rest of `pricing` is kept for older clients and repeats the plan as it stands: its price in `previousPriceUsd` and `newPriceUsd`, and `periodEnd: null`; its credit counts are deprecated (see [Fields Kept for Older Clients](#fields-kept-for-older-clients)). `stripeProrationApplied` is always `false`, `prepaidWalletDelta` `null` and `usedCreditsUsd` `0`, in `pricing` and at the top level. |
 
 ##### Common error codes
 
@@ -2366,7 +2419,7 @@ Two body shapes:
 
 ##### Response
 
-A Pro agent on a wallet plan, previewing Max with 15 days left of 30:
+A Pro agent previewing Max with 15 days left of 30:
 
 ```json
 {
@@ -2374,22 +2427,21 @@ A Pro agent on a wallet plan, previewing Max with 15 days left of 30:
   "errors": [],
   "tier": "max",
   "totalPriceUsd": 100,
-  "totalMonthlyCredits": 10000,
   "skillBreakdown": [
-    { "skill": "util-social-posting-common", "priceUsd": 0, "credits": 0, "billing_model": "tokens" },
-    { "skill": "util-anti-ai-human-copy",    "priceUsd": 0, "credits": 0, "billing_model": "tokens" }
+    { "skill": "util-social-posting-common", "priceUsd": 0, "billing_model": "tokens" },
+    { "skill": "util-anti-ai-human-copy",    "priceUsd": 0, "billing_model": "tokens" }
   ],
   "enabledSkills": ["util-social-posting-common", "util-anti-ai-human-copy"],
   "directSkills":  ["util-social-posting-common"],
   "tiers": {
-    "starter": { "priceUsd": 5,   "credits": 500 },
-    "pro":     { "priceUsd": 30,  "credits": 3000 },
-    "max":     { "priceUsd": 100, "credits": 10000 }
+    "starter": { "priceUsd": 5 },
+    "pro":     { "priceUsd": 30 },
+    "max":     { "priceUsd": 100 }
   },
   "plans": [
-    { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500,   "diskMb": 250 },
-    { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000,  "diskMb": 500 },
-    { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000, "diskMb": 1024 }
+    { "key": "starter", "title": "Starter", "priceUsd": 5,   "includedUsageUsd": 5,   "diskMb": 250 },
+    { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "includedUsageUsd": 30,  "diskMb": 500 },
+    { "key": "max",     "title": "Max",     "priceUsd": 100, "includedUsageUsd": 100, "diskMb": 1024 }
   ],
   "nextplan": null,
   "planChange": {
@@ -2399,14 +2451,10 @@ A Pro agent on a wallet plan, previewing Max with 15 days left of 30:
     "toTier": "max",
     "nextplan": null,
     "priceUsd": 100,
-    "monthlyCredits": 10000,
     "effectiveAt": 1714694520,
     "newPeriod": false,
     "periodEnd": 1715990520,
     "secondsLeft": 1296000,
-    "creditsNow": 3500,
-    "creditsThisPeriod": 6500,
-    "creditsFromRenewal": 10000,
     "chargeNowUsd": 35
   },
   "tokenRates": {
@@ -2421,34 +2469,31 @@ A Pro agent on a wallet plan, previewing Max with 15 days left of 30:
 }
 ```
 
-`totalPriceUsd` and `totalMonthlyCredits` are the previewed plan's price and credits; the skills never change them. `plans` lists the three plans with their names. `enabledSkills` is the full closure (including transitive `depends_on`); `directSkills` is just what the user explicitly toggled. Every `skillBreakdown` entry reads `priceUsd: 0` and `credits: 0`, since every plan includes every skill. `tokenRates` carries the per-model rates used to meter each turn (see [Token Billing](#token-billing)). On an existing agent, `nextplan` is a lower plan already scheduled for its renewal, or `null`.
+`totalPriceUsd` is the previewed plan's price, which is also the AI usage it includes each month; the skills never change it. `plans` lists the three plans with their names. `enabledSkills` is the full closure (including transitive `depends_on`); `directSkills` is just what the user explicitly toggled. Every `skillBreakdown` entry reads `priceUsd: 0`, since every plan includes every skill. `tokenRates` carries the per-model rates used to meter each turn (see [Token Billing](#token-billing)). On an existing agent, `nextplan` is a lower plan already scheduled for its renewal, or `null`.
 
-`planChange` comes with a preview of an existing agent that has an active plan, and is `null` otherwise. `planChange.change` says what the previewed `tier` would do: `"upgrade"` shows the charge and the credits that come with a higher plan, `"downgrade"` a lower plan that starts at the renewal with nothing charged now, and `"none"` the agent's own plan or a preview that only changes skills, with no charge and no credit change.
+`planChange` comes with a preview of an existing agent that has an active plan, and is `null` otherwise. `planChange.change` says what the previewed `tier` would do: `"upgrade"` shows the charge that comes with a higher plan, `"downgrade"` a lower plan that starts at the renewal with nothing charged now, and `"none"` the agent's own plan or a preview that only changes skills, with no charge. A higher plan also raises the period's included AI usage by the same difference for the time left: once it is made, `usage.includedusd` on [`Detail`](#post-useragentdetail) shows it.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `planChange.change` | `string` | `"upgrade"`, `"downgrade"` or `"none"`. |
-| `planChange.provider` | `string` | `"prepaid"` (wallet plan) or `"stripe"` (card plan). |
+| `planChange.provider` | `string` | `"prepaid"`: the change is paid from the Wiro balance. |
 | `planChange.fromTier` / `toTier` | `string` | The agent's plan and the plan previewed. |
 | `planChange.nextplan` | `string\|null` | A lower plan already scheduled for the renewal. |
-| `planChange.priceUsd` / `monthlyCredits` | `number` | The previewed plan's monthly price and credits. |
-| `planChange.effectiveAt` | `number\|null` | Unix seconds when the change would take effect: now for a higher plan on a wallet plan, `periodEnd` for a lower plan. `null` for a higher plan on a card plan, which starts once its checkout is paid, and for `"none"`. |
-| `planChange.newPeriod` | `boolean` | `true` for a higher plan on a card plan: the paid checkout starts a new full period with the plan's full credits. |
+| `planChange.priceUsd` | `number` | The previewed plan's monthly price, which is also the AI usage it includes each month. |
+| `planChange.effectiveAt` | `number\|null` | Unix seconds when the change would take effect: now for a higher plan, `periodEnd` for a lower plan. `null` for `"none"`. |
+| `planChange.newPeriod` | `boolean` | `false`: a higher plan starts inside the current period. |
 | `planChange.periodEnd` | `number` | Unix seconds when the current period ends, which is when a lower plan starts. |
 | `planChange.secondsLeft` | `number` | Seconds left in the current period. |
-| `planChange.creditsNow` | `number` | Credits this period gains now. |
-| `planChange.creditsThisPeriod` | `number` | Credits this period grants in all after the change. |
-| `planChange.creditsFromRenewal` | `number` | Credits each renewal grants after the change. |
-| `planChange.chargeNowUsd` | `number` | What a higher plan costs now, at list price before any discount: the prorated difference on a wallet plan, the plan's full price at the card checkout. `0` for `"downgrade"` and `"none"`. |
+| `planChange.chargeNowUsd` | `number` | What a higher plan costs now, at list price before any discount: the prorated difference, paid from the balance. `0` for `"downgrade"` and `"none"`. |
 
 #### **POST** /UserAgent/CreateSubscriptionCheckout
 
-Subscribes a useragent that doesn't yet have an active subscription. Wallet is debited, a prepaid subscription row is inserted, and the agent is auto-queued, the same single-call behaviour as `Deploy` with `useprepaid: true`. Always pass `useprepaid: true` from the API.
+Subscribes a useragent that doesn't yet have an active subscription. The plan's price is taken from the Wiro balance, a prepaid subscription row is inserted, and the agent is auto-queued, the same single-call behaviour as `Deploy` with `useprepaid: true`. Always pass `useprepaid: true`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid |
-| `useprepaid` | boolean | Yes | Must be `true` for API consumers. |
+| `useprepaid` | boolean | Yes | Must be `true`. Without it, the call asks for a card checkout, which agent plans no longer have: it charges nothing and answers with `retired: true` (see below). |
 | `tier` | string | No | `"starter"`, `"pro"` or `"max"`: overrides the useragent's persisted plan so the user can re-subscribe on a different plan without redeploying. Leave it out for the agent's own plan; any other value is refused with `tier must be starter, pro or max`. |
 
 ##### Response
@@ -2458,21 +2503,30 @@ Subscribes a useragent that doesn't yet have an active subscription. Wallet is d
   "result": true,
   "errors": [],
   "subscriptionId": 8421,
+  "tier": "pro",
   "monthlypriceusd": 30,
-  "monthlycredits": 3000
+  "chargedUsd": 30
 }
 ```
 
-If the useragent already has an active subscription, the call rejects with `Subscription already active for this useragent. Cancel or modify the existing subscription instead.`
+`chargedUsd` is what the balance paid. Without `useprepaid: true`, the call is refused and nothing is charged:
 
-If a card checkout for the agent is still open (for example, one started in the Wiro panel), it is closed before the wallet is charged, so the agent is never paid for twice. The call is refused, and nothing is charged, when:
+```json
+{
+  "result": false,
+  "retired": true,
+  "errors": [
+    { "code": 0, "message": "Agent plans are paid from your Wiro balance. Add funds, then choose the plan." }
+  ]
+}
+```
+
+If the useragent already has an active subscription, the call rejects with `Subscription already active for this useragent. Cancel or modify the existing subscription instead.` When the balance can't pay the plan, it is refused with code `97` and `neededusd` (see [Paying for Plans](#paying-for-plans)). The call is also refused, and nothing is charged, when:
 
 | Error | When |
 |-------|------|
-| `A payment for this agent is already being processed. It usually finishes within a minute; refresh to see the subscription.` | A card payment for the agent has gone through and its subscription is still being set up. The response also carries `checkoutpending: true`; call `UserAgent/Detail` in a minute instead of retrying |
 | `A checkout for this agent is already being opened. Try again in a moment.` | Another subscription request for the same agent is in progress |
-| `We couldn't confirm this agent's previous checkout. Please try again in a minute.` | The agent's previous card checkout couldn't be checked |
-| `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | Another plan or credit pack payment from the same wallet is still going through |
+| `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | Another plan payment from the same wallet is still going through |
 
 #### **POST** /UserAgent/Start
 
@@ -2499,7 +2553,7 @@ Start will fail (returns `{ "result": false, "errors": [...] }`) if:
 - The agent is already running or queued
 - The agent is currently stopping
 - Setup is incomplete (status `6`)
-- No credits remain (`monthlycredits + extracredits - usedcredits <= 0`)
+- The agent has used the AI usage its plan includes and the balance is under $0.50
 
 #### **POST** /UserAgent/Stop
 
@@ -2592,7 +2646,6 @@ Poll every 30 seconds or more.
       "tokencost": 5,
       "durationMs": 4200,
       "calls": 2,
-      "remainingcredits": 8995,
       "userUuid": "ada-uuid",
       "user": {
         "uuid": "ada-uuid",
@@ -2657,9 +2710,8 @@ Poll every 30 seconds or more.
 | `events[].error` | string \| null | One-line failure message (when `ok: false`). |
 | `events[].model` | string \| null | Canonical model slug billed for the turn. Present on `token_usage` / `token_usage_idempotent` events. |
 | `events[].tokens` | object \| null | Token breakdown on `token_usage` events: `{ input, output, cacheRead, cacheWrite, total }`, **nested camelCase** (distinct from the flat lowercase `inputtokens` / `outputtokens` / … columns on message + transaction rows; same underlying data, different shape). |
-| `events[].tokencost` | number \| null | Credits deducted for the turn (1 credit = $0.01). Present on `token_usage` events. |
+| `events[].tokencost` | number \| null | The turn's AI usage, in cents: `5` is $0.05. Present on `token_usage` events. |
 | `events[].calls` | number \| null | Number of LLM calls made in the billed turn. Present on `token_usage` events. |
-| `events[].remainingcredits` | number \| null | Credit pool remaining after the deduct. Present on `token_usage` events. |
 | `events[].userUuid` | string \| null | Originating actor's UUID. `"system"` for cron / internal events. May be missing on older rows, in which case the server falls back to the agent owner. |
 | `events[].user` | object \| null | Resolved user shape (`uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`) when the actor is a real user. `null` for `system` events. |
 | `date` | string | The date that was actually read (`YYYY-MM-DD`). |
@@ -2852,13 +2904,31 @@ No request body fields are required: the workspace of your API key's project sco
       "tier": "pro",
       "nextplan": null,
       "monthlypriceusd": 30,
-      "monthlycredits": 3000,
-      "extracredits": 5000,
-      "usedcredits": 1450,
-      "remainingcredits": 6550,
-      "renewalcredits": 3000,
       "creditperiod": "2026-05",
       "creditsyncat": 1714694410,
+      "usage": {
+        "period": "2026-05",
+        "resetsat": 1717200000,
+        "includedusd": 30,
+        "usedusd": 12.4,
+        "leftusd": 17.6,
+        "renewalusd": 30,
+        "frombalanceusd": 0,
+        "balanceusd": 42.1,
+        "wallet": "personal",
+        "minbalanceusd": 0.5,
+        "paused": false,
+        "pausedreason": null
+      },
+      "spend": {
+        "month": "2026-05",
+        "planusd": 30,
+        "aiusagebalanceusd": 0,
+        "aiusageplanusd": 12.4,
+        "modelrunsusd": 3.2,
+        "fundsaddedusd": 20,
+        "totalusd": 33.2
+      },
       "status": 4,
       "pinned": true,
       "teamsessionmode": "private",
@@ -2882,9 +2952,9 @@ No request body fields are required: the workspace of your API key's project sco
         "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
         "categories": ["social-media", "marketing"],
         "tiers": {
-          "starter": { "priceUsd": 5,   "credits": 500 },
-          "pro":     { "priceUsd": 30,  "credits": 3000 },
-          "max":     { "priceUsd": 100, "credits": 10000 }
+          "starter": { "priceUsd": 5 },
+          "pro":     { "priceUsd": 30 },
+          "max":     { "priceUsd": 100 }
         }
       },
       "enabledSkills": ["util-social-posting-common", "util-anti-ai-human-copy", "util-chat-markdown-reporting"],
@@ -2903,7 +2973,6 @@ No request body fields are required: the workspace of your API key's project sco
         "voicePrepModel": "openai/gpt-5.4-mini",
         "voicePostcallModel": "openai/gpt-5.4"
       },
-      "extracreditsexpiry": 1730419200,
       "createdat": 1714608000,
       "updatedat": 1714694400,
       "queuedat": 1714694395,
@@ -3245,61 +3314,29 @@ A refused start answers `result: false` with one entry in `errors`, and no ticke
 | `Take Control can be started 6 times an hour on this agent. Try again in 12 minutes.` | 429 | HTTP 429: the seventh Take Control start on the agent in an hour. The wait is the time until the oldest of the 6 starts is an hour old |
 | `The screen could not be started. Try again.` | 0 | Something went wrong. Try again |
 
-### Extra Credit Packs
+### Retired: Extra Credit Packs
 
-An agent with an active plan can buy extra credits at any time, whatever its plan. Every agent gets the same three packs, listed at `agent.extracreditpacks` on `UserAgent/Detail` and, before deploying, at `extracreditpacks` on `Agent/Detail`:
-
-```json
-"extracreditpacks": [
-  { "packkey": "small",  "credits": 1000,  "priceusd": 10,  "enabled": true },
-  { "packkey": "medium", "credits": 5000,  "priceusd": 50,  "enabled": true },
-  { "packkey": "large",  "credits": 20000, "priceusd": 200, "enabled": true }
-]
-```
-
-Each pack carries:
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `packkey` | string | The pack identifier: `"small"`, `"medium"`, or `"large"`. Pass this as `pack` in `POST /UserAgent/CreateExtraCreditCheckout`. |
-| `credits` | number | Credit amount this pack adds when purchased. |
-| `priceusd` | number | Pack price in USD (debited from the wallet on purchase). |
-| `enabled` | boolean | Whether the pack is currently purchasable. The list is server-filtered to enabled packs, so every entry here is `true`. |
+Extra credit packs are retired. An agent has no balance of its own: past its plan's included AI usage it uses the Wiro balance of its workspace, so funds go to that balance (see [Adding Funds](#adding-funds)). `extracreditpacks` on `Agent/Detail` and under `agent` on agent rows is always `[]`.
 
 #### **POST** /UserAgent/CreateExtraCreditCheckout
 
-Purchases additional credits for a useragent. The wallet is debited the pack price and credits are added to the instance immediately.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Your UserAgent instance guid |
-| `pack` | string | Yes | Pack key from `agent.extracreditpacks[].packkey`: `"small"` (1,000 credits, $10), `"medium"` (5,000, $50) or `"large"` (20,000, $200). |
-| `useprepaid` | boolean | Yes | Must be `true` for API use. Pays the pack price from your wallet balance. |
-
-##### Request
+Retired. The call charges nothing, changes nothing and answers:
 
 ```json
 {
-  "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-  "pack": "medium",
-  "useprepaid": true
+  "result": false,
+  "retired": true,
+  "errors": [
+    { "code": 0, "message": "Extra credit packs are retired. Your agent uses your Wiro balance after its plan's included usage. Add funds to your balance instead." }
+  ]
 }
 ```
 
-##### Response
-
-```json
-{
-  "result": true,
-  "errors": []
-}
-```
-
-The pack price is deducted from your wallet and credits are added to the instance immediately. Credits expire 6 months after purchase. The transaction is appended to the agent ledger (`type: "purchase"`, `action: "<pack>"`, `provider: "prepaid"`) and surfaced on `POST /UserAgent/TransactionList`.
+Detect it by `retired: true`, and add funds to the balance instead.
 
 #### **POST** /UserAgent/CancelSubscription
 
-Schedules the subscription to end at the current billing period's expiry (a **cancel-at-period-end** pattern). The agent keeps running with the full plan allowance until that moment. No wallet refund is issued for the remaining days; you're paying for the full period up front.
+Schedules the subscription to end at the current billing period's expiry (a **cancel-at-period-end** pattern). The agent keeps running on its plan until that moment. No refund is issued for the remaining days: the period was paid up front.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -3323,33 +3360,24 @@ Schedules the subscription to end at the current billing period's expiry (a **ca
 - To reverse the cancellation **before** the period ends, call `POST /UserAgent/RenewSubscription`. It clears the flag without charging the wallet again.
 - When the period actually ends, the daily cron marks the subscription `"expired"` and stops the agent (`status: 0`). At that point the user must call `POST /UserAgent/RenewSubscription` (or `CreateSubscriptionCheckout` for a fresh sub) to continue.
 
-##### Team agents paid by card
-
-A team agent subscribed by card from the Wiro panel is billed to the card of the member who subscribed. For that plan the call schedules the card subscription to end at the end of the current period instead:
-
-- `cancelsAt` is the end of the current period. The agent keeps running until then, and the subscription ends at that point.
-- `subscription.pendingdowngrade` isn't set, and `RenewSubscription` can't undo the cancellation. Only the member whose card pays for the plan can undo it, from their own billing portal.
-- Only team admins and the organization owner can cancel it. Other members get code `97`, including the member who deployed the agent.
-
 **Common errors:**
 
 | Error | When |
 |-------|------|
 | `No active subscription found for this agent` | `status != "active"` on the subscription row |
 | `User agent not found` | Caller doesn't own the agent and isn't on its team |
-| `Only a team admin can perform this action on a team-owned agent.` | Caller is a member of the agent's team but not a team admin (code `97`). For a team agent paid by card, this includes the member who deployed the agent |
-| `A switch to prepaid billing is already scheduled for this plan.` | A team agent's card plan that is already set to move to wallet billing at the end of the period |
-| `We couldn't schedule the cancellation. Please try again in a minute.` | A team agent's card plan, when the change couldn't be confirmed with the card payment provider |
+| `Only a team admin can perform this action on a team-owned agent.` | Caller is a member of the agent's team but not a team admin (code `97`) |
+| `We couldn't schedule the cancellation. Please try again in a minute.` | The cancellation couldn't be saved. Nothing changed |
 
 #### **POST** /UserAgent/UpgradeTier
 
 Moves an active subscription to another plan: `"starter"`, `"pro"` or `"max"`. Despite its name, the endpoint moves an agent down as well as up:
 
-- **A higher plan starts now.** API-deployed agents pay through the wallet: the monthly difference for the time left in the current period, by the second, rounded up to the cent and at least one day's worth. The period gains the difference in credits for that same time, and every renewal grants the new plan in full. Existing extra credits and `usedcredits` are kept, and a running agent keeps running.
-- **A lower plan starts at the next renewal**, when the request sends `allowDowngrade: true`. Without it, a lower `targetTier` is refused and nothing changes, so a client that only means to upgrade never moves an agent down. Nothing is charged or refunded now. The agent keeps its current plan, price and credits until the period ends, and `nextplan` on `UserAgent/Detail` reads the lower plan. The renewal then charges the lower plan's price and grants its credits. The flag is only for a lower plan: a higher `targetTier` sent with it, such as from a page that still shows a plan the agent has since left, is refused, and nothing is changed or charged.
-- **Asking for the agent's current plan** cancels a scheduled move to a lower plan: `nextplan` goes back to `null`. An agent that still pays a price from before the three plans gets its current plan scheduled instead: `nextplan` names that plan, and the renewal moves the agent to the plan's own price and credits.
+- **A higher plan starts now.** The balance pays the monthly difference for the time left in the current period, by the second, rounded up to the cent and at least one day's worth. The period's included AI usage grows by the difference for that same time, and every renewal includes the new plan in full. The AI usage already used this period stays counted, and a running agent keeps running.
+- **A lower plan starts at the next renewal**, when the request sends `allowDowngrade: true`. Without it, a lower `targetTier` is refused and nothing changes, so a client that only means to upgrade never moves an agent down. Nothing is charged or refunded now. The agent keeps its current plan, price and included AI usage until the period ends, and `nextplan` on `UserAgent/Detail` reads the lower plan. The renewal then charges the lower plan's price and includes its AI usage. The flag is only for a lower plan: a higher `targetTier` sent with it, such as from a page that still shows a plan the agent has since left, is refused, and nothing is changed or charged.
+- **Asking for the agent's current plan** cancels a scheduled move to a lower plan: `nextplan` goes back to `null`. An agent that still pays a price from before the three plans gets its current plan scheduled instead: `nextplan` names that plan, and the renewal moves the agent to the plan's own price and included AI usage.
 
-A move to a higher plan while a lower one is scheduled cancels the scheduled move first, then upgrades from the current plan. On a plan paid by card, a move to a higher plan returns a checkout `url` instead of charging the wallet, and nothing changes on the agent until it is paid: the answer's `tier` and `nextplan` are the agent's as they were. Once it is paid, the higher plan starts a new full period with its full credits, and a lower plan scheduled before is dropped. A lower plan on a card plan applies from the next card renewal. A scheduled move on a card plan can't be cancelled once it has started with the new billing period and its payment is going through: that payment moves the agent, and asking for the current plan is refused until the agent shows the new plan. A team agent's card plan can't be changed with a project API key: the call answers `Card checkouts for a team agent need a signed-in session, not an API key. Pay from the team wallet (useprepaid) instead.` and changes nothing.
+A move to a higher plan while a lower one is scheduled cancels the scheduled move first, then upgrades from the current plan. When the balance can't pay the difference, the call is refused with code `97` and `neededusd`, and nothing changes (see [Paying for Plans](#paying-for-plans)). A plan that was paid by card and switches to the balance at the end of its period moves up the same way, paid from the balance.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -3373,10 +3401,6 @@ A Pro agent moving to Max with 15 days left of 30:
   "nextplan": null,
   "effectiveAt": 1715644800,
   "newPriceUsd": 100,
-  "newMonthlyCredits": 10000,
-  "creditsNow": 3500,
-  "creditsThisPeriod": 6500,
-  "creditsFromRenewal": 10000,
   "periodEnd": 1716940800,
   "chargedUsd": 35.00,
   "proratedCharge": 35.00,
@@ -3397,13 +3421,12 @@ A move to a lower plan, sent with `"allowDowngrade": true`, keeps the agent wher
   "effectiveAt": 1716940800,
   "startsAt": 1716940800,
   "newPriceUsd": 5,
-  "newMonthlyCredits": 500,
   "periodEnd": 1716940800,
   "errors": []
 }
 ```
 
-Asking for the agent's current plan while a lower one is scheduled answers `change: "downgrade-cancelled"` with `nextplan: null`. For an agent that still pays a price from before the three plans, `nextplan` names its current plan instead, and `startsAt`, `newPriceUsd` and `newMonthlyCredits` give the renewal that moves it to that plan's own price:
+Asking for the agent's current plan while a lower one is scheduled answers `change: "downgrade-cancelled"` with `nextplan: null`. For an agent that still pays a price from before the three plans, `nextplan` names its current plan instead, and `startsAt` and `newPriceUsd` give the renewal that moves it to that plan's own price:
 
 ```json
 {
@@ -3417,7 +3440,6 @@ Asking for the agent's current plan while a lower one is scheduled answers `chan
   "periodEnd": 1716940800,
   "startsAt": 1716940800,
   "newPriceUsd": 30,
-  "newMonthlyCredits": 3000,
   "errors": []
 }
 ```
@@ -3428,20 +3450,18 @@ Asking for the agent's current plan while a lower one is scheduled answers `chan
 | `tier` | `string` | The plan the agent is on after the call. |
 | `previousTier` / `targetTier` | `string` | The plan it was on and the plan asked for. |
 | `nextplan` | `string\|null` | The plan scheduled for the renewal after the call, or `null`. |
-| `effectiveAt` | `number\|null` | Unix seconds when the change takes effect: now for an upgrade on a wallet plan and for a cancelled downgrade, the renewal for a downgrade, `null` for an upgrade on a card plan, which starts once its checkout is paid. |
-| `newPriceUsd` / `newMonthlyCredits` | `number` | The new plan's monthly price and credits; for a downgrade, from the renewal on. A cancelled downgrade has them only when `nextplan` names the current plan: that plan's price and credits from the renewal on. |
-| `creditsNow` / `creditsThisPeriod` / `creditsFromRenewal` | `number` | Upgrade on a wallet plan: what this period gained, what it grants in all, and what each renewal grants. |
-| `chargedUsd` | `number` | Upgrade on a wallet plan: what the wallet paid now, in USD. `proratedCharge` carries the same amount. |
+| `effectiveAt` | `number\|null` | Unix seconds when the change takes effect: now for an upgrade and for a cancelled downgrade, the renewal for a downgrade. |
+| `newPriceUsd` | `number` | The new plan's monthly price, which is also the AI usage it includes each month; for a downgrade, from the renewal on. A cancelled downgrade has it only when `nextplan` names the current plan: that plan's price from the renewal on. |
+| `chargedUsd` | `number` | Upgrade: what the balance paid now, in USD. `proratedCharge` carries the same amount. |
 | `startsAt` | `number` | Downgrade: the moment the lower plan starts, the same as `effectiveAt`. Cancelled downgrade with `nextplan` set: the renewal that moves the agent to its plan's own price. |
 | `periodEnd` | `number` | Unix seconds when the current period ends. |
-| `url` / `targetPriceUsd` / `targetCredits` | `string` / `number` | Upgrade on a card plan: the checkout link, and the plan's price and credits once it is paid. Nothing changes until then, so `tier` and `nextplan` are the agent's as they were. |
 
 #### **POST** /UserAgent/RenewSubscription
 
 Two distinct operations share this endpoint depending on the subscription's current state:
 
 1. **Undo-cancel**: active subscription with `pendingdowngrade: "cancel"` → clears the flag, **no wallet charge**.
-2. **Renew**: subscription in `"expired"` status → renews the same subscription for a new 30-day period, charges the wallet the plan's price (a scheduled lower plan's when `nextplan` is set), and queues a stopped or errored agent so it starts again.
+2. **Renew**: subscription in `"expired"` status → renews the same subscription for a new 30-day period, charges the balance the plan's price (a scheduled lower plan's when `nextplan` is set), and queues a stopped or errored agent so it starts again.
 
 The endpoint inspects the current subscription state and picks the right operation; the caller doesn't choose.
 
@@ -3451,7 +3471,7 @@ The endpoint inspects the current subscription state and picks the right operati
 
 **Headers:** No extra header is needed. For team agents, use an API key from a project in the agent's team. Keys from another workspace are rejected.
 
-> A renewal charges the agent's plan price and grants the plan's credits in full. When a lower plan is scheduled (`nextplan`), the renewal charges and grants that plan instead and clears `nextplan`. Once a wallet plan has ended, the agent shows the plan its renewal takes and that plan's price: `tier` names it, `nextplan` is `null` and `monthlypriceusd` is the price. A renewal never charges more than `monthlypriceusd` shows. Skills never change what a renewal costs.
+> A renewal charges the agent's plan price and includes the plan's AI usage in full. When a lower plan is scheduled (`nextplan`), the renewal charges for that plan and includes its AI usage instead, and clears `nextplan`. Once a plan has ended, the agent shows the plan its renewal takes and that plan's price: `tier` names it, `nextplan` is `null` and `monthlypriceusd` is the price. A renewal never charges more than `monthlypriceusd` shows. Skills never change what a renewal costs.
 
 ##### Response: undo-cancel
 
@@ -3480,17 +3500,15 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
   "plan": "agent",
   "tier": "starter",
   "amount": 5,
-  "monthlycredits": 500,
   "errors": []
 }
 ```
 
 - Renews the subscription in place: `status` becomes `"active"`, a new 30-day period starts now (`currentperiodend` moves to now + 30 days), and `pendingdowngrade` is cleared to `null`.
 - Debits `amount`, the plan's price, from the wallet (caller's personal wallet, or the agent's team wallet if the agent is team-scoped).
-- `tier` names the plan the renewal charged, and `monthlycredits` the credits it granted.
-- Zeroes `usedcredits` and stamps the new `creditperiod`. Existing extra credits are preserved.
+- `tier` names the plan the renewal charged.
+- Starts the period's included AI usage again in full and stamps the new `creditperiod`.
 - If the agent was in `status: 0` (Stopped) or `5` (Error), it's auto-queued back to `2` (Queued). It starts again without an extra `Start` call. Statuses `1`/`2`/`3`/`4` are already in progress and settle on their own.
-- A card checkout still open for the agent (for example, one started in the Wiro panel) is closed before the wallet is charged, so the agent is never paid for twice.
 
 **Common errors:**
 
@@ -3498,12 +3516,10 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
 |-------|------|
 | `Subscription is already active` | Called on an active subscription with **no** pending cancel (nothing to do) |
 | `No expired subscription found to renew` | No active sub and no expired sub: agent was never subscribed, or data is gone |
-| `Insufficient wallet balance. Required: $X.XX, Available: $Y.YY` | Wallet (personal or team) can't cover the renewal price |
+| `Your balance is $3.10; this plan needs $30.00. Add funds to continue.` (the amounts) | The balance can't pay the renewal (code `97`, with `neededusd`). Nothing is charged |
 | `This plan now renews on the Max plan at $100.00 a month, not the $70.00 it showed. Nothing was charged. Renew again to pay the new price.` (the plan's name and prices) | The renewal costs more than the agent's `monthlypriceusd` showed. Nothing is charged, and the agent now shows the renewal's plan and price (`tier` and `monthlypriceusd`, with `nextplan` cleared). Show the new price, then call `RenewSubscription` again to pay it |
-| `A payment for this agent is already being processed. It usually finishes within a minute; refresh to see the subscription.` | A card payment for the agent has gone through and its subscription is still being set up; nothing is charged. The response also carries `checkoutpending: true` |
 | `A checkout for this agent is already being opened. Try again in a moment.` | Another subscription request for the same agent is in progress; nothing is charged |
-| `We couldn't confirm this agent's previous checkout. Please try again in a minute.` | The agent's previous card checkout couldn't be checked; nothing is charged |
-| `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | Another plan or credit pack payment from the same wallet is still going through; nothing is charged |
+| `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | Another plan payment from the same wallet is still going through; nothing is charged |
 
 ##### Full subscription lifecycle (prepaid)
 
@@ -3545,26 +3561,56 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
 
 | Component | Source | Notes |
 |-----------|--------|-------|
-| **Plan price** | `tiers.{starter,pro,max}.priceUsd` | $5, $30 or $100 a month, the same for every template and custom build. The agent's own price is `monthlypriceusd`. |
-| **Monthly credits** | `tiers.{starter,pro,max}.credits` | 500, 3,000 or 10,000. Every renewal grants a plan's credits in full: the current plan's (`renewalcredits`), or the scheduled plan's when `nextplan` is set. `monthlycredits` is what the current period grants. |
+| **Plan price** | `plans[].priceUsd` | $5, $30 or $100 a month, the same for every template and custom build, paid from the Wiro balance. The agent's own price is `monthlypriceusd`. |
+| **Included AI usage** | `plans[].includedUsageUsd` | $5, $30 or $100 of AI usage a month: the plan's own price. Every renewal includes it in full: the current plan's (`usage.renewalusd`), or the scheduled plan's when `nextplan` is set. `usage.includedusd` is what the current period includes, and usage it leaves unused doesn't carry over. |
+| **AI usage past the plan** | `usage.balanceusd` | Paid from the Wiro balance of the agent's workspace, at the same token rates. A new turn needs included usage left or a balance of at least $0.50. |
 | **Disk** | `plans[].diskMb` | 250 MB, 500 MB or 1 GB for the agent's files: its workspace, generated media and temporary files. The agent's usage is `disk` on `UserAgent/Detail`. |
 | **Skills** | `Skills/List` | Every plan includes every skill. Turning one on or off costs nothing. |
-| **Per-turn token cost** | `tokenRates` (per-model) | Each chat / cron / voice-prep turn deducts credits metered by the tokens its model consumes (1 credit = $0.01). The same on every plan: a larger plan buys a larger monthly credit pool. |
-| **Extra credit packs** | `agent.extracreditpacks[]` | The same on every plan: `small` 1,000 credits for $10, `medium` 5,000 for $50, `large` 20,000 for $200. They expire 6 months after purchase. |
+| **Per-turn token cost** | `tokenRates` (per-model) | Each chat / cron / voice-prep turn is priced by the tokens its model uses, with input, cache read, cache write and output priced separately. The same on every plan: a larger plan includes more AI usage. |
+| **Model runs** | The task's `totalcost` | Models the agent runs, such as images and video, are paid from the wallet of its Wiro project at each model's own price. |
 
 ### Payment Method
 
-All API subscriptions use your **prepaid wallet balance**. The cost is deducted immediately when you deploy, renew, move to a higher plan, or buy an extra credit pack. Always pass `useprepaid: true` on `Deploy`, `CreateSubscriptionCheckout`, and `CreateExtraCreditCheckout`. That's the only path designed for API consumers. Make sure your wallet balance covers the plan's price before calling these endpoints; otherwise you'll get an `Insufficient wallet balance` error. In the Wiro dashboard, a new subscription is paid by card. A plan paid from the wallet starts only through the API, with `Deploy` or `CreateSubscriptionCheckout` and `useprepaid: true`, or from an MCP client.
+Agent plans are paid from your Wiro balance, in the dashboard, the API and MCP alike: a new plan, a move to a higher plan and every renewal are charged to the balance of the agent's workspace, and an agent plan has no card payment. Always pass `useprepaid: true` on `Deploy` and `CreateSubscriptionCheckout`. Make sure the balance covers the plan's price before calling them; otherwise the call is refused with code `97` and `neededusd` (see [Paying for Plans](#paying-for-plans)). The same balance pays the agent's AI usage past its plan.
 
-### Credit Consumption
+### AI Usage and the Balance
 
-Credits are used as the agent processes messages and generates content, not at `Message/Send` time. Each turn is billed by **token usage**: once the turn completes, Wiro prices its input, output and cached tokens with the per-model `tokenRates` (1 credit = $0.01). Each billed turn appears as an `action: "tokens"` row in TransactionList and lowers `remainingcredits = max(0, monthlycredits + extracredits - usedcredits)`. You don't send anything: token billing is fully server-side. Per-turn token counts and cost also ride on each assistant message and arrive over the message WebSocket as an `agent_usage_report` frame (see [Agent Messaging](/docs/agent-messaging) and [Agent WebSocket](/docs/agent-websocket)).
+AI usage is counted as the agent works, not at `Message/Send` time. Wiro prices the tokens of each call with the per-model `tokenRates` and takes the cost from the plan's included usage while it lasts, then from the balance. You don't send anything: billing is fully server-side. The agent's `usage` shows where it stands: `usedusd` and `leftusd` of this period's `includedusd`, `frombalanceusd` taken from the balance, and `balanceusd`, the balance it can still use. Per-turn token counts and cost also ride on each assistant message and arrive over the message WebSocket as an `agent_usage_report` frame (see [Agent Messaging](/docs/agent-messaging) and [Agent WebSocket](/docs/agent-websocket)).
 
-The API-side check is gating only: `POST /UserAgent/Start` and `POST /UserAgent/Message/Send` refuse to launch / accept messages when `remainingcredits <= 0`, returning an `Agent has no remaining credits…` error plus an `agentbalance` snapshot (`{ monthlycredits, extracredits, usedcredits, remainingcredits }`). During an active session, monthly credits are consumed first; once `usedcredits >= monthlycredits`, extra credits (purchased via `CreateExtraCreditCheckout`) absorb the rest. When both pools are empty the agent stops accepting new turns until the subscription renews or an extra credit pack is bought.
+A turn that is running always finishes, so the balance can go a few cents below zero, as it can with model runs. A new turn needs included usage left or a balance of at least $0.50 (`usage.minbalanceusd`). When both are short, the agent pauses: `usage.paused` reads `true` with `pausedreason: "balance"`, `POST /UserAgent/Start` is refused, and `POST /UserAgent/Message/Send` answers code `97` with a sentence for whoever pays for the agent and the agent's `usage` as `agentusage`:
 
-On each billing cycle (subscription renewal) `usedcredits` is reset to zero, every renewal gives the whole allowance (`monthlycredits` equals `renewalcredits` again), and `creditperiod` advances to the new `'YYYY-MM'` window; extra-credit purchases simply bump `extracredits` without resetting usage.
+```json
+{
+  "result": false,
+  "errors": [
+    { "code": 97, "message": "My Instagram Bot used the $30.00 of AI usage its plan includes this month, and your balance is under $0.50. Add funds to keep it running, or it starts again when the plan renews." }
+  ],
+  "messageguid": null,
+  "agenttoken": null,
+  "status": null,
+  "agentstatus": 4,
+  "agentusage": {
+    "period": "2026-05",
+    "resetsat": null,
+    "includedusd": 30,
+    "usedusd": 30,
+    "leftusd": 0,
+    "renewalusd": 30,
+    "frombalanceusd": 8.65,
+    "balanceusd": 0.31,
+    "wallet": "personal",
+    "minbalanceusd": 0.5,
+    "paused": true,
+    "pausedreason": "balance"
+  }
+}
+```
 
-For the full audit trail (every token deduct / grant / purchase / renewal / expiry) call [`POST /UserAgent/TransactionList`](/docs/agent-transactions#tx-transactionlist) (see [Agent Transactions](/docs/agent-transactions)).
+For a team agent the sentence says `the team's balance`. In Telegram, Slack and Discord the agent tells people `This agent is paused for now. It runs again once its owner adds funds or its plan renews.`, with no amount. Once funds are added, the agent answers again.
+
+On each renewal the included usage starts again in full (`usedusd` back to `0`), and `usage.period` and `creditperiod` advance to the new `'YYYY-MM'` window. Funds added to the balance reset nothing: the agent just has more to use.
+
+For the full record (every AI usage charge, model run, plan payment and funds added), call [`POST /UserAgent/TransactionList`](/docs/agent-transactions#tx-transactionlist) (see [Agent Transactions](/docs/agent-transactions)).
 
 ## Error Messages
 
@@ -3585,8 +3631,7 @@ Agent-specific errors you may encounter:
 | `<skillkey>:` followed by the same sentence | `Deploy` with a `customskills` entry whose `interval` the agent can't run, or whose date never comes. Nothing is created or charged. |
 | `A deploy takes up to 50 entries in customskills, and this one sent <n>. Send at most 50, then add the rest with /UserAgent/CustomSkillUpsert once the agent is deployed.` | `Deploy` with more than 50 `customskills` entries. Nothing is created or charged. |
 | `Agent setup is not complete. Fill in the agent's required settings before starting.` | Status is `6`: save the agent's missing required credentials with `CredentialUpsert` or `CredentialProjectBind`, then call `POST /UserAgent/Update` to move the agent to status `0`. Connectors never hold an agent at status `6`. |
-| `Subscription required — please subscribe to this agent before starting it.` | `Start` called on a row with no active subscription AND no spendable extras (`extracredits - usedcredits ≤ 0`). Most often hit after a subscription expires with empty extras. Call `RenewSubscription` (`useprepaid: true`) to continue. |
-| `No credits available. Please renew your subscription or purchase extra credits.` | Monthly and extra credits are both exhausted |
+| `Subscription required — please subscribe to this agent before starting it.` | `Start` called on an agent with no active plan, most often after its plan ended. Call `RenewSubscription` (`useprepaid: true`) to continue. |
 | `Subscription already active for this useragent. Cancel or modify the existing subscription instead.` | `CreateSubscriptionCheckout` called when a sub already exists |
 | `Change the plan with UpgradeTier.` | `SkillsApply` with a `tier` other than the agent's current plan |
 | `tier must be starter, pro or max` | `Deploy` or `CreateSubscriptionCheckout` with a `tier` that names no plan. Nothing is created or charged. |
@@ -3594,28 +3639,26 @@ Agent-specific errors you may encounter:
 | `Already on the Pro plan.` (the plan's name) | `UpgradeTier` with the agent's current plan when no lower plan is scheduled: no-op |
 | `The Starter plan is smaller than this agent's Pro plan, so this is not an upgrade. Nothing was changed. A move to a smaller plan starts at the next renewal; to ask for it, send allowDowngrade: true.` (the plans' names) | `UpgradeTier` with a `targetTier` lower than the agent's plan and no `allowDowngrade: true`. Nothing is changed or charged |
 | `This agent is on the Starter plan now, so Pro is an upgrade. Nothing was changed. Reload the plan and ask again.` (the plans' names) | `UpgradeTier` with `allowDowngrade: true` and a `targetTier` higher than the agent's plan, such as after the plan changed in another tab or at a renewal. Nothing is changed or charged |
-| `The move to the Starter plan started with this billing period, and its payment moves the agent there, so it can no longer be undone. Nothing was changed. Once the agent shows the Starter plan, change the plan again.` (the plan's name) | `UpgradeTier` with the agent's current plan on a card plan whose scheduled plan has already started with the new billing period. Its payment moves the agent there |
 | `No active plan. Use /UserAgent/CreateSubscriptionCheckout to start one on the plan you pick.` | `UpgradeTier` called without an active subscription |
 | `This plan is set to end at the end of its period, so there is no renewal to change. Renew it first.` | `UpgradeTier` to a lower plan while the subscription is cancelled at period end. Undo the cancel with `RenewSubscription` first |
-| `The plan change could not be scheduled. Nothing was changed; please try again in a minute.` | `UpgradeTier` to a lower plan on a card plan, when the change couldn't be set with the card payment provider |
-| `Insufficient wallet balance. Required: $X.XX, Available: $Y.YY` | `UpgradeTier`: wallet can't cover the charge for a higher plan |
+| `Your balance is $3.10; this plan needs $100.00. Add funds to continue.` (the amounts) | `Deploy`, `CreateSubscriptionCheckout`, `UpgradeTier` or `RenewSubscription` when the balance can't pay the plan (code `97`, with `neededusd`). Nothing is created or charged |
 | `Wallet deduction failed: {error}` | `UpgradeTier`: wallet write itself failed (rare; transient backend error) |
 | `Another change to this agent's plan is going through. Nothing was changed; please try again in a minute.` | `UpgradeTier` (code `104`) while a skill change or another plan change of the same agent is going through |
 | `The agent's plan changed while this was asked for. Nothing was changed; please retry.` | `UpgradeTier` when the agent's plan ended or moved off the wallet after the call was made |
 | `Could not read the agent's plan. Nothing was changed; please retry.` | `UpgradeTier`: the agent's plan could not be read |
-| `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | `Deploy` or `CreateSubscriptionCheckout` with `useprepaid: true`, `CreateExtraCreditCheckout`, `RenewSubscription` or `UpgradeTier` (code `104` on `UpgradeTier`) while another plan or credit pack payment from the same wallet is going through. A `Deploy` refused this way creates no agent |
-| `Card checkouts for a team agent need a signed-in session, not an API key. Pay from the team wallet (useprepaid) instead.` | A card payment for a team agent asked for with a project API key: `UpgradeTier` on a plan paid by card, `CreateExtraCreditCheckout` paid by card, or `CreateSubscriptionCheckout` without `useprepaid: true`. Nothing is charged or changed |
+| `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | `Deploy` or `CreateSubscriptionCheckout` with `useprepaid: true`, `RenewSubscription` or `UpgradeTier` (code `104` on `UpgradeTier`) while another plan payment from the same wallet is going through. A `Deploy` refused this way creates no agent |
+| `Agent plans are paid from your Wiro balance. Add funds, then choose the plan.` | `CreateSubscriptionCheckout` without `useprepaid: true`: card checkouts for agent plans are retired. The answer carries `retired: true`, and nothing is charged |
+| `Extra credit packs are retired. Your agent uses your Wiro balance after its plan's included usage. Add funds to your balance instead.` | `CreateExtraCreditCheckout`, which is retired. The answer carries `retired: true`, and nothing is charged |
 | `Project not found. Send the id of one of your projects from Project/List: one you created, or any project of a team you are an admin of.` | `CredentialProjectBind` with a project that doesn't exist or that the caller can't bind. See its [other errors](#post-useragentcredentialprojectbind) |
 | `Agent not found or access denied` | Message endpoint with invalid useragentguid |
 | `User agent not found` (code `95`) | `Message/Send`, `Message/History`, `Message/Sessions`, `Message/DeleteSession`, `Message/RenameSession` or `Message/Delete` called for an agent that has been deleted |
 | The sentence for the agent's status: `Agent is stopped. Start it before sending messages.` (status `0`), `Agent is stopping. Please wait a moment and try again.` (status `1`, when the agent is shutting down to stay stopped), `Agent is restarting. Please wait a moment and try again.` (status `1`, when the agent is shutting down to start again, as in a [restart](#automatic-restart)), `Agent is starting up. Please wait a moment and try again.` (status `2` or `3`), `Agent is in error state. Restart it before sending messages.` (status `5`) or `Agent setup is incomplete. Complete the setup before sending messages.` (status `6`) | `Message/Send` while the agent isn't running (any status other than `4`), for every message Wiro doesn't answer itself as a setup reply (see [Replies Wiro handles itself](/docs/agent-messaging#handled-setup-replies)). Response includes `agentstatus` (the integer) so your client can branch on it. |
-| `Agent has no remaining credits. Renew your subscription or buy a credit pack to continue.` | `Message/Send` while `remainingcredits <= 0`. Response includes `agentbalance`, so your client can offer to buy credits. |
-| A spend limit refusal (code `93`), such as `This agent's monthly spend limit is reached ($20.35 of $20.00). It resets on December 1, 2026 at 00:00 UTC.` | `Message/Send` while the agent's own [spend limit](/docs/spend-limits) is used up; the response includes `agentstatus`. Paying from the wallet with `Deploy`, `CreateSubscriptionCheckout`, `UpgradeTier`, `RenewSubscription` or `CreateExtraCreditCheckout` is refused the same way when the price would take spending over a limit of the wallet. Nothing runs and nothing is charged |
-| A Model Access refusal (code `92`), such as `This agent can't use openai/gpt-5-6-sol. Model Access rules decide which models can run.` | `Message/Send` with a `model` that the agent's own [Model Access](/docs/model-access) rule blocks, or `UpdateSettings` with such a model override. Nothing runs and nothing is charged |
+| `My Instagram Bot used the $30.00 of AI usage its plan includes this month, and your balance is under $0.50. Add funds to keep it running, or it starts again when the plan renews.` (the agent's name and the amount; for a team agent, `the team's balance`) | `Message/Send` (code `97`) while the agent has used the AI usage its plan includes and the balance is under $0.50. Response includes `agentstatus` and `agentusage` (the agent's `usage`), so your client can offer to add funds. |
+| A spend limit refusal (code `93`), such as `This agent's monthly spend limit is reached ($20.35 of $20.00). It resets on December 1, 2026 at 00:00 UTC.` | `Message/Send` while the agent's own [spend limit](/docs/spend-limits) is used up or, once its included AI usage is used up, a limit of the wallet that covers it: the account's or team's, or the `agent` surface's. The response includes `agentstatus`. Paying from the balance with `Deploy`, `CreateSubscriptionCheckout`, `UpgradeTier` or `RenewSubscription` is refused the same way when the price would take spending over a limit of the wallet. Nothing runs and nothing is charged |
+| A Model Access refusal (code `92`), such as `This agent can't use openai/gpt-5-6-sol. Model Access rules decide which models can run.` | `Message/Send` with a `model` that a [Model Access](/docs/model-access) rule for the agent blocks: its own rule, the account's or team's rule, or the `agent` surface's rule. `UpdateSettings` with such a model override too. Nothing runs and nothing is charged |
 | `Message not found` | `Detail` / `Cancel` with invalid messageguid |
 | `Message cannot be cancelled (status: {status})` | `Cancel` on a message that's already in a terminal state |
 | `Invalid redirect URL` | [`ConnectorConnect`](/docs/agent-connectors#the-redirect-url) with a `redirecturl` that isn't https (or http on localhost) |
-| `Pack key required` | `CreateExtraCreditCheckout` without `pack` |
 | `Could not retrieve wallet balance` | Wallet service lookup failed while checking balance |
 | `runstream-unavailable` | `RunStreamToken` while following runs live is not available. Try again later |
 | A Screen refusal, such as `Screen is off in this agent's settings.` (code `94`) or `Take Control is off for team agents: their browser is shared by the whole team.` (code `99`) | `Realtime/ScreenStart` when the agent's Screen, or Take Control, can't open for the caller. These codes are ScreenStart's own: see [its errors](#screenstart-errors) |
@@ -3697,19 +3740,13 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/RenewSubscription" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{"guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321"}'
 
-# Buy extra credits with prepaid wallet
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CreateExtraCreditCheckout" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{"useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "pack": "small", "useprepaid": true}'
-
 # Start an agent
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{"guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321"}'
 
-# Get agent instance details
+# Get agent instance details (its AI usage and balance are in usage)
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -3821,12 +3858,13 @@ requests.post(
     json={"guid": instance_guid, "targetTier": "pro"}
 )
 
-# Buy extra credits (any plan, prepaid wallet)
-requests.post(
-    "https://api.wiro.ai/v1/UserAgent/CreateExtraCreditCheckout",
+# Read the agent's AI usage and the balance it runs on past its plan
+usage = requests.post(
+    "https://api.wiro.ai/v1/UserAgent/Detail",
     headers=headers,
-    json={"useragentguid": instance_guid, "pack": "small", "useprepaid": True}
-)
+    json={"guid": instance_guid}
+).json()["useragents"][0]["usage"]
+print(f"AI usage: ${usage['usedusd']:.2f} of ${usage['includedusd']:.2f}, balance ${usage['balanceusd']:.2f}")
 
 # List your deployed agents
 my_agents = requests.post(
@@ -3927,12 +3965,14 @@ async function main() {
     { headers }
   );
 
-  // Buy extra credits (prepaid wallet)
-  await axios.post(
-    'https://api.wiro.ai/v1/UserAgent/CreateExtraCreditCheckout',
-    { useragentguid: instanceGuid, pack: 'small', useprepaid: true },
+  // Read the agent's AI usage and the balance it runs on past its plan
+  const usageResp = await axios.post(
+    'https://api.wiro.ai/v1/UserAgent/Detail',
+    { guid: instanceGuid },
     { headers }
   );
+  const usage = usageResp.data.useragents[0].usage;
+  console.log(`AI usage: $${usage.usedusd} of $${usage.includedusd}, balance $${usage.balanceusd}`);
 
   // Stop the agent
   await axios.post(
@@ -4135,6 +4175,6 @@ print(response.body);
 - [Agent Chat Integration](/docs/agent-chat-integration): Build your own chat for an agent, with setup cards, connections, restarts and the agent's live Screen
 - [Agent WebSocket](/docs/agent-websocket): Real-time response streaming
 - [Agent Webhooks](/docs/agent-webhooks): Receive agent responses via HTTP callbacks
-- [Agent Transactions](/docs/agent-transactions): Per-instance credit ledger (deductions, renewals, purchases, grants, refunds)
+- [Agent Transactions](/docs/agent-transactions): The agent's spending in dollars: AI usage, model runs, plan payments and funds added
 - [Agent Logs](/docs/agent-logs): Per-instance activity feed (tool calls, cron runs, message exchanges)
 - [Authentication](/docs/authentication): API key setup and authentication methods

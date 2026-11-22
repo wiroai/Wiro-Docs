@@ -52,7 +52,7 @@ Yes. For `fileinput` parameters, use the `{id}Url` suffix (e.g., `inputImageUrl`
 
 ## Does the MCP server cost extra?
 
-No. The [Wiro MCP server](/docs/wiro-mcp-server) is free. You pay the normal prices for the work its tools start: model runs, the model steps of workflow runs, Studio and Workflow Agent turns, and agent plans and credits.
+No. The [Wiro MCP server](/docs/wiro-mcp-server) is free. You pay the normal prices for the work its tools start: model runs, the model steps of workflow runs, Studio and Workflow Agent turns, and agent plans and the AI usage agents pay from the balance.
 
 ## Can I use Wiro with n8n?
 
@@ -88,11 +88,11 @@ Wiro Agents are autonomous AI assistants that you deploy and manage via the API.
 
 ### How do I deploy an agent?
 
-Pick a template in the [agent catalog](https://wiro.ai/agents) or build your own, then call `POST /UserAgent/Deploy` with `useprepaid: true` and a plan in `tier`: `starter` ($5 a month, 500 credits), `pro` ($30, 3,000) or `max` ($100, 10,000). Your wallet pays the plan, and Wiro queues the agent to start on its own. Then connect the services it uses. Every plan includes every skill and connector. See [Agent Overview](/docs/agent-overview) for the full lifecycle.
+Pick a template in the [agent catalog](https://wiro.ai/agents) or build your own, then call `POST /UserAgent/Deploy` with `useprepaid: true` and a plan in `tier`: `starter` ($5 a month), `pro` ($30) or `max` ($100), each including its own price in AI usage a month. Your Wiro balance pays the plan, and Wiro queues the agent to start on its own. Then connect the services it uses. Every plan includes every skill and connector. See [Agent Overview](/docs/agent-overview) for the full lifecycle.
 
 ### How much does an agent cost?
 
-Each agent runs on one of three monthly plans: Starter ($5 a month with 500 credits), Pro ($30 with 3,000) or Max ($100 with 10,000). Every plan includes every skill and connector, so turning one on or off costs nothing. Each turn the agent runs uses credits by the tokens its model uses, and extra credit packs add 1,000 credits for $10, 5,000 for $50 or 20,000 for $200. A higher plan starts at once; a lower plan starts at the next renewal. See [Pricing Model](/docs/agent-overview#pricing-model-plans-credits-token-billing).
+Each agent runs on one of three monthly plans: Starter ($5 a month), Pro ($30) or Max ($100), each paid from your Wiro balance and including its own price in AI usage: Pro includes $30 of AI usage a month. Every plan includes every skill and connector, so turning one on or off costs nothing. Each turn the agent runs is priced by the tokens its model uses; once the included usage is used up, the agent uses your Wiro balance, the same balance model runs use, and a new turn needs at least $0.50 there. A higher plan starts at once; a lower plan starts at the next renewal. See [Pricing Model](/docs/agent-overview#pricing-model-plans-ai-usage-balance).
 
 ### How much disk space does my agent have?
 

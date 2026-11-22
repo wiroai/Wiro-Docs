@@ -66,7 +66,7 @@ Wiro enforces strict context isolation for agent operations. When you interact w
 | Team A | Personal | **Blocked** |
 | Team A | Team B | **Blocked** |
 
-A matching context is required, but it is not always enough. Any active team member can message a team agent and use its conversation endpoints. Subscription and billing actions (`CreateSubscriptionCheckout`, `RenewSubscription`, `CancelSubscription`, `UpgradeTier`, `CreateExtraCreditCheckout`) are limited to the member who deployed the agent, team admins and the organization owner. The organization owner can pay for a team agent by card or from the team wallet. Cancelling a team agent's card plan needs a team admin or the organization owner. `SkillsApply`, `SkillToggle` and `CredentialProjectBind` are limited to the member who deployed the agent and team admins. Other members get code `97`: "Only a team admin can perform this action on a team-owned agent." With an API key, these checks apply to the user who created the key's project. Card checkouts for a team agent are refused on that path: `CreateSubscriptionCheckout`, `UpgradeTier` and `CreateExtraCreditCheckout` would open the session on the key project creator's own saved billing details, so pay from the team wallet (`useprepaid: true`) or use the dashboard.
+A matching context is required, but it is not always enough. Any active team member can message a team agent and use its conversation endpoints. Subscription and billing actions (`CreateSubscriptionCheckout`, `RenewSubscription`, `CancelSubscription`, `UpgradeTier`) are limited to the member who deployed the agent, team admins and the organization owner. A team agent's plan is paid from the team wallet (`useprepaid: true`), which also pays its AI usage once the plan's included usage is used up. `SkillsApply`, `SkillToggle` and `CredentialProjectBind` are limited to the member who deployed the agent and team admins. Other members get code `97`: "Only a team admin can perform this action on a team-owned agent." With an API key, these checks apply to the user who created the key's project.
 
 ### Protected Endpoints
 
@@ -78,7 +78,6 @@ The following agent endpoints enforce context guards:
 - `UserAgent/Message/DeleteSession`: delete a conversation
 - `UserAgent/Message/RenameSession`: rename a conversation
 - `UserAgent/Message/Delete`: hide your own messages
-- `UserAgent/CreateExtraCreditCheckout`: purchase extra credits
 - `UserAgent/CancelSubscription`: cancel subscription
 - `UserAgent/RenewSubscription`: renew subscription
 - `UserAgent/UpgradeTier`: change the plan (Starter, Pro or Max)

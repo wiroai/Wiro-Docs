@@ -253,7 +253,7 @@ Response:
 | `modelSlug` | string \| null | Realtime model used (e.g. `gpt-realtime-mini`). |
 | `startedAt` / `endedAt` | number \| null | Unix epoch ms. `endedAt` stays `null` while the call is in-progress or rejected. |
 
-> **Live call audio is billed to the agent's Wiro project** (its `wiro` credential, see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)): the voice cost is charged to the wallet of the workspace that owns that project. It is **not** charged to the agent's platform credit pool and writes **no** `POST /UserAgent/TransactionList` row. The agent's text turns around the call (the prep turn that briefs the voice model before the voice session starts, and the post-call turn where the agent summarizes and acts on the call) are billed as normal token deducts (`type: "deduct"`, `action: "tokens"`) and show up in TransactionList. Audit call-audio cost from that project's usage; TransactionList accounts only for those text turns.
+> **Live call audio is billed to the agent's Wiro project** (its `wiro` credential, see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)): the voice cost is charged to the wallet of the workspace that owns that project. It is **not** the agent's AI usage: neither its plan's included usage nor its balance pays for it. The agent's text turns around the call (the prep turn that briefs the voice model before the voice session starts, and the post-call turn where the agent summarizes and acts on the call) are AI usage like any other turn and show up in [`POST /UserAgent/TransactionList`](/docs/agent-transactions#tx-transactionlist) as `ai-usage` rows. Audit call-audio cost from that project's usage.
 
 ## Related
 
