@@ -34,11 +34,11 @@ Most agents interact with external services: posting to social media, managing a
 
 | Your Product | Agent Type | Why Per-Customer |
 |-------------|-----------|-----------------|
-| Digital marketing agency dashboard | [Social Manager](https://wiro.ai/agents/social-manager) | Each client connects their own Twitter, Instagram, Facebook, TikTok, LinkedIn |
+| Digital marketing agency dashboard | [Social Manager](https://wiro.ai/agents/social-manager) | Each client connects their own X, Instagram, Facebook Pages, TikTok and LinkedIn |
 | Mobile app company | [App Review Support](https://wiro.ai/agents/app-review-support) | Each app has its own App Store / Google Play credentials |
 | E-commerce platform | [Google Ads Manager](https://wiro.ai/agents/google-ads-manager) + [Meta Ads Manager](https://wiro.ai/agents/meta-ads-manager) | Each advertiser connects their own ad accounts |
 | Marketing SaaS | [Newsletter Manager](https://wiro.ai/agents/newsletter-manager) | Each customer connects their own Brevo/SendGrid/Mailchimp |
-| Sales platform | [Lead Generation Manager](https://wiro.ai/agents/lead-gen-manager) | Each sales team connects their own Apollo/Lemlist |
+| Sales platform | [Lead Generation Manager](https://wiro.ai/agents/lead-gen-manager) | Each sales team connects their own Apollo/lemlist |
 | Content agency tool | [Blog Content Editor](https://wiro.ai/agents/blog-content-editor) | Each client connects their own WordPress site |
 | App publisher platform | [App Event Manager](https://wiro.ai/agents/app-event-manager) | Each app has its own App Store credentials |
 | Mobile app publisher | [Push Notification Manager](https://wiro.ai/agents/push-notification-manager) | Each app has its own Firebase service account |
@@ -171,8 +171,8 @@ A richer variant of white-label chat: besides replying with text, the agent **ge
 
 **Shape:**
 
-- One deployed agent whose Wiro project is set to your project (see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project). The agent runs models with that project's key from its skills, or with the tools of the `wiro` connector (see [The Wiro connector](/docs/agent-connectors#the-wiro-connector)).
-- One `sessionkey` per end user (Pattern 2 above): the same agent instance serves everyone, and each user's chat history is isolated by session. The agent's model runs are not: with the `wiro` connector, each user can reach the runs the agent made for the others (see [The Wiro connector](/docs/agent-connectors#the-wiro-connector)).
+- One deployed agent whose Wiro project is set to your project (see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project). The agent runs models with that project's key from its skills, or with the tools of the Wiro AI Models connector, `wiro` (see [The Wiro connector](/docs/agent-connectors#the-wiro-connector)).
+- One `sessionkey` per end user (Pattern 2 above): the same agent instance serves everyone, and each user's chat history is isolated by session. The agent's model runs are not: with Wiro AI Models (`wiro`), each user can reach the runs the agent made for the others (see [The Wiro connector](/docs/agent-connectors#the-wiro-connector)).
 - A single WebSocket connection carries three things at once: the streaming chat reply, the per-turn token-usage report, and discovery of any model runs the agent launches.
 
 **End-to-end sequence an integrator replicates:**
@@ -220,19 +220,23 @@ Each agent is an independent instance with its own credentials. Your backend pas
 
 Wiro provides pre-built agent templates you can deploy immediately. Each agent specializes in a specific domain and comes with the relevant skills. It suggests the connectors it works with (`suggestedconnectors` on [`Agent/Detail`](/docs/agent-overview#post-agentdetail)), and you connect them after you deploy it.
 
-| Agent | What It Does | Connectors |
+| Agent | What It Does | Connectors It Suggests |
 |-------|-------------|-------------|
-| **[Social Manager](https://wiro.ai/agents/social-manager)** | Create, schedule, and publish social media content | Twitter/X, TikTok, LinkedIn (OAuth); Instagram and Facebook Pages (System User recommended or own OAuth) |
-| **[Blog Content Editor](https://wiro.ai/agents/blog-content-editor)** | Write and publish blog posts (WordPress draft + publish workflow) | WordPress (App Password), Gmail (optional, for inbox requests) |
-| **[Google Ads Manager](https://wiro.ai/agents/google-ads-manager)** | Create and optimize Google Ads campaigns, daily performance reports | Google Ads (OAuth), Calendarific (API key), Google Drive (optional, Service Account) |
-| **[Meta Ads Manager](https://wiro.ai/agents/meta-ads-manager)** | Manage Facebook and Instagram ad campaigns, audience analysis | Meta Ads (System User recommended or own OAuth), Calendarific (API key), Google Drive (optional, Service Account) |
-| **[Newsletter Manager](https://wiro.ai/agents/newsletter-manager)** | Design and send email newsletters to subscriber lists | Brevo, SendGrid, Mailchimp, HubSpot (any one, API key or OAuth) |
-| **[Lead Generation Manager](https://wiro.ai/agents/lead-gen-manager)** | Find and enrich leads, run multi-channel outreach, analyze replies | Apollo (API key), Lemlist (API key), HubSpot (optional, for CRM sync) |
-| **[App Review Support](https://wiro.ai/agents/app-review-support)** | Monitor app store reviews, draft responses in operator's tone | App Store Connect (private key JWT), Google Play (service account) |
-| **[App Event Manager](https://wiro.ai/agents/app-event-manager)** | Scan global holidays, suggest and create App Store + Google Play in-app events | App Store Connect (JWT), Google Play (service account), Calendarific (API key) |
-| **[Push Notification Manager](https://wiro.ai/agents/push-notification-manager)** | Craft locale- and timezone-aware push notifications, queue dispatch | Firebase (service account JSON per app), Calendarific (API key) |
-| **[Voice Receptionist](https://wiro.ai/agents/voice-receptionist)** | Answer phone calls 24/7 with a real-time AI receptionist: recognises callers from CRM, books from your calendar, drafts CRM notes + follow-up emails, streams a live transcript to chat | Twilio Voice (Account SID, Auth Token, phone number) for inbound phone; HubSpot (optional, caller recognition); Google Calendar (optional, slot lookup); Google Drive (optional); Brevo or HubSpot (any one, optional, follow-up email drafts); Telegram bot (optional, operator approvals) |
-| **[Video Creator](https://wiro.ai/agents/video-creator)** | Turn a website, web app, store listing, document or product photos into a share-ready video with real screens, voice-over, music and captions | Wiro project (the video's model runs are billed to its wallet); the [YouTube](https://wiro.ai/connectors/youtube) and [Instagram](https://wiro.ai/connectors/instagram) connectors (optional, to publish finished videos); Telegram bot (optional) |
+| **[Social Manager](https://wiro.ai/agents/social-manager)** | Create, schedule, and publish social media content | X, Instagram, Facebook Pages, LinkedIn, TikTok, Google Drive, Serper, Calendarific, Wiro AI Models |
+| **[Blog Content Editor](https://wiro.ai/agents/blog-content-editor)** | Write and publish blog posts (WordPress draft + publish workflow) | WordPress, Gmail, Serper, Calendarific, Wiro AI Models |
+| **[Google Ads Manager](https://wiro.ai/agents/google-ads-manager)** | Create and optimize Google Ads campaigns, daily performance reports | Google Ads, Google Merchant Center, Google Analytics 4, YouTube, Google Drive, Adjust, Roasit, Calendarific, Wiro AI Models |
+| **[Meta Ads Manager](https://wiro.ai/agents/meta-ads-manager)** | Manage Facebook and Instagram ad campaigns, audience analysis | Meta Ads, Google Analytics 4, Google Drive, Adjust, Roasit, Calendarific, Wiro AI Models |
+| **[TikTok Ads Manager](https://wiro.ai/agents/tiktok-ads-manager)** | Manage TikTok ad campaigns per advertiser, with daily performance and audience reports | TikTok Ads, Google Analytics 4, Google Drive, Adjust, Roasit, Calendarific, Wiro AI Models |
+| **[Newsletter Manager](https://wiro.ai/agents/newsletter-manager)** | Design and send email newsletters to subscriber lists | Brevo, SendGrid, Mailchimp, HubSpot, Serper, Calendarific, Wiro AI Models |
+| **[Lead Generation Manager](https://wiro.ai/agents/lead-gen-manager)** | Find and enrich leads, run multi-channel outreach, analyze replies | Apollo, lemlist, HubSpot, Calendarific |
+| **[App Review Support](https://wiro.ai/agents/app-review-support)** | Monitor app store reviews, draft responses in operator's tone | App Store Connect, Google Play Console |
+| **[Google Review Manager](https://wiro.ai/agents/google-review-manager)** | Watch Google Business Profile reviews and prepare replies in each customer's language | Google Business Profile |
+| **[App Event Manager](https://wiro.ai/agents/app-event-manager)** | Scan global holidays, suggest and create App Store in-app events, and prepare Google Play promotional content for you to publish in Play Console | App Store Connect, Google Play Console, Calendarific, Wiro AI Models |
+| **[Push Notification Manager](https://wiro.ai/agents/push-notification-manager)** | Craft locale- and timezone-aware push notifications, queue dispatch | Firebase Cloud Messaging, Calendarific, Wiro AI Models |
+| **[Voice Receptionist](https://wiro.ai/agents/voice-receptionist)** | Answer phone calls 24/7 with a real-time AI receptionist: recognises callers from CRM, books from your calendar, drafts CRM notes + follow-up emails, streams a live transcript to chat | HubSpot, Google Calendar, Google Drive, Brevo, Wiro AI Models |
+| **[Video Creator](https://wiro.ai/agents/video-creator)** | Turn a website, web app, store listing, document or product photos into a share-ready video with real screens, voice-over, music and captions | Wiro AI Models (the video's model runs are billed to its project's wallet); it also publishes finished videos through the [YouTube](https://wiro.ai/connectors/youtube) or [Instagram](https://wiro.ai/connectors/instagram) connector when one is connected |
+
+Channels are not connectors: the Voice Receptionist answers calls with its Twilio Voice Channel and Web Voice Channel Skills (the phone line uses your Twilio account, saved in the Twilio Voice (`twilio-voice`) credential), and any agent can add a Telegram, Slack or Discord channel. See [Agent Credentials](/docs/agent-credentials).
 
 > The list above matches the agent templates currently deployed in production. The exact set evolves over time as new templates ship, so fetch `POST /Agent/List` for the live catalog. Each agent's full marketing page lives at `https://wiro.ai/agents/{slug}` (linked in the first column).
 
@@ -267,7 +271,10 @@ deploy = requests.post(
 )
 useragent_guid = deploy.json()["useragents"][0]["guid"]
 
-# Connect X with your own X app (see Agent Connectors)
+# Connect X with your own X app (see Agent Connectors). Register
+# https://api.wiro.ai/v1/AgentConnector/OAuthCallback as a redirect URI in that
+# app first; redirecturl is where Wiro sends your user back, with
+# connector_connected=true or connector_error=<code>.
 connect = requests.post(
     "https://api.wiro.ai/v1/UserAgent/ConnectorConnect",
     headers=headers,

@@ -4,7 +4,7 @@ Connect inbound phone calls (PSTN) to a Wiro agent. Used by the [Voice Reception
 
 ## Overview
 
-Turn on the Twilio Voice channel, the `util-twilio-channel` skill, on a useragent and Wiro turns on the voice rules it needs (`util-voice-receptionist` + `util-voice-call-prep`), so you don't need to enable them separately. On an agent that doesn't have it yet, turn it on with [`SkillsApply`](/docs/agent-overview#post-useragentskillsapply), or name it in Deploy's `skills`:
+Turn on the Twilio Voice Channel (`util-twilio-channel`) together with the voice rules it needs: Voice Receptionist Rules (`util-voice-receptionist`) and Voice Call Prep Rules (`util-voice-call-prep`). Deploy's `skills` turns those rules on by itself. [`SkillsApply`](/docs/agent-overview#post-useragentskillsapply) turns on only the skills you send and refuses one whose `depends_on` would stay off (code `101`, with `deps[]`), so send all three in one call:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
@@ -13,11 +13,26 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   -d '{
     "useragentguid": "your-useragent-guid",
     "idempotencyKey": "550e8400-e29b-41d4-a716-446655440002",
-    "skills": { "util-twilio-channel": true }
+    "skills": { "util-twilio-channel": true, "util-voice-receptionist": true, "util-voice-call-prep": true }
   }'
 ```
 
-**Skill:** `util-twilio-channel`, the phone channel. Its `docs_url` in [`Skills/List`](/docs/agent-skills#post-skillslist) is this page, `integration-twiliovoice-skills`.
+Sent alone while the two rules are off, the channel is refused and nothing changes:
+
+```json
+{
+  "result": false,
+  "errors": [
+    { "code": 101, "message": "Cannot apply: some skills require other skills to be enabled." }
+  ],
+  "deps": [
+    { "skill": "util-twilio-channel", "requires": "util-voice-receptionist" },
+    { "skill": "util-twilio-channel", "requires": "util-voice-call-prep" }
+  ]
+}
+```
+
+**Skill:** Twilio Voice Channel (`util-twilio-channel`), the phone channel. Its `docs_url` in [`Skills/List`](/docs/agent-skills#post-skillslist) is this page, `integration-twiliovoice-skills`.
 
 **Credential:** `twilio-voice`, the Account SID, Auth Token and phone numbers below.
 
@@ -43,7 +58,7 @@ You don't touch the Twilio Console's webhook fields manually. When you save this
 ## Prerequisites
 
 - **A Wiro API key** (see [Authentication](/docs/authentication)).
-- **A deployed agent** (Voice Receptionist preset or any custom agent with `util-twilio-channel` on), see [Agent Overview](/docs/agent-overview).
+- **A deployed agent** (Voice Receptionist preset or any custom agent with Twilio Voice Channel (`util-twilio-channel`) on), see [Agent Overview](/docs/agent-overview).
 - **A Twilio account** with at least one purchased phone number.
 
 ## Setup
@@ -163,7 +178,7 @@ Pair this channel with connectors that give the agent what the call needs (see [
 - [HubSpot](https://wiro.ai/connectors/hubspot) (`hubspot`): match the caller's phone number against CRM contacts and log call outcomes.
 - [Brevo](https://wiro.ai/connectors/brevo) (`brevo`), [SendGrid](https://wiro.ai/connectors/sendgrid) (`sendgrid`) or [Mailchimp](https://wiro.ai/connectors/mailchimp) (`mailchimp`): draft post-call confirmation or follow-up emails.
 
-The Voice Receptionist template comes with this channel and the voice rules, and suggests the Brevo and HubSpot connectors. See [Agent Use Cases](/docs/agent-use-cases) for the full template.
+The Voice Receptionist template comes with this channel, the Web Voice Channel and the voice rules, and suggests HubSpot, Google Calendar, Google Drive, Brevo and Wiro AI Models (its `suggestedconnectors` on `Agent/Detail`). See [Agent Use Cases](/docs/agent-use-cases) for the full template.
 
 ## Troubleshooting
 
@@ -179,7 +194,7 @@ The Voice Receptionist template comes with this channel and the voice rules, and
 
 ## Call History
 
-Retrieve the last N realtime voice sessions for a useragent, regardless of which channel they came in on.
+Retrieve the realtime voice sessions among the agent's latest messages, whichever channel they came in on.
 
 ### POST /UserAgent/TwilioCallHistory/List
 
@@ -198,7 +213,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TwilioCallHistory/List" \
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Useragent instance guid. Owner / team-member access only. |
-| `limit` | number | No | Max sessions to return. Default `50`, hard-capped at `200`. Sorted newest-first by message id. |
+| `limit` | number | No | How many of the agent's latest messages to read (every kind, not only calls). Default `50`, at most `200`. The voice sessions among them come back newest first, so the list can be shorter than `limit`, or empty while older calls exist. |
 
 Response:
 
@@ -209,11 +224,9 @@ Response:
   "data": [
     {
       "messageguid": "5d6e7f80-9a1b-4c2d-8e3f-4a5b6c7d8e01",
-      "agenttoken": "8a5b9e2f-4d3c-4a01-9c2e-1b6d4e7a9c5d",
+      "correlationId": "voice_Q7mN2xR8kLp4WzT1vYc6HdBs",
       "channel": "twilio",
-      "callsid": "CAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
       "callerInfo": { "number": "+15551234567", "country": "US" },
-      "callerProfile": "Returning caller, last asked about pricing.",
       "status": "realtime_session",
       "endReason": "wiro_completed",
       "durationSeconds": 137,
@@ -223,11 +236,9 @@ Response:
     },
     {
       "messageguid": "0f2a1c3d-9e8b-4c5a-bf42-3a7b6e1d0c8f",
-      "agenttoken": "1e7d3b9a-5c2f-4d6b-8e0a-2f4c7b5d9e1a",
+      "correlationId": "voice_3fK9xQ2LmVb7TzR1pWc8NdYa",
       "channel": "web",
-      "callsid": "voice-call-9d2d4b6e3f6b4c1a8a7e1f5a0b2c3d4e",
       "callerInfo": { "page_url": "https://example.com/contact", "display_identifier": "+15551234567" },
-      "callerProfile": null,
       "status": "realtime_session",
       "endReason": "browser_disconnect",
       "durationSeconds": 42,
@@ -242,11 +253,9 @@ Response:
 | Field | Type | Description |
 |-------|------|-------------|
 | `messageguid` | string | The guid of the message that records this session. Use it with `POST /UserAgent/Message/Detail` to fetch the full transcript metadata. |
-| `agenttoken` | string | The per-message agent token. Use it on `Message/Detail` / `Message/Cancel` like any other agent message. |
-| `channel` | `"twilio" \| "web"` | Source channel. Determines the `callerInfo` shape and whether `callsid` is a Twilio Call SID or a Web session id. |
-| `callsid` | string \| null | Twilio Call SID (`channel: "twilio"`) or internal `voice-call-<id>` session id (`channel: "web"`). |
+| `correlationId` | string \| null | The session's public id. For a web call it is the `correlationId` that `WebStart` returned; phone calls get one too. `null` when the session has none. |
+| `channel` | `"twilio" \| "web"` | Source channel. Determines the `callerInfo` shape. |
 | `callerInfo` | object | Channel-specific. Twilio: `{ number, country }` (E.164 phone + ISO-2 country). Web: `{ page_url, display_identifier? }`, where `display_identifier` is omitted unless the embedding page validated an identifier (`session_metadata.display_identifier` whose whole-string match passes the allowlist). |
-| `callerProfile` | string \| null | Free-text summary of the caller that the agent writes before the call. `null` until it is ready, and on rejected calls. |
 | `status` | string | Mirrors the message's `metadata.type` verbatim. Values: `realtime_session_incoming` (call accepted, prep running), `realtime_session_active` (audio bridge live), `realtime_session_rejected` (rejected before audio, e.g. concurrent-limit), or **`realtime_session`** (no suffix: final/completed). The bare `realtime_session` is the only value that means "ended cleanly". It is **not** the string `"completed"`. |
 | `endReason` | string \| null | Set on completed (`realtime_session`) rows only. One of: `wiro_completed` (graceful end), `wiro_cancelled`, `wiro_disconnect`, `wiro_error`, `max_duration` (the call reached its maximum length, `maxcallseconds` on Twilio), `spend_limit` (a [spend limit](/docs/spend-limits) was reached during the call), `balance` (the balance of the wallet that pays for the call ran out), `browser_disconnect` (Web only), `twilio_disconnect` (Twilio only). Rejected rows leave `endReason: null` and instead carry `metadata.reason` (`concurrent_limit`, `agent_prep_timeout`, `realtime_ws_open_failed`, `realtime_stream_timeout`). Fetch it via `Message/Detail`. |
 | `durationSeconds` | number \| null | Wall-clock duration. `null` while in-progress. |

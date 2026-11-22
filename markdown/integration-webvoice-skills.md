@@ -1,19 +1,18 @@
 # Web Voice Channel
 
-Embed a real-time voice conversation with a Wiro agent into your own browser app. Used by the [Voice Receptionist](https://wiro.ai/agents/voice-receptionist) and [Voice Sales Rep](https://wiro.ai/agents/voice-sales-rep) preset agents, and by any custom agent that needs an "Open mic" button on a website.
+Embed a real-time voice conversation with a Wiro agent into your own browser app. Used by the [Voice Receptionist](https://wiro.ai/agents/voice-receptionist) agent, and by any custom agent that needs an "Open mic" button on a website.
 
 ## Overview
 
-Toggle `util-web-channel` on a useragent and a single REST call (`POST /UserAgent/Realtime/WebStart`) returns everything the browser needs to open an authenticated WebSocket and stream microphone audio straight to the agent. The same agent can also pick up phone calls via [Twilio Voice](/docs/integration-twiliovoice-skills): the two channels share the same realtime runtime and end up in the same [Call History](/docs/integration-twiliovoice-skills#call-history).
+Turn on Web Voice Channel (`util-web-channel`) on a useragent and a single REST call (`POST /UserAgent/Realtime/WebStart`) returns everything the browser needs to open an authenticated WebSocket and stream microphone audio straight to the agent. The same agent can also pick up phone calls via [Twilio Voice](/docs/integration-twiliovoice-skills): the two channels share the same realtime runtime and end up in the same [Call History](/docs/integration-twiliovoice-skills#call-history).
 
 **Skill that powers this channel:**
 
-- `util-web-channel`: browser voice channel. Bundled on the Voice Receptionist and Voice Sales Rep presets; toggle it on for any other agent via `POST /UserAgent/SkillsApply`.
+- Web Voice Channel (`util-web-channel`): browser voice channel. Bundled on the Voice Receptionist template. On any other agent, turn it on in one `POST /UserAgent/SkillsApply` call together with the two Skills it depends on, Voice Receptionist Rules (`util-voice-receptionist`) and Voice Call Prep Rules (`util-voice-call-prep`): `"skills": { "util-web-channel": true, "util-voice-receptionist": true, "util-voice-call-prep": true }`. Sent alone while those are off, the channel is refused with code `101` and a `deps[]` list, and nothing changes. Deploy's `skills` turns them on with the channel.
 
 **Agents that typically enable this channel:**
 
 - [Voice Receptionist](https://wiro.ai/agents/voice-receptionist): phone + browser receptionist.
-- [Voice Sales Rep](https://wiro.ai/agents/voice-sales-rep): outbound sales rep with an "Open mic" CTA.
 - Custom agents that need a voice button on a website or web app.
 
 **Web channel or Twilio channel**? Pick by where the caller comes from:
@@ -35,7 +34,7 @@ Toggle `util-web-channel` on a useragent and a single REST call (`POST /UserAgen
 ## Prerequisites
 
 - **A Wiro API key** (see [Authentication](/docs/authentication)).
-- **A deployed agent** in `status: 4` (Running), see [Agent Overview](/docs/agent-overview). Voice Receptionist / Voice Sales Rep presets work out of the box; for custom agents, enable `util-web-channel` via `POST /UserAgent/SkillsApply`.
+- **A deployed agent** in `status: 4` (Running), see [Agent Overview](/docs/agent-overview). The Voice Receptionist template works out of the box; for other agents, turn on Web Voice Channel (`util-web-channel`) together with Voice Receptionist Rules (`util-voice-receptionist`) and Voice Call Prep Rules (`util-voice-call-prep`) in one `POST /UserAgent/SkillsApply` call (see [Overview](#overview)).
 - **A browser that can capture microphone audio** at 24 kHz mono PCM (every evergreen browser via `getUserMedia` + Web Audio).
 
 ## Setup
@@ -59,7 +58,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Realtime/WebStart" \
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Useragent instance guid. Must be an agent you deployed (for a team agent, call with that team's project key or workspace, or remain an active member of the team), must be in `status: 4` (Running), and must have `util-web-channel` enabled. |
+| `useragentguid` | string | Yes | Useragent instance guid. Must be an agent you deployed (for a team agent, call with that team's project key or workspace, or remain an active member of the team), must be in `status: 4` (Running), and must have Web Voice Channel (`util-web-channel`) on. |
 | `session_metadata` | object | No | Optional caller context surfaced to the agent + later to [Call History](/docs/integration-twiliovoice-skills#call-history). |
 | `session_metadata.page_url` | string | No | The page URL the caller opened the mic from. Up to 2048 chars. Echoed back as `callerInfo.page_url`. |
 | `session_metadata.display_identifier` | string | No | Operator-supplied display name (e.g. logged-in customer name, account name). 1-100 chars matching `^[\p{L}\p{N} @._\-'+]+$` (Unicode letters / numbers / spaces / `@ . _ - ' +`). The check is **whole-string**: any character outside the allowlist (newlines, tabs, ampersands, backticks, `$`, etc.) silently rejects the entire field (`callerInfo.display_identifier` ends up `null`). Pre-sanitize on your side if you accept arbitrary input. |
@@ -93,7 +92,7 @@ Response:
 
 Open a WebSocket to the returned `wsUrl` and send the `session_start` JSON frame **within 10 seconds**. After that, frame microphone audio as 24 kHz mono PCM int16 with a `<correlationId>|` text prefix. **Server-sent binary audio frames use the same prefix shape, so you must strip it before feeding the bytes to Web Audio.**
 
-The example below boots a working voice call end-to-end: it acquires the mic, mounts an `AudioWorklet` that emits 24 kHz Int16 PCM, opens the WebSocket, presents the token, handles every server frame the bridge actually sends, and plays the agent's audio back through `AudioContext`. Drop it into a page paired with the worklet at `audio-processor.js` shown below.
+The example below boots a working voice call end-to-end: it acquires the mic, mounts an `AudioWorklet` that emits 24 kHz Int16 PCM, opens the WebSocket, presents the token, handles every frame the server sends, and plays the agent's audio back through `AudioContext`. Drop it into a page paired with the worklet at `audio-processor.js` shown below.
 
 ```javascript
 // ===== voice-client.js: runs in the browser =====
@@ -199,8 +198,8 @@ async function startMicCapture() {
 
 // 4. UI hooks
 function muteMic(on) {
-  // Mute is purely client-side: toggle the mic track. The bridge has no
-  // server-side mute handler.
+  // Mute is purely client-side: toggle the mic track. The server has no
+  // mute frame.
   micStream?.getAudioTracks().forEach((t) => (t.enabled = !on));
 }
 function bargeIn() { ws.send(JSON.stringify({ type: "interrupt" })); }
@@ -270,7 +269,7 @@ Response:
 
 ## WebSocket Protocol
 
-The browser bridge lives at `wss://<env>/v1/AgentRealtime/Web`.
+Open the `wsUrl` that WebStart returns (`wss://socket.wiro.ai/v1/AgentRealtime/Web`).
 
 ### First message (text frame)
 
@@ -287,33 +286,33 @@ Must arrive within 10 seconds of the WebSocket `open` event. Late or malformed �
 | Audio | PCM int16, 24 kHz, mono. |
 | Frame | `<correlationId>\|<binary-pcm>`: UTF-8 text prefix (the `correlationId` returned by `WebStart`) + `\|` (0x7C) separator + raw PCM bytes. Same shape as the [Realtime Voice Conversation](/docs/realtime-voice-conversation#realtime-audio-format) channel. **Both directions** use this prefix: when you receive a binary frame from the server you must locate the first `0x7C` byte and slice everything after it as `Int16Array`. |
 
-The bridge transcodes server-side if a downstream model needs a different sample rate, so you always send 24 kHz from the browser.
+The server transcodes if a downstream model needs a different sample rate, so you always send 24 kHz from the browser.
 
 ### Browser → server control frames (text)
 
 | Body | Effect |
 |------|--------|
-| `{ "type": "interrupt" }` | Cuts the agent mid-sentence (barge-in). Use this when the user starts speaking again before the agent finishes. The bridge confirms with a `clear` frame back. |
-| `{ "type": "end" }` | Graceful disconnect: the bridge flushes its buffers, emits a final transcript + `session_end` frame, then closes. |
+| `{ "type": "interrupt" }` | Cuts the agent mid-sentence (barge-in). Use this when the user starts speaking again before the agent finishes. The server confirms with a `clear` frame back. |
+| `{ "type": "end" }` | Graceful disconnect: the server flushes its buffers, emits a final transcript + `session_end` frame, then closes. |
 
-> **Mute is client-side, not a server frame.** The bridge has no `mute` handler, so toggle the mic `MediaStreamTrack.enabled = false` (or stop posting audio frames from your worklet) instead. Sending `{type:"mute"}` is silently ignored.
+> **Mute is client-side, not a server frame.** The server has no `mute` frame, so toggle the mic `MediaStreamTrack.enabled = false` (or stop posting audio frames from your worklet) instead. Sending `{type:"mute"}` is silently ignored.
 
 ### Server → browser frames
 
 | Body / type | Notes |
 |-------------|-------|
-| `{ "type": "connecting" }` | Sent right after the bridge accepts your `session_start`. Handshake is in progress; the realtime model is being warmed up. UI can show a "connecting" state. |
+| `{ "type": "connecting" }` | Sent right after the server accepts your `session_start`. Handshake is in progress; the realtime model is being warmed up. UI can show a "connecting" state. |
 | `{ "type": "ready" }` | Agent prep + model session are live; start the mic-capture pipeline and send audio frames from this point on. |
 | `{ "type": "transcript", "role": "user"\|"ai", "text": "…", "ts": <epoch-ms> }` | Live transcript pair, same content that goes into the operator panel chat. **Note the field name is `text` (not `content`) and the agent role is `"ai"` (not `"agent"`).** `ts` is server time in ms since epoch. |
-| `{ "type": "clear" }` | Barge-in confirmation: the bridge has discarded the agent utterance still in flight. Drop every `AudioBufferSourceNode` you've already scheduled and stop appending new audio until you see `resume`. |
+| `{ "type": "clear" }` | Barge-in confirmation: the server has discarded the agent utterance still in flight. Drop every `AudioBufferSourceNode` you've already scheduled and stop appending new audio until you see `resume`. |
 | `{ "type": "resume" }` | A new agent utterance is starting after a `clear`. Resume normal binary-frame playback. |
 | Binary frame | Agent audio chunk: `<correlationId>\|<int16-pcm-24khz-mono>`. Strip the prefix and feed the PCM tail to Web Audio. |
-| `{ "type": "session_end", "reason": "...", "message"?: "..." }` | Terminal frame, immediately followed by a clean `ws.close(1000, …)`. **All errors and graceful ends arrive here**. There is no separate `error` frame. `reason` is `rejected` (the call could not start or was turned away), `spend_limit` (a [spend limit](/docs/spend-limits) was reached during the call), `balance` (the balance ran out during the call) or `ended` (any other end; [Call History](/docs/integration-twiliovoice-skills#call-history) has the detail in `endReason`). `message`, when present, is a short sentence you can show. With `spend_limit` and `balance` the bridge lets the reply that is playing finish first and sends no `message`, so show your own text. |
+| `{ "type": "session_end", "reason": "...", "message"?: "..." }` | Terminal frame, immediately followed by a clean `ws.close(1000, …)`. **All errors and graceful ends arrive here**. There is no separate `error` frame. `reason` is `rejected` (the call could not start or was turned away), `spend_limit` (a [spend limit](/docs/spend-limits) was reached during the call), `balance` (the balance ran out during the call) or `ended` (any other end; [Call History](/docs/integration-twiliovoice-skills#call-history) has the detail in `endReason`). `message`, when present, is a short sentence you can show. With `spend_limit` and `balance` the server lets the reply that is playing finish first and sends no `message`, so show your own text. |
 
 ### Session lifetime
 
 - The `sessionToken` handle is valid for **300 seconds** from issue (until `expiresAt`) and works once, so the browser must send `session_start` before then. To connect again, call `WebStart` for fresh handles, since there's no in-band refresh.
-- Once the bridge accepts your `session_start` frame, the 5-minute release timer no longer applies to the call. Live call audio is billed to the agent's Wiro project; the time before the browser connects carries no audio charge.
+- Once the server accepts your `session_start` frame, the 5-minute release timer no longer applies to the call. Live call audio is billed to the agent's Wiro project; the time before the browser connects carries no audio charge.
 
 ## Rate Limits
 
@@ -331,7 +330,7 @@ The bridge transcodes server-side if a downstream model needs a different sample
 | 200  | none       | `This agent belongs to a team. Switch to the team context to access it.` | Team agent called from a personal workspace or personal project key by a caller who is no longer a member of the agent's team. |
 | 200  | none       | `This agent belongs to a different team.` | Team agent called from another team's workspace or project key by a caller who is no longer a member of the agent's team. |
 | 200  | none       | `Agent is not running`   | Useragent is not in `status: 4`. Start it via `POST /UserAgent/Start` first. |
-| 200  | none       | `util-web-channel not enabled` | Toggle `util-web-channel` via `POST /UserAgent/SkillsApply` (custom agents) or pick a preset that bundles it (Voice Receptionist / Voice Sales Rep). |
+| 200  | none       | `util-web-channel not enabled` | Turn on Web Voice Channel (`util-web-channel`) with Voice Receptionist Rules (`util-voice-receptionist`) and Voice Call Prep Rules (`util-voice-call-prep`) in one `POST /UserAgent/SkillsApply` call, or pick the Voice Receptionist template, which bundles it. |
 | 403  | none       | `Web voice from this origin needs an API key.` | Bearer auth call with an Origin outside the Wiro allow-list. Either switch to API-key auth or call from an allow-listed origin. |
 | 429  | none       | `Rate limit: max N web voice sessions per hour` | Operator burned through the per-hour cap. Wait for the fixed-window expiry. |
 | 500  | none       | `internal error`         | Unexpected backend failure: check `POST /UserAgent/Logs` for context. |
@@ -345,5 +344,5 @@ The bridge transcodes server-side if a downstream model needs a different sample
 - [Twilio Voice](/docs/integration-twiliovoice-skills): pair the same agent with a real phone number for inbound PSTN calls. Both channels surface in the same [Call History](/docs/integration-twiliovoice-skills#call-history) feed.
 - [Realtime Voice Conversation](/docs/realtime-voice-conversation): the underlying model-level realtime protocol (used by `wiro.ai/models/openai/gpt-realtime-mini`, etc.). Web Channel is the agent-aware wrapper around it.
 - [Agent Overview](/docs/agent-overview): useragent statuses, plans, AI usage and the balance, and the rest of the agent surface.
-- [Agent Skills](/docs/agent-skills): toggling `util-web-channel` on any agent.
+- [Agent Skills](/docs/agent-skills): turning on Web Voice Channel (`util-web-channel`) on any agent.
 - [Agent Use Cases: Voice Receptionist](/docs/agent-use-cases), the preset that ships Web + Twilio channels on by default.

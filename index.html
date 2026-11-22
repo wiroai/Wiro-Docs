@@ -33969,7 +33969,7 @@ page &lt;&gt; binary RFB 3.8 frames: noVNC draws the agent's browser, view only
 </div>
 </div>
 <blockquote>
-<p>Read responses from <code>POST /UserAgent/Detail</code> expose the composed <code>customskills[]</code> array (preference skills + non-cron user-created skills), the <code>scheduledskills[]</code> array (scheduled tasks), and the <code>skills[]</code> array as top-level fields on the useragent object. <code>skills[]</code> is an <strong>object array</strong>: each entry is <code>{ name, enabled, _edited?, _user_created? }</code> (e.g. <code>[{ "name": "util-weather", "enabled": true }, { "name": "util-diagram", "enabled": true }]</code>).</p>
+<p>Read responses from <code>POST /UserAgent/Detail</code> expose the composed <code>customskills[]</code> array (preference skills + non-cron user-created skills), the <code>scheduledskills[]</code> array (scheduled tasks), and the <code>skills[]</code> array as top-level fields on the useragent object. <code>skills[]</code> is an <strong>object array</strong>: it holds only the Skills that are on, each <code>{ name, enabled: true, _edited, _user_created }</code> (e.g. <code>[{ "name": "util-diagram", "enabled": true, "_edited": false, "_user_created": false }, { "name": "util-weather", "enabled": true, "_edited": true, "_user_created": false }]</code>).</p>
 </blockquote>
 <h2 id="skill-registry-vs-custom-skills">Skill Registry vs Custom Skills</h2>
 <p>Two concepts share the word "skill" in the agent system, and connectors give them their tools. Keep them straight:</p>
@@ -33987,7 +33987,7 @@ page &lt;&gt; binary RFB 3.8 frames: noVNC draws the agent's browser, view only
 <tbody>
 <tr>
 <td><strong>Registry skills</strong></td>
-<td>Platform-shipped Skills (<code>util-*</code>): rule sets, playbooks and tools that need no outside account, such as <code>util-weather</code>, <code>util-diagram</code> and <code>util-video-creator</code>. Wiro defines them, and every plan includes them.</td>
+<td>Platform-shipped Skills (<code>util-*</code>): rule sets, playbooks, the voice channels and tools, such as Weather (<code>util-weather</code>), Diagrams (<code>util-diagram</code>) and Video Creator (<code>util-video-creator</code>). Wiro defines them, and every plan includes them.</td>
 <td>Wiro's skill registry.</td>
 <td><code>POST /Skills/List</code> / <code>POST /Skills/Detail</code> (read), <code>POST /UserAgent/SkillsApply</code> (toggle on/off per useragent).</td>
 </tr>
@@ -34028,7 +34028,7 @@ page &lt;&gt; binary RFB 3.8 frames: noVNC draws the agent's browser, view only
 <td><code>category</code></td>
 <td>string</td>
 <td>No</td>
-<td>Filter by category. Every registry skill is <code>"util"</code>: rule sets, playbooks, and keyless tools such as weather and diagrams.</td>
+<td>Filter by category. Every registry skill is <code>"util"</code>: rule sets, playbooks, the voice channels and tools such as weather and diagrams.</td>
 </tr>
 <tr>
 <td><code>capability</code></td>
@@ -34131,7 +34131,7 @@ page &lt;&gt; binary RFB 3.8 frames: noVNC draws the agent's browser, view only
 <tr>
 <td><code>category</code></td>
 <td><code>string</code></td>
-<td><code>"util"</code>: rule sets, playbooks, and keyless tools such as weather and diagrams.</td>
+<td><code>"util"</code>: rule sets, playbooks, the voice channels and tools such as weather and diagrams.</td>
 </tr>
 <tr>
 <td><code>version</code></td>
@@ -34151,7 +34151,7 @@ page &lt;&gt; binary RFB 3.8 frames: noVNC draws the agent's browser, view only
 <tr>
 <td><code>icon</code></td>
 <td><code>string</code></td>
-<td>A LineIcons class name, such as <code>lni lni-cloud-sun</code>, or a path or URL to an icon (relative paths are absolutized to <code>https://wiro.ai/...</code> on the wire).</td>
+<td>A LineIcons class name, such as <code>lni lni-cloud-sun</code>, or a path on wiro.ai, such as <code>/images/icons/skills/twilio.svg</code>: prefix a path with <code>https://wiro.ai</code>.</td>
 </tr>
 <tr>
 <td><code>brand_color</code></td>
@@ -34171,7 +34171,7 @@ page &lt;&gt; binary RFB 3.8 frames: noVNC draws the agent's browser, view only
 <tr>
 <td><code>docs_url</code></td>
 <td><code>string|null</code></td>
-<td>The page about the skill, when it has one: a slug or path on this docs site, which frontends prefix with <code>/docs/</code>, such as <code>integration-twiliovoice-skills</code> for <code>util-twilio-channel</code>, or a full <code>https</code> address, used as it is, such as <code>https://wiro.ai/connectors/google-play</code> for <code>util-googleplay-events</code>, whose page is its connector's. Empty when there is none.</td>
+<td>The page about the skill, when it has one: a slug or path on this docs site, which frontends prefix with <code>/docs/</code>, such as <code>integration-twiliovoice-skills</code> for Twilio Voice Channel (<code>util-twilio-channel</code>), or a full <code>https</code> address, used as it is, such as <code>https://wiro.ai/connectors/google-play</code> for Google Play Promotional Content (<code>util-googleplay-events</code>), whose page is its connector's. Empty when there is none.</td>
 </tr>
 <tr>
 <td><code>requires_credentials</code></td>
@@ -34194,9 +34194,14 @@ page &lt;&gt; binary RFB 3.8 frames: noVNC draws the agent's browser, view only
 <td>High-level snake_case capability tags from the closed vocabulary returned by <a href="#post-skillscapabilities"><code>POST /Skills/Capabilities</code></a>. Drives the "Find skills that can: ___" picker.</td>
 </tr>
 <tr>
+<td><code>suggested_connectors</code></td>
+<td><code>array&lt;string&gt;</code></td>
+<td><strong>Optional: only present when set.</strong> The connectors the skill works with, by catalog slug, such as <code>["google-ads", "meta-ads", "tiktok-ads"]</code> on Ads Manager Common Rules (<code>util-ads-manager-common</code>). Nothing connects by itself: connect the ones you want with <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>POST /UserAgent/ConnectorConnect</code></a>. An <code>add</code> setup card names up to 3 of them that aren't connected yet in its <code>needs</code> (see <a href="/docs/agent-messaging#setup-from-chat">Setup From Chat</a>).</td>
+</tr>
+<tr>
 <td><code>depends_on</code></td>
 <td><code>array&lt;string&gt;</code></td>
-<td>Other skill names that must be enabled. Wiro auto-enables transitive deps when you toggle the parent skill on.</td>
+<td>Other skill names that must be on while this one is. Deploy's <code>skills</code> and an <code>add</code> setup card turn them on with it. <code>SkillsApply</code> turns on only the names you send and refuses, with code <code>101</code> and <code>deps[]</code>, a change that leaves one of them off, so send them in the same call.</td>
 </tr>
 <tr>
 <td><code>conflicts_with</code></td>
@@ -34206,7 +34211,7 @@ page &lt;&gt; binary RFB 3.8 frames: noVNC draws the agent's browser, view only
 <tr>
 <td><code>user_invocable</code></td>
 <td><code>boolean</code></td>
-<td><code>true</code> when end users can call the skill via chat. <code>false</code> marks supporting parts that come with another skill, such as <code>util-video-shots</code> and <code>util-video-docs</code>, which come with <code>util-video-creator</code>.</td>
+<td><code>true</code> when end users can call the skill via chat. <code>false</code> marks supporting parts that come with another skill, such as Video Story &amp; Shots (<code>util-video-shots</code>) and Document Videos (<code>util-video-docs</code>), which come with Video Creator (<code>util-video-creator</code>).</td>
 </tr>
 <tr>
 <td><code>deprecated</code></td>
@@ -34234,7 +34239,7 @@ Skill filters do not remove channel rows. Each channel includes its stable
 to render channel setup. Save the matching credential group through
 <a href="/docs/agent-overview#post-useragentcredentialupsert"><code>UserAgent/CredentialUpsert</code></a>;
 the channel activates automatically when every <code>required_fields</code> value is
-complete. Channels are not skills and do not affect pricing.</p>
+complete. These channels (Telegram, Slack, Discord) are not Skills and do not affect pricing.</p>
 <p><strong><code>pricing</code> object:</strong></p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -34358,52 +34363,26 @@ complete. Channels are not skills and do not affect pricing.</p>
   &quot;result&quot;: true,
   &quot;errors&quot;: [],
   &quot;capabilities&quot;: [
-    { &quot;name&quot;: &quot;direct_reporting&quot;,         &quot;description&quot;: &quot;Generates direct reports on request&quot; },
-    { &quot;name&quot;: &quot;attribution_cross_check&quot;,  &quot;description&quot;: &quot;Cross-check platform conversions vs GA4 paid traffic&quot; },
-    { &quot;name&quot;: &quot;cross_check&quot;,              &quot;description&quot;: &quot;Cross-system data validation&quot; },
-    { &quot;name&quot;: &quot;campaign_management&quot;,      &quot;description&quot;: &quot;Create/pause/modify ad campaigns&quot; },
-    { &quot;name&quot;: &quot;campaign_reporting&quot;,       &quot;description&quot;: &quot;Campaign performance reports&quot; },
     { &quot;name&quot;: &quot;approval_flow&quot;,            &quot;description&quot;: &quot;Approval commands for actions that wait for your approval&quot; },
     { &quot;name&quot;: &quot;recommendation_ledger&quot;,    &quot;description&quot;: &quot;Recommendation queue/log management&quot; },
-    { &quot;name&quot;: &quot;recommendation_execution&quot;, &quot;description&quot;: &quot;Execute approved recommendations&quot; },
-    { &quot;name&quot;: &quot;content_generation&quot;,       &quot;description&quot;: &quot;Generate content (text, media)&quot; },
-    { &quot;name&quot;: &quot;creative_generation&quot;,      &quot;description&quot;: &quot;Generate ad creatives&quot; },
-    { &quot;name&quot;: &quot;image_generation&quot;,         &quot;description&quot;: &quot;Generate images&quot; },
     { &quot;name&quot;: &quot;video_generation&quot;,         &quot;description&quot;: &quot;Generate videos&quot; },
     { &quot;name&quot;: &quot;motion_graphics&quot;,          &quot;description&quot;: &quot;Compose and render motion graphics (HTML/CSS/GSAP animations, sound effects, transitions) to video&quot; },
-    { &quot;name&quot;: &quot;audio_generation&quot;,         &quot;description&quot;: &quot;Generate audio / voice clips (TTS, music, SFX)&quot; },
-    { &quot;name&quot;: &quot;realtime_conversation&quot;,    &quot;description&quot;: &quot;Bidirectional realtime audio/text conversation (Wiro realtime, OpenAI realtime)&quot; },
-    { &quot;name&quot;: &quot;vision&quot;,                   &quot;description&quot;: &quot;Vision LLM analysis of images (caption, describe, OCR, visual QA)&quot; },
     { &quot;name&quot;: &quot;human_copywriting&quot;,        &quot;description&quot;: &quot;Enforce anti-AI human copy rules&quot; },
     { &quot;name&quot;: &quot;anti_ai_tone&quot;,             &quot;description&quot;: &quot;Reject AI-generated tone patterns&quot; },
-    { &quot;name&quot;: &quot;memory_management&quot;,        &quot;description&quot;: &quot;Keep the agent's memory files tidy (size limits, trimming, removing duplicates)&quot; },
     { &quot;name&quot;: &quot;markdown_reporting&quot;,       &quot;description&quot;: &quot;Structured markdown reports (tables, code blocks, splits)&quot; },
     { &quot;name&quot;: &quot;store_review_response&quot;,    &quot;description&quot;: &quot;Craft App Store / Google Play review responses&quot; },
     { &quot;name&quot;: &quot;outreach_compliance&quot;,      &quot;description&quot;: &quot;Outreach PII/opt-out/consent rules (GDPR, CAN-SPAM)&quot; },
-    { &quot;name&quot;: &quot;web_publishing&quot;,           &quot;description&quot;: &quot;Publish web content (WordPress, etc.)&quot; },
     { &quot;name&quot;: &quot;email_publishing&quot;,         &quot;description&quot;: &quot;Send emails / newsletters&quot; },
     { &quot;name&quot;: &quot;social_publishing&quot;,        &quot;description&quot;: &quot;Post to social platforms (Twitter, IG, FB, LI, TikTok)&quot; },
-    { &quot;name&quot;: &quot;push_notification&quot;,        &quot;description&quot;: &quot;Send push notifications (FCM)&quot; },
-    { &quot;name&quot;: &quot;lead_enrichment&quot;,          &quot;description&quot;: &quot;Enrich prospect data (Apollo, HubSpot)&quot; },
-    { &quot;name&quot;: &quot;sequence_automation&quot;,      &quot;description&quot;: &quot;Run outreach sequences (Lemlist, Apollo)&quot; },
     { &quot;name&quot;: &quot;multi_platform_detection&quot;, &quot;description&quot;: &quot;Auto-detect available platforms&quot; },
-    { &quot;name&quot;: &quot;holiday_discovery&quot;,        &quot;description&quot;: &quot;Discover global holidays (Calendarific)&quot; },
-    { &quot;name&quot;: &quot;product_feed_management&quot;,  &quot;description&quot;: &quot;Manage product feeds (Merchant Center)&quot; },
-    { &quot;name&quot;: &quot;commerce_management&quot;,      &quot;description&quot;: &quot;Manage storefront catalogs, inventory, orders, customers, discounts, and fulfillment workflows&quot; },
-    { &quot;name&quot;: &quot;review_monitoring&quot;,        &quot;description&quot;: &quot;Monitor store reviews (App Store, Google Play)&quot; },
-    { &quot;name&quot;: &quot;app_metadata&quot;,             &quot;description&quot;: &quot;Fetch app store metadata (description, pricing, features)&quot; },
     { &quot;name&quot;: &quot;event_management&quot;,         &quot;description&quot;: &quot;Manage app events (App Store in-app events)&quot; },
-    { &quot;name&quot;: &quot;file_asset_management&quot;,    &quot;description&quot;: &quot;Manage asset files from cloud storage (Drive)&quot; },
     { &quot;name&quot;: &quot;voice_call_handling&quot;,      &quot;description&quot;: &quot;Receive and handle inbound voice calls via Twilio or web browser&quot; },
     { &quot;name&quot;: &quot;caller_identification&quot;,    &quot;description&quot;: &quot;Match caller phone number against CRM records (HubSpot, Apollo)&quot; },
     { &quot;name&quot;: &quot;live_transcript&quot;,          &quot;description&quot;: &quot;Stream real-time call transcripts to your chat&quot; },
     { &quot;name&quot;: &quot;voice_persona&quot;,            &quot;description&quot;: &quot;Configure AI voice persona (alloy/echo/etc) for phone interactions&quot; },
     { &quot;name&quot;: &quot;phone_inbound&quot;,            &quot;description&quot;: &quot;Accept inbound PSTN phone calls (Twilio)&quot; },
     { &quot;name&quot;: &quot;browser_voice&quot;,            &quot;description&quot;: &quot;Accept inbound voice calls from website browser (Web Audio API)&quot; },
-    { &quot;name&quot;: &quot;appointment_management&quot;,   &quot;description&quot;: &quot;Manage calendar appointments (find slots, create events)&quot; },
-    { &quot;name&quot;: &quot;calendar_lookup&quot;,          &quot;description&quot;: &quot;Read calendar/availability data (Google Calendar)&quot; },
     { &quot;name&quot;: &quot;realtime_session_prep&quot;,    &quot;description&quot;: &quot;Gets a call ready before realtime audio starts: reads your own skills, starts the realtime model and connects the call&quot; },
-    { &quot;name&quot;: &quot;web_search&quot;,               &quot;description&quot;: &quot;Search the public web (Google Programmable Search / Custom Search JSON API)&quot; },
     { &quot;name&quot;: &quot;weather_lookup&quot;,           &quot;description&quot;: &quot;Current weather and forecasts for any place (MET Norway, OpenStreetMap geocoding)&quot; },
     { &quot;name&quot;: &quot;diagram_rendering&quot;,        &quot;description&quot;: &quot;Render diagrams (Mermaid flowcharts, sequence, state and ER diagrams, mind maps, timelines; agent-drawn SVG) to PNG with an SVG copy&quot; }
   ]
@@ -34424,6 +34403,8 @@ complete. Channels are not skills and do not affect pricing.</p>
       &quot;value&quot;: &quot;## Brand Voice\nTone: friendly, casual, never salesy.\nTarget Audience: indie devs and side-project builders.\n\n## Hashtag Strategy\nMax 3 per post. Always include #BuildInPublic and #Indie.\n\n## Platform Rules\n- Instagram: square images only, carousels for tutorials.\n- Twitter: thread format for posts longer than 200 chars.&quot;,
       &quot;enabled&quot;: true,
       &quot;interval&quot;: null,
+      &quot;requires_credentials&quot;: [],
+      &quot;requires_connectors&quot;: [],
       &quot;_source&quot;: &quot;preset-strategy&quot;,
       &quot;_editable&quot;: true,
       &quot;_edited&quot;: true
@@ -34436,6 +34417,8 @@ complete. Channels are not skills and do not affect pricing.</p>
       &quot;value&quot;: &quot;Scan the configured RSS / sitemap sources, dedupe against last 14 days, and queue up to 3 fresh items into the post pipeline.&quot;,
       &quot;enabled&quot;: true,
       &quot;interval&quot;: &quot;0 */4 * * *&quot;,
+      &quot;requires_credentials&quot;: [],
+      &quot;requires_connectors&quot;: [&quot;facebook-pages&quot;, &quot;instagram&quot;, &quot;linkedin&quot;, &quot;tiktok&quot;, &quot;twitter&quot;],
       &quot;_source&quot;: &quot;skill-bundle&quot;,
       &quot;_editable&quot;: true,
       &quot;_edited&quot;: false
@@ -34446,6 +34429,8 @@ complete. Channels are not skills and do not affect pricing.</p>
       &quot;value&quot;: &quot;Every Monday at 09:00 UTC, summarize last week's published posts (titles + engagement) and post the recap to Telegram.&quot;,
       &quot;enabled&quot;: true,
       &quot;interval&quot;: &quot;0 9 * * 1&quot;,
+      &quot;requires_credentials&quot;: [],
+      &quot;requires_connectors&quot;: [],
       &quot;_source&quot;: &quot;user-created&quot;,
       &quot;_editable&quot;: true,
       &quot;_edited&quot;: false,
@@ -34453,9 +34438,8 @@ complete. Channels are not skills and do not affect pricing.</p>
     }
   ],
   &quot;skills&quot;: [
-    { &quot;name&quot;: &quot;util-social-posting-common&quot;, &quot;enabled&quot;: true },
-    { &quot;name&quot;: &quot;util-weather&quot;, &quot;enabled&quot;: false },
-    { &quot;name&quot;: &quot;util-chat-markdown-reporting&quot;, &quot;enabled&quot;: true }
+    { &quot;name&quot;: &quot;util-chat-markdown-reporting&quot;, &quot;enabled&quot;: true, &quot;_edited&quot;: false, &quot;_user_created&quot;: false },
+    { &quot;name&quot;: &quot;util-social-posting-common&quot;, &quot;enabled&quot;: true, &quot;_edited&quot;: false, &quot;_user_created&quot;: false }
   ]
 }
 </code></pre>
@@ -34481,7 +34465,7 @@ complete. Channels are not skills and do not affect pricing.</p>
 <tr>
 <td><code>value</code></td>
 <td>string</td>
-<td>Skill instructions / cron prompt body. Populated only for editable preference skills and user-created entries; bundled crons have it empty.</td>
+<td>The text of the preference or task: the one you wrote, or else the template's.</td>
 </tr>
 <tr>
 <td><code>description</code></td>
@@ -34499,19 +34483,29 @@ complete. Channels are not skills and do not affect pricing.</p>
 <td>Cron expression for scheduled execution, or <code>null</code> for preference skills. Writable on scheduled tasks; ignored on preferences.</td>
 </tr>
 <tr>
+<td><code>requires_connectors</code></td>
+<td>string[]</td>
+<td>Scheduled tasks only (<code>[]</code> on preferences): the connectors the task works with, by catalog slug. The task runs only while at least one of them is connected, that is, its row on <a href="/docs/agent-connectors#post-useragentconnectorlist"><code>POST /UserAgent/ConnectorList</code></a> has <code>status: "connected"</code> and <code>catalogstatus: "active"</code>; until then the agent skips every run. This gate never changes <code>enabled</code>: a task waiting for a connector can still read <code>enabled: true</code>. <code>[]</code> means no connector gate; a task you add with <code>CustomSkillUpsert</code> has <code>[]</code>.</td>
+</tr>
+<tr>
+<td><code>requires_credentials</code></td>
+<td>string[]</td>
+<td>The channels and settings the task needs, by credential key, such as <code>telegram</code>: one of them set up is enough. Saving or clearing one of them turns the task on or off. Usually <code>[]</code>.</td>
+</tr>
+<tr>
 <td><code>_source</code></td>
 <td>string</td>
-<td><code>preset-strategy</code> (editable preference), <code>skill-bundle</code> (a scheduled task that comes with the agent template), or <code>user-created</code> (cron added via <code>CustomSkillUpsert</code>).</td>
+<td><code>preset-strategy</code> (editable preference), <code>skill-bundle</code> (a scheduled task that comes with the agent template; on a custom build, any row the agent came with, such as Approval Policy), or <code>user-created</code> (a row added via <code>CustomSkillUpsert</code>).</td>
 </tr>
 <tr>
 <td><code>_editable</code></td>
 <td>boolean</td>
-<td>Convenience flag: <code>true</code> for preset strategies and user-created rows (you can write <code>value</code>), <code>false</code> for template scheduled tasks (you can only write <code>enabled</code> / <code>interval</code>).</td>
+<td><code>true</code> for preferences, your own rows and the scheduled tasks the template marks editable, <code>false</code> for its other scheduled tasks. On a template agent, every scheduled task that came with the template runs the template's text, whatever <code>value</code> you write; a custom build runs the text you write.</td>
 </tr>
 <tr>
 <td><code>_user_created</code></td>
 <td>boolean</td>
-<td>Present (and <code>true</code>) only on <code>_source: "user-created"</code> rows. Omitted on preset strategies and skill-bundled crons.</td>
+<td><code>true</code> on rows you created (<code>_source: "user-created"</code>). A template's own rows leave it out; on a custom build, the rows the agent came with read <code>false</code>.</td>
 </tr>
 </tbody>
 </table>
@@ -34521,7 +34515,7 @@ complete. Channels are not skills and do not affect pricing.</p>
 <p>Agent responses merge three sources into a single set of custom-skill rows:</p>
 <ol>
 <li><strong>Preset strategies</strong> (<code>_source: "preset-strategy"</code>): preferences defined by the agent preset (e.g. <code>cs-content-tone</code>, <code>cs-ad-strategy</code>). You can write <code>value</code>.</li>
-<li><strong>Bundled crons</strong> (<code>_source: "skill-bundle"</code>): scheduled tasks that come with the agent template, such as a daily performance report. A task that works with a connector stays off until that connector is connected. You can write <code>interval</code> and <code>enabled</code>, but <strong>not</strong> <code>value</code> (the template owns the task's instruction text).</li>
+<li><strong>Bundled crons</strong> (<code>_source: "skill-bundle"</code>): scheduled tasks that come with the agent template, such as a daily performance report. A task that works with connectors runs only while one of them is connected, and that never changes its <code>enabled</code>. You can write <code>interval</code> and <code>enabled</code>. A <code>value</code> you write is saved, but on a template agent the task keeps running the template's instruction text. On a custom build, the rows the agent came with, such as the tasks its Skills bring, read <code>skill-bundle</code> too and run the text you write.</li>
 <li><strong>User-created rows</strong> (<code>_source: "user-created"</code>): entries added via <code>POST /UserAgent/CustomSkillUpsert</code>. You can write all fields. Crons are flagged via <code>interval</code> (or an explicit <code>cs-cron-</code> prefix), not <code>usercreated</code>.</li>
 </ol>
 <h2 id="updating-preference-skills">Updating Preference Skills</h2>
@@ -34549,9 +34543,9 @@ complete. Channels are not skills and do not affect pricing.</p>
   }'
 </code></pre>
 <h2 id="managing-scheduled-tasks">Managing Scheduled Tasks</h2>
-<p>Scheduled tasks run on a cron schedule: bundled ones (<code>_source: "skill-bundle"</code>) come with the agent template, and one that works with connectors stays off until one of them is connected. User-created ones (<code>_source: "user-created"</code>) are added at any time.</p>
+<p>Scheduled tasks run on a cron schedule: bundled ones (<code>_source: "skill-bundle"</code>) come with the agent template, and a new agent starts with them turned on (<code>enabled: true</code>); one that works with connectors runs only while one of them is connected. User-created ones (<code>_source: "user-created"</code>) are added at any time.</p>
 <blockquote>
-<p><strong>For bundled crons, only <code>enabled</code> and <code>interval</code> are writable.</strong> The task body (<code>value</code>) comes from the agent template and is restored whenever the agent restarts. To change <strong>what</strong> a bundled scheduled task does, edit the paired preference skill (e.g. <code>content-tone</code> is read by <code>cs-cron-social-content-scanner</code> at runtime). For user-created crons, all three (<code>value</code>, <code>interval</code>, <code>enabled</code>) are writable.</p>
+<p><strong>On a template agent, bundled crons run the template's text.</strong> Write <code>enabled</code> and <code>interval</code>: a <code>value</code> you send is saved and shown on <code>UserAgent/Detail</code>, but the agent keeps running the task body (<code>value</code>) the template has. To change <strong>what</strong> a bundled scheduled task does, edit the paired preference skill (e.g. <code>content-tone</code> is read by <code>cs-cron-social-content-scanner</code> at runtime). For user-created crons, and for every cron of a custom build, all three (<code>value</code>, <code>interval</code>, <code>enabled</code>) take effect.</p>
 </blockquote>
 <h3 id="example-change-a-bundled-crons-frequency">Example: Change a bundled cron's frequency</h3>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
@@ -34597,7 +34591,13 @@ complete. Channels are not skills and do not affect pricing.</p>
     &quot;skillkey&quot;: &quot;cs-cron-weekly-health-check&quot;
   }'
 </code></pre>
-<p>Preset-owned crons cannot be deleted: the call returns <code>This skill belongs to the agent preset and cannot be deleted. Use enabled=false to disable it instead.</code> with <code>suggestion: "disable-via-upsert"</code>. Disable them via <code>CustomSkillUpsert</code> + <code>enabled: false</code>.</p>
+<p>A task or preference the agent came with, from its template or, on a custom build, from a Skill or from Wiro (such as Approval Policy), can't be deleted: the call answers <code>customskill-registry-not-deletable</code> (<code>customskill-preset-not-deletable</code> for one you created whose key the template also has) with <code>suggestion: "disable-via-upsert"</code>, and nothing changes. Disable it via <code>CustomSkillUpsert</code> + <code>enabled: false</code> instead.</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: false,
+  &quot;errors&quot;: [{ &quot;code&quot;: 0, &quot;message&quot;: &quot;customskill-registry-not-deletable&quot; }],
+  &quot;suggestion&quot;: &quot;disable-via-upsert&quot;
+}
+</code></pre>
 <h3 id="example-rename-a-user-created-custom-skill">Example: Rename a user-created custom skill</h3>
 <p>Only user-created rows (<code>_source: "user-created"</code>) can be renamed through <code>CustomSkillRename</code>. The skillkey flavour is preserved: a <code>cs-cron-*</code> scheduled task cannot be renamed to a <code>cs-*</code> strategy (delete + re-create with the right kind instead). The full version-history chain follows the rename under the new key, and a <code>rename</code> audit event is appended.</p>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillRename&quot; \
@@ -34655,7 +34655,7 @@ complete. Channels are not skills and do not affect pricing.</p>
 </div>
 </div>
 <h2 id="version-history-audit-and-revert">Version History: Audit and Revert</h2>
-<p>Every write through <code>CustomSkillUpsert</code> appends a row to the version history. Read it via <code>POST /UserAgent/CustomSkillHistory</code>; revert to any version (or to the preset default) via <code>POST /UserAgent/CustomSkillRevert</code>.</p>
+<p>Each change saved with <code>CustomSkillUpsert</code>, each rename and each revert adds a row to the version history. Creating a skill and a save that changes nothing add none, and <code>CustomSkillDelete</code> deletes a skill's history with it. Each entry's <code>operation</code> says what wrote it: <code>clone-deploy</code> (the copy Deploy made of a template's or a Skill's row), <code>update-user</code> (a save), <code>rename</code>, <code>reset-to-preset</code> or <code>revert-to-history</code>, or <code>update-cascade</code>, <code>insert-cascade</code> and <code>delete-cascade</code> for a template update Wiro applied. Read it via <code>POST /UserAgent/CustomSkillHistory</code>; revert to any version (or to the preset default) via <code>POST /UserAgent/CustomSkillRevert</code>.</p>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillHistory&quot; \
   -H &quot;Content-Type: application/json&quot; \
   -H &quot;x-api-key: YOUR_API_KEY&quot; \
@@ -34678,7 +34678,7 @@ complete. Channels are not skills and do not affect pricing.</p>
       &quot;guid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
       &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
       &quot;skillkey&quot;: &quot;cs-content-tone&quot;,
-      &quot;operation&quot;: &quot;upsert&quot;,
+      &quot;operation&quot;: &quot;update-user&quot;,
       &quot;value&quot;: &quot;## Brand Voice\nTone: professional...&quot;,
       &quot;intervalexpr&quot;: null,
       &quot;enabled&quot;: true,
@@ -34706,7 +34706,7 @@ complete. Channels are not skills and do not affect pricing.</p>
       &quot;guid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;,
       &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
       &quot;skillkey&quot;: &quot;cs-content-tone&quot;,
-      &quot;operation&quot;: &quot;upsert&quot;,
+      &quot;operation&quot;: &quot;update-user&quot;,
       &quot;value&quot;: &quot;## Brand Voice\nTone: friendly...&quot;,
       &quot;intervalexpr&quot;: null,
       &quot;enabled&quot;: true,
@@ -34757,7 +34757,7 @@ complete. Channels are not skills and do not affect pricing.</p>
 </code></pre>
 <p>The response carries the post-revert state (<code>current_value</code>, <code>current_interval</code>, <code>current_enabled</code>) so the UI can refresh without a full <code>Detail</code> round-trip.</p>
 <h2 id="turning-skills-on-and-off">Turning Skills On and Off</h2>
-<p>The top-level <code>skills[]</code> array on <code>UserAgent/Detail</code> lists every Skill on the instance as an <strong>object array</strong>: <code>[{ name, enabled, _edited?, _user_created? }, ...]</code>. <code>enabled: false</code> entries are still returned (so a UI can show disabled rows); filter on <code>enabled: true</code> to get only the active set. Example: <code>[{ "name": "util-weather", "enabled": true }, { "name": "util-diagram", "enabled": false }]</code>. To enable or disable several skills in one shot, use <strong><code>POST /UserAgent/SkillsApply</code></strong>. Even when you only want to flip a single skill, send it as a one-entry <code>skills</code> map. Connectors are not in this list: a connected connector is on (see <a href="/docs/agent-connectors">Agent Connectors</a>). The endpoint:</p>
+<p>The top-level <code>skills[]</code> array on <code>UserAgent/Detail</code> lists the Skills that are on, as an <strong>object array</strong> sorted by name: <code>[{ name, enabled: true, _edited, _user_created }, ...]</code>. A Skill that is off is not in it, so <code>enabled</code> is always <code>true</code>; the full catalog of Skills is on <a href="#post-skillslist"><code>POST /Skills/List</code></a>. <code>_edited</code> is <code>true</code> for a Skill you turned on yourself rather than one the template or a dependency brought, and <code>_user_created</code> is <code>true</code> for a name neither the template nor the registry has. Example: <code>[{ "name": "util-diagram", "enabled": true, "_edited": false, "_user_created": false }, { "name": "util-weather", "enabled": true, "_edited": true, "_user_created": false }]</code>. To enable or disable several skills in one shot, use <strong><code>POST /UserAgent/SkillsApply</code></strong>. Even when you only want to flip a single skill, send it as a one-entry <code>skills</code> map. Connectors are not in this list: a connected connector is on (see <a href="/docs/agent-connectors">Agent Connectors</a>). The endpoint:</p>
 <ol>
 <li>Triggers exactly <strong>one agent restart</strong> after the new skill set lands.</li>
 <li>Uses <strong>idempotency</strong>: concurrent calls or client retries can't apply the change twice.</li>
@@ -34790,13 +34790,13 @@ complete. Channels are not skills and do not affect pricing.</p>
     }
   }'
 </code></pre>
-<p><code>idempotencyKey</code> is required: use a UUID per "user clicks Save" event. The full response shape and error-code table live on <a href="/docs/agent-overview#post-useragentskillsapply"><code>SkillsApply</code></a>.</p>
+<p><code>idempotencyKey</code> is required: use a UUID per "user clicks Save" event. A Skill whose <code>depends_on</code> would stay off is refused with code <code>101</code> and <code>deps[]</code>, and nothing changes: send its dependencies in the same call. The full response shape and error-code table live on <a href="/docs/agent-overview#post-useragentskillsapply"><code>SkillsApply</code></a>.</p>
 <blockquote>
 <p><strong>Template deploys too.</strong> <code>SkillsApply</code> works on agents deployed from a marketplace template as well as on custom builds. On a template agent, a skill you change overrides the template for that skill only; later template updates still reach every skill you never changed.</p>
-<p><strong>Scheduled tasks follow their connectors.</strong> A template's scheduled task that works with a connector, such as a daily Google Ads report, stays off while that connector isn't connected, and turns on when it is. You don't need to touch it on its own.</p>
+<p><strong>Scheduled tasks wait for their connectors.</strong> A template's scheduled task that works with a connector, such as a daily Google Ads report, runs only while that connector is connected. Connecting or disconnecting a connector never changes the task's <code>enabled</code>: a new agent starts with its template's tasks turned on, and a task that is off stays off until you turn it on with <code>CustomSkillUpsert</code> (<code>enabled: true</code>).</p>
 </blockquote>
 <h2 id="preview-a-skill-change">Preview a Skill Change</h2>
-<p>Before you commit <code>SkillsApply</code> (or the user clicks Save in your UI), call <code>POST /UserAgent/PricingPreview</code> to see the skill set the change would leave, with its <code>depends_on</code> resolved. No state is mutated, and the price and included AI usage stay the plan's: its <code>planChange</code> shows no charge. See <a href="/docs/agent-overview#post-useragentpricingpreview"><code>PricingPreview</code></a> for the full response shape.</p>
+<p>Before you commit <code>SkillsApply</code> (or the user clicks Save in your UI), call <code>POST /UserAgent/PricingPreview</code> to see the skill set the change would leave, with its <code>depends_on</code> resolved. No state is mutated, and the price and included AI usage stay the plan's: its <code>planChange</code> shows no charge. Its <code>enabledSkills</code> includes the <code>depends_on</code> skills, but <code>SkillsApply</code> does not add them: send every name <code>enabledSkills</code> adds in the same <code>SkillsApply</code> call. See <a href="/docs/agent-overview#post-useragentpricingpreview"><code>PricingPreview</code></a> for the full response shape.</p>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/PricingPreview&quot; \
   -H &quot;Content-Type: application/json&quot; \
   -H &quot;x-api-key: YOUR_API_KEY&quot; \
@@ -34843,7 +34843,7 @@ complete. Channels are not skills and do not affect pricing.</p>
   &quot;scheduledskills&quot;: [
     {
       &quot;key&quot;: &quot;cs-cron-push-scanner&quot;,
-      &quot;value&quot;: &quot;&quot;,
+      &quot;value&quot;: &quot;Scan for upcoming holidays and craft push notification suggestions.\n\n0. Read the cs-push-preferences skill first...&quot;,
       &quot;description&quot;: &quot;Scan holidays and craft push notification suggestions&quot;,
       &quot;enabled&quot;: true,
       &quot;interval&quot;: &quot;0 9 * * *&quot;,
@@ -34852,7 +34852,7 @@ complete. Channels are not skills and do not affect pricing.</p>
     },
     {
       &quot;key&quot;: &quot;cs-cron-push-dispatcher&quot;,
-      &quot;value&quot;: &quot;&quot;,
+      &quot;value&quot;: &quot;Send queued push notifications that are due.\n\n0. Read the cs-push-preferences skill first...&quot;,
       &quot;description&quot;: &quot;Send queued push notifications on schedule&quot;,
       &quot;enabled&quot;: true,
       &quot;interval&quot;: &quot;0 * * * *&quot;,
@@ -34895,7 +34895,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <h2 id="available-skills-by-agent">Available Skills by Agent</h2>
 <blockquote>
 <p><strong>Connectors:</strong> the services these agents work with (Google Ads, Meta Ads, WordPress, Brevo and the rest) are connectors, each connected with your own credentials. See <a href="/docs/agent-connectors">Agent Connectors</a>, and each connector's page at <code>https://wiro.ai/connectors/{slug}</code>.</p>
-<p><strong>Discovery is canonical.</strong> Skill keys evolve as agent templates are updated. To see the exact keys for a specific agent instance, always fetch <code>POST /UserAgent/Detail</code> first. The top-level <code>customskills</code> / <code>scheduledskills</code> arrays are the source of truth. The tables below reflect current intended keys; <code>CustomSkillUpsert</code> silently accepts keys that exist on the instance and returns <code>skill-not-found</code> for unknown keys without altering other state.</p>
+<p><strong>Discovery is canonical.</strong> Skill keys evolve as agent templates are updated. To see the exact keys for a specific agent instance, always fetch <code>POST /UserAgent/Detail</code> first. The top-level <code>customskills</code> / <code>scheduledskills</code> arrays are the source of truth. The tables below reflect current intended keys; <code>CustomSkillUpsert</code> with a key the agent doesn't have creates a user-created row: a scheduled task when you send <code>interval</code> (or a <code>cs-cron-</code> key), else a preference.</p>
 </blockquote>
 <h3 id="preferences-editable-instructions">Preferences (Editable Instructions)</h3>
 <div class="docs-param-table">
@@ -34909,6 +34909,11 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>Every template except Voice Receptionist</td>
+<td><code>approval-policy</code></td>
+<td>What waits for your approval before the agent acts, and the words that approve it</td>
+</tr>
 <tr>
 <td>Social Manager</td>
 <td><code>content-tone</code></td>
@@ -34925,12 +34930,17 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <td>Response tone, support channels</td>
 </tr>
 <tr>
+<td>Google Review Manager</td>
+<td><code>review-preferences</code></td>
+<td>Reply tone, length by rating, contact line, sign-off and house rules</td>
+</tr>
+<tr>
 <td>App Event Manager</td>
 <td><code>event-preferences</code></td>
 <td>Event regions, holiday priorities</td>
 </tr>
 <tr>
-<td>Push Notification</td>
+<td>Push Notification Manager</td>
 <td><code>push-preferences</code></td>
 <td>Push tone, language, targeting</td>
 </tr>
@@ -34946,23 +34956,28 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 </tr>
 <tr>
 <td>Google Ads Manager</td>
-<td><code>ad-strategy</code></td>
-<td>Target audience, budget goals</td>
+<td><code>ad-strategy</code>, <code>google-ads-strategy</code>, <code>audience-strategy</code>, <code>attribution-strategy</code>, <code>shopping-strategy</code>, <code>video-strategy</code>, <code>learning-phase-rules</code>, <code>adjust-strategy</code>, <code>roasit-strategy</code></td>
+<td>Target audience, budget goals; Google Ads tracking gates, kill thresholds and bidding defaults; Customer Match and remarketing audiences; attribution and conversion goals; Shopping feeds and campaigns; YouTube video campaigns; learning-phase limits; Adjust and Roasit ROAS reporting</td>
 </tr>
 <tr>
 <td>Meta Ads Manager</td>
-<td><code>ad-strategy</code></td>
-<td>Target audience, creative preferences</td>
+<td><code>ad-strategy</code>, <code>meta-ads-strategy</code>, <code>adjust-strategy</code>, <code>roasit-strategy</code></td>
+<td>Target audience, creative preferences; Meta tracking gates, attribution window, kill thresholds and placements; Adjust and Roasit ROAS reporting</td>
 </tr>
 <tr>
 <td>TikTok Ads Manager</td>
-<td><code>ad-strategy</code>, <code>tiktok-ads-strategy</code></td>
-<td>Target audience, budget goals; TikTok tracking gates, kill thresholds, placement, Spark Ads and Smart+ rules</td>
+<td><code>ad-strategy</code>, <code>tiktok-ads-strategy</code>, <code>adjust-strategy</code>, <code>roasit-strategy</code></td>
+<td>Target audience, budget goals; TikTok tracking gates, kill thresholds, placement, Spark Ads and Smart+ rules; Adjust and Roasit ROAS reporting</td>
 </tr>
 <tr>
 <td>Video Creator</td>
 <td><code>video-preferences</code>, <code>saved-logins</code></td>
 <td>Default format, length, voice, look, music, captions and ending card; test accounts for the screens behind a login</td>
+</tr>
+<tr>
+<td>Voice Receptionist</td>
+<td><code>voice-config</code></td>
+<td>Working hours, caller classification, pricing and escalation rules</td>
 </tr>
 </tbody>
 </table>
@@ -34988,13 +35003,13 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <td>Social Manager</td>
 <td><code>cs-cron-social-content-scanner</code></td>
 <td><code>0 */4 * * *</code></td>
-<td>Content discovery and draft posts with rotating strategies (reads <code>content-tone</code>; disabled by default)</td>
+<td>Content discovery and draft posts with rotating strategies (reads <code>content-tone</code>)</td>
 </tr>
 <tr>
 <td>Social Manager</td>
 <td><code>cs-cron-social-drive-scanner</code></td>
 <td><code>0 10 * * *</code></td>
-<td>Scans Google Drive for new post assets and prepares posts (disabled by default)</td>
+<td>Scans Google Drive for new post assets and prepares posts</td>
 </tr>
 <tr>
 <td>Blog Content Editor</td>
@@ -35006,19 +35021,19 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <td>Blog Content Editor</td>
 <td><code>cs-cron-blog-gmail-checker</code></td>
 <td><code>*/30 * * * *</code></td>
-<td>Checks the inbox for topic requests and writing instructions (disabled by default)</td>
+<td>Checks the inbox for topic requests and writing instructions</td>
 </tr>
 <tr>
 <td>App Review Support</td>
 <td><code>cs-cron-review-scanner</code></td>
 <td><code>0 */2 * * *</code></td>
-<td>Scans App Store and Google Play for new reviews and prepares replies (reads <code>review-preferences</code>; disabled by default)</td>
+<td>Scans App Store and Google Play for new reviews and prepares replies (reads <code>review-preferences</code>)</td>
 </tr>
 <tr>
 <td>App Event Manager</td>
 <td><code>cs-cron-app-event-scanner</code></td>
 <td><code>0 9 * * 1</code></td>
-<td>Scans global holidays and suggests App Store in-app events (reads <code>event-preferences</code>; disabled by default)</td>
+<td>Scans global holidays and suggests App Store in-app events (reads <code>event-preferences</code>)</td>
 </tr>
 <tr>
 <td>Push Notification Manager</td>
@@ -35036,31 +35051,31 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <td>Newsletter Manager</td>
 <td><code>cs-cron-newsletter-sender</code></td>
 <td><code>0 9 * * 1</code></td>
-<td>Newsletter drafting and sending (reads <code>newsletter-strategy</code>; disabled by default)</td>
+<td>Newsletter drafting and sending (reads <code>newsletter-strategy</code>)</td>
 </tr>
 <tr>
 <td>Newsletter Manager</td>
 <td><code>cs-cron-newsletter-subscriber-scanner</code></td>
 <td><code>0 10 * * *</code></td>
-<td>Daily subscriber list health check and bounce monitoring (disabled by default)</td>
+<td>Daily subscriber list health check and bounce monitoring</td>
 </tr>
 <tr>
 <td>Lead Generation Manager</td>
 <td><code>cs-cron-lead-prospect-scanner</code></td>
 <td><code>0 10 * * 1</code></td>
-<td>Weekly prospect search, enrichment and scoring (reads <code>lead-strategy</code>; disabled by default)</td>
+<td>Weekly prospect search, enrichment and scoring (reads <code>lead-strategy</code>)</td>
 </tr>
 <tr>
 <td>Lead Generation Manager</td>
 <td><code>cs-cron-lead-outreach-reporter</code></td>
 <td><code>0 9 * * *</code></td>
-<td>Daily outreach performance report (disabled by default)</td>
+<td>Daily outreach performance report</td>
 </tr>
 <tr>
 <td>Lead Generation Manager</td>
 <td><code>cs-cron-lead-reply-handler</code></td>
 <td><code>0 */4 * * *</code></td>
-<td>Checks new replies, analyzes sentiment and proposes responses (disabled by default)</td>
+<td>Checks new replies, analyzes sentiment and proposes responses</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
@@ -35090,37 +35105,37 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <td>Google Ads Manager</td>
 <td><code>cs-cron-googleads-audience-refresher</code></td>
 <td><code>0 7 * * *</code></td>
-<td>Daily Customer Match refresh from a connected CRM (HubSpot, Apollo, Lemlist) or a Google Drive CSV (disabled by default)</td>
+<td>Daily Customer Match refresh from a connected CRM (HubSpot, Apollo, lemlist) or a Google Drive CSV</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
 <td><code>cs-cron-googleads-drive-scanner</code></td>
 <td><code>0 10 * * *</code></td>
-<td>Scans Google Drive for new creative folders and proposes campaigns (disabled by default)</td>
+<td>Scans Google Drive for new creative folders and proposes campaigns</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
 <td><code>cs-cron-merchant-center-scanner</code></td>
 <td><code>30 8 * * *</code></td>
-<td>Daily Merchant Center product feed health check (runs only when Merchant Center is connected; disabled by default)</td>
+<td>Daily Merchant Center product feed health check (runs only when Merchant Center is connected)</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
 <td><code>cs-cron-ga4-attribution-auditor</code></td>
 <td><code>0 11 * * 1</code></td>
-<td>Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default)</td>
+<td>Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected)</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
 <td><code>cs-cron-adjust-creative-roas-reporter</code></td>
 <td><code>0 10 * * *</code></td>
-<td>Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default)</td>
+<td>Daily Adjust creative-level ROAS report with scale/pause recommendations</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
 <td><code>cs-cron-roasit-creative-roas-reporter</code></td>
 <td><code>30 10 * * *</code></td>
-<td>Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default)</td>
+<td>Daily Roasit creative-level ROAS report with scale/pause recommendations</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
@@ -35156,19 +35171,19 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <td>Meta Ads Manager</td>
 <td><code>cs-cron-ga4-attribution-auditor</code></td>
 <td><code>0 11 * * 1</code></td>
-<td>Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default)</td>
+<td>Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected)</td>
 </tr>
 <tr>
 <td>Meta Ads Manager</td>
 <td><code>cs-cron-adjust-creative-roas-reporter</code></td>
 <td><code>0 10 * * *</code></td>
-<td>Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default)</td>
+<td>Daily Adjust creative-level ROAS report with scale/pause recommendations</td>
 </tr>
 <tr>
 <td>Meta Ads Manager</td>
 <td><code>cs-cron-roasit-creative-roas-reporter</code></td>
 <td><code>30 10 * * *</code></td>
-<td>Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default)</td>
+<td>Daily Roasit creative-level ROAS report with scale/pause recommendations</td>
 </tr>
 <tr>
 <td>Meta Ads Manager</td>
@@ -35180,7 +35195,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <td>TikTok Ads Manager</td>
 <td><code>cs-cron-tiktokads-performance-reporter</code></td>
 <td><code>0 9 * * *</code></td>
-<td>Performance reporting per advertiser, plus the 30-day reconnect reminder (reads <code>ad-strategy</code>)</td>
+<td>Performance reporting per advertiser (reads <code>ad-strategy</code>); when the TikTok sign-in has expired it stops and says TikTok Ads needs reconnecting</td>
 </tr>
 <tr>
 <td>TikTok Ads Manager</td>
@@ -35204,19 +35219,19 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <td>TikTok Ads Manager</td>
 <td><code>cs-cron-ga4-attribution-auditor</code></td>
 <td><code>0 11 * * 1</code></td>
-<td>Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default)</td>
+<td>Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected)</td>
 </tr>
 <tr>
 <td>TikTok Ads Manager</td>
 <td><code>cs-cron-adjust-creative-roas-reporter</code></td>
 <td><code>0 10 * * *</code></td>
-<td>Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default)</td>
+<td>Daily Adjust creative-level ROAS report with scale/pause recommendations</td>
 </tr>
 <tr>
 <td>TikTok Ads Manager</td>
 <td><code>cs-cron-roasit-creative-roas-reporter</code></td>
 <td><code>30 10 * * *</code></td>
-<td>Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default)</td>
+<td>Daily Roasit creative-level ROAS report with scale/pause recommendations</td>
 </tr>
 <tr>
 <td>TikTok Ads Manager</td>
@@ -35239,7 +35254,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <ol>
 <li><code>POST /UserAgent/CustomSkillUpsert</code> writes your preference <code>value</code> for key <code>content-tone</code> (stored as <code>cs-content-tone</code>).</li>
 <li>When the agent starts, each <code>customskills</code> / <code>scheduledskills</code> row becomes a skill named by its key: a preference skill with key <code>cs-content-tone</code> becomes the skill <code>cs-content-tone</code>, and a scheduled task with key <code>cs-cron-social-content-scanner</code> becomes <code>cs-cron-social-content-scanner</code>.</li>
-<li>The scheduled task's <code>value</code> (shipped with the agent template, not user-editable) references its paired preference by its skill name, <code>cs-&lt;preference-key&gt;</code>, for example: <code>0. Read the cs-content-tone skill first and follow all its rules. 1. ...</code></li>
+<li>The scheduled task's <code>value</code> (on a template agent, always the template's text) references its paired preference by its skill name, <code>cs-&lt;preference-key&gt;</code>, for example: <code>0. Read the cs-content-tone skill first and follow all its rules. 1. ...</code></li>
 <li>At each cron tick, the agent LLM reads <code>cs-content-tone</code>, applies your instructions, then executes the scan/report/dispatch workflow.</li>
 </ol>
 <blockquote>
@@ -35248,10 +35263,10 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <p>This means <strong>your editable preference becomes the single place to customize agent behavior</strong> (brand voice, target audience, content sources, holiday markets, etc.), and the bundled scheduled task is a thin orchestration layer that defers to your preference.</p>
 <h3 id="using-connectors-in-skills">Using Connectors in Skills</h3>
 <p>A connected connector gives the agent its tools, named <code>&lt;slug&gt;__&lt;tool&gt;</code>, such as <code>serper__web_search</code> or <code>bluesky__create_post</code>. A template's scheduled tasks call them by these names, and your own custom skills can too: tell the agent which tools to use and when, for example "Research the topic with <code>serper__web_search</code> before you write." See <a href="/docs/agent-connectors#what-the-agent-gets">What the Agent Gets</a>.</p>
-<p>A template's scheduled task that needs a connector stays off until that connector is connected, so connect the ones a template works with after you deploy it, with <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>POST /UserAgent/ConnectorConnect</code></a>. The template's <code>suggestedconnectors</code> on <a href="/docs/agent-overview#post-agentdetail"><code>POST /Agent/Detail</code></a> lists them by slug; nothing connects by itself.</p>
+<p>A template's scheduled task that needs a connector runs only while that connector is connected, so connect the ones a template works with after you deploy it, with <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>POST /UserAgent/ConnectorConnect</code></a>. The template's <code>suggestedconnectors</code> on <a href="/docs/agent-overview#post-agentdetail"><code>POST /Agent/Detail</code></a> lists them by slug; nothing connects by itself.</p>
 <p>Agents can optionally forward operator notifications to a Telegram bot via the <code>telegram</code> credential (see <a href="/docs/integration-telegram-skills">Telegram Channel</a>). This is never required; every agent remains fully usable over web chat and the <a href="/docs/agent-messaging">Messaging API</a> without a bot configured.</p>
-<h3 id="utility-skills">Utility Skills</h3>
-<p><code>util-*</code> skills need no outside account. Most are rule sets that come with an agent template. These three can be added to any agent with <a href="#turning-skills-on-and-off"><code>SkillsApply</code></a>, on any plan and at no charge:</p>
+<h3 id="built-in-skills">Built-in Skills</h3>
+<p>Skills (<code>util-*</code>) need no outside account, except the Twilio Voice Channel (<code>util-twilio-channel</code>), which takes your Twilio account. Most are rule sets that come with an agent template. These three can be added to any agent with <a href="#turning-skills-on-and-off"><code>SkillsApply</code></a>, on any plan and at no charge:</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -35263,31 +35278,31 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 </thead>
 <tbody>
 <tr>
-<td><code>util-weather</code></td>
+<td>Weather (<code>util-weather</code>)</td>
 <td>Current weather and a 9-day forecast for any place: temperature, rain, wind and UV from MET Norway's open forecast data, with the place found on OpenStreetMap.</td>
 </tr>
 <tr>
-<td><code>util-diagram</code></td>
+<td>Diagrams (<code>util-diagram</code>)</td>
 <td>Flowcharts, architecture and sequence diagrams, state machines, data models, mind maps, timelines, Gantt plans and concept drawings as PNG images with an editable SVG copy, checked for overlapping or cut-off text.</td>
 </tr>
 <tr>
-<td><code>util-video-creator</code></td>
-<td>The Video Creator's playbook: finished videos with voice-over, music and captions from a website or web app (behind a login too), an app-store listing, a document, an article or product photos; 16:9 or 9:16, up to 3 minutes. It brings <code>util-video-shots</code>, <code>util-video-docs</code> and <code>util-motion-effects</code> with it, and runs the video's models with the agent's Wiro project, which pays for them (see <a href="#using-wiro-ai-models-from-your-agent">Using Wiro AI Models from Your Agent</a>). <code>util-motion-effects</code> and <code>util-video-creator</code> always come together, whichever one you turn on.</td>
+<td>Video Creator (<code>util-video-creator</code>)</td>
+<td>The Video Creator's playbook: finished videos with voice-over, music and captions from a website or web app (behind a login too), an app-store listing, a document, an article or product photos; 16:9 or 9:16, up to 3 minutes. It needs Video Story &amp; Shots (<code>util-video-shots</code>), Document Videos (<code>util-video-docs</code>) and Motion Effects (<code>util-motion-effects</code>), and runs the video's models with the agent's Wiro project, which pays for them (see <a href="#using-wiro-ai-models-from-your-agent">Using Wiro AI Models from Your Agent</a>). Motion Effects needs Video Creator too, so the four are on together: with <code>SkillsApply</code> send all four in one call, <code>{ "util-video-creator": true, "util-video-shots": true, "util-video-docs": true, "util-motion-effects": true }</code>. Deploy's <code>skills</code> and an <code>add</code> setup card turn the rest on by themselves.</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
-<p>The voice channels are Skills too: <code>util-twilio-channel</code> answers phone calls through Twilio Voice and saves its account in the <code>twilio-voice</code> credential (see <a href="/docs/integration-twiliovoice-skills">Twilio Voice Channel</a>), and <code>util-web-channel</code> takes calls in the browser (see <a href="/docs/integration-webvoice-skills">Web Voice Channel</a>). Each brings <code>util-voice-receptionist</code> and <code>util-voice-call-prep</code> with it. Turn them on with <a href="#turning-skills-on-and-off"><code>SkillsApply</code></a> or Deploy's <code>skills</code>.</p>
-<p><code>POST /Skills/List</code> with <code>{ "category": "util" }</code> returns every utility skill.</p>
+<p>The voice channels are Skills too: Twilio Voice Channel (<code>util-twilio-channel</code>) answers phone calls through Twilio Voice and saves its account in the <code>twilio-voice</code> credential (see <a href="/docs/integration-twiliovoice-skills">Twilio Voice Channel</a>), and Web Voice Channel (<code>util-web-channel</code>) takes calls in the browser (see <a href="/docs/integration-webvoice-skills">Web Voice Channel</a>). Each needs Voice Receptionist Rules (<code>util-voice-receptionist</code>) and Voice Call Prep Rules (<code>util-voice-call-prep</code>). With <a href="#turning-skills-on-and-off"><code>SkillsApply</code></a> send them in the same call, for example <code>{ "util-twilio-channel": true, "util-voice-receptionist": true, "util-voice-call-prep": true }</code>: sent alone while the two are off, a channel is refused with code <code>101</code> and <code>deps[]</code>. Deploy's <code>skills</code> turns them on by itself.</p>
+<p><code>POST /Skills/List</code> with <code>{ "category": "util" }</code> returns every Skill.</p>
 <blockquote>
 <p><strong>Restart behavior:</strong> On a starting or running agent (status 3 or 4), <code>SkillsApply</code>, <code>CustomSkillRename</code>, <code>CustomSkillDelete</code> and <code>CustomSkillRevert</code> restart it so the new skill configuration is picked up, as credential updates do. <code>CustomSkillUpsert</code> restarts it for a new skill or task, a new <code>interval</code> or an <code>enabled</code> change. A change to the text or description of an existing one reaches the running agent without a restart, except for <code>cs-approval-policy</code>. See <a href="/docs/agent-overview#automatic-restart">Automatic Restart</a>.</p>
 </blockquote>
 <h2 id="using-wiro-ai-models-from-your-agent">Using Wiro AI Models from Your Agent</h2>
 <p>An agent runs Wiro's own AI models (image, video, audio and LLM generation, cover images, model discovery) two ways:</p>
 <ul>
-<li><strong>With its Wiro project.</strong> Skills such as <code>util-video-creator</code> and the voice skills run their models with the agent's Wiro project, the <code>wiro</code> credential. Pick or create a project at <a href="https://wiro.ai/panel/project">wiro.ai/panel/project</a> and connect it in the agent's settings, or through the API with <code>POST /UserAgent/CredentialProjectBind</code>. Each run is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project). See <a href="/docs/agent-credentials#the-agents-wiro-project">The agent's Wiro project</a>.</li>
-<li><strong>With the Wiro connector.</strong> The <code>wiro</code> connector gives the agent Wiro's own model and task tools (<code>wiro__*</code>), the ones its <code>tools</code> on <a href="/docs/agent-connectors#post-agentconnectordetail"><code>AgentConnector/Detail</code></a> list, such as running any model. They act with the agent's own Wiro project, the same one: connecting the connector binds the project you pick to the agent, as <code>CredentialProjectBind</code> does. Their runs are the agent's own, billed to that project's wallet under the agent's spend limit and Model Access rule. See <a href="/docs/agent-connectors#the-wiro-connector">The Wiro connector</a>.</li>
+<li><strong>With its Wiro project.</strong> Skills such as Video Creator (<code>util-video-creator</code>) and the voice skills run their models with the agent's Wiro project, the <code>wiro</code> credential. Pick or create a project at <a href="https://wiro.ai/panel/project">wiro.ai/panel/project</a> and connect it in the agent's settings, or through the API with <code>POST /UserAgent/CredentialProjectBind</code>. Each run is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project). See <a href="/docs/agent-credentials#the-agents-wiro-project">The agent's Wiro project</a>.</li>
+<li><strong>With Wiro AI Models (<code>wiro</code>).</strong> The Wiro AI Models connector gives the agent Wiro's own model and task tools (<code>wiro__*</code>), the ones its <code>tools</code> on <a href="/docs/agent-connectors#post-agentconnectordetail"><code>AgentConnector/Detail</code></a> list, such as running any model. They act with the agent's own Wiro project, the same one: connecting the connector binds the project you pick to the agent, as <code>CredentialProjectBind</code> does. Their runs are the agent's own, billed to that project's wallet under the agent's spend limit and Model Access rule. See <a href="/docs/agent-connectors#the-wiro-connector">The Wiro connector</a>.</li>
 </ul>
 <p>The agent starts without a Wiro project. Where the template marks the project required (<code>optional: false</code>), <code>UserAgent/Detail</code> reads <code>setuprequired: true</code> until it is connected.</p>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CredentialProjectBind&quot; \
@@ -35319,7 +35334,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <td>Write <code>value</code></td>
 <td><code>CustomSkillUpsert</code></td>
 <td>Yes</td>
-<td><strong>No: silently dropped</strong> (skill owns the cron body)</td>
+<td>Saved and shown, but a template agent runs the template's text (a custom build runs yours)</td>
 <td>Yes</td>
 </tr>
 <tr>
@@ -35368,7 +35383,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <td>Read history</td>
 <td><code>CustomSkillHistory</code></td>
 <td>Yes</td>
-<td>Yes (only <code>enabled</code> / <code>interval</code> writes show up)</td>
+<td>Yes</td>
 <td>Yes (post-rename, the chain is migrated under the new key; a <code>rename</code> event marks the transition)</td>
 </tr>
 <tr>
@@ -35391,7 +35406,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 </div>
 <ul>
 <li>Send only the fields you want to change. Omitted fields keep their current values.</li>
-<li>Unknown skill keys return <code>skill-not-found</code> in the <code>errors[]</code> without altering other state.</li>
+<li>A key the agent doesn't have creates a user-created row: a scheduled task when you send <code>interval</code> (or a <code>cs-cron-</code> key), else a preference.</li>
 <li>To clear a cron schedule, call <code>CustomSkillUpsert</code> with <code>enabled: false</code>. Setting <code>interval: ""</code> or <code>null</code> also clears it.</li>
 <li>A schedule must be one the agent can run, written as five fields, <code>minute hour day month weekday</code>, such as <code>0 9 * * 1-5</code>. A schedule the agent can't run, or one whose date never comes, such as 30 February, is refused and nothing is saved. The error says what is wrong and what to write, for example <code>This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.</code></li>
 <li>Skill toggles (top-level <code>skills[]</code>) are a separate endpoint (see <a href="#turning-skills-on-and-off">Turning Skills On and Off</a> and <a href="/docs/agent-overview#post-useragentskillsapply"><code>SkillsApply</code></a>).</li>
@@ -35457,7 +35472,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <tbody>
 <tr>
 <td><strong>Template deploy</strong></td>
-<td>The marketplace already has an agent that does what you need (Instagram Manager, Push Notifications, App Review Support, …). You inherit the template's default skill set + configuration.</td>
+<td>The marketplace already has an agent that does what you need (Social Manager, Push Notification Manager, App Review Support, …). You inherit the template's default skill set + configuration.</td>
 <td><code>POST /UserAgent/Deploy</code> with <code>agentguid</code></td>
 </tr>
 <tr>
@@ -35505,7 +35520,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <p><strong>Custom builds don't share a marketplace listing.</strong> They are private to your account; nothing about a custom agent appears on <code>/Agent/List</code> or <code>/Agent/Detail</code>. Discovery happens through your own product surface.</p>
 </blockquote>
 <h2 id="step-1-browse-available-skills">Step 1: Browse Available Skills</h2>
-<p>Custom builds start from the <strong>skill registry</strong>, the catalogue of every Skill the platform supports: rule sets, playbooks and keyless tools such as weather and diagrams. Browse it with <a href="/docs/agent-skills#post-skillslist"><code>POST /Skills/List</code></a> and inspect details with <a href="/docs/agent-skills#post-skillsdetail"><code>POST /Skills/Detail</code></a>. The outside services the agent works with are connectors, which you pick from the <a href="#step-1c-pick-the-connectors">connector catalog</a> and connect after Deploy.</p>
+<p>Custom builds start from the <strong>skill registry</strong>, the catalogue of every Skill the platform supports: rule sets, playbooks, the voice channels and tools such as weather and diagrams. Browse it with <a href="/docs/agent-skills#post-skillslist"><code>POST /Skills/List</code></a> and inspect details with <a href="/docs/agent-skills#post-skillsdetail"><code>POST /Skills/Detail</code></a>. The outside services the agent works with are connectors, which you pick from the <a href="#step-1c-pick-the-connectors">connector catalog</a> and connect after Deploy.</p>
 <p>Both endpoints are <strong>public, so no authentication is required.</strong></p>
 <pre><code class="language-bash"># Browse every Skill
 curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
@@ -35518,12 +35533,13 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
 <li><code>category</code>: <code>util</code>, for every registry skill</li>
 <li><code>credential_key</code>: which credential the skill needs, or <code>null</code> (most skills need none)</li>
 <li><code>requires_credentials</code>: boolean, whether the user must supply a credential before the skill can run</li>
-<li><code>depends_on</code>: array of skill names that must also be enabled (Wiro auto-enables transitive deps)</li>
+<li><code>depends_on</code>: skills that must be on with it. Deploy's <code>skills</code> turns them on by itself; <a href="#step-4-refine-skills-after-deploy"><code>SkillsApply</code></a> refuses with code <code>101</code> and <code>deps[]</code> unless you send them in the same call</li>
 <li><code>conflicts_with</code>: array of skill names that cannot coexist with this one</li>
+<li><code>suggested_connectors</code>: the connectors the skill works with, by catalog slug, when it has any (for example <code>["brevo", "hubspot", "mailchimp", "sendgrid"]</code> on Newsletter Compose Rules (<code>util-newsletter-compose</code>)); pick from them in <a href="#step-1c-pick-the-connectors">Step 1c</a> and connect them in <a href="#step-3b-connect-the-connectors">Step 3b</a></li>
 <li><code>pricing</code>: <code>billing_model: "tokens"</code>; its <code>monthly_price_weight_usd</code> and <code>monthly_credits_weight</code> are <code>0</code> on every skill, since every plan includes every skill</li>
 </ul>
 <blockquote>
-<p><strong>Use <a href="/docs/agent-skills#post-skillscapabilities"><code>POST /Skills/Capabilities</code></a></strong> to discover the closed-set capability vocabulary (the high-level tasks skills can perform). Useful when you want to find every skill that can "post-content" or "send-email".</p>
+<p><strong>Use <a href="/docs/agent-skills#post-skillscapabilities"><code>POST /Skills/Capabilities</code></a></strong> to discover the closed-set capability vocabulary (the high-level tasks skills can perform). Useful when you want to find every skill with a tag such as <code>social_publishing</code> or <code>email_publishing</code>.</p>
 </blockquote>
 <h2 id="step-1b-discover-communication-channels">Step 1b: Discover Communication Channels</h2>
 <p>The same <code>POST /Skills/List</code> response also includes a top-level <code>channels[]</code>
@@ -35694,16 +35710,25 @@ pricing.</p>
         &quot;voicePrepModel&quot;: &quot;openai/gpt-5.4-mini&quot;,
         &quot;voicePostcallModel&quot;: &quot;openai/gpt-5.4&quot;
       },
-      &quot;skills&quot;: [&quot;util-anti-ai-human-copy&quot;, &quot;util-chat-markdown-reporting&quot;],
-      &quot;customskills&quot;: [],
+      &quot;skills&quot;: [
+        { &quot;name&quot;: &quot;util-anti-ai-human-copy&quot;,      &quot;enabled&quot;: true, &quot;_edited&quot;: true, &quot;_user_created&quot;: false },
+        { &quot;name&quot;: &quot;util-chat-markdown-reporting&quot;, &quot;enabled&quot;: true, &quot;_edited&quot;: true, &quot;_user_created&quot;: false }
+      ],
+      &quot;customskills&quot;: [
+        { &quot;key&quot;: &quot;cs-approval-policy&quot;, &quot;description&quot;: &quot;Approval policy: how the agent should gate publish/send/modify actions before executing them.&quot;, &quot;value&quot;: &quot;# Approval Policy\n\nThis skill controls whether the agent waits for operator approval before ...&quot;, &quot;interval&quot;: null, &quot;enabled&quot;: true, &quot;requires_credentials&quot;: [], &quot;requires_connectors&quot;: [], &quot;_source&quot;: &quot;skill-bundle&quot;, &quot;_editable&quot;: true, &quot;_edited&quot;: false, &quot;_user_created&quot;: false },
+        { &quot;key&quot;: &quot;cs-my-custom-strategy&quot;, &quot;description&quot;: &quot;Defines how your agent should behave.&quot;, &quot;value&quot;: &quot;# My Custom Strategy\n\nDescribe how the agent should behave for your specific use case. ...&quot;, &quot;interval&quot;: null, &quot;enabled&quot;: true, &quot;requires_credentials&quot;: [], &quot;requires_connectors&quot;: [], &quot;_source&quot;: &quot;user-created&quot;, &quot;_editable&quot;: true, &quot;_edited&quot;: false, &quot;_user_created&quot;: true }
+      ],
       &quot;scheduledskills&quot;: [
         {
           &quot;key&quot;: &quot;cs-cron-weekly-research&quot;,
           &quot;value&quot;: &quot;Every Monday, research this week's topic with serper__web_search, write a 600-word article, save it as a WordPress draft with the WordPress connector's tools (wordpress__*), and post the draft link to Telegram.&quot;,
           &quot;interval&quot;: &quot;0 9 * * 1&quot;,
           &quot;enabled&quot;: true,
+          &quot;requires_credentials&quot;: [],
+          &quot;requires_connectors&quot;: [],
           &quot;_source&quot;: &quot;user-created&quot;,
           &quot;_editable&quot;: true,
+          &quot;_edited&quot;: true,
           &quot;_user_created&quot;: true
         }
       ],
@@ -35713,7 +35738,7 @@ pricing.</p>
       &quot;enabledChannels&quot;: [&quot;telegram&quot;],
       &quot;teamsessionmode&quot;: &quot;private&quot;,
       &quot;credentials&quot;: {
-        &quot;telegram&quot;: { &quot;_connected&quot;: false, &quot;optional&quot;: false, &quot;extra&quot;: false, &quot;bottoken&quot;: &quot;••••••••&quot;, &quot;allowedusers&quot;: [&quot;123456789&quot;] }
+        &quot;telegram&quot;: { &quot;_connected&quot;: true, &quot;optional&quot;: true, &quot;extra&quot;: false, &quot;bottoken&quot;: &quot;••••••••&quot;, &quot;allowedusers&quot;: [&quot;123456789&quot;] }
       },
       &quot;agent&quot;: {
         &quot;custom&quot;: true,
@@ -35738,10 +35763,24 @@ pricing.</p>
 <li><code>agentguid: null</code> confirms this is a custom build with no marketplace template.</li>
 <li><code>agent.custom: true</code> is the synthesized template placeholder. Same shape as a template's <code>agent</code> block but no <code>slug</code> / <code>cover</code> / <code>categories</code> (custom builds aren't in the marketplace).</li>
 <li><code>scheduledskills</code> already contains the cron from the Deploy body. Deploy stores each <code>customskills</code> key in its full form, as <code>CustomSkillUpsert</code> does: a bare slug with an <code>interval</code> becomes <code>cs-cron-&lt;slug&gt;</code>, one without becomes <code>cs-&lt;slug&gt;</code>, and a key that isn't a slug fails the deploy before anything is created or charged.</li>
+<li><code>skills</code> lists each enabled skill as an object (<code>name</code>, <code>enabled</code>, <code>_edited</code>, <code>_user_created</code>), the same shape as <a href="/docs/agent-overview#post-useragentdetail"><code>UserAgent/Detail</code></a>. The skills you sent read <code>_edited: true</code>.</li>
+<li>Every custom build starts with two custom skills in <code>customskills</code>: Approval Policy (<code>cs-approval-policy</code>), which you can edit or turn off but not rename or delete, and My Custom Strategy (<code>cs-my-custom-strategy</code>). When neither the Deploy body nor the skills you picked bring a scheduled task, <code>scheduledskills</code> also gets the sample My Scheduled Task (<code>cs-cron-my-scheduled-task</code>). It stays off until you write it and turn it on with <code>CustomSkillUpsert</code>.</li>
 <li><code>status: 2</code> means Deploy auto-queued the instance because <code>useprepaid: true</code> provisioned a subscription in the same call. Wiro starts the agent from the queue; you do <strong>not</strong> need to call <code>POST /UserAgent/Start</code> after a prepaid deploy.</li>
 <li>Communication-channel credentials are validated independently from <code>skills</code>. Every channel group present in <code>credentials</code> must contain all of its <code>required_fields</code> or Deploy fails without leaving a partial agent behind.</li>
+<li>A channel group in <code>credentials</code> always reads <code>optional: true</code>. Its <code>_connected</code> turns true once every one of its <code>required_fields</code> is filled, the same check as <code>configured</code> on its <code>communicationChannels</code> row.</li>
+<li><code>skills</code> takes Skills (<code>util-*</code>) only, and <code>credentials</code> takes the credentials the registry lists: channels, <code>wiro</code>, <code>twilio-voice</code> and settings. Anything else fails the Deploy before anything is created or charged, with <code>Unknown skill: &lt;name&gt;.</code> (for a retired <code>int-*</code> name it adds <code>Connectors are connected with UserAgent/ConnectorConnect, not turned on as skills.</code>) or <code>Unknown credential: &lt;key&gt;. Connect a connector after the deploy with UserAgent/ConnectorConnect.</code> Connect connectors in <a href="#step-3b-connect-the-connectors">Step 3b</a>.</li>
 <li>The Telegram bot token you sent comes back as <code>"••••••••"</code>: like <code>UserAgent/Detail</code>, the response shows a saved secret only as the mask.</li>
 </ul>
+<p>When the balance can't pay the plan, Deploy is refused with code <code>97</code>, nothing is created or charged, and <code>neededusd</code> is the amount to add, never less than the $20 deposit minimum. Add at least that much on <a href="https://wiro.ai/panel/billing">wiro.ai/panel/billing</a> and send the same Deploy again (see <a href="/docs/agent-overview#paying-for-plans">Paying for Plans</a>):</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: false,
+  &quot;useragents&quot;: [],
+  &quot;errors&quot;: [
+    { &quot;code&quot;: 97, &quot;message&quot;: &quot;Your balance is $3.10; this plan needs $30.00. Add funds to continue.&quot; }
+  ],
+  &quot;neededusd&quot;: 26.9
+}
+</code></pre>
 <h2 id="step-3b-connect-the-connectors">Step 3b: Connect the Connectors</h2>
 <p>Connect each service to the new agent with <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>POST /UserAgent/ConnectorConnect</code></a>, with your customer's own credentials. Serper and WordPress take fields:</p>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot; \
@@ -35764,7 +35803,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot; \
 </code></pre>
 <p>Each answers <code>status: "connected"</code> and restarts the running agent, which then has the connector's tools (<code>serper__web_search</code>, <code>wordpress__*</code>) that the scheduled task above names. A connector that signs in with its vendor answers an <code>authorizeUrl</code> instead: see <a href="/docs/agent-connectors#connect-with-a-sign-in">Connect with a sign-in</a>. Check every connection with <a href="/docs/agent-connectors#post-useragentconnectorlist"><code>POST /UserAgent/ConnectorList</code></a>.</p>
 <h2 id="step-4-refine-skills-after-deploy">Step 4: Refine Skills After Deploy</h2>
-<p>Toggle skills on/off after deploy with <a href="/docs/agent-overview#post-useragentskillsapply"><code>POST /UserAgent/SkillsApply</code></a>. Even when you only want to flip a single skill, send it as a one-entry <code>skills</code> map. The endpoint triggers exactly one agent restart, applies the whole batch or none of it, and never charges: every plan includes every skill, so the price and the included AI usage stay the same. Template deploys accept the same call.</p>
+<p>Toggle skills on/off after deploy with <a href="/docs/agent-overview#post-useragentskillsapply"><code>POST /UserAgent/SkillsApply</code></a>. Even when you only want to flip a single skill, send it as a one-entry <code>skills</code> map. Turning a Skill on needs its <code>depends_on</code> on too: add the ones that are off to the same map, since <code>SkillsApply</code> turns on only the names you send and refuses the change with code <code>101</code> and <code>deps[]</code> otherwise. The endpoint triggers exactly one agent restart, applies the whole batch or none of it, and never charges: every plan includes every skill, so the price and the included AI usage stay the same. Template deploys accept the same call.</p>
 <h3 id="single-skill-enable">Single-skill enable</h3>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/SkillsApply&quot; \
   -H &quot;Content-Type: application/json&quot; \
@@ -35842,7 +35881,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot; \
   ]
 }
 </code></pre>
-<p>Then connect <code>serper</code> with its API key.</p>
+<p>Then connect Serper (<code>serper</code>) with its API key.</p>
 <h3 id="b-wordpress-publisher-with-weekly-research">B. WordPress publisher with weekly research</h3>
 <pre><code class="language-json">{
   &quot;custom&quot;: true,
@@ -35870,7 +35909,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot; \
   ]
 }
 </code></pre>
-<p>Then connect <code>wordpress</code> with its site address, user name and application password.</p>
+<p>Then connect WordPress (<code>wordpress</code>) with its site address (<code>url</code>), user name (<code>user</code>) and application password (<code>apppassword</code>).</p>
 <h3 id="c-multi-channel-social-poster">C. Multi-channel social poster</h3>
 <pre><code class="language-json">{
   &quot;custom&quot;: true,
@@ -35884,7 +35923,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot; \
   &quot;credentials&quot;: {}
 }
 </code></pre>
-<p>Then connect <code>twitter</code>, <code>instagram</code>, <code>linkedin</code> and <code>facebook-pages</code>. Each signs in with its vendor, with an app of your own: <a href="/docs/agent-connectors#connect-with-a-sign-in"><code>ConnectorConnect</code></a> answers an <code>authorizeUrl</code> for your customer to open. X posts as the account that signed in. LinkedIn takes the id of its Company Page in the required <code>organizationid</code> field, sent with the sign-in, and posts as that Page or as the member who signed in. The Instagram accounts and Facebook Pages to post to are picked afterwards with <a href="/docs/agent-connectors#post-useragentconnectorsetaccounts"><code>ConnectorSetAccounts</code></a>: see <a href="/docs/agent-connectors#account-pickers">Account Pickers</a>.</p>
+<p>Then connect X (<code>twitter</code>), Instagram (<code>instagram</code>), LinkedIn (<code>linkedin</code>) and Facebook Pages (<code>facebook-pages</code>). Each signs in with its vendor through an app of your own: list <code>https://api.wiro.ai/v1/AgentConnector/OAuthCallback</code> as a redirect URI in each app first, since your <code>redirecturl</code> is only where Wiro sends the browser afterwards. <a href="/docs/agent-connectors#connect-with-a-sign-in"><code>ConnectorConnect</code></a> answers an <code>authorizeUrl</code> for your customer to open. X posts as the account that signed in. LinkedIn takes the id of its Company Page in the required <code>organizationid</code> field, sent with the sign-in, and posts as that Page or as the member who signed in. The Instagram accounts and Facebook Pages to post to are picked afterwards with <a href="/docs/agent-connectors#post-useragentconnectorsetaccounts"><code>ConnectorSetAccounts</code></a>: see <a href="/docs/agent-connectors#account-pickers">Account Pickers</a>.</p>
 <h2 id="subscription-billing-for-custom-builds">Subscription &amp; Billing for Custom Builds</h2>
 <p>Subscriptions for custom builds work exactly like template deploys:</p>
 <ul>
@@ -37090,14 +37129,14 @@ for e in cron_runs:
     ]
   }'</code></pre>
                     <p>Send <code>allowedusers</code> and <code>groups</code> as native JSON arrays. <code>groups</code> is optional; omit it when the bot should be usable only in direct messages.</p>
-                    <p>If you are deploying a new agent, place the complete <code>telegram</code> group in <code>credentials</code>. Do not send an <code>enabledchannels</code> switch or chat-mode field to <code>POST /UserAgent/Deploy</code>; change Chat Mode after deployment with <code>POST /UserAgent/UpdateSettings</code>.</p>
+                    <p>If you are deploying a new agent, place the complete <code>telegram</code> group in <code>credentials</code>. Do not send an <code>enabledchannels</code> switch or chat-mode field to <code>POST /UserAgent/Deploy</code>; change Chat Mode after deployment when needed.</p>
 
                     <h3>Step 4: Verify the applied state</h3>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{ "guid": "your-useragent-guid" }'</code></pre>
-                    <p>Confirm that <code>enabledChannels</code> contains <code>"telegram"</code> and that its <code>communicationChannels</code> row reports <code>enabled: true</code>, <code>configured: true</code>, and an empty <code>missingfields</code> array.</p>
+                    <p>Confirm that <code>enabledChannels</code> contains <code>"telegram"</code> and the Telegram row in <code>communicationChannels</code> reports <code>enabled: true</code>, <code>configured: true</code>, and an empty <code>missingfields</code> array.</p>
                   </section>
 
                   <section id="credential-fields">
@@ -37125,7 +37164,7 @@ for e in cron_runs:
                           <tr>
                             <td><code>groups</code></td>
                             <td>object[]</td>
-                            <td>Optional room allowlist. Each row is <code>{ "chatid": "-100...", "allowedusers": ["..."] }</code>. Group IDs must be negative numeric strings.</td>
+                            <td>Optional room allowlist. Each row is <code>{ "chatid": "-100...", "allowedusers": ["..."] }</code>. Group/supergroup IDs must be negative numeric strings.</td>
                           </tr>
                         </tbody>
                       </table>
@@ -37153,17 +37192,17 @@ for e in cron_runs:
                         </tbody>
                       </table>
                     </div>
-                    <p>Group conversations remain scoped to their own group and never merge into the direct-message conversation.</p>
+                    <p>Group conversations are always scoped to their own group and do not merge into the shared direct-message conversation.</p>
                   </section>
 
                   <section id="access-behavior">
                     <h2>Access Behavior</h2>
                     <ul>
                       <li>Direct messages are accepted only from IDs in the top-level <code>allowedusers</code>.</li>
-                      <li>Group messages are accepted only in configured <code>groups[].chatid</code> rooms and from that room's approved users.</li>
+                      <li>Group messages are accepted only in configured <code>groups[].chatid</code> rooms and only from that room's <code>allowedusers</code>.</li>
                       <li>Group turns must mention the bot.</li>
-                      <li>Usernames and display names are never authorization values.</li>
-                      <li>Clear either <code>bottoken</code> or <code>allowedusers</code> with <code>CredentialUpsert</code> to disable Telegram; completing both reactivates it.</li>
+                      <li>Usernames and display names are never accepted as authorization values.</li>
+                      <li>Telegram is optional. Clear either <code>bottoken</code> or <code>allowedusers</code> with <code>CredentialUpsert</code> to disable it; completing both fields reactivates it.</li>
                     </ul>
                   </section>
 
@@ -37173,7 +37212,7 @@ for e in cron_runs:
                       <li><strong>Bot doesn't respond:</strong> Verify <code>bottoken</code> is correct and the sender's Telegram user ID is in <code>allowedusers</code>.</li>
                       <li><strong>"Unauthorized" (401) from Telegram API:</strong> BotFather regenerated the token, invalidating the old one. Create a new token and update.</li>
                       <li><strong>Rate limits:</strong> Telegram bots are limited to ~30 messages/second globally. For burst broadcasts, plan around this.</li>
-                      <li><strong>Bot works in DMs but not a group:</strong> Add the negative group chat ID and sender ID to the same <code>groups[]</code> row, then mention the bot.</li>
+                      <li><strong>Bot works in DMs but not a group:</strong> Add the negative group chat ID and the sender's immutable user ID to the same <code>groups[]</code> row, then mention the bot.</li>
                       <li><strong>Collaborative mode confusion:</strong> Call <code>UserAgent/UpdateSettings</code> with <code>teamsessionmode: "collaborative"</code>.</li>
                     </ul>
                   </section>
@@ -37199,16 +37238,27 @@ for e in cron_runs:
 
                   <section id="overview">
                     <h2>Overview</h2>
-                    <p>Turn on the Twilio Voice channel, the <code>util-twilio-channel</code> skill, on a useragent and Wiro turns on the voice rules it needs (<code>util-voice-receptionist</code> + <code>util-voice-call-prep</code>), so you don't need to enable them separately. On an agent that doesn't have it yet, turn it on with <a href="/docs/agent-overview#post-useragentskillsapply"><code>SkillsApply</code></a>, or name it in Deploy's <code>skills</code>:</p>
+                    <p>Turn on the Twilio Voice Channel (<code>util-twilio-channel</code>) together with the voice rules it needs: Voice Receptionist Rules (<code>util-voice-receptionist</code>) and Voice Call Prep Rules (<code>util-voice-call-prep</code>). Deploy's <code>skills</code> turns those rules on by itself. <a href="/docs/agent-overview#post-useragentskillsapply"><code>SkillsApply</code></a> turns on only the skills you send and refuses one whose <code>depends_on</code> would stay off (code <code>101</code>, with <code>deps[]</code>), so send all three in one call:</p>
                     <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
     "idempotencyKey": "550e8400-e29b-41d4-a716-446655440002",
-    "skills": { "util-twilio-channel": true }
+    "skills": { "util-twilio-channel": true, "util-voice-receptionist": true, "util-voice-call-prep": true }
   }'</code></pre>
-                    <p><strong>Skill:</strong> <code>util-twilio-channel</code>, the phone channel. Its <code>docs_url</code> in <a href="/docs/agent-skills#post-skillslist"><code>Skills/List</code></a> is this page, <code>integration-twiliovoice-skills</code>.</p>
+                    <p>Sent alone while the two rules are off, the channel is refused and nothing changes:</p>
+                    <pre><code class="language-json">{
+  "result": false,
+  "errors": [
+    { "code": 101, "message": "Cannot apply: some skills require other skills to be enabled." }
+  ],
+  "deps": [
+    { "skill": "util-twilio-channel", "requires": "util-voice-receptionist" },
+    { "skill": "util-twilio-channel", "requires": "util-voice-call-prep" }
+  ]
+}</code></pre>
+                    <p><strong>Skill:</strong> Twilio Voice Channel (<code>util-twilio-channel</code>), the phone channel. Its <code>docs_url</code> in <a href="/docs/agent-skills#post-skillslist"><code>Skills/List</code></a> is this page, <code>integration-twiliovoice-skills</code>.</p>
                     <p><strong>Credential:</strong> <code>twilio-voice</code>, the Account SID, Auth Token and phone numbers below.</p>
                     <p><strong>Agents that typically enable this integration:</strong></p>
                     <ul>
@@ -37248,7 +37298,7 @@ for e in cron_runs:
                     <h2>Prerequisites</h2>
                     <ul>
                       <li><strong>A Wiro API key</strong> (see <a href="/docs/authentication">Authentication</a>).</li>
-                      <li><strong>A deployed agent</strong> (Voice Receptionist preset or any custom agent with <code>util-twilio-channel</code> on), see <a href="/docs/agent-overview">Agent Overview</a>.</li>
+                      <li><strong>A deployed agent</strong> (Voice Receptionist preset or any custom agent with Twilio Voice Channel (<code>util-twilio-channel</code>) on), see <a href="/docs/agent-overview">Agent Overview</a>.</li>
                       <li><strong>A Twilio account</strong> with at least one purchased phone number.</li>
                     </ul>
                   </section>
@@ -37415,9 +37465,35 @@ for e in cron_runs:
 }</code></pre>
                   </section>
 
+                  <section id="pairing-with-connectors">
+                    <h2>Pairing With Connectors</h2>
+                    <p>Pair this channel with connectors that give the agent what the call needs (see <a href="/docs/agent-connectors">Agent Connectors</a>):</p>
+                    <ul>
+                      <li><a href="https://wiro.ai/connectors/google-calendar">Google Calendar</a> (<code>google-calendar</code>): read availability and draft appointments during the call.</li>
+                      <li><a href="https://wiro.ai/connectors/hubspot">HubSpot</a> (<code>hubspot</code>): match the caller's phone number against CRM contacts and log call outcomes.</li>
+                      <li><a href="https://wiro.ai/connectors/brevo">Brevo</a> (<code>brevo</code>), <a href="https://wiro.ai/connectors/sendgrid">SendGrid</a> (<code>sendgrid</code>) or <a href="https://wiro.ai/connectors/mailchimp">Mailchimp</a> (<code>mailchimp</code>): draft post-call confirmation or follow-up emails.</li>
+                    </ul>
+                    <p>The Voice Receptionist template comes with this channel, the Web Voice Channel and the voice rules, and suggests HubSpot, Google Calendar, Google Drive, Brevo and Wiro AI Models (its <code>suggestedconnectors</code> on <code>Agent/Detail</code>). See <a href="/docs/agent-use-cases">Agent Use Cases</a> for the full template.</p>
+                  </section>
+
+                  <section id="troubleshooting">
+                    <h2>Troubleshooting</h2>
+                    <ul>
+                      <li><strong>All calls fail with signature error:</strong> You probably pasted an <em>API Key Secret</em> instead of the live <em>Auth Token</em>. Re-paste from the <strong>Live credentials</strong> section of the Twilio Console.</li>
+                      <li><strong>Number isn't in <code>twilioWebhooksUpdated</code>:</strong> The number isn't on the Twilio account whose Account SID you provided. Either buy the number on this account, or import it from the source account. The skip reason <code>no matching IncomingPhoneNumber on Twilio account</code> confirms this.</li>
+                      <li><strong>Caller hears Twilio's default voicemail:</strong> The number's <em>Configure with</em> is set to <em>TwiML App</em> or <em>SIP Trunk</em>. Flip it back to <em>Webhook</em> in the Twilio Console, then re-save credentials in Wiro to re-write <code>VoiceUrl</code>.</li>
+                      <li><strong>Calls cut off at exactly N seconds:</strong> That's <code>maxcallseconds</code>. Raise it for longer use cases.</li>
+                      <li><strong>Caller hears that the call has to end, then the line drops:</strong> A <a href="/docs/spend-limits" class="docs-link">spend limit</a> was reached, or the balance of the wallet that pays for the call's audio ran out, during the call. The agent finishes the reply it is giving, a short notice plays, and the call ends. <a href="#call-history">Call History</a> shows <code>endReason</code> <code>spend_limit</code> or <code>balance</code>.</li>
+                      <li><strong>Hold music plays forever, agent never speaks:</strong> The agent failed to start the realtime conversation. Check <code>POST /UserAgent/Logs</code> for errors.</li>
+                      <li><strong>Caller hears your fallback message but no agent:</strong> <code>maxcallseconds</code> was reached before the agent connected, or the agent crashed mid-call. Check <code>POST /UserAgent/Logs</code>.</li>
+                      <li><strong>Whitelisted caller still gets busy signal:</strong> Ensure E.164 format. Twilio normalizes inbound numbers, so if your test phone presents itself as <code>4155551234</code> instead of <code>+14155551234</code>, the allowlist won't match. Add both forms while testing.</li>
+                      <li><strong>Rotated the Auth Token in Twilio Console:</strong> Re-paste the new token in Wiro and save again. The credential save also re-runs the webhook setup.</li>
+                    </ul>
+                  </section>
+
                   <section id="call-history">
                     <h2>Call History</h2>
-                    <p>Retrieve the last N realtime voice sessions for a useragent, regardless of which channel they came in on.</p>
+                    <p>Retrieve the realtime voice sessions among the agent's latest messages, whichever channel they came in on.</p>
                     <h3><code>POST /UserAgent/TwilioCallHistory/List</code></h3>
                     <div class="info-callout"><p><strong>Despite the Twilio-named path, this endpoint returns both Twilio and Web Channel sessions.</strong> Both are stored as agent messages (<code>metadata.type</code> starts with <code>realtime_session</code> in either case), so a single feed is enough to audit every voice exchange the agent had.</p></div>
                     <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/TwilioCallHistory/List" \
@@ -37444,7 +37520,7 @@ for e in cron_runs:
                               <td><code>limit</code></td>
                               <td>number</td>
                               <td>No</td>
-                              <td>Max sessions to return. Default <code>50</code>, hard-capped at <code>200</code>. Sorted newest-first by message id.</td>
+                              <td>How many of the agent's latest messages to read (every kind, not only calls). Default <code>50</code>, at most <code>200</code>. The voice sessions among them come back newest first, so the list can be shorter than <code>limit</code>, or empty while older calls exist.</td>
                             </tr>
                           </tbody>
                         </table>
@@ -37457,11 +37533,9 @@ for e in cron_runs:
   "data": [
     {
       "messageguid": "5d6e7f80-9a1b-4c2d-8e3f-4a5b6c7d8e01",
-      "agenttoken": "8a5b9e2f-4d3c-4a01-9c2e-1b6d4e7a9c5d",
+      "correlationId": "voice_Q7mN2xR8kLp4WzT1vYc6HdBs",
       "channel": "twilio",
-      "callsid": "CAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
       "callerInfo": { "number": "+15551234567", "country": "US" },
-      "callerProfile": "Returning caller, last asked about pricing.",
       "status": "realtime_session",
       "endReason": "wiro_completed",
       "durationSeconds": 137,
@@ -37471,11 +37545,9 @@ for e in cron_runs:
     },
     {
       "messageguid": "0f2a1c3d-9e8b-4c5a-bf42-3a7b6e1d0c8f",
-      "agenttoken": "1e7d3b9a-5c2f-4d6b-8e0a-2f4c7b5d9e1a",
+      "correlationId": "voice_3fK9xQ2LmVb7TzR1pWc8NdYa",
       "channel": "web",
-      "callsid": "voice-call-9d2d4b6e3f6b4c1a8a7e1f5a0b2c3d4e",
       "callerInfo": { "page_url": "https://example.com/contact", "display_identifier": "+15551234567" },
-      "callerProfile": null,
       "status": "realtime_session",
       "endReason": "browser_disconnect",
       "durationSeconds": 42,
@@ -37498,29 +37570,19 @@ for e in cron_runs:
                               <td>The guid of the message that records this session. Use it with <code>POST /UserAgent/Message/Detail</code> to fetch the full transcript metadata.</td>
                             </tr>
                             <tr>
-                              <td><code>agenttoken</code></td>
-                              <td>string</td>
-                              <td>The per-message agent token. Use it on <code>Message/Detail</code> / <code>Message/Cancel</code> like any other agent message.</td>
+                              <td><code>correlationId</code></td>
+                              <td>string | null</td>
+                              <td>The session's public id. For a web call it is the <code>correlationId</code> that <code>WebStart</code> returned; phone calls get one too. <code>null</code> when the session has none.</td>
                             </tr>
                             <tr>
                               <td><code>channel</code></td>
                               <td><code>"twilio" | "web"</code></td>
-                              <td>Source channel. Determines the <code>callerInfo</code> shape and whether <code>callsid</code> is a Twilio Call SID or a Web session id.</td>
-                            </tr>
-                            <tr>
-                              <td><code>callsid</code></td>
-                              <td>string | null</td>
-                              <td>Twilio Call SID (<code>channel: "twilio"</code>) or internal <code>voice-call-&lt;id&gt;</code> session id (<code>channel: "web"</code>).</td>
+                              <td>Source channel. Determines the <code>callerInfo</code> shape.</td>
                             </tr>
                             <tr>
                               <td><code>callerInfo</code></td>
                               <td>object</td>
                               <td>Channel-specific. Twilio: <code>{ number, country }</code> (E.164 phone + ISO-2 country). Web: <code>{ page_url, display_identifier? }</code>, where <code>display_identifier</code> is omitted unless the embedding page validated an identifier (<code>session_metadata.display_identifier</code> whose whole-string match passes the allowlist).</td>
-                            </tr>
-                            <tr>
-                              <td><code>callerProfile</code></td>
-                              <td>string | null</td>
-                              <td>Free-text summary of the caller that the agent writes before the call. <code>null</code> until it is ready, and on rejected calls.</td>
                             </tr>
                             <tr>
                               <td><code>status</code></td>
@@ -37554,32 +37616,6 @@ for e in cron_runs:
                     <div class="info-callout"><p><strong>Live call audio is billed to the agent's Wiro project</strong> (its <code>wiro</code> credential, see <a href="/docs/agent-credentials#the-agents-wiro-project" class="docs-link">The agent's Wiro project</a>): the voice cost is charged to the wallet of the workspace that owns that project. It is <strong>not</strong> the agent's AI usage: neither its plan's included usage nor its balance pays for it. The agent's text turns around the call (the prep turn that briefs the voice model before the voice session starts, and the post-call turn where the agent summarizes and acts on the call) are AI usage like any other turn and show up in <a href="/docs/agent-transactions#tx-transactionlist" class="docs-link"><code>POST /UserAgent/TransactionList</code></a> as <code>ai-usage</code> rows. Audit call-audio cost from that project's usage.</p></div>
                   </section>
 
-                  <section id="pairing-with-connectors">
-                    <h2>Pairing With Connectors</h2>
-                    <p>Pair this channel with connectors that give the agent what the call needs (see <a href="/docs/agent-connectors">Agent Connectors</a>):</p>
-                    <ul>
-                      <li><a href="https://wiro.ai/connectors/google-calendar">Google Calendar</a> (<code>google-calendar</code>): read availability and draft appointments during the call.</li>
-                      <li><a href="https://wiro.ai/connectors/hubspot">HubSpot</a> (<code>hubspot</code>): match the caller's phone number against CRM contacts and log call outcomes.</li>
-                      <li><a href="https://wiro.ai/connectors/brevo">Brevo</a> (<code>brevo</code>), <a href="https://wiro.ai/connectors/sendgrid">SendGrid</a> (<code>sendgrid</code>) or <a href="https://wiro.ai/connectors/mailchimp">Mailchimp</a> (<code>mailchimp</code>): draft post-call confirmation or follow-up emails.</li>
-                    </ul>
-                    <p>The Voice Receptionist template comes with this channel and the voice rules, and suggests the Brevo and HubSpot connectors. See <a href="/docs/agent-use-cases">Agent Use Cases</a> for the full template.</p>
-                  </section>
-
-                  <section id="troubleshooting">
-                    <h2>Troubleshooting</h2>
-                    <ul>
-                      <li><strong>All calls fail with signature error:</strong> You probably pasted an <em>API Key Secret</em> instead of the live <em>Auth Token</em>. Re-paste from the <strong>Live credentials</strong> section of the Twilio Console.</li>
-                      <li><strong>Number isn't in <code>twilioWebhooksUpdated</code>:</strong> The number isn't on the Twilio account whose Account SID you provided. Either buy the number on this account, or import it from the source account. The skip reason <code>no matching IncomingPhoneNumber on Twilio account</code> confirms this.</li>
-                      <li><strong>Caller hears Twilio's default voicemail:</strong> The number's <em>Configure with</em> is set to <em>TwiML App</em> or <em>SIP Trunk</em>. Flip it back to <em>Webhook</em> in the Twilio Console, then re-save credentials in Wiro to re-write <code>VoiceUrl</code>.</li>
-                      <li><strong>Calls cut off at exactly N seconds:</strong> That's <code>maxcallseconds</code>. Raise it for longer use cases.</li>
-                      <li><strong>Caller hears that the call has to end, then the line drops:</strong> A <a href="/docs/spend-limits" class="docs-link">spend limit</a> was reached, or the balance of the wallet that pays for the call's audio ran out, during the call. The agent finishes the reply it is giving, a short notice plays, and the call ends. <a href="#call-history">Call History</a> shows <code>endReason</code> <code>spend_limit</code> or <code>balance</code>.</li>
-                      <li><strong>Hold music plays forever, agent never speaks:</strong> The agent failed to start the realtime conversation. Check <code>POST /UserAgent/Logs</code> for errors.</li>
-                      <li><strong>Caller hears your fallback message but no agent:</strong> <code>maxcallseconds</code> was reached before the agent connected, or the agent crashed mid-call. Check <code>POST /UserAgent/Logs</code>.</li>
-                      <li><strong>Whitelisted caller still gets busy signal:</strong> Ensure E.164 format. Twilio normalizes inbound numbers, so if your test phone presents itself as <code>4155551234</code> instead of <code>+14155551234</code>, the allowlist won't match. Add both forms while testing.</li>
-                      <li><strong>Rotated the Auth Token in Twilio Console:</strong> Re-paste the new token in Wiro and save again. The credential save also re-runs the webhook setup.</li>
-                    </ul>
-                  </section>
-
                   <section id="related">
                     <h2>Related</h2>
                     <ul>
@@ -37599,19 +37635,18 @@ for e in cron_runs:
                 <article class="docs-section">
                   <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="/docs/markdown/integration-webvoice-skills.md" target="_blank" class="docs-section-md-btn">View</a> <a href="/docs/markdown/integration-webvoice-skills.md" download class="docs-section-md-btn">Download</a></div>
                   <h1>Web Voice Channel</h1>
-                  <p class="section-subtitle">Embed a real-time voice conversation with a Wiro agent into your own browser app. Used by the Voice Receptionist and Voice Sales Rep preset agents, and by any custom agent that needs an "Open mic" button on a website.</p>
+                  <p class="section-subtitle">Embed a real-time voice conversation with a Wiro agent into your own browser app. Used by the Voice Receptionist agent, and by any custom agent that needs an "Open mic" button on a website.</p>
 
                   <section id="overview">
                     <h2>Overview</h2>
-                    <p>Toggle <code>util-web-channel</code> on a useragent and a single REST call (<code>POST /UserAgent/Realtime/WebStart</code>) returns everything the browser needs to open an authenticated WebSocket and stream microphone audio straight to the agent. The same agent can also pick up phone calls via <a href="/docs/integration-twiliovoice-skills">Twilio Voice</a>: the two channels share the same realtime runtime and end up in the same <a href="/docs/integration-twiliovoice-skills#call-history">Call History</a>.</p>
+                    <p>Turn on Web Voice Channel (<code>util-web-channel</code>) on a useragent and a single REST call (<code>POST /UserAgent/Realtime/WebStart</code>) returns everything the browser needs to open an authenticated WebSocket and stream microphone audio straight to the agent. The same agent can also pick up phone calls via <a href="/docs/integration-twiliovoice-skills">Twilio Voice</a>: the two channels share the same realtime runtime and end up in the same <a href="/docs/integration-twiliovoice-skills#call-history">Call History</a>.</p>
                     <p><strong>Skill that powers this channel:</strong></p>
                     <ul>
-                      <li><code>util-web-channel</code>: browser voice channel. Bundled on the Voice Receptionist and Voice Sales Rep presets; toggle it on for any other agent via <code>POST /UserAgent/SkillsApply</code>.</li>
+                      <li>Web Voice Channel (<code>util-web-channel</code>): browser voice channel. Bundled on the Voice Receptionist template. On any other agent, turn it on in one <code>POST /UserAgent/SkillsApply</code> call together with the two Skills it depends on, Voice Receptionist Rules (<code>util-voice-receptionist</code>) and Voice Call Prep Rules (<code>util-voice-call-prep</code>): <code>"skills": { "util-web-channel": true, "util-voice-receptionist": true, "util-voice-call-prep": true }</code>. Sent alone while those are off, the channel is refused with code <code>101</code> and a <code>deps[]</code> list, and nothing changes. Deploy's <code>skills</code> turns them on with the channel.</li>
                     </ul>
                     <p><strong>Agents that typically enable this channel:</strong></p>
                     <ul>
                       <li><a href="https://wiro.ai/agents/voice-receptionist" target="_blank" rel="noopener">Voice Receptionist</a>: phone + browser receptionist.</li>
-                      <li><a href="https://wiro.ai/agents/voice-sales-rep" target="_blank" rel="noopener">Voice Sales Rep</a>: outbound sales rep with an "Open mic" CTA.</li>
                       <li>Custom agents that need a voice button on a website or web app.</li>
                     </ul>
                     <p><strong>Web channel or Twilio channel</strong>? Pick by where the caller comes from:</p>
@@ -37668,7 +37703,7 @@ for e in cron_runs:
                     <h2>Prerequisites</h2>
                     <ul>
                       <li><strong>A Wiro API key</strong> (see <a href="/docs/authentication">Authentication</a>).</li>
-                      <li><strong>A deployed agent</strong> in <code>status: 4</code> (Running), see <a href="/docs/agent-overview">Agent Overview</a>. Voice Receptionist / Voice Sales Rep presets work out of the box; for custom agents, enable <code>util-web-channel</code> via <code>POST /UserAgent/SkillsApply</code>.</li>
+                      <li><strong>A deployed agent</strong> in <code>status: 4</code> (Running), see <a href="/docs/agent-overview">Agent Overview</a>. The Voice Receptionist template works out of the box; for other agents, turn on Web Voice Channel (<code>util-web-channel</code>) together with Voice Receptionist Rules (<code>util-voice-receptionist</code>) and Voice Call Prep Rules (<code>util-voice-call-prep</code>) in one <code>POST /UserAgent/SkillsApply</code> call (see <a href="#overview">Overview</a>).</li>
                       <li><strong>A browser that can capture microphone audio</strong> at 24 kHz mono PCM (every evergreen browser via <code>getUserMedia</code> + Web Audio).</li>
                     </ul>
                   </section>
@@ -37699,7 +37734,7 @@ for e in cron_runs:
                               <td><code>useragentguid</code></td>
                               <td>string</td>
                               <td>Yes</td>
-                              <td>Useragent instance guid. Must be an agent you deployed (for a team agent, call with that team's project key or workspace, or remain an active member of the team), must be in <code>status: 4</code> (Running), and must have <code>util-web-channel</code> enabled.</td>
+                              <td>Useragent instance guid. Must be an agent you deployed (for a team agent, call with that team's project key or workspace, or remain an active member of the team), must be in <code>status: 4</code> (Running), and must have Web Voice Channel (<code>util-web-channel</code>) on.</td>
                             </tr>
                             <tr>
                               <td><code>session_metadata</code></td>
@@ -37772,7 +37807,7 @@ for e in cron_runs:
 
                     <h3>Step 2: Connect the WebSocket</h3>
                     <p>Open a WebSocket to the returned <code>wsUrl</code> and send the <code>session_start</code> JSON frame <strong>within 10 seconds</strong>. After that, frame microphone audio as 24 kHz mono PCM int16 with a <code>&lt;correlationId&gt;|</code> text prefix. <strong>Server-sent binary audio frames use the same prefix shape, so you must strip it before feeding the bytes to Web Audio.</strong></p>
-                    <p>The example below boots a working voice call end-to-end: it acquires the mic, mounts an <code>AudioWorklet</code> that emits 24 kHz Int16 PCM, opens the WebSocket, presents the token, handles every server frame the bridge actually sends, and plays the agent's audio back through <code>AudioContext</code>. Drop it into a page paired with the worklet at <code>audio-processor.js</code> shown below.</p>
+                    <p>The example below boots a working voice call end-to-end: it acquires the mic, mounts an <code>AudioWorklet</code> that emits 24 kHz Int16 PCM, opens the WebSocket, presents the token, handles every frame the server sends, and plays the agent's audio back through <code>AudioContext</code>. Drop it into a page paired with the worklet at <code>audio-processor.js</code> shown below.</p>
                     <pre><code class="language-javascript">// ===== voice-client.js: runs in the browser =====
 
 // 1. POST /UserAgent/Realtime/WebStart from YOUR backend, then pass the
@@ -37870,7 +37905,8 @@ async function startMicCapture() {
 
 // 4. UI hooks.
 function muteMic(on) {
-  // Mute is purely client-side: the bridge has no server-side mute handler.
+  // Mute is purely client-side: toggle the mic track. The server has no
+  // mute frame.
   micStream?.getAudioTracks().forEach((t) =&gt; (t.enabled = !on));
 }
 function bargeIn() { ws.send(JSON.stringify({ type: "interrupt" })); }
@@ -37959,7 +37995,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
 
                   <section id="websocket-protocol">
                     <h2>WebSocket Protocol</h2>
-                    <p>The browser bridge lives at <code>wss://&lt;env&gt;/v1/AgentRealtime/Web</code>.</p>
+                    <p>Open the <code>wsUrl</code> that WebStart returns (<code>wss://socket.wiro.ai/v1/AgentRealtime/Web</code>).</p>
 
                     <h3>First message (text frame)</h3>
                     <pre><code class="language-json">{ "type": "session_start", "sessionToken": "&lt;sessionToken-from-WebStart&gt;" }</code></pre>
@@ -37985,7 +38021,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                         </table>
                       </div>
                     </div>
-                    <p>The bridge transcodes server-side if a downstream model needs a different sample rate, so you always send 24 kHz from the browser.</p>
+                    <p>The server transcodes if a downstream model needs a different sample rate, so you always send 24 kHz from the browser.</p>
 
                     <h3>Browser → server control frames (text)</h3>
                     <div class="docs-param-table">
@@ -37997,17 +38033,17 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                           <tbody>
                             <tr>
                               <td><code>{ "type": "interrupt" }</code></td>
-                              <td>Cuts the agent mid-sentence (barge-in). Use this when the user starts speaking again before the agent finishes. The bridge confirms with a <code>clear</code> frame back.</td>
+                              <td>Cuts the agent mid-sentence (barge-in). Use this when the user starts speaking again before the agent finishes. The server confirms with a <code>clear</code> frame back.</td>
                             </tr>
                             <tr>
                               <td><code>{ "type": "end" }</code></td>
-                              <td>Graceful disconnect: the bridge flushes its buffers, emits a final transcript + <code>session_end</code> frame, then closes.</td>
+                              <td>Graceful disconnect: the server flushes its buffers, emits a final transcript + <code>session_end</code> frame, then closes.</td>
                             </tr>
                           </tbody>
                         </table>
                       </div>
                     </div>
-                    <div class="info-callout"><p><strong>Mute is client-side, not a server frame.</strong> The bridge has no <code>mute</code> handler, so toggle the mic <code>MediaStreamTrack.enabled = false</code> (or stop posting audio frames from your worklet) instead. Sending <code>{type:"mute"}</code> is silently ignored.</p></div>
+                    <div class="info-callout"><p><strong>Mute is client-side, not a server frame.</strong> The server has no <code>mute</code> frame, so toggle the mic <code>MediaStreamTrack.enabled = false</code> (or stop posting audio frames from your worklet) instead. Sending <code>{type:"mute"}</code> is silently ignored.</p></div>
 
                     <h3>Server → browser frames</h3>
                     <div class="docs-param-table">
@@ -38019,7 +38055,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                           <tbody>
                             <tr>
                               <td><code>{ "type": "connecting" }</code></td>
-                              <td>Sent right after the bridge accepts your <code>session_start</code>. Handshake is in progress; the realtime model is being warmed up. UI can show a "connecting" state.</td>
+                              <td>Sent right after the server accepts your <code>session_start</code>. Handshake is in progress; the realtime model is being warmed up. UI can show a "connecting" state.</td>
                             </tr>
                             <tr>
                               <td><code>{ "type": "ready" }</code></td>
@@ -38031,7 +38067,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                             </tr>
                             <tr>
                               <td><code>{ "type": "clear" }</code></td>
-                              <td>Barge-in confirmation: the bridge has discarded the agent utterance still in flight. Drop every <code>AudioBufferSourceNode</code> you've already scheduled and stop appending new audio until you see <code>resume</code>.</td>
+                              <td>Barge-in confirmation: the server has discarded the agent utterance still in flight. Drop every <code>AudioBufferSourceNode</code> you've already scheduled and stop appending new audio until you see <code>resume</code>.</td>
                             </tr>
                             <tr>
                               <td><code>{ "type": "resume" }</code></td>
@@ -38043,7 +38079,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                             </tr>
                             <tr>
                               <td><code>{ "type": "session_end", "reason": "...", "message"?: "..." }</code></td>
-                              <td>Terminal frame, immediately followed by a clean <code>ws.close(1000, …)</code>. <strong>All errors and graceful ends arrive here</strong>. There is no separate <code>error</code> frame. <code>reason</code> is <code>rejected</code> (the call could not start or was turned away), <code>spend_limit</code> (a <a href="/docs/spend-limits" class="docs-link">spend limit</a> was reached during the call), <code>balance</code> (the balance ran out during the call) or <code>ended</code> (any other end; <a href="/docs/integration-twiliovoice-skills#call-history">Call History</a> has the detail in <code>endReason</code>). <code>message</code>, when present, is a short sentence you can show. With <code>spend_limit</code> and <code>balance</code> the bridge lets the reply that is playing finish first and sends no <code>message</code>, so show your own text.</td>
+                              <td>Terminal frame, immediately followed by a clean <code>ws.close(1000, …)</code>. <strong>All errors and graceful ends arrive here</strong>. There is no separate <code>error</code> frame. <code>reason</code> is <code>rejected</code> (the call could not start or was turned away), <code>spend_limit</code> (a <a href="/docs/spend-limits" class="docs-link">spend limit</a> was reached during the call), <code>balance</code> (the balance ran out during the call) or <code>ended</code> (any other end; <a href="/docs/integration-twiliovoice-skills#call-history">Call History</a> has the detail in <code>endReason</code>). <code>message</code>, when present, is a short sentence you can show. With <code>spend_limit</code> and <code>balance</code> the server lets the reply that is playing finish first and sends no <code>message</code>, so show your own text.</td>
                             </tr>
                           </tbody>
                         </table>
@@ -38053,7 +38089,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                     <h3>Session lifetime</h3>
                     <ul>
                       <li>The <code>sessionToken</code> handle is valid for <strong>300 seconds</strong> from issue (until <code>expiresAt</code>) and works once, so the browser must send <code>session_start</code> before then. To connect again, call <code>WebStart</code> for fresh handles, since there's no in-band refresh.</li>
-                      <li>Once the bridge accepts your <code>session_start</code> frame, the 5-minute release timer no longer applies to the call. Live call audio is billed to the agent's Wiro project; the time before the browser connects carries no audio charge.</li>
+                      <li>Once the server accepts your <code>session_start</code> frame, the 5-minute release timer no longer applies to the call. Live call audio is billed to the agent's Wiro project; the time before the browser connects carries no audio charge.</li>
                     </ul>
                   </section>
 
@@ -38115,7 +38151,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                               <td>200</td>
                               <td>none</td>
                               <td><code>util-web-channel not enabled</code></td>
-                              <td>Toggle <code>util-web-channel</code> via <code>POST /UserAgent/SkillsApply</code> (custom agents) or pick a preset that bundles it (Voice Receptionist / Voice Sales Rep).</td>
+                              <td>Turn on Web Voice Channel (<code>util-web-channel</code>) with Voice Receptionist Rules (<code>util-voice-receptionist</code>) and Voice Call Prep Rules (<code>util-voice-call-prep</code>) in one <code>POST /UserAgent/SkillsApply</code> call, or pick the Voice Receptionist template, which bundles it.</td>
                             </tr>
                             <tr>
                               <td>403</td>
@@ -38152,7 +38188,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                       <li><a href="/docs/integration-twiliovoice-skills" class="docs-link">Twilio Voice</a>: pair the same agent with a real phone number for inbound PSTN calls. Both channels surface in the same <a href="/docs/integration-twiliovoice-skills#call-history">Call History</a> feed.</li>
                       <li><a href="/docs/realtime-voice-conversation" class="docs-link">Realtime Voice Conversation</a>: the underlying model-level realtime protocol (used by <code>wiro.ai/models/openai/gpt-realtime-mini</code>, etc.). Web Channel is the agent-aware wrapper around it.</li>
                       <li><a href="/docs/agent-overview" class="docs-link">Agent Overview</a>: useragent statuses, plans, AI usage and the balance, and the rest of the agent surface.</li>
-                      <li><a href="/docs/agent-skills" class="docs-link">Agent Skills</a>: toggling <code>util-web-channel</code> on any agent.</li>
+                      <li><a href="/docs/agent-skills" class="docs-link">Agent Skills</a>: turning on Web Voice Channel (<code>util-web-channel</code>) on any agent.</li>
                       <li><a href="/docs/agent-use-cases" class="docs-link">Agent Use Cases: Voice Receptionist</a>, the preset that ships Web + Twilio channels on by default.</li>
                     </ul>
                   </section>
@@ -38239,7 +38275,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                             <tr>
                               <td>Digital marketing agency dashboard</td>
                               <td><a href="https://wiro.ai/agents/social-manager" target="_blank" rel="noopener">Social Manager</a></td>
-                              <td>Each client connects their own Twitter, Instagram, Facebook, TikTok, LinkedIn</td>
+                              <td>Each client connects their own X, Instagram, Facebook Pages, TikTok and LinkedIn</td>
                             </tr>
                             <tr>
                               <td>Mobile app company</td>
@@ -38259,7 +38295,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                             <tr>
                               <td>Sales platform</td>
                               <td><a href="https://wiro.ai/agents/lead-gen-manager" target="_blank" rel="noopener">Lead Generation Manager</a></td>
-                              <td>Each sales team connects their own Apollo/Lemlist</td>
+                              <td>Each sales team connects their own Apollo/lemlist</td>
                             </tr>
                             <tr>
                               <td>Content agency tool</td>
@@ -38452,8 +38488,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
                     <p>A richer variant of white-label chat: besides replying with text, the agent <strong>generates images, video, or audio</strong> through Wiro AI models and streams them into a live activity feed beside the conversation. This is the pattern behind Wiro's own Studio. It layers the realtime socket on top of the <strong>Session-Per-User</strong> model.</p>
                     <p><strong>Shape:</strong></p>
                     <ul>
-                      <li>One deployed agent whose Wiro project is set to your project (see <a href="/docs/agent-credentials#the-agents-wiro-project">The agent's Wiro project</a>). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project). The agent runs models with that project's key from its skills, or with the tools of the <code>wiro</code> connector (see <a href="/docs/agent-connectors#the-wiro-connector">The Wiro connector</a>).</li>
-                      <li>One <code>sessionkey</code> per end user (Pattern 2 above): the same agent instance serves everyone, and each user's chat history is isolated by session. The agent's model runs are not: with the <code>wiro</code> connector, each user can reach the runs the agent made for the others (see <a href="/docs/agent-connectors#the-wiro-connector">The Wiro connector</a>).</li>
+                      <li>One deployed agent whose Wiro project is set to your project (see <a href="/docs/agent-credentials#the-agents-wiro-project">The agent's Wiro project</a>). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project). The agent runs models with that project's key from its skills, or with the tools of the Wiro AI Models connector, <code>wiro</code> (see <a href="/docs/agent-connectors#the-wiro-connector">The Wiro connector</a>).</li>
+                      <li>One <code>sessionkey</code> per end user (Pattern 2 above): the same agent instance serves everyone, and each user's chat history is isolated by session. The agent's model runs are not: with Wiro AI Models (<code>wiro</code>), each user can reach the runs the agent made for the others (see <a href="/docs/agent-connectors#the-wiro-connector">The Wiro connector</a>).</li>
                       <li>A single WebSocket connection carries three things at once: the streaming chat reply, the per-turn token-usage report, and discovery of any model runs the agent launches.</li>
                     </ul>
                     <p><strong>End-to-end sequence an integrator replicates:</strong></p>
@@ -38517,69 +38553,80 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
                             <tr>
                               <th>Agent</th>
                               <th>What It Does</th>
-                              <th>Connectors</th>
+                              <th>Connectors It Suggests</th>
                             </tr>
                           </thead>
                           <tbody>
                             <tr>
                               <td><strong><a href="https://wiro.ai/agents/social-manager" target="_blank" rel="noopener">Social Manager</a></strong></td>
                               <td>Create, schedule, and publish social media content</td>
-                              <td>Twitter/X, TikTok, LinkedIn (OAuth); Instagram and Facebook Pages (System User recommended or own OAuth)</td>
+                              <td>X, Instagram, Facebook Pages, LinkedIn, TikTok, Google Drive, Serper, Calendarific, Wiro AI Models</td>
                             </tr>
                             <tr>
                               <td><strong><a href="https://wiro.ai/agents/blog-content-editor" target="_blank" rel="noopener">Blog Content Editor</a></strong></td>
                               <td>Write and publish blog posts (WordPress draft + publish workflow)</td>
-                              <td>WordPress (App Password), Gmail (optional, for inbox requests)</td>
+                              <td>WordPress, Gmail, Serper, Calendarific, Wiro AI Models</td>
                             </tr>
                             <tr>
                               <td><strong><a href="https://wiro.ai/agents/google-ads-manager" target="_blank" rel="noopener">Google Ads Manager</a></strong></td>
                               <td>Create and optimize Google Ads campaigns, daily performance reports</td>
-                              <td>Google Ads (OAuth), Calendarific (API key), Google Drive (optional, Service Account)</td>
+                              <td>Google Ads, Google Merchant Center, Google Analytics 4, YouTube, Google Drive, Adjust, Roasit, Calendarific, Wiro AI Models</td>
                             </tr>
                             <tr>
                               <td><strong><a href="https://wiro.ai/agents/meta-ads-manager" target="_blank" rel="noopener">Meta Ads Manager</a></strong></td>
                               <td>Manage Facebook and Instagram ad campaigns, audience analysis</td>
-                              <td>Meta Ads (System User recommended or own OAuth), Calendarific (API key), Google Drive (optional, Service Account)</td>
+                              <td>Meta Ads, Google Analytics 4, Google Drive, Adjust, Roasit, Calendarific, Wiro AI Models</td>
+                            </tr>
+                            <tr>
+                              <td><strong><a href="https://wiro.ai/agents/tiktok-ads-manager" target="_blank" rel="noopener">TikTok Ads Manager</a></strong></td>
+                              <td>Manage TikTok ad campaigns per advertiser, with daily performance and audience reports</td>
+                              <td>TikTok Ads, Google Analytics 4, Google Drive, Adjust, Roasit, Calendarific, Wiro AI Models</td>
                             </tr>
                             <tr>
                               <td><strong><a href="https://wiro.ai/agents/newsletter-manager" target="_blank" rel="noopener">Newsletter Manager</a></strong></td>
                               <td>Design and send email newsletters to subscriber lists</td>
-                              <td>Brevo, SendGrid, Mailchimp, HubSpot (any one, API key or OAuth)</td>
+                              <td>Brevo, SendGrid, Mailchimp, HubSpot, Serper, Calendarific, Wiro AI Models</td>
                             </tr>
                             <tr>
                               <td><strong><a href="https://wiro.ai/agents/lead-gen-manager" target="_blank" rel="noopener">Lead Generation Manager</a></strong></td>
                               <td>Find and enrich leads, run multi-channel outreach, analyze replies</td>
-                              <td>Apollo (API key), Lemlist (API key), HubSpot (optional, for CRM sync)</td>
+                              <td>Apollo, lemlist, HubSpot, Calendarific</td>
                             </tr>
                             <tr>
                               <td><strong><a href="https://wiro.ai/agents/app-review-support" target="_blank" rel="noopener">App Review Support</a></strong></td>
                               <td>Monitor app store reviews, draft responses in operator's tone</td>
-                              <td>App Store Connect (private key JWT), Google Play (service account)</td>
+                              <td>App Store Connect, Google Play Console</td>
+                            </tr>
+                            <tr>
+                              <td><strong><a href="https://wiro.ai/agents/google-review-manager" target="_blank" rel="noopener">Google Review Manager</a></strong></td>
+                              <td>Watch Google Business Profile reviews and prepare replies in each customer's language</td>
+                              <td>Google Business Profile</td>
                             </tr>
                             <tr>
                               <td><strong><a href="https://wiro.ai/agents/app-event-manager" target="_blank" rel="noopener">App Event Manager</a></strong></td>
-                              <td>Scan global holidays, suggest and create App Store + Google Play in-app events</td>
-                              <td>App Store Connect (JWT), Google Play (service account), Calendarific (API key)</td>
+                              <td>Scan global holidays, suggest and create App Store in-app events, and prepare Google Play promotional content for you to publish in Play Console</td>
+                              <td>App Store Connect, Google Play Console, Calendarific, Wiro AI Models</td>
                             </tr>
                             <tr>
                               <td><strong><a href="https://wiro.ai/agents/push-notification-manager" target="_blank" rel="noopener">Push Notification Manager</a></strong></td>
                               <td>Craft locale- and timezone-aware push notifications, queue dispatch</td>
-                              <td>Firebase (service account JSON per app), Calendarific (API key)</td>
+                              <td>Firebase Cloud Messaging, Calendarific, Wiro AI Models</td>
                             </tr>
                             <tr>
                               <td><strong><a href="https://wiro.ai/agents/voice-receptionist" target="_blank" rel="noopener">Voice Receptionist</a></strong></td>
                               <td>Answer phone calls 24/7 with a real-time AI receptionist: recognises callers from CRM, books from your calendar, drafts CRM notes + follow-up emails, streams a live transcript to chat</td>
-                              <td>Twilio Voice (Account SID, Auth Token, phone number) for inbound phone; HubSpot (optional, caller recognition); Google Calendar (optional, slot lookup); Google Drive (optional); Brevo or HubSpot (any one, optional, follow-up email drafts); Telegram bot (optional, operator approvals)</td>
+                              <td>HubSpot, Google Calendar, Google Drive, Brevo, Wiro AI Models</td>
                             </tr>
                             <tr>
                               <td><strong><a href="https://wiro.ai/agents/video-creator" target="_blank" rel="noopener">Video Creator</a></strong></td>
                               <td>Turn a website, web app, store listing, document or product photos into a share-ready video with real screens, voice-over, music and captions</td>
-                              <td>Wiro project (the video's model runs are billed to its wallet); the <a href="https://wiro.ai/connectors/youtube">YouTube</a> and <a href="https://wiro.ai/connectors/instagram">Instagram</a> connectors (optional, to publish finished videos); Telegram bot (optional)</td>
+                              <td>Wiro AI Models (the video's model runs are billed to its project's wallet); it also publishes finished videos through the <a href="https://wiro.ai/connectors/youtube">YouTube</a> or <a href="https://wiro.ai/connectors/instagram">Instagram</a> connector when one is connected</td>
                             </tr>
                           </tbody>
                         </table>
                       </div>
                     </div>
+                    <p>Channels are not connectors: the Voice Receptionist answers calls with its Twilio Voice Channel and Web Voice Channel Skills (the phone line uses your Twilio account, saved in the Twilio Voice (<code>twilio-voice</code>) credential), and any agent can add a Telegram, Slack or Discord channel. See <a href="/docs/agent-credentials" class="docs-link">Agent Credentials</a>.</p>
                     <p class="docs-callout">
                       <em>The list above matches the agent templates currently deployed in production. The exact set evolves over time as new templates ship, so fetch <code>POST /Agent/List</code> for the live catalog. Each agent's full marketing page lives at <code>https://wiro.ai/agents/{slug}</code> (linked in the first column).</em>
                     </p>
@@ -38613,7 +38660,10 @@ deploy = requests.post(
 )
 useragent_guid = deploy.json()["useragents"][0]["guid"]
 
-# Connect X with your own X app (see Agent Connectors)
+# Connect X with your own X app (see Agent Connectors). Register
+# https://api.wiro.ai/v1/AgentConnector/OAuthCallback as a redirect URI in that
+# app first; redirecturl is where Wiro sends your user back, with
+# connector_connected=true or connector_error=&lt;code&gt;.
 connect = requests.post(
     "https://api.wiro.ai/v1/UserAgent/ConnectorConnect",
     headers=headers,
