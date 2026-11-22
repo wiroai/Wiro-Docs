@@ -1324,7 +1324,7 @@ An agent is named by its guid, which `list_my_agents` returns. See
 | `list_agent_templates` | `search`, `category`, `sort` (`newest`, `popular` or `title`), `start`, `limit` |
 | `get_agent_template` | `template`, `include_tasks` |
 | `list_agent_connectors` | `name`, `search`, `category`, `agent_guid` (its connections too) |
-| `list_agent_skills` | `name`, `category`, `capability` |
+| `list_agent_skills` | `name`, `capability` |
 | `deploy_agent` | `template`, or `custom: true` with `skills`; `tier` (`starter`, `pro` or `max`), `title`, `credentials`, `chat_setup` (`all`, `webchat` or `off`), `confirm`, `confirm_charge_usd` |
 | `list_my_agents` | `sort`, `start`, `limit` |
 | `get_my_agent` | `agent_guid`, `wait_seconds` (wait until it is running) |
