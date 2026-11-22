@@ -10,13 +10,14 @@ The ledger is the single source of truth for "where did my credits go?" and powe
 
 | Transaction `type` | Source | When it fires |
 |--------------------|--------|---------------|
-| `deduct` | Agent runtime | Per-turn LLM token charge (`action: "tokens"`) for every chat, cron, and voice post-call turn. Negative `amount`. |
+| `deduct` | Agent runtime | LLM token charge (`action: "tokens"`) for chat, cron, and voice post-call turns. Negative `amount`. Usually one row per turn; when Wiro measures the agent's model calls itself, one row covers every call billed since the last row, of one turn or several (see [Rows that cover several model calls](#metered-token-rows)). |
 | `renewal` | Subscription cron | At each 30-day rollover when the wallet successfully covers the renewal. Positive `amount` = monthly credits granted. |
 | `purchase` | Extra-credit checkout | When `POST /UserAgent/CreateExtraCreditCheckout` (`useprepaid: true`) succeeds. Positive `amount` = pack credits. |
 | `grant` | Plan change / skill change | When a move to a higher plan lifts this period's credits. Positive `amount`: what this period gained. `metadata.creditsFromRenewal` is what each renewal grants. A skill change through `SkillsApply` or `SkillToggle` also writes a `grant` row with `amount: 0`: `action: "skill-toggle"` (`metadata: { skill, enabled }`) or `"skills-apply"` (`metadata: { diff, idempotencyKey }`). A skill change row with a non-zero `amount` or a `metadata.usedCreditsUsd` is from before skill changes became free. |
 | `expired` | Subscription end | When a cancelled subscription rolls past `currentperiodend` and the cron revokes any remaining monthly leftover (`action: "subscription"`). Negative `amount`. Rows from before skill changes became free can also come from a skill turned off mid-period (`action: "skill-toggle"` or `"skills-apply"`, with `metadata.usedCreditsUsd`). |
 | `refund` | Server-side refund | Issued by Wiro support when a previous charge is reversed. Positive `amount`. |
 | `adjust` | Wiro support | A record for Wiro support. Rows with `amount: 0` and `action: "skill-change-not-undone"` (a failed skill change that could not be taken back) or `"skill-credit-failed"` (a skill credit that was not added to the wallet) are from before skill changes became free. |
+| `subscription` | Plan payment that did not finish | `action: "plan-not-saved"`: the wallet paid for a plan start or a renewal and the plan could not be saved. `amount: 0`, since no credits moved. See [Plan payments that did not finish](#plan-not-saved). |
 
 > **The ledger is append-only.** There is no delete endpoint. Each row carries a stable `guid` that the server uses for deduplication (so a duplicate retry of the same deduct event is a no-op).
 
@@ -223,14 +224,14 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 | Field | Type | Description |
 |-------|------|-------------|
 | `guid` | `string` | Stable id of the ledger row. Daemon retries reuse this guid for idempotency. |
-| `type` | `string` | One of `"deduct"`, `"renewal"`, `"purchase"`, `"grant"`, `"expired"`, `"refund"`, `"adjust"`. There is no `"cancel"` type: a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until `currentperiodend` is reached, at which point the cron writes the ledger row as `type: "expired"`, `action: "subscription"`. |
-| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"tokens"` (deduct: the per-turn LLM token charge Wiro records for every chat, cron, and voice post-call turn); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"upgrade"`, `"tier-change"` (grant: a move to a higher plan); `"skill-toggle"`, `"skills-apply"` (grant: a skill change, with `amount: 0`; grant or expired rows with a non-zero `amount` are from before skill changes became free); `"subscription"` (expired, end-of-period cancel rollover; refund); `"skill-change-not-undone"`, `"skill-credit-failed"` (adjust, rows from before skill changes became free). Legacy deduct rows may also carry `"message"`, `"create"`, `"modify"`, or `"regenerate"`. |
+| `type` | `string` | One of `"deduct"`, `"renewal"`, `"purchase"`, `"grant"`, `"expired"`, `"refund"`, `"adjust"`, `"subscription"`. There is no `"cancel"` type: a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until `currentperiodend` is reached, at which point the cron writes the ledger row as `type: "expired"`, `action: "subscription"`. |
+| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"tokens"` (deduct: the LLM token charge for chat, cron, and voice post-call turns, usually one row per turn; see [Rows that cover several model calls](#metered-token-rows)); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"upgrade"`, `"tier-change"` (grant: a move to a higher plan); `"skill-toggle"`, `"skills-apply"` (grant: a skill change, with `amount: 0`; grant or expired rows with a non-zero `amount` are from before skill changes became free); `"subscription"` (expired, end-of-period cancel rollover; refund); `"skill-change-not-undone"`, `"skill-credit-failed"` (adjust, rows from before skill changes became free). Legacy deduct rows may also carry `"message"`, `"create"`, `"modify"`, or `"regenerate"`. |
 | `amount` | `number` | Signed credit delta: negative for deductions, positive for grants. |
 | `balanceafter` | `number\|null` | Remaining credit balance snapshot written at the time of the event. `null` on per-turn `deduct` rows. |
 | `description` | `string\|null` | Human-readable label. On an `action: "tokens"` row it spells the counts out: `LLM <model> (uncached in N, cached in N, out N, cache write N, total N tokens)`, where `cached in` and `cache write` appear only above 0. |
-| `sessionkey` | `string\|null` | Session the deduct belongs to (deduct rows only). |
+| `sessionkey` | `string\|null` | Session the deduct belongs to (deduct rows only; `null` on a row that covers several model calls). |
 | `agentsessionkey` | `string\|null` | Alias of `sessionkey` (same value), present on every row for a unified per-session attribution key across `TaskList` / `TransactionList` / wallet responses. |
-| `messageguid` | `string\|null` | Agent message that triggered the deduct (deduct rows only). |
+| `messageguid` | `string\|null` | Agent message that triggered the deduct (deduct rows only; `null` on a row that covers several model calls). |
 | `inputtokens` | `number\|null` | Uncached prompt tokens billed at the model's input rate (`action: "tokens"` rows only). |
 | `outputtokens` | `number\|null` | Completion tokens billed for the turn (`action: "tokens"` rows only). |
 | `cachereadtokens` | `number\|null` | Prompt tokens served from cache for the turn (`action: "tokens"` rows only). |
@@ -290,6 +291,48 @@ console.log('Now in period:', summary.creditperiod);
 ### Reconcile a plan change
 
 When the user moves to a higher plan mid-period, the ledger gets one `grant` row for the credits the move added to this period. For a wallet-billed (prepaid) agent, `UpgradeTier` writes `action: "tier-change"` with those credits as `amount` (the monthly difference for the time left in the period), a description like `"Plan Pro to Max"` and `metadata: { fromTier, toTier, previousPriceUsd, newPriceUsd, proratedCharge, creditsFromRenewal }`; a card-billed upgrade writes `action: "upgrade"`. A move to a lower plan takes effect at the renewal, and that `renewal` row grants the lower plan's credits. Use these rows to render a plan history in your UI.
+
+### Rows that cover several model calls
+
+<a id="metered-token-rows"></a>
+
+When Wiro measures an agent's model calls itself, a `deduct` row is not one turn. Each call is priced exactly, and the prices add up until they reach a whole credit; then one `deduct` row (`action: "tokens"`) takes the whole credits and covers every call billed since the agent's last row, of one turn or of several. What is left under a credit waits for the next row, so no call is billed twice and none is rounded up. Calls a turn makes outside its reply, such as compacting a long conversation, are billed this way too.
+
+On such a row:
+
+| Field | What it holds |
+|-------|---------------|
+| `amount`, `tokencost` | The whole credits the row takes (`amount` negative). |
+| `inputtokens`, `outputtokens`, `cachereadtokens`, `cachewritetokens`, `totaltokens` | The sums of the calls it covers. |
+| `model`, `description` | The model of the costliest call; the description spells the sums out as on other token rows. |
+| `sessionkey`, `agentsessionkey`, `messageguid` | `null`: a row can cover calls of more than one turn. |
+| `providerref` | The trace id of the costliest call, when the agent's call sent a W3C `traceparent`; otherwise `null`. |
+| `metadata.calls` | Up to 200 of the calls it covers: `{ callId, responseId, provider, model, input, output, cacheRead, cacheWrite, total, credits }`, with `credits` exact to 9 decimals. |
+| `metadata.callCount` | How many calls it covers (it can be more than the 200 listed). |
+| `metadata.traceIds` | Up to 20 distinct trace ids of its calls, from their `traceparent`. |
+| `metadata.models`, `metadata.providers` | The models and providers of its calls. |
+| `metadata.carryIn`, `metadata.carryOut` | The part of a credit carried in from the row before and carried on to the next. |
+
+No field ties such a row to the turns it covers. To show usage per turn or per day, add up the rows by `createdat`; `summary.byModel[].turncount` counts each of these rows, or each trace id, as one turn.
+
+### Plan payments that did not finish
+
+<a id="plan-not-saved"></a>
+
+When the wallet pays for a plan start or a renewal and the plan then can't be saved, the agent's plan, price and credits stay as they were until Wiro support sets them, and the payment is recorded so it can be found. It happens on `Deploy` and `CreateSubscriptionCheckout` with `useprepaid: true`, on `RenewSubscription` (each answers with code `110`, see [Plan and payment errors](/docs/agent-overview#post-useragentrenewsubscription)), and on Wiro's own renewal at the end of a period. After Wiro's own renewal ends this way, the subscription shows the new period, so `RenewSubscription` answers `Subscription is already active`: this row is how to tell the two apart. Send the agent to Wiro support; don't charge again.
+
+The ledger row:
+
+| Field | Value |
+|-------|-------|
+| `type` | `"subscription"` |
+| `action` | `"plan-not-saved"` |
+| `amount` | `0`: no credits moved. |
+| `description` | Such as `"Pro plan renewal charged; the plan was not saved"` or `"Max plan start charged; the plan was not saved"`. |
+| `provider` | `"prepaid"` |
+| `metadata` | `{ tier, priceUsd, chargedUsd, walletKey }`: the plan that was charged (`null` for a plan with no name), its price, what the wallet paid, and the id of that wallet payment. |
+
+The agent's [activity log](/docs/agent-logs#who-did-what-rows) gets an `AGENT_PLAN_NOT_SAVED` row with the same payment, titled like `Pro plan renewal did not finish: $24.00 charged`.
 
 ## Errors
 

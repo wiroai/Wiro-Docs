@@ -85,9 +85,9 @@ Every skill and connector works on every plan. Turning a skill on or off with [`
 
 Each plan gives the agent disk space for its files: 250 MB on Starter, 500 MB on Pro and 1 GB on Max. What counts is the agent's workspace, the media it generates and its temporary files. Chat history and the agent's system files don't count.
 
-Downloads and temporary files outside the workspace are cleared when the agent restarts. They are also cleared when they pass 1 GB, on every plan: the agent then restarts on its own, which takes about a minute, and the files in its workspace stay.
+Downloads and temporary files outside the workspace are cleared when the agent restarts, and media files from its chats are kept 3 days. Temporary files are also cleared when they pass 1 GB, on every plan: the agent then restarts on its own once the reply it is working on is done (it waits up to 20 minutes for it), which takes about a minute, and the files in its workspace stay.
 
-When the agent's files reach the plan's size, the disk is full: the agent can't save new files until some are deleted or the agent moves to a bigger plan. A full disk deletes nothing. A move to a higher plan with [`UpgradeTier`](#post-useragentupgradetier) gives the agent the bigger disk as soon as the new plan starts. A move to a lower plan brings its smaller disk at the renewal where that plan starts: if the agent's files are bigger than that, they all stay, and the disk reads full until some are deleted.
+When the agent's files reach the plan's size, the disk is full: the agent can't save new files until some are deleted or the agent moves to a bigger plan. The agent frees space itself: when a save is refused, it deletes the scratch files and notes it no longer needs, moves files out of the counted space, or deletes finished video work, then saves again. There is no endpoint that lists or deletes the agent's files. A full disk deletes nothing on its own. A move to a higher plan with [`UpgradeTier`](#post-useragentupgradetier) gives the agent the bigger disk as soon as the new plan starts. A move to a lower plan brings its smaller disk at the renewal where that plan starts: if the agent's files are bigger than that, they all stay, and the disk reads full until some are deleted.
 
 [`UserAgent/Detail`](#post-useragentdetail) shows the agent's usage in `disk` (see [Disk object](#disk-object)): its `state` reads `"almost_full"` from 80% of the plan's size and `"full"` from 100%. The agent's activity log gets an `AGENT_DISK_ALMOST_FULL` row when its files pass 80%, an `AGENT_DISK_FULL` row when they reach the plan's size, and an `AGENT_DISK_TEMP_CLEARED` row when a restart clears temporary files that passed 1 GB (see [Who-did-what rows](/docs/agent-logs#who-did-what-rows)).
 
@@ -140,7 +140,7 @@ tokencost = ceil(Σ call_input_cost)
           + ceil(Σ call_cache_write_cost)
 ```
 
-Cache-read and cache-write categories are charged only when the selected model rate defines them. `inputtokens` contains only uncached input; `totaltokens` is always the exact sum of input, output, cache-read, and cache-write tokens. For models with `long_context_threshold_tokens`, Wiro selects the long-context rate **per LLM call** using `input + cacheRead + cacheWrite`. You don't send anything. Each billed turn appears once as a ledger row with `action: "tokens"` (see [`POST /UserAgent/TransactionList`](/docs/agent-transactions#tx-transactionlist)). Per-turn token counts and cost also ride on each assistant message (`inputtokens` / `outputtokens` / `cachereadtokens` / `cachewritetokens` / `totaltokens` / `tokencost` / `model`, see [Agent Messaging](/docs/agent-messaging)).
+Cache-read and cache-write categories are charged only when the selected model rate defines them. `inputtokens` contains only uncached input; `totaltokens` is always the exact sum of input, output, cache-read, and cache-write tokens. For models with `long_context_threshold_tokens`, Wiro selects the long-context rate **per LLM call** using `input + cacheRead + cacheWrite`. You don't send anything. Each billed turn appears as a ledger row with `action: "tokens"` (see [`POST /UserAgent/TransactionList`](/docs/agent-transactions#tx-transactionlist)); when Wiro measures the agent's model calls itself, one row covers every call billed since the last row, of one turn or several (see [Rows that cover several model calls](/docs/agent-transactions#metered-token-rows)). Per-turn token counts and cost also ride on each assistant message (`inputtokens` / `outputtokens` / `cachereadtokens` / `cachewritetokens` / `totaltokens` / `tokencost` / `model`, see [Agent Messaging](/docs/agent-messaging)).
 
 When the credit pool is exhausted, [`POST /UserAgent/Message/Send`](/docs/agent-messaging#post-useragentmessagesend) and [`POST /UserAgent/Start`](#post-useragentstart) refuse with an `Agent has no remaining credits…` error plus an `agentbalance` snapshot; renew the subscription or buy an extra credit pack to continue.
 
@@ -1271,13 +1271,27 @@ Retrieves full details for a single deployed agent instance, including subscript
 |-------|------|-------------|
 | `credentials` | `object` | Per-provider credential map keyed by credential name (`telegram`, `twilio-voice`, `wiro`, `var-support-email`, …). Each provider object carries its saved field values, every saved secret read as the mask `"••••••••"`, plus a fixed metadata header (see "Credential object shape" below). |
 | `customskills` | `array` | Composed list of preset strategies and **non-cron** custom skills (writable instructions). Each entry: `{ key, description, value, enabled, interval: null, _source, _editable, _edited, _user_created? }`. `_source` ∈ `"preset-strategy"` \| `"user-created"`. |
-| `scheduledskills` | `array` | Composed list of **cron** skills (`cs-cron-*`). Same shape as `customskills` plus `interval` (cron expression). `_source` ∈ `"skill-bundle"` (preset cron) \| `"user-created"`. |
+| `scheduledskills` | `array` | Composed list of **cron** skills (`cs-cron-*`). Same shape as `customskills` plus `interval` (cron expression). `_source` ∈ `"skill-bundle"` (preset cron) \| `"user-created"`. A scheduled task that skills bring also carries the fields in [Scheduled task skill fields](#scheduled-task-skill-fields). |
 | `skills` | `array<object>` | Currently-enabled Skills (`util-*`). Each entry: `{ name, enabled: true, _edited, _user_created }`. Toggle via `SkillsApply` (single-skill or batch). Note: object array (not string array). |
 | `skillsmeta` | `object` | Inline registry snapshot keyed by skill name: `title`, `icon`, `brand_color`, `category`, `docs_url`, `credential_key`, `requires_credentials`, `user_invocable`, `description`. Lets the panel render skill chips without a `Skills/List` round-trip. |
 | `communicationChannels` | `array` | Every external channel with this agent's state: `id`, `title`, `credentialkey`, `required_fields`, `capabilities`, `schema`, `enabled`, `configured` and `missingfields`. Also on the `Deploy` and `Update` responses; not on `MyAgents` / `PinnedAgents` rows. |
 | `enabledChannels` | `array<string>` | The ids of the channels in `communicationChannels` that are enabled. Same endpoints. |
 | `teamsessionmode` | `string` | The unified Chat Mode: `"collaborative"` or `"private"` for every agent. For team agents it drives `Message/History`, `Sessions`, and native web-chat memory scope; for all agents it also drives Telegram, Slack, and Discord DM scope. Team deployments/transfers default collaborative; personal deployments/team detachments default private. Write with [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) (team admins / owner only). On a team agent, `"private"` also keeps the agent's Screen closed to the team (see [Who Can Watch](#who-can-watch)). |
 | `timezone` | `string\|null` | Operator-selected IANA timezone (e.g. `"Europe/Istanbul"`, `"America/New_York"`). `null` means **UTC**. The agent uses this zone for its scheduled tasks, for the times it gives on voice calls and for business hours. Write with [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings). |
+
+<a id="scheduled-task-skill-fields"></a>
+
+**Scheduled task skill fields.** A `scheduledskills` entry of a scheduled task that one of Wiro's skills brings (a `cs-cron-*` key from the skill registry) carries five more fields. Wiro gives the agent such a task only while a skill that brings it is on, and only while it can use one of the connectors the task needs; these fields say where it stands. A task without `_owner_skills`, such as one you wrote yourself, carries none of them and needs only the connectors its own entry lists.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `_owner_skills` | `string[]` | The skills that bring the task. |
+| `_skill_off` | `boolean` | `true` while the task waits for skills that are off. Wiro then sends it to the agent turned off, whatever its own `enabled` says. |
+| `_off_skills` | `string[][]` | Only when `_skill_off` is `true`: what to turn on, one skill from each group. |
+| `_usable_credentials` | `string[]` | The connectors the task can use now: one of them connected is enough. |
+| `_if_connected` | `object` | One key for each connector the task needs that is not connected: the groups of skills the task would still wait for once that connector is connected. `[]` means it would run, if its own `enabled` is `true`. |
+
+To show a task as waiting, read `_skill_off`, then `_usable_credentials` and `_if_connected` for what connecting a connector would change.
 
 **Subscription & template**
 
@@ -2363,6 +2377,7 @@ Two body shapes:
 | `useragentguid` | string | B | Required for non-draft previews. |
 | `skillOverrides` | object | No | Override the persisted state with `{ skillname: boolean }` for the preview. Omit for "current state" preview. |
 | `tier` | string | No | `"starter"`, `"pro"` or `"max"`: the plan to preview. Defaults to the agent's plan, or Starter in a draft. The response lists all three plans under `tiers`. |
+| `withScheduledTasks` | boolean | No | Body B only. When `true`, the response also carries `scheduledTasks`: the scheduled tasks the `skillOverrides` would stop and start. |
 
 ##### Response
 
@@ -2423,6 +2438,8 @@ A Pro agent on a wallet plan, previewing Max with 15 days left of 30:
 
 `totalPriceUsd` and `totalMonthlyCredits` are the previewed plan's price and credits; the skills never change them. `plans` lists the three plans with their names. `enabledSkills` is the full closure (including transitive `depends_on`); `directSkills` is just what the user explicitly toggled. Every `skillBreakdown` entry reads `priceUsd: 0` and `credits: 0`, since every plan includes every skill. `tokenRates` carries the per-model rates used to meter each turn (see [Token Billing](#token-billing)). On an existing agent, `nextplan` is a lower plan already scheduled for its renewal, or `null`.
 
+`scheduledTasks` comes only when the body sends `withScheduledTasks: true`: `{ stop, resume }`, the keys of the scheduled tasks that run now and would not after the change, and of those that would start running. Each task whose own `enabled` is `true` is checked twice, with the skills on now and with the skills the change leaves on, the way the agent runs it (see [Scheduled task skill fields](#scheduled-task-skill-fields)). Both lists are empty when `skillOverrides` is missing or empty, and `scheduledTasks` is `null` when Wiro could not work them out; that is not "no change".
+
 `planChange` comes with a preview of an existing agent that has an active plan, and is `null` otherwise. `planChange.change` says what the previewed `tier` would do: `"upgrade"` shows the charge and the credits that come with a higher plan, `"downgrade"` a lower plan that starts at the renewal with nothing charged now, and `"none"` the agent's own plan or a preview that only changes skills, with no charge and no credit change.
 
 | Field | Type | Description |
@@ -2473,6 +2490,7 @@ If a card checkout for the agent is still open (for example, one started in the 
 | `A checkout for this agent is already being opened. Try again in a moment.` | Another subscription request for the same agent is in progress |
 | `We couldn't confirm this agent's previous checkout. Please try again in a minute.` | The agent's previous card checkout couldn't be checked |
 | `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | Another plan or credit pack payment from the same wallet is still going through |
+| `The wallet was charged $X.XX, but the plan could not be saved. Please contact support and do not try again.` (code `110`) | With `useprepaid: true`: the wallet paid and the plan could not be saved. Never send the call again: a retry charges again. The agent keeps its plan and credits until support finishes the change, and its ledger has a zero-credit `plan-not-saved` row for the charge (see [Plan payments that did not finish](/docs/agent-transactions#plan-not-saved)). `Deploy` with `useprepaid: true` answers the same, keeps the agent and returns its guid in `existingUserAgentGuid` |
 
 #### **POST** /UserAgent/Start
 
@@ -3504,6 +3522,7 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
 | `A checkout for this agent is already being opened. Try again in a moment.` | Another subscription request for the same agent is in progress; nothing is charged |
 | `We couldn't confirm this agent's previous checkout. Please try again in a minute.` | The agent's previous card checkout couldn't be checked; nothing is charged |
 | `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | Another plan or credit pack payment from the same wallet is still going through; nothing is charged |
+| `The wallet was charged $X.XX, but the renewal did not finish. Please contact support and do not try again.` (code `110`) | The wallet paid and the renewal could not be saved. Never call `RenewSubscription` again for it: a retry charges again. The agent keeps its plan and credits until support finishes the renewal, and its ledger has a zero-credit `plan-not-saved` row for the charge (see [Plan payments that did not finish](/docs/agent-transactions#plan-not-saved)) |
 
 ##### Full subscription lifecycle (prepaid)
 
@@ -3558,7 +3577,7 @@ All API subscriptions use your **prepaid wallet balance**. The cost is deducted 
 
 ### Credit Consumption
 
-Credits are used as the agent processes messages and generates content, not at `Message/Send` time. Each turn is billed by **token usage**: once the turn completes, Wiro prices its input, output and cached tokens with the per-model `tokenRates` (1 credit = $0.01). Each billed turn appears as an `action: "tokens"` row in TransactionList and lowers `remainingcredits = max(0, monthlycredits + extracredits - usedcredits)`. You don't send anything: token billing is fully server-side. Per-turn token counts and cost also ride on each assistant message and arrive over the message WebSocket as an `agent_usage_report` frame (see [Agent Messaging](/docs/agent-messaging) and [Agent WebSocket](/docs/agent-websocket)).
+Credits are used as the agent processes messages and generates content, not at `Message/Send` time. Each turn is billed by **token usage**: once the turn completes, Wiro prices its input, output and cached tokens with the per-model `tokenRates` (1 credit = $0.01). Billed turns appear as `action: "tokens"` rows in TransactionList, usually one per turn (see [Rows that cover several model calls](/docs/agent-transactions#metered-token-rows)), and lower `remainingcredits = max(0, monthlycredits + extracredits - usedcredits)`. You don't send anything: token billing is fully server-side. Per-turn token counts and cost also ride on each assistant message and arrive over the message WebSocket as an `agent_usage_report` frame (see [Agent Messaging](/docs/agent-messaging) and [Agent WebSocket](/docs/agent-websocket)).
 
 The API-side check is gating only: `POST /UserAgent/Start` and `POST /UserAgent/Message/Send` refuse to launch / accept messages when `remainingcredits <= 0`, returning an `Agent has no remaining credits…` error plus an `agentbalance` snapshot (`{ monthlycredits, extracredits, usedcredits, remainingcredits }`). During an active session, monthly credits are consumed first; once `usedcredits >= monthlycredits`, extra credits (purchased via `CreateExtraCreditCheckout`) absorb the rest. When both pools are empty the agent stops accepting new turns until the subscription renews or an extra credit pack is bought.
 
@@ -3604,6 +3623,7 @@ Agent-specific errors you may encounter:
 | `The agent's plan changed while this was asked for. Nothing was changed; please retry.` | `UpgradeTier` when the agent's plan ended or moved off the wallet after the call was made |
 | `Could not read the agent's plan. Nothing was changed; please retry.` | `UpgradeTier`: the agent's plan could not be read |
 | `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | `Deploy` or `CreateSubscriptionCheckout` with `useprepaid: true`, `CreateExtraCreditCheckout`, `RenewSubscription` or `UpgradeTier` (code `104` on `UpgradeTier`) while another plan or credit pack payment from the same wallet is going through. A `Deploy` refused this way creates no agent |
+| `The wallet was charged $X.XX, but the plan could not be saved. Please contact support and do not try again.`, the same with `the renewal did not finish` or `the plan change did not finish` (code `110`) | `Deploy` or `CreateSubscriptionCheckout` with `useprepaid: true`, `RenewSubscription` or `UpgradeTier`: the wallet paid and the change could not be saved. Never send the call again: a retry charges again. Match code `110`, not the sentence. The agent keeps its plan and credits until support finishes the change (see [Plan payments that did not finish](/docs/agent-transactions#plan-not-saved)). A `Deploy` answered this way keeps the agent and returns `existingUserAgentGuid` |
 | `Card checkouts for a team agent need a signed-in session, not an API key. Pay from the team wallet (useprepaid) instead.` | A card payment for a team agent asked for with a project API key: `UpgradeTier` on a plan paid by card, `CreateExtraCreditCheckout` paid by card, or `CreateSubscriptionCheckout` without `useprepaid: true`. Nothing is charged or changed |
 | `Project not found. Send the id of one of your projects from Project/List: one you created, or any project of a team you are an admin of.` | `CredentialProjectBind` with a project that doesn't exist or that the caller can't bind. See its [other errors](#post-useragentcredentialprojectbind) |
 | `Agent not found or access denied` | Message endpoint with invalid useragentguid |

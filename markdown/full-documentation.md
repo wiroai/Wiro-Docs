@@ -9194,9 +9194,9 @@ Every skill and connector works on every plan. Turning a skill on or off with [`
 
 Each plan gives the agent disk space for its files: 250 MB on Starter, 500 MB on Pro and 1 GB on Max. What counts is the agent's workspace, the media it generates and its temporary files. Chat history and the agent's system files don't count.
 
-Downloads and temporary files outside the workspace are cleared when the agent restarts. They are also cleared when they pass 1 GB, on every plan: the agent then restarts on its own, which takes about a minute, and the files in its workspace stay.
+Downloads and temporary files outside the workspace are cleared when the agent restarts, and media files from its chats are kept 3 days. Temporary files are also cleared when they pass 1 GB, on every plan: the agent then restarts on its own once the reply it is working on is done (it waits up to 20 minutes for it), which takes about a minute, and the files in its workspace stay.
 
-When the agent's files reach the plan's size, the disk is full: the agent can't save new files until some are deleted or the agent moves to a bigger plan. A full disk deletes nothing. A move to a higher plan with [`UpgradeTier`](#post-useragentupgradetier) gives the agent the bigger disk as soon as the new plan starts. A move to a lower plan brings its smaller disk at the renewal where that plan starts: if the agent's files are bigger than that, they all stay, and the disk reads full until some are deleted.
+When the agent's files reach the plan's size, the disk is full: the agent can't save new files until some are deleted or the agent moves to a bigger plan. The agent frees space itself: when a save is refused, it deletes the scratch files and notes it no longer needs, moves files out of the counted space, or deletes finished video work, then saves again. There is no endpoint that lists or deletes the agent's files. A full disk deletes nothing on its own. A move to a higher plan with [`UpgradeTier`](#post-useragentupgradetier) gives the agent the bigger disk as soon as the new plan starts. A move to a lower plan brings its smaller disk at the renewal where that plan starts: if the agent's files are bigger than that, they all stay, and the disk reads full until some are deleted.
 
 [`UserAgent/Detail`](#post-useragentdetail) shows the agent's usage in `disk` (see [Disk object](#disk-object)): its `state` reads `"almost_full"` from 80% of the plan's size and `"full"` from 100%. The agent's activity log gets an `AGENT_DISK_ALMOST_FULL` row when its files pass 80%, an `AGENT_DISK_FULL` row when they reach the plan's size, and an `AGENT_DISK_TEMP_CLEARED` row when a restart clears temporary files that passed 1 GB (see [Who-did-what rows](/docs/agent-logs#who-did-what-rows)).
 
@@ -9249,7 +9249,7 @@ tokencost = ceil(Σ call_input_cost)
           + ceil(Σ call_cache_write_cost)
 ```
 
-Cache-read and cache-write categories are charged only when the selected model rate defines them. `inputtokens` contains only uncached input; `totaltokens` is always the exact sum of input, output, cache-read, and cache-write tokens. For models with `long_context_threshold_tokens`, Wiro selects the long-context rate **per LLM call** using `input + cacheRead + cacheWrite`. You don't send anything. Each billed turn appears once as a ledger row with `action: "tokens"` (see [`POST /UserAgent/TransactionList`](/docs/agent-transactions#tx-transactionlist)). Per-turn token counts and cost also ride on each assistant message (`inputtokens` / `outputtokens` / `cachereadtokens` / `cachewritetokens` / `totaltokens` / `tokencost` / `model`, see [Agent Messaging](/docs/agent-messaging)).
+Cache-read and cache-write categories are charged only when the selected model rate defines them. `inputtokens` contains only uncached input; `totaltokens` is always the exact sum of input, output, cache-read, and cache-write tokens. For models with `long_context_threshold_tokens`, Wiro selects the long-context rate **per LLM call** using `input + cacheRead + cacheWrite`. You don't send anything. Each billed turn appears as a ledger row with `action: "tokens"` (see [`POST /UserAgent/TransactionList`](/docs/agent-transactions#tx-transactionlist)); when Wiro measures the agent's model calls itself, one row covers every call billed since the last row, of one turn or several (see [Rows that cover several model calls](/docs/agent-transactions#metered-token-rows)). Per-turn token counts and cost also ride on each assistant message (`inputtokens` / `outputtokens` / `cachereadtokens` / `cachewritetokens` / `totaltokens` / `tokencost` / `model`, see [Agent Messaging](/docs/agent-messaging)).
 
 When the credit pool is exhausted, [`POST /UserAgent/Message/Send`](/docs/agent-messaging#post-useragentmessagesend) and [`POST /UserAgent/Start`](#post-useragentstart) refuse with an `Agent has no remaining credits…` error plus an `agentbalance` snapshot; renew the subscription or buy an extra credit pack to continue.
 
@@ -10380,13 +10380,27 @@ Retrieves full details for a single deployed agent instance, including subscript
 |-------|------|-------------|
 | `credentials` | `object` | Per-provider credential map keyed by credential name (`telegram`, `twilio-voice`, `wiro`, `var-support-email`, …). Each provider object carries its saved field values, every saved secret read as the mask `"••••••••"`, plus a fixed metadata header (see "Credential object shape" below). |
 | `customskills` | `array` | Composed list of preset strategies and **non-cron** custom skills (writable instructions). Each entry: `{ key, description, value, enabled, interval: null, _source, _editable, _edited, _user_created? }`. `_source` ∈ `"preset-strategy"` \| `"user-created"`. |
-| `scheduledskills` | `array` | Composed list of **cron** skills (`cs-cron-*`). Same shape as `customskills` plus `interval` (cron expression). `_source` ∈ `"skill-bundle"` (preset cron) \| `"user-created"`. |
+| `scheduledskills` | `array` | Composed list of **cron** skills (`cs-cron-*`). Same shape as `customskills` plus `interval` (cron expression). `_source` ∈ `"skill-bundle"` (preset cron) \| `"user-created"`. A scheduled task that skills bring also carries the fields in [Scheduled task skill fields](#scheduled-task-skill-fields). |
 | `skills` | `array<object>` | Currently-enabled Skills (`util-*`). Each entry: `{ name, enabled: true, _edited, _user_created }`. Toggle via `SkillsApply` (single-skill or batch). Note: object array (not string array). |
 | `skillsmeta` | `object` | Inline registry snapshot keyed by skill name: `title`, `icon`, `brand_color`, `category`, `docs_url`, `credential_key`, `requires_credentials`, `user_invocable`, `description`. Lets the panel render skill chips without a `Skills/List` round-trip. |
 | `communicationChannels` | `array` | Every external channel with this agent's state: `id`, `title`, `credentialkey`, `required_fields`, `capabilities`, `schema`, `enabled`, `configured` and `missingfields`. Also on the `Deploy` and `Update` responses; not on `MyAgents` / `PinnedAgents` rows. |
 | `enabledChannels` | `array<string>` | The ids of the channels in `communicationChannels` that are enabled. Same endpoints. |
 | `teamsessionmode` | `string` | The unified Chat Mode: `"collaborative"` or `"private"` for every agent. For team agents it drives `Message/History`, `Sessions`, and native web-chat memory scope; for all agents it also drives Telegram, Slack, and Discord DM scope. Team deployments/transfers default collaborative; personal deployments/team detachments default private. Write with [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) (team admins / owner only). On a team agent, `"private"` also keeps the agent's Screen closed to the team (see [Who Can Watch](#who-can-watch)). |
 | `timezone` | `string\|null` | Operator-selected IANA timezone (e.g. `"Europe/Istanbul"`, `"America/New_York"`). `null` means **UTC**. The agent uses this zone for its scheduled tasks, for the times it gives on voice calls and for business hours. Write with [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings). |
+
+<a id="scheduled-task-skill-fields"></a>
+
+**Scheduled task skill fields.** A `scheduledskills` entry of a scheduled task that one of Wiro's skills brings (a `cs-cron-*` key from the skill registry) carries five more fields. Wiro gives the agent such a task only while a skill that brings it is on, and only while it can use one of the connectors the task needs; these fields say where it stands. A task without `_owner_skills`, such as one you wrote yourself, carries none of them and needs only the connectors its own entry lists.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `_owner_skills` | `string[]` | The skills that bring the task. |
+| `_skill_off` | `boolean` | `true` while the task waits for skills that are off. Wiro then sends it to the agent turned off, whatever its own `enabled` says. |
+| `_off_skills` | `string[][]` | Only when `_skill_off` is `true`: what to turn on, one skill from each group. |
+| `_usable_credentials` | `string[]` | The connectors the task can use now: one of them connected is enough. |
+| `_if_connected` | `object` | One key for each connector the task needs that is not connected: the groups of skills the task would still wait for once that connector is connected. `[]` means it would run, if its own `enabled` is `true`. |
+
+To show a task as waiting, read `_skill_off`, then `_usable_credentials` and `_if_connected` for what connecting a connector would change.
 
 **Subscription & template**
 
@@ -11472,6 +11486,7 @@ Two body shapes:
 | `useragentguid` | string | B | Required for non-draft previews. |
 | `skillOverrides` | object | No | Override the persisted state with `{ skillname: boolean }` for the preview. Omit for "current state" preview. |
 | `tier` | string | No | `"starter"`, `"pro"` or `"max"`: the plan to preview. Defaults to the agent's plan, or Starter in a draft. The response lists all three plans under `tiers`. |
+| `withScheduledTasks` | boolean | No | Body B only. When `true`, the response also carries `scheduledTasks`: the scheduled tasks the `skillOverrides` would stop and start. |
 
 ##### Response
 
@@ -11532,6 +11547,8 @@ A Pro agent on a wallet plan, previewing Max with 15 days left of 30:
 
 `totalPriceUsd` and `totalMonthlyCredits` are the previewed plan's price and credits; the skills never change them. `plans` lists the three plans with their names. `enabledSkills` is the full closure (including transitive `depends_on`); `directSkills` is just what the user explicitly toggled. Every `skillBreakdown` entry reads `priceUsd: 0` and `credits: 0`, since every plan includes every skill. `tokenRates` carries the per-model rates used to meter each turn (see [Token Billing](#token-billing)). On an existing agent, `nextplan` is a lower plan already scheduled for its renewal, or `null`.
 
+`scheduledTasks` comes only when the body sends `withScheduledTasks: true`: `{ stop, resume }`, the keys of the scheduled tasks that run now and would not after the change, and of those that would start running. Each task whose own `enabled` is `true` is checked twice, with the skills on now and with the skills the change leaves on, the way the agent runs it (see [Scheduled task skill fields](#scheduled-task-skill-fields)). Both lists are empty when `skillOverrides` is missing or empty, and `scheduledTasks` is `null` when Wiro could not work them out; that is not "no change".
+
 `planChange` comes with a preview of an existing agent that has an active plan, and is `null` otherwise. `planChange.change` says what the previewed `tier` would do: `"upgrade"` shows the charge and the credits that come with a higher plan, `"downgrade"` a lower plan that starts at the renewal with nothing charged now, and `"none"` the agent's own plan or a preview that only changes skills, with no charge and no credit change.
 
 | Field | Type | Description |
@@ -11582,6 +11599,7 @@ If a card checkout for the agent is still open (for example, one started in the 
 | `A checkout for this agent is already being opened. Try again in a moment.` | Another subscription request for the same agent is in progress |
 | `We couldn't confirm this agent's previous checkout. Please try again in a minute.` | The agent's previous card checkout couldn't be checked |
 | `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | Another plan or credit pack payment from the same wallet is still going through |
+| `The wallet was charged $X.XX, but the plan could not be saved. Please contact support and do not try again.` (code `110`) | With `useprepaid: true`: the wallet paid and the plan could not be saved. Never send the call again: a retry charges again. The agent keeps its plan and credits until support finishes the change, and its ledger has a zero-credit `plan-not-saved` row for the charge (see [Plan payments that did not finish](/docs/agent-transactions#plan-not-saved)). `Deploy` with `useprepaid: true` answers the same, keeps the agent and returns its guid in `existingUserAgentGuid` |
 
 #### **POST** /UserAgent/Start
 
@@ -12613,6 +12631,7 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
 | `A checkout for this agent is already being opened. Try again in a moment.` | Another subscription request for the same agent is in progress; nothing is charged |
 | `We couldn't confirm this agent's previous checkout. Please try again in a minute.` | The agent's previous card checkout couldn't be checked; nothing is charged |
 | `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | Another plan or credit pack payment from the same wallet is still going through; nothing is charged |
+| `The wallet was charged $X.XX, but the renewal did not finish. Please contact support and do not try again.` (code `110`) | The wallet paid and the renewal could not be saved. Never call `RenewSubscription` again for it: a retry charges again. The agent keeps its plan and credits until support finishes the renewal, and its ledger has a zero-credit `plan-not-saved` row for the charge (see [Plan payments that did not finish](/docs/agent-transactions#plan-not-saved)) |
 
 ##### Full subscription lifecycle (prepaid)
 
@@ -12667,7 +12686,7 @@ All API subscriptions use your **prepaid wallet balance**. The cost is deducted 
 
 ### Credit Consumption
 
-Credits are used as the agent processes messages and generates content, not at `Message/Send` time. Each turn is billed by **token usage**: once the turn completes, Wiro prices its input, output and cached tokens with the per-model `tokenRates` (1 credit = $0.01). Each billed turn appears as an `action: "tokens"` row in TransactionList and lowers `remainingcredits = max(0, monthlycredits + extracredits - usedcredits)`. You don't send anything: token billing is fully server-side. Per-turn token counts and cost also ride on each assistant message and arrive over the message WebSocket as an `agent_usage_report` frame (see [Agent Messaging](/docs/agent-messaging) and [Agent WebSocket](/docs/agent-websocket)).
+Credits are used as the agent processes messages and generates content, not at `Message/Send` time. Each turn is billed by **token usage**: once the turn completes, Wiro prices its input, output and cached tokens with the per-model `tokenRates` (1 credit = $0.01). Billed turns appear as `action: "tokens"` rows in TransactionList, usually one per turn (see [Rows that cover several model calls](/docs/agent-transactions#metered-token-rows)), and lower `remainingcredits = max(0, monthlycredits + extracredits - usedcredits)`. You don't send anything: token billing is fully server-side. Per-turn token counts and cost also ride on each assistant message and arrive over the message WebSocket as an `agent_usage_report` frame (see [Agent Messaging](/docs/agent-messaging) and [Agent WebSocket](/docs/agent-websocket)).
 
 The API-side check is gating only: `POST /UserAgent/Start` and `POST /UserAgent/Message/Send` refuse to launch / accept messages when `remainingcredits <= 0`, returning an `Agent has no remaining credits…` error plus an `agentbalance` snapshot (`{ monthlycredits, extracredits, usedcredits, remainingcredits }`). During an active session, monthly credits are consumed first; once `usedcredits >= monthlycredits`, extra credits (purchased via `CreateExtraCreditCheckout`) absorb the rest. When both pools are empty the agent stops accepting new turns until the subscription renews or an extra credit pack is bought.
 
@@ -12713,6 +12732,7 @@ Agent-specific errors you may encounter:
 | `The agent's plan changed while this was asked for. Nothing was changed; please retry.` | `UpgradeTier` when the agent's plan ended or moved off the wallet after the call was made |
 | `Could not read the agent's plan. Nothing was changed; please retry.` | `UpgradeTier`: the agent's plan could not be read |
 | `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | `Deploy` or `CreateSubscriptionCheckout` with `useprepaid: true`, `CreateExtraCreditCheckout`, `RenewSubscription` or `UpgradeTier` (code `104` on `UpgradeTier`) while another plan or credit pack payment from the same wallet is going through. A `Deploy` refused this way creates no agent |
+| `The wallet was charged $X.XX, but the plan could not be saved. Please contact support and do not try again.`, the same with `the renewal did not finish` or `the plan change did not finish` (code `110`) | `Deploy` or `CreateSubscriptionCheckout` with `useprepaid: true`, `RenewSubscription` or `UpgradeTier`: the wallet paid and the change could not be saved. Never send the call again: a retry charges again. Match code `110`, not the sentence. The agent keeps its plan and credits until support finishes the change (see [Plan payments that did not finish](/docs/agent-transactions#plan-not-saved)). A `Deploy` answered this way keeps the agent and returns `existingUserAgentGuid` |
 | `Card checkouts for a team agent need a signed-in session, not an API key. Pay from the team wallet (useprepaid) instead.` | A card payment for a team agent asked for with a project API key: `UpgradeTier` on a plan paid by card, `CreateExtraCreditCheckout` paid by card, or `CreateSubscriptionCheckout` without `useprepaid: true`. Nothing is charged or changed |
 | `Project not found. Send the id of one of your projects from Project/List: one you created, or any project of a team you are an admin of.` | `CredentialProjectBind` with a project that doesn't exist or that the caller can't bind. See its [other errors](#post-useragentcredentialprojectbind) |
 | `Agent not found or access denied` | Message endpoint with invalid useragentguid |
@@ -13818,6 +13838,7 @@ When a turn ends with `agent_error` or `agent_cancel`, `response` and `debugoutp
 | `[SPEND_LIMIT_REACHED]` | `agent_error` | The agent's own [spend limit](/docs/spend-limits) is used up, so its model calls were refused. A turn that is already running stops at its next model call. | Wait for the limit to reset, or have someone who manages the workspace's spend limits raise it under [Controls > Spend Limits](https://wiro.ai/panel/controls/spend-limits): the account owner, or in a team a team admin or the organization owner. |
 | `[USAGE_CEILING_REACHED]` | `agent_error` | The agent reached its hourly or daily safety ceiling for AI model calls. | Wait until that hour or day is over. |
 | `[MODEL_NOT_ALLOWED]` | `agent_error` | The agent's own [Model Access](/docs/model-access) rule blocks the model it uses, so its model calls were refused. | Have someone who manages the workspace's Model Access rules allow the model under [Controls > Model Access](https://wiro.ai/panel/controls/model-access), or choose another model for the agent. |
+| `[CREDITS_EXHAUSTED]` | `agent_error` | The agent has no credits left, so its model calls were refused. Every try fails until credits are added. | Buy extra credits for the agent with [CreateExtraCreditCheckout](/docs/agent-overview#post-useragentcreateextracreditcheckout), or wait for its plan to renew. Don't send the message again before that. |
 | `[AGENT_UNAVAILABLE]` | `agent_error` | Any other failure. | Try again after a short wait. |
 | `[REQUEST_CANCELLED]` | `agent_cancel` | The turn was cancelled, while it ran or while it was still queued. | Nothing to do. |
 
@@ -13830,6 +13851,7 @@ The full texts:
 [SPEND_LIMIT_REACHED] This agent's spend limit is used up, so it paused. It runs again when the limit resets or is raised.
 [USAGE_CEILING_REACHED] This agent reached its hourly or daily safety ceiling for AI model calls, so it paused. It runs again when that hour or day is over.
 [MODEL_NOT_ALLOWED] This agent's Model Access rule blocks the model it uses, so it stopped. It runs again once the model is allowed or another one is chosen.
+[CREDITS_EXHAUSTED] This agent has no credits left, so it paused. It runs again once credits are added or its plan renews.
 [AGENT_UNAVAILABLE] Agent is temporarily unavailable. Please try again shortly.
 [REQUEST_CANCELLED] Request cancelled.
 ```
@@ -19444,6 +19466,7 @@ A turn that fails ends with `status: "agent_error"`, and a cancelled one with `"
 | `[SPEND_LIMIT_REACHED]` | `agent_error` | The agent's spend limit is used up: show the sentence as it is. |
 | `[USAGE_CEILING_REACHED]` | `agent_error` | The agent reached its hourly or daily safety ceiling for AI model calls: say it runs again when that hour or day is over. |
 | `[MODEL_NOT_ALLOWED]` | `agent_error` | The agent's Model Access rule blocks the model it uses: show the sentence as it is. |
+| `[CREDITS_EXHAUSTED]` | `agent_error` | The agent has no credits left: say it runs again once credits are added or its plan renews, and don't offer to try again before that. |
 | `[AGENT_UNAVAILABLE]` | `agent_error` | Anything else, a message that couldn't be queued included: offer to try again shortly. |
 | `[REQUEST_CANCELLED]` | `agent_cancel` | The turn was cancelled. |
 
@@ -22318,13 +22341,14 @@ The ledger is the single source of truth for "where did my credits go?" and powe
 
 | Transaction `type` | Source | When it fires |
 |--------------------|--------|---------------|
-| `deduct` | Agent runtime | Per-turn LLM token charge (`action: "tokens"`) for every chat, cron, and voice post-call turn. Negative `amount`. |
+| `deduct` | Agent runtime | LLM token charge (`action: "tokens"`) for chat, cron, and voice post-call turns. Negative `amount`. Usually one row per turn; when Wiro measures the agent's model calls itself, one row covers every call billed since the last row, of one turn or several (see [Rows that cover several model calls](#metered-token-rows)). |
 | `renewal` | Subscription cron | At each 30-day rollover when the wallet successfully covers the renewal. Positive `amount` = monthly credits granted. |
 | `purchase` | Extra-credit checkout | When `POST /UserAgent/CreateExtraCreditCheckout` (`useprepaid: true`) succeeds. Positive `amount` = pack credits. |
 | `grant` | Plan change / skill change | When a move to a higher plan lifts this period's credits. Positive `amount`: what this period gained. `metadata.creditsFromRenewal` is what each renewal grants. A skill change through `SkillsApply` or `SkillToggle` also writes a `grant` row with `amount: 0`: `action: "skill-toggle"` (`metadata: { skill, enabled }`) or `"skills-apply"` (`metadata: { diff, idempotencyKey }`). A skill change row with a non-zero `amount` or a `metadata.usedCreditsUsd` is from before skill changes became free. |
 | `expired` | Subscription end | When a cancelled subscription rolls past `currentperiodend` and the cron revokes any remaining monthly leftover (`action: "subscription"`). Negative `amount`. Rows from before skill changes became free can also come from a skill turned off mid-period (`action: "skill-toggle"` or `"skills-apply"`, with `metadata.usedCreditsUsd`). |
 | `refund` | Server-side refund | Issued by Wiro support when a previous charge is reversed. Positive `amount`. |
 | `adjust` | Wiro support | A record for Wiro support. Rows with `amount: 0` and `action: "skill-change-not-undone"` (a failed skill change that could not be taken back) or `"skill-credit-failed"` (a skill credit that was not added to the wallet) are from before skill changes became free. |
+| `subscription` | Plan payment that did not finish | `action: "plan-not-saved"`: the wallet paid for a plan start or a renewal and the plan could not be saved. `amount: 0`, since no credits moved. See [Plan payments that did not finish](#plan-not-saved). |
 
 > **The ledger is append-only.** There is no delete endpoint. Each row carries a stable `guid` that the server uses for deduplication (so a duplicate retry of the same deduct event is a no-op).
 
@@ -22531,14 +22555,14 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 | Field | Type | Description |
 |-------|------|-------------|
 | `guid` | `string` | Stable id of the ledger row. Daemon retries reuse this guid for idempotency. |
-| `type` | `string` | One of `"deduct"`, `"renewal"`, `"purchase"`, `"grant"`, `"expired"`, `"refund"`, `"adjust"`. There is no `"cancel"` type: a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until `currentperiodend` is reached, at which point the cron writes the ledger row as `type: "expired"`, `action: "subscription"`. |
-| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"tokens"` (deduct: the per-turn LLM token charge Wiro records for every chat, cron, and voice post-call turn); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"upgrade"`, `"tier-change"` (grant: a move to a higher plan); `"skill-toggle"`, `"skills-apply"` (grant: a skill change, with `amount: 0`; grant or expired rows with a non-zero `amount` are from before skill changes became free); `"subscription"` (expired, end-of-period cancel rollover; refund); `"skill-change-not-undone"`, `"skill-credit-failed"` (adjust, rows from before skill changes became free). Legacy deduct rows may also carry `"message"`, `"create"`, `"modify"`, or `"regenerate"`. |
+| `type` | `string` | One of `"deduct"`, `"renewal"`, `"purchase"`, `"grant"`, `"expired"`, `"refund"`, `"adjust"`, `"subscription"`. There is no `"cancel"` type: a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until `currentperiodend` is reached, at which point the cron writes the ledger row as `type: "expired"`, `action: "subscription"`. |
+| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"tokens"` (deduct: the LLM token charge for chat, cron, and voice post-call turns, usually one row per turn; see [Rows that cover several model calls](#metered-token-rows)); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"upgrade"`, `"tier-change"` (grant: a move to a higher plan); `"skill-toggle"`, `"skills-apply"` (grant: a skill change, with `amount: 0`; grant or expired rows with a non-zero `amount` are from before skill changes became free); `"subscription"` (expired, end-of-period cancel rollover; refund); `"skill-change-not-undone"`, `"skill-credit-failed"` (adjust, rows from before skill changes became free). Legacy deduct rows may also carry `"message"`, `"create"`, `"modify"`, or `"regenerate"`. |
 | `amount` | `number` | Signed credit delta: negative for deductions, positive for grants. |
 | `balanceafter` | `number\|null` | Remaining credit balance snapshot written at the time of the event. `null` on per-turn `deduct` rows. |
 | `description` | `string\|null` | Human-readable label. On an `action: "tokens"` row it spells the counts out: `LLM <model> (uncached in N, cached in N, out N, cache write N, total N tokens)`, where `cached in` and `cache write` appear only above 0. |
-| `sessionkey` | `string\|null` | Session the deduct belongs to (deduct rows only). |
+| `sessionkey` | `string\|null` | Session the deduct belongs to (deduct rows only; `null` on a row that covers several model calls). |
 | `agentsessionkey` | `string\|null` | Alias of `sessionkey` (same value), present on every row for a unified per-session attribution key across `TaskList` / `TransactionList` / wallet responses. |
-| `messageguid` | `string\|null` | Agent message that triggered the deduct (deduct rows only). |
+| `messageguid` | `string\|null` | Agent message that triggered the deduct (deduct rows only; `null` on a row that covers several model calls). |
 | `inputtokens` | `number\|null` | Uncached prompt tokens billed at the model's input rate (`action: "tokens"` rows only). |
 | `outputtokens` | `number\|null` | Completion tokens billed for the turn (`action: "tokens"` rows only). |
 | `cachereadtokens` | `number\|null` | Prompt tokens served from cache for the turn (`action: "tokens"` rows only). |
@@ -22598,6 +22622,48 @@ console.log('Now in period:', summary.creditperiod);
 ### Reconcile a plan change
 
 When the user moves to a higher plan mid-period, the ledger gets one `grant` row for the credits the move added to this period. For a wallet-billed (prepaid) agent, `UpgradeTier` writes `action: "tier-change"` with those credits as `amount` (the monthly difference for the time left in the period), a description like `"Plan Pro to Max"` and `metadata: { fromTier, toTier, previousPriceUsd, newPriceUsd, proratedCharge, creditsFromRenewal }`; a card-billed upgrade writes `action: "upgrade"`. A move to a lower plan takes effect at the renewal, and that `renewal` row grants the lower plan's credits. Use these rows to render a plan history in your UI.
+
+### Rows that cover several model calls
+
+<a id="metered-token-rows"></a>
+
+When Wiro measures an agent's model calls itself, a `deduct` row is not one turn. Each call is priced exactly, and the prices add up until they reach a whole credit; then one `deduct` row (`action: "tokens"`) takes the whole credits and covers every call billed since the agent's last row, of one turn or of several. What is left under a credit waits for the next row, so no call is billed twice and none is rounded up. Calls a turn makes outside its reply, such as compacting a long conversation, are billed this way too.
+
+On such a row:
+
+| Field | What it holds |
+|-------|---------------|
+| `amount`, `tokencost` | The whole credits the row takes (`amount` negative). |
+| `inputtokens`, `outputtokens`, `cachereadtokens`, `cachewritetokens`, `totaltokens` | The sums of the calls it covers. |
+| `model`, `description` | The model of the costliest call; the description spells the sums out as on other token rows. |
+| `sessionkey`, `agentsessionkey`, `messageguid` | `null`: a row can cover calls of more than one turn. |
+| `providerref` | The trace id of the costliest call, when the agent's call sent a W3C `traceparent`; otherwise `null`. |
+| `metadata.calls` | Up to 200 of the calls it covers: `{ callId, responseId, provider, model, input, output, cacheRead, cacheWrite, total, credits }`, with `credits` exact to 9 decimals. |
+| `metadata.callCount` | How many calls it covers (it can be more than the 200 listed). |
+| `metadata.traceIds` | Up to 20 distinct trace ids of its calls, from their `traceparent`. |
+| `metadata.models`, `metadata.providers` | The models and providers of its calls. |
+| `metadata.carryIn`, `metadata.carryOut` | The part of a credit carried in from the row before and carried on to the next. |
+
+No field ties such a row to the turns it covers. To show usage per turn or per day, add up the rows by `createdat`; `summary.byModel[].turncount` counts each of these rows, or each trace id, as one turn.
+
+### Plan payments that did not finish
+
+<a id="plan-not-saved"></a>
+
+When the wallet pays for a plan start or a renewal and the plan then can't be saved, the agent's plan, price and credits stay as they were until Wiro support sets them, and the payment is recorded so it can be found. It happens on `Deploy` and `CreateSubscriptionCheckout` with `useprepaid: true`, on `RenewSubscription` (each answers with code `110`, see [Plan and payment errors](/docs/agent-overview#post-useragentrenewsubscription)), and on Wiro's own renewal at the end of a period. After Wiro's own renewal ends this way, the subscription shows the new period, so `RenewSubscription` answers `Subscription is already active`: this row is how to tell the two apart. Send the agent to Wiro support; don't charge again.
+
+The ledger row:
+
+| Field | Value |
+|-------|-------|
+| `type` | `"subscription"` |
+| `action` | `"plan-not-saved"` |
+| `amount` | `0`: no credits moved. |
+| `description` | Such as `"Pro plan renewal charged; the plan was not saved"` or `"Max plan start charged; the plan was not saved"`. |
+| `provider` | `"prepaid"` |
+| `metadata` | `{ tier, priceUsd, chargedUsd, walletKey }`: the plan that was charged (`null` for a plan with no name), its price, what the wallet paid, and the id of that wallet payment. |
+
+The agent's [activity log](/docs/agent-logs#who-did-what-rows) gets an `AGENT_PLAN_NOT_SAVED` row with the same payment, titled like `Pro plan renewal did not finish: $24.00 charged`.
 
 ## Errors
 
@@ -22851,6 +22917,7 @@ A `token_usage` event records the token spend and credit deduction for one bille
 | `CONNECTOR_ACCOUNTS_SET` | `Connector accounts set: facebook-pages` |
 | `CONNECTOR_REAUTH` | `Connector needs to be connected again: facebook-pages` (written by Wiro when a sign-in expired or was revoked) |
 | `AGENT_PLAN_STARTED`, `AGENT_PLAN_RENEWED`, `AGENT_PLAN_CANCELLED`, `AGENT_PLAN_RESUMED` | `Starter plan started: $5.00 charged`, `Starter plan renewed: $5.00 charged`, `Plan cancelled, ends 2026-06-01`, `Plan cancellation undone` |
+| `AGENT_PLAN_NOT_SAVED` | `Pro plan renewal did not finish: $24.00 charged`, `Max plan start did not finish: $100.00 charged` (the wallet paid and the plan could not be saved; see [Plan payments that did not finish](/docs/agent-transactions#plan-not-saved)) |
 | `AGENT_TIER_UPGRADED` | `Plan upgraded from Starter to Pro; $12.50 charged` |
 | `AGENT_PLAN_CHANGE_SCHEDULED`, `AGENT_PLAN_CHANGE_CANCELLED` | `Plan change scheduled: Pro to Starter on 2026-06-01`, `Scheduled plan change cancelled: stays on Pro` |
 | `AGENT_PLAN_MOVE_SCHEDULED` | `Moves to the Starter plan ($5.00 a month) on 2026-06-01` (an agent subscribed before the three plans) |

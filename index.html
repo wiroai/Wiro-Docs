@@ -15251,8 +15251,8 @@ import type {
 <p>Every skill and connector works on every plan. Turning a skill on or off with <a href="#post-useragentskillsapply"><code>SkillsApply</code></a> is free: the plan's price and credits stay as they are. The work a skill does still uses credits, since its replies and scheduled tasks are agent turns billed by tokens like any other. A skill that runs Wiro models, such as <code>util-video-creator</code>, pays for those runs from the wallet of the Wiro project you connect to the agent. Connectors are included too: connecting one never changes the plan's price (see <a href="/docs/agent-connectors">Agent Connectors</a>).</p>
 <h3 id="disk-space">Disk Space</h3>
 <p>Each plan gives the agent disk space for its files: 250 MB on Starter, 500 MB on Pro and 1 GB on Max. What counts is the agent's workspace, the media it generates and its temporary files. Chat history and the agent's system files don't count.</p>
-<p>Downloads and temporary files outside the workspace are cleared when the agent restarts. They are also cleared when they pass 1 GB, on every plan: the agent then restarts on its own, which takes about a minute, and the files in its workspace stay.</p>
-<p>When the agent's files reach the plan's size, the disk is full: the agent can't save new files until some are deleted or the agent moves to a bigger plan. A full disk deletes nothing. A move to a higher plan with <a href="#post-useragentupgradetier"><code>UpgradeTier</code></a> gives the agent the bigger disk as soon as the new plan starts. A move to a lower plan brings its smaller disk at the renewal where that plan starts: if the agent's files are bigger than that, they all stay, and the disk reads full until some are deleted.</p>
+<p>Downloads and temporary files outside the workspace are cleared when the agent restarts, and media files from its chats are kept 3 days. Temporary files are also cleared when they pass 1 GB, on every plan: the agent then restarts on its own once the reply it is working on is done (it waits up to 20 minutes for it), which takes about a minute, and the files in its workspace stay.</p>
+<p>When the agent's files reach the plan's size, the disk is full: the agent can't save new files until some are deleted or the agent moves to a bigger plan. The agent frees space itself: when a save is refused, it deletes the scratch files and notes it no longer needs, moves files out of the counted space, or deletes finished video work, then saves again. There is no endpoint that lists or deletes the agent's files. A full disk deletes nothing on its own. A move to a higher plan with <a href="#post-useragentupgradetier"><code>UpgradeTier</code></a> gives the agent the bigger disk as soon as the new plan starts. A move to a lower plan brings its smaller disk at the renewal where that plan starts: if the agent's files are bigger than that, they all stay, and the disk reads full until some are deleted.</p>
 <p><a href="#post-useragentdetail"><code>UserAgent/Detail</code></a> shows the agent's usage in <code>disk</code> (see <a href="#disk-object">Disk object</a>): its <code>state</code> reads <code>"almost_full"</code> from 80% of the plan's size and <code>"full"</code> from 100%. The agent's activity log gets an <code>AGENT_DISK_ALMOST_FULL</code> row when its files pass 80%, an <code>AGENT_DISK_FULL</code> row when they reach the plan's size, and an <code>AGENT_DISK_TEMP_CLEARED</code> row when a restart clears temporary files that passed 1 GB (see <a href="/docs/agent-logs#who-did-what-rows">Who-did-what rows</a>).</p>
 <h3 id="changing-plans">Changing Plans</h3>
 <p><a href="#post-useragentupgradetier"><code>POST /UserAgent/UpgradeTier</code></a> moves an agent to another plan:</p>
@@ -15314,7 +15314,7 @@ import type {
           + ceil(Σ call_cache_read_cost)
           + ceil(Σ call_cache_write_cost)
 </code></pre>
-<p>Cache-read and cache-write categories are charged only when the selected model rate defines them. <code>inputtokens</code> contains only uncached input; <code>totaltokens</code> is always the exact sum of input, output, cache-read, and cache-write tokens. For models with <code>long_context_threshold_tokens</code>, Wiro selects the long-context rate <strong>per LLM call</strong> using <code>input + cacheRead + cacheWrite</code>. You don't send anything. Each billed turn appears once as a ledger row with <code>action: "tokens"</code> (see <a href="/docs/agent-transactions#tx-transactionlist"><code>POST /UserAgent/TransactionList</code></a>). Per-turn token counts and cost also ride on each assistant message (<code>inputtokens</code> / <code>outputtokens</code> / <code>cachereadtokens</code> / <code>cachewritetokens</code> / <code>totaltokens</code> / <code>tokencost</code> / <code>model</code>, see <a href="/docs/agent-messaging">Agent Messaging</a>).</p>
+<p>Cache-read and cache-write categories are charged only when the selected model rate defines them. <code>inputtokens</code> contains only uncached input; <code>totaltokens</code> is always the exact sum of input, output, cache-read, and cache-write tokens. For models with <code>long_context_threshold_tokens</code>, Wiro selects the long-context rate <strong>per LLM call</strong> using <code>input + cacheRead + cacheWrite</code>. You don't send anything. Each billed turn appears as a ledger row with <code>action: "tokens"</code> (see <a href="/docs/agent-transactions#tx-transactionlist"><code>POST /UserAgent/TransactionList</code></a>); when Wiro measures the agent's model calls itself, one row covers every call billed since the last row, of one turn or several (see <a href="/docs/agent-transactions#metered-token-rows">Rows that cover several model calls</a>). Per-turn token counts and cost also ride on each assistant message (<code>inputtokens</code> / <code>outputtokens</code> / <code>cachereadtokens</code> / <code>cachewritetokens</code> / <code>totaltokens</code> / <code>tokencost</code> / <code>model</code>, see <a href="/docs/agent-messaging">Agent Messaging</a>).</p>
 <p>When the credit pool is exhausted, <a href="/docs/agent-messaging#post-useragentmessagesend"><code>POST /UserAgent/Message/Send</code></a> and <a href="#post-useragentstart"><code>POST /UserAgent/Start</code></a> refuse with an <code>Agent has no remaining credits…</code> error plus an <code>agentbalance</code> snapshot; renew the subscription or buy an extra credit pack to continue.</p>
 <blockquote>
 <p><strong>Voice realtime audio is billed separately.</strong> Live voice-call audio (for <code>util-voice-receptionist</code> agents) is <strong>not</strong> charged to the platform credit pool. It is billed to the wallet of the agent's Wiro project (the <code>wiro</code> credential, see <a href="/docs/agent-credentials#the-agents-wiro-project">The agent's Wiro project</a>). The voice-prep turn before the call and the post-call text turn are billed as normal token deducts.</p>
@@ -17135,7 +17135,7 @@ for the channel contract.</p>
 <tr>
 <td><code>scheduledskills</code></td>
 <td><code>array</code></td>
-<td>Composed list of <strong>cron</strong> skills (<code>cs-cron-*</code>). Same shape as <code>customskills</code> plus <code>interval</code> (cron expression). <code>_source</code> ∈ <code>"skill-bundle"</code> (preset cron) | <code>"user-created"</code>.</td>
+<td>Composed list of <strong>cron</strong> skills (<code>cs-cron-*</code>). Same shape as <code>customskills</code> plus <code>interval</code> (cron expression). <code>_source</code> ∈ <code>"skill-bundle"</code> (preset cron) | <code>"user-created"</code>. A scheduled task that skills bring also carries the fields in <a href="#scheduled-task-skill-fields">Scheduled task skill fields</a>.</td>
 </tr>
 <tr>
 <td><code>skills</code></td>
@@ -17171,6 +17171,25 @@ for the channel contract.</p>
 </table>
 </div>
 </div>
+<p id="scheduled-task-skill-fields"><strong>Scheduled task skill fields</strong></p>
+<p>A <code>scheduledskills</code> entry of a scheduled task that one of Wiro's skills brings (a <code>cs-cron-*</code> key from the skill registry) carries five more fields. Wiro gives the agent such a task only while a skill that brings it is on, and only while it can use one of the connectors the task needs; these fields say where it stands. A task without <code>_owner_skills</code>, such as one you wrote yourself, carries none of them and needs only the connectors its own entry lists.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Type</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>_owner_skills</code></td><td><code>string[]</code></td><td>The skills that bring the task.</td></tr>
+<tr><td><code>_skill_off</code></td><td><code>boolean</code></td><td><code>true</code> while the task waits for skills that are off. Wiro then sends it to the agent turned off, whatever its own <code>enabled</code> says.</td></tr>
+<tr><td><code>_off_skills</code></td><td><code>string[][]</code></td><td>Only when <code>_skill_off</code> is <code>true</code>: what to turn on, one skill from each group.</td></tr>
+<tr><td><code>_usable_credentials</code></td><td><code>string[]</code></td><td>The connectors the task can use now: one of them connected is enough.</td></tr>
+<tr><td><code>_if_connected</code></td><td><code>object</code></td><td>One key for each connector the task needs that is not connected: the groups of skills the task would still wait for once that connector is connected. <code>[]</code> means it would run, if its own <code>enabled</code> is <code>true</code>.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>To show a task as waiting, read <code>_skill_off</code>, then <code>_usable_credentials</code> and <code>_if_connected</code> for what connecting a connector would change.</p>
 <p><strong>Subscription &amp; template</strong></p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -19260,6 +19279,12 @@ channel-enable endpoint or persisted switch.</p>
 <td>No</td>
 <td><code>"starter"</code>, <code>"pro"</code> or <code>"max"</code>: the plan to preview. Defaults to the agent's plan, or Starter in a draft. The response lists all three plans under <code>tiers</code>.</td>
 </tr>
+<tr>
+<td><code>withScheduledTasks</code></td>
+<td>boolean</td>
+<td>No</td>
+<td>Body B only. When <code>true</code>, the response also carries <code>scheduledTasks</code>: the scheduled tasks the <code>skillOverrides</code> would stop and start.</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -19318,6 +19343,7 @@ channel-enable endpoint or persisted switch.</p>
 }
 </code></pre>
 <p><code>totalPriceUsd</code> and <code>totalMonthlyCredits</code> are the previewed plan's price and credits; the skills never change them. <code>plans</code> lists the three plans with their names. <code>enabledSkills</code> is the full closure (including transitive <code>depends_on</code>); <code>directSkills</code> is just what the user explicitly toggled. Every <code>skillBreakdown</code> entry reads <code>priceUsd: 0</code> and <code>credits: 0</code>, since every plan includes every skill. <code>tokenRates</code> carries the per-model rates used to meter each turn (see <a href="#token-billing">Token Billing</a>). On an existing agent, <code>nextplan</code> is a lower plan already scheduled for its renewal, or <code>null</code>.</p>
+<p><code>scheduledTasks</code> comes only when the body sends <code>withScheduledTasks: true</code>: <code>{ stop, resume }</code>, the keys of the scheduled tasks that run now and would not after the change, and of those that would start running. Each task whose own <code>enabled</code> is <code>true</code> is checked twice, with the skills on now and with the skills the change leaves on, the way the agent runs it (see <a href="#scheduled-task-skill-fields">Scheduled task skill fields</a>). Both lists are empty when <code>skillOverrides</code> is missing or empty, and <code>scheduledTasks</code> is <code>null</code> when Wiro could not work them out; that is not "no change".</p>
 <p><code>planChange</code> comes with a preview of an existing agent that has an active plan, and is <code>null</code> otherwise. <code>planChange.change</code> says what the previewed <code>tier</code> would do: <code>"upgrade"</code> shows the charge and the credits that come with a higher plan, <code>"downgrade"</code> a lower plan that starts at the renewal with nothing charged now, and <code>"none"</code> the agent's own plan or a preview that only changes skills, with no charge and no credit change.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -19471,6 +19497,10 @@ channel-enable endpoint or persisted switch.</p>
 <tr>
 <td><code>Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.</code></td>
 <td>Another plan or credit pack payment from the same wallet is still going through</td>
+</tr>
+<tr>
+<td><code>The wallet was charged $X.XX, but the plan could not be saved. Please contact support and do not try again.</code> (code <code>110</code>)</td>
+<td>With <code>useprepaid: true</code>: the wallet paid and the plan could not be saved. Never send the call again: a retry charges again. The agent keeps its plan and credits until support finishes the change, and its ledger has a zero-credit <code>plan-not-saved</code> row for the charge (see <a href="/docs/agent-transactions#plan-not-saved">Plan payments that did not finish</a>). <code>Deploy</code> with <code>useprepaid: true</code> answers the same, keeps the agent and returns its guid in <code>existingUserAgentGuid</code></td>
 </tr>
 </tbody>
 </table>
@@ -21428,6 +21458,10 @@ channel-enable endpoint or persisted switch.</p>
 <td><code>Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.</code></td>
 <td>Another plan or credit pack payment from the same wallet is still going through; nothing is charged</td>
 </tr>
+<tr>
+<td><code>The wallet was charged $X.XX, but the renewal did not finish. Please contact support and do not try again.</code> (code <code>110</code>)</td>
+<td>The wallet paid and the renewal could not be saved. Never call <code>RenewSubscription</code> again for it: a retry charges again. The agent keeps its plan and credits until support finishes the renewal, and its ledger has a zero-credit <code>plan-not-saved</code> row for the charge (see <a href="/docs/agent-transactions#plan-not-saved">Plan payments that did not finish</a>)</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -21514,7 +21548,7 @@ channel-enable endpoint or persisted switch.</p>
 <h3 id="payment-method">Payment Method</h3>
 <p>All API subscriptions use your <strong>prepaid wallet balance</strong>. The cost is deducted immediately when you deploy, renew, move to a higher plan, or buy an extra credit pack. Always pass <code>useprepaid: true</code> on <code>Deploy</code>, <code>CreateSubscriptionCheckout</code>, and <code>CreateExtraCreditCheckout</code>. That's the only path designed for API consumers. Make sure your wallet balance covers the plan's price before calling these endpoints; otherwise you'll get an <code>Insufficient wallet balance</code> error. In the Wiro dashboard, a new subscription is paid by card. A plan paid from the wallet starts only through the API, with <code>Deploy</code> or <code>CreateSubscriptionCheckout</code> and <code>useprepaid: true</code>, or from an MCP client.</p>
 <h3 id="credit-consumption">Credit Consumption</h3>
-<p>Credits are used as the agent processes messages and generates content, not at <code>Message/Send</code> time. Each turn is billed by <strong>token usage</strong>: once the turn completes, Wiro prices its input, output and cached tokens with the per-model <code>tokenRates</code> (1 credit = $0.01). Each billed turn appears as an <code>action: "tokens"</code> row in TransactionList and lowers <code>remainingcredits = max(0, monthlycredits + extracredits - usedcredits)</code>. You don't send anything: token billing is fully server-side. Per-turn token counts and cost also ride on each assistant message and arrive over the message WebSocket as an <code>agent_usage_report</code> frame (see <a href="/docs/agent-messaging">Agent Messaging</a> and <a href="/docs/agent-websocket">Agent WebSocket</a>).</p>
+<p>Credits are used as the agent processes messages and generates content, not at <code>Message/Send</code> time. Each turn is billed by <strong>token usage</strong>: once the turn completes, Wiro prices its input, output and cached tokens with the per-model <code>tokenRates</code> (1 credit = $0.01). Billed turns appear as <code>action: "tokens"</code> rows in TransactionList, usually one per turn (see <a href="/docs/agent-transactions#metered-token-rows">Rows that cover several model calls</a>), and lower <code>remainingcredits = max(0, monthlycredits + extracredits - usedcredits)</code>. You don't send anything: token billing is fully server-side. Per-turn token counts and cost also ride on each assistant message and arrive over the message WebSocket as an <code>agent_usage_report</code> frame (see <a href="/docs/agent-messaging">Agent Messaging</a> and <a href="/docs/agent-websocket">Agent WebSocket</a>).</p>
 <p>The API-side check is gating only: <code>POST /UserAgent/Start</code> and <code>POST /UserAgent/Message/Send</code> refuse to launch / accept messages when <code>remainingcredits &lt;= 0</code>, returning an <code>Agent has no remaining credits…</code> error plus an <code>agentbalance</code> snapshot (<code>{ monthlycredits, extracredits, usedcredits, remainingcredits }</code>). During an active session, monthly credits are consumed first; once <code>usedcredits &gt;= monthlycredits</code>, extra credits (purchased via <code>CreateExtraCreditCheckout</code>) absorb the rest. When both pools are empty the agent stops accepting new turns until the subscription renews or an extra credit pack is bought.</p>
 <p>On each billing cycle (subscription renewal) <code>usedcredits</code> is reset to zero, every renewal gives the whole allowance (<code>monthlycredits</code> equals <code>renewalcredits</code> again), and <code>creditperiod</code> advances to the new <code>'YYYY-MM'</code> window; extra-credit purchases simply bump <code>extracredits</code> without resetting usage.</p>
 <p>For the full audit trail (every token deduct / grant / purchase / renewal / expiry) call <a href="/docs/agent-transactions#tx-transactionlist"><code>POST /UserAgent/TransactionList</code></a> (see <a href="/docs/agent-transactions">Agent Transactions</a>).</p>
@@ -21657,6 +21691,10 @@ channel-enable endpoint or persisted switch.</p>
 <tr>
 <td><code>Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.</code></td>
 <td><code>Deploy</code> or <code>CreateSubscriptionCheckout</code> with <code>useprepaid: true</code>, <code>CreateExtraCreditCheckout</code>, <code>RenewSubscription</code> or <code>UpgradeTier</code> (code <code>104</code> on <code>UpgradeTier</code>) while another plan or credit pack payment from the same wallet is going through. A <code>Deploy</code> refused this way creates no agent</td>
+</tr>
+<tr>
+<td><code>The wallet was charged $X.XX, but the plan could not be saved. Please contact support and do not try again.</code>, the same with <code>the renewal did not finish</code> or <code>the plan change did not finish</code> (code <code>110</code>)</td>
+<td><code>Deploy</code> or <code>CreateSubscriptionCheckout</code> with <code>useprepaid: true</code>, <code>RenewSubscription</code> or <code>UpgradeTier</code>: the wallet paid and the change could not be saved. Never send the call again: a retry charges again. Match code <code>110</code>, not the sentence. The agent keeps its plan and credits until support finishes the change (see <a href="/docs/agent-transactions#plan-not-saved">Plan payments that did not finish</a>). A <code>Deploy</code> answered this way keeps the agent and returns <code>existingUserAgentGuid</code></td>
 </tr>
 <tr>
 <td><code>Card checkouts for a team agent need a signed-in session, not an API key. Pay from the team wallet (useprepaid) instead.</code></td>
@@ -22385,6 +22423,12 @@ print(response.body);
 <td>Have someone who manages the workspace's Model Access rules allow the model under <a href="https://wiro.ai/panel/controls/model-access" target="_blank">Controls &gt; Model Access</a>, or choose another model for the agent.</td>
 </tr>
 <tr>
+<td><code>[CREDITS_EXHAUSTED]</code></td>
+<td><code>agent_error</code></td>
+<td>The agent has no credits left, so its model calls were refused. Every try fails until credits are added.</td>
+<td>Buy extra credits for the agent with <a href="/docs/agent-overview#post-useragentcreateextracreditcheckout">CreateExtraCreditCheckout</a>, or wait for its plan to renew. Don't send the message again before that.</td>
+</tr>
+<tr>
 <td><code>[AGENT_UNAVAILABLE]</code></td>
 <td><code>agent_error</code></td>
 <td>Any other failure.</td>
@@ -22407,6 +22451,7 @@ print(response.body);
 [SPEND_LIMIT_REACHED] This agent's spend limit is used up, so it paused. It runs again when the limit resets or is raised.
 [USAGE_CEILING_REACHED] This agent reached its hourly or daily safety ceiling for AI model calls, so it paused. It runs again when that hour or day is over.
 [MODEL_NOT_ALLOWED] This agent's Model Access rule blocks the model it uses, so it stopped. It runs again once the model is allowed or another one is chosen.
+[CREDITS_EXHAUSTED] This agent has no credits left, so it paused. It runs again once credits are added or its plan renews.
 [AGENT_UNAVAILABLE] Agent is temporarily unavailable. Please try again shortly.
 [REQUEST_CANCELLED] Request cancelled.
 </code></pre>
@@ -30439,6 +30484,11 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <td>The agent's Model Access rule blocks the model it uses: show the sentence as it is.</td>
 </tr>
 <tr>
+<td><code>[CREDITS_EXHAUSTED]</code></td>
+<td><code>agent_error</code></td>
+<td>The agent has no credits left: say it runs again once credits are added or its plan renews, and don't offer to try again before that.</td>
+</tr>
+<tr>
 <td><code>[AGENT_UNAVAILABLE]</code></td>
 <td><code>agent_error</code></td>
 <td>Anything else, a message that couldn't be queued included: offer to try again shortly.</td>
@@ -35300,7 +35350,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot; \
                             <tr>
                               <td><code>deduct</code></td>
                               <td>Agent runtime</td>
-                              <td>Per-turn LLM token charge (<code>action: "tokens"</code>) for every chat, cron, and voice post-call turn. Negative <code>amount</code>.</td>
+                              <td>LLM token charge (<code>action: "tokens"</code>) for chat, cron, and voice post-call turns. Negative <code>amount</code>. Usually one row per turn; when Wiro measures the agent's model calls itself, one row covers every call billed since the last row, of one turn or several (see <a href="#metered-token-rows">Rows that cover several model calls</a>).</td>
                             </tr>
                             <tr>
                               <td><code>renewal</code></td>
@@ -35332,6 +35382,11 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot; \
                               <td>Wiro support</td>
                               <td>A record for Wiro support. Rows with <code>amount: 0</code> and <code>action: "skill-change-not-undone"</code> (a failed skill change that could not be taken back) or <code>"skill-credit-failed"</code> (a skill credit that was not added to the wallet) are from before skill changes became free.</td>
                             </tr>
+                            <tr>
+<td><code>subscription</code></td>
+<td>Plan payment that did not finish</td>
+<td><code>action: "plan-not-saved"</code>: the wallet paid for a plan start or a renewal and the plan could not be saved. <code>amount: 0</code>, since no credits moved. See <a href="#plan-not-saved">Plan payments that did not finish</a>.</td>
+</tr>
                           </tbody>
                         </table>
                       </div>
@@ -35574,14 +35629,14 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot; \
                           </thead>
                           <tbody>
                             <tr><td><code>guid</code></td><td><code>string</code></td><td>Stable id of the ledger row. Daemon retries reuse this guid for idempotency.</td></tr>
-                            <tr><td><code>type</code></td><td><code>string</code></td><td>One of <code>"deduct"</code>, <code>"renewal"</code>, <code>"purchase"</code>, <code>"grant"</code>, <code>"expired"</code>, <code>"refund"</code>, <code>"adjust"</code>. There is no <code>"cancel"</code> type: a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until <code>currentperiodend</code> is reached, at which point the cron writes the ledger row as <code>type: "expired"</code>, <code>action: "subscription"</code>.</td></tr>
-                            <tr><td><code>action</code></td><td><code>string|null</code></td><td>Fine-grained detail. Values depend on <code>type</code>: <code>"tokens"</code> (deduct: the per-turn LLM token charge Wiro records for every chat, cron, and voice post-call turn); <code>"monthly"</code> (renewal); <code>"small"</code>, <code>"medium"</code>, <code>"large"</code> (purchase); <code>"upgrade"</code>, <code>"tier-change"</code> (grant: a move to a higher plan); <code>"skill-toggle"</code>, <code>"skills-apply"</code> (grant: a skill change, with <code>amount: 0</code>; grant or expired rows with a non-zero <code>amount</code> are from before skill changes became free); <code>"subscription"</code> (expired, end-of-period cancel rollover; refund); <code>"skill-change-not-undone"</code>, <code>"skill-credit-failed"</code> (adjust, rows from before skill changes became free). Legacy deduct rows may also carry <code>"message"</code>, <code>"create"</code>, <code>"modify"</code>, or <code>"regenerate"</code>.</td></tr>
+                            <tr><td><code>type</code></td><td><code>string</code></td><td>One of <code>"deduct"</code>, <code>"renewal"</code>, <code>"purchase"</code>, <code>"grant"</code>, <code>"expired"</code>, <code>"refund"</code>, <code>"adjust"</code>, <code>"subscription"</code>. There is no <code>"cancel"</code> type: a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until <code>currentperiodend</code> is reached, at which point the cron writes the ledger row as <code>type: "expired"</code>, <code>action: "subscription"</code>.</td></tr>
+                            <tr><td><code>action</code></td><td><code>string|null</code></td><td>Fine-grained detail. Values depend on <code>type</code>: <code>"tokens"</code> (deduct: the LLM token charge for chat, cron, and voice post-call turns, usually one row per turn; see <a href="#metered-token-rows">Rows that cover several model calls</a>); <code>"monthly"</code> (renewal); <code>"small"</code>, <code>"medium"</code>, <code>"large"</code> (purchase); <code>"upgrade"</code>, <code>"tier-change"</code> (grant: a move to a higher plan); <code>"skill-toggle"</code>, <code>"skills-apply"</code> (grant: a skill change, with <code>amount: 0</code>; grant or expired rows with a non-zero <code>amount</code> are from before skill changes became free); <code>"subscription"</code> (expired, end-of-period cancel rollover; refund); <code>"skill-change-not-undone"</code>, <code>"skill-credit-failed"</code> (adjust, rows from before skill changes became free). Legacy deduct rows may also carry <code>"message"</code>, <code>"create"</code>, <code>"modify"</code>, or <code>"regenerate"</code>.</td></tr>
                             <tr><td><code>amount</code></td><td><code>number</code></td><td>Signed credit delta: negative for deductions, positive for grants.</td></tr>
                             <tr><td><code>balanceafter</code></td><td><code>number|null</code></td><td>Remaining credit balance snapshot written at the time of the event. <code>null</code> on per-turn <code>deduct</code> rows.</td></tr>
                             <tr><td><code>description</code></td><td><code>string|null</code></td><td>Human-readable label. On an <code>action: "tokens"</code> row it spells the counts out: <code>LLM &lt;model&gt; (uncached in N, cached in N, out N, cache write N, total N tokens)</code>, where <code>cached in</code> and <code>cache write</code> appear only above 0.</td></tr>
-                            <tr><td><code>sessionkey</code></td><td><code>string|null</code></td><td>Session the deduct belongs to (deduct rows only).</td></tr>
+                            <tr><td><code>sessionkey</code></td><td><code>string|null</code></td><td>Session the deduct belongs to (deduct rows only; <code>null</code> on a row that covers several model calls).</td></tr>
                             <tr><td><code>agentsessionkey</code></td><td><code>string|null</code></td><td>Alias of <code>sessionkey</code> (same value), present on every row for a unified per-session attribution key across <code>TaskList</code> / <code>TransactionList</code> / wallet responses.</td></tr>
-                            <tr><td><code>messageguid</code></td><td><code>string|null</code></td><td>Agent message that triggered the deduct (deduct rows only).</td></tr>
+                            <tr><td><code>messageguid</code></td><td><code>string|null</code></td><td>Agent message that triggered the deduct (deduct rows only; <code>null</code> on a row that covers several model calls).</td></tr>
                             <tr><td><code>inputtokens</code></td><td><code>number|null</code></td><td>Uncached prompt tokens billed at the model's input rate (<code>action: "tokens"</code> rows only).</td></tr>
                             <tr><td><code>outputtokens</code></td><td><code>number|null</code></td><td>Completion tokens billed for the turn (<code>action: "tokens"</code> rows only).</td></tr>
                             <tr><td><code>cachereadtokens</code></td><td><code>number|null</code></td><td>Prompt tokens served from cache for the turn (<code>action: "tokens"</code> rows only).</td></tr>
@@ -35637,6 +35692,52 @@ console.log('Now in period:', summary.creditperiod);</code></pre>
 
                     <h3>Reconcile a plan change</h3>
                     <p>When the user moves to a higher plan mid-period, the ledger gets one <code>grant</code> row for the credits the move added to this period. For a wallet-billed (prepaid) agent, <code>UpgradeTier</code> writes <code>action: "tier-change"</code> with those credits as <code>amount</code> (the monthly difference for the time left in the period), a description like <code>"Plan Pro to Max"</code> and <code>metadata: { fromTier, toTier, previousPriceUsd, newPriceUsd, proratedCharge, creditsFromRenewal }</code>; a card-billed upgrade writes <code>action: "upgrade"</code>. A move to a lower plan takes effect at the renewal, and that <code>renewal</code> row grants the lower plan's credits. Use these rows to render a plan history in your UI.</p>
+                    <h3 id="metered-token-rows">Rows that cover several model calls</h3>
+                    <p>When Wiro measures an agent's model calls itself, a <code>deduct</code> row is not one turn. Each call is priced exactly, and the prices add up until they reach a whole credit; then one <code>deduct</code> row (<code>action: "tokens"</code>) takes the whole credits and covers every call billed since the agent's last row, of one turn or of several. What is left under a credit waits for the next row, so no call is billed twice and none is rounded up. Calls a turn makes outside its reply, such as compacting a long conversation, are billed this way too.</p>
+                    <p>On such a row:</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Field</th><th>What it holds</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>amount</code>, <code>tokencost</code></td><td>The whole credits the row takes (<code>amount</code> negative).</td></tr>
+                            <tr><td><code>inputtokens</code>, <code>outputtokens</code>, <code>cachereadtokens</code>, <code>cachewritetokens</code>, <code>totaltokens</code></td><td>The sums of the calls it covers.</td></tr>
+                            <tr><td><code>model</code>, <code>description</code></td><td>The model of the costliest call; the description spells the sums out as on other token rows.</td></tr>
+                            <tr><td><code>sessionkey</code>, <code>agentsessionkey</code>, <code>messageguid</code></td><td><code>null</code>: a row can cover calls of more than one turn.</td></tr>
+                            <tr><td><code>providerref</code></td><td>The trace id of the costliest call, when the agent's call sent a W3C <code>traceparent</code>; otherwise <code>null</code>.</td></tr>
+                            <tr><td><code>metadata.calls</code></td><td>Up to 200 of the calls it covers: <code>{ callId, responseId, provider, model, input, output, cacheRead, cacheWrite, total, credits }</code>, with <code>credits</code> exact to 9 decimals.</td></tr>
+                            <tr><td><code>metadata.callCount</code></td><td>How many calls it covers (it can be more than the 200 listed).</td></tr>
+                            <tr><td><code>metadata.traceIds</code></td><td>Up to 20 distinct trace ids of its calls, from their <code>traceparent</code>.</td></tr>
+                            <tr><td><code>metadata.models</code>, <code>metadata.providers</code></td><td>The models and providers of its calls.</td></tr>
+                            <tr><td><code>metadata.carryIn</code>, <code>metadata.carryOut</code></td><td>The part of a credit carried in from the row before and carried on to the next.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p>No field ties such a row to the turns it covers. To show usage per turn or per day, add up the rows by <code>createdat</code>; <code>summary.byModel[].turncount</code> counts each of these rows, or each trace id, as one turn.</p>
+                    <h3 id="plan-not-saved">Plan payments that did not finish</h3>
+                    <p>When the wallet pays for a plan start or a renewal and the plan then can't be saved, the agent's plan, price and credits stay as they were until Wiro support sets them, and the payment is recorded so it can be found. It happens on <code>Deploy</code> and <code>CreateSubscriptionCheckout</code> with <code>useprepaid: true</code>, on <code>RenewSubscription</code> (each answers with code <code>110</code>, see <a href="/docs/agent-overview#post-useragentrenewsubscription">Plan and payment errors</a>), and on Wiro's own renewal at the end of a period. After Wiro's own renewal ends this way, the subscription shows the new period, so <code>RenewSubscription</code> answers <code>Subscription is already active</code>: this row is how to tell the two apart. Send the agent to Wiro support; don't charge again.</p>
+                    <p>The ledger row:</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Field</th><th>Value</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>type</code></td><td><code>"subscription"</code></td></tr>
+                            <tr><td><code>action</code></td><td><code>"plan-not-saved"</code></td></tr>
+                            <tr><td><code>amount</code></td><td><code>0</code>: no credits moved.</td></tr>
+                            <tr><td><code>description</code></td><td>Such as <code>"Pro plan renewal charged; the plan was not saved"</code> or <code>"Max plan start charged; the plan was not saved"</code>.</td></tr>
+                            <tr><td><code>provider</code></td><td><code>"prepaid"</code></td></tr>
+                            <tr><td><code>metadata</code></td><td><code>{ tier, priceUsd, chargedUsd, walletKey }</code>: the plan that was charged (<code>null</code> for a plan with no name), its price, what the wallet paid, and the id of that wallet payment.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p>The agent's <a href="/docs/agent-logs#who-did-what-rows">activity log</a> gets an <code>AGENT_PLAN_NOT_SAVED</code> row with the same payment, titled like <code>Pro plan renewal did not finish: $24.00 charged</code>.</p>
                   </section>
 
                   <section id="tx-errors">
@@ -35903,6 +36004,7 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
                             <tr><td><code>CONNECTOR_ACCOUNTS_SET</code></td><td><code>Connector accounts set: facebook-pages</code></td></tr>
                             <tr><td><code>CONNECTOR_REAUTH</code></td><td><code>Connector needs to be connected again: facebook-pages</code> (written by Wiro when a sign-in expired or was revoked)</td></tr>
                             <tr><td><code>AGENT_PLAN_STARTED</code>, <code>AGENT_PLAN_RENEWED</code>, <code>AGENT_PLAN_CANCELLED</code>, <code>AGENT_PLAN_RESUMED</code></td><td><code>Starter plan started: $5.00 charged</code>, <code>Starter plan renewed: $5.00 charged</code>, <code>Plan cancelled, ends 2026-06-01</code>, <code>Plan cancellation undone</code></td></tr>
+                            <tr><td><code>AGENT_PLAN_NOT_SAVED</code></td><td><code>Pro plan renewal did not finish: $24.00 charged</code>, <code>Max plan start did not finish: $100.00 charged</code> (the wallet paid and the plan could not be saved; see <a href="/docs/agent-transactions#plan-not-saved">Plan payments that did not finish</a>)</td></tr>
                             <tr><td><code>AGENT_TIER_UPGRADED</code></td><td><code>Plan upgraded from Starter to Pro; $12.50 charged</code></td></tr>
                             <tr><td><code>AGENT_PLAN_CHANGE_SCHEDULED</code>, <code>AGENT_PLAN_CHANGE_CANCELLED</code></td><td><code>Plan change scheduled: Pro to Starter on 2026-06-01</code>, <code>Scheduled plan change cancelled: stays on Pro</code></td></tr>
                             <tr><td><code>AGENT_PLAN_MOVE_SCHEDULED</code></td><td><code>Moves to the Starter plan ($5.00 a month) on 2026-06-01</code> (an agent subscribed before the three plans)</td></tr>
