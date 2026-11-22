@@ -221,9 +221,9 @@ The conversation tools call the matching `Message/*` route of [Studio](/docs/stu
 | `get_agent_template` | `POST /Agent/Detail` | Read a template's skills, plans, the connectors it suggests and the keys it needs. |
 | `list_agent_connectors` | `POST /AgentConnector/List`, `/AgentConnector/Detail`, `/UserAgent/ConnectorList` (with `agent_guid`) | Browse the connectors an agent can connect, what each one needs and the tools it gives the agent; with an agent, its connections. |
 | `list_agent_skills` | `POST /Skills/List`, `/Skills/Detail`, `/Skills/Capabilities` | Browse the skills an agent can have, and what each one needs to work. |
-| `deploy_agent` | `POST /UserAgent/PricingPreview`, `/UserAgent/Deploy` | Deploy an agent from a template or build one from skills, on the Starter, Pro or Max plan; shows the plan's price, the wallet it charges and the other plans' prices, and asks before charging. |
-| `list_my_agents` | `POST /UserAgent/MyAgents` | List your agents with their status, plan and credits. |
-| `get_my_agent` | `POST /UserAgent/Detail` | Read one agent's setup, plan and credits; can wait until it is running. |
+| `deploy_agent` | `POST /UserAgent/PricingPreview`, `/UserAgent/Deploy` | Deploy an agent from a template or build one from skills, on the Starter, Pro or Max plan; shows the plan's price and the AI usage it includes, the Wiro balance that pays it and the other plans' prices, and asks before charging. |
+| `list_my_agents` | `POST /UserAgent/MyAgents` | List your agents with their status, plan, AI usage and this month's spending. |
+| `get_my_agent` | `POST /UserAgent/Detail` | Read one agent's setup, plan, AI usage and the balance it runs on; can wait until it is running. |
 | `control_agent` | `POST /UserAgent/Start`, `/UserAgent/Stop`, `/UserAgent/Update` (restart) | Start, stop or restart an agent. |
 | `update_agent` | `POST /UserAgent/Update`, `/UserAgent/UpdateSettings` | Change an agent's name, description, time zone, models, chat commands and setup from chat. |
 | `apply_agent_skills` | `POST /UserAgent/PricingPreview`, `/UserAgent/SkillsApply` | Turn skills on or off; every plan includes every skill, so a change costs nothing. |
@@ -234,8 +234,8 @@ The conversation tools call the matching `Message/*` route of [Studio](/docs/stu
 | `list_projects` | `POST /Project/List`, `/UserAgent/Detail` (with `agent_guid`) | List the projects of the connected project's workspace, to pick one for an agent; no keys are shown. |
 | `bind_agent_project` | `POST /UserAgent/Detail`, `/Project/List`, then `/UserAgent/CredentialProjectBind` | Connect an agent to a Wiro project so it can run models, with no key in the chat; shows the project first, then asks for your confirmation. |
 | `manage_agent_custom_skill` | `POST /UserAgent/CustomSkillUpsert`, `CustomSkillRename`, `CustomSkillDelete`, `CustomSkillHistory`, `CustomSkillRevert` | Add, edit, schedule, restore or remove an agent's own instructions and scheduled tasks; turning off its approval policy or changing its rules needs your confirmation. |
-| `manage_agent_billing` | `POST /UserAgent/CreateSubscriptionCheckout`, `UpgradeTier`, `CancelSubscription`, `RenewSubscription`, `CreateExtraCreditCheckout` | Subscribe, move to another plan, cancel, renew or buy extra credits from your wallet, after your confirmation. |
-| `get_agent_activity` | `POST /UserAgent/TransactionList`, `/UserAgent/LogsList`, `/UserAgent/Logs` | Read an agent's credit usage and activity logs, including who changed what on it. |
+| `manage_agent_billing` | `POST /UserAgent/CreateSubscriptionCheckout`, `UpgradeTier`, `CancelSubscription`, `RenewSubscription` | Subscribe, move to another plan, cancel or renew, paid from your Wiro balance, after your confirmation; `buy_credits` is retired and charges nothing. |
+| `get_agent_activity` | `POST /UserAgent/TransactionList`, `/UserAgent/LogsList`, `/UserAgent/Logs` | Read an agent's AI usage, its transactions in dollars and its activity logs, including who changed what on it. |
 | `delete_agent` | `POST /UserAgent/Delete` | Delete an agent, after your confirmation. |
 
 ### Controls
