@@ -81,7 +81,7 @@ A single WebSocket connection can hold subscriptions to multiple agent sessions 
 WS connect              →  { "type": "connected", "version": "1.0" }
 { agent_info, token: A } →  { agent_subscribed ... token: A }
 { agent_info, token: B } →  { agent_subscribed ... token: B }
-{ agent_info, token: A } →  (no-op — already subscribed)
+{ agent_info, token: A } →  { agent_subscribed ... token: A }  (a fresh snapshot; still one subscription)
 ```
 
 After this, every server-side event for either token is forwarded to this connection. All events carry the `agenttoken` field, so your handler can route them back to the right UI surface.
@@ -158,7 +158,7 @@ The **control frames** (`connected`, `error`) use a different shape with no `age
 
 Run stream frames (`agent_run_*`) and their two errors carry `useragentguid` instead of an `agenttoken`; see [Following an agent's background runs](#following-an-agents-background-runs).
 
-The `agent_subscribed` frame is a snapshot rather than a `message` wrapper. For a known token it carries `status`, `debugoutput`, `messageguid`, and `timeline` at the top level. When the token is unknown, `status` is `"unknown"` and those row-backed fields are omitted.
+The `agent_subscribed` frame is a snapshot rather than a `message` wrapper. For a known token it carries `status`, `debugoutput`, `messageguid`, and `timeline` at the top level. When the token is unknown, `status` is `"unknown"`, `timeline` is `[]`, and `debugoutput` and `messageguid` are left out.
 
 ### agent_subscribed
 
@@ -186,8 +186,9 @@ Sent immediately after the server accepts your subscription. The `status` field 
 ```json
 {
   "type": "agent_subscribed",
-  "agenttoken": "wrongtoken123",
+  "agenttoken": "Xy7Lm2Vq9Tb4Np8Rk1Wc6Hz3Fd5Gs0",
   "status": "unknown",
+  "timeline": [],
   "result": true
 }
 ```
@@ -281,6 +282,47 @@ The merge contract is:
 The complete public block shape is `blockid`, `callindex`, `contentindex`, `type`, `text`, `phase`, `version`, `startedat`, and `updatedat`, and tool blocks also carry `toollabel`, `toolstatus`, `toolintegration`, and `toolaction`. Reasoning and answer blocks don't have these four fields. `phase` is `stream`, `end`, or `error`; timestamps can be `null` when unavailable. No additional internal correlation or execution metadata is emitted in this block.
 
 When the agent proposes a setup change, a `setup` block arrives the same way. It sorts after the turn's other blocks, its `text` is `null` and it carries a `setup` object instead of tool fields; see [Setup From Chat](/docs/agent-messaging#setup-from-chat). A pending card's block has `version` 1. When the card is applied, dismissed or fails, the block comes again with `version` 2 and the new `status`; `Message/Detail` and `Message/History` always have the current state. A pending `connect` card's block also carries `next`, the connector it connects, as `[{ connector, title, mode }]`.
+
+A pending `connect` card as it arrives:
+
+```json
+{
+  "type": "agent_timeline_delta",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "message": {
+    "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+    "block": {
+      "blockid": "s:k3v9q2m8x1za",
+      "callindex": 1000000,
+      "contentindex": 0,
+      "type": "setup",
+      "text": null,
+      "setup": {
+        "v": 1,
+        "id": "k3v9q2m8x1za",
+        "kind": "connect",
+        "connector": "serper",
+        "title": "Serper",
+        "authtype": "fields",
+        "mode": "key",
+        "fields": [
+          { "name": "apikey", "label": "Serper API Key", "description": "Real Google web-search results as clean JSON, via [Serper.dev](https://serper.dev) ...", "required": true, "secret": true, "format": "password", "placeholder": "your Serper.dev API key" }
+        ],
+        "requestedby": "ada-uuid",
+        "createdat": 1743350406
+      },
+      "next": [{ "connector": "serper", "title": "Serper", "mode": "key" }],
+      "phase": "end",
+      "version": 1,
+      "startedat": 1743350406,
+      "updatedat": 1743350406
+    }
+  },
+  "result": true
+}
+```
+
+Once the card is acted on, the same `blockid` comes again with `"version": 2`, its `setup.status` (`applied`, `dismissed` or `failed`) and `setup.actedat`, and without `next`.
 
 Tool blocks carry two closed-list words:
 
@@ -1375,8 +1417,9 @@ channel.stream.listen((message) {
 ```json
 {
   "type": "agent_subscribed",
-  "agenttoken": "wrongtoken",
+  "agenttoken": "Xy7Lm2Vq9Tb4Np8Rk1Wc6Hz3Fd5Gs0",
   "status": "unknown",
+  "timeline": [],
   "result": true
 }
 ```
@@ -1691,7 +1734,7 @@ An `agenttoken` is issued per message by `POST /UserAgent/Message/Send` and stay
 
 | Event | Effect on token |
 |---|---|
-| `Message/Send` | Token is minted, row is inserted with `status: "agent_queue"`, broadcast to all queue subscribers. |
+| `Message/Send` | Token is minted and the message is saved with `status: "agent_queue"`, which the `Message/Send` answer returns. No frame is sent; a subscribe at this point gets `agent_subscribed` with `status: "agent_queue"`. |
 | Agent starts working | Emits `agent_start` to every active subscriber. |
 | Timeline block changes | Emits one `agent_timeline_delta` update with `{ messageguid, block }`; the persisted row keeps the merged ordered timeline. |
 | Each SSE chunk | Emits `agent_output` to every active subscriber (with full accumulated `raw`). |
