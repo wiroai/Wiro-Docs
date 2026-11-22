@@ -14578,7 +14578,7 @@ import type {
 <tr>
 <td><code>project.options</code></td>
 <td>object[]</td>
-<td>The projects you can make the Studio project with <a href="#post-studioprojectset">ProjectSet</a>, each <code>{ "id", "name" }</code>. Signed in to a personal workspace, your personal projects; in a team, every team project for a team admin or the organization owner, and none for other members. Always <code>[]</code> with an API key.</td>
+<td>The projects you can make the Studio project with <a href="#post-studioprojectset">ProjectSet</a>, each <code>{ "id", "name" }</code>, newest first, at most 100. Signed in to a personal workspace, your personal projects; in a team, every team project for a team admin or the organization owner, and none for other members. Always <code>[]</code> with an API key. ProjectSet also takes any other project of the workspace by its <code>id</code>.</td>
 </tr>
 <tr>
 <td><code>project.canchange</code></td>
@@ -14674,7 +14674,7 @@ import type {
 </code></pre>
 <p>A message that leaves <code>model</code> out is then refused with <code>agentModelMessage</code>. Send a model that is still selectable, such as <code>openai/gpt-5.4-mini</code>.</p>
 <h2 id="post-studioprojectset"><strong>POST</strong> /Studio/ProjectSet</h2>
-<p>Changes the workspace's Studio project: the project that Studio and the <a href="/docs/workflow-agent">Workflow Agent</a> work on for messages sent from wiro.ai. It works only signed in, in the dashboard or with a signed-in user's Bearer token, and changes your personal workspace's Studio project, or the team's when <code>x-team-guid</code> names a team. In a personal workspace you can pick any of your personal projects; in a team, a team admin or the organization owner can pick any team project. <code>project.options</code> in <a href="#post-studiostatus">Studio/Status</a> lists them. A call with an API key always runs on the key's project, so ProjectSet refuses it.</p>
+<p>Changes the workspace's Studio project: the project that Studio and the <a href="/docs/workflow-agent">Workflow Agent</a> work on for messages sent from wiro.ai. It works only signed in, in the dashboard or with a signed-in user's Bearer token, and changes your personal workspace's Studio project, or the team's when <code>x-team-guid</code> names a team. In a personal workspace you can pick any of your personal projects; in a team, a team admin or the organization owner can pick any team project. <code>project.options</code> in <a href="#post-studiostatus">Studio/Status</a> lists the newest 100 of them. A call with an API key always runs on the key's project, so ProjectSet refuses it.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -14691,7 +14691,7 @@ import type {
 <td><code>projectid</code></td>
 <td>string</td>
 <td>Yes</td>
-<td>The project's <code>id</code>, from <code>project.options</code> in Studio/Status.</td>
+<td>The project's <code>id</code>, such as one from <code>project.options</code> in Studio/Status.</td>
 </tr>
 </tbody>
 </table>
@@ -14709,8 +14709,8 @@ import type {
   &quot;project&quot;: {
     &quot;current&quot;: { &quot;id&quot;: &quot;7001&quot;, &quot;name&quot;: &quot;Mobile App&quot; },
     &quot;options&quot;: [
-      { &quot;id&quot;: &quot;6839&quot;, &quot;name&quot;: &quot;Studio&quot; },
-      { &quot;id&quot;: &quot;7001&quot;, &quot;name&quot;: &quot;Mobile App&quot; }
+      { &quot;id&quot;: &quot;7001&quot;, &quot;name&quot;: &quot;Mobile App&quot; },
+      { &quot;id&quot;: &quot;6839&quot;, &quot;name&quot;: &quot;Studio&quot; }
     ],
     &quot;canchange&quot;: true
   }

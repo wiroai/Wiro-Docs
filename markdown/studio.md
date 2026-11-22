@@ -57,7 +57,7 @@ Returns the wallet check, the chat models Studio can use and the project Studio 
 | `agentModelBlocked` | boolean | `true` when your rules block `agentModel.chatModel`: a message that leaves `model` out is then refused with code `92`. |
 | `agentModelMessage` | string \| null | The refusal such a message gets when `agentModelBlocked` is `true`, else `null`. |
 | `project.current` | object \| null | The project Studio works on, `{ "id", "name" }` with `id` as a string (see [Costs](#costs)). With an API key, the key's own project. Signed in, the workspace's Studio project, or `null` until the workspace has one: the first Studio or Workflow Agent message from wiro.ai creates it. |
-| `project.options` | object[] | The projects you can make the Studio project with [ProjectSet](#post-studioprojectset), each `{ "id", "name" }`. Signed in to a personal workspace, your personal projects; in a team, every team project for a team admin or the organization owner, and none for other members. Always `[]` with an API key. |
+| `project.options` | object[] | The projects you can make the Studio project with [ProjectSet](#post-studioprojectset), each `{ "id", "name" }`, newest first, at most 100. Signed in to a personal workspace, your personal projects; in a team, every team project for a team admin or the organization owner, and none for other members. Always `[]` with an API key. ProjectSet also takes any other project of the workspace by its `id`. |
 | `project.canchange` | boolean | `true` when you can change the Studio project. `false` for team members who are not admins, and with an API key. |
 | `title` | string | The agent's name. |
 | `status` | number | Always `4`. |
@@ -147,11 +147,11 @@ A message that leaves `model` out is then refused with `agentModelMessage`. Send
 
 ## **POST** /Studio/ProjectSet
 
-Changes the workspace's Studio project: the project that Studio and the [Workflow Agent](/docs/workflow-agent) work on for messages sent from wiro.ai. It works only signed in, in the dashboard or with a signed-in user's Bearer token, and changes your personal workspace's Studio project, or the team's when `x-team-guid` names a team. In a personal workspace you can pick any of your personal projects; in a team, a team admin or the organization owner can pick any team project. `project.options` in [Studio/Status](#post-studiostatus) lists them. A call with an API key always runs on the key's project, so ProjectSet refuses it.
+Changes the workspace's Studio project: the project that Studio and the [Workflow Agent](/docs/workflow-agent) work on for messages sent from wiro.ai. It works only signed in, in the dashboard or with a signed-in user's Bearer token, and changes your personal workspace's Studio project, or the team's when `x-team-guid` names a team. In a personal workspace you can pick any of your personal projects; in a team, a team admin or the organization owner can pick any team project. `project.options` in [Studio/Status](#post-studiostatus) lists the newest 100 of them. A call with an API key always runs on the key's project, so ProjectSet refuses it.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `projectid` | string | Yes | The project's `id`, from `project.options` in Studio/Status. |
+| `projectid` | string | Yes | The project's `id`, such as one from `project.options` in Studio/Status. |
 
 ### Response
 
@@ -170,8 +170,8 @@ Studio/Status then shows the new project. For a team admin, signed in, it reads:
   "project": {
     "current": { "id": "7001", "name": "Mobile App" },
     "options": [
-      { "id": "6839", "name": "Studio" },
-      { "id": "7001", "name": "Mobile App" }
+      { "id": "7001", "name": "Mobile App" },
+      { "id": "6839", "name": "Studio" }
     ],
     "canchange": true
   }
