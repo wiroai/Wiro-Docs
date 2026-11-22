@@ -15415,7 +15415,7 @@ Wiro checks an `add` or `remove` card when the agent proposes it and again when 
 Wiro refuses an `add` or `remove` card with one plain sentence when:
 
 - the name isn't a skill Wiro has, or the `add` names one Wiro no longer offers (the sentence names its replacement when there is one);
-- it names a channel (Telegram, Slack or Discord), refused with `Telegram is a channel: it is connected in the agent's settings.`, or a connector of the catalog, refused with `<Title> is a connector: propose a connect card for <slug>.`;
+- it names a channel (Telegram, Slack or Discord), refused with `Telegram is a channel: it is connected in the agent's settings.`, or a connector of the catalog, refused with `<Title> is a connector: propose a connect card for <slug>.` (for a `remove` card, `<Title> is a connector: propose a disconnect card for <slug>.`);
 - it names a custom skill (`cs-<name>`), which a `skill` card turns on and off;
 - it names a supporting part (`user_invocable: false`), which comes with the skills that need it and isn't turned on or off by itself;
 - nothing would change: the `add` names one that is already on, or the `remove` one the agent doesn't have;
@@ -15783,7 +15783,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
 |-------|------|
 | `Setup from chat is off for this agent.` | `chatsetup` is `"off"`, or the call is sent with a project API key and `chatsetup` is `"webchat"`. |
 | `Wait until the agent finishes this reply, then apply it.` | `action` is `"apply"` while the reply that holds the card is still being written. `"dismiss"` works at any time. |
-| `Only an agent admin can apply setup changes.` | The caller can see the chat but isn't an agent admin. |
+| `Only an agent admin can apply setup changes.` (code `97`) | The caller can see the chat but isn't an agent admin. |
 | `The change could not be applied. Try again in a moment.` | The change failed on Wiro's side. The card's `status` is now `failed`. |
 | `This skill changed after the card was made. Ask the agent again.` | An `update`, `append` or `revert` card whose skill text no longer matches its `before`: someone changed the skill after the card was made. Nothing changed, and the card's `status` is now `failed`. |
 | `This agent's connectors or skills changed after the card was made. Ask the agent again.` | An `add` or `remove` card whose change no longer matches the agent's skills: it would turn on more than it shows, or turn off something else. Nothing changed, and the card's `status` is now `failed`. |

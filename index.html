@@ -24570,7 +24570,7 @@ End every post with three questions readers ask, each with a two-sentence answer
 <p>Wiro refuses an <code>add</code> or <code>remove</code> card with one plain sentence when:</p>
 <ul>
 <li>the name isn't a skill Wiro has, or the <code>add</code> names one Wiro no longer offers (the sentence names its replacement when there is one);</li>
-<li>it names a channel (Telegram, Slack or Discord), refused with <code>Telegram is a channel: it is connected in the agent's settings.</code>, or a connector of the catalog, refused with <code>&lt;Title&gt; is a connector: propose a connect card for &lt;slug&gt;.</code>;</li>
+<li>it names a channel (Telegram, Slack or Discord), refused with <code>Telegram is a channel: it is connected in the agent's settings.</code>, or a connector of the catalog, refused with <code>&lt;Title&gt; is a connector: propose a connect card for &lt;slug&gt;.</code> (for a <code>remove</code> card, <code>&lt;Title&gt; is a connector: propose a disconnect card for &lt;slug&gt;.</code>);</li>
 <li>it names a custom skill (<code>cs-&lt;name&gt;</code>), which a <code>skill</code> card turns on and off;</li>
 <li>it names a supporting part (<code>user_invocable: false</code>), which comes with the skills that need it and isn't turned on or off by itself;</li>
 <li>nothing would change: the <code>add</code> names one that is already on, or the <code>remove</code> one the agent doesn't have;</li>
@@ -25097,7 +25097,7 @@ Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it
 <td><code>action</code> is <code>"apply"</code> while the reply that holds the card is still being written. <code>"dismiss"</code> works at any time.</td>
 </tr>
 <tr>
-<td><code>Only an agent admin can apply setup changes.</code></td>
+<td><code>Only an agent admin can apply setup changes.</code> (code <code>97</code>)</td>
 <td>The caller can see the chat but isn't an agent admin.</td>
 </tr>
 <tr>
