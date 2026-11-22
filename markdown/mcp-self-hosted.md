@@ -238,7 +238,7 @@ The conversation tools call the matching `Message/*` route of [Studio](/docs/stu
 
 ### Controls
 
-These tools read and change the workspace's [spend limits](/docs/spend-limits) and [Model Access](/docs/model-access) rules. They come with `@wiro-ai/wiro-mcp` 1.9.0 and later. The self-hosted server's calls count on the `api` surface, as calls with its API key. Its Controls tools change limits and rules only when the person who created the key's project can change them: a personal account's owner, or in a team a team admin or the organization owner.
+These tools read and change the workspace's [spend limits](/docs/spend-limits) and [Model Access](/docs/model-access) rules. They come with `@wiro-ai/wiro-mcp` 1.9.0 and later. The self-hosted server's calls count on the `api` surface for now, as calls with its API key, except its messages to Studio and the Workflow Agent and its workflow runs, which count on `studio`, `workflow-agent` and `workflow` (see [Surfaces](/docs/tasks#task-surfaces)). Its Controls tools change limits and rules only when the person who created the key's project can change them: a personal account's owner, or in a team a team admin or the organization owner.
 
 | Tool | API Endpoint | What it does |
 |------|-------------|-------------|
