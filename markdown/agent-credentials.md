@@ -11,11 +11,11 @@ A credential is a set of values an agent keeps for something it is, rather than 
 | Telegram, Slack, Discord | `telegram`, `slack`, `discord` | The agent's own external chat channels. See [Communication Channels](#communication-channels). |
 | Twilio Voice | `twilio-voice` | The phone line the agent answers. See [Twilio Voice Channel](/docs/integration-twiliovoice-skills). |
 | Wiro project | `wiro` | The project whose wallet pays for the Wiro model runs the agent makes, such as video and voice. See [The agent's Wiro project](#the-agents-wiro-project). |
-| Settings | `var-support-email`, `var-website`, `var-newsletter-test-email` | Values the agent's skills read: the support email it gives customers, its website addresses, and the inbox that gets a test copy of each newsletter before it goes out. |
+| Settings | `var-support-email`, `var-website`, `var-newsletter-test-email` | Values the agent's skills read: the support email it gives customers (field `value`), its website addresses (field `urls`: a list of `{ websitename, url }` entries, both required) and the inbox that gets a test copy of each newsletter before it goes out (field `value`). Save them with `CredentialUpsert`, as in [Setting Credentials](#setting-credentials). |
 
-The services an agent works with (Google Ads, Shopify, HubSpot, Serper and the rest) are **connectors**, not credentials: browse, connect and disconnect them with the calls on [Agent Connectors](/docs/agent-connectors). `CredentialUpsert` doesn't take a connector's values.
+The services an agent works with (Google Ads, Shopify, HubSpot, Serper and the rest) are **connectors**, not credentials: browse, connect and disconnect them with the calls on [Agent Connectors](/docs/agent-connectors). `CredentialUpsert` doesn't take a connector's values: a row whose `credentialkey` is a connector's slug refuses the whole request before anything is saved, its other rows included, with `{ "result": false, "errors": [{ "code": 0, "message": "Unknown credential: shopify. Connectors are connected with UserAgent/ConnectorConnect." }] }`.
 
-> **Not from the agent's chat.** [Setup cards](/docs/agent-messaging#setup-from-chat) connect connectors of the catalog only: no card saves a channel, Twilio Voice or a setting. Save them with `CredentialUpsert`; in chat, the agent asks an agent admin to make the change in the agent's settings. The one card that sets a credential is the `wiro` connector's `project` card: it binds the agent's Wiro project, as `CredentialProjectBind` does.
+> **Not from the agent's chat.** [Setup cards](/docs/agent-messaging#setup-from-chat) connect connectors of the catalog only: no card saves a channel, Twilio Voice or a setting. Save them with `CredentialUpsert`; in chat, the agent asks an agent admin to make the change in the agent's settings. The one card that sets a credential is the `project` card of Wiro AI Models (`wiro`): it binds the agent's Wiro project, as `CredentialProjectBind` does.
 
 **Read & write paths at a glance:**
 
@@ -180,7 +180,7 @@ The example shows one entry, shortened. Keys this table doesn't list are for Wir
 |-------|------|-------------|
 | `key` | `string` | Canonical credential key. Use this in `CredentialUpsert.fields[].credentialkey`. |
 | `title` | `string` | Display label for the credential's card. |
-| `icon` | `string` | Path or URL to the icon (relative paths absolutized server-side). |
+| `icon` | `string` | The icon as the registry holds it: a path on `https://wiro.ai`, such as `/images/icons/skills/telegram.svg` (put `https://wiro.ai` in front of it), or, for a setting, a Lineicons class name, such as `lni lni-envelope-1`. |
 | `brand_color` / `brand_text_color` / `brand_logo_filter` | `string\|null` | Colours and CSS filter for rendering the icon, the same shape as on skill registry entries. |
 | `docs_url` | `string\|null` | Slug of the page about it on this docs site, when it has one. Frontends prefix it with `/docs/`. |
 | `credential_mode` | `string` | `"api_key"` for values typed in (the channels, Twilio Voice, the Wiro project) or `"static"` for settings. |
@@ -192,18 +192,19 @@ The example shows one entry, shortened. Keys this table doesn't list are for Wir
 | Sub-field | Type | Description |
 |-----------|------|-------------|
 | `key` | `string` | Field name (the `fieldname` you send to `CredentialUpsert`). |
-| `type` | `string` | Input type: `"text"`, `"password"`, `"email"`, `"number"`, `"textarea"`, `"select"`, `"boolean"`, `"string-array"`, `"object-array"`, `"fileinput"` (a public file, written with `CredentialFileUpload`), or `"custom"` (such as the Wiro project picker). |
+| `type` | `string` | Input type: `"text"`, `"password"`, `"email"`, `"url"`, `"number"`, `"textarea"`, `"select"`, `"boolean"`, `"string-array"`, `"object-array"`, `"fileinput"` (a public file, written with `CredentialFileUpload`), `"custom:wiro-project-picker"` (the Wiro project: bind it with `CredentialProjectBind`) or `"custom:urls-list"` (a list of objects, written like `"object-array"`; its entry fields are in `custom_component_config.per_url_schema`). |
 | `label` | `string` | Display label for the form input. |
 | `required` | `boolean` | Whether the field must be filled before the credential counts as set up. |
 | `placeholder` | `string?` | Placeholder text for the input. |
 | `pattern` | `string?` | Regex the value must satisfy. |
 | `maxlength` / `minlength` | `number?` | Length constraints. |
-| `options` | `array?` | For `type: "select"`, `[{ label, value }]` choices. |
+| `options` | `array?` | For `type: "select"`, `[{ value, text }]` choices: show `text`, send `value` as the `fieldvalue`. |
 | `default` | `string?` | Default value applied when the user hasn't set anything yet. |
 | `help` | `string?` | HTML help text rendered under the input. |
 | `show_toggle` | `boolean?` | For `type: "password"`, render a "show / hide" toggle. |
-| `encrypted` | `boolean?` | `true` for a secret: it is stored encrypted and read back as the mask. |
+| `encrypted` | `boolean?` | `true` when the value is stored encrypted. Only a `password` field comes back as the mask, `"••••••••"`: an encrypted field of another type, such as Twilio Voice's `accountsid` or the Wiro project's `apikey`, comes back as saved. In [`CredentialFieldHistory`](#auditing-credential-changes-credentialfieldhistory), an encrypted field's earlier values read `"[REDACTED]"`. |
 | `item_schema` / `item_type` | `object?` | For array-of-object fields: describes the per-entry shape (e.g. Telegram `groups[].{chatid, allowedusers}`). |
+| `custom_component_config` | `object?` | On a `"custom:urls-list"` field: `per_url_schema` holds the field objects of one entry (`websitename`, `url`). Its other keys are for Wiro's own panel. |
 
 **`fieldstatus`**. Not part of the registry schema: the server stamps it onto each stored field when it is written. Values you save are `user` and come back in responses (a secret as the mask). `platform` fields are Wiro's own: you can't write them, and they never come back.
 
@@ -264,7 +265,7 @@ The response names the project and says what happened to the agent: `{ "result":
 
 > **Don't confuse `credentials.wiro.apikey` with your operator-level Wiro API key.** `credentials.wiro.apikey` is the project key the agent uses to run Wiro models. The `x-api-key` header you send to Wiro endpoints from your own backend is your operator key, which authenticates your request (see [Authentication](/docs/authentication)). They are the same key only when you bind the project of the key you call with.
 
-The [Wiro connector](/docs/agent-connectors#the-wiro-connector), which gives the agent Wiro's own model and task tools, always acts with this project, as the agent's own calls. Connecting it binds the project you pick, as `CredentialProjectBind` does, and moving the agent to a workspace the project isn't in disconnects both the project and the connector.
+The [Wiro AI Models (`wiro`)](/docs/agent-connectors#the-wiro-connector) connector, which gives the agent Wiro's own model and task tools, always acts with this project, as the agent's own calls. Connecting it binds the project you pick, as `CredentialProjectBind` does; disconnecting it leaves the project bound, so the agent's Skills keep running models with it. Moving the agent to a workspace the project isn't in disconnects both the project and the connector.
 
 ## Platform-Managed Credentials
 
@@ -277,7 +278,7 @@ Some credential fields are **managed by Wiro**. You don't provide them, and they
 
 ## Auditing Credential Changes: `CredentialFieldHistory`
 
-Every credential field write is appended to a versioned history. Use `POST /UserAgent/CredentialFieldHistory` to read it, the same idea as `CustomSkillHistory` for skills.
+Each time a save replaces a field's saved value, the earlier value is kept in a versioned history, with `operation: "update"`. A first save adds no entry, and neither does a list of entries sent whole (Telegram `groups`, Slack `channels`, Discord `guilds`, Website `urls`); a change to one entry's field, sent with `parentfield` and `ordinal`, is kept like any other. Use `POST /UserAgent/CredentialFieldHistory` to read it, the same idea as `CustomSkillHistory` for skills.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialFieldHistory" \
@@ -305,7 +306,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialFieldHistory" \
       "fieldstatus": "user",
       "parentfield": null,
       "ordinal": 0,
-      "operation": "upsert",
+      "operation": "update",
       "changedby": "ada-uuid",
       "changedby_user": {
         "uuid": "ada-uuid",
@@ -331,7 +332,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialFieldHistory" \
 | `startdate` | number | No | UTC epoch seconds: return entries on/after this time |
 | `enddate` | number | No | UTC epoch seconds: return entries on/before this time |
 
-> **Secrets stay out of the history's answers.** A saved secret such as a bot token or an auth token comes back as `"••••••••"`, in `POST /UserAgent/Detail` as in the history. `CredentialFieldHistory` only shows the audit trail.
+> **Secrets stay out of the history's answers.** A saved secret, such as a bot token or an auth token, reads `"••••••••"` in `POST /UserAgent/Detail`, and its earlier values read `"[REDACTED]"` in the history, as do those of every field the registry marks `encrypted`, such as Twilio Voice's `accountsid`. `CredentialFieldHistory` only shows the audit trail.
 
 ## Setting Credentials
 
@@ -356,15 +357,35 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 
 Response: `{ "result": true, "applied": 2, "errors": [] }`. `applied` is the count of fields saved without an error (a field sent with its current value still counts; a secret sent back as the mask isn't counted, see below). All fields are validated before any is written: if one fails validation (for example a reserved fieldname prefixed with `_`), the whole request is rejected and nothing is saved; `result` is `false` and `errors` lists every invalid field. If a save fails after validation has passed, the other fields are still saved and each failed field is listed in `errors` with `result: false`. A starting or running agent restarts to apply the new values when the call changes a saved value.
 
+Settings are saved the same way. Each email setting has one field, `value`. The Website setting's `urls` is a list of `{ websitename, url }` entries, both required, and the list you send replaces the saved one:
+
+```json
+{
+  "useragentguid": "your-useragent-guid",
+  "fields": [
+    { "credentialkey": "var-support-email", "fieldname": "value", "fieldvalue": "support@example.com" },
+    { "credentialkey": "var-newsletter-test-email", "fieldname": "value", "fieldvalue": "newsletter-test@example.com" },
+    { "credentialkey": "var-website", "fieldname": "urls", "fieldvalue": [{ "websitename": "Main site", "url": "https://example.com" }] }
+  ]
+}
+```
+
+Response: `{ "result": true, "applied": 3, "errors": [] }`. Each of these is refused, and nothing is saved:
+
+- an entry without a name or a URL: `Website Name in Websites #1 is required` (or `URL in Websites #1 is required`);
+- any other key in an entry: `Websites #1 contains an unknown field: <key>`;
+- a `urls` value that isn't a JSON array, such as one URL as text: `Websites must be an array`.
+
 ### Field-level write rules
 
 - **`fieldstatus` is assigned by the server.** Any `fieldstatus` you send is ignored: a field that already exists keeps its stored status, and a new field gets the status its registry schema implies.
 - **Wiro-managed fields are rejected.** You can't write a field whose status is `platform`: it fails with `<Field label> is managed by the platform` (a field with no schema label is named `<credentialkey>.<fieldname>` instead). As with any invalid field, the whole request is rejected and nothing is saved.
 - **Reserved fieldnames are rejected.** Any `fieldname` starting with `_` (e.g. `_isoptional`, `_isextra`) is a sentinel used by the template itself and cannot be set by API callers.
+- **A connector's slug is refused.** A connector is connected with [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect), never saved here: a row whose `credentialkey` is a connector's slug fails with `Unknown credential: <key>. Connectors are connected with UserAgent/ConnectorConnect.`, and nothing in the request is saved.
 - **A secret sent back as the mask keeps its saved value.** `UserAgent/Detail` shows a saved secret (a `password` field) as `"••••••••"`. A row whose `fieldvalue` is that mask, with or without spaces around it, keeps what is saved: it isn't written, isn't counted in `applied` and restarts nothing. So a card sent back as Detail showed it changes only the fields you edited. To change a secret, send its new value. The mask with other text beside it is refused, with `<Field label> holds "••••••••", which stands for a saved value. Clear it and enter the full value`.
 - **Whitespace around a value is trimmed.** Text, password, email, URL and number values, and each entry of a list of strings, are saved without the spaces, tabs or line breaks around them and are validated after trimming, so a token pasted with a trailing newline is accepted. Spaces inside a value are kept, and multi-line text, selections, booleans, files and nested rows are saved as sent. The same applies to inline Deploy credentials.
 - Credential groups other than the channels must be declared by the agent template. Communication-channel credentials are the exception: every useragent may create the channel groups published in `POST /Skills/List` → `channels[]`, using `CredentialUpsert` or inline Deploy credentials.
-- **Lists** (Telegram `groups[]`, Slack `channels[]`, Discord `guilds[]`, Twilio `phonenumbers[]`) are sent as JSON arrays. An array `fieldvalue` (with no `parentfield`) replaces the whole stored list, so send the complete desired list. Per-row writes (a sub-field sent with `parentfield`, the list field's key, and `ordinal`, the array index) change only that entry; indices you don't send are kept. To clear an optional list, send `[]` as that field's `fieldvalue` with no `parentfield`.
+- **Lists** (Telegram `groups[]`, Slack `channels[]`, Discord `guilds[]`, Twilio `phonenumbers[]`, Website `urls[]`) are sent as JSON arrays. An array `fieldvalue` (with no `parentfield`) replaces the whole stored list, so send the complete desired list. Per-row writes (a sub-field sent with `parentfield`, the list field's key, and `ordinal`, the array index) change only that entry; indices you don't send are kept. To clear an optional list, send `[]` as that field's `fieldvalue` with no `parentfield`.
 - Use `POST /UserAgent/Detail` to inspect which fields each credential exposes, and the `_connected` / `optional` / `extra` flags that describe its readiness state.
 
 ### Prepaid deploy: inline setup supported (with limitations)
@@ -380,6 +401,11 @@ If you call `POST /UserAgent/Deploy` with `useprepaid: true`, you may pass `cred
 - Deploy never saves a `platform` field sent in `credentials`. In a communication-channel group (Telegram, Slack, Discord), such a field fails Deploy before the agent is created. In any other group, the field is dropped and Deploy continues.
 - A secret sent as the mask, `"••••••••"`, isn't saved: a new agent has no saved value for it to keep. In a communication-channel group (Telegram, Slack, Discord), the mask is refused with `<Field label> holds "••••••••", which stands for a saved value. Clear it and enter the full value`, and Deploy fails before the agent is created. `UserAgent/Detail` never returns a saved secret, so to copy one agent's setup to another, send each secret's value.
 - If `credentials` includes a communication-channel group, all of that channel's `required_fields` must be present. A missing or invalid activation credential fails Deploy instead of creating a partially configured channel.
+- A connector's slug as a key of `credentials` fails Deploy before anything is created or charged, with `Unknown credential: <key>. Connect a connector after the deploy with UserAgent/ConnectorConnect.`
+
+**Deploy body `skills` rules:**
+
+- Skills (`util-*`) only. A name that isn't a Skill fails Deploy before anything is created or charged, with `Unknown skill: <name>.`; a name that starts with `int-` gets `Unknown skill: <name>. Connectors are connected with UserAgent/ConnectorConnect, not turned on as skills.`
 
 **Deploy body `customskills` semantics:**
 
@@ -417,3 +443,105 @@ If you're building a product on top of Wiro agents for your own customers:
 4. **Verify** with `POST /UserAgent/Detail` (`credentials`, `setuprequired`) and `POST /UserAgent/ConnectorList` (each connector's `status`).
 
 When the agent proposes a change in a chat, apply it with the same calls and record it on its setup card with `SetupCardApply`: see [Agent Chat Integration](/docs/agent-chat-integration).
+
+## Code Examples
+
+### Channels (curl)
+
+```bash
+# Connect Telegram: every required field in one call turns the channel on
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "telegram", "fieldname": "bottoken",     "fieldvalue": "123456:ABC-DEF1234ghIkl" },
+      { "credentialkey": "telegram", "fieldname": "allowedusers", "fieldvalue": ["123456789"] }
+    ]
+  }'
+
+# Set the agent's support email (a setting its skills read)
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "var-support-email", "fieldname": "value", "fieldvalue": "support@example.com" }
+    ]
+  }'
+
+# Read a credential's history
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialFieldHistory" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "useragentguid": "your-useragent-guid", "credentialkey": "telegram" }'
+```
+
+### Wiro project (curl)
+
+```bash
+# Bind the Wiro project the agent runs models with (projectid from POST /Project/List)
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialProjectBind" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "useragentguid": "your-useragent-guid", "projectid": "4821" }'
+
+# Connectors (Shopify, Google Ads, Serper, ...) are not credentials:
+# connect them with POST /UserAgent/ConnectorConnect (see Agent Connectors).
+```
+
+### Python
+
+```python
+import requests
+
+API = "https://api.wiro.ai/v1"
+headers = {"x-api-key": "YOUR_API_KEY", "Content-Type": "application/json"}
+guid = "your-useragent-guid"
+
+# Telegram: every required field in one call turns the channel on
+res = requests.post(f"{API}/UserAgent/CredentialUpsert", headers=headers, json={
+    "useragentguid": guid,
+    "fields": [
+        {"credentialkey": "telegram", "fieldname": "bottoken", "fieldvalue": "123456:ABC-DEF1234ghIkl"},
+        {"credentialkey": "telegram", "fieldname": "allowedusers", "fieldvalue": ["123456789"]},
+    ],
+}).json()
+print(res["result"], res.get("applied"), res["errors"])
+
+# The Wiro project the agent runs models with
+bind = requests.post(f"{API}/UserAgent/CredentialProjectBind", headers=headers,
+                     json={"useragentguid": guid, "projectid": "4821"}).json()
+print(bind.get("project"), bind.get("restart"))
+
+# Which channels are on now
+detail = requests.post(f"{API}/UserAgent/Detail", headers=headers, json={"guid": guid}).json()
+print(detail["useragents"][0].get("enabledChannels"))
+```
+
+### Node.js
+
+```javascript
+const API = 'https://api.wiro.ai/v1';
+const headers = { 'x-api-key': 'YOUR_API_KEY', 'Content-Type': 'application/json' };
+const guid = 'your-useragent-guid';
+
+const post = (path, body) =>
+  fetch(`${API}${path}`, { method: 'POST', headers, body: JSON.stringify(body) }).then((r) => r.json());
+
+// Telegram: every required field in one call turns the channel on
+const saved = await post('/UserAgent/CredentialUpsert', {
+  useragentguid: guid,
+  fields: [
+    { credentialkey: 'telegram', fieldname: 'bottoken', fieldvalue: '123456:ABC-DEF1234ghIkl' },
+    { credentialkey: 'telegram', fieldname: 'allowedusers', fieldvalue: ['123456789'] },
+  ],
+});
+console.log(saved.result, saved.applied, saved.errors);
+
+// The Wiro project the agent runs models with
+const bind = await post('/UserAgent/CredentialProjectBind', { useragentguid: guid, projectid: '4821' });
+console.log(bind.project, bind.restart);
+```
