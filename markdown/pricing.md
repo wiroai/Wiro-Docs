@@ -6,7 +6,7 @@ Understand how billing works for AI model runs on Wiro.
 
 When you run an AI model through Wiro, you are billed based on the type of work performed. Each model has its own pricing, visible on the model's page in the [marketplace](https://wiro.ai/models) and on the [pricing page](https://wiro.ai/product/pricing). You pay only for successful runs. Server errors are never billed.
 
-Wiro uses a prepaid credit model. You [add credits](https://wiro.ai/panel/billing) to your account and they are drawn down as you use models. Credits also determine your [concurrency limit](/docs/concurrency-limits).
+Wiro uses a prepaid credit model. You [add credits](https://wiro.ai/panel/billing) to your account and they are drawn down as you use models. Credits also determine your [concurrency limit](/docs/concurrency-limits). The same balance pays agent plans and the AI usage an agent uses once its plan's included usage is used up (see [Pricing Model](/docs/agent-overview#pricing-model-plans-ai-usage-balance)).
 
 ## Billing Methods
 
@@ -159,6 +159,8 @@ Check the `totalcost` field in [Task/Detail](/docs/tasks) responses to see the c
   }]
 }
 ```
+
+An agent's plan payments and AI usage have no task: read one agent's with [`UserAgent/TransactionList`](/docs/agent-transactions), or the whole workspace's with `Wallet/TransactionList` and `surface: "agent"` (see [Wallet Billing Flow](/docs/organizations-api-access#billing-flow)).
 
 ### Via MCP
 

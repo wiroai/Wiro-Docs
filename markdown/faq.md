@@ -84,7 +84,7 @@ Yes. All models support an optional `callbackUrl` parameter. When provided, Wiro
 
 ### What are Wiro Agents?
 
-Wiro Agents are autonomous AI assistants that you deploy and manage via the API. Unlike single model runs, agents can connect to third-party services (Twitter, Google Ads, HubSpot, etc.), maintain conversation memory across sessions, and run scheduled tasks automatically. See the [Agent Overview](/docs/agent-overview) for details.
+Wiro Agents are autonomous AI assistants that you deploy and manage via the API. Unlike single model runs, agents can connect to third-party services (X, Google Ads, HubSpot and more), maintain conversation memory across sessions, and run scheduled tasks automatically. See the [Agent Overview](/docs/agent-overview) for details.
 
 ### How do I deploy an agent?
 
@@ -92,7 +92,7 @@ Pick a template in the [agent catalog](https://wiro.ai/agents) or build your own
 
 ### How much does an agent cost?
 
-Each agent runs on one of three monthly plans: Starter ($5 a month), Pro ($30) or Max ($100), each paid from your Wiro balance and including its own price in AI usage: Pro includes $30 of AI usage a month. Every plan includes every skill and connector, so turning one on or off costs nothing. Each turn the agent runs is priced by the tokens its model uses; once the included usage is used up, the agent uses your Wiro balance, the same balance model runs use, and a new turn needs at least $0.50 there. A higher plan starts at once; a lower plan starts at the next renewal. See [Pricing Model](/docs/agent-overview#pricing-model-plans-ai-usage-balance).
+Each agent runs on one of three monthly plans: Starter ($5 a month), Pro ($30) or Max ($100), each paid from the Wiro balance of the agent's workspace and including its own price in AI usage: Pro includes $30 of AI usage a month. Every plan includes every skill and connector, so turning one on or off costs nothing. Each turn the agent runs is priced by the tokens its model uses; once the included usage is used up, the agent uses the Wiro balance of its workspace (for a team agent, the team's), the same balance model runs use, and a new turn needs at least $0.50 there in deposits and store revenue: coupon credit doesn't count toward it. The models the agent runs, such as images and videos, are paid at each model's own price from the wallet of the agent's Wiro project, never from the included usage. A higher plan starts at once; a lower plan starts at the next renewal. See [Pricing Model](/docs/agent-overview#pricing-model-plans-ai-usage-balance).
 
 ### How much disk space does my agent have?
 
