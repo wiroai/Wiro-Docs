@@ -15581,7 +15581,7 @@ import type {
 <p><strong>Authenticated endpoints</strong>: All <code>UserAgent/*</code> endpoints require a valid API key.</p>
 <p>For full details, see <a href="/docs/authentication">Authentication</a>.</p>
 <h2 id="pricing-model-plans-ai-usage-balance">Pricing Model: Plans, AI Usage &amp; Balance</h2>
-<p>Every agent runs on one of three monthly plans, and the plan alone sets its price, the AI usage it includes and its disk space. Templates and custom builds use the same plans, and the skills an agent has never change the price. AI usage is what the agent's own model uses on each turn, priced by its tokens. Once the plan's included usage for the period is used up, the agent runs on the Wiro balance of its workspace, the same balance your model runs use.</p>
+<p>Every agent runs on one of three monthly plans, and the plan alone sets its price, the AI usage it includes and its disk space. Templates and custom builds use the same plans, and the skills an agent has never change the price. AI usage is what the agent's own model uses on each turn, priced by its tokens. Once the plan's included usage for the period is used up, the agent runs on the Wiro balance of its workspace, the same balance your model runs use. Its AI usage draws on that balance's deposits and store revenue; coupon credit isn't counted for it (see <a href="#usage-object"><code>usage.balanceusd</code></a>).</p>
 <h3 id="plans">Plans</h3>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -15635,9 +15635,10 @@ import type {
   &quot;max&quot;:     { &quot;priceUsd&quot;: 100 }
 }
 </code></pre>
-<p>A plan renews every 30 days from the balance, and every renewal includes the plan's AI usage in full. Included usage that a period leaves unused doesn't carry over.</p>
+<p>A plan's period lasts 30 days. The plan renews from the balance a day after its period ends, the next 30-day period starts then, and every renewal includes the plan's AI usage in full. Included usage that a period leaves unused doesn't carry over.</p>
+<p>When the balance can't pay a renewal, the plan ends and the agent stops (status <code>0</code>). A cancelled plan ends and stops the agent the same way, at the end of its period. An agent runs only while its plan is active, whatever its balance holds, so adding funds doesn't start it again: <a href="#post-useragentrenewsubscription"><code>RenewSubscription</code></a> pays the plan from the balance and queues the agent to start.</p>
 <h3 id="what-a-plan-includes">What a Plan Includes</h3>
-<p>Every skill and connector works on every plan. Turning a skill on or off with <a href="#post-useragentskillsapply"><code>SkillsApply</code></a> is free: the plan's price and included AI usage stay as they are. The work a skill does still uses AI usage, since its replies and scheduled tasks are agent turns billed by tokens like any other. A skill that runs Wiro models, such as <code>util-video-creator</code>, pays for those runs from the wallet of the Wiro project you connect to the agent. Connectors are included too: connecting one never changes the plan's price (see <a href="/docs/agent-connectors">Agent Connectors</a>).</p>
+<p>Every skill and connector works on every plan. Turning a skill on or off with <a href="#post-useragentskillsapply"><code>SkillsApply</code></a> is free: the plan's price and included AI usage stay as they are. The work a skill does still uses AI usage, since its replies and scheduled tasks are agent turns billed by tokens like any other. A skill that runs Wiro models, such as Video Creator (<code>util-video-creator</code>), pays for those runs from the wallet of the Wiro project you connect to the agent. Connectors are included too: connecting one never changes the plan's price (see <a href="/docs/agent-connectors">Agent Connectors</a>).</p>
 <h3 id="disk-space">Disk Space</h3>
 <p>Each plan gives the agent disk space for its files: 250 MB on Starter, 500 MB on Pro and 1 GB on Max. What counts is the agent's workspace, the media it generates and its temporary files. Chat history and the agent's system files don't count.</p>
 <p>Downloads and temporary files outside the workspace are cleared when the agent restarts, and media files from its chats are kept 3 days. Temporary files are also cleared when they pass 1 GB, on every plan: the agent then restarts on its own once the reply it is working on is done (it waits up to 20 minutes for it), which takes about a minute, and the files in its workspace stay.</p>
@@ -15650,7 +15651,7 @@ import type {
 <li><strong>A lower plan starts at the next renewal.</strong> Ask for it with <code>allowDowngrade: true</code>: without it, a lower plan is refused and nothing changes. Nothing is charged or refunded. The agent keeps its current plan, price and included AI usage until the period ends, and its <code>nextplan</code> field names the plan it will renew on.</li>
 <li><strong>Asking for the agent's current plan</strong> cancels a scheduled move to a lower plan.</li>
 </ul>
-<p>Moving to a higher plan while a lower one is scheduled cancels the scheduled move first, and cancelling the subscription clears it too.</p>
+<p>Moving to a higher plan while a lower one is scheduled cancels the scheduled move first. Cancelling a plan paid from the balance keeps a scheduled move; cancelling a plan paid by card drops it (see <a href="#post-useragentcancelsubscription"><code>CancelSubscription</code></a>).</p>
 <h3 id="paying-for-plans">Paying for Plans</h3>
 <p>Agent plans are paid from the Wiro balance of the agent's workspace: your personal balance for a personal agent, the team's balance for a team agent. A new plan, a move to a higher plan, every renewal and a plan started again after it ended are all charged there, in the dashboard, the API and MCP alike. An agent plan has no card subscription: a card only adds funds to the balance (see <a href="#adding-funds">Adding Funds</a>).</p>
 <p>When the balance can't pay a plan's price, <code>Deploy</code>, <code>CreateSubscriptionCheckout</code>, <code>UpgradeTier</code> and <code>RenewSubscription</code> are refused with code <code>97</code>, and nothing is created or charged. The message says what the balance holds and what the plan needs (a team agent's starts <code>The team's balance is</code>), and <code>neededusd</code> is the amount to add, in USD, rounded up to the cent and never less than $20, the smallest deposit:</p>
@@ -15663,6 +15664,7 @@ import type {
 }
 </code></pre>
 <p>Add at least <code>neededusd</code> to the balance, then send the same call again.</p>
+<p>Every plan payment also counts on <a href="/docs/spend-limits">Spend Limits</a>: the account's or team's limit and the <code>agent</code> surface's, automatic renewals included. When a new plan, a move to a higher plan or a renewal you ask for would take spending over one of them, <code>Deploy</code>, <code>CreateSubscriptionCheckout</code>, <code>UpgradeTier</code> and <code>RenewSubscription</code> are refused with code <code>93</code> and the limit's message, and nothing is created or charged. An automatic renewal is counted, never refused.</p>
 <p>A plan that was paid by card before agent plans moved to the balance keeps its current period as paid. At the end of that period it renews from the balance like every other plan, or ends when the balance can't pay the renewal. Until then its <code>subscription</code> reads <code>provider: "stripe"</code> with <code>nextprovider: "prepaid"</code>, and a move to a higher plan is paid from the balance. The switch itself charges and refunds nothing. Such a plan can also be cancelled with <a href="#post-useragentcancelsubscription"><code>CancelSubscription</code></a>: it then ends at the end of its period instead of switching.</p>
 <h3 id="adding-funds">Adding Funds</h3>
 <p>An agent has no balance of its own: past its plan's included usage it uses the Wiro balance of its workspace, which also pays its plan. Add funds to that balance as a normal wallet deposit in the Wiro dashboard, under <strong>Credit Balance</strong> (<a href="https://wiro.ai/panel/wallet/deposit/credit-card">add funds</a>), with the agent's workspace selected. A team's balance is funded the same way (see <a href="/docs/organizations-billing">Team Billing</a>). Funds added from an agent's page in the dashboard land in the same balance and are also listed in that agent's <a href="/docs/agent-transactions">Transactions</a>. Automatic Payment tops the balance up when it runs low, agent usage included.</p>
@@ -15682,9 +15684,9 @@ import type {
 </code></pre>
 <p>Rates are in <strong>cents per 1,000,000 tokens</strong>: <code>"input_per_1m": 625</code> is $6.25 per million input tokens. <code>input_per_1m</code> prices uncached input, <code>cached_input_per_1m</code> cache reads, <code>cache_write_per_1m</code> cache writes and <code>output_per_1m</code> output. Wiro prices every LLM call exactly, at the rates of the model that actually served it, and charges the AI usage in whole cents.</p>
 <p>Cache-read and cache-write tokens are charged only when the model's rate defines them. <code>inputtokens</code> contains only uncached input; <code>totaltokens</code> is always the exact sum of input, output, cache-read, and cache-write tokens. For models with <code>long_context_threshold_tokens</code>, Wiro selects the long-context rate <strong>per LLM call</strong> using <code>input + cacheRead + cacheWrite</code>. You don't send anything. The agent's <a href="/docs/agent-transactions#tx-transactionlist">Transactions</a> list its AI usage as <code>ai-usage</code> rows, each with its model and its tokens and cost by kind; when Wiro measures the agent's model calls itself, one row covers every call billed since the last row, of one turn or several (see <a href="/docs/agent-transactions#metered-token-rows">Rows that cover several model calls</a>). Per-turn token counts and cost also ride on each assistant message (<code>inputtokens</code> / <code>outputtokens</code> / <code>cachereadtokens</code> / <code>cachewritetokens</code> / <code>totaltokens</code> / <code>tokencost</code> / <code>model</code>, with <code>tokencost</code> in cents, see <a href="/docs/agent-messaging">Agent Messaging</a>).</p>
-<p>AI usage comes from the plan's included usage for the period first, then from the balance. A new turn needs included usage left or a balance of at least $0.50. When both are short, the agent pauses: <a href="/docs/agent-messaging#post-useragentmessagesend"><code>POST /UserAgent/Message/Send</code></a> and <a href="#post-useragentstart"><code>POST /UserAgent/Start</code></a> are refused with code <code>97</code> until funds are added or the plan renews (see <a href="#ai-usage-and-the-balance">AI Usage and the Balance</a>).</p>
+<p>AI usage comes from the plan's included usage for the period first, then from the balance. A new turn needs an active plan, and included usage left or a balance of at least $0.50. When the included usage is used up and the balance is under $0.50, the agent pauses: <a href="/docs/agent-messaging#post-useragentmessagesend"><code>POST /UserAgent/Message/Send</code></a> and <a href="#post-useragentstart"><code>POST /UserAgent/Start</code></a> are refused with code <code>97</code> until funds are added or the plan renews (see <a href="#ai-usage-and-the-balance">AI Usage and the Balance</a>).</p>
 <blockquote>
-<p><strong>Voice realtime audio is billed separately.</strong> Live voice-call audio (for <code>util-voice-receptionist</code> agents) is <strong>not</strong> the agent's AI usage. It is billed to the wallet of the agent's Wiro project (the <code>wiro</code> credential, see <a href="/docs/agent-credentials#the-agents-wiro-project">The agent's Wiro project</a>). The voice-prep turn before the call and the post-call text turn are AI usage like any other turn.</p>
+<p><strong>Voice realtime audio is billed separately.</strong> Live voice-call audio (for agents with Voice Receptionist Rules, <code>util-voice-receptionist</code>) is <strong>not</strong> the agent's AI usage. It is billed to the wallet of the agent's Wiro project (the <code>wiro</code> credential, see <a href="/docs/agent-credentials#the-agents-wiro-project">The agent's Wiro project</a>). The voice-prep turn before the call and the post-call text turn are AI usage like any other turn.</p>
 </blockquote>
 <h3 id="live-pricing-preview">Live Pricing Preview</h3>
 <p>Before you deploy, change the plan or change skills, call <a href="#post-useragentpricingpreview"><code>POST /UserAgent/PricingPreview</code></a>. It writes nothing and returns the three plans under <code>plans</code> and <code>tiers</code>, the <code>tokenRates</code>, and <code>enabledSkills</code> with every transitive <code>depends_on</code> resolved. For an agent with an active plan it also returns <code>planChange</code>: what a different <code>tier</code> would charge now and when it starts. A skill change has no price, so its <code>planChange</code> shows no charge.</p>
@@ -15718,7 +15720,7 @@ import type {
 </tr>
 <tr>
 <td><code>extracreditpacks</code></td>
-<td><code>Agent/Detail</code>, <code>agent</code> on agent rows</td>
+<td><code>Agent/List</code> rows, <code>Agent/Detail</code>, <code>agent</code> on agent rows</td>
 <td>Nothing: it is always <code>[]</code></td>
 </tr>
 <tr>
@@ -15801,7 +15803,7 @@ import type {
 <tr>
 <td><code>6</code></td>
 <td>Setup Required</td>
-<td>Agent needs credentials or configuration before it can start. Provide them via <code>CredentialUpsert</code> / <code>CredentialProjectBind</code> / <code>CustomSkillUpsert</code> / <code>SkillsApply</code>, then call <code>POST /UserAgent/Update</code>.</td>
+<td>The agent has no plan yet: it was deployed without <code>useprepaid: true</code>, and nothing was charged. Pay its plan with <a href="#post-useragentcreatesubscriptioncheckout"><code>CreateSubscriptionCheckout</code></a> (<code>useprepaid: true</code>), which queues it (status <code>2</code>). Credentials and connectors never hold an agent here. An agent that has never had a plan and has never started is deleted about an hour after Deploy.</td>
 </tr>
 </tbody>
 </table>
@@ -16300,7 +16302,7 @@ import type {
 <td><code>type</code></td>
 <td>string</td>
 <td>No</td>
-<td>Pass <code>"full"</code> to also include <code>customskills</code> (the template's strategies a deployer can edit) and <code>scheduledskills</code> (every scheduled task) in the response. Without <code>type: "full"</code>, the response carries the catalog header + <code>tiers</code> + <code>plans</code> + <code>tokenRates</code> + <code>credentials</code> + <code>skills</code> + <code>skillsmeta</code> + <code>suggestedconnectors</code> + <code>communicationChannels</code> only.</td>
+<td>Pass <code>"full"</code> to also include <code>customskills</code> (the template's strategies a deployer can edit) and <code>scheduledskills</code> (every scheduled task) in the response. Each row: <code>{ key, value, description, interval, enabled, requires_credentials, requires_connectors, _editable }</code>. <code>requires_connectors</code> lists the Connectors a scheduled task needs, by catalog slug (one connected runs it), and <code>requires_credentials</code> the channels and settings it needs. Without <code>type: "full"</code>, the response carries the catalog header + <code>tiers</code> + <code>plans</code> + <code>tokenRates</code> + <code>credentials</code> + <code>skills</code> + <code>skillsmeta</code> + <code>suggestedconnectors</code> + <code>communicationChannels</code> only (plus the deprecated <code>extracreditpacks: []</code>).</td>
 </tr>
 </tbody>
 </table>
@@ -16431,7 +16433,7 @@ import type {
 <tr>
 <td><code>_connected</code></td>
 <td>boolean</td>
-<td><strong>Connection readiness indicator</strong> for a credential whose setup writes a connection time. Plain value credentials, such as the channels, can remain <code>false</code>; use <code>setuprequired</code> to determine overall setup readiness. A connector's state is its <code>status</code> on <a href="/docs/agent-connectors#post-useragentconnectorlist"><code>ConnectorList</code></a>.</td>
+<td>On a channel (Telegram, Slack, Discord), <code>true</code> once every field in its <code>required_fields</code> is filled. <code>false</code> on other credentials, where <code>_filled</code> and <code>_required_missing</code> tell the state; use <code>setuprequired</code> for overall setup readiness. A connector's state is its <code>status</code> on <a href="/docs/agent-connectors#post-useragentconnectorlist"><code>ConnectorList</code></a>.</td>
 </tr>
 <tr>
 <td><code>optional</code></td>
@@ -16441,7 +16443,7 @@ import type {
 <tr>
 <td><code>extra</code></td>
 <td>boolean</td>
-<td><code>true</code> when the template groups the credential under "extra integrations" in the UI (disabled by default until the user opts into the skill).</td>
+<td><code>true</code> when the agent template marks this credential as an optional extra; the panel lists it after the required ones.</td>
 </tr>
 <tr>
 <td><code>_editable</code></td>
@@ -16508,7 +16510,7 @@ channel switch.</p>
 <h4 id="post-useragentdeploy"><strong>POST</strong> /UserAgent/Deploy</h4>
 <p>Creates a new agent instance from a catalog template, <strong>or</strong> builds a brand-new custom agent (no template).</p>
 <blockquote>
-<p><strong>Agent plans are paid from your Wiro balance.</strong> Pass <code>useprepaid: true</code> + <code>tier</code>. The plan's price is taken from the balance of the workspace you deploy into, and the instance is created server-side in one call. An agent plan has no card payment, in the dashboard or the API. Add funds to your balance on <a href="https://wiro.ai/panel/billing">wiro.ai/panel/billing</a> before calling Deploy: when the balance is short, Deploy is refused with code <code>97</code> and <code>neededusd</code> (see <a href="#paying-for-plans">Paying for Plans</a>).</p>
+<p><strong>Agent plans are paid from your Wiro balance.</strong> Pass <code>useprepaid: true</code> + <code>tier</code>. The plan's price is taken from the balance of the workspace you deploy into, and the instance is created server-side in one call. An agent plan has no card payment, in the dashboard or the API. Add funds to your balance under <strong>Credit Balance</strong> (<a href="https://wiro.ai/panel/wallet/deposit/credit-card">add funds</a>) before calling Deploy: when the balance is short, Deploy is refused with code <code>97</code> and <code>neededusd</code> (see <a href="#paying-for-plans">Paying for Plans</a>).</p>
 </blockquote>
 <p>Prepaid deploy (<code>useprepaid: true</code> + <code>tier</code>) charges your wallet for the chosen plan's price immediately and inserts a 30-day subscription row (<code>plan: "agent"</code>, <code>provider: "prepaid"</code>). <strong>Every fresh Deploy lands at <code>status: 6</code> first</strong>. The row is then auto-queued to <code>status: 2</code> (Queued) once the prepaid subscription is provisioned. No manual <code>UserAgent/Start</code> is needed for prepaid deploys; Wiro starts the agent from the queue.</p>
 <p>If you pass <code>credentials</code>, <code>skills</code>, or <code>customskills</code> at the top level of the
@@ -16560,13 +16562,13 @@ for the channel contract.</p>
 <td><code>cover</code></td>
 <td>string</td>
 <td>No</td>
-<td>Optional cover image URL. Custom builds only. Template deploys clone the agent's cover automatically.</td>
+<td>Optional cover image URL for this agent, on template deploys and custom builds alike. Without it <code>cover</code> stays <code>null</code>: show the template's <code>agent.cover</code> instead (a custom build has none).</td>
 </tr>
 <tr>
 <td><code>useprepaid</code></td>
 <td>boolean</td>
 <td>Yes</td>
-<td>Must be <code>true</code>. Pays the plan's price from your Wiro balance in a single server-side call.</td>
+<td>Send <code>true</code>: the plan's price is paid from your Wiro balance in this call, and the agent is queued. Without it, Deploy still creates the agent and charges nothing: the agent stays at status <code>6</code> with no plan until <a href="#post-useragentcreatesubscriptioncheckout"><code>CreateSubscriptionCheckout</code></a> (<code>useprepaid: true</code>) pays it, and if it still has no plan about an hour after Deploy, it is deleted.</td>
 </tr>
 <tr>
 <td><code>tier</code></td>
@@ -16578,13 +16580,13 @@ for the channel contract.</p>
 <td><code>credentials</code></td>
 <td>object</td>
 <td>No</td>
-<td>Inline credential groups. If a communication-channel group is included, its matching <code>credentials[credential_key]</code> object must contain all channel <code>required_fields</code>; completeness activates that channel automatically.</td>
+<td>Inline credential groups for the channels, <code>twilio-voice</code>, <code>wiro</code> and the settings (the keys <a href="/docs/agent-credentials#post-credentialslist"><code>POST /Credentials/List</code></a> lists). If a communication-channel group is included, its matching <code>credentials[credential_key]</code> object must contain all channel <code>required_fields</code>; completeness activates that channel automatically. Any other key, a connector's slug included, fails Deploy before anything is created or charged, with <code>Unknown credential: &lt;key&gt;. Connect a connector after the deploy with UserAgent/ConnectorConnect.</code></td>
 </tr>
 <tr>
 <td><code>skills</code></td>
 <td>object</td>
 <td>No</td>
-<td>Inline skill toggles <code>{ "skillname": true | false }</code>. For custom builds this seeds the initial skill set; for template deploys it overlays the template defaults.</td>
+<td>Inline skill toggles <code>{ "skillname": true | false }</code>. For custom builds this seeds the initial skill set; for template deploys it overlays the template defaults. Deploy turns on the Skills a Skill you turn on depends on (<code>depends_on</code>) by itself. Every name, on or off, must be a Skill that <a href="/docs/agent-skills#post-skillslist"><code>POST /Skills/List</code></a> lists: any other name fails Deploy before anything is created or charged, with <code>Unknown skill: &lt;name&gt;.</code>, and a name that starts with <code>int-</code> with <code>Unknown skill: &lt;name&gt;. Connectors are connected with UserAgent/ConnectorConnect, not turned on as skills.</code></td>
 </tr>
 <tr>
 <td><code>customskills</code></td>
@@ -16719,13 +16721,13 @@ for the channel contract.</p>
 </tr>
 <tr>
 <td><code>cover</code></td>
-<td>Cloned from <code>agent.cover</code> automatically</td>
+<td><code>null</code> unless you pass one; the template's cover shows through <code>agent.cover</code></td>
 <td>Optional: pass <code>cover</code> in the body if you want one</td>
 </tr>
 <tr>
 <td>Bundled scheduled tasks</td>
 <td>Cloned from the template's preset custom skills</td>
-<td>Materialized from the standalone cron registry</td>
+<td>Seeded from the Scheduled Tasks its skills bring</td>
 </tr>
 <tr>
 <td>Onboarding placeholders</td>
@@ -16771,7 +16773,10 @@ for the channel contract.</p>
           &quot;groups&quot;: []
         }
       },
-      &quot;skills&quot;: [&quot;util-social-posting-common&quot;, &quot;util-anti-ai-human-copy&quot;],
+      &quot;skills&quot;: [
+        { &quot;name&quot;: &quot;util-social-posting-common&quot;, &quot;enabled&quot;: true, &quot;_edited&quot;: false, &quot;_user_created&quot;: false },
+        { &quot;name&quot;: &quot;util-anti-ai-human-copy&quot;,    &quot;enabled&quot;: true, &quot;_edited&quot;: false, &quot;_user_created&quot;: false }
+      ],
       &quot;customskills&quot;: [],
       &quot;scheduledskills&quot;: [],
       &quot;monthlypriceusd&quot;: 5,
@@ -16797,9 +16802,9 @@ for the channel contract.</p>
       ],
       &quot;enabledChannels&quot;: [],
       &quot;teamsessionmode&quot;: &quot;private&quot;,
-      &quot;status&quot;: 6,
-      &quot;setuprequired&quot;: true,
-      &quot;pinned&quot;: false,
+      &quot;status&quot;: 2,
+      &quot;setuprequired&quot;: false,
+      &quot;pinned&quot;: true,
       &quot;agent&quot;: {
         &quot;guid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;,
         &quot;title&quot;: &quot;Instagram Manager&quot;,
@@ -16837,7 +16842,7 @@ for the channel contract.</p>
 <tbody>
 <tr>
 <td><code>status: 6</code></td>
-<td><strong>Setup Required</strong>: initial state for every fresh Deploy. With <code>useprepaid: true</code>, auto-queues to <code>status: 2</code> as soon as the subscription is provisioned, regardless of credential completeness. The agent then starts even if a required credential is still missing, and <code>UserAgent/Detail</code> reads <code>setuprequired: true</code> until it is filled. Fill a missing credential, such as a channel or the Wiro project the template doesn't mark optional, with <code>POST /UserAgent/CredentialUpsert</code> or <code>POST /UserAgent/CredentialProjectBind</code>: a running agent restarts to pick it up. Connectors never hold an agent at Setup Required. A row still at <code>status: 6</code> needs <code>POST /UserAgent/Update</code> first (any scalar body, even just <code>{ "guid": "&lt;useragent-guid&gt;" }</code>) to flip it to <code>status: 0</code> (Stopped): <code>Update</code> is the endpoint that performs the <code>setuprequired</code> re-check and the <code>6 → 0</code> transition.</td>
+<td><strong>Setup Required</strong>: initial state for every fresh Deploy. With <code>useprepaid: true</code>, auto-queues to <code>status: 2</code> as soon as the subscription is provisioned, regardless of credential completeness. The agent then starts even if a required credential is still missing, and <code>UserAgent/Detail</code> reads <code>setuprequired: true</code> until it is filled. Fill a missing credential, such as a channel or the Wiro project the template doesn't mark optional, with <code>POST /UserAgent/CredentialUpsert</code> or <code>POST /UserAgent/CredentialProjectBind</code>: a running agent restarts to pick it up. Connectors never hold an agent at Setup Required. A row still at <code>status: 6</code> has no plan, because it was deployed without <code>useprepaid: true</code>. <a href="#post-useragentcreatesubscriptioncheckout"><code>CreateSubscriptionCheckout</code></a> with <code>useprepaid: true</code> pays it and queues the agent (<code>status: 2</code>).</td>
 </tr>
 <tr>
 <td><code>status: 2</code></td>
@@ -16849,7 +16854,7 @@ for the channel contract.</p>
 </tr>
 <tr>
 <td><code>setuprequired: false</code></td>
-<td>All non-optional credentials are set up and the row has left <code>status: 6</code>. A row sitting at Setup Required reads <code>true</code> until a <code>POST /UserAgent/Update</code> call flips it 6 → 0; <code>Start</code> then launches it normally.</td>
+<td>All non-optional credentials are set up and the row has left <code>status: 6</code>. A row sitting at Setup Required reads <code>true</code> until it leaves <code>status: 6</code>.</td>
 </tr>
 </tbody>
 </table>
@@ -16862,7 +16867,7 @@ for the channel contract.</p>
 <ol>
 <li>Inspect <code>credentials</code> in the Deploy response (or call <code>POST /UserAgent/Detail</code>) to see each credential's fields, the <code>optional</code> / <code>extra</code> flags and the registry-driven <code>_schema</code>.</li>
 <li>Connect the services the agent works with through <a href="/docs/agent-connectors">Agent Connectors</a>: <code>POST /UserAgent/ConnectorConnect</code> with a connector's fields, or its vendor's sign-in. A template's <code>suggestedconnectors</code> on <a href="#post-agentdetail"><code>Agent/Detail</code></a> lists the ones it works with. Call <code>POST /UserAgent/CredentialUpsert</code> for channels and settings (bot tokens, the support email), and <code>POST /UserAgent/CredentialProjectBind</code> to connect the Wiro project the agent runs models with.</li>
-<li>Call <code>POST /UserAgent/CustomSkillUpsert</code> per skill to customize strategy text or cron intervals, if the template exposes any.</li>
+<li>Call <code>POST /UserAgent/CustomSkillUpsert</code> per skill to customize strategy text or Scheduled Task intervals, if the template exposes any.</li>
 <li>Once every non-optional credential is set up, <code>setuprequired</code> reads <code>false</code>. The start doesn't wait for it: the prepaid Deploy already queued the agent, Wiro starts it from the queue (<code>2</code> → <code>3</code> (Starting) → <code>4</code> (Running)), and a running agent restarts to pick up each connector you connect.</li>
 <li>If you want to re-launch a stopped agent (status <code>0</code>) or recover an errored one (status <code>5</code>), call <code>POST /UserAgent/Start</code> explicitly.</li>
 </ol>
@@ -16955,7 +16960,7 @@ for the channel contract.</p>
       &quot;creditsyncat&quot;: 1714694410,
       &quot;usage&quot;: {
         &quot;period&quot;: &quot;2026-05&quot;,
-        &quot;resetsat&quot;: 1717200000,
+        &quot;resetsat&quot;: 1780272000,
         &quot;includedusd&quot;: 30,
         &quot;usedusd&quot;: 12.4,
         &quot;leftusd&quot;: 17.6,
@@ -16985,8 +16990,8 @@ for the channel contract.</p>
         &quot;status&quot;: &quot;active&quot;,
         &quot;amount&quot;: 30,
         &quot;currency&quot;: &quot;usd&quot;,
-        &quot;currentperiodend&quot;: 1717200000,
-        &quot;renewaldate&quot;: &quot;2026-06-01T00:00:00.000Z&quot;,
+        &quot;currentperiodend&quot;: 1780272000,
+        &quot;renewaldate&quot;: &quot;2026-06-02T00:00:00.000Z&quot;,
         &quot;daysremaining&quot;: 62,
         &quot;pendingdowngrade&quot;: null,
         &quot;provider&quot;: &quot;prepaid&quot;
@@ -17002,7 +17007,12 @@ for the channel contract.</p>
           &quot;starter&quot;: { &quot;priceUsd&quot;: 5 },
           &quot;pro&quot;:     { &quot;priceUsd&quot;: 30 },
           &quot;max&quot;:     { &quot;priceUsd&quot;: 100 }
-        }
+        },
+        &quot;plans&quot;: [
+          { &quot;key&quot;: &quot;starter&quot;, &quot;title&quot;: &quot;Starter&quot;, &quot;priceUsd&quot;: 5,   &quot;includedUsageUsd&quot;: 5,   &quot;diskMb&quot;: 250 },
+          { &quot;key&quot;: &quot;pro&quot;,     &quot;title&quot;: &quot;Pro&quot;,     &quot;priceUsd&quot;: 30,  &quot;includedUsageUsd&quot;: 30,  &quot;diskMb&quot;: 500 },
+          { &quot;key&quot;: &quot;max&quot;,     &quot;title&quot;: &quot;Max&quot;,     &quot;priceUsd&quot;: 100, &quot;includedUsageUsd&quot;: 100, &quot;diskMb&quot;: 1024 }
+        ]
       },
       &quot;enabledSkills&quot;: [&quot;util-social-posting-common&quot;, &quot;util-anti-ai-human-copy&quot;, &quot;util-chat-markdown-reporting&quot;],
       &quot;tokenRates&quot;: {
@@ -17035,7 +17045,7 @@ for the channel contract.</p>
 </code></pre>
 <blockquote>
 <p><strong><code>MyAgents</code> returns one row per useragent with its scalar fields, the trimmed <code>agent</code> template summary, <code>subscription</code>, <code>setuprequired</code> (status-based check only), <code>usage</code> (the agent's AI usage and balance, see <a href="#usage-object">Usage object</a>), <code>spend</code> (what it cost this month, see <a href="#spend-object">Spend object</a>), <code>lastactivityat</code>, the resolved <code>enabledSkills</code> (template defaults ∪ user overrides, including transitive <code>depends_on</code> closure), <code>tokenRates</code> (per-model token rates, the same map as <code>UserAgent/Detail.tokenRates</code>), <code>agentModel</code> (the resolved chat / cron / voice-prep / voice-postcall model slugs), and <code>enabledCommands</code> (the slash-command allowlist, <code>null</code> when uncustomized).</strong> Heavier composed children (<code>credentials</code>, <code>customskills</code>, <code>scheduledskills</code>, <code>skills</code>, <code>skillsmeta</code>, <code>communicationChannels</code>, <code>enabledChannels</code>) are <strong>not</strong> included. Call <code>UserAgent/Detail</code> on a single guid for the full composed shape.</p>
-<p><strong><code>enabledSkills</code>, <code>tokenRates</code>, and <code>agentModel</code></strong> ride on each list row so a chat or pinned-agents UI can decide whether to show the realtime voice-call button (<code>enabledSkills</code> includes <code>util-web-channel</code>) and render the model picker + live token-rate card without round-tripping <code>UserAgent/Detail</code> per row.</p>
+<p><strong><code>enabledSkills</code>, <code>tokenRates</code>, and <code>agentModel</code></strong> ride on each list row so a chat or pinned-agents UI can decide whether to show the realtime voice-call button (<code>enabledSkills</code> includes Web Voice Channel, <code>util-web-channel</code>) and render the model picker + live token-rate card without round-tripping <code>UserAgent/Detail</code> per row.</p>
 </blockquote>
 <h4 id="post-useragentdetail"><strong>POST</strong> /UserAgent/Detail</h4>
 <p>Retrieves full details for a single deployed agent instance, including subscription info, its AI usage and balance (<code>usage</code>), what it cost this month (<code>spend</code>), and the resolved per-model token-rate table (<code>tokenRates</code>) plus model selection (<code>agentModel</code>).</p>
@@ -17074,7 +17084,7 @@ for the channel contract.</p>
       &quot;title&quot;: &quot;My Instagram Bot&quot;,
       &quot;description&quot;: null,
       &quot;categories&quot;: [&quot;social-media&quot;, &quot;marketing&quot;],
-      &quot;cover&quot;: &quot;https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp&quot;,
+      &quot;cover&quot;: null,
       &quot;tier&quot;: &quot;pro&quot;,
       &quot;nextplan&quot;: null,
       &quot;status&quot;: 4,
@@ -17157,6 +17167,8 @@ for the channel contract.</p>
           &quot;value&quot;: &quot;## Brand Voice\nTone: friendly, casual, never salesy.\nTarget Audience: indie devs and side-project builders.\n\n## Hashtag Strategy\nMax 3 per post. Always include #BuildInPublic and #Indie.\n\n## Platform Rules\n- Instagram: square images only, carousels for tutorials.\n- Twitter: thread format for posts longer than 200 chars.&quot;,
           &quot;enabled&quot;: true,
           &quot;interval&quot;: null,
+          &quot;requires_credentials&quot;: [],
+          &quot;requires_connectors&quot;: [],
           &quot;_source&quot;: &quot;preset-strategy&quot;,
           &quot;_editable&quot;: true,
           &quot;_edited&quot;: true
@@ -17167,6 +17179,8 @@ for the channel contract.</p>
           &quot;value&quot;: &quot;## Primary Sources\nhttps://blog.example.com/feed.xml\nhttps://news.ycombinator.com/rss\n\n## CTA URL Pattern\nhttps://example.com/posts/{slug}&quot;,
           &quot;enabled&quot;: true,
           &quot;interval&quot;: null,
+          &quot;requires_credentials&quot;: [],
+          &quot;requires_connectors&quot;: [],
           &quot;_source&quot;: &quot;preset-strategy&quot;,
           &quot;_editable&quot;: true,
           &quot;_edited&quot;: false
@@ -17179,16 +17193,24 @@ for the channel contract.</p>
           &quot;value&quot;: &quot;Scan the configured RSS / sitemap sources, dedupe against last 14 days, and queue up to 3 fresh items into the post pipeline.&quot;,
           &quot;enabled&quot;: true,
           &quot;interval&quot;: &quot;0 */4 * * *&quot;,
+          &quot;requires_credentials&quot;: [],
+          &quot;requires_connectors&quot;: [&quot;facebook-pages&quot;, &quot;instagram&quot;, &quot;linkedin&quot;, &quot;tiktok&quot;, &quot;twitter&quot;],
           &quot;_source&quot;: &quot;skill-bundle&quot;,
           &quot;_editable&quot;: true,
-          &quot;_edited&quot;: false
+          &quot;_edited&quot;: false,
+          &quot;_owner_skills&quot;: [&quot;util-social-posting-common&quot;],
+          &quot;_skill_off&quot;: false,
+          &quot;_usable_credentials&quot;: [],
+          &quot;_if_connected&quot;: {}
         },
         {
           &quot;key&quot;: &quot;cs-cron-weekly-roundup&quot;,
-          &quot;description&quot;: &quot;User-created weekly summary cron that posts a Monday recap to Telegram.&quot;,
+          &quot;description&quot;: &quot;User-created weekly Scheduled Task that posts a Monday recap to Telegram.&quot;,
           &quot;value&quot;: &quot;Every Monday at 09:00 UTC, summarize last week's published posts (titles + engagement) and post the recap to Telegram.&quot;,
           &quot;enabled&quot;: true,
           &quot;interval&quot;: &quot;0 9 * * 1&quot;,
+          &quot;requires_credentials&quot;: [],
+          &quot;requires_connectors&quot;: [],
           &quot;_source&quot;: &quot;user-created&quot;,
           &quot;_editable&quot;: true,
           &quot;_edited&quot;: false,
@@ -17255,7 +17277,7 @@ for the channel contract.</p>
       &quot;creditsyncat&quot;: 1714694410,
       &quot;usage&quot;: {
         &quot;period&quot;: &quot;2026-05&quot;,
-        &quot;resetsat&quot;: 1717200000,
+        &quot;resetsat&quot;: 1780272000,
         &quot;includedusd&quot;: 30,
         &quot;usedusd&quot;: 12.4,
         &quot;leftusd&quot;: 17.6,
@@ -17305,8 +17327,8 @@ for the channel contract.</p>
         &quot;status&quot;: &quot;active&quot;,
         &quot;amount&quot;: 30,
         &quot;currency&quot;: &quot;usd&quot;,
-        &quot;currentperiodend&quot;: 1717200000,
-        &quot;renewaldate&quot;: &quot;2026-06-01T00:00:00.000Z&quot;,
+        &quot;currentperiodend&quot;: 1780272000,
+        &quot;renewaldate&quot;: &quot;2026-06-02T00:00:00.000Z&quot;,
         &quot;daysremaining&quot;: 28,
         &quot;pendingdowngrade&quot;: null,
         &quot;provider&quot;: &quot;prepaid&quot;
@@ -17390,7 +17412,7 @@ for the channel contract.</p>
 <tr>
 <td><code>cover</code></td>
 <td><code>string|null</code></td>
-<td>Per-instance cover URL. Falls back to <code>agent.cover</code> for template deploys; <code>null</code> for custom builds without an uploaded cover.</td>
+<td>Per-instance cover URL, <code>null</code> until one is set with <code>Deploy</code>, <code>Update</code> or <code>Cover</code>. Show <code>agent.cover</code> when it is <code>null</code>.</td>
 </tr>
 <tr>
 <td><code>categories</code></td>
@@ -17400,7 +17422,7 @@ for the channel contract.</p>
 <tr>
 <td><code>pinned</code></td>
 <td><code>boolean</code></td>
-<td><code>true</code> when the user pinned this instance to the global header dropdown. Mutate via <code>Pin</code>.</td>
+<td><code>true</code> when the agent is pinned to its workspace's header dropdown (on a team agent, for every member). Mutate via <code>Pin</code>.</td>
 </tr>
 </tbody>
 </table>
@@ -17548,12 +17570,12 @@ for the channel contract.</p>
 <tr>
 <td><code>customskills</code></td>
 <td><code>array</code></td>
-<td>Composed list of preset strategies and <strong>non-cron</strong> custom skills (writable instructions). Each entry: <code>{ key, description, value, enabled, interval: null, _source, _editable, _edited, _user_created? }</code>. <code>_source</code> ∈ <code>"preset-strategy"</code> | <code>"user-created"</code>.</td>
+<td>Composed list of preset strategies and custom skills that aren't Scheduled Tasks (writable instructions). Each entry: <code>{ key, description, value, enabled, interval: null, requires_credentials, requires_connectors, _source, _editable, _edited, _user_created? }</code>. <code>requires_credentials</code> (<code>string[]</code>) lists the channels and settings the entry needs, such as <code>telegram</code> or <code>wiro</code>; one of them set up is enough. <code>requires_connectors</code> (<code>string[]</code>) lists the Connectors a scheduled task needs, by catalog slug; one of them connected is enough. <code>_source</code> ∈ <code>"preset-strategy"</code> | <code>"user-created"</code>.</td>
 </tr>
 <tr>
 <td><code>scheduledskills</code></td>
 <td><code>array</code></td>
-<td>Composed list of <strong>cron</strong> skills (<code>cs-cron-*</code>). Same shape as <code>customskills</code> plus <code>interval</code> (cron expression). <code>_source</code> ∈ <code>"skill-bundle"</code> (preset cron) | <code>"user-created"</code>. A scheduled task that skills bring also carries the fields in <a href="#scheduled-task-skill-fields">Scheduled task skill fields</a>.</td>
+<td>Composed list of Scheduled Tasks (<code>cs-cron-*</code>). Same shape as <code>customskills</code> plus <code>interval</code> (cron expression). A task whose <code>requires_connectors</code> isn't empty runs only while one of those Connectors is connected. <code>_source</code> ∈ <code>"skill-bundle"</code> (a Scheduled Task the template or a skill brings) | <code>"user-created"</code>. A scheduled task that skills bring also carries the fields in <a href="#scheduled-task-skill-fields">Scheduled task skill fields</a>.</td>
 </tr>
 <tr>
 <td><code>skills</code></td>
@@ -17590,7 +17612,7 @@ for the channel contract.</p>
 </div>
 </div>
 <p id="scheduled-task-skill-fields"><strong>Scheduled task skill fields</strong></p>
-<p>A <code>scheduledskills</code> entry of a scheduled task that one of Wiro's skills brings (a <code>cs-cron-*</code> key from the skill registry) carries five more fields. Wiro gives the agent such a task only while a skill that brings it is on, and only while it can use one of the connectors the task needs; these fields say where it stands. A task without <code>_owner_skills</code>, such as one you wrote yourself, carries none of them and needs only the connectors its own entry lists.</p>
+<p>A <code>scheduledskills</code> entry of a scheduled task that one of Wiro's skills brings (a <code>cs-cron-*</code> key from the skill registry) carries five more fields. Wiro gives the agent such a task only while a skill that brings it is on. These fields say where it stands with its skills and with the channels and settings in its <code>requires_credentials</code>. Like any scheduled task whose <code>requires_connectors</code> isn't empty, it also runs only while one of those Connectors is connected. A task without <code>_owner_skills</code>, such as one you wrote yourself, carries none of them and needs only what its own <code>requires_credentials</code> and <code>requires_connectors</code> list.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -17601,13 +17623,13 @@ for the channel contract.</p>
 <tr><td><code>_owner_skills</code></td><td><code>string[]</code></td><td>The skills that bring the task.</td></tr>
 <tr><td><code>_skill_off</code></td><td><code>boolean</code></td><td><code>true</code> while the task waits for skills that are off. Wiro then sends it to the agent turned off, whatever its own <code>enabled</code> says.</td></tr>
 <tr><td><code>_off_skills</code></td><td><code>string[][]</code></td><td>Only when <code>_skill_off</code> is <code>true</code>: what to turn on, one skill from each group.</td></tr>
-<tr><td><code>_usable_credentials</code></td><td><code>string[]</code></td><td>The connectors the task can use now: one of them connected is enough.</td></tr>
-<tr><td><code>_if_connected</code></td><td><code>object</code></td><td>One key for each connector the task needs that is not connected: the groups of skills the task would still wait for once that connector is connected. <code>[]</code> means it would run, if its own <code>enabled</code> is <code>true</code>.</td></tr>
+<tr><td><code>_usable_credentials</code></td><td><code>string[]</code></td><td>The channels and settings the task's credential check covers (its <code>requires_credentials</code>), such as <code>telegram</code> or <code>wiro</code>; one of them set up is enough. <code>[]</code> when it needs none. Connectors aren't listed here: see <code>requires_connectors</code>.</td></tr>
+<tr><td><code>_if_connected</code></td><td><code>object</code></td><td>One key for each of those channels or settings that isn't set up, with the groups of skills the task would still wait for once it is: the same groups as <code>_off_skills</code>, or <code>[]</code> when no skill holds the task back. <code>{}</code> when there are none.</td></tr>
 </tbody>
 </table>
 </div>
 </div>
-<p>To show a task as waiting, read <code>_skill_off</code>, then <code>_usable_credentials</code> and <code>_if_connected</code> for what connecting a connector would change.</p>
+<p>To show a task as waiting, read <code>_skill_off</code> and <code>_off_skills</code> for the skills to turn on. Then compare its <code>requires_connectors</code> with each connection's <code>status</code> on <a href="/docs/agent-connectors#post-useragentconnectorlist"><code>ConnectorList</code></a>: the task waits for a Connector until one of them reads <code>connected</code>.</p>
 <p><strong>Subscription &amp; template</strong></p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -17623,7 +17645,7 @@ for the channel contract.</p>
 <tr>
 <td><code>subscription</code></td>
 <td><code>object|null</code></td>
-<td>Active subscription info (see "Subscription object" below), or <code>null</code> when the agent has no active subscription. It reads <code>plan: "agent"</code> and, since plans are paid from the Wiro balance, <code>provider: "prepaid"</code> (see <a href="#paying-for-plans">Paying for Plans</a> for a plan that was paid by card).</td>
+<td>The agent's subscription (see "Subscription object" below): its active one, else its newest, so a plan that ended reads <code>status: "expired"</code>. <code>null</code> when the agent has never had a plan. It reads <code>plan: "agent"</code> and, since plans are paid from the Wiro balance, <code>provider: "prepaid"</code> (see <a href="#paying-for-plans">Paying for Plans</a> for a plan that was paid by card).</td>
 </tr>
 <tr>
 <td><code>agent</code></td>
@@ -17650,7 +17672,7 @@ for the channel contract.</p>
 <tr>
 <td><code>_connected</code></td>
 <td><code>boolean</code></td>
-<td>Connection-readiness flag for a credential whose setup writes a connection time. Plain value credentials, such as the channels, can remain <code>false</code>; for those use <code>_required_missing</code> or inspect the field values directly. A connector's state is its <code>status</code> on <a href="/docs/agent-connectors#post-useragentconnectorlist"><code>ConnectorList</code></a>.</td>
+<td>On a channel (Telegram, Slack, Discord), <code>true</code> once every field in its <code>required_fields</code> is filled. <code>false</code> on other credentials, where <code>_filled</code> and <code>_required_missing</code> tell the state. A connector's state is its <code>status</code> on <a href="/docs/agent-connectors#post-useragentconnectorlist"><code>ConnectorList</code></a>.</td>
 </tr>
 <tr>
 <td><code>optional</code></td>
@@ -17660,7 +17682,7 @@ for the channel contract.</p>
 <tr>
 <td><code>extra</code></td>
 <td><code>boolean</code></td>
-<td><code>true</code> when this credential surfaces in the "alternative" / secondary group on the panel (rare; most credentials are primary).</td>
+<td><code>true</code> when the agent template marks this credential as an optional extra; the panel lists it after the required ones.</td>
 </tr>
 <tr>
 <td><code>_editable</code></td>
@@ -17683,19 +17705,9 @@ for the channel contract.</p>
 <td><code>true</code> when the credential holds what the agent needs: at least one field holds a value and no required field you fill in is empty. A value the agent template holds counts, even on a secret field that reads empty here. For <code>setuprequired</code>, a credential counts only the values saved on this agent; see <a href="/docs/agent-credentials#setup-required-state">Setup Required</a>.</td>
 </tr>
 <tr>
-<td><code>connectedat</code></td>
-<td><code>string|null</code></td>
-<td>Credentials whose setup writes one: ISO timestamp of the last successful connection.</td>
-</tr>
-<tr>
-<td><code>tokenexpiresat</code></td>
-<td><code>string|null</code></td>
-<td>ISO timestamp when the current token expires, or an empty value when the provider reports no fixed expiry.</td>
-</tr>
-<tr>
 <td><code>&lt;fieldname&gt;</code></td>
 <td><code>string|number|boolean|array</code></td>
-<td>The field value as you saved it, returned to the agent's owner and team admins. A saved secret (a <code>password</code> or <code>fileinput-base64</code> field, or such a key in a list's entries) reads <code>"••••••••"</code> instead, for every caller, and one with nothing saved reads <code>""</code>. Field types match <code>_schema.fields[].type</code>. Never returned: Wiro-managed fields, and a value the agent template holds on a field Wiro stores encrypted: such a field reads empty until you save your own.</td>
+<td>The field value as you saved it, returned to the agent's owner and team admins. A saved secret (a <code>password</code> field) reads <code>"••••••••"</code> instead, for every caller, and one with nothing saved reads <code>""</code>. Field types match <code>_schema.fields[].type</code>. Never returned: Wiro-managed fields, and a value the agent template holds on a field Wiro stores encrypted: such a field reads empty until you save your own.</td>
 </tr>
 </tbody>
 </table>
@@ -17722,7 +17734,7 @@ for the channel contract.</p>
 <tr>
 <td><code>resetsat</code></td>
 <td><code>number|null</code></td>
-<td>Unix seconds when the plan renews and its included AI usage starts again. <code>null</code> when the plan's renewal can't be read.</td>
+<td>Unix seconds when the plan's period ends (<code>subscription.currentperiodend</code>). The renewal that starts the included AI usage again runs up to a day later. On Detail, MyAgents and PinnedAgents, a plan that ended shows the ended period's end. <code>null</code> when there is no period to show or it can't be read.</td>
 </tr>
 <tr>
 <td><code>includedusd</code></td>
@@ -17752,7 +17764,7 @@ for the channel contract.</p>
 <tr>
 <td><code>balanceusd</code></td>
 <td><code>number</code></td>
-<td>The spendable balance of the wallet the agent uses.</td>
+<td>What the agent's AI usage can draw on in the wallet it uses: deposits and store revenue. Coupon credit isn't counted, so it can read less than the wallet shows.</td>
 </tr>
 <tr>
 <td><code>wallet</code></td>
@@ -17767,12 +17779,12 @@ for the channel contract.</p>
 <tr>
 <td><code>paused</code></td>
 <td><code>boolean</code></td>
-<td><code>true</code> while the agent takes no new turns.</td>
+<td><code>true</code> while the agent can't start a new turn because it has no active plan or its balance is short (see <code>pausedreason</code>). A reached <a href="/docs/spend-limits">spend limit</a> doesn't set it: <code>Message/Send</code> then answers code <code>93</code>.</td>
 </tr>
 <tr>
 <td><code>pausedreason</code></td>
 <td><code>string|null</code></td>
-<td><code>"balance"</code>: the included usage is used up and the balance is under <code>minbalanceusd</code>. <code>"spendlimit"</code>: a <a href="/docs/spend-limits">spend limit</a> that covers the agent is reached. <code>null</code> while it runs.</td>
+<td><code>"plan"</code>: the agent has no active plan, because its plan ended or it never had one. It doesn't run until a plan is paid: <a href="#post-useragentrenewsubscription"><code>RenewSubscription</code></a> renews a plan that ended, and <a href="#post-useragentcreatesubscriptioncheckout"><code>CreateSubscriptionCheckout</code></a> (<code>useprepaid: true</code>) starts a new one. Adding funds doesn't start it. <code>"balance"</code>: the included usage is used up and the balance is under <code>minbalanceusd</code>; adding funds runs it again. <code>null</code> otherwise, also while a spend limit holds the agent.</td>
 </tr>
 </tbody>
 </table>
@@ -17870,12 +17882,12 @@ for the channel contract.</p>
 <tr>
 <td><code>renewaldate</code></td>
 <td><code>string|null</code></td>
-<td>ISO-8601 string of the same period-end timestamp (convenience for display).</td>
+<td>ISO-8601 time the plan next renews, or ends when it is cancelled: one day after <code>currentperiodend</code> for a plan paid from the balance, the period end for a plan paid by card. <code>null</code> unless the subscription is active.</td>
 </tr>
 <tr>
 <td><code>daysremaining</code></td>
 <td><code>number</code></td>
-<td>Days until <code>currentperiodend</code>.</td>
+<td>Days until <code>renewaldate</code>, rounded up; <code>0</code> unless the subscription is active.</td>
 </tr>
 <tr>
 <td><code>pendingdowngrade</code></td>
@@ -18069,7 +18081,7 @@ for the channel contract.</p>
 </table>
 </div>
 </div>
-<p><strong>Note:</strong> <code>CredentialUpsert</code> and <code>CredentialProjectBind</code> save credential fields <strong>but do not transition <code>status: 6</code> on their own</strong>. After setting up the missing credentials, call <code>POST /UserAgent/Update</code> once (any scalar body works, even just <code>{ "guid": "&lt;useragent-guid&gt;" }</code>) to trigger the <code>setuprequired</code> re-check; that's the call that flips <code>status: 6 → 0</code> (Stopped) so the next <code>Start</code> succeeds.</p>
+<p><strong>Note:</strong> <code>CredentialUpsert</code> and <code>CredentialProjectBind</code> never change <code>status</code>. An agent at <code>status: 6</code> has no plan: pay it with <a href="#post-useragentcreatesubscriptioncheckout"><code>CreateSubscriptionCheckout</code></a> (<code>useprepaid: true</code>), which queues it.</p>
 </blockquote>
 <h5 id="response_4">Response</h5>
 <p>A changed <code>title</code> on a running agent:</p>
@@ -18158,7 +18170,7 @@ for the channel contract.</p>
 <td><code>timezone</code></td>
 <td>string|null</td>
 <td>No</td>
-<td>IANA timezone identifier (e.g. <code>"Europe/Istanbul"</code>, <code>"America/New_York"</code>, <code>"Asia/Tokyo"</code>). Pass <code>null</code>, <code>""</code>, or the literal <code>"UTC"</code> to <strong>clear</strong> the override; the agent then uses UTC. Unknown zones are rejected with <code>invalid-timezone</code>.</td>
+<td>IANA timezone identifier (e.g. <code>"Europe/Istanbul"</code>, <code>"America/New_York"</code>, <code>"Asia/Tokyo"</code>). Pass <code>null</code>, <code>""</code>, or the literal <code>"UTC"</code> to <strong>clear</strong> the override; the agent then uses UTC. Unknown zones are rejected with <code>Invalid timezone — must be a valid IANA identifier (e.g. 'Europe/Istanbul').</code></td>
 </tr>
 <tr>
 <td><code>teamsessionmode</code></td>
@@ -18170,7 +18182,7 @@ for the channel contract.</p>
 <td><code>chatmodel</code></td>
 <td>string|null</td>
 <td>No</td>
-<td>Canonical model slug for <strong>chat replies</strong> (e.g. <code>"openai/gpt-5.6-sol"</code>). Must be a <strong>selectable</strong> model, i.e. <code>tokenRates.models[&lt;slug&gt;].selectable === true</code>; an unknown / non-selectable slug is rejected with <code>invalid-model-selection</code>. A model that the agent's own <a href="/docs/model-access">Model Access</a> rule blocks is refused with code <code>92</code>. Pass <code>null</code> or <code>""</code> to clear the override and fall back to the platform default.</td>
+<td>Canonical model slug for <strong>chat replies</strong> (e.g. <code>"openai/gpt-5.6-sol"</code>). Must be a <strong>selectable</strong> model, i.e. <code>tokenRates.models[&lt;slug&gt;].selectable === true</code>; an unknown / non-selectable slug is rejected with <code>Invalid model: &lt;slug&gt; is not in the selectable model allowlist.</code> A model that the agent's own <a href="/docs/model-access">Model Access</a> rule blocks is refused with code <code>92</code>. Pass <code>null</code> or <code>""</code> to clear the override and fall back to the platform default.</td>
 </tr>
 <tr>
 <td><code>cronmodel</code></td>
@@ -18194,7 +18206,7 @@ for the channel contract.</p>
 <td><code>enabledcommands</code></td>
 <td>string[]</td>
 <td>No</td>
-<td>Allowlist of in-chat <strong>slash commands</strong> the agent exposes, as an array of command keys <strong>without</strong> the leading slash (e.g. <code>["agent_help", "new_session", "agent_status"]</code>). Validated against the command catalog: an unknown key is rejected with <code>invalid-command-selection</code>, a non-array value with <code>invalid-command-list</code>. Order is preserved and duplicates are removed. An empty array <code>[]</code> is valid and <strong>hides the slash-command menu</strong> entirely. Omit the field to leave the current allowlist untouched.</td>
+<td>Allowlist of in-chat <strong>slash commands</strong> the agent exposes, as an array of command keys <strong>without</strong> the leading slash (e.g. <code>["agent_help", "new_session", "agent_status"]</code>). Validated against the command catalog: an unknown key is rejected with <code>Invalid command: &lt;key&gt; is not a known agent command.</code>, a non-array value with <code>enabledcommands must be an array of command keys.</code> Order is preserved and duplicates are removed. An empty array <code>[]</code> is valid and <strong>hides the slash-command menu</strong> entirely. Omit the field to leave the current allowlist untouched.</td>
 </tr>
 <tr>
 <td><code>wiroapiallowedpaths</code></td>
@@ -18220,7 +18232,7 @@ for the channel contract.</p>
 </div>
 <blockquote>
 <p><strong>Slash-command catalog.</strong> Valid <code>enabledcommands</code> keys are: <code>agent_help</code>, <code>new_session</code>, <code>agent_status</code>, <code>agent_limits</code>, <code>last_scan</code>, <code>last_heartbeat</code>, <code>agent_restart</code>, <code>clear_all_sessions</code>, <code>clear_history</code>. Read the agent's current allowlist from the <code>enabledCommands</code> field (camelCase) on <a href="#post-useragentdetail"><code>UserAgent/Detail</code></a> / <code>MyAgents</code> / <code>PinnedAgents</code>, where <code>null</code> means the operator never customized it (all commands available) and an array (including <code>[]</code>) is an explicit allowlist.</p>
-<p><strong>Omitted fields are preserved.</strong> The handler distinguishes between "field not in the body" and "field present with <code>null</code>/<code>""</code>/value", so a POST that carries only <code>timezone</code> does <strong>not</strong> touch <code>teamsessionmode</code> or any model field, and vice versa. Sending an empty body (none of the recognised fields) is rejected with <code>nothing-to-update</code> to avoid charging a no-op restart.</p>
+<p><strong>Omitted fields are preserved.</strong> The handler distinguishes between "field not in the body" and "field present with <code>null</code>/<code>""</code>/value", so a POST that carries only <code>timezone</code> does <strong>not</strong> touch <code>teamsessionmode</code> or any model field, and vice versa. Sending an empty body (none of the recognised fields) is rejected with <code>No fields supplied to update.</code>, so it never restarts the agent for nothing.</p>
 <p><strong>Read vs write casing.</strong> You <strong>read</strong> the current selection from the <code>agentModel</code> object on <code>UserAgent/Detail</code> / <code>MyAgents</code> / <code>PinnedAgents</code> in camelCase (<code>chatModel</code>, <code>cronModel</code>, <code>voicePrepModel</code>, <code>voicePostcallModel</code>); you <strong>write</strong> it here in lowercase (<code>chatmodel</code>, <code>cronmodel</code>, <code>voiceprepmodel</code>, <code>voicepostcallmodel</code>). The selectable set is exactly the models that <code>tokenRates.models</code> marks <code>selectable: true</code>. There is no separate "list models" endpoint, so read <code>tokenRates</code> to populate a picker.</p>
 <p><strong>An agent's own calls never manage an account.</strong> Calls the agent makes itself to the Wiro API with its Wiro project key are refused with HTTP <code>403</code> on account, agent, team and billing endpoints, such as <code>/UserAgent/*</code>, <code>/Project/*</code>, <code>/Team/*</code> and <code>/Wallet/*</code>, whatever <code>wiroapiallowedpaths</code> allows: <code>An agent can't call this endpoint. An agent admin changes the agent's setup in its settings or with a setup card in chat.</code> <code>POST /v1/UserAgent/Message/UploadAsset</code> stays open. On <code>Task/Detail</code>, and on <code>Task/List</code>, <code>Task/Cancel</code> and <code>Task/Kill</code> if your <code>wiroapiallowedpaths</code> adds them, the agent's calls reach only the tasks it started: a task your backend or anyone else started is not listed and answers as one that does not exist. An agent changes its own setup only through <a href="/docs/agent-messaging#setup-from-chat">setup cards</a> that an agent admin approves. A <a href="/docs/agent-connectors">connector</a>'s tools are the ones its <code>tools</code> on <code>AgentConnector/Detail</code> list, and they act with that connection's own credentials. The <a href="/docs/agent-connectors#the-wiro-connector"><code>wiro</code> connector</a> acts with the agent's own Wiro project key, so its calls are the agent's own calls, and these refusals apply to them too.</p>
 </blockquote>
@@ -18318,86 +18330,97 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <p><strong>Light response by design.</strong> <code>UpdateSettings</code> returns just <code>result</code> + <code>errors</code>, not the full useragent shape. Pull the refreshed row with <code>POST /UserAgent/Detail</code> if you need to re-render the panel after the write.</p>
 </blockquote>
 <h5 id="common-errors">Common errors</h5>
+<p>Each of these comes back with HTTP 200 and <code>result: false</code>, like every API answer (see <a href="/docs/error-reference">Error Reference</a>), and nothing is saved:</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
 <thead>
 <tr>
-<th>Code</th>
-<th>Message key</th>
+<th><code>errors[0].code</code></th>
+<th>Message</th>
 <th>When</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>400</td>
-<td><code>request-parameter-required</code></td>
+<td>0</td>
+<td><code>Request parameter [useragentguid] required</code></td>
 <td><code>useragentguid</code> missing from the body.</td>
 </tr>
 <tr>
-<td>400</td>
-<td><code>nothing-to-update</code></td>
+<td>0</td>
+<td><code>No fields supplied to update.</code></td>
 <td>Body had none of the recognised fields (<code>timezone</code>, <code>teamsessionmode</code>, a model override, <code>enabledcommands</code>, <code>wiroapiallowedpaths</code>, <code>chatsetup</code> or <code>screen</code>).</td>
 </tr>
 <tr>
-<td>400</td>
-<td><code>invalid-timezone</code></td>
+<td>0</td>
+<td><code>Invalid timezone — must be a valid IANA identifier (e.g. 'Europe/Istanbul').</code></td>
 <td><code>timezone</code> is not a valid IANA time zone.</td>
 </tr>
 <tr>
-<td>400</td>
+<td>0</td>
 <td><code>teamsessionmode must be private or collaborative</code></td>
 <td><code>teamsessionmode</code> wasn't one of the two supported values.</td>
 </tr>
 <tr>
-<td>400</td>
-<td><code>directchatmode is not accepted</code></td>
+<td>0</td>
+<td><code>directchatmode is not accepted; teamsessionmode is the unified chat mode</code></td>
 <td>Obsolete separate mode was sent instead of unified <code>teamsessionmode</code>.</td>
 </tr>
 <tr>
-<td>400</td>
-<td><code>invalid-model-selection</code></td>
+<td>0</td>
+<td><code>Invalid model: &lt;slug&gt; is not in the selectable model allowlist.</code></td>
 <td>A model override (<code>chatmodel</code> / <code>cronmodel</code> / <code>voiceprepmodel</code> / <code>voicepostcallmodel</code>) was an unknown or non-selectable slug (<code>tokenRates.models[&lt;slug&gt;].selectable !== true</code>).</td>
 </tr>
 <tr>
-<td>400</td>
-<td><code>invalid-command-list</code></td>
+<td>92</td>
+<td>The Model Access rule's sentence, such as <code>This agent can't use openai/gpt-5.5. Model Access rules decide which models can run.</code></td>
+<td>A model override that a <a href="/docs/model-access">Model Access</a> rule for the agent blocks.</td>
+</tr>
+<tr>
+<td>0</td>
+<td><code>enabledcommands must be an array of command keys.</code></td>
 <td><code>enabledcommands</code> was present but not an array.</td>
 </tr>
 <tr>
-<td>400</td>
-<td><code>invalid-command-selection</code></td>
+<td>0</td>
+<td><code>Invalid command: &lt;key&gt; is not a known agent command.</code></td>
 <td><code>enabledcommands</code> contained a key that isn't in the slash-command catalog.</td>
 </tr>
 <tr>
-<td>400</td>
+<td>0</td>
 <td><code>invalid-wiro-api-path-rule</code></td>
 <td><code>wiroapiallowedpaths</code> was not an array, or a rule broke the format or the limits above.</td>
 </tr>
 <tr>
-<td>400</td>
+<td>0</td>
 <td><code>chatsetup must be off, webchat or all</code></td>
 <td><code>chatsetup</code> wasn't <code>"all"</code>, <code>"webchat"</code>, <code>"off"</code> or <code>null</code>.</td>
 </tr>
 <tr>
-<td>400</td>
+<td>0</td>
 <td><code>screen must be on or off</code></td>
 <td><code>screen</code> wasn't <code>"on"</code>, <code>"off"</code> or <code>null</code>.</td>
 </tr>
 <tr>
-<td>403</td>
-<td><code>useragent-access-denied</code></td>
+<td>95</td>
+<td><code>User agent not found</code></td>
+<td>Unknown guid, or the agent has been deleted.</td>
+</tr>
+<tr>
+<td>96</td>
+<td><code>You don't have access to this user agent</code></td>
 <td>Caller is neither the owner nor on the agent's team.</td>
 </tr>
 <tr>
-<td>403</td>
-<td><code>useragent-team-admin-required</code></td>
-<td>Caller is a member of the agent's team but not a team admin. Carries <code>errors[0].code: 97</code>.</td>
+<td>97</td>
+<td><code>Only a team admin can perform this action on a team-owned agent.</code></td>
+<td>Caller is a member of the agent's team but not a team admin.</td>
 </tr>
 <tr>
-<td>500</td>
-<td><code>failed-to-update-useragent</code></td>
-<td>DB write failed (transient, safe to retry).</td>
+<td>0</td>
+<td><code>Failed to update user agent — please retry.</code></td>
+<td>The write failed (transient, safe to retry).</td>
 </tr>
 </tbody>
 </table>
@@ -18601,7 +18624,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <h4 id="post-useragentcredentialupsert"><strong>POST</strong> /UserAgent/CredentialUpsert</h4>
 <p>Writes one or more credential fields for one or multiple providers in a single call.</p>
 <p>If the agent is <strong>starting</strong> or <strong>running</strong>, an upsert that changes a saved value triggers an automatic restart (see <a href="#automatic-restart">Automatic Restart</a>).</p>
-<p><code>CredentialUpsert</code> writes the agent's credentials: the Telegram, Slack and Discord channels, Twilio Voice, the Wiro project's key and settings such as the support email (see <a href="/docs/agent-credentials">Agent Credentials</a>). The services the agent works with are connectors: connect them with <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>ConnectorConnect</code></a>.</p>
+<p><code>CredentialUpsert</code> writes the agent's credentials: the Telegram, Slack and Discord channels, Twilio Voice, the Wiro project's key and settings such as the support email (see <a href="/docs/agent-credentials">Agent Credentials</a>). The services the agent works with are connectors: connect them with <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>ConnectorConnect</code></a>. A <code>credentialkey</code> that isn't a credential, a connector's slug included, refuses the whole request (see <a href="#credentialupsert-errors">Common errors</a>).</p>
 <p>Telegram, Slack, and Discord are optional credential groups. A channel appears
 in <code>enabledChannels</code> automatically when all of its catalog <code>required_fields</code>
 are complete. Clear any required field to disable it; there is no separate
@@ -18649,7 +18672,7 @@ channel-enable endpoint or persisted switch.</p>
 <tr>
 <td><code>credentialkey</code></td>
 <td>string</td>
-<td>The credential key: e.g. <code>"telegram"</code>, <code>"slack"</code>, <code>"twilio-voice"</code>, <code>"var-support-email"</code>. Must match one of the credentials declared in <code>credentials</code> on <code>/UserAgent/Detail</code>, or a channel from <code>POST /Skills/List</code> → <code>channels[]</code>.</td>
+<td>The credential key: <code>telegram</code>, <code>slack</code>, <code>discord</code>, <code>twilio-voice</code>, <code>wiro</code>, <code>var-support-email</code>, <code>var-website</code> or <code>var-newsletter-test-email</code>. A key that isn't a credential, a connector's slug included, fails the whole request with one <code>Unknown credential: &lt;key&gt;. Connectors are connected with UserAgent/ConnectorConnect.</code> error before the agent or any row is checked, and nothing is saved: connect that service with <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>ConnectorConnect</code></a>.</td>
 </tr>
 <tr>
 <td><code>fieldname</code></td>
@@ -18735,6 +18758,94 @@ channel-enable endpoint or persisted switch.</p>
 </div>
 <p>Treat all four fields as best-effort: the credential write itself never depends on Twilio's API call succeeding. See <a href="/docs/integration-twiliovoice-skills">Twilio Voice Channel</a> for the full lifecycle.</p>
 </blockquote>
+<h5 id="credentialupsert-errors">Common errors</h5>
+<p>Each of these comes back with <code>result: false</code> and no <code>applied</code>, and nothing is saved:</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: false,
+  &quot;errors&quot;: [
+    {
+      &quot;code&quot;: 0,
+      &quot;message&quot;: &quot;Unknown credential: google-ads. Connectors are connected with UserAgent/ConnectorConnect.&quot;,
+      &quot;time&quot;: 1795113000
+    }
+  ]
+}
+</code></pre>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Code</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Request parameter [useragentguid] required</code></td>
+<td>0</td>
+<td><code>useragentguid</code> is missing or blank</td>
+</tr>
+<tr>
+<td><code>Request parameter [fields[]] required</code></td>
+<td>0</td>
+<td><code>fields</code> is missing, not an array, or empty</td>
+</tr>
+<tr>
+<td><code>Unknown credential: &lt;key&gt;. Connectors are connected with UserAgent/ConnectorConnect.</code></td>
+<td>0</td>
+<td>A row's <code>credentialkey</code> isn't a credential, such as a connector's slug. One entry for the whole request, before the agent or any other row is checked</td>
+</tr>
+<tr>
+<td><code>User agent not found</code></td>
+<td>95</td>
+<td>Unknown guid, or the agent has been deleted</td>
+</tr>
+<tr>
+<td><code>You don't have access to this user agent</code></td>
+<td>96</td>
+<td>The caller is neither the agent's owner nor on its team</td>
+</tr>
+<tr>
+<td><code>Only a team admin can perform this action on a team-owned agent.</code></td>
+<td>97</td>
+<td>The caller is a plain member of the agent's team</td>
+</tr>
+<tr>
+<td><code>&lt;Field label&gt; is managed by the platform</code></td>
+<td>0</td>
+<td>A Wiro-managed field, such as the chat model: pick the model with <code>UpdateSettings</code></td>
+</tr>
+<tr>
+<td><code>&lt;Field label&gt; is required</code></td>
+<td>0</td>
+<td>A required field sent empty. On Telegram, Slack and Discord this disables the channel instead</td>
+</tr>
+<tr>
+<td><code>&lt;Field label&gt; has an invalid format</code></td>
+<td>0</td>
+<td>The value doesn't match the field's <code>pattern</code></td>
+</tr>
+<tr>
+<td><code>&lt;Field label&gt; must be an array</code></td>
+<td>0</td>
+<td>A list field sent as a single value</td>
+</tr>
+<tr>
+<td><code>&lt;Field label&gt; has an invalid value</code></td>
+<td>0</td>
+<td>An object sent for a single-value field</td>
+</tr>
+<tr>
+<td><code>agent-fieldname-reserved</code></td>
+<td>0</td>
+<td>A <code>fieldname</code> starting with <code>_</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 <h4 id="post-useragentcredentialprojectbind"><strong>POST</strong> /UserAgent/CredentialProjectBind</h4>
 <p>Connects the agent's Wiro project (the <code>wiro</code> key under <code>credentials</code>) to one of your Wiro projects. You name the project, and Wiro saves that project's API key on the agent. The agent's model runs are paid from the wallet of the workspace that owns the project.</p>
 <div class="docs-param-table">
@@ -18818,7 +18929,7 @@ channel-enable endpoint or persisted switch.</p>
 </div>
 </div>
 <p>Binding the project an agent already has changes nothing and restarts nothing. The <a href="/docs/agent-connectors#the-wiro-connector"><code>wiro</code> connector</a> always acts with the project bound here, and connecting it with <code>ConnectorConnect</code> and a <code>wiroprojectguid</code> binds a project the same way. Changing a project's IP whitelist gives the project a new API secret; to load it, restart the agent with <code>POST /UserAgent/Update</code> and a body of <code>{ "guid": "&lt;useragent-guid&gt;" }</code>.</p>
-<p>On an agent at <code>status: 6</code> (Setup Required), call <code>POST /UserAgent/Update</code> with <code>{ "guid": "&lt;useragent-guid&gt;" }</code> after binding, as after <code>CredentialUpsert</code>. Binding doesn't change <code>status</code>: <code>Update</code> moves the agent to <code>status: 0</code> (Stopped) once every required credential is set up, and <code>Start</code> refuses it until then.</p>
+<p>Binding doesn't change <code>status</code>. An agent at <code>status: 6</code> (Setup Required) has no plan: pay it with <a href="#post-useragentcreatesubscriptioncheckout"><code>CreateSubscriptionCheckout</code></a> (<code>useprepaid: true</code>), which queues it.</p>
 <p>If you already hold a project's key, <a href="#post-useragentcredentialupsert"><code>CredentialUpsert</code></a> with <code>credentialkey</code> <code>wiro</code> and <code>fieldname</code> <code>apikey</code> saves it too.</p>
 <h5 id="credentialprojectbind-errors">Common errors</h5>
 <p>Each of these comes back with <code>result: false</code>, and nothing is saved.</p>
@@ -18937,7 +19048,7 @@ channel-enable endpoint or persisted switch.</p>
 <td><code>credentialkey</code></td>
 <td>text</td>
 <td>Yes</td>
-<td>Provider key (e.g. <code>twilio-voice</code>). Must declare a <code>fileinput</code> field in its registry schema.</td>
+<td>The credential key. Only Twilio Voice (<code>twilio-voice</code>) has <code>fileinput</code> fields.</td>
 </tr>
 <tr>
 <td><code>fieldname</code></td>
@@ -18956,7 +19067,7 @@ channel-enable endpoint or persisted switch.</p>
 </div>
 </div>
 <blockquote>
-<p><strong><code>fileinput</code> vs <code>fileinput-base64</code>.</strong> This endpoint is the storage path for the <code>fileinput</code> type only: the file is stored by Wiro and the credential keeps a reference to it. The companion <code>fileinput-base64</code> type is stored with the credential (encrypted at rest) and is written via the standard <code>CredentialUpsert</code> JSON <code>fields[]</code> array (e.g. <code>serviceaccountjson</code> on <code>google-drive</code>/<code>google-calendar</code>/<code>google-play</code>/<code>firebase</code>, <code>privatekey</code> on <code>apple-appstore</code>). Sending a base64 field through this endpoint returns <code>Field is not a fileinput type</code>.</p>
+<p><strong>Only Twilio Voice takes a file here.</strong> The one credential with <code>fileinput</code> fields is Twilio Voice (<code>twilio-voice</code>): <code>holdaudio</code> and <code>holdmusic</code>, MP3 or WAV up to 10 MB. A key file for a service the agent works with, such as a Google service account JSON or an App Store Connect private key, belongs to that service's Connector. Send the file's text in <code>values</code> on <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>ConnectorConnect</code></a>: <code>serviceaccountjson</code> for Google Play Console (<code>google-play</code>), or <code>privatekey</code> for App Store Connect (<code>apple-appstore</code>). A connector's slug sent here answers <code>Unknown credential: &lt;key&gt;</code>.</p>
 </blockquote>
 <h5 id="request_2">Request</h5>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CredentialFileUpload&quot; \
@@ -18993,7 +19104,7 @@ channel-enable endpoint or persisted switch.</p>
 </tr>
 <tr>
 <td><code>Unknown credential: &lt;key&gt;</code></td>
-<td><code>credentialkey</code> not declared in the skill registry</td>
+<td><code>credentialkey</code> isn't a credential (a connector's slug included)</td>
 </tr>
 <tr>
 <td><code>Unknown field: &lt;name&gt;</code></td>
@@ -19050,7 +19161,7 @@ channel-enable endpoint or persisted switch.</p>
 <td><code>value</code></td>
 <td>string</td>
 <td>No</td>
-<td>Strategy body / cron prompt text. Editable for preset strategies and user-created entries; bundled crons silently drop <code>value</code> writes.</td>
+<td>Strategy body / scheduled task prompt text. On a template agent, a scheduled task the template brings runs the template's text: a <code>value</code> sent for it is saved and shows on Detail and in CustomSkillHistory, but the agent doesn't use it. Every other skill and task runs its saved text, a custom build's bundled tasks included.</td>
 </tr>
 <tr>
 <td><code>interval</code></td>
@@ -19075,8 +19186,9 @@ channel-enable endpoint or persisted switch.</p>
 </div>
 </div>
 <blockquote>
-<p><strong>Text edits reach a running agent without a restart.</strong> A change to the <code>value</code> or <code>description</code> of an existing skill or task goes to a running agent right away, and the agent keeps running; a starting agent restarts to load it. A new skill or task, a new <code>interval</code>, or turning one on or off with <code>enabled</code> restarts a starting or running agent, and so does any change to <code>cs-approval-policy</code>. If the running agent can't take the new text, Wiro restarts it instead. <code>restarting</code> in the response says whether the call restarted the agent.</p>
+<p><strong>Text edits reach a running agent without a restart.</strong> A change to the <code>value</code> or <code>description</code> of an existing skill or task goes to a running agent right away, and the agent keeps running; a starting agent restarts to load it. A new skill or task, a new <code>interval</code>, or turning one on or off with <code>enabled</code> restarts a starting or running agent, and so does any change to <code>cs-approval-policy</code>. If the running agent can't take the new text, Wiro restarts it instead. <code>restarting</code> in the response says whether the call restarted the agent. A template's own scheduled task is the exception: its text never reaches the agent.</p>
 <p><strong>Schedules the agent can't run are refused.</strong> A scheduled task's <code>interval</code> is a cron expression with five fields, <code>minute hour day month weekday</code>, such as <code>0 9 * * 1-5</code>. A schedule the agent can't run, or one whose date never comes, such as 30 February, is refused before anything is saved, and the error says what is wrong and what to write: <code>0 25 * * *</code> gets <code>This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.</code>, and <code>0 0 30 2 *</code> gets <code>This schedule never comes up: February has no 30th. Pick a day February has, such as 28.</code> Only a schedule sent in the request is checked, so a task that already has one can still be edited or turned on and off.</p>
+<p><strong>A task that is on doesn't always run.</strong> A scheduled task runs only while its gates are open: one of the Connectors in its <code>requires_connectors</code> connected, one of the channels or settings in its <code>requires_credentials</code> set up, and, for a task Wiro's skills bring, one of those Skills on (see <a href="#scheduled-task-skill-fields">Scheduled task skill fields</a>). An empty list is no gate, and <code>enabled: true</code> doesn't lift one. <code>CustomSkillUpsert</code> takes neither list: a task you create here has none and runs on its schedule. Saving or clearing a credential sets <code>enabled</code> on every custom skill and scheduled task whose own <code>requires_credentials</code> names it: on while one of the credentials it lists is set up, off while none is, whatever <code>enabled</code> was before.</p>
 </blockquote>
 <h5 id="request_3">Request</h5>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
@@ -19178,30 +19290,38 @@ channel-enable endpoint or persisted switch.</p>
 <table>
 <thead>
 <tr>
-<th>Error message key</th>
+<th>Error</th>
 <th>When</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>Preset skills cannot be renamed.</code></td>
-<td>Target row has <code>usercreated: false</code> (preset-owned). This refusal comes as the sentence, with no message key.</td>
+<td>Target row has <code>usercreated: false</code> (preset-owned).</td>
 </tr>
 <tr>
-<td><code>agent-customskill-rename-flavour-mismatch</code></td>
+<td><code>Scheduled tasks and custom skills cannot be renamed into each other — delete the row and re-create it with the right kind</code></td>
 <td>Caller tried to rename <code>cs-cron-*</code> ↔ <code>cs-*</code>. Delete + re-create with the right kind instead.</td>
 </tr>
 <tr>
-<td><code>agent-customskill-rename-collision</code></td>
+<td><code>A skill with that key already exists for this agent</code></td>
 <td><code>newskillkey</code> already exists on this useragent.</td>
 </tr>
 <tr>
-<td><code>agent-customskill-rename-same-key</code></td>
+<td><code>The new skill key is the same as the current one — nothing to rename</code></td>
 <td><code>oldskillkey</code> equals canonicalised <code>newskillkey</code>: nothing to change.</td>
 </tr>
 <tr>
-<td><code>agent-customskill-not-found</code></td>
+<td><code>Skill not found</code></td>
 <td><code>oldskillkey</code> does not exist on the useragent.</td>
+</tr>
+<tr>
+<td><code>Missing useragentguid, oldskillkey, or newskillkey</code></td>
+<td>One of the three is missing or blank.</td>
+</tr>
+<tr>
+<td><code>Skill key may only contain lowercase letters, digits, and single dashes between segments (e.g. lead-strategy)</code></td>
+<td><code>newskillkey</code> isn't a valid key.</td>
 </tr>
 </tbody>
 </table>
@@ -19277,22 +19397,22 @@ channel-enable endpoint or persisted switch.</p>
 </thead>
 <tbody>
 <tr>
-<td>User-created (<code>usercreated: true</code>) on any agent</td>
-<td><strong>Allowed</strong>: row is hard-deleted, agent restarts.</td>
+<td>User-created (<code>usercreated: true</code>) under a key the agent's template doesn't have</td>
+<td><strong>Allowed</strong>: the row and its version history are deleted, and a starting or running agent restarts.</td>
 </tr>
 <tr>
-<td>Registry-owned / preset-owned (<code>usercreated: false</code>) on a <strong>template</strong> agent (the skill also exists in the template's preset skills)</td>
-<td><strong>Rejected</strong>: <code>"This skill belongs to the agent preset and cannot be deleted."</code> Disable it via <code>CustomSkillUpsert</code> with <code>enabled: false</code> instead.</td>
+<td><code>usercreated: false</code>: a template's skills and tasks, copied to the agent at deploy, and a custom build's registry rows (e.g. <code>cs-approval-policy</code>, bundled <code>cs-cron-*</code> tasks)</td>
+<td><strong>Rejected</strong> with <code>customskill-registry-not-deletable</code>. Disable it via <code>CustomSkillUpsert</code> with <code>enabled: false</code> instead.</td>
 </tr>
 <tr>
-<td>Registry-owned (<code>usercreated: false</code>) on a <strong>custom-build</strong> agent (no preset to compare against)</td>
-<td><strong>Rejected</strong>: <code>"This skill is registry-owned and cannot be deleted."</code> Disable it via <code>CustomSkillUpsert</code> with <code>enabled: false</code> instead. Custom builds carry registry-seeded rows (e.g. <code>cs-approval-policy</code>, bundled <code>cs-cron-*</code> clones) whose runtime contract the agent depends on, even though there's no template back-reference.</td>
+<td>User-created, under a key the agent's template also has</td>
+<td><strong>Rejected</strong> with <code>customskill-preset-not-deletable</code>. Disable it via <code>CustomSkillUpsert</code> with <code>enabled: false</code> instead.</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
-<p>In both reject branches the response carries <code>suggestion: "disable-via-upsert"</code> so panel UIs can offer a "Disable instead" CTA without re-querying the registry.</p>
+<p>In both reject branches the response carries <code>suggestion: "disable-via-upsert"</code> so panel UIs can offer a "Disable instead" CTA without re-querying the registry. The message is the key itself, as shown below. Deleting a skill also deletes its version history, so it can't be reverted. A key the agent doesn't have deletes nothing and answers <code>result: true</code>.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -19315,7 +19435,7 @@ channel-enable endpoint or persisted switch.</p>
 <td><code>skillkey</code></td>
 <td>string</td>
 <td>Yes</td>
-<td>The skill key to remove. User-created rows only. Registry-owned rows reject with <code>disable-via-upsert</code>.</td>
+<td>The skill key to remove. User-created rows only. Other rows are refused with <code>suggestion: "disable-via-upsert"</code>.</td>
 </tr>
 </tbody>
 </table>
@@ -19324,32 +19444,32 @@ channel-enable endpoint or persisted switch.</p>
 <h5 id="response-delete-allowed">Response (delete allowed)</h5>
 <pre><code class="language-json">{ &quot;result&quot;: true, &quot;errors&quot;: [] }
 </code></pre>
-<h5 id="response-preset-owned-rejected-with-suggestion">Response (preset-owned, rejected with suggestion)</h5>
+<h5 id="response-preset-owned-or-registry-owned-rejected-with-suggestion">Response (preset-owned or registry-owned, rejected with suggestion)</h5>
 <pre><code class="language-json">{
   &quot;result&quot;: false,
   &quot;errors&quot;: [
     {
       &quot;code&quot;: 0,
-      &quot;message&quot;: &quot;This skill belongs to the agent preset and cannot be deleted. Use enabled=false to disable it instead.&quot;
+      &quot;message&quot;: &quot;customskill-registry-not-deletable&quot;
     }
   ],
   &quot;suggestion&quot;: &quot;disable-via-upsert&quot;
 }
 </code></pre>
-<h5 id="response-registry-owned-on-a-custom-build-rejected-with-suggestion">Response (registry-owned on a custom build, rejected with suggestion)</h5>
+<h5 id="response-your-own-row-under-a-key-the-template-has-rejected-with-suggestion">Response (your own row under a key the template has, rejected with suggestion)</h5>
 <pre><code class="language-json">{
   &quot;result&quot;: false,
   &quot;errors&quot;: [
     {
       &quot;code&quot;: 0,
-      &quot;message&quot;: &quot;This skill is registry-owned and cannot be deleted. Use enabled=false to disable it instead.&quot;
+      &quot;message&quot;: &quot;customskill-preset-not-deletable&quot;
     }
   ],
   &quot;suggestion&quot;: &quot;disable-via-upsert&quot;
 }
 </code></pre>
 <h4 id="post-useragentcustomskillhistory"><strong>POST</strong> /UserAgent/CustomSkillHistory</h4>
-<p>Returns the version history for one custom skill on a useragent: a per-write audit trail with diff metadata + the resolved actor for each entry. Powers the "Version History" modal in the panel; useful for API consumers building audit views.</p>
+<p>Returns the version history for one custom skill on a useragent: one entry per change, holding the state before it, with diff metadata and the resolved actor. Creating a skill with <code>CustomSkillUpsert</code> adds none. Powers the "Version History" modal in the panel; useful for API consumers building audit views.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -19405,7 +19525,7 @@ channel-enable endpoint or persisted switch.</p>
       &quot;guid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
       &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
       &quot;skillkey&quot;: &quot;cs-content-tone&quot;,
-      &quot;operation&quot;: &quot;upsert&quot;,
+      &quot;operation&quot;: &quot;update-user&quot;,
       &quot;value&quot;: &quot;## Brand Voice\nTone: friendly\n...&quot;,
       &quot;intervalexpr&quot;: null,
       &quot;enabled&quot;: true,
@@ -19436,8 +19556,9 @@ channel-enable endpoint or persisted switch.</p>
 <p><strong>Field semantics.</strong> Each row captures the <strong>BEFORE</strong> state of the action that produced it (the history entry is written before the change is applied). The server-computed <code>after_*</code> and <code>prev_*</code> fields give you the resolved AFTER + previous-version snapshots without you having to walk the list manually:</p>
 <ul>
 <li><code>prev_*</code>: value as of the immediately-older entry (<code>null</code> for the oldest row).</li>
-<li><code>after_*</code>: value the row was left with after this action committed: pulled from the next-newer entry's BEFORE state, or from the skill's current live state for the newest entry. <code>null</code> when <code>operation: "delete-user"</code> (row was removed).</li>
+<li><code>after_*</code>: value the row was left with after this action committed: pulled from the next-newer entry's BEFORE state, or from the skill's current live state for the newest entry.</li>
 <li><code>changed_fields[]</code>: names of fields whose value differs from the immediately-older entry. Subset of <code>["value", "interval", "enabled"]</code>.</li>
+<li><code>operation</code>: <code>update-user</code> (a save), <code>rename</code>, <code>revert-to-history</code>, <code>reset-to-preset</code>, <code>clone-deploy</code> or <code>seed-custom-build</code> (written at deploy), or <code>insert-cascade</code> / <code>update-cascade</code> / <code>delete-cascade</code> (a template update).</li>
 <li><code>changedby_user</code>: resolved actor object (full shape: <code>uuid</code>, <code>firstname</code>, <code>lastname</code>, <code>email</code>, <code>username</code>, <code>avatar</code>, <code>avatarinitials</code>). <code>null</code> when <code>changedby</code> is a system value such as <code>"system"</code> or <code>"backfill-*"</code>, or when the user record was deleted.</li>
 </ul>
 </blockquote>
@@ -19493,13 +19614,9 @@ channel-enable endpoint or persisted switch.</p>
   &quot;current_enabled&quot;: true
 }
 </code></pre>
-<p><code>action</code> is <code>"reverted"</code>, <code>"reset-to-preset"</code>, <code>"deleted"</code> (preset removed upstream), or <code>"no-op"</code> (already matches target).</p>
+<p><code>action</code> is <code>"reverted"</code>, <code>"re-inserted"</code> (a version of a row that no longer exists, written back), <code>"reset"</code> (back to the template's text, interval and switch), <code>"deleted"</code> (the template no longer has the skill, so the row is removed) or <code>"no-op"</code> (already matches the target).</p>
 <h4 id="post-useragentcredentialfieldhistory"><strong>POST</strong> /UserAgent/CredentialFieldHistory</h4>
-<p>Returns the per-field write history for one credential group on a useragent. Sensitive values are redacted at read time as a belt-and-suspenders guard:</p>
-<ul>
-<li>A saved secret, such as a bot token or an auth token, never comes back as its value.</li>
-<li>Wiro-managed credentials return an empty <code>entries[]</code>.</li>
-</ul>
+<p>Returns the earlier values of one credential's fields, newest first (up to 500). Each entry is a value a save replaced, with who replaced it (<code>changedby</code>) and when (<code>changedat</code>). A first save adds no entry, and neither does a list sent whole (Telegram <code>groups</code>, Slack <code>channels</code>, Discord <code>guilds</code>, website <code>urls</code>). A secret's earlier value reads <code>"[REDACTED]"</code>. Wiro-managed credentials return an empty <code>entries[]</code>.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -19550,11 +19667,11 @@ channel-enable endpoint or persisted switch.</p>
       &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
       &quot;credentialkey&quot;: &quot;telegram&quot;,
       &quot;fieldname&quot;: &quot;allowedusers&quot;,
-      &quot;fieldvalue&quot;: [&quot;123456789&quot;],
+      &quot;fieldvalue&quot;: &quot;[\&quot;123456789\&quot;]&quot;,
       &quot;fieldstatus&quot;: &quot;user&quot;,
       &quot;parentfield&quot;: null,
       &quot;ordinal&quot;: 0,
-      &quot;operation&quot;: &quot;upsert&quot;,
+      &quot;operation&quot;: &quot;update&quot;,
       &quot;changedby&quot;: &quot;ada-uuid&quot;,
       &quot;changedby_user&quot;: {
         &quot;uuid&quot;: &quot;ada-uuid&quot;,
@@ -19604,7 +19721,7 @@ channel-enable endpoint or persisted switch.</p>
 <td><code>skills</code></td>
 <td>object</td>
 <td>Yes</td>
-<td>Map of <code>{ "skillname": true | false }</code> for every skill you want to set. Skills not in the map keep their current state.</td>
+<td>Map of <code>{ "skillname": true | false }</code> for every Skill (<code>util-*</code>) you want to set. Skills not in the map keep their current state. A Skill you turn on needs the Skills in its <code>depends_on</code>, and theirs, on already or in the same map: <code>SkillsApply</code> doesn't turn them on and refuses the change with <code>101</code>. <a href="#post-useragentpricingpreview"><code>PricingPreview</code></a> with the same <code>skillOverrides</code> lists the whole set in <code>enabledSkills</code>. Connectors aren't in this map: connect one with <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>ConnectorConnect</code></a>.</td>
 </tr>
 <tr>
 <td><code>tier</code></td>
@@ -19616,13 +19733,13 @@ channel-enable endpoint or persisted switch.</p>
 <td><code>idempotencyKey</code></td>
 <td>string</td>
 <td>Yes</td>
-<td>Caller-generated unique key (UUID recommended). Replays of the same key return the cached response without applying the change again.</td>
+<td>Caller-generated unique key (UUID recommended), a new one for each change. For 10 minutes, the same key with the same <code>skills</code> returns the first call's answer without applying the change again, and the same key with other <code>skills</code> is refused with <code>107</code>. After that, the key of a change that was applied is spent: a call with it that would change something is refused with <code>107</code>, and one that changes nothing answers <code>noOp: true</code>.</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
-<p><strong>Headers:</strong> No extra header is needed. For team agents, use an API key from a project in the agent's team. Keys from another workspace are rejected.</p>
+<p><strong>Headers:</strong> No extra header is needed. For team agents, use an API key from a project in the agent's team. Keys from another workspace are rejected. The caller must be the agent's owner or a team admin of its team. Plain team members are refused with code <code>97</code>, <code>Only a team admin can perform this action on a team-owned agent.</code></p>
 <h5 id="request_5">Request</h5>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/SkillsApply&quot; \
   -H &quot;x-api-key: YOUR_API_KEY&quot; \
@@ -19725,24 +19842,32 @@ channel-enable endpoint or persisted switch.</p>
 </thead>
 <tbody>
 <tr>
+<td><code>0</code></td>
+<td><code>Unknown skill: &lt;names&gt;</code>: a name in <code>skills</code> that is not a Skill, such as one that starts with <code>int-</code> (Connectors are connected with <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>ConnectorConnect</code></a>, not toggled). Nothing is changed. A name the agent still has can still be turned off.</td>
+</tr>
+<tr>
 <td><code>101</code></td>
-<td><code>skillsapply-deps-violation</code>: a final enabled skill has unsatisfied <code>depends_on</code>. Body includes <code>deps[]</code>.</td>
+<td><code>Cannot apply: some skills require other skills to be enabled.</code>: a Skill that would be on needs one in its <code>depends_on</code> that would be off. Body includes <code>deps[]</code> (<code>{ skill, requires }</code>). Send those Skills in the same map.</td>
 </tr>
 <tr>
 <td><code>102</code></td>
-<td><code>skillsapply-conflict</code>: two finally-enabled skills are mutually exclusive. Body includes <code>conflicts[]</code>.</td>
+<td><code>Cannot apply: some skills conflict with each other.</code>: two Skills that would be on are mutually exclusive. Body includes <code>conflicts[]</code>.</td>
 </tr>
 <tr>
 <td><code>104</code></td>
-<td><code>skillsapply-in-progress</code>: another <code>SkillsApply</code> is already running on this useragent. Wait and retry.</td>
+<td><code>A skill update is already in progress for this agent — please retry shortly.</code>: another skill change or plan change of this agent is running. Wait and retry.</td>
 </tr>
 <tr>
 <td><code>105</code></td>
 <td><code>Change the plan with UpgradeTier.</code>: the <code>tier</code> sent is not the agent's current plan. Nothing is changed. Change the plan with <a href="#post-useragentupgradetier"><code>UpgradeTier</code></a>, and send skill changes without <code>tier</code>.</td>
 </tr>
 <tr>
+<td><code>107</code></td>
+<td><code>This idempotencyKey was already used for a different skill change. Nothing was changed; send a new idempotencyKey.</code> (the same key with other <code>skills</code> within 10 minutes), <code>This idempotencyKey was already used for an earlier skill change. Nothing was changed; send a new idempotencyKey.</code> (the key of a change that was applied, used later), or <code>Cached response corrupt — please retry with a new idempotency key.</code> Send a new <code>idempotencyKey</code>.</td>
+</tr>
+<tr>
 <td><code>108</code></td>
-<td><code>skillsapply-db-tx-failed</code>: DB transaction rolled back; safe to retry with a new idempotency key.</td>
+<td><code>Failed to apply skill changes — please retry.</code>: nothing was changed. Retry with a new idempotency key.</td>
 </tr>
 </tbody>
 </table>
@@ -19808,7 +19933,7 @@ channel-enable endpoint or persisted switch.</p>
 <td><code>tier</code></td>
 <td>string</td>
 <td>No</td>
-<td><code>"starter"</code>, <code>"pro"</code> or <code>"max"</code>: the plan to preview. Defaults to the agent's plan, or Starter in a draft. The response lists all three plans under <code>tiers</code>.</td>
+<td><code>"starter"</code>, <code>"pro"</code> or <code>"max"</code>: the plan to preview. Defaults to the plan the agent's renewal bills: a scheduled lower plan (<code>nextplan</code>), else its own plan; Starter in a draft. A value that names no plan is ignored. The response lists all three plans under <code>tiers</code>.</td>
 </tr>
 <tr>
 <td><code>withScheduledTasks</code></td>
@@ -20007,8 +20132,12 @@ channel-enable endpoint or persisted switch.</p>
 <td>Another subscription request for the same agent is in progress</td>
 </tr>
 <tr>
+<td><code>We couldn't confirm this agent's previous checkout. Please try again in a minute.</code></td>
+<td>Wiro couldn't confirm the agent's current plan or an earlier checkout before charging; nothing is charged. Send the call again in a minute</td>
+</tr>
+<tr>
 <td><code>Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.</code></td>
-<td>Another plan payment from the same wallet is still going through</td>
+<td>Another plan payment from the same wallet is still going through (code <code>104</code>)</td>
 </tr>
 <tr>
 <td><code>The wallet was charged $X.XX, but the plan could not be saved. Please contact support and do not try again.</code> (code <code>110</code>)</td>
@@ -20056,9 +20185,10 @@ channel-enable endpoint or persisted switch.</p>
 <ul>
 <li>The agent is already running or queued</li>
 <li>The agent is currently stopping</li>
-<li>Setup is incomplete (status <code>6</code>)</li>
+<li>The agent is at status <code>6</code>, with no plan yet: <code>Agent setup is not complete. Fill in the agent's required settings before starting.</code> Pay its plan with <code>CreateSubscriptionCheckout</code> (<code>useprepaid: true</code>), which queues it</li>
 <li>The agent has no active plan: <code>Subscription required — please subscribe to this agent before starting it.</code>, whatever its balance</li>
 <li>The agent has used the AI usage its plan includes and the balance is under $0.50: code <code>97</code>, with the same message as <code>Message/Send</code> and the agent's <code>usage</code> as <code>agentusage</code> (see <a href="#ai-usage-and-the-balance">AI Usage and the Balance</a>)</li>
+<li>The caller is a plain member of the agent's team: code <code>97</code>, <code>Only a team admin can perform this action on a team-owned agent.</code>, with no <code>agentusage</code></li>
 </ul>
 <h4 id="post-useragentstop"><strong>POST</strong> /UserAgent/Stop</h4>
 <p>Stops a running agent instance. If the agent is Queued (status <code>2</code>), it is immediately set to Stopped. If it is Starting or Running (status <code>3</code>/<code>4</code>), it moves to Stopping (status <code>1</code>) and the agent is shut down gracefully.</p>
@@ -20118,11 +20248,11 @@ channel-enable endpoint or persisted switch.</p>
 <p><strong>Headers:</strong> No extra header is needed. The caller must be the row owner or a team admin (plain team members are rejected with code <code>97</code>).</p>
 <h5 id="guards-run-in-this-order">Guards (run in this order)</h5>
 <ol>
-<li><strong>Access</strong>: owner of the row or a team admin of the UA's team. Members get <code>useragent-team-admin-required</code> (code <code>97</code>); strangers get <code>useragent-access-denied</code> (code <code>96</code>); unknown / already-deleted rows get <code>useragent-not-found</code> (code <code>95</code>).</li>
-<li><strong>Status</strong>: must be in a clean terminal state: <code>0</code> (Stopped), <code>5</code> (Error), or <code>6</code> (Setup Required); <code>5</code> passes only once the agent no longer holds its runtime. Anything in flight (<code>1</code> Stopping, <code>2</code> Queued, <code>3</code> Starting, <code>4</code> Running) is rejected with <code>useragent-delete-running</code>, and so is an errored agent that still holds its runtime. Stop the agent first and wait for status <code>0</code>.</li>
-<li><strong>Active subscription</strong>: a subscription with <code>status: "active"</code> blocks delete (<code>useragent-delete-sub-active</code>). <code>CancelSubscription</code> doesn't lift this right away: the subscription stays <code>active</code> until its period ends (<code>cancelsAt</code>) and is then marked expired. An expired, cancelled or refunded subscription, or none at all, passes.</li>
+<li><strong>Access</strong>: owner of the row or a team admin of the UA's team. Members get <code>Only a team admin can perform this action on a team-owned agent.</code> (code <code>97</code>); strangers get <code>You don't have access to this user agent</code> (code <code>96</code>); unknown / already-deleted rows get <code>User agent not found</code> (code <code>95</code>).</li>
+<li><strong>Status</strong>: must be in a clean terminal state: <code>0</code> (Stopped), <code>5</code> (Error), or <code>6</code> (Setup Required); <code>5</code> passes only once the agent no longer holds its runtime. Anything in flight (<code>1</code> Stopping, <code>2</code> Queued, <code>3</code> Starting, <code>4</code> Running) is rejected with <code>Stop the agent before deleting it.</code> (code <code>0</code>), and so is an errored agent that still holds its runtime. Stop the agent first and wait for status <code>0</code>.</li>
+<li><strong>Active subscription</strong>: a subscription with <code>status: "active"</code> blocks delete with <code>Cancel the agent's subscription before deleting it.</code> (code <code>0</code>) until <code>CancelSubscription</code> has set it to end (<code>pendingdowngrade: "cancel"</code>). After that the agent can be deleted right away: the rest of the paid period is forfeited, nothing is refunded, and the plan ends at <code>cancelsAt</code> without renewing. A plan paid by card before agent plans moved to the balance (<code>provider: "stripe"</code>) still blocks after <code>CancelSubscription</code> until its period ends (<code>cancelsAt</code>) and it is marked expired. An expired, cancelled or refunded subscription, or none at all, passes.</li>
 </ol>
-<p>Delete is safe to repeat: calling it again on an agent that's already deleted returns <code>useragent-not-found</code> (code <code>95</code>, as in guard 1), so treat that code on a retry as already deleted. The stored <code>deletedat</code> never changes.</p>
+<p>Delete is safe to repeat: calling it again on an agent that's already deleted returns <code>User agent not found</code> (code <code>95</code>, as in guard 1), so treat that code on a retry as already deleted. The stored <code>deletedat</code> never changes.</p>
 <h5 id="response_19">Response</h5>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
@@ -20145,24 +20275,24 @@ channel-enable endpoint or persisted switch.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>useragent-not-found</code> (95)</td>
+<td><code>User agent not found</code> (95)</td>
 <td>Unknown guid, or the row is already soft-deleted</td>
 </tr>
 <tr>
-<td><code>useragent-access-denied</code> (96)</td>
+<td><code>You don't have access to this user agent</code> (96)</td>
 <td>Caller is not the owner and not a member of the UA's team</td>
 </tr>
 <tr>
-<td><code>useragent-team-admin-required</code> (97)</td>
+<td><code>Only a team admin can perform this action on a team-owned agent.</code> (97)</td>
 <td>Caller is a team member but not a team admin on the UA's team</td>
 </tr>
 <tr>
-<td><code>useragent-delete-running</code></td>
+<td><code>Stop the agent before deleting it.</code> (0)</td>
 <td>Status is <code>1</code> / <code>2</code> / <code>3</code> / <code>4</code>, or <code>5</code> while the agent still holds its runtime. Call <code>Stop</code> first and retry once status reaches <code>0</code></td>
 </tr>
 <tr>
-<td><code>useragent-delete-sub-active</code></td>
-<td>An active subscription is still attached. After <code>CancelSubscription</code> it stays active until the period ends (<code>cancelsAt</code>); retry once it has expired</td>
+<td><code>Cancel the agent's subscription before deleting it.</code> (0)</td>
+<td>An active subscription that <code>CancelSubscription</code> hasn't set to end. Call <code>CancelSubscription</code>, then <code>Delete</code> again. A plan paid by card before plans moved to the balance blocks until its period ends (<code>cancelsAt</code>); retry once it has expired</td>
 </tr>
 </tbody>
 </table>
@@ -20292,7 +20422,7 @@ channel-enable endpoint or persisted switch.</p>
 <tr>
 <td><code>events[].kind</code></td>
 <td>string</td>
-<td>Fine-grained event class. One of: <code>"turn_started"</code>, <code>"turn_ended"</code> (an LLM turn boundary); <code>"tool_started"</code>, <code>"tool_completed"</code> (one pair per tool call); <code>"tool_blocked"</code> (a tool call the agent's safety rules refused); <code>"cron_finished"</code> (a scheduled task finished); <code>"user_message"</code> (a message received on a connected Telegram, Slack or Discord channel, not web chat); <code>"token_usage"</code> (a billed turn's token usage: chat / cron / voice post-call); <code>"token_usage_idempotent"</code> (a replayed usage report, already billed, informational only); <code>"media_relay"</code> (files from a reply were delivered); <code>"background_reply"</code> (a result that finished in the background was delivered to the chat). Rows about what was done to the agent have <code>AGENT_*</code> kinds, and two note rows, <code>"runtime_log_unavailable"</code> and <code>"runtime_log_deleted"</code>, say what part of a day is missing; see <a href="/docs/agent-logs#who-did-what-rows">Agent Logs</a>. Show any kind you don't recognize by its <code>title</code>.</td>
+<td>Fine-grained event class. One of: <code>"turn_started"</code>, <code>"turn_ended"</code> (an LLM turn boundary); <code>"tool_started"</code>, <code>"tool_completed"</code> (one pair per tool call); <code>"tool_blocked"</code> (a tool call the agent's safety rules refused); <code>"cron_finished"</code> (a scheduled task finished); <code>"user_message"</code> (a message received on a connected Telegram, Slack or Discord channel, not web chat); <code>"token_usage"</code> (a billed turn's token usage: chat / Scheduled Task / voice post-call); <code>"token_usage_idempotent"</code> (a replayed usage report, already billed, informational only); <code>"media_relay"</code> (files from a reply were delivered); <code>"background_reply"</code> (a result that finished in the background was delivered to the chat). Rows about what was done to the agent have <code>AGENT_*</code> kinds, and two note rows, <code>"runtime_log_unavailable"</code> and <code>"runtime_log_deleted"</code>, say what part of a day is missing; see <a href="/docs/agent-logs#who-did-what-rows">Agent Logs</a>. Show any kind you don't recognize by its <code>title</code>.</td>
 </tr>
 <tr>
 <td><code>events[].tool</code></td>
@@ -20357,7 +20487,7 @@ channel-enable endpoint or persisted switch.</p>
 <tr>
 <td><code>events[].userUuid</code></td>
 <td>string | null</td>
-<td>Originating actor's UUID. <code>"system"</code> for cron / internal events. May be missing on older rows, in which case the server falls back to the agent owner.</td>
+<td>Originating actor's UUID. <code>"system"</code> for Scheduled Task runs and internal events. May be missing on older rows, in which case the server falls back to the agent owner.</td>
 </tr>
 <tr>
 <td><code>events[].user</code></td>
@@ -20681,7 +20811,7 @@ channel-enable endpoint or persisted switch.</p>
 </div>
 </div>
 <h4 id="post-useragentpin"><strong>POST</strong> /UserAgent/Pin</h4>
-<p>Pins or unpins an agent instance from the user's pinned-agents quick list. Pinned agents appear in the global header dropdown (<code>PinnedAgents</code>) and get an unread badge from <code>PinnedUnread</code>.</p>
+<p>Pins or unpins an agent in its workspace. <code>pinned</code> is a flag on the agent: on a team agent any team member can set it, and every member's <code>PinnedAgents</code> shows it. Pinned agents appear in the global header dropdown (<code>PinnedAgents</code>) and get an unread badge from <code>PinnedUnread</code>.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -20714,7 +20844,7 @@ channel-enable endpoint or persisted switch.</p>
 <pre><code class="language-json">{ &quot;result&quot;: true, &quot;errors&quot;: [] }
 </code></pre>
 <h4 id="post-useragentpinnedagents"><strong>POST</strong> /UserAgent/PinnedAgents</h4>
-<p>Lists the user's pinned agents. Returns the <strong>same composed shape as <code>MyAgents</code></strong>: every field that appears on a <code>MyAgents</code> row except <code>lastactivityat</code> appears here, just filtered to <code>pinned: true</code>.</p>
+<p>Lists the pinned agents of the API key's workspace. Returns the <strong>same composed shape as <code>MyAgents</code></strong>: every field that appears on a <code>MyAgents</code> row except <code>lastactivityat</code> appears here, just filtered to <code>pinned: true</code>.</p>
 <p>No request body fields are required: the workspace of your API key's project scopes the response.</p>
 <h5 id="response_25">Response</h5>
 <pre><code class="language-json">{
@@ -20737,7 +20867,7 @@ channel-enable endpoint or persisted switch.</p>
       &quot;creditsyncat&quot;: 1714694410,
       &quot;usage&quot;: {
         &quot;period&quot;: &quot;2026-05&quot;,
-        &quot;resetsat&quot;: 1717200000,
+        &quot;resetsat&quot;: 1780272000,
         &quot;includedusd&quot;: 30,
         &quot;usedusd&quot;: 12.4,
         &quot;leftusd&quot;: 17.6,
@@ -20767,8 +20897,8 @@ channel-enable endpoint or persisted switch.</p>
         &quot;status&quot;: &quot;active&quot;,
         &quot;amount&quot;: 30,
         &quot;currency&quot;: &quot;usd&quot;,
-        &quot;currentperiodend&quot;: 1717200000,
-        &quot;renewaldate&quot;: &quot;2026-06-01T00:00:00.000Z&quot;,
+        &quot;currentperiodend&quot;: 1780272000,
+        &quot;renewaldate&quot;: &quot;2026-06-02T00:00:00.000Z&quot;,
         &quot;daysremaining&quot;: 28,
         &quot;pendingdowngrade&quot;: null,
         &quot;provider&quot;: &quot;prepaid&quot;
@@ -20784,7 +20914,12 @@ channel-enable endpoint or persisted switch.</p>
           &quot;starter&quot;: { &quot;priceUsd&quot;: 5 },
           &quot;pro&quot;:     { &quot;priceUsd&quot;: 30 },
           &quot;max&quot;:     { &quot;priceUsd&quot;: 100 }
-        }
+        },
+        &quot;plans&quot;: [
+          { &quot;key&quot;: &quot;starter&quot;, &quot;title&quot;: &quot;Starter&quot;, &quot;priceUsd&quot;: 5,   &quot;includedUsageUsd&quot;: 5,   &quot;diskMb&quot;: 250 },
+          { &quot;key&quot;: &quot;pro&quot;,     &quot;title&quot;: &quot;Pro&quot;,     &quot;priceUsd&quot;: 30,  &quot;includedUsageUsd&quot;: 30,  &quot;diskMb&quot;: 500 },
+          { &quot;key&quot;: &quot;max&quot;,     &quot;title&quot;: &quot;Max&quot;,     &quot;priceUsd&quot;: 100, &quot;includedUsageUsd&quot;: 100, &quot;diskMb&quot;: 1024 }
+        ]
       },
       &quot;enabledSkills&quot;: [&quot;util-social-posting-common&quot;, &quot;util-anti-ai-human-copy&quot;, &quot;util-chat-markdown-reporting&quot;],
       &quot;tokenRates&quot;: {
@@ -20880,7 +21015,7 @@ channel-enable endpoint or persisted switch.</p>
 <td><code>useragentguid</code></td>
 <td>string</td>
 <td>Yes</td>
-<td>Useragent must be in <code>status: 4</code> and have <code>util-web-channel</code> enabled (Voice Receptionist / Voice Sales Rep presets enable it by default; toggle it on other agents via <code>SkillsApply</code>).</td>
+<td>The agent must be running (<code>status: 4</code>) with the Web Voice Channel Skill (<code>util-web-channel</code>) on. The Voice Receptionist and Voice Sales Rep templates have it on. On another agent, turn it on with <a href="#post-useragentskillsapply"><code>SkillsApply</code></a> together with the two Skills it depends on, Voice Receptionist Rules (<code>util-voice-receptionist</code>) and Voice Call Prep Rules (<code>util-voice-call-prep</code>): <code>{ "util-web-channel": true, "util-voice-receptionist": true, "util-voice-call-prep": true }</code>. Sent alone, it is refused with code <code>101</code> and <code>deps[]</code> unless those two are already on. Deploy's <code>skills</code> turns them on itself.</td>
 </tr>
 <tr>
 <td><code>session_metadata.page_url</code></td>
@@ -20943,7 +21078,7 @@ channel-enable endpoint or persisted switch.</p>
 </tr>
 <tr>
 <td><code>util-web-channel not enabled</code></td>
-<td>Toggle the skill via <code>SkillsApply</code> or pick a preset that bundles it.</td>
+<td>The Web Voice Channel Skill (<code>util-web-channel</code>) is off. Turn it on with <code>SkillsApply</code> together with <code>util-voice-receptionist</code> and <code>util-voice-call-prep</code> (sent alone it gets <code>101</code>), or deploy from the Voice Receptionist or Voice Sales Rep template.</td>
 </tr>
 <tr>
 <td><code>Web voice from this origin needs an API key.</code></td>
@@ -21103,7 +21238,7 @@ channel-enable endpoint or persisted switch.</p>
 <tr>
 <td><code>channel</code></td>
 <td><code>"twilio"</code> | <code>"web"</code></td>
-<td>Which voice surface served the call.</td>
+<td>Which voice channel served the call.</td>
 </tr>
 <tr>
 <td><code>callsid</code></td>
@@ -21533,7 +21668,7 @@ channel-enable endpoint or persisted switch.</p>
 </div>
 </div>
 <h3 id="retired-extra-credit-packs">Retired: Extra Credit Packs</h3>
-<p>Extra credit packs are retired. An agent has no balance of its own: past its plan's included AI usage it uses the Wiro balance of its workspace, so funds go to that balance (see <a href="#adding-funds">Adding Funds</a>). <code>extracreditpacks</code> on <code>Agent/Detail</code> and under <code>agent</code> on agent rows is always <code>[]</code>.</p>
+<p>Extra credit packs are retired. An agent has no balance of its own: past its plan's included AI usage it uses the Wiro balance of its workspace, so funds go to that balance (see <a href="#adding-funds">Adding Funds</a>). <code>extracreditpacks</code> on <code>Agent/List</code> rows, <code>Agent/Detail</code> and under <code>agent</code> on agent rows is always <code>[]</code>.</p>
 <h4 id="post-useragentcreateextracreditcheckout"><strong>POST</strong> /UserAgent/CreateExtraCreditCheckout</h4>
 <p>Retired. The call charges nothing, changes nothing and answers:</p>
 <pre><code class="language-json">{
@@ -21546,6 +21681,8 @@ channel-enable endpoint or persisted switch.</p>
 }
 </code></pre>
 <p>Detect it by <code>retired: true</code>, and add funds to the balance instead.</p>
+<h3 id="plan-changes-renewals">Plan Changes &amp; Renewals</h3>
+<p>Cancel, change or renew an agent's plan. Every charge is paid from the Wiro balance of the agent's workspace (see <a href="#paying-for-plans">Paying for Plans</a>).</p>
 <h4 id="post-useragentcancelsubscription"><strong>POST</strong> /UserAgent/CancelSubscription</h4>
 <p>Schedules the subscription to end at the current billing period's expiry (a <strong>cancel-at-period-end</strong> pattern). The agent keeps running on its plan until that moment. No refund is issued for the remaining days: the period was paid up front.</p>
 <p>A plan that was paid by card is cancelled the same way, also one that is set to switch to the balance at the end of its period: the switch is dropped, and the plan ends at the end of its period with <code>pendingdowngrade: "cancel"</code>. Nothing is charged or refunded. On a team agent, only a team admin or the organization owner can cancel such a plan.</p>
@@ -21575,16 +21712,16 @@ channel-enable endpoint or persisted switch.</p>
 <h5 id="response_31">Response</h5>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
-  &quot;cancelsAt&quot;: 1717200000,
+  &quot;cancelsAt&quot;: 1780358400,
   &quot;errors&quot;: []
 }
 </code></pre>
 <ul>
-<li><code>cancelsAt</code> is the Unix timestamp when the subscription will finish.</li>
+<li><code>cancelsAt</code> is the Unix timestamp when the plan ends: one day after <code>currentperiodend</code> for a plan paid from the balance, the period end for a plan paid by card.</li>
 <li>Server-side, <code>subscription.pendingdowngrade</code> is flipped to <code>"cancel"</code> and <code>subscription.status</code> stays <code>"active"</code> until the period end. Subsequent <code>UserAgent/Detail</code> responses reflect this: <code>subscription.pendingdowngrade = "cancel"</code> and the usual <code>currentperiodend</code>.</li>
-<li>A scheduled move to a lower plan is dropped: the agent's <code>nextplan</code> goes back to <code>null</code>.</li>
+<li>A scheduled move to a lower plan stays: <code>nextplan</code> keeps it. When the plan ends, the agent shows that plan and its price (<code>tier</code>, <code>monthlypriceusd</code>, <code>nextplan: null</code>), which is what <code>RenewSubscription</code> then charges. Undoing the cancel with <code>RenewSubscription</code> keeps the move scheduled, and <code>UpgradeTier</code> with the agent's current plan drops it (<code>nextplan: null</code>). A plan paid by card is the exception: its cancel drops the move, and <code>nextplan</code> goes back to <code>null</code>.</li>
 <li>To reverse the cancellation <strong>before</strong> the period ends, call <code>POST /UserAgent/RenewSubscription</code>. It clears the flag without charging the balance again, and a plan paid by card goes back to switching to the balance at the end of its period.</li>
-<li>When the period actually ends, the daily cron marks the subscription <code>"expired"</code> and stops the agent (<code>status: 0</code>). At that point the user must call <code>POST /UserAgent/RenewSubscription</code> (or <code>CreateSubscriptionCheckout</code> for a fresh sub) to continue.</li>
+<li>When the plan ends (at <code>cancelsAt</code>), Wiro marks the subscription <code>"expired"</code> and stops the agent (<code>status: 0</code>). At that point the user must call <code>POST /UserAgent/RenewSubscription</code> (or <code>CreateSubscriptionCheckout</code> for a fresh sub) to continue.</li>
 </ul>
 <p><strong>Common errors:</strong></p>
 <div class="docs-param-table">
@@ -21814,19 +21951,20 @@ channel-enable endpoint or persisted switch.</p>
 <li>Agent status is unchanged (still running / stopped / whatever it was).</li>
 </ul>
 <h5 id="response-renew">Response: renew</h5>
-<p>Called after the subscription has expired (daily cron flipped it to <code>status: "expired"</code> and stopped the agent). The renewal rolls the existing expired subscription forward into a fresh 30-day <code>active</code> row instead of inserting a new one:</p>
+<p>Called after the subscription has expired (Wiro marked it <code>status: "expired"</code> when the plan ended and stopped the agent). The renewal rolls the existing expired subscription forward into a fresh 30-day <code>active</code> row instead of inserting a new one:</p>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
   &quot;action&quot;: &quot;renewed&quot;,
   &quot;plan&quot;: &quot;agent&quot;,
   &quot;tier&quot;: &quot;starter&quot;,
   &quot;amount&quot;: 5,
+  &quot;chargedUsd&quot;: 5,
   &quot;errors&quot;: []
 }
 </code></pre>
 <ul>
 <li>Renews the subscription in place: <code>status</code> becomes <code>"active"</code>, a new 30-day period starts now (<code>currentperiodend</code> moves to now + 30 days), and <code>pendingdowngrade</code> is cleared to <code>null</code>.</li>
-<li>Debits <code>amount</code>, the plan's price, from the wallet (caller's personal wallet, or the agent's team wallet if the agent is team-scoped).</li>
+<li><code>amount</code> is the plan's price; <code>chargedUsd</code> is what the balance paid (a user or team discount lowers it), taken from the owner's wallet for a personal agent or the team's wallet for a team agent.</li>
 <li><code>tier</code> names the plan the renewal charged.</li>
 <li>Starts the period's included AI usage again in full and stamps the new <code>creditperiod</code>.</li>
 <li>If the agent was in <code>status: 0</code> (Stopped) or <code>5</code> (Error), it's auto-queued back to <code>2</code> (Queued). It starts again without an extra <code>Start</code> call. Statuses <code>1</code>/<code>2</code>/<code>3</code>/<code>4</code> are already in progress and settle on their own.</li>
@@ -21847,6 +21985,10 @@ channel-enable endpoint or persisted switch.</p>
 <td>Called on an active subscription with <strong>no</strong> pending cancel (nothing to do)</td>
 </tr>
 <tr>
+<td><code>Subscription is already active. It renews from your balance when its period ends.</code></td>
+<td>Called on a plan paid by card that already switches to the balance at its period end (nothing to do)</td>
+</tr>
+<tr>
 <td><code>No expired subscription found to renew</code></td>
 <td>No active sub and no expired sub: agent was never subscribed, or data is gone</td>
 </tr>
@@ -21863,8 +22005,12 @@ channel-enable endpoint or persisted switch.</p>
 <td>Another subscription request for the same agent is in progress; nothing is charged</td>
 </tr>
 <tr>
+<td><code>We couldn't confirm this agent's previous checkout. Please try again in a minute.</code></td>
+<td>Wiro couldn't confirm the agent's current plan or an earlier checkout before charging; nothing is charged</td>
+</tr>
+<tr>
 <td><code>Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.</code></td>
-<td>Another plan payment from the same wallet is still going through; nothing is charged</td>
+<td>Another plan payment from the same wallet is still going through (code <code>104</code>); nothing is charged</td>
 </tr>
 <tr>
 <td><code>The wallet was charged $X.XX, but the renewal did not finish. Please contact support and do not try again.</code> (code <code>110</code>)</td>
@@ -21890,8 +22036,8 @@ channel-enable endpoint or persisted switch.</p>
               │ pendingdowngrade:      │
               │   &quot;cancel&quot;             │
               └───────────┬────────────┘
-                          │ currentperiodend reached
-                          │ (daily cron)
+                          │ cancelsAt reached
+                          │ (the plan ends)
                           ▼
               ┌────────────────────────┐
               │ status: &quot;expired&quot;      │
@@ -21932,7 +22078,7 @@ channel-enable endpoint or persisted switch.</p>
 <tr>
 <td><strong>AI usage past the plan</strong></td>
 <td><code>usage.balanceusd</code></td>
-<td>Paid from the Wiro balance of the agent's workspace, at the same token rates. A new turn needs included usage left or a balance of at least $0.50.</td>
+<td>Paid from the Wiro balance of the agent's workspace, at the same token rates. A new turn needs an active plan, and included usage left or a balance of at least $0.50.</td>
 </tr>
 <tr>
 <td><strong>Disk</strong></td>
@@ -21947,7 +22093,7 @@ channel-enable endpoint or persisted switch.</p>
 <tr>
 <td><strong>Per-turn token cost</strong></td>
 <td><code>tokenRates</code> (per-model)</td>
-<td>Each chat / cron / voice-prep turn is priced by the tokens its model uses, with input, cache read, cache write and output priced separately. The same on every plan: a larger plan includes more AI usage.</td>
+<td>Each chat, Scheduled Task, voice-prep and voice post-call turn is priced by the tokens its model uses, with input, cache read, cache write and output priced separately. The same on every plan: a larger plan includes more AI usage.</td>
 </tr>
 <tr>
 <td><strong>Model runs</strong></td>
@@ -21962,7 +22108,7 @@ channel-enable endpoint or persisted switch.</p>
 <p>Agent plans are paid from your Wiro balance, in the dashboard, the API and MCP alike: a new plan, a move to a higher plan and every renewal are charged to the balance of the agent's workspace, and an agent plan has no card payment. Always pass <code>useprepaid: true</code> on <code>Deploy</code> and <code>CreateSubscriptionCheckout</code>. Make sure the balance covers the plan's price before calling them; otherwise the call is refused with code <code>97</code> and <code>neededusd</code> (see <a href="#paying-for-plans">Paying for Plans</a>). The same balance pays the agent's AI usage past its plan.</p>
 <h3 id="ai-usage-and-the-balance">AI Usage and the Balance</h3>
 <p>AI usage is counted as the agent works, not at <code>Message/Send</code> time. Wiro prices the tokens of each call with the per-model <code>tokenRates</code> and takes the cost from the plan's included usage while it lasts, then from the balance. You don't send anything: billing is fully server-side. The agent's <code>usage</code> shows where it stands: <code>usedusd</code> and <code>leftusd</code> of this period's <code>includedusd</code>, <code>frombalanceusd</code> taken from the balance, and <code>balanceusd</code>, the balance it can still use. Per-turn token counts and cost also ride on each assistant message and arrive over the message WebSocket as an <code>agent_usage_report</code> frame (see <a href="/docs/agent-messaging">Agent Messaging</a> and <a href="/docs/agent-websocket">Agent WebSocket</a>).</p>
-<p>A turn that is running always finishes, so the balance can go a few cents below zero, as it can with model runs. A new turn needs included usage left or a balance of at least $0.50 (<code>usage.minbalanceusd</code>). When both are short, the agent pauses: <code>usage.paused</code> reads <code>true</code> with <code>pausedreason: "balance"</code>, and <code>POST /UserAgent/Message/Send</code> and <code>POST /UserAgent/Start</code> answer code <code>97</code> with a sentence for whoever pays for the agent and the agent's <code>usage</code> as <code>agentusage</code>, whose <code>resetsat</code> is the plan's renewal. Start still needs an active plan first: an agent without one gets <code>Subscription required…</code>, whatever its balance. Tell this refusal from a plan refusal by <code>agentusage</code>, where a plan payment the balance can't cover carries <code>neededusd</code>. Send's answer:</p>
+<p>A new turn needs an active plan, and included usage left or a balance of at least $0.50 (<code>usage.minbalanceusd</code>). When the included usage is used up and the balance is under $0.50, the agent pauses: <code>usage.paused</code> reads <code>true</code> with <code>pausedreason: "balance"</code>, and <code>POST /UserAgent/Message/Send</code> and <code>POST /UserAgent/Start</code> answer code <code>97</code> with a sentence for whoever pays for the agent and the agent's <code>usage</code> as <code>agentusage</code>, whose <code>resetsat</code> is the end of the plan's period. A turn that is already running stops at its next model call and ends with <code>[CREDITS_EXHAUSTED]</code> (see <a href="/docs/agent-messaging#failed-turns">Failed turns</a>). The calls it made before that are still charged, so the balance can end a few cents lower, even below zero, as it can with model runs. Start still needs an active plan first: an agent without one gets <code>Subscription required…</code>, whatever its balance. Tell this refusal by <code>agentusage</code>: a plan payment the balance can't cover carries <code>neededusd</code> instead, and a plain team member's code <code>97</code> carries neither. Send's answer:</p>
 <pre><code class="language-json">{
   &quot;result&quot;: false,
   &quot;errors&quot;: [
@@ -21974,7 +22120,7 @@ channel-enable endpoint or persisted switch.</p>
   &quot;agentstatus&quot;: 4,
   &quot;agentusage&quot;: {
     &quot;period&quot;: &quot;2026-05&quot;,
-    &quot;resetsat&quot;: 1717200000,
+    &quot;resetsat&quot;: 1780272000,
     &quot;includedusd&quot;: 30,
     &quot;usedusd&quot;: 30,
     &quot;leftusd&quot;: 0,
@@ -21989,6 +22135,7 @@ channel-enable endpoint or persisted switch.</p>
 }
 </code></pre>
 <p>The date is left out when the plan's renewal can't be read, and for a team agent the sentence says <code>the team's balance</code>. In Telegram, Slack and Discord the agent tells people <code>This agent is paused for now. It runs again once its owner adds funds or its plan renews.</code>, with no amount. Once funds are added, the agent answers again.</p>
+<p>An agent runs only while its plan is active, whatever its balance. When its plan ends, the agent stops and its <code>usage</code> reads <code>paused: true</code> with <code>pausedreason: "plan"</code>, as does an agent that never had a plan. Adding funds doesn't start it: renew the plan with <a href="#post-useragentrenewsubscription"><code>RenewSubscription</code></a>, or start a new one with <a href="#post-useragentcreatesubscriptioncheckout"><code>CreateSubscriptionCheckout</code></a> and <code>useprepaid: true</code>. Either call queues the agent to start. Until then, <code>Start</code> answers <code>Subscription required…</code>. A message sent before the agent has stopped gets code <code>97</code> from <code>Message/Send</code>, with <code>agentstatus</code>, <code>agentusage</code> and <code>&lt;agent&gt; has no active plan. Choose a plan to keep it running.</code></p>
 <p>On each renewal the included usage starts again in full (<code>usedusd</code> back to <code>0</code>), and <code>usage.period</code> and <code>creditperiod</code> advance to the new <code>'YYYY-MM'</code> window. Funds added to the balance reset nothing: the agent just has more to use.</p>
 <p>For the full record (every AI usage charge, model run, plan payment and funds added), call <a href="/docs/agent-transactions#tx-transactionlist"><code>POST /UserAgent/TransactionList</code></a> (see <a href="/docs/agent-transactions">Agent Transactions</a>).</p>
 <h2 id="error-messages">Error Messages</h2>
@@ -22053,11 +22200,11 @@ channel-enable endpoint or persisted switch.</p>
 </tr>
 <tr>
 <td><code>Agent setup is not complete. Fill in the agent's required settings before starting.</code></td>
-<td>Status is <code>6</code>: save the agent's missing required credentials with <code>CredentialUpsert</code> or <code>CredentialProjectBind</code>, then call <code>POST /UserAgent/Update</code> to move the agent to status <code>0</code>. Connectors never hold an agent at status <code>6</code>.</td>
+<td>Status is <code>6</code>: the agent has no plan. Pay it with <code>CreateSubscriptionCheckout</code> (<code>useprepaid: true</code>), which queues it. Credentials and connectors never hold an agent at status <code>6</code>.</td>
 </tr>
 <tr>
 <td><code>Subscription required — please subscribe to this agent before starting it.</code></td>
-<td><code>Start</code> called on an agent with no active plan, most often after its plan ended. Call <code>RenewSubscription</code> (<code>useprepaid: true</code>) to continue.</td>
+<td><code>Start</code> called on an agent with no active plan, whatever its balance. Renew a plan that ended with <code>RenewSubscription</code> (<code>{ guid }</code>). For an agent that never had a plan, <code>RenewSubscription</code> answers <code>No expired subscription found to renew</code>: start one with <code>CreateSubscriptionCheckout</code> (<code>useprepaid: true</code>).</td>
 </tr>
 <tr>
 <td><code>Subscription already active for this useragent. Cancel or modify the existing subscription instead.</code></td>
@@ -22070,6 +22217,22 @@ channel-enable endpoint or persisted switch.</p>
 <tr>
 <td><code>tier must be starter, pro or max</code></td>
 <td><code>Deploy</code> or <code>CreateSubscriptionCheckout</code> with a <code>tier</code> that names no plan. Nothing is created or charged.</td>
+</tr>
+<tr>
+<td><code>Unknown skill: &lt;name&gt;.</code>, or for a name that starts with <code>int-</code>, <code>Unknown skill: &lt;name&gt;. Connectors are connected with UserAgent/ConnectorConnect, not turned on as skills.</code></td>
+<td><code>Deploy</code> with a <code>skills</code> name that <code>Skills/List</code> doesn't list. Nothing is created or charged</td>
+</tr>
+<tr>
+<td><code>Unknown credential: &lt;key&gt;. Connect a connector after the deploy with UserAgent/ConnectorConnect.</code></td>
+<td><code>Deploy</code> with a <code>credentials</code> key that isn't a credential, such as a connector's slug. Nothing is created or charged</td>
+</tr>
+<tr>
+<td><code>Unknown credential: &lt;key&gt;. Connectors are connected with UserAgent/ConnectorConnect.</code></td>
+<td><code>CredentialUpsert</code> with a <code>credentialkey</code> that isn't a credential, such as a connector's slug. Nothing is saved</td>
+</tr>
+<tr>
+<td><code>Unknown skill: &lt;names&gt;</code> (code <code>0</code>)</td>
+<td><code>SkillsApply</code> with a name that <code>Skills/List</code> doesn't list. Nothing is changed</td>
 </tr>
 <tr>
 <td><code>targetTier must be starter, pro or max</code></td>
@@ -22088,7 +22251,7 @@ channel-enable endpoint or persisted switch.</p>
 <td><code>UpgradeTier</code> with <code>allowDowngrade: true</code> and a <code>targetTier</code> higher than the agent's plan, such as after the plan changed in another tab or at a renewal. Nothing is changed or charged</td>
 </tr>
 <tr>
-<td><code>No active plan. Use /UserAgent/CreateSubscriptionCheckout to start one on the plan you pick.</code></td>
+<td><code>No active plan. Use /UserAgent/CreateSubscriptionCheckout with useprepaid: true to start one on the plan you pick.</code></td>
 <td><code>UpgradeTier</code> called without an active subscription</td>
 </tr>
 <tr>
@@ -22096,12 +22259,24 @@ channel-enable endpoint or persisted switch.</p>
 <td><code>UpgradeTier</code> to a lower plan while the subscription is cancelled at period end. Undo the cancel with <code>RenewSubscription</code> first</td>
 </tr>
 <tr>
+<td><code>The move to the Starter plan started with this billing period, and its payment moves the agent there, so it can no longer be undone. Nothing was changed. Once the agent shows the Starter plan, change the plan again.</code> (the plan's name)</td>
+<td><code>UpgradeTier</code> with the agent's current plan, on a plan paid by card whose scheduled lower plan already started with its new period. Nothing is changed</td>
+</tr>
+<tr>
+<td><code>This plan is set to end when its period ends, so it cannot be changed. Renew it first: it then renews from your balance.</code></td>
+<td><code>UpgradeTier</code> on a plan paid by card that is set to end. Undo the cancel with <code>RenewSubscription</code> first; nothing is charged</td>
+</tr>
+<tr>
+<td><code>We couldn't read this plan's billing. Nothing was changed; please try again in a minute.</code></td>
+<td><code>UpgradeTier</code> or <code>RenewSubscription</code> on a plan paid by card when its card billing can't be read; nothing is charged</td>
+</tr>
+<tr>
 <td><code>Your balance is $3.10; this plan needs $100.00. Add funds to continue.</code> (the amounts; a team agent's starts <code>The team's balance is</code>)</td>
 <td><code>Deploy</code>, <code>CreateSubscriptionCheckout</code>, <code>UpgradeTier</code> or <code>RenewSubscription</code> when the balance can't pay the plan (code <code>97</code>, with <code>neededusd</code>). Nothing is created or charged</td>
 </tr>
 <tr>
 <td><code>Wallet deduction failed: {error}</code></td>
-<td><code>UpgradeTier</code>: wallet write itself failed (rare; transient backend error)</td>
+<td><code>Deploy</code> or <code>CreateSubscriptionCheckout</code> with <code>useprepaid: true</code>, <code>RenewSubscription</code> or <code>UpgradeTier</code>: the wallet write itself failed (rare; transient backend error); nothing was charged</td>
 </tr>
 <tr>
 <td><code>Another change to this agent's plan is going through. Nothing was changed; please try again in a minute.</code></td>
@@ -22117,7 +22292,7 @@ channel-enable endpoint or persisted switch.</p>
 </tr>
 <tr>
 <td><code>Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.</code></td>
-<td><code>Deploy</code> or <code>CreateSubscriptionCheckout</code> with <code>useprepaid: true</code>, <code>RenewSubscription</code> or <code>UpgradeTier</code> (code <code>104</code> on <code>UpgradeTier</code>) while another plan payment from the same wallet is going through. A <code>Deploy</code> refused this way creates no agent</td>
+<td><code>Deploy</code> or <code>CreateSubscriptionCheckout</code> with <code>useprepaid: true</code>, <code>RenewSubscription</code> or <code>UpgradeTier</code> (code <code>104</code> on each of them) while another plan payment from the same wallet is going through. A <code>Deploy</code> refused this way creates no agent</td>
 </tr>
 <tr>
 <td><code>The wallet was charged $X.XX, but the plan could not be saved. Please contact support and do not try again.</code>, the same with <code>the renewal did not finish</code> or <code>the plan change did not finish</code> (code <code>110</code>)</td>
@@ -22150,6 +22325,10 @@ channel-enable endpoint or persisted switch.</p>
 <tr>
 <td><code>My Instagram Bot used the $30.00 of AI usage its plan includes this month, and your balance is under $0.50. Add funds to keep it running, or it starts again when the plan renews on 1 June 2026.</code> (the agent's name, the amount and the renewal date, left out when it can't be read; for a team agent, <code>the team's balance</code>)</td>
 <td><code>Message/Send</code> or <code>Start</code> (code <code>97</code>) while the agent has used the AI usage its plan includes and the balance is under $0.50. The response includes <code>agentusage</code> (the agent's <code>usage</code>), and Send's also <code>agentstatus</code>, so your client can offer to add funds.</td>
+</tr>
+<tr>
+<td><code>My Instagram Bot has no active plan. Choose a plan to keep it running.</code> (the agent's name)</td>
+<td><code>Message/Send</code> (code <code>97</code>) to an agent whose plan has ended, before it has stopped. The response includes <code>agentstatus</code> and <code>agentusage</code> with <code>pausedreason: "plan"</code>. Adding funds doesn't help: call <code>RenewSubscription</code>, or <code>CreateSubscriptionCheckout</code> with <code>useprepaid: true</code>.</td>
 </tr>
 <tr>
 <td>A spend limit refusal (code <code>93</code>), such as <code>This agent's monthly spend limit is reached ($20.35 of $20.00). It resets on December 1, 2026 at 00:00 UTC.</code></td>
@@ -22311,7 +22490,7 @@ detail = requests.post(
     json={&quot;slug&quot;: &quot;instagram-manager&quot;}
 ).json()
 agent = detail[&quot;agents&quot;][0]
-print(f&quot;Credentials needed: {list(agent['credentials'].keys())}&quot;)
+print(f&quot;Connectors to connect: {agent['suggestedconnectors']}&quot;)  # e.g. ['instagram']
 
 # Deploy a new instance (prepaid wallet, Starter plan)
 deploy = requests.post(
@@ -22327,7 +22506,8 @@ deploy = requests.post(
 instance_guid = deploy[&quot;useragents&quot;][0][&quot;guid&quot;]
 print(f&quot;Deployed: {instance_guid}&quot;)
 
-# Connect a connector (see Agent Connectors)
+# Connect a Connector that takes a key, Serper here. Instagram connects by
+# signing in instead (see Agent Connectors)
 requests.post(
     &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot;,
     headers=headers,
@@ -22424,6 +22604,7 @@ async function main() {
     { slug: 'instagram-manager' }
   );
   const agent = detail.data.agents[0];
+  console.log('Connectors to connect:', agent.suggestedconnectors); // e.g. ['instagram']
 
   // Deploy a new instance (prepaid wallet, Starter plan)
   const deploy = await axios.post(
@@ -22434,7 +22615,8 @@ async function main() {
   const instanceGuid = deploy.data.useragents[0].guid;
   console.log('Deployed:', instanceGuid);
 
-  // Connect a connector (see Agent Connectors)
+  // Connect a Connector that takes a key, Serper here. Instagram connects by
+  // signing in instead (see Agent Connectors)
   await axios.post(
     'https://api.wiro.ai/v1/UserAgent/ConnectorConnect',
     {
@@ -22672,7 +22854,7 @@ print(response.body);
 <li><a href="/docs/agent-websocket">Agent WebSocket</a>: Real-time response streaming</li>
 <li><a href="/docs/agent-webhooks">Agent Webhooks</a>: Receive agent responses via HTTP callbacks</li>
 <li><a href="/docs/agent-transactions">Agent Transactions</a>: The agent's spending in dollars: AI usage, model runs, plan payments and funds added</li>
-<li><a href="/docs/agent-logs">Agent Logs</a>: Per-instance activity feed (tool calls, cron runs, message exchanges)</li>
+<li><a href="/docs/agent-logs">Agent Logs</a>: Per-instance activity feed (tool calls, Scheduled Task runs, message exchanges)</li>
 <li><a href="/docs/authentication">Authentication</a>: API key setup and authentication methods</li>
 </ul>
                 </article>
@@ -22686,12 +22868,12 @@ print(response.body);
                     {
                       "label": "Python",
                       "language": "python",
-                      "code": "import requests\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\n# List available agents (no auth required)\ncatalog = requests.post(\n    \"https://api.wiro.ai/v1/Agent/List\",\n    json={\"limit\": 10}\n).json()\nfor agent in catalog[\"agents\"]:\n    print(f\"{agent['title']} ({agent['slug']}): Starter ${agent['tiers']['starter']['priceUsd']}/mo\")\n\n# Get agent details by slug\ndetail = requests.post(\n    \"https://api.wiro.ai/v1/Agent/Detail\",\n    json={\"slug\": \"instagram-manager\"}\n).json()\nagent = detail[\"agents\"][0]\nprint(f\"Credentials needed: {list(agent['credentials'].keys())}\")\n\n# Deploy a new instance (prepaid wallet, Starter plan)\ndeploy = requests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Deploy\",\n    headers=headers,\n    json={\n        \"agentguid\": agent[\"guid\"],\n        \"title\": \"My Instagram Bot\",\n        \"useprepaid\": True,\n        \"tier\": \"starter\"\n    }\n).json()\ninstance_guid = deploy[\"useragents\"][0][\"guid\"]\nprint(f\"Deployed: {instance_guid}\")\n\n# Connect a connector (see Agent Connectors)\nrequests.post(\n    \"https://api.wiro.ai/v1/UserAgent/ConnectorConnect\",\n    headers=headers,\n    json={\n        \"useragentguid\": instance_guid,\n        \"slug\": \"serper\",\n        \"values\": { \"apikey\": \"YOUR_SERPER_API_KEY\" }\n    }\n)\n\n# A prepaid Deploy already queued the agent: start it only when it is stopped (0) or errored (5)\ninstance = requests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Detail\",\n    headers=headers,\n    json={\"guid\": instance_guid}\n).json()\nif instance[\"useragents\"][0][\"status\"] in (0, 5):\n    requests.post(\n        \"https://api.wiro.ai/v1/UserAgent/Start\",\n        headers=headers,\n        json={\"guid\": instance_guid}\n    )\n\n# Check status\nimport time\nwhile True:\n    resp = requests.post(\n        \"https://api.wiro.ai/v1/UserAgent/Detail\",\n        headers=headers,\n        json={\"guid\": instance_guid}\n    ).json()\n    status = resp[\"useragents\"][0][\"status\"]\n    print(f\"Status: {status}\")\n    if status == 4:\n        print(\"Agent is running!\")\n        break\n    if status == 5:\n        print(\"Agent errored\")\n        break\n    time.sleep(5)\n\n# Move up to Pro (prorated, debited from wallet)\nrequests.post(\n    \"https://api.wiro.ai/v1/UserAgent/UpgradeTier\",\n    headers=headers,\n    json={\"guid\": instance_guid, \"targetTier\": \"pro\"}\n)\n\n# Read the agent's AI usage and the balance it runs on past its plan\nusage = requests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Detail\",\n    headers=headers,\n    json={\"guid\": instance_guid}\n).json()[\"useragents\"][0][\"usage\"]\nprint(f\"AI usage: ${usage['usedusd']:.2f} of ${usage['includedusd']:.2f}, balance ${usage['balanceusd']:.2f}\")\n\n# List your deployed agents\nmy_agents = requests.post(\n    \"https://api.wiro.ai/v1/UserAgent/MyAgents\",\n    headers=headers,\n    json={\"limit\": 50}\n).json()\nfor ua in my_agents[\"useragents\"]:\n    print(f\"{ua['title']} - status: {ua['status']} - plan: {ua.get('tier')}\")\n\n# Stop the agent\nrequests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Stop\",\n    headers=headers,\n    json={\"guid\": instance_guid}\n)\n"
+                      "code": "import requests\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\n# List available agents (no auth required)\ncatalog = requests.post(\n    \"https://api.wiro.ai/v1/Agent/List\",\n    json={\"limit\": 10}\n).json()\nfor agent in catalog[\"agents\"]:\n    print(f\"{agent['title']} ({agent['slug']}): Starter ${agent['tiers']['starter']['priceUsd']}/mo\")\n\n# Get agent details by slug\ndetail = requests.post(\n    \"https://api.wiro.ai/v1/Agent/Detail\",\n    json={\"slug\": \"instagram-manager\"}\n).json()\nagent = detail[\"agents\"][0]\nprint(f\"Connectors to connect: {agent['suggestedconnectors']}\")  # e.g. ['instagram']\n\n# Deploy a new instance (prepaid wallet, Starter plan)\ndeploy = requests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Deploy\",\n    headers=headers,\n    json={\n        \"agentguid\": agent[\"guid\"],\n        \"title\": \"My Instagram Bot\",\n        \"useprepaid\": True,\n        \"tier\": \"starter\"\n    }\n).json()\ninstance_guid = deploy[\"useragents\"][0][\"guid\"]\nprint(f\"Deployed: {instance_guid}\")\n\n# Connect a Connector that takes a key, Serper here. Instagram connects by\n# signing in instead (see Agent Connectors)\nrequests.post(\n    \"https://api.wiro.ai/v1/UserAgent/ConnectorConnect\",\n    headers=headers,\n    json={\n        \"useragentguid\": instance_guid,\n        \"slug\": \"serper\",\n        \"values\": { \"apikey\": \"YOUR_SERPER_API_KEY\" }\n    }\n)\n\n# A prepaid Deploy already queued the agent: start it only when it is stopped (0) or errored (5)\ninstance = requests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Detail\",\n    headers=headers,\n    json={\"guid\": instance_guid}\n).json()\nif instance[\"useragents\"][0][\"status\"] in (0, 5):\n    requests.post(\n        \"https://api.wiro.ai/v1/UserAgent/Start\",\n        headers=headers,\n        json={\"guid\": instance_guid}\n    )\n\n# Check status\nimport time\nwhile True:\n    resp = requests.post(\n        \"https://api.wiro.ai/v1/UserAgent/Detail\",\n        headers=headers,\n        json={\"guid\": instance_guid}\n    ).json()\n    status = resp[\"useragents\"][0][\"status\"]\n    print(f\"Status: {status}\")\n    if status == 4:\n        print(\"Agent is running!\")\n        break\n    if status == 5:\n        print(\"Agent errored\")\n        break\n    time.sleep(5)\n\n# Move up to Pro (prorated, debited from wallet)\nrequests.post(\n    \"https://api.wiro.ai/v1/UserAgent/UpgradeTier\",\n    headers=headers,\n    json={\"guid\": instance_guid, \"targetTier\": \"pro\"}\n)\n\n# Read the agent's AI usage and the balance it runs on past its plan\nusage = requests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Detail\",\n    headers=headers,\n    json={\"guid\": instance_guid}\n).json()[\"useragents\"][0][\"usage\"]\nprint(f\"AI usage: ${usage['usedusd']:.2f} of ${usage['includedusd']:.2f}, balance ${usage['balanceusd']:.2f}\")\n\n# List your deployed agents\nmy_agents = requests.post(\n    \"https://api.wiro.ai/v1/UserAgent/MyAgents\",\n    headers=headers,\n    json={\"limit\": 50}\n).json()\nfor ua in my_agents[\"useragents\"]:\n    print(f\"{ua['title']} - status: {ua['status']} - plan: {ua.get('tier')}\")\n\n# Stop the agent\nrequests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Stop\",\n    headers=headers,\n    json={\"guid\": instance_guid}\n)\n"
                     },
                     {
                       "label": "Node.js",
                       "language": "javascript",
-                      "code": "const axios = require('axios');\n\nconst headers = {\n  'x-api-key': 'YOUR_API_KEY',\n  'Content-Type': 'application/json'\n};\n\nasync function main() {\n  // List available agents (no auth required)\n  const catalog = await axios.post(\n    'https://api.wiro.ai/v1/Agent/List',\n    { limit: 10 }\n  );\n  catalog.data.agents.forEach(a =>\n    console.log(`${a.title} (${a.slug}): Starter $${a.tiers.starter.priceUsd}/mo`)\n  );\n\n  // Get agent details by slug\n  const detail = await axios.post(\n    'https://api.wiro.ai/v1/Agent/Detail',\n    { slug: 'instagram-manager' }\n  );\n  const agent = detail.data.agents[0];\n\n  // Deploy a new instance (prepaid wallet, Starter plan)\n  const deploy = await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Deploy',\n    { agentguid: agent.guid, title: 'My Instagram Bot', useprepaid: true, tier: 'starter' },\n    { headers }\n  );\n  const instanceGuid = deploy.data.useragents[0].guid;\n  console.log('Deployed:', instanceGuid);\n\n  // Connect a connector (see Agent Connectors)\n  await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/ConnectorConnect',\n    {\n      useragentguid: instanceGuid,\n      slug: 'serper',\n      values: { apikey: 'YOUR_SERPER_API_KEY' }\n    },\n    { headers }\n  );\n\n  // A prepaid Deploy already queued the agent: start it only when it is stopped (0) or errored (5)\n  const current = await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Detail',\n    { guid: instanceGuid },\n    { headers }\n  );\n  if ([0, 5].includes(current.data.useragents[0].status)) {\n    await axios.post(\n      'https://api.wiro.ai/v1/UserAgent/Start',\n      { guid: instanceGuid },\n      { headers }\n    );\n  }\n\n  // Poll until running\n  while (true) {\n    const resp = await axios.post(\n      'https://api.wiro.ai/v1/UserAgent/Detail',\n      { guid: instanceGuid },\n      { headers }\n    );\n    const status = resp.data.useragents[0].status;\n    console.log('Status:', status);\n    if (status === 4) { console.log('Agent is running!'); break; }\n    if (status === 5) { console.log('Agent errored'); break; }\n    await new Promise(r => setTimeout(r, 5000));\n  }\n\n  // Move up to Pro\n  await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/UpgradeTier',\n    { guid: instanceGuid, targetTier: 'pro' },\n    { headers }\n  );\n\n  // Read the agent's AI usage and the balance it runs on past its plan\n  const usageResp = await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Detail',\n    { guid: instanceGuid },\n    { headers }\n  );\n  const usage = usageResp.data.useragents[0].usage;\n  console.log(`AI usage: $${usage.usedusd} of $${usage.includedusd}, balance $${usage.balanceusd}`);\n\n  // Stop the agent\n  await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Stop',\n    { guid: instanceGuid },\n    { headers }\n  );\n}\n\nmain();\n"
+                      "code": "const axios = require('axios');\n\nconst headers = {\n  'x-api-key': 'YOUR_API_KEY',\n  'Content-Type': 'application/json'\n};\n\nasync function main() {\n  // List available agents (no auth required)\n  const catalog = await axios.post(\n    'https://api.wiro.ai/v1/Agent/List',\n    { limit: 10 }\n  );\n  catalog.data.agents.forEach(a =>\n    console.log(`${a.title} (${a.slug}): Starter $${a.tiers.starter.priceUsd}/mo`)\n  );\n\n  // Get agent details by slug\n  const detail = await axios.post(\n    'https://api.wiro.ai/v1/Agent/Detail',\n    { slug: 'instagram-manager' }\n  );\n  const agent = detail.data.agents[0];\n  console.log('Connectors to connect:', agent.suggestedconnectors); // e.g. ['instagram']\n\n  // Deploy a new instance (prepaid wallet, Starter plan)\n  const deploy = await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Deploy',\n    { agentguid: agent.guid, title: 'My Instagram Bot', useprepaid: true, tier: 'starter' },\n    { headers }\n  );\n  const instanceGuid = deploy.data.useragents[0].guid;\n  console.log('Deployed:', instanceGuid);\n\n  // Connect a Connector that takes a key, Serper here. Instagram connects by\n  // signing in instead (see Agent Connectors)\n  await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/ConnectorConnect',\n    {\n      useragentguid: instanceGuid,\n      slug: 'serper',\n      values: { apikey: 'YOUR_SERPER_API_KEY' }\n    },\n    { headers }\n  );\n\n  // A prepaid Deploy already queued the agent: start it only when it is stopped (0) or errored (5)\n  const current = await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Detail',\n    { guid: instanceGuid },\n    { headers }\n  );\n  if ([0, 5].includes(current.data.useragents[0].status)) {\n    await axios.post(\n      'https://api.wiro.ai/v1/UserAgent/Start',\n      { guid: instanceGuid },\n      { headers }\n    );\n  }\n\n  // Poll until running\n  while (true) {\n    const resp = await axios.post(\n      'https://api.wiro.ai/v1/UserAgent/Detail',\n      { guid: instanceGuid },\n      { headers }\n    );\n    const status = resp.data.useragents[0].status;\n    console.log('Status:', status);\n    if (status === 4) { console.log('Agent is running!'); break; }\n    if (status === 5) { console.log('Agent errored'); break; }\n    await new Promise(r => setTimeout(r, 5000));\n  }\n\n  // Move up to Pro\n  await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/UpgradeTier',\n    { guid: instanceGuid, targetTier: 'pro' },\n    { headers }\n  );\n\n  // Read the agent's AI usage and the balance it runs on past its plan\n  const usageResp = await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Detail',\n    { guid: instanceGuid },\n    { headers }\n  );\n  const usage = usageResp.data.useragents[0].usage;\n  console.log(`AI usage: $${usage.usedusd} of $${usage.includedusd}, balance $${usage.balanceusd}`);\n\n  // Stop the agent\n  await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Stop',\n    { guid: instanceGuid },\n    { headers }\n  );\n}\n\nmain();\n"
                     },
                     {
                       "label": "PHP",
