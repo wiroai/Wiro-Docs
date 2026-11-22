@@ -27594,6 +27594,1778 @@ echo json_encode(['ok' =&gt; true]);
                 </script>
               </div>
 
+              <!-- ==================== AGENT CONNECTORS ==================== -->
+              <div class="docs-page-section" data-page="agent-connectors" style="display: none">
+                <article class="docs-section">
+                  <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="/docs/markdown/agent-connectors.md" target="_blank" class="docs-section-md-btn">View</a> <a href="/docs/markdown/agent-connectors.md" download class="docs-section-md-btn">Download</a></div>
+<h1>Agent Connectors</h1>
+<p class="section-subtitle">Connect a Wiro agent to the services it works with: browse the connector catalog, connect a connector with its fields or its vendor's sign-in, pick the accounts it may act on, read each connection's state and disconnect it. Every call of the cycle, with its request and answer.</p>
+<h2 id="overview">Overview</h2>
+<p>A connector gives an agent the tools of one outside service: Google search through Serper, a Shopify store, Google Ads, HubSpot, a Facebook Page. Each connector is one row of Wiro's connector catalog, named by its <code>slug</code>, such as <code>serper</code>, <code>shopify</code> or <code>facebook-pages</code>. You connect a connector to one agent at a time, always with your customer's own credentials, in one of two ways:</p>
+<ul>
+<li><strong>Fields.</strong> The values the vendor issues, such as an API key, an app password or a store address, sent once with <code>ConnectorConnect</code>. Wiro stores them encrypted. Where the connector has a check, Wiro first makes one read call to the vendor with them and refuses values the vendor refuses.</li>
+<li><strong>Sign-in.</strong> The vendor's own consent screen in a browser. <code>ConnectorConnect</code> answers with an <code>authorizeUrl</code>; your customer opens it, agrees, and the vendor sends the browser back through Wiro to your page. Vendors whose sign-in needs an app of your own (the Google and Meta families, LinkedIn, TikTok, X, Reddit, Pinterest, Tumblr, Threads, HubSpot, Mailchimp, Shopify) take that app's client id and secret with the connect.</li>
+</ul>
+<p>Once a connector is connected, the agent restarts and has the connector's tools, named <code>&lt;slug&gt;__&lt;tool&gt;</code>. Values and tokens are never sent back in an answer and never reach the agent's chat.</p>
+<p>Every connector also has a public page, <code>https://wiro.ai/connectors/{slug}</code>, with its fields, setup steps, tools and the calls to connect it.</p>
+<h3 id="the-cycle-at-a-glance">The cycle at a glance</h3>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Call</th>
+<th>What you get</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1. Browse the catalog</td>
+<td><a href="#post-agentconnectorlist"><code>POST /AgentConnector/List</code></a></td>
+<td>Every available connector with its Connect fields and tools. No API key needed.</td>
+</tr>
+<tr>
+<td>2. Read one connector</td>
+<td><a href="#post-agentconnectordetail"><code>POST /AgentConnector/Detail</code></a></td>
+<td>The same row for one <code>slug</code>. No API key needed.</td>
+</tr>
+<tr>
+<td>3a. Connect with fields</td>
+<td><a href="#connect-with-fields"><code>POST /UserAgent/ConnectorConnect</code></a> with <code>values</code></td>
+<td><code>status: "connected"</code>, and the agent restarts.</td>
+</tr>
+<tr>
+<td>3b. Or start a sign-in</td>
+<td><a href="#connect-with-a-sign-in"><code>POST /UserAgent/ConnectorConnect</code></a> with <code>redirecturl</code></td>
+<td><code>status: "pending"</code> and the <code>authorizeUrl</code> to open in the browser.</td>
+</tr>
+<tr>
+<td>4. The browser comes back</td>
+<td><a href="#the-callback-and-your-redirect-url"><code>GET /AgentConnector/OAuthCallback</code></a>, called by the vendor</td>
+<td>A redirect to your <code>redirecturl</code> with <code>connector_connected=true</code> or <code>connector_error=&lt;code&gt;</code>.</td>
+</tr>
+<tr>
+<td>5. Read the state</td>
+<td><a href="#post-useragentconnectorlist"><code>POST /UserAgent/ConnectorList</code></a></td>
+<td>Each connection's <code>status</code>: <code>connected</code>, <code>pending</code>, <code>reauth</code> or <code>error</code>.</td>
+</tr>
+<tr>
+<td>6. Pick accounts</td>
+<td><a href="#post-useragentconnectoraccounts"><code>POST /UserAgent/ConnectorAccounts</code></a>, <a href="#post-useragentconnectorsetaccounts"><code>POST /UserAgent/ConnectorSetAccounts</code></a></td>
+<td>The Pages, ad accounts or properties the connection can reach, and the ones it may act on.</td>
+</tr>
+<tr>
+<td>7. Disconnect</td>
+<td><a href="#post-useragentconnectordisconnect"><code>POST /UserAgent/ConnectorDisconnect</code></a></td>
+<td>The connection, its values and tokens deleted, and the agent restarts.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<h3 id="who-your-customer-sees">Who your customer sees</h3>
+<p>A sign-in you start with your project API key comes from your product, so the vendor's consent screen names you, never Wiro: your organization's name (else your team's name, else your account's name) and your organization's avatar when it is an https image. A connector that signs in with an app of your own shows that app's name and logo, as you set them in the vendor's developer console. Sign-ins started in Wiro's own panel show Wiro.</p>
+<p>Connector texts your customer may read (field labels, help texts, error sentences) name the vendor only.</p>
+<h2 id="authentication">Authentication</h2>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Call</th>
+<th>API key</th>
+<th>Who may call it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AgentConnector/List</code>, <code>AgentConnector/Detail</code></td>
+<td>Not needed</td>
+<td>Anyone. A signed-in caller gets the same answer.</td>
+</tr>
+<tr>
+<td><code>UserAgent/ConnectorList</code></td>
+<td>Required</td>
+<td>The agent's owner, or a member of the agent's team.</td>
+</tr>
+<tr>
+<td><code>UserAgent/ConnectorConnect</code>, <code>UserAgent/ConnectorAccounts</code>, <code>UserAgent/ConnectorSetAccounts</code>, <code>UserAgent/ConnectorDisconnect</code></td>
+<td>Required</td>
+<td>The agent's owner, or an admin of the agent's team.</td>
+</tr>
+<tr>
+<td><code>AgentConnector/OAuthCallback</code></td>
+<td>None</td>
+<td>The vendor's redirect in your customer's browser. You never call it.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Send your project API key in the <code>x-api-key</code> header, as on every other endpoint (see <a href="/docs/authentication">Authentication</a>). Every answer has <code>result</code> and <code>errors: [{ code, message }]</code>; HTTP 200 with <code>result: false</code> is a refusal. The access refusals:</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Message</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>95</code></td>
+<td><code>User agent not found</code></td>
+</tr>
+<tr>
+<td><code>96</code></td>
+<td><code>You don't have access to this user agent</code></td>
+</tr>
+<tr>
+<td><code>97</code></td>
+<td><code>Only a team admin can perform this action on a team-owned agent.</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<h2 id="the-catalog">The Catalog</h2>
+<h3 id="post-agentconnectorlist"><strong>POST</strong> /AgentConnector/List</h3>
+<p>Lists every available connector, in display order (<code>sortorder</code>, then title), at most 500 rows. Public: no API key needed.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>search</code></td>
+<td>string</td>
+<td>No</td>
+<td>Matches the slug, title or description, ignoring case. At most 100 characters.</td>
+</tr>
+<tr>
+<td><code>category</code></td>
+<td>string</td>
+<td>No</td>
+<td>One category, such as <code>social</code>, <code>ads</code>, <code>commerce</code>, <code>analytics</code>, <code>crm</code>, <code>content</code>, <code>email</code> or <code>data</code>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/AgentConnector/List&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{ &quot;search&quot;: &quot;facebook&quot; }'
+</code></pre>
+<h5 id="response" aria-level="3">Response</h5>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;agentconnectors&quot;: [
+    {
+      &quot;slug&quot;: &quot;facebook-pages&quot;,
+      &quot;title&quot;: &quot;Facebook Pages&quot;,
+      &quot;description&quot;: &quot;Publish posts, photos and videos to your Facebook Pages and read their engagement.&quot;,
+      &quot;category&quot;: &quot;social&quot;,
+      &quot;iconurl&quot;: &quot;https://wiro.ai/images/icons/skills/facebook.svg&quot;,
+      &quot;websiteurl&quot;: &quot;https://www.facebook.com&quot;,
+      &quot;authtype&quot;: &quot;provider-oauth&quot;,
+      &quot;transport&quot;: &quot;local&quot;,
+      &quot;credentialfields&quot;: [
+        {
+          &quot;name&quot;: &quot;appid&quot;,
+          &quot;label&quot;: &quot;App ID&quot;,
+          &quot;description&quot;: &quot;1. Go to [Meta for Developers → My Apps](https://developers.facebook.com/apps/)\n2. Click **Create App** ...\n5. Add `https://api.wiro.ai/v1/AgentConnector/OAuthCallback` as a Valid OAuth Redirect URI&quot;,
+          &quot;required&quot;: true,
+          &quot;secret&quot;: false,
+          &quot;format&quot;: &quot;text&quot;,
+          &quot;pattern&quot;: &quot;^[0-9]+$&quot;,
+          &quot;serveronly&quot;: true,
+          &quot;mode&quot;: &quot;oauth&quot;
+        },
+        {
+          &quot;name&quot;: &quot;appsecret&quot;,
+          &quot;label&quot;: &quot;App Secret&quot;,
+          &quot;description&quot;: &quot;1. Go to [Meta for Developers](https://developers.facebook.com/apps/) → select your app\n2. Go to **App Settings → Basic** ...&quot;,
+          &quot;required&quot;: true,
+          &quot;secret&quot;: true,
+          &quot;format&quot;: &quot;password&quot;,
+          &quot;serveronly&quot;: true,
+          &quot;mode&quot;: &quot;oauth&quot;
+        },
+        {
+          &quot;name&quot;: &quot;systemusertoken&quot;,
+          &quot;label&quot;: &quot;System User Token&quot;,
+          &quot;description&quot;: &quot;Use a token generated for a **Meta Business Manager System User** ...&quot;,
+          &quot;required&quot;: true,
+          &quot;secret&quot;: true,
+          &quot;format&quot;: &quot;password&quot;,
+          &quot;mode&quot;: &quot;key&quot;
+        }
+      ],
+      &quot;accountpickers&quot;: [
+        { &quot;key&quot;: &quot;pages&quot;, &quot;label&quot;: &quot;Facebook Pages&quot;, &quot;description&quot;: &quot;&quot;, &quot;multiple&quot;: true }
+      ],
+      &quot;scopes&quot;: [&quot;pages_show_list&quot;, &quot;pages_manage_posts&quot;, &quot;pages_read_engagement&quot;],
+      &quot;modes&quot;: [&quot;oauth&quot;, &quot;key&quot;],
+      &quot;wiroapp&quot;: false,
+      &quot;tools&quot;: [
+        { &quot;name&quot;: &quot;list_pages&quot;, &quot;title&quot;: &quot;List Pages&quot;, &quot;description&quot;: &quot;Lists the Facebook Pages this connection can reach.&quot;, &quot;readonly&quot;: true, &quot;destructive&quot;: false }
+      ],
+      &quot;docs&quot;: {
+        &quot;overview&quot;: &quot;Publish posts, photos and videos to your Facebook Pages and read their engagement.&quot;,
+        &quot;revoke&quot;: &quot;Remove the app's access in your Facebook Pages account's connected apps settings, then disconnect it here.&quot;
+      },
+      &quot;sortorder&quot;: 110,
+      &quot;updatedat&quot;: 1795390000
+    }
+  ]
+}
+</code></pre>
+<p>The example is shortened: real help texts are longer, and <code>tools</code> lists every tool.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>slug</code></td>
+<td>The connector's name in every call: 2 to 30 lower-case letters, digits or dashes, starting with a letter. It never changes.</td>
+</tr>
+<tr>
+<td><code>title</code>, <code>description</code></td>
+<td>Display name and one-line summary.</td>
+</tr>
+<tr>
+<td><code>category</code></td>
+<td>One lower-case word for grouping, or <code>null</code>.</td>
+</tr>
+<tr>
+<td><code>iconurl</code>, <code>websiteurl</code></td>
+<td>The vendor's logo and site, or <code>null</code>.</td>
+</tr>
+<tr>
+<td><code>authtype</code></td>
+<td>How it connects: <code>fields</code> (values on a Connect card), <code>provider-oauth</code> (the vendor's sign-in with your own app, and for some vendors a key instead), <code>headers</code> (values the vendor's own MCP server takes, such as an API key), <code>oauth</code> (the vendor's MCP sign-in, no app of yours needed) or <code>none</code> (nothing to enter).</td>
+</tr>
+<tr>
+<td><code>transport</code></td>
+<td>Where its tools run: <code>local</code> (inside the agent), <code>streamable-http</code> or <code>sse</code> (the vendor's own MCP server). Nothing you send depends on it.</td>
+</tr>
+<tr>
+<td><code>credentialfields</code></td>
+<td>The Connect card: one entry per value to ask for. See <a href="#connect-card-fields">Connect card fields</a>. A <code>headers</code> row lists its values in the same shape. Never a value.</td>
+</tr>
+<tr>
+<td><code>accountpickers</code></td>
+<td>The account lists a connection chooses from after it connects, each <code>{ key, label, description, multiple }</code>. Empty when there is nothing to pick. See <a href="#account-pickers">Account Pickers</a>.</td>
+</tr>
+<tr>
+<td><code>scopes</code></td>
+<td>The OAuth scopes the sign-in asks for (<code>oauth</code> and <code>provider-oauth</code> rows).</td>
+</tr>
+<tr>
+<td><code>modes</code></td>
+<td><code>provider-oauth</code> rows only: <code>["oauth"]</code> (sign-in only) or <code>["oauth", "key"]</code> (a sign-in, or a key or token instead). Empty for other rows.</td>
+</tr>
+<tr>
+<td><code>wiroapp</code></td>
+<td><code>true</code> when the vendor can also be signed in with Wiro's own app, which only Wiro's own panel uses. With your API key you always send your own app's keys.</td>
+</tr>
+<tr>
+<td><code>tools</code></td>
+<td>The tools the agent gets, each <code>{ name, title, description, readonly, destructive }</code>. <code>name</code> is the tool's name before the slug prefix. A connector whose server lists its tools only after a sign-in can show none until its first connection.</td>
+</tr>
+<tr>
+<td><code>docs</code></td>
+<td>Optional public page copy: <code>{ overview, setup, revoke, limits }</code> (<code>setup</code> is a list of steps), or <code>null</code>.</td>
+</tr>
+<tr>
+<td><code>sortorder</code>, <code>updatedat</code></td>
+<td>Display order and the row's last change (Unix seconds).</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<h3 id="post-agentconnectordetail"><strong>POST</strong> /AgentConnector/Detail</h3>
+<p>One connector by its <code>slug</code>, in the same shape as a <code>List</code> row. Public: no API key needed.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>slug</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The connector's slug.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/AgentConnector/Detail&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{ &quot;slug&quot;: &quot;serper&quot; }'
+</code></pre>
+<h5 id="response_1" aria-level="3">Response</h5>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;agentconnectors&quot;: [
+    {
+      &quot;slug&quot;: &quot;serper&quot;,
+      &quot;title&quot;: &quot;Serper&quot;,
+      &quot;description&quot;: &quot;Google search results through Serper: organic results, answer box and related questions.&quot;,
+      &quot;category&quot;: &quot;data&quot;,
+      &quot;iconurl&quot;: &quot;https://wiro.ai/images/icons/skills/serper.svg&quot;,
+      &quot;websiteurl&quot;: &quot;https://serper.dev&quot;,
+      &quot;authtype&quot;: &quot;fields&quot;,
+      &quot;transport&quot;: &quot;local&quot;,
+      &quot;credentialfields&quot;: [
+        {
+          &quot;name&quot;: &quot;apikey&quot;,
+          &quot;label&quot;: &quot;Serper API Key&quot;,
+          &quot;description&quot;: &quot;1. Sign up at [serper.dev](https://serper.dev). No credit card; new accounts get **2,500 free searches**.\n2. Open the dashboard and copy your **API key** from the **API Key** section.\n3. Paste it here.&quot;,
+          &quot;required&quot;: true,
+          &quot;secret&quot;: true,
+          &quot;format&quot;: &quot;password&quot;,
+          &quot;placeholder&quot;: &quot;your Serper.dev API key&quot;
+        }
+      ],
+      &quot;accountpickers&quot;: [],
+      &quot;scopes&quot;: [],
+      &quot;modes&quot;: [],
+      &quot;wiroapp&quot;: false,
+      &quot;tools&quot;: [
+        {
+          &quot;name&quot;: &quot;web_search&quot;,
+          &quot;title&quot;: &quot;Search the web (Google results via Serper)&quot;,
+          &quot;description&quot;: &quot;Searches Google through Serper and returns the organic results (title, link, snippet, position, date), plus the answer box, knowledge graph, related questions and related searches when Google shows them.&quot;,
+          &quot;readonly&quot;: true,
+          &quot;destructive&quot;: false
+        }
+      ],
+      &quot;docs&quot;: { &quot;overview&quot;: &quot;Google search results through Serper: organic results, answer box and related questions.&quot; },
+      &quot;sortorder&quot;: 380,
+      &quot;updatedat&quot;: 1795390000
+    }
+  ]
+}
+</code></pre>
+<p>A slug that is not in the catalog, or a connector that is no longer offered, answers <code>result: false</code> with <code>Connector not found.</code></p>
+<h3 id="connect-card-fields">Connect card fields</h3>
+<p>Build your Connect form from <code>credentialfields</code>, in their order:</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>The key to send in <code>values</code>.</td>
+</tr>
+<tr>
+<td><code>label</code></td>
+<td>The field's label.</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>Step-by-step help in Markdown (links, <code>**bold**</code>, <code>`code`</code>, numbered lists), never HTML. Render it as Markdown. Where the help names the redirect URI to register in your own app, the address is already filled in.</td>
+</tr>
+<tr>
+<td><code>required</code></td>
+<td>The connect is refused while it has no value, sent now or saved before.</td>
+</tr>
+<tr>
+<td><code>secret</code></td>
+<td>Mask the input, and never show a saved value: answers only list the names of saved values.</td>
+</tr>
+<tr>
+<td><code>format</code></td>
+<td>The input to show and the check Wiro runs: <code>text</code>, <code>password</code>, <code>email</code>, <code>url</code> (an https address, or a bare host such as <code>shop.example.com</code>), <code>textarea</code> (several lines), <code>json</code> (a JSON value, or its text: a service account file, a structured list) or <code>select</code> (one of <code>options</code>).</td>
+</tr>
+<tr>
+<td><code>options</code></td>
+<td><code>select</code> only: <code>[{ value, label }]</code>. Send the <code>value</code>.</td>
+</tr>
+<tr>
+<td><code>placeholder</code>, <code>pattern</code>, <code>maxlength</code></td>
+<td>Optional input hints. Wiro checks <code>pattern</code> (a regular expression) and <code>maxlength</code> too. A value is at most 65,536 characters.</td>
+</tr>
+<tr>
+<td><code>serveronly</code></td>
+<td><code>true</code> for your own OAuth app's keys (client id and secret): Wiro uses them for the sign-in and its token refreshes only, and they never reach the agent.</td>
+</tr>
+<tr>
+<td><code>mode</code></td>
+<td><code>provider-oauth</code> rows only: <code>oauth</code> (a key of your own app, sent with a sign-in) or <code>key</code> (the key way in, such as a Meta System User token). A field without <code>mode</code> belongs to both ways. Show the two ways as two choices on the card.</td>
+</tr>
+<tr>
+<td><code>source</code></td>
+<td><code>wiro_project</code> on the Wiro connector's project field: show a picker of your Wiro projects instead of an input. See <a href="#the-wiro-connector">The Wiro connector</a>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<h2 id="connecting">Connecting</h2>
+<p>All three ways go through one call, <code>POST /UserAgent/ConnectorConnect</code>. The connector's <code>authtype</code> and <code>modes</code> from the catalog tell you which body to send.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th><code>authtype</code></th>
+<th>Send</th>
+<th>Answer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>fields</code>, <code>headers</code></td>
+<td><code>values</code></td>
+<td><code>connected</code></td>
+</tr>
+<tr>
+<td><code>none</code></td>
+<td>nothing but <code>useragentguid</code> and <code>slug</code></td>
+<td><code>connected</code></td>
+</tr>
+<tr>
+<td><code>provider-oauth</code> with <code>mode: "key"</code></td>
+<td><code>values</code> of the <code>key</code> way</td>
+<td><code>connected</code></td>
+</tr>
+<tr>
+<td><code>provider-oauth</code> (<code>mode</code> <code>oauth</code>, the default)</td>
+<td>your app's keys in <code>values</code>, and <code>redirecturl</code></td>
+<td><code>pending</code> and <code>authorizeUrl</code></td>
+</tr>
+<tr>
+<td><code>oauth</code></td>
+<td><code>redirecturl</code></td>
+<td><code>pending</code> and <code>authorizeUrl</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<h3 id="post-useragentconnectorconnect"><strong>POST</strong> /UserAgent/ConnectorConnect</h3>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>useragentguid</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The agent.</td>
+</tr>
+<tr>
+<td><code>slug</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The connector. It must be in the catalog: otherwise <code>This connector is not available.</code></td>
+</tr>
+<tr>
+<td><code>values</code></td>
+<td>object</td>
+<td>No</td>
+<td><code>{ &lt;field name&gt;: value }</code> from <code>credentialfields</code>. A field you leave out keeps its saved value; <code>""</code> or <code>null</code> clears it. Numbers and booleans are taken as text, and a <code>json</code> field also takes an object or array.</td>
+</tr>
+<tr>
+<td><code>mode</code></td>
+<td>string</td>
+<td>No</td>
+<td><code>provider-oauth</code> rows only: <code>oauth</code> (the default, a sign-in) or <code>key</code> (the key way in, when <code>modes</code> includes <code>key</code>).</td>
+</tr>
+<tr>
+<td><code>redirecturl</code></td>
+<td>string</td>
+<td>No</td>
+<td>Sign-ins only: where the browser returns. See <a href="#the-redirect-url">The redirect URL</a>.</td>
+</tr>
+<tr>
+<td><code>accounts</code></td>
+<td>object</td>
+<td>No</td>
+<td>A first account selection, <code>{ &lt;picker key&gt;: [ids] }</code>, such as <code>{ "pages": ["123"] }</code>. You can set it later with <a href="#post-useragentconnectorsetaccounts">ConnectorSetAccounts</a>, which checks every id with the vendor.</td>
+</tr>
+<tr>
+<td><code>wiroprojectguid</code></td>
+<td>string</td>
+<td>No</td>
+<td>The Wiro connector only: the id of the project it bills. See <a href="#the-wiro-connector">The Wiro connector</a>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<h3 id="connect-with-fields">Connect with fields</h3>
+<p>Send every required field in <code>values</code>. Serper takes one API key:</p>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;,
+    &quot;slug&quot;: &quot;serper&quot;,
+    &quot;values&quot;: { &quot;apikey&quot;: &quot;YOUR_SERPER_API_KEY&quot; }
+  }'
+</code></pre>
+<h5 id="response_2" aria-level="3">Response</h5>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;status&quot;: &quot;connected&quot;,
+  &quot;applied&quot;: 1,
+  &quot;restart&quot;: &quot;scheduled&quot;,
+  &quot;useragentconnectors&quot;: [
+    {
+      &quot;slug&quot;: &quot;serper&quot;,
+      &quot;title&quot;: &quot;Serper&quot;,
+      &quot;iconurl&quot;: &quot;https://wiro.ai/images/icons/skills/serper.svg&quot;,
+      &quot;category&quot;: &quot;data&quot;,
+      &quot;authtype&quot;: &quot;fields&quot;,
+      &quot;transport&quot;: &quot;local&quot;,
+      &quot;authmode&quot;: null,
+      &quot;catalogstatus&quot;: &quot;active&quot;,
+      &quot;status&quot;: &quot;connected&quot;,
+      &quot;connectedat&quot;: 1795390000,
+      &quot;updatedat&quot;: 1795390000,
+      &quot;tokenexpiresat&quot;: null,
+      &quot;refreshtokenexpiresat&quot;: null,
+      &quot;scope&quot;: null,
+      &quot;accounts&quot;: {},
+      &quot;wiroprojectid&quot;: null,
+      &quot;savedvariables&quot;: [&quot;apikey&quot;],
+      &quot;lasterror&quot;: null
+    }
+  ]
+}
+</code></pre>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>status</code></td>
+<td><code>connected</code>.</td>
+</tr>
+<tr>
+<td><code>applied</code></td>
+<td><code>1</code> when something changed, <code>0</code> when you sent what was already saved: then nothing restarts.</td>
+</tr>
+<tr>
+<td><code>restart</code></td>
+<td><code>scheduled</code> (the running agent restarts to pick up the connector), <code>none</code> (it was not running, or nothing changed) or <code>failed</code> (the change is saved, but the restart could not be scheduled: restart the agent yourself). See <a href="#restarts">Restarts</a>.</td>
+</tr>
+<tr>
+<td><code>useragentconnectors</code></td>
+<td>The connection as <a href="#post-useragentconnectorlist">ConnectorList</a> shows it.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p><strong>The credential check.</strong> Where the connector has one, Wiro makes one read call to the vendor with the values before it saves them. When the vendor refuses them, nothing is saved and the answer carries the vendor's own sentence:</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: false,
+  &quot;errors&quot;: [{ &quot;code&quot;: 0, &quot;message&quot;: &quot;&lt;the vendor's own sentence, such as why it refused the key&gt;&quot; }]
+}
+</code></pre>
+<p>Show that sentence next to the form: it names the vendor only.</p>
+<p><strong>Changing a value later.</strong> Send only the fields that change: the others keep their saved values. To replace a key, send the new one; to remove an optional value, send <code>""</code>.</p>
+<p>A <code>headers</code> connector (one of the vendors' own MCP servers that takes an API key) connects the same way: its <code>credentialfields</code> are the values it takes.</p>
+<h3 id="connect-with-a-key-instead-of-a-sign-in">Connect with a key instead of a sign-in</h3>
+<p>Some vendors that sign in with your own app also take a key or token (<code>modes: ["oauth", "key"]</code>): a Meta Business Manager System User token for Facebook Pages, Instagram and Meta Ads, a Mailchimp API key, a Shopify custom app's client credentials. Send <code>mode: "key"</code> and the fields of that way (<code>mode: "key"</code> or no <code>mode</code>):</p>
+<pre><code class="language-json">{
+  &quot;useragentguid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;,
+  &quot;slug&quot;: &quot;facebook-pages&quot;,
+  &quot;mode&quot;: &quot;key&quot;,
+  &quot;values&quot;: { &quot;systemusertoken&quot;: &quot;EAAB...&quot; }
+}
+</code></pre>
+<p>The answer is the same as <a href="#connect-with-fields">Connect with fields</a>, with <code>authmode: "key"</code> on the connection. Fields of the other way are not kept: a connection holds either a sign-in or a key. A vendor that only signs in refuses <code>mode: "key"</code> with <code>This connector connects only by signing in.</code></p>
+<h3 id="connect-with-a-sign-in">Connect with a sign-in</h3>
+<p>A sign-in takes four steps: start it, open the vendor's page, let the vendor send the browser back, and read the outcome on your page.</p>
+<p><strong>1. Start it.</strong> For a <code>provider-oauth</code> connector, send your own app's keys (the <code>serveronly</code> fields with <code>mode: "oauth"</code>, or no <code>mode</code>) and any other field the sign-in needs, such as Shopify's shop domain. Keys saved by an earlier connect are used again when you leave them out. Register the redirect URI the field help names in your app first: <code>https://api.wiro.ai/v1/AgentConnector/OAuthCallback</code>.</p>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;,
+    &quot;slug&quot;: &quot;facebook-pages&quot;,
+    &quot;values&quot;: { &quot;appid&quot;: &quot;1234567890&quot;, &quot;appsecret&quot;: &quot;YOUR_APP_SECRET&quot; },
+    &quot;redirecturl&quot;: &quot;https://app.example.com/agents/42/connectors?slug=facebook-pages&quot;
+  }'
+</code></pre>
+<p>An <code>oauth</code> connector (a vendor MCP server with its own sign-in, such as TikTok Ads) needs no app of yours: send <code>useragentguid</code>, <code>slug</code> and <code>redirecturl</code> only.</p>
+<h5 id="response_3" aria-level="3">Response</h5>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;status&quot;: &quot;pending&quot;,
+  &quot;authorizeUrl&quot;: &quot;https://www.facebook.com/v26.0/dialog/oauth?client_id=1234567890&amp;redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FAgentConnector%2FOAuthCallback&amp;state=7f3c...&amp;response_type=code&amp;scope=pages_show_list%2Cpages_manage_posts&quot;
+}
+</code></pre>
+<p>The connection is now <code>pending</code>. A connection that was already <code>connected</code> stays connected while the new sign-in runs, and the new tokens replace the old ones when it finishes.</p>
+<p><strong>2. Open <code>authorizeUrl</code></strong> in your customer's browser: a new tab, a popup, or the same window. The address works for 10 minutes and once. Start a new sign-in to get a fresh one.</p>
+<p><strong>3. The vendor sends the browser back.</strong> After your customer agrees, the vendor redirects to Wiro's callback, <code>GET /AgentConnector/OAuthCallback</code>. Wiro exchanges the code for tokens, stores them encrypted, marks the connection <code>connected</code>, restarts the agent, and redirects the browser to your <code>redirecturl</code>.</p>
+<p><strong>4. Read the outcome on your page.</strong> See <a href="#the-callback-and-your-redirect-url">The callback and your redirect URL</a>.</p>
+<h3 id="the-callback-and-your-redirect-url">The callback and your redirect URL</h3>
+<p>Wiro adds one parameter to your <code>redirecturl</code>, with <code>?</code>, or <code>&amp;</code> when it already has a query:</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>connector_connected=true</code></td>
+<td>The connection is connected and the agent is restarting.</td>
+</tr>
+<tr>
+<td><code>connector_error=&lt;code&gt;</code></td>
+<td>The sign-in did not finish. A new connection is left <code>error</code> (or still <code>pending</code>); one that was connected before stays connected.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<pre><code>https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_connected=true
+https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_error=authorization_denied
+</code></pre>
+<p>The return carries no slug or agent of its own, so put what your page needs in <code>redirecturl</code> itself, as <code>slug</code> above. Then confirm with <a href="#post-useragentconnectorlist">ConnectorList</a> before you show the connector as connected, and open the <a href="#account-pickers">account pickers</a> when it has any.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th><code>connector_error</code></th>
+<th>What happened</th>
+<th>What to show</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>authorization_denied</code></td>
+<td>Your customer declined on the vendor's page, or the vendor sent an error.</td>
+<td>The sign-in was cancelled; offer to try again.</td>
+</tr>
+<tr>
+<td><code>session_expired</code></td>
+<td>The sign-in took longer than 10 minutes.</td>
+<td>Start the sign-in again.</td>
+</tr>
+<tr>
+<td><code>token_exchange_failed</code></td>
+<td>The vendor did not issue tokens for the code: often your app's keys, its redirect URI, or a scope the app lacks.</td>
+<td>Ask your customer to check the app's keys and redirect URI, then try again.</td>
+</tr>
+<tr>
+<td><code>oauth_app_missing</code>, <code>oauth_app_changed</code></td>
+<td>The app keys the sign-in started with were removed or changed meanwhile.</td>
+<td>Start the sign-in again with the current keys.</td>
+</tr>
+<tr>
+<td><code>invalid_signature</code>, <code>invalid_shop</code></td>
+<td>The vendor's signed callback did not match (Shopify).</td>
+<td>Start again from the same shop.</td>
+</tr>
+<tr>
+<td><code>invalid_state</code></td>
+<td>The callback did not match its sign-in.</td>
+<td>Start the sign-in again.</td>
+</tr>
+<tr>
+<td><code>connector_unavailable</code></td>
+<td>The connector left the catalog meanwhile.</td>
+<td>The connector is not available.</td>
+</tr>
+<tr>
+<td><code>useragent_not_found</code></td>
+<td>The agent is gone, or whoever started the sign-in no longer manages it.</td>
+<td>Reload the agent.</td>
+</tr>
+<tr>
+<td><code>internal_error</code></td>
+<td>Something went wrong on Wiro's side.</td>
+<td>Try again.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>A callback whose sign-in is unknown (no <code>state</code>, or one Wiro never issued) ends on Wiro's own "sign-in not finished" page, because there is no <code>redirecturl</code> to return to. A repeated callback, such as a reload of the vendor's last page, follows the first one's redirect for an hour.</p>
+<h3 id="the-redirect-url">The redirect URL</h3>
+<ul>
+<li><code>redirecturl</code> must be an <code>https</code> address on any host, or <code>http</code> on <code>localhost</code> or <code>127.0.0.1</code> while you develop. Anything else is refused with <code>Invalid redirect URL</code>.</li>
+<li>Send your own page with every sign-in. Without one, the browser comes back to Wiro's own connect-return page on wiro.ai.</li>
+<li>It is used exactly as you send it, with your own query kept.</li>
+</ul>
+<h3 id="restarts">Restarts</h3>
+<p>A connect that changes something, a new account selection and a disconnect of a connected connector restart a running agent so it loads the change: <code>restart: "scheduled"</code> in the answer, and for a sign-in, <code>connector_connected=true</code> on your page. The agent's <code>status</code> on <a href="/docs/agent-overview#post-useragentdetail"><code>POST /UserAgent/Detail</code></a> then goes <code>1</code> (stopping), <code>2</code> (queued), <code>3</code> (starting) and back to <code>4</code> (running), in about a minute; a message sent meanwhile is refused with a sentence you can show. See <a href="/docs/agent-chat-integration#restarts">Restarts</a> for what to show. A stopped agent loads the change when it next starts.</p>
+<h2 id="connection-state">Connection State</h2>
+<h3 id="post-useragentconnectorlist"><strong>POST</strong> /UserAgent/ConnectorList</h3>
+<p>Every connection of one agent, including sign-ins under way and ones that need attention. Names and states only, never a value or token.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>useragentguid</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The agent.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<h5 id="response_4" aria-level="3">Response</h5>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;useragentconnectors&quot;: [
+    {
+      &quot;slug&quot;: &quot;serper&quot;,
+      &quot;title&quot;: &quot;Serper&quot;,
+      &quot;iconurl&quot;: &quot;https://wiro.ai/images/icons/skills/serper.svg&quot;,
+      &quot;category&quot;: &quot;data&quot;,
+      &quot;authtype&quot;: &quot;fields&quot;,
+      &quot;transport&quot;: &quot;local&quot;,
+      &quot;authmode&quot;: null,
+      &quot;catalogstatus&quot;: &quot;active&quot;,
+      &quot;status&quot;: &quot;connected&quot;,
+      &quot;connectedat&quot;: 1795390000,
+      &quot;updatedat&quot;: 1795390000,
+      &quot;tokenexpiresat&quot;: null,
+      &quot;refreshtokenexpiresat&quot;: null,
+      &quot;scope&quot;: null,
+      &quot;accounts&quot;: {},
+      &quot;wiroprojectid&quot;: null,
+      &quot;savedvariables&quot;: [&quot;apikey&quot;],
+      &quot;lasterror&quot;: null
+    },
+    {
+      &quot;slug&quot;: &quot;facebook-pages&quot;,
+      &quot;title&quot;: &quot;Facebook Pages&quot;,
+      &quot;iconurl&quot;: &quot;https://wiro.ai/images/icons/skills/facebook.svg&quot;,
+      &quot;category&quot;: &quot;social&quot;,
+      &quot;authtype&quot;: &quot;provider-oauth&quot;,
+      &quot;transport&quot;: &quot;local&quot;,
+      &quot;authmode&quot;: &quot;own&quot;,
+      &quot;catalogstatus&quot;: &quot;active&quot;,
+      &quot;status&quot;: &quot;connected&quot;,
+      &quot;connectedat&quot;: 1795390400,
+      &quot;updatedat&quot;: 1795390460,
+      &quot;tokenexpiresat&quot;: 1800574400,
+      &quot;refreshtokenexpiresat&quot;: null,
+      &quot;scope&quot;: &quot;pages_show_list,pages_manage_posts,pages_read_engagement&quot;,
+      &quot;accounts&quot;: { &quot;pages&quot;: [&quot;123456789012345&quot;] },
+      &quot;wiroprojectid&quot;: null,
+      &quot;savedvariables&quot;: [&quot;appid&quot;, &quot;appsecret&quot;],
+      &quot;lasterror&quot;: null
+    }
+  ]
+}
+</code></pre>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>slug</code>, <code>title</code>, <code>iconurl</code>, <code>category</code>, <code>authtype</code>, <code>transport</code></td>
+<td>The connector, as the catalog shows it.</td>
+</tr>
+<tr>
+<td><code>authmode</code></td>
+<td><code>provider-oauth</code> rows: <code>own</code> (signed in with your app), <code>key</code> (connected with a key or token) or <code>wiro</code> (signed in from Wiro's own panel). <code>null</code> for other rows.</td>
+</tr>
+<tr>
+<td><code>catalogstatus</code></td>
+<td><code>active</code> while the connector is offered. <code>hidden</code> or <code>retired</code> when it left the catalog: the agent no longer gets its tools, and only a disconnect is left.</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td>See the table below.</td>
+</tr>
+<tr>
+<td><code>connectedat</code>, <code>updatedat</code></td>
+<td>When the connection last connected, and its last change (Unix seconds).</td>
+</tr>
+<tr>
+<td><code>tokenexpiresat</code>, <code>refreshtokenexpiresat</code></td>
+<td>Sign-in connections: when the access token and the refresh token expire, or <code>null</code>. Wiro refreshes the access token on its own.</td>
+</tr>
+<tr>
+<td><code>scope</code></td>
+<td>The scopes the vendor granted, as it sent them.</td>
+</tr>
+<tr>
+<td><code>accounts</code></td>
+<td>The account selection, <code>{ &lt;picker key&gt;: [ids] }</code>.</td>
+</tr>
+<tr>
+<td><code>wiroprojectid</code></td>
+<td>The Wiro connector only: the project it bills.</td>
+</tr>
+<tr>
+<td><code>savedvariables</code></td>
+<td>The names of the values saved for this connection, sorted. Use them to mark fields as saved; their values are never shown.</td>
+</tr>
+<tr>
+<td><code>lasterror</code></td>
+<td>A short code for the last failure, such as <code>authorization_denied</code>, or <code>null</code>. Never a secret.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th><code>status</code></th>
+<th>Meaning</th>
+<th>What to show</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>connected</code></td>
+<td>The agent has the connector's tools.</td>
+<td>Connected, with Disconnect and, when it has pickers, the account choice.</td>
+</tr>
+<tr>
+<td><code>pending</code></td>
+<td>A sign-in was started and has not come back yet.</td>
+<td>Waiting for the sign-in, with a way to start it again.</td>
+</tr>
+<tr>
+<td><code>reauth</code></td>
+<td>The sign-in expired or was revoked at the vendor, and refreshing it failed. The connector's tools tell the agent it must be connected again.</td>
+<td>Reconnect: start a new sign-in with ConnectorConnect.</td>
+</tr>
+<tr>
+<td><code>error</code></td>
+<td>The last sign-in failed (<code>lasterror</code> says how).</td>
+<td>Connect again.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>A connector that was never connected, or was disconnected, has no row.</p>
+<h2 id="account-pickers">Account Pickers</h2>
+<p>Some connectors act on accounts inside the vendor: Facebook Pages, Meta ad accounts, Google Ads customers, a GA4 property, Search Console sites, Business Profile locations, YouTube channels, apps in App Store Connect and Google Play. Their catalog row lists <code>accountpickers</code>. After the connection is <code>connected</code>, list the candidates, let your customer choose, and save the choice. The connector's tools refuse any account outside the selection, and until something is picked they have no account to act on.</p>
+<h3 id="post-useragentconnectoraccounts"><strong>POST</strong> /UserAgent/ConnectorAccounts</h3>
+<p>Lists each picker's candidates now, from the vendor, with the connection's own credentials (a sign-in due for a refresh is refreshed first), and the current selection.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>useragentguid</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The agent.</td>
+</tr>
+<tr>
+<td><code>slug</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>A connected connector.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<h5 id="response_5" aria-level="3">Response</h5>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;pickers&quot;: [
+    {
+      &quot;key&quot;: &quot;pages&quot;,
+      &quot;label&quot;: &quot;Facebook Pages&quot;,
+      &quot;description&quot;: &quot;&quot;,
+      &quot;multiple&quot;: true,
+      &quot;candidates&quot;: [
+        { &quot;id&quot;: &quot;123456789012345&quot;, &quot;name&quot;: &quot;Acme Coffee&quot; },
+        { &quot;id&quot;: &quot;234567890123456&quot;, &quot;name&quot;: &quot;Acme Coffee Berlin&quot; }
+      ],
+      &quot;selected&quot;: [&quot;123456789012345&quot;]
+    }
+  ]
+}
+</code></pre>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>key</code></td>
+<td>The picker's key in <code>accounts</code>.</td>
+</tr>
+<tr>
+<td><code>label</code>, <code>description</code></td>
+<td>What to call the list.</td>
+</tr>
+<tr>
+<td><code>multiple</code></td>
+<td><code>true</code>: any number of candidates. <code>false</code>: at most one.</td>
+</tr>
+<tr>
+<td><code>candidates</code></td>
+<td>What this connection can reach at the vendor right now, each <code>{ id, name }</code>.</td>
+</tr>
+<tr>
+<td><code>selected</code></td>
+<td>The ids saved now.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>A connector with no pickers answers <code>pickers: []</code>.</p>
+<h3 id="post-useragentconnectorsetaccounts"><strong>POST</strong> /UserAgent/ConnectorSetAccounts</h3>
+<p>Saves the accounts the connection may act on. Wiro lists the candidates again and refuses any id that is not among them.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>useragentguid</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The agent.</td>
+</tr>
+<tr>
+<td><code>slug</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>A connected connector.</td>
+</tr>
+<tr>
+<td><code>accounts</code></td>
+<td>object</td>
+<td>Yes</td>
+<td><code>{ &lt;picker key&gt;: [ids] }</code>. A picker you leave out keeps its selection; send <code>[]</code> to clear one. At most 10 keys and 500 ids per key, each id up to 200 characters.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorSetAccounts&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;,
+    &quot;slug&quot;: &quot;facebook-pages&quot;,
+    &quot;accounts&quot;: { &quot;pages&quot;: [&quot;123456789012345&quot;, &quot;234567890123456&quot;] }
+  }'
+</code></pre>
+<h5 id="response_6" aria-level="3">Response</h5>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;accounts&quot;: { &quot;pages&quot;: [&quot;123456789012345&quot;, &quot;234567890123456&quot;] },
+  &quot;applied&quot;: 1,
+  &quot;restart&quot;: &quot;scheduled&quot;,
+  &quot;useragentconnectors&quot;: [
+    {
+      &quot;slug&quot;: &quot;facebook-pages&quot;,
+      &quot;title&quot;: &quot;Facebook Pages&quot;,
+      &quot;iconurl&quot;: &quot;https://wiro.ai/images/icons/skills/facebook.svg&quot;,
+      &quot;category&quot;: &quot;social&quot;,
+      &quot;authtype&quot;: &quot;provider-oauth&quot;,
+      &quot;transport&quot;: &quot;local&quot;,
+      &quot;authmode&quot;: &quot;own&quot;,
+      &quot;catalogstatus&quot;: &quot;active&quot;,
+      &quot;status&quot;: &quot;connected&quot;,
+      &quot;connectedat&quot;: 1795390400,
+      &quot;updatedat&quot;: 1795390520,
+      &quot;tokenexpiresat&quot;: 1800574400,
+      &quot;refreshtokenexpiresat&quot;: null,
+      &quot;scope&quot;: &quot;pages_show_list,pages_manage_posts,pages_read_engagement&quot;,
+      &quot;accounts&quot;: { &quot;pages&quot;: [&quot;123456789012345&quot;, &quot;234567890123456&quot;] },
+      &quot;wiroprojectid&quot;: null,
+      &quot;savedvariables&quot;: [&quot;appid&quot;, &quot;appsecret&quot;],
+      &quot;lasterror&quot;: null
+    }
+  ]
+}
+</code></pre>
+<p><code>accounts</code> is the whole selection after the change. <code>applied</code> is <code>0</code>, and nothing restarts, when the selection did not change.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Refusal</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Unknown account picker: &lt;key&gt;. This connector has: pages.</code></td>
+<td>A key the connector does not have.</td>
+</tr>
+<tr>
+<td><code>&lt;label&gt; takes one account.</code></td>
+<td>More than one id for a picker with <code>multiple: false</code>.</td>
+</tr>
+<tr>
+<td><code>&lt;label&gt;: 1 of the accounts sent is not among the ones this connection can use.</code></td>
+<td>An id the vendor did not list for this connection.</td>
+</tr>
+<tr>
+<td><code>accounts must be an object of lists of account ids.</code></td>
+<td>The body's shape.</td>
+</tr>
+<tr>
+<td><code>This connector is not connected to the agent.</code></td>
+<td>No connected connection for this slug.</td>
+</tr>
+<tr>
+<td><code>This connector has no accounts to pick.</code></td>
+<td><code>ConnectorAccounts</code> on a connector without pickers.</td>
+</tr>
+<tr>
+<td><code>The sign-in for this connector expired or was revoked, so it has to be connected again. Ask the agent's operator to reconnect it.</code></td>
+<td>The sign-in could not be refreshed: the connection is now <code>reauth</code>.</td>
+</tr>
+<tr>
+<td><code>The token is being refreshed. Try again in a moment.</code></td>
+<td>A refresh was under way.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<h2 id="disconnecting">Disconnecting</h2>
+<h3 id="post-useragentconnectordisconnect"><strong>POST</strong> /UserAgent/ConnectorDisconnect</h3>
+<p>Deletes the connection: its values, tokens and account selection. For a sign-in, Wiro first asks the vendor to revoke the token where the vendor supports it. A connected connector's agent restarts without its tools.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>useragentguid</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The agent.</td>
+</tr>
+<tr>
+<td><code>slug</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The connector.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<h5 id="response_7" aria-level="3">Response</h5>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;removed&quot;: true,
+  &quot;revoked&quot;: true,
+  &quot;restart&quot;: &quot;scheduled&quot;
+}
+</code></pre>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>removed</code></td>
+<td><code>true</code> when there was a connection to delete. A slug with none answers <code>removed: false</code> and changes nothing.</td>
+</tr>
+<tr>
+<td><code>revoked</code></td>
+<td><code>true</code> when the vendor confirmed the revoke. <code>false</code> for connections without a token, vendors without a revoke, or a revoke that failed: the connection is deleted either way. Your customer can also remove the app's access in the vendor's own settings (the connector page's <code>docs.revoke</code> says where).</td>
+</tr>
+<tr>
+<td><code>restart</code></td>
+<td>As on <a href="#post-useragentconnectorconnect">ConnectorConnect</a>. <code>none</code> when the connection was not connected.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<h2 id="what-the-agent-gets">What the Agent Gets</h2>
+<p>When the agent is back up, every <code>connected</code> connection whose connector is still <code>active</code> gives it that connector's tools. A tool is named <code>&lt;slug&gt;__&lt;tool&gt;</code>: the slug, two underscores, and the tool's <code>name</code> from <code>tools</code> on <a href="#post-agentconnectordetail">Detail</a>.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Connector</th>
+<th>Tool <code>name</code></th>
+<th>The agent calls it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>serper</code></td>
+<td><code>web_search</code></td>
+<td><code>serper__web_search</code></td>
+</tr>
+<tr>
+<td><code>devto</code></td>
+<td><code>create_draft_article</code></td>
+<td><code>devto__create_draft_article</code></td>
+</tr>
+<tr>
+<td><code>bluesky</code></td>
+<td><code>create_post</code></td>
+<td><code>bluesky__create_post</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<ul>
+<li><code>readonly: true</code> tools only read. <code>destructive: true</code> tools can change or delete something at the vendor.</li>
+<li>A tool acts with the connection's own credentials and, where the connector has pickers, only on the selected accounts.</li>
+<li>To tell the agent when and how to use the tools, write a <a href="/docs/agent-skills#custom-skills">Custom Skill</a> that names them, such as: "Before you write an article, research the topic with <code>serper__web_search</code> and cite the top three results."</li>
+<li>A scheduled task of an agent template that works with a connector stays off until that connector is connected.</li>
+<li>A disconnected connector's tools are gone after the restart. A <code>reauth</code> connection's tools answer that it must be connected again, in words your customer can read: they name no Wiro place or link.</li>
+</ul>
+<h2 id="the-wiro-connector">The Wiro Connector</h2>
+<p>The <code>wiro</code> connector gives the agent Wiro's own tools, such as running AI models and reading their tasks. Its model runs are billed to one of your projects. Its <code>credentialfields</code> have one field with <code>source: "wiro_project"</code>: show a picker of your projects (<a href="/docs/projects"><code>POST /Project/List</code></a>) instead of an input, and send the chosen project's id as <code>wiroprojectguid</code>:</p>
+<pre><code class="language-json">{
+  &quot;useragentguid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;,
+  &quot;slug&quot;: &quot;wiro&quot;,
+  &quot;wiroprojectguid&quot;: &quot;1234&quot;
+}
+</code></pre>
+<ul>
+<li>A request made with a project API key may leave <code>wiroprojectguid</code> out: the key's own project is used.</li>
+<li>The project must be one you created, or any project of a team you are an admin of, and in the agent's workspace: a personal agent takes one of its owner's personal projects, a team agent one of its team's projects.</li>
+<li>The connection shows the project's id as <code>wiroprojectid</code>.</li>
+</ul>
+<h2 id="errors">Errors</h2>
+<p>Refusals come as <code>result: false</code> with one sentence per problem in <code>errors</code>. Show the sentence: it names fields by their labels and never repeats a value.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Call</th>
+<th>Message</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>any</td>
+<td><code>Request parameter [useragentguid] required</code> (or <code>[slug]</code>)</td>
+<td>A required parameter is missing.</td>
+</tr>
+<tr>
+<td><code>Detail</code></td>
+<td><code>Connector not found.</code></td>
+<td>No such connector in the catalog.</td>
+</tr>
+<tr>
+<td><code>List</code></td>
+<td><code>search is text of at most 100 characters.</code></td>
+<td><code>search</code> too long.</td>
+</tr>
+<tr>
+<td><code>List</code></td>
+<td><code>category must be one lowercase word (letters, digits or dashes, at most 40).</code></td>
+<td>A malformed <code>category</code>.</td>
+</tr>
+<tr>
+<td><code>ConnectorConnect</code></td>
+<td><code>This connector is not available.</code></td>
+<td>The slug is not in the catalog.</td>
+</tr>
+<tr>
+<td><code>ConnectorConnect</code></td>
+<td><code>&lt;Label&gt; is required.</code></td>
+<td>A required field has no value, sent or saved.</td>
+</tr>
+<tr>
+<td><code>ConnectorConnect</code></td>
+<td><code>Unknown field &lt;name&gt;. This connector takes: &lt;names&gt;.</code></td>
+<td>A key in <code>values</code> the connector does not take.</td>
+</tr>
+<tr>
+<td><code>ConnectorConnect</code></td>
+<td><code>&lt;Label&gt; must be an https address.</code>, <code>&lt;Label&gt; must be valid JSON.</code>, <code>&lt;Label&gt; must be an email address.</code>, <code>&lt;Label&gt; must be one of: &lt;values&gt;.</code>, <code>&lt;Label&gt; is not in the expected format.</code>, <code>&lt;Label&gt; must be at most &lt;n&gt; characters.</code>, <code>&lt;Label&gt; must be on one line.</code></td>
+<td>A value that fails its field's <code>format</code>, <code>pattern</code> or <code>maxlength</code>.</td>
+</tr>
+<tr>
+<td><code>ConnectorConnect</code></td>
+<td>The vendor's own sentence</td>
+<td>The credential check: the vendor refused the values. Nothing was saved.</td>
+</tr>
+<tr>
+<td><code>ConnectorConnect</code></td>
+<td><code>The vendor refused these credentials. Check them and try again.</code></td>
+<td>A key way that mints a token (Shopify) was refused.</td>
+</tr>
+<tr>
+<td><code>ConnectorConnect</code></td>
+<td><code>The vendor could not be reached. Try again in a moment.</code></td>
+<td>The vendor did not answer the key exchange.</td>
+</tr>
+<tr>
+<td><code>ConnectorConnect</code></td>
+<td><code>This connector signs in with your own app: send its &lt;labels&gt;.</code></td>
+<td>A <code>provider-oauth</code> sign-in without your app's keys, sent or saved.</td>
+</tr>
+<tr>
+<td><code>ConnectorConnect</code></td>
+<td><code>This connector connects only by signing in.</code></td>
+<td><code>mode: "key"</code> on a connector whose <code>modes</code> is <code>["oauth"]</code>.</td>
+</tr>
+<tr>
+<td><code>ConnectorConnect</code></td>
+<td><code>mode is oauth or key.</code>, <code>mode is only for a connector that signs in with its vendor's own OAuth.</code></td>
+<td>A wrong <code>mode</code>.</td>
+</tr>
+<tr>
+<td><code>ConnectorConnect</code></td>
+<td><code>Invalid redirect URL</code></td>
+<td>See <a href="#the-redirect-url">The redirect URL</a>.</td>
+</tr>
+<tr>
+<td><code>ConnectorConnect</code></td>
+<td><code>The sign-in address could not be made from these values.</code></td>
+<td>A value the sign-in address needs (such as Shopify's shop domain) does not fit.</td>
+</tr>
+<tr>
+<td><code>ConnectorConnect</code></td>
+<td><code>This connector takes no Wiro project.</code></td>
+<td><code>wiroprojectguid</code> on a connector other than Wiro.</td>
+</tr>
+<tr>
+<td><code>ConnectorConnect</code></td>
+<td><code>wiroprojectguid is required: send the id of one of your projects from Project/List. ...</code></td>
+<td>The Wiro connector with no project, from a request without a project API key.</td>
+</tr>
+<tr>
+<td>any</td>
+<td><code>Something went wrong. Try again.</code></td>
+<td>A temporary failure: nothing was changed.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The account picker refusals are under <a href="#post-useragentconnectorsetaccounts">ConnectorSetAccounts</a>, the callback codes under <a href="#the-callback-and-your-redirect-url">The callback and your redirect URL</a>.</p>
+<h2 id="coming-from-credential-connectors">Coming From Credential Connectors</h2>
+<p>Connectors used to be <code>int-*</code> skills that read credentials. If your code still uses those calls, this is where each one went. Each connector's <code>slug</code> is the credential key it had before (<code>serper</code>, <code>shopify</code>, <code>google-ads</code>, <code>facebook-pages</code>, ...).</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Before</th>
+<th>Now</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>An <code>int-*</code> skill turned on with <code>SkillsApply</code> or Deploy's <code>skills</code></td>
+<td>Nothing to turn on: a connected connector is on. <code>skills</code> and <code>SkillsApply</code> take Skills (<code>util-*</code>) only.</td>
+</tr>
+<tr>
+<td><code>POST /Credentials/List</code>, <code>POST /Credentials/Detail</code> for a connector</td>
+<td><a href="#post-agentconnectorlist"><code>POST /AgentConnector/List</code></a>, <a href="#post-agentconnectordetail"><code>POST /AgentConnector/Detail</code></a></td>
+</tr>
+<tr>
+<td><code>POST /UserAgent/CredentialUpsert</code> with a connector's <code>credentialkey</code></td>
+<td><a href="#connect-with-fields"><code>POST /UserAgent/ConnectorConnect</code></a> with <code>values</code></td>
+</tr>
+<tr>
+<td><code>POST /UserAgentOAuth/OAuthConnect</code></td>
+<td><a href="#connect-with-a-sign-in"><code>POST /UserAgent/ConnectorConnect</code></a></td>
+</tr>
+<tr>
+<td><code>POST /UserAgentOAuth/OAuthStatus</code></td>
+<td><a href="#post-useragentconnectorlist"><code>POST /UserAgent/ConnectorList</code></a></td>
+</tr>
+<tr>
+<td><code>POST /UserAgentOAuth/DiscoverPickerItems</code></td>
+<td><a href="#post-useragentconnectoraccounts"><code>POST /UserAgent/ConnectorAccounts</code></a></td>
+</tr>
+<tr>
+<td><code>POST /UserAgentOAuth/SetPickerAccounts</code></td>
+<td><a href="#post-useragentconnectorsetaccounts"><code>POST /UserAgent/ConnectorSetAccounts</code></a></td>
+</tr>
+<tr>
+<td><code>POST /UserAgentOAuth/OAuthDisconnect</code></td>
+<td><a href="#post-useragentconnectordisconnect"><code>POST /UserAgent/ConnectorDisconnect</code></a></td>
+</tr>
+<tr>
+<td>A redirect URI per vendor (<code>/UserAgentOAuth/&lt;Vendor&gt;Callback</code>)</td>
+<td>One for every vendor: <code>https://api.wiro.ai/v1/AgentConnector/OAuthCallback</code>. Add it to each of your OAuth apps.</td>
+</tr>
+<tr>
+<td><code>&lt;vendor&gt;_connected=true</code> and <code>&lt;vendor&gt;_error=&lt;code&gt;</code> on your redirect URL</td>
+<td><code>connector_connected=true</code> and <code>connector_error=&lt;code&gt;</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Channels (Telegram, Slack, Discord, Twilio Voice) are not connectors: they keep their credentials, see <a href="/docs/agent-credentials">Agent Credentials</a>.</p>
+<h2 id="code-examples">Code Examples</h2>
+<p>The same flow in each language: list the catalog, connect Serper with its key, and read the agent's connections.</p>
+<h3 id="curl">curl</h3>
+<pre><code class="language-bash"># 1. Browse the catalog (no API key needed)
+curl -X POST &quot;https://api.wiro.ai/v1/AgentConnector/List&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{ &quot;category&quot;: &quot;data&quot; }'
+
+# 2. Connect Serper to an agent with its API key
+curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;YOUR_USERAGENT_GUID&quot;,
+    &quot;slug&quot;: &quot;serper&quot;,
+    &quot;values&quot;: { &quot;apikey&quot;: &quot;YOUR_SERPER_API_KEY&quot; }
+  }'
+
+# 3. Read the agent's connections
+curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorList&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{ &quot;useragentguid&quot;: &quot;YOUR_USERAGENT_GUID&quot; }'
+</code></pre>
+<h3 id="python">Python</h3>
+<pre><code class="language-python">import requests
+
+API = &quot;https://api.wiro.ai/v1&quot;
+HEADERS = {&quot;Content-Type&quot;: &quot;application/json&quot;, &quot;x-api-key&quot;: &quot;YOUR_API_KEY&quot;}
+AGENT = &quot;YOUR_USERAGENT_GUID&quot;
+
+# 1. Browse the catalog (no API key needed)
+catalog = requests.post(f&quot;{API}/AgentConnector/List&quot;, json={&quot;category&quot;: &quot;data&quot;}).json()
+for row in catalog[&quot;agentconnectors&quot;]:
+    print(row[&quot;slug&quot;], row[&quot;authtype&quot;], [f[&quot;name&quot;] for f in row[&quot;credentialfields&quot;]])
+
+# 2. Connect Serper with its API key
+connect = requests.post(f&quot;{API}/UserAgent/ConnectorConnect&quot;, headers=HEADERS, json={
+    &quot;useragentguid&quot;: AGENT,
+    &quot;slug&quot;: &quot;serper&quot;,
+    &quot;values&quot;: {&quot;apikey&quot;: &quot;YOUR_SERPER_API_KEY&quot;},
+}).json()
+if not connect[&quot;result&quot;]:
+    raise SystemExit(connect[&quot;errors&quot;][0][&quot;message&quot;])
+print(connect[&quot;status&quot;], connect[&quot;restart&quot;])  # connected scheduled
+
+# 3. Read the agent's connections
+for conn in requests.post(f&quot;{API}/UserAgent/ConnectorList&quot;, headers=HEADERS,
+                          json={&quot;useragentguid&quot;: AGENT}).json()[&quot;useragentconnectors&quot;]:
+    print(conn[&quot;slug&quot;], conn[&quot;status&quot;])
+</code></pre>
+<h3 id="nodejs">Node.js</h3>
+<pre><code class="language-javascript">const API = 'https://api.wiro.ai/v1';
+const HEADERS = { 'Content-Type': 'application/json', 'x-api-key': 'YOUR_API_KEY' };
+const AGENT = 'YOUR_USERAGENT_GUID';
+
+const post = (path, body, headers = HEADERS) =&gt;
+  fetch(`${API}${path}`, { method: 'POST', headers, body: JSON.stringify(body) }).then((r) =&gt; r.json());
+
+// 1. Browse the catalog (no API key needed)
+const catalog = await post('/AgentConnector/List', { category: 'data' }, { 'Content-Type': 'application/json' });
+console.log(catalog.agentconnectors.map((row) =&gt; row.slug));
+
+// 2. Connect Serper with its API key
+const connect = await post('/UserAgent/ConnectorConnect', {
+  useragentguid: AGENT,
+  slug: 'serper',
+  values: { apikey: 'YOUR_SERPER_API_KEY' },
+});
+if (!connect.result) throw new Error(connect.errors[0].message);
+console.log(connect.status, connect.restart); // connected scheduled
+
+// 3. Read the agent's connections
+const list = await post('/UserAgent/ConnectorList', { useragentguid: AGENT });
+for (const conn of list.useragentconnectors) console.log(conn.slug, conn.status);
+</code></pre>
+<h3 id="php">PHP</h3>
+<pre><code class="language-php">&lt;?php
+function wiro_post(string $path, array $body, bool $withKey = true): array {
+    $headers = ['Content-Type: application/json'];
+    if ($withKey) $headers[] = 'x-api-key: YOUR_API_KEY';
+    $ch = curl_init('https://api.wiro.ai/v1' . $path);
+    curl_setopt_array($ch, [
+        CURLOPT_POST =&gt; true,
+        CURLOPT_HTTPHEADER =&gt; $headers,
+        CURLOPT_POSTFIELDS =&gt; json_encode($body),
+        CURLOPT_RETURNTRANSFER =&gt; true,
+    ]);
+    $out = json_decode(curl_exec($ch), true);
+    curl_close($ch);
+    return $out;
+}
+
+$agent = 'YOUR_USERAGENT_GUID';
+
+// 1. Browse the catalog (no API key needed)
+$catalog = wiro_post('/AgentConnector/List', ['category' =&gt; 'data'], false);
+
+// 2. Connect Serper with its API key
+$connect = wiro_post('/UserAgent/ConnectorConnect', [
+    'useragentguid' =&gt; $agent,
+    'slug' =&gt; 'serper',
+    'values' =&gt; ['apikey' =&gt; 'YOUR_SERPER_API_KEY'],
+]);
+if (!$connect['result']) exit($connect['errors'][0]['message']);
+echo $connect['status'] . ' ' . $connect['restart'] . &quot;\n&quot;;
+
+// 3. Read the agent's connections
+$list = wiro_post('/UserAgent/ConnectorList', ['useragentguid' =&gt; $agent]);
+foreach ($list['useragentconnectors'] as $conn) echo $conn['slug'] . ' ' . $conn['status'] . &quot;\n&quot;;
+</code></pre>
+<h3 id="c">C</h3>
+<pre><code class="language-csharp">using System.Net.Http.Json;
+using System.Text.Json;
+
+var http = new HttpClient { BaseAddress = new Uri(&quot;https://api.wiro.ai/v1/&quot;) };
+var agent = &quot;YOUR_USERAGENT_GUID&quot;;
+
+// 1. Browse the catalog (no API key needed)
+var catalog = await (await http.PostAsJsonAsync(&quot;AgentConnector/List&quot;, new { category = &quot;data&quot; }))
+    .Content.ReadFromJsonAsync&lt;JsonElement&gt;();
+
+// 2. Connect Serper with its API key
+http.DefaultRequestHeaders.Add(&quot;x-api-key&quot;, &quot;YOUR_API_KEY&quot;);
+var connect = await (await http.PostAsJsonAsync(&quot;UserAgent/ConnectorConnect&quot;, new {
+    useragentguid = agent,
+    slug = &quot;serper&quot;,
+    values = new { apikey = &quot;YOUR_SERPER_API_KEY&quot; }
+})).Content.ReadFromJsonAsync&lt;JsonElement&gt;();
+if (!connect.GetProperty(&quot;result&quot;).GetBoolean())
+    throw new Exception(connect.GetProperty(&quot;errors&quot;)[0].GetProperty(&quot;message&quot;).GetString());
+
+// 3. Read the agent's connections
+var list = await (await http.PostAsJsonAsync(&quot;UserAgent/ConnectorList&quot;, new { useragentguid = agent }))
+    .Content.ReadFromJsonAsync&lt;JsonElement&gt;();
+foreach (var conn in list.GetProperty(&quot;useragentconnectors&quot;).EnumerateArray())
+    Console.WriteLine($&quot;{conn.GetProperty(&quot;slug&quot;)} {conn.GetProperty(&quot;status&quot;)}&quot;);
+</code></pre>
+<h3 id="go">Go</h3>
+<pre><code class="language-go">package main
+
+import (
+    &quot;bytes&quot;
+    &quot;encoding/json&quot;
+    &quot;fmt&quot;
+    &quot;net/http&quot;
+)
+
+func post(path string, body any, withKey bool) map[string]any {
+    data, _ := json.Marshal(body)
+    req, _ := http.NewRequest(&quot;POST&quot;, &quot;https://api.wiro.ai/v1&quot;+path, bytes.NewReader(data))
+    req.Header.Set(&quot;Content-Type&quot;, &quot;application/json&quot;)
+    if withKey {
+        req.Header.Set(&quot;x-api-key&quot;, &quot;YOUR_API_KEY&quot;)
+    }
+    resp, err := http.DefaultClient.Do(req)
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    var out map[string]any
+    json.NewDecoder(resp.Body).Decode(&amp;out)
+    return out
+}
+
+func main() {
+    agent := &quot;YOUR_USERAGENT_GUID&quot;
+
+    // 1. Browse the catalog (no API key needed)
+    catalog := post(&quot;/AgentConnector/List&quot;, map[string]any{&quot;category&quot;: &quot;data&quot;}, false)
+    fmt.Println(len(catalog[&quot;agentconnectors&quot;].([]any)), &quot;connectors&quot;)
+
+    // 2. Connect Serper with its API key
+    connect := post(&quot;/UserAgent/ConnectorConnect&quot;, map[string]any{
+        &quot;useragentguid&quot;: agent,
+        &quot;slug&quot;:          &quot;serper&quot;,
+        &quot;values&quot;:        map[string]string{&quot;apikey&quot;: &quot;YOUR_SERPER_API_KEY&quot;},
+    }, true)
+    fmt.Println(connect[&quot;status&quot;], connect[&quot;restart&quot;])
+
+    // 3. Read the agent's connections
+    list := post(&quot;/UserAgent/ConnectorList&quot;, map[string]any{&quot;useragentguid&quot;: agent}, true)
+    for _, c := range list[&quot;useragentconnectors&quot;].([]any) {
+        conn := c.(map[string]any)
+        fmt.Println(conn[&quot;slug&quot;], conn[&quot;status&quot;])
+    }
+}
+</code></pre>
+<h3 id="swift">Swift</h3>
+<pre><code class="language-swift">import Foundation
+
+func post(_ path: String, _ body: [String: Any], withKey: Bool = true) async throws -&gt; [String: Any] {
+    var req = URLRequest(url: URL(string: &quot;https://api.wiro.ai/v1\(path)&quot;)!)
+    req.httpMethod = &quot;POST&quot;
+    req.setValue(&quot;application/json&quot;, forHTTPHeaderField: &quot;Content-Type&quot;)
+    if withKey { req.setValue(&quot;YOUR_API_KEY&quot;, forHTTPHeaderField: &quot;x-api-key&quot;) }
+    req.httpBody = try JSONSerialization.data(withJSONObject: body)
+    let (data, _) = try await URLSession.shared.data(for: req)
+    return try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+}
+
+let agent = &quot;YOUR_USERAGENT_GUID&quot;
+
+// 1. Browse the catalog (no API key needed)
+let catalog = try await post(&quot;/AgentConnector/List&quot;, [&quot;category&quot;: &quot;data&quot;], withKey: false)
+
+// 2. Connect Serper with its API key
+let connect = try await post(&quot;/UserAgent/ConnectorConnect&quot;, [
+    &quot;useragentguid&quot;: agent,
+    &quot;slug&quot;: &quot;serper&quot;,
+    &quot;values&quot;: [&quot;apikey&quot;: &quot;YOUR_SERPER_API_KEY&quot;]
+])
+print(connect[&quot;status&quot;] ?? &quot;&quot;, connect[&quot;restart&quot;] ?? &quot;&quot;)
+
+// 3. Read the agent's connections
+let list = try await post(&quot;/UserAgent/ConnectorList&quot;, [&quot;useragentguid&quot;: agent])
+for conn in list[&quot;useragentconnectors&quot;] as? [[String: Any]] ?? [] {
+    print(conn[&quot;slug&quot;] ?? &quot;&quot;, conn[&quot;status&quot;] ?? &quot;&quot;)
+}
+</code></pre>
+<h3 id="kotlin">Kotlin</h3>
+<pre><code class="language-kotlin">import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+
+val client: HttpClient = HttpClient.newHttpClient()
+
+fun post(path: String, json: String, withKey: Boolean = true): String {
+    val builder = HttpRequest.newBuilder(URI.create(&quot;https://api.wiro.ai/v1$path&quot;))
+        .header(&quot;Content-Type&quot;, &quot;application/json&quot;)
+        .POST(HttpRequest.BodyPublishers.ofString(json))
+    if (withKey) builder.header(&quot;x-api-key&quot;, &quot;YOUR_API_KEY&quot;)
+    return client.send(builder.build(), HttpResponse.BodyHandlers.ofString()).body()
+}
+
+fun main() {
+    val agent = &quot;YOUR_USERAGENT_GUID&quot;
+
+    // 1. Browse the catalog (no API key needed)
+    println(post(&quot;/AgentConnector/List&quot;, &quot;&quot;&quot;{&quot;category&quot;:&quot;data&quot;}&quot;&quot;&quot;, withKey = false))
+
+    // 2. Connect Serper with its API key
+    println(post(&quot;/UserAgent/ConnectorConnect&quot;,
+        &quot;&quot;&quot;{&quot;useragentguid&quot;:&quot;$agent&quot;,&quot;slug&quot;:&quot;serper&quot;,&quot;values&quot;:{&quot;apikey&quot;:&quot;YOUR_SERPER_API_KEY&quot;}}&quot;&quot;&quot;))
+
+    // 3. Read the agent's connections
+    println(post(&quot;/UserAgent/ConnectorList&quot;, &quot;&quot;&quot;{&quot;useragentguid&quot;:&quot;$agent&quot;}&quot;&quot;&quot;))
+}
+</code></pre>
+<h3 id="dart">Dart</h3>
+<pre><code class="language-dart">import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+Future&lt;Map&lt;String, dynamic&gt;&gt; post(String path, Map&lt;String, dynamic&gt; body, {bool withKey = true}) async {
+  final res = await http.post(
+    Uri.parse('https://api.wiro.ai/v1$path'),
+    headers: {
+      'Content-Type': 'application/json',
+      if (withKey) 'x-api-key': 'YOUR_API_KEY',
+    },
+    body: jsonEncode(body),
+  );
+  return jsonDecode(res.body) as Map&lt;String, dynamic&gt;;
+}
+
+Future&lt;void&gt; main() async {
+  const agent = 'YOUR_USERAGENT_GUID';
+
+  // 1. Browse the catalog (no API key needed)
+  final catalog = await post('/AgentConnector/List', {'category': 'data'}, withKey: false);
+  print((catalog['agentconnectors'] as List).length);
+
+  // 2. Connect Serper with its API key
+  final connect = await post('/UserAgent/ConnectorConnect', {
+    'useragentguid': agent,
+    'slug': 'serper',
+    'values': {'apikey': 'YOUR_SERPER_API_KEY'},
+  });
+  print('${connect['status']} ${connect['restart']}');
+
+  // 3. Read the agent's connections
+  final list = await post('/UserAgent/ConnectorList', {'useragentguid': agent});
+  for (final conn in list['useragentconnectors'] as List) {
+    print('${conn['slug']} ${conn['status']}');
+  }
+}
+</code></pre>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="/docs/agent-overview">Agent Overview</a>: deploy and manage agents.</li>
+<li><a href="/docs/agent-skills">Agent Skills</a>: Skills, Custom Skills and scheduled tasks that put a connector's tools to work.</li>
+<li><a href="/docs/agent-credentials">Agent Credentials</a>: channels and the other values an agent keeps as credentials.</li>
+<li><a href="/docs/agent-chat-integration">Agent Chat Integration</a>: build your own chat, setup from chat included.</li>
+</ul>
+                </article>
+                <script type="application/json" class="code-examples-data">
+                  [
+                    {
+                      "label": "curl",
+                      "language": "bash",
+                      "code": "# 1. Browse the catalog (no API key needed)\ncurl -X POST \"https://api.wiro.ai/v1/AgentConnector/List\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{ \"category\": \"data\" }'\n\n# 2. Connect Serper to an agent with its API key\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/ConnectorConnect\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"useragentguid\": \"YOUR_USERAGENT_GUID\",\n    \"slug\": \"serper\",\n    \"values\": { \"apikey\": \"YOUR_SERPER_API_KEY\" }\n  }'\n\n# 3. Read the agent's connections\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/ConnectorList\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{ \"useragentguid\": \"YOUR_USERAGENT_GUID\" }'\n"
+                    },
+                    {
+                      "label": "Python",
+                      "language": "python",
+                      "code": "import requests\n\nAPI = \"https://api.wiro.ai/v1\"\nHEADERS = {\"Content-Type\": \"application/json\", \"x-api-key\": \"YOUR_API_KEY\"}\nAGENT = \"YOUR_USERAGENT_GUID\"\n\n# 1. Browse the catalog (no API key needed)\ncatalog = requests.post(f\"{API}/AgentConnector/List\", json={\"category\": \"data\"}).json()\nfor row in catalog[\"agentconnectors\"]:\n    print(row[\"slug\"], row[\"authtype\"], [f[\"name\"] for f in row[\"credentialfields\"]])\n\n# 2. Connect Serper with its API key\nconnect = requests.post(f\"{API}/UserAgent/ConnectorConnect\", headers=HEADERS, json={\n    \"useragentguid\": AGENT,\n    \"slug\": \"serper\",\n    \"values\": {\"apikey\": \"YOUR_SERPER_API_KEY\"},\n}).json()\nif not connect[\"result\"]:\n    raise SystemExit(connect[\"errors\"][0][\"message\"])\nprint(connect[\"status\"], connect[\"restart\"])  # connected scheduled\n\n# 3. Read the agent's connections\nfor conn in requests.post(f\"{API}/UserAgent/ConnectorList\", headers=HEADERS,\n                          json={\"useragentguid\": AGENT}).json()[\"useragentconnectors\"]:\n    print(conn[\"slug\"], conn[\"status\"])\n"
+                    },
+                    {
+                      "label": "Node.js",
+                      "language": "javascript",
+                      "code": "const API = 'https://api.wiro.ai/v1';\nconst HEADERS = { 'Content-Type': 'application/json', 'x-api-key': 'YOUR_API_KEY' };\nconst AGENT = 'YOUR_USERAGENT_GUID';\n\nconst post = (path, body, headers = HEADERS) =>\n  fetch(`${API}${path}`, { method: 'POST', headers, body: JSON.stringify(body) }).then((r) => r.json());\n\n// 1. Browse the catalog (no API key needed)\nconst catalog = await post('/AgentConnector/List', { category: 'data' }, { 'Content-Type': 'application/json' });\nconsole.log(catalog.agentconnectors.map((row) => row.slug));\n\n// 2. Connect Serper with its API key\nconst connect = await post('/UserAgent/ConnectorConnect', {\n  useragentguid: AGENT,\n  slug: 'serper',\n  values: { apikey: 'YOUR_SERPER_API_KEY' },\n});\nif (!connect.result) throw new Error(connect.errors[0].message);\nconsole.log(connect.status, connect.restart); // connected scheduled\n\n// 3. Read the agent's connections\nconst list = await post('/UserAgent/ConnectorList', { useragentguid: AGENT });\nfor (const conn of list.useragentconnectors) console.log(conn.slug, conn.status);\n"
+                    },
+                    {
+                      "label": "PHP",
+                      "language": "php",
+                      "code": "<?php\nfunction wiro_post(string $path, array $body, bool $withKey = true): array {\n    $headers = ['Content-Type: application/json'];\n    if ($withKey) $headers[] = 'x-api-key: YOUR_API_KEY';\n    $ch = curl_init('https://api.wiro.ai/v1' . $path);\n    curl_setopt_array($ch, [\n        CURLOPT_POST => true,\n        CURLOPT_HTTPHEADER => $headers,\n        CURLOPT_POSTFIELDS => json_encode($body),\n        CURLOPT_RETURNTRANSFER => true,\n    ]);\n    $out = json_decode(curl_exec($ch), true);\n    curl_close($ch);\n    return $out;\n}\n\n$agent = 'YOUR_USERAGENT_GUID';\n\n// 1. Browse the catalog (no API key needed)\n$catalog = wiro_post('/AgentConnector/List', ['category' => 'data'], false);\n\n// 2. Connect Serper with its API key\n$connect = wiro_post('/UserAgent/ConnectorConnect', [\n    'useragentguid' => $agent,\n    'slug' => 'serper',\n    'values' => ['apikey' => 'YOUR_SERPER_API_KEY'],\n]);\nif (!$connect['result']) exit($connect['errors'][0]['message']);\necho $connect['status'] . ' ' . $connect['restart'] . \"\\n\";\n\n// 3. Read the agent's connections\n$list = wiro_post('/UserAgent/ConnectorList', ['useragentguid' => $agent]);\nforeach ($list['useragentconnectors'] as $conn) echo $conn['slug'] . ' ' . $conn['status'] . \"\\n\";\n"
+                    },
+                    {
+                      "label": "C#",
+                      "language": "csharp",
+                      "code": "using System.Net.Http.Json;\nusing System.Text.Json;\n\nvar http = new HttpClient { BaseAddress = new Uri(\"https://api.wiro.ai/v1/\") };\nvar agent = \"YOUR_USERAGENT_GUID\";\n\n// 1. Browse the catalog (no API key needed)\nvar catalog = await (await http.PostAsJsonAsync(\"AgentConnector/List\", new { category = \"data\" }))\n    .Content.ReadFromJsonAsync<JsonElement>();\n\n// 2. Connect Serper with its API key\nhttp.DefaultRequestHeaders.Add(\"x-api-key\", \"YOUR_API_KEY\");\nvar connect = await (await http.PostAsJsonAsync(\"UserAgent/ConnectorConnect\", new {\n    useragentguid = agent,\n    slug = \"serper\",\n    values = new { apikey = \"YOUR_SERPER_API_KEY\" }\n})).Content.ReadFromJsonAsync<JsonElement>();\nif (!connect.GetProperty(\"result\").GetBoolean())\n    throw new Exception(connect.GetProperty(\"errors\")[0].GetProperty(\"message\").GetString());\n\n// 3. Read the agent's connections\nvar list = await (await http.PostAsJsonAsync(\"UserAgent/ConnectorList\", new { useragentguid = agent }))\n    .Content.ReadFromJsonAsync<JsonElement>();\nforeach (var conn in list.GetProperty(\"useragentconnectors\").EnumerateArray())\n    Console.WriteLine($\"{conn.GetProperty(\"slug\")} {conn.GetProperty(\"status\")}\");\n"
+                    },
+                    {
+                      "label": "Go",
+                      "language": "go",
+                      "code": "package main\n\nimport (\n\t\"bytes\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"net/http\"\n)\n\nfunc post(path string, body any, withKey bool) map[string]any {\n\tdata, _ := json.Marshal(body)\n\treq, _ := http.NewRequest(\"POST\", \"https://api.wiro.ai/v1\"+path, bytes.NewReader(data))\n\treq.Header.Set(\"Content-Type\", \"application/json\")\n\tif withKey {\n\t\treq.Header.Set(\"x-api-key\", \"YOUR_API_KEY\")\n\t}\n\tresp, err := http.DefaultClient.Do(req)\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\tdefer resp.Body.Close()\n\tvar out map[string]any\n\tjson.NewDecoder(resp.Body).Decode(&out)\n\treturn out\n}\n\nfunc main() {\n\tagent := \"YOUR_USERAGENT_GUID\"\n\n\t// 1. Browse the catalog (no API key needed)\n\tcatalog := post(\"/AgentConnector/List\", map[string]any{\"category\": \"data\"}, false)\n\tfmt.Println(len(catalog[\"agentconnectors\"].([]any)), \"connectors\")\n\n\t// 2. Connect Serper with its API key\n\tconnect := post(\"/UserAgent/ConnectorConnect\", map[string]any{\n\t\t\"useragentguid\": agent,\n\t\t\"slug\":          \"serper\",\n\t\t\"values\":        map[string]string{\"apikey\": \"YOUR_SERPER_API_KEY\"},\n\t}, true)\n\tfmt.Println(connect[\"status\"], connect[\"restart\"])\n\n\t// 3. Read the agent's connections\n\tlist := post(\"/UserAgent/ConnectorList\", map[string]any{\"useragentguid\": agent}, true)\n\tfor _, c := range list[\"useragentconnectors\"].([]any) {\n\t\tconn := c.(map[string]any)\n\t\tfmt.Println(conn[\"slug\"], conn[\"status\"])\n\t}\n}\n"
+                    },
+                    {
+                      "label": "Swift",
+                      "language": "swift",
+                      "code": "import Foundation\n\nfunc post(_ path: String, _ body: [String: Any], withKey: Bool = true) async throws -> [String: Any] {\n    var req = URLRequest(url: URL(string: \"https://api.wiro.ai/v1\\(path)\")!)\n    req.httpMethod = \"POST\"\n    req.setValue(\"application/json\", forHTTPHeaderField: \"Content-Type\")\n    if withKey { req.setValue(\"YOUR_API_KEY\", forHTTPHeaderField: \"x-api-key\") }\n    req.httpBody = try JSONSerialization.data(withJSONObject: body)\n    let (data, _) = try await URLSession.shared.data(for: req)\n    return try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]\n}\n\nlet agent = \"YOUR_USERAGENT_GUID\"\n\n// 1. Browse the catalog (no API key needed)\nlet catalog = try await post(\"/AgentConnector/List\", [\"category\": \"data\"], withKey: false)\n\n// 2. Connect Serper with its API key\nlet connect = try await post(\"/UserAgent/ConnectorConnect\", [\n    \"useragentguid\": agent,\n    \"slug\": \"serper\",\n    \"values\": [\"apikey\": \"YOUR_SERPER_API_KEY\"]\n])\nprint(connect[\"status\"] ?? \"\", connect[\"restart\"] ?? \"\")\n\n// 3. Read the agent's connections\nlet list = try await post(\"/UserAgent/ConnectorList\", [\"useragentguid\": agent])\nfor conn in list[\"useragentconnectors\"] as? [[String: Any]] ?? [] {\n    print(conn[\"slug\"] ?? \"\", conn[\"status\"] ?? \"\")\n}\n"
+                    },
+                    {
+                      "label": "Kotlin",
+                      "language": "kotlin",
+                      "code": "import java.net.URI\nimport java.net.http.HttpClient\nimport java.net.http.HttpRequest\nimport java.net.http.HttpResponse\n\nval client: HttpClient = HttpClient.newHttpClient()\n\nfun post(path: String, json: String, withKey: Boolean = true): String {\n    val builder = HttpRequest.newBuilder(URI.create(\"https://api.wiro.ai/v1$path\"))\n        .header(\"Content-Type\", \"application/json\")\n        .POST(HttpRequest.BodyPublishers.ofString(json))\n    if (withKey) builder.header(\"x-api-key\", \"YOUR_API_KEY\")\n    return client.send(builder.build(), HttpResponse.BodyHandlers.ofString()).body()\n}\n\nfun main() {\n    val agent = \"YOUR_USERAGENT_GUID\"\n\n    // 1. Browse the catalog (no API key needed)\n    println(post(\"/AgentConnector/List\", \"\"\"{\"category\":\"data\"}\"\"\", withKey = false))\n\n    // 2. Connect Serper with its API key\n    println(post(\"/UserAgent/ConnectorConnect\",\n        \"\"\"{\"useragentguid\":\"$agent\",\"slug\":\"serper\",\"values\":{\"apikey\":\"YOUR_SERPER_API_KEY\"}}\"\"\"))\n\n    // 3. Read the agent's connections\n    println(post(\"/UserAgent/ConnectorList\", \"\"\"{\"useragentguid\":\"$agent\"}\"\"\"))\n}\n"
+                    },
+                    {
+                      "label": "Dart",
+                      "language": "dart",
+                      "code": "import 'dart:convert';\nimport 'package:http/http.dart' as http;\n\nFuture<Map<String, dynamic>> post(String path, Map<String, dynamic> body, {bool withKey = true}) async {\n  final res = await http.post(\n    Uri.parse('https://api.wiro.ai/v1$path'),\n    headers: {\n      'Content-Type': 'application/json',\n      if (withKey) 'x-api-key': 'YOUR_API_KEY',\n    },\n    body: jsonEncode(body),\n  );\n  return jsonDecode(res.body) as Map<String, dynamic>;\n}\n\nFuture<void> main() async {\n  const agent = 'YOUR_USERAGENT_GUID';\n\n  // 1. Browse the catalog (no API key needed)\n  final catalog = await post('/AgentConnector/List', {'category': 'data'}, withKey: false);\n  print((catalog['agentconnectors'] as List).length);\n\n  // 2. Connect Serper with its API key\n  final connect = await post('/UserAgent/ConnectorConnect', {\n    'useragentguid': agent,\n    'slug': 'serper',\n    'values': {'apikey': 'YOUR_SERPER_API_KEY'},\n  });\n  print('${connect['status']} ${connect['restart']}');\n\n  // 3. Read the agent's connections\n  final list = await post('/UserAgent/ConnectorList', {'useragentguid': agent});\n  for (final conn in list['useragentconnectors'] as List) {\n    print('${conn['slug']} ${conn['status']}');\n  }\n}\n"
+                    },
+                    {
+                      "label": "Response",
+                      "language": "json",
+                      "code": "{\n  \"result\": true,\n  \"errors\": [],\n  \"status\": \"connected\",\n  \"applied\": 1,\n  \"restart\": \"scheduled\",\n  \"useragentconnectors\": [\n    {\n      \"slug\": \"serper\",\n      \"title\": \"Serper\",\n      \"iconurl\": \"https://wiro.ai/images/icons/skills/serper.svg\",\n      \"category\": \"data\",\n      \"authtype\": \"fields\",\n      \"transport\": \"local\",\n      \"authmode\": null,\n      \"catalogstatus\": \"active\",\n      \"status\": \"connected\",\n      \"connectedat\": 1795390000,\n      \"updatedat\": 1795390000,\n      \"tokenexpiresat\": null,\n      \"refreshtokenexpiresat\": null,\n      \"scope\": null,\n      \"accounts\": {},\n      \"wiroprojectid\": null,\n      \"savedvariables\": [\"apikey\"],\n      \"lasterror\": null\n    }\n  ]\n}\n"
+                    }
+                  ]
+                </script>
+              </div>
+
               <!-- ==================== AGENT CREDENTIALS ==================== -->
               <div class="docs-page-section" data-page="agent-credentials" style="display: none">
                 <article class="docs-section">
