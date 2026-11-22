@@ -11994,7 +11994,7 @@ WIRO_API_SECRET=your-api-secret</code></pre>
                       <tbody>
                         <tr>
                           <td><code>send_agent_message</code></td>
-                          <td><code>Message/Send</code>, or <code>Message/SendForm</code> with attachments</td>
+                          <td><code>Message/Send</code>; with attachments, <code>Message/SendForm</code> for Studio and the Workflow Agent, and a multipart <code>Message/Send</code> for a deployed agent</td>
                           <td>Send a message and wait for the reply, with any media, workflows or model runs it produced.</td>
                         </tr>
                         <tr>
@@ -12069,7 +12069,7 @@ WIRO_API_SECRET=your-api-secret</code></pre>
                         </tr>
                         <tr>
                           <td><code>apply_agent_skills</code></td>
-                          <td><code>POST /UserAgent/PricingPreview</code>, <code>/UserAgent/SkillsApply</code></td>
+                          <td><code>POST /Skills/List</code>, <code>/UserAgent/Detail</code>, then <code>/UserAgent/SkillsApply</code></td>
                           <td>Turn skills on or off; every plan includes every skill, so a change costs nothing.</td>
                         </tr>
                         <tr>
