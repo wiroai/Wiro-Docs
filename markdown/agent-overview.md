@@ -725,7 +725,7 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
 | `categories` | Cloned from the agent template | `null` (custom agents have no marketplace categories) |
 | `cover` | `null` unless you pass one; the template's cover shows through `agent.cover` | Optional: pass `cover` in the body if you want one |
 | Bundled scheduled tasks | Cloned from the template's preset custom skills | Seeded from the Scheduled Tasks its skills bring |
-| Onboarding placeholders | None: the template ships its own preset strategies | One invocation-only `cs-my-custom-strategy` and one scheduled `cs-cron-my-scheduled-task` are seeded so the panel always has something to render under "Custom Skills" / "Scheduled Tasks" |
+| Onboarding placeholders | None: the template ships its own preset strategies | Approval Policy (`cs-approval-policy`) and My Custom Strategy (`cs-my-custom-strategy`); My Scheduled Task (`cs-cron-my-scheduled-task`) only when no scheduled task comes with the build, and it starts off |
 | Platform-managed credentials | Set up by Wiro | Set up by Wiro |
 | Marketplace run counter | Bumped by 1 | Not touched (custom agents have no template to count against) |
 
