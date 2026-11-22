@@ -17695,7 +17695,7 @@ for the channel contract.</p>
 <tr>
 <td><code>&lt;fieldname&gt;</code></td>
 <td><code>string|number|boolean|array</code></td>
-<td>The field value as you saved it, returned to the agent's owner and team admins. A saved secret (a <code>password</code> or <code>fileinput-base64</code> field, or such a key in a list's entries) reads <code>"••••••••"</code> instead, for every caller, and one with nothing saved reads <code>""</code>. Field types match <code>_schema.fields[].type</code>. Never returned: Wiro-managed fields, and a value the agent template holds on a field Wiro stores encrypted: such a field reads empty until you save your own.</td>
+<td>The field value as you saved it, returned to the agent's owner and team admins. A saved secret (a <code>password</code> field, or such a key in a list's entries) reads <code>"••••••••"</code> instead, for every caller, and one with nothing saved reads <code>""</code>. Field types match <code>_schema.fields[].type</code>. Never returned: Wiro-managed fields, and a value the agent template holds on a field Wiro stores encrypted: such a field reads empty until you save your own.</td>
 </tr>
 </tbody>
 </table>
@@ -18956,7 +18956,7 @@ channel-enable endpoint or persisted switch.</p>
 </div>
 </div>
 <blockquote>
-<p><strong><code>fileinput</code> vs <code>fileinput-base64</code>.</strong> This endpoint is the storage path for the <code>fileinput</code> type only: the file is stored by Wiro and the credential keeps a reference to it. The companion <code>fileinput-base64</code> type is stored with the credential (encrypted at rest) and is written via the standard <code>CredentialUpsert</code> JSON <code>fields[]</code> array (e.g. <code>serviceaccountjson</code> on <code>google-drive</code>/<code>google-calendar</code>/<code>google-play</code>/<code>firebase</code>, <code>privatekey</code> on <code>apple-appstore</code>). Sending a base64 field through this endpoint returns <code>Field is not a fileinput type</code>.</p>
+<p><strong>Connector key files.</strong> This endpoint stores the file of a credential field whose <code>type</code> is <code>fileinput</code> (the <code>holdaudio</code> and <code>holdmusic</code> fields of Twilio Voice (<code>twilio-voice</code>)): Wiro keeps the file and the credential keeps a reference to it. A connector's key file (a Google service account JSON, an App Store Connect private key) is not a credential: send its contents in <code>values</code> on <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>POST /UserAgent/ConnectorConnect</code></a>. A connector sent here as <code>credentialkey</code> answers <code>Unknown credential: &lt;key&gt;</code>, and a field of another type <code>Field is not a fileinput type</code>.</p>
 </blockquote>
 <h5 id="request_2">Request</h5>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CredentialFileUpload&quot; \
