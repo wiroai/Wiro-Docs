@@ -992,7 +992,7 @@ The assistant will call `get_task` with the task token from the previous run.
 
 > "Show my latest productions and open the newest result"
 
-The assistant will call `list_tasks`, select the matching task, and call `get_task` with its task ID. Task history covers the authenticated project's workspace, personal or team: model tasks from every project in it and from wiro.ai. Steps of workflow runs and the runs Studio starts are not listed: `list_workflow_runs` and `list_studio_results` have those. The LLM never sends a user UUID.
+The assistant will call `list_tasks`, select the matching task, and call `get_task` with its task ID. Task history covers the authenticated project's workspace, personal or team: model tasks from every project in it and from wiro.ai. Steps of workflow runs are not listed: `list_workflow_runs` has those. The model runs Studio starts for you are your own tasks and are listed with the rest; `list_studio_results` lists only Studio's. The LLM never sends a user UUID.
 
 ### Build and run a workflow
 
@@ -1186,7 +1186,7 @@ until `task_postprocess_end` or `task_cancel`.
 
 ### list_tasks
 
-List recent model-generation tasks in the authenticated project's workspace (personal or team), from every project in it and from wiro.ai. Steps of workflow runs and the runs Studio starts are not listed: `list_workflow_runs` and `list_studio_results` have those. Calls `POST /Task/List` without a `uuid`; Wiro derives the workspace from the API credential.
+List recent model-generation tasks in the authenticated project's workspace (personal or team), from every project in it and from wiro.ai. Steps of workflow runs are not listed: `list_workflow_runs` has those. The model runs Studio starts for you are your own tasks and are listed with the rest; `list_studio_results` lists only Studio's. Calls `POST /Task/List` without a `uuid`; Wiro derives the workspace from the API credential.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
