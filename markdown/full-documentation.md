@@ -21763,9 +21763,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
 
 ## Managing Scheduled Tasks
 
-Scheduled tasks run on a cron schedule: bundled ones (`_source: "skill-bundle"`) ship with integration skills and run automatically when the integration is enabled. User-created ones (`_source: "user-created"`) are added at any time.
+Scheduled tasks run on a cron schedule: bundled ones (`_source: "skill-bundle"`) come with the agent template, and one that works with connectors stays off until one of them is connected. User-created ones (`_source: "user-created"`) are added at any time.
 
-> **For bundled crons, only `enabled` and `interval` are writable.** The task body (`value`) comes from the integration skill and is restored whenever the agent restarts. To change **what** a bundled scheduled task does, edit the paired preference skill (e.g. `content-tone` is read by `cs-cron-social-content-scanner` at runtime). For user-created crons, all three (`value`, `interval`, `enabled`) are writable.
+> **For bundled crons, only `enabled` and `interval` are writable.** The task body (`value`) comes from the agent template and is restored whenever the agent restarts. To change **what** a bundled scheduled task does, edit the paired preference skill (e.g. `content-tone` is read by `cs-cron-social-content-scanner` at runtime). For user-created crons, all three (`value`, `interval`, `enabled`) are writable.
 
 ### Example: Change a bundled cron's frequency
 

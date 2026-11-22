@@ -33895,9 +33895,9 @@ complete. Channels are not skills and do not affect pricing.</p>
   }'
 </code></pre>
 <h2 id="managing-scheduled-tasks">Managing Scheduled Tasks</h2>
-<p>Scheduled tasks run on a cron schedule: bundled ones (<code>_source: "skill-bundle"</code>) ship with integration skills and run automatically when the integration is enabled. User-created ones (<code>_source: "user-created"</code>) are added at any time.</p>
+<p>Scheduled tasks run on a cron schedule: bundled ones (<code>_source: "skill-bundle"</code>) come with the agent template, and one that works with connectors stays off until one of them is connected. User-created ones (<code>_source: "user-created"</code>) are added at any time.</p>
 <blockquote>
-<p><strong>For bundled crons, only <code>enabled</code> and <code>interval</code> are writable.</strong> The task body (<code>value</code>) comes from the integration skill and is restored whenever the agent restarts. To change <strong>what</strong> a bundled scheduled task does, edit the paired preference skill (e.g. <code>content-tone</code> is read by <code>cs-cron-social-content-scanner</code> at runtime). For user-created crons, all three (<code>value</code>, <code>interval</code>, <code>enabled</code>) are writable.</p>
+<p><strong>For bundled crons, only <code>enabled</code> and <code>interval</code> are writable.</strong> The task body (<code>value</code>) comes from the agent template and is restored whenever the agent restarts. To change <strong>what</strong> a bundled scheduled task does, edit the paired preference skill (e.g. <code>content-tone</code> is read by <code>cs-cron-social-content-scanner</code> at runtime). For user-created crons, all three (<code>value</code>, <code>interval</code>, <code>enabled</code>) are writable.</p>
 </blockquote>
 <h3 id="example-change-a-bundled-crons-frequency">Example: Change a bundled cron's frequency</h3>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
