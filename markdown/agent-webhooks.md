@@ -4,11 +4,13 @@ Receive agent response notifications via HTTP callbacks.
 
 ## How It Works
 
-When you send a message to an agent via `POST /UserAgent/Message/Send`, include a `callbackurl` parameter. Once the agent finishes processing on the bridge, Wiro sends a POST request to your URL with the result. Callbacks fire on `agent_end` (success), `agent_error` (failure during processing), and `agent_cancel` **only when the abort hits the bridge mid-flight**. Messages cancelled while still queued (status `agent_queue`, before the bridge picks them up) are marked `agent_cancel` in the database but **do not fire a webhook**, because there was no processing attempt to report on. See the "When the cancel webhook fires" note below for the full decision table.
+When you send a message to an agent via `POST /UserAgent/Message/Send`, include a `callbackurl` parameter. Once the agent's turn ends, Wiro sends a POST request to your URL with the result. Callbacks fire on `agent_end` (success), `agent_error` (failure during processing), and `agent_cancel` **only when a turn that had started is stopped**. Messages cancelled while still queued (status `agent_queue`, before the agent starts on them) are marked `agent_cancel` in the database but **do not fire a webhook**, because there was no processing attempt to report on. See the "When the cancel webhook fires" note below for the full decision table.
 
 This lets you build fully asynchronous workflows: fire a message and let your backend handle the response whenever it arrives, without polling or maintaining a WebSocket connection.
 
-A setup reply that Wiro handles itself, such as a `yes` that applies a setup card, runs no agent turn: Wiro posts its result to the `callbackurl` right away, with `status: "agent_end"`. Its `metadata` holds `type: "setup_result"`, `cards` (the ids of the cards it acted on) and, when the answer leaves connectors to connect, `next`: `[{ connector, title, mode, cardid?, messageguid? }]`, as in `setupresult`. See [Replies Wiro handles itself](/docs/agent-messaging#handled-setup-replies).
+A setup reply that Wiro handles itself, such as a `yes` that applies a setup card, runs no agent turn: Wiro posts its result to the `callbackurl` right away, with `status: "agent_end"`. Its `metadata` holds `type: "setup_result"`, `cards` (the ids of the cards it acted on) and `via` (`"api"` for a message sent with a project API key, `"web"` otherwise). It also holds `next` when the answer leaves connectors to connect (`[{ connector, title, mode, cardid?, messageguid? }]`, as in `setupresult`), `listed` and `listedfrom` for a [card listing](/docs/agent-messaging#setup-card-listing) (the ids of the cards it showed and the `guid` of the message they are on), and `teamguid` when the message was sent in a team's workspace. See [Replies Wiro handles itself](/docs/agent-messaging#handled-setup-replies).
+
+An unknown or disabled slash command that Wiro answers itself, such as `/status`, is posted the same way, right away and with `status: "agent_end"`. Its `metadata` holds `type: "setup_result"`, `cards: []`, `command` (the command's name, such as `"status"`), `via` and, in a team's workspace, `teamguid`. See [Unknown or disabled commands](/docs/agent-messaging#unknown-or-disabled-commands).
 
 > **Results that arrive later.** When the agent moves longer work to the background, its turn ends with a short line saying the result will follow, and that line is what your `callbackurl` receives (`status: "agent_end"`). The result is added to the session later as a separate message and doesn't call the `callbackurl`. Read it with [`Message/History`](/docs/agent-messaging#post-useragentmessagehistory), or follow the session on the [Agent WebSocket](/docs/agent-websocket#following-a-session).
 
@@ -85,7 +87,7 @@ When the agent finishes, Wiro sends a **POST** request to your `callbackurl` wit
 
 > The `response` and `debugoutput` fields hold `[REQUEST_CANCELLED] Request cancelled.`; use `status === "agent_cancel"` as the signal.
 
-> **When the cancel webhook fires:** `agent_cancel` is delivered **only when the agent bridge catches an `AbortError`** during active processing, i.e. the message had already started on the agent side and was aborted mid-flight (via `POST /UserAgent/Message/Cancel` or an upstream timeout). For messages cancelled **before** they reach the bridge (still queued, or an instant `Message/Cancel` that beats dispatching), the message is marked `agent_cancel` in the database and returned as such in `POST /UserAgent/Message/Detail`, but **no webhook is fired**, because there was no processing attempt to report on. Use `POST /UserAgent/Message/Detail` (checking `status === "agent_cancel"`) as the canonical source of truth for cancellation; WebSocket subscribers receive the `agent_cancel` event only on active-processing aborts (same condition as the webhook). Treat the webhook as a best-effort "processing was interrupted" signal.
+> **When the cancel webhook fires:** `agent_cancel` is delivered **only when the turn had already started and was stopped while it ran** (by `POST /UserAgent/Message/Cancel` or a timeout). For messages cancelled **before** the agent starts on them (still queued, or an instant `Message/Cancel` that beats dispatching), the message is marked `agent_cancel` in the database and returned as such in `POST /UserAgent/Message/Detail`, but **no webhook is fired**, because there was no processing attempt to report on. Use `POST /UserAgent/Message/Detail` (checking `status === "agent_cancel"`) as the canonical source of truth for cancellation; WebSocket subscribers receive the `agent_cancel` event only on active-processing aborts (same condition as the webhook). Treat the webhook as a best-effort "processing was interrupted" signal.
 
 ### Field Reference
 
@@ -96,7 +98,7 @@ When the agent finishes, Wiro sends a **POST** request to your `callbackurl` wit
 | `content` | string | The original user message you sent. |
 | `response` | string | The agent's full response text on success. For errors, contains the error message. For cancellation, contains the abort reason. |
 | `debugoutput` | string | Same as `response`: the full accumulated output text. Included for consistency with the polling API. |
-| `metadata` | object | Structured answer data, performance metrics, and raw text. Timeline blocks are not embedded in webhooks. Empty object (`{}`) for error and cancel statuses. |
+| `metadata` | object | Structured answer data, performance metrics, and raw text. Timeline blocks are not embedded in webhooks. Empty object (`{}`) for `agent_cancel` and for an `agent_error` that cut the turn off; see [The `metadata` Object](#the-metadata-object). |
 | `endedat` | number | Unix timestamp (UTC seconds) when processing finished. |
 
 ### The `metadata` Object
@@ -105,28 +107,28 @@ On successful completion (`agent_end`), the `metadata` object contains the struc
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `type` | string | Always `"progressGenerate"`. |
+| `type` | string | `"progressGenerate"` for an agent turn. A reply Wiro handles itself has `"setup_result"` instead, with the keys described under [How It Works](#how-it-works). |
 | `task` | string | Always `"Generate"`. |
 | `raw` | string | The complete response text. |
 | `answer` | array | Array of response segments: the content to show the user. |
 | `speed` | string | Final generation speed (e.g. `"14.2"`). |
 | `speedType` | string | Speed unit: `"words/s"`. |
 | `elapsedTime` | string | Total generation time (e.g. `"8.1s"`). |
-| `tokenCount` | number | Number of answer chunks received by the bridge. Use the message's billing columns for authoritative model tokens. |
+| `tokenCount` | number | Number of answer chunks streamed for the turn. Use the message's billing columns for authoritative model tokens. |
 | `wordCount` | number | Total words in the response. |
 
-For `agent_error` and `agent_cancel`, `metadata` is an empty object `{}`. Always check `status` before accessing metadata fields.
+For `agent_cancel`, and for an `agent_error` that cut the turn off, such as `[TURN_INTERRUPTED]` or `[AGENT_UNAVAILABLE]` after an outage, `metadata` is an empty object `{}`. A turn that ended with a coded failure, such as `[SPEND_LIMIT_REACHED]`, `[CREDITS_EXHAUSTED]` or `[MODEL_NOT_ALLOWED]`, posts the usual `progressGenerate` metadata, and its `raw` and `answer` hold the same coded message as `response`. Read the outcome from `status` and `response`, never from `metadata`.
 
 After receiving the webhook, call `POST /UserAgent/Message/Detail` with `messageguid` whenever you need the authoritative top-level `timeline[]`. It preserves the ordered reasoning, answer, and safe tool-label/status blocks for the completed turn.
 
-> **Note:** For `agent_error` and `agent_cancel`, the webhook's `response` and `debugoutput` hold the same coded failure message as `POST /UserAgent/Message/Detail`; see [Failed turns](/docs/agent-messaging#failed-turns). The underlying error is never sent.
+> **Note:** For `agent_error` and `agent_cancel`, the webhook's `response` and `debugoutput` hold the same coded failure message as `POST /UserAgent/Message/Detail`; see [Failed turns](/docs/agent-messaging#failed-turns). The underlying error is never sent. A turn the agent's security rules block can also come with `agent_end` and `[SECURITY_BLOCKED] …` in `response`.
 
 ## Status Values
 
 | Status | Description | `response` contains | `metadata` contains |
 |--------|-------------|---------------------|---------------------|
 | `agent_end` | Agent completed successfully | Full response text | Structured answer and metrics |
-| `agent_error` | The turn failed | The public failure message; see [Failed turns](/docs/agent-messaging#failed-turns) | Empty object `{}` |
+| `agent_error` | The turn failed | The public failure message; see [Failed turns](/docs/agent-messaging#failed-turns) | Empty object `{}`, or the usual metrics when the turn ended with a coded failure such as `[SPEND_LIMIT_REACHED]` |
 | `agent_cancel` | Message was cancelled before completion | `[REQUEST_CANCELLED] Request cancelled.` | Empty object `{}` |
 
 ## Retry Policy
@@ -135,8 +137,8 @@ Wiro attempts to deliver each webhook up to **3 times**:
 
 - First attempt is immediate when the agent finishes
 - 2-second delay between retries
-- Your endpoint must return **HTTP 200** to acknowledge receipt
-- Any non-200 response triggers a retry
+- Any **2xx** answer counts as delivered
+- Any other answer, a redirect (3xx) included, or no answer, is tried again
 - After 3 failed attempts, the webhook is abandoned and the failure is logged server-side
 
 The message result is always persisted in the database regardless of webhook delivery. You can retrieve it at any time via `POST /UserAgent/Message/Detail`.
@@ -147,7 +149,7 @@ The message result is always persisted in the database regardless of webhook del
 - Always use **HTTPS** endpoints in production
 - Use a public address. Wiro doesn't call a `callbackurl` whose host is, or resolves to, a private, loopback or link-local address; that message gets no webhook, and its result stays readable with `Message/Detail`
 - Validate the payload structure before processing
-- Consider returning 200 immediately and processing the payload asynchronously to avoid timeouts
+- Consider answering with a 2xx at once and processing the payload asynchronously to avoid timeouts
 
 ## Code Examples
 

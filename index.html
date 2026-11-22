@@ -22931,7 +22931,7 @@ print(response.body);
 <p>Every Detail or History message row returns a top-level <code>timeline[]</code>. It is the ordered, persisted record of the turn. A turn can contain multiple interleaved blocks, for example:</p>
 <p><code>Thinking → Answer or Tool → Thinking → Answer</code></p>
 <p>Each block has an opaque deterministic <code>blockid</code>, call/content ordering coordinates, <code>type</code> (<code>reasoning</code>, <code>answer</code>, <code>tool</code>, or <code>setup</code>), safe public text, tool state or a setup card, <code>phase</code> (<code>stream</code>, <code>end</code>, or <code>error</code>), its own monotonically increasing <code>version</code>, and timestamps. Reasoning text is a model-provided reasoning summary, never raw hidden chain-of-thought. Tool blocks expose only <code>toollabel</code>, <code>toolstatus</code>, <code>toolintegration</code>, and <code>toolaction</code>, never a tool ID, arguments, results, or other internal execution metadata. <code>toolintegration</code> and <code>toolaction</code> each hold a word from a <a href="#tool-integration-and-action-values">closed list</a> or <code>null</code>. A <code>setup</code> block is a setup change the agent proposes; see <a href="#setup-from-chat">Setup From Chat</a>. When a turn ends with <code>agent_error</code> or <code>agent_cancel</code>, the server closes every block still at <code>stream</code> and sends each one as an <code>agent_timeline_delta</code>, usually just before that final event. After <code>agent_end</code>, open blocks normally close a few seconds later. A tool block that closed with <code>toolstatus</code> <code>requested</code> was cut off before it finished.</p>
-<p>Live WebSocket updates arrive as <code>agent_timeline_delta</code> events carrying one public block. Merge by <code>blockid</code>, replace that block only when its incoming <code>version</code> is strictly newer, then sort by <code>callindex</code>, <code>contentindex</code>, and <code>blockid</code>. <code>agent_subscribed.timeline</code> carries the persisted reconnect snapshot. <code>agent_output</code> remains provisional cumulative SSE output until the corresponding answer block catches up; after completion or reconnect, <code>Message/Detail</code> is authoritative.</p>
+<p>Live WebSocket updates arrive as <code>agent_timeline_delta</code> events carrying one public block. Merge by <code>blockid</code>, replace that block only when its incoming <code>version</code> is strictly newer, then sort by <code>callindex</code>, <code>contentindex</code>, and <code>blockid</code>. <code>agent_subscribed.timeline</code> carries the persisted reconnect snapshot. <code>agent_output</code> stays provisional cumulative output until the corresponding answer block catches up; after completion or reconnect, <code>Message/Detail</code> is authoritative.</p>
 <h2 id="message-lifecycle">Message Lifecycle</h2>
 <p>Every agent message progresses through a defined set of stages:</p>
 <p><code>agent_queue</code> → <code>agent_start</code> → <code>agent_output</code> → <code>agent_end</code></p>
@@ -22994,7 +22994,7 @@ print(response.body);
 <tbody>
 <tr>
 <td><code>[SECURITY_BLOCKED]</code></td>
-<td><code>agent_error</code></td>
+<td><code>agent_error</code>, or <code>agent_end</code> when the block came back as the answer</td>
 <td>The agent's security rules blocked the message.</td>
 <td>Change the message and send it again.</td>
 </tr>
@@ -23031,7 +23031,7 @@ print(response.body);
 <tr>
 <td><code>[CREDITS_EXHAUSTED]</code></td>
 <td><code>agent_error</code></td>
-<td>The agent has used the AI usage its plan includes and its balance is under $0.50, so its model calls were refused. Every try fails until funds are added or the plan renews.</td>
+<td>The agent has used the AI usage its plan includes and its balance is under $0.50, so its model calls were refused. A turn that is already running stops at its next model call. Every try fails until funds are added or the plan renews.</td>
 <td>Add funds to the balance of the agent's workspace (see <a href="/docs/agent-overview#adding-funds">Adding Funds</a>), or wait for the plan to renew. Don't send the message again before that.</td>
 </tr>
 <tr>
@@ -23050,6 +23050,7 @@ print(response.body);
 </table>
 </div>
 </div>
+<p>A turn the agent's security rules block can also end with <code>agent_end</code>, with <code>[SECURITY_BLOCKED] …</code> as its <code>response</code>, so match these codes on <code>response</code> whatever the status.</p>
 <p>The full texts:</p>
 <pre><code class="language-text">[SECURITY_BLOCKED] The agent's security rules blocked this message. Change it and send it again.
 [SAFETY_POLICY_BLOCKED] The model's provider declined this request under its safety policy. Rephrase it and send it again.
@@ -23112,14 +23113,14 @@ print(response.body);
 <td><code>attachment</code> / <code>attachments[]</code></td>
 <td>file</td>
 <td>No</td>
-<td>Multipart only: one or more file attachments that the agent can process.</td>
+<td>Multipart only: up to 8 files the agent can process. More are refused with <code>Too many files (max 8)</code>, and the message is not sent.</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
 <blockquote>
-<p><strong>Per-turn model selection.</strong> <code>model</code> selects the chat model for a single turn instead of the agent's configured default. Valid values are the agent's <strong>selectable</strong> slugs: the <code>tokenRates.models[]</code> entries where <code>selectable</code> is <code>true</code>, returned by <code>UserAgent/Detail</code> (see <a href="/docs/agent-overview">Agent Overview</a>). The current set includes <code>openai/gpt-5.6-sol</code> (the platform chat default), <code>openai/gpt-5.6-terra</code>, <code>openai/gpt-5.6-luna</code>, <code>openai/gpt-5.5</code>, <code>openai/gpt-5.5-pro</code>, <code>openai/gpt-5.4</code>, <code>openai/gpt-5.4-mini</code>, <code>openai/gpt-5.2</code>, <code>openai/gpt-5.1</code>, <code>openai/gpt-5</code>, and <code>openai/gpt-5-mini</code>. Always read the live set from that field. The server applies the chosen model to that turn only.</p>
+<p><strong>Per-turn model selection.</strong> <code>model</code> selects the chat model for a single turn instead of the agent's configured default. Valid values are the agent's <strong>selectable</strong> slugs: the slugs in <code>tokenRates.models</code> whose <code>selectable</code> is <code>true</code>, returned by <code>UserAgent/Detail</code> (see <a href="/docs/agent-overview">Agent Overview</a>). The set changes over time, so read it from that field each time instead of keeping a list. The server applies the chosen model to that turn only.</p>
 </blockquote>
 <h3 id="response">Response</h3>
 <pre><code class="language-json">{
@@ -23132,7 +23133,7 @@ print(response.body);
 </code></pre>
 <blockquote>
 <p><strong>A successful Send response means the message was accepted and queued, not that it will definitely reach the agent.</strong> After this response the system queues the message for the agent. If that queueing step itself fails (for example, a queue outage), the message's <code>status</code> is set to <code>agent_error</code> server-side <strong>after</strong> the HTTP response was already sent with <code>result: true</code>. Always confirm the final state via <code>POST /UserAgent/Message/Detail</code> or the WebSocket stream; don't assume the message progresses to <code>agent_start</code> just because Send returned <code>result: true</code>.</p>
-<p><strong>Reserved session keys.</strong> The platform reserves a small set of <code>sessionkey</code> prefixes for system-managed threads: <code>wiro:api</code>, <code>voice-prep*</code>, <code>voice-call-*</code>, and <code>cs-cron-*</code>. Sending a user message into one of these keys is rejected with <code>Reserved sessionkey</code> (the same guard that protects <code>Message/DeleteSession</code>). Pick any other identifier for your own threads.</p>
+<p><strong>Reserved session keys.</strong> The platform keeps these <code>sessionkey</code>s for its own threads: <code>wiro:api</code> and keys that start with <code>wiro:api:</code>, keys that start with <code>voice-prep</code>, <code>voice-call-</code>, <code>cs-cron-</code> or <code>cron:</code>, and any key that contains <code>:cron:</code>. Send refuses them with <code>Reserved sessionkey</code>, <code>Message/History</code> returns an empty page for them, and <code>Message/DeleteSession</code> and <code>Message/RenameSession</code> answer <code>Session not found</code>. Pick any other identifier for your own threads.</p>
 </blockquote>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -23202,7 +23203,7 @@ print(response.body);
 <p>See <a href="#post-useragentmessagehistory"><code>Message/History</code></a> for the shape and ordering of the marker row it materializes.</p>
 </blockquote>
 <h4 id="failure-responses">Failure responses</h4>
-<p>When <code>result: false</code>, the response shape is <code>{ result: false, errors: [{ code, message }], messageguid: null, agenttoken: null, status: null }</code>. Two branches add extra context:</p>
+<p>When <code>result: false</code>, the response shape is <code>{ result: false, errors: [{ code, message }], messageguid: null, agenttoken: null, status: null }</code>. Three branches add extra context:</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -23220,14 +23221,20 @@ print(response.body);
 <td>Returned for every message Wiro doesn't answer itself as a setup reply (see <a href="#handled-setup-replies">Replies Wiro handles itself</a>). Echoes the agent's current <code>status</code> so the caller can decide whether to wait, call <code>Start</code>, or surface "Setup Required" UI: <code>0</code> Stopped (call <code>Start</code>), <code>1</code> Stopping, <code>2</code> Queued and <code>3</code> Starting (wait and retry), <code>5</code> Error (call <code>Start</code> to retry), <code>6</code> Setup Required. With status <code>1</code>, the error reads <code>Agent is stopping. Please wait a moment and try again.</code> when the agent is shutting down to stay stopped, and <code>Agent is restarting. Please wait a moment and try again.</code> when it is shutting down to start again, as in a <a href="/docs/agent-overview#automatic-restart">restart</a>. See <a href="/docs/agent-overview#useragent-statuses">UserAgent Statuses</a>.</td>
 </tr>
 <tr>
-<td>AI usage and balance used up</td>
+<td>Spend limit used up</td>
+<td><code>agentstatus</code></td>
+<td>Code <code>93</code>: a <a href="/docs/spend-limits">spend limit</a> that covers the agent is used up: its own limit or, once its plan's included AI usage is used up, the account's or team's limit or the <code>agent</code> surface's limit. The message names the limit and when it resets, such as <code>This agent's monthly spend limit is reached ($20.35 of $20.00). It resets on December 1, 2026 at 00:00 UTC.</code> It is checked before code <code>97</code>, and <code>agentstatus</code> is <code>4</code> here, so branch on the code. Nothing is queued or charged. When the limits can't be checked at that moment, this branch answers code <code>0</code> <code>Spend limits could not be checked. Try again in a moment.</code> instead: send the message again shortly.</td>
+</tr>
+<tr>
+<td>Agent paused (balance or plan)</td>
 <td><code>agentstatus</code>, <code>agentusage</code></td>
-<td>Code <code>97</code>: the agent has used the AI usage its plan includes and the balance is under $0.50. <code>agentusage</code> is the agent's <a href="/docs/agent-overview#usage-object"><code>usage</code></a> (<code>paused: true</code>, <code>pausedreason: "balance"</code>). The message speaks to whoever pays for the agent: surface an "Add funds" action. See <a href="/docs/agent-overview#ai-usage-and-the-balance">AI Usage and the Balance</a>.</td>
+<td>Code <code>97</code>. <code>agentusage</code> is the agent's <a href="/docs/agent-overview#usage-object"><code>usage</code></a> with <code>paused: true</code>, and its <code>pausedreason</code> says why. <code>"balance"</code>: the agent has used the AI usage its plan includes and the balance is under $0.50. The message speaks to whoever pays for the agent: surface an "Add funds" action. <code>"plan"</code>: the agent has no active plan, and the message reads <code>&lt;Agent name&gt; has no active plan. Choose a plan to keep it running.</code> Surface a "Choose a plan" action that renews the plan with <a href="/docs/agent-overview#post-useragentrenewsubscription"><code>RenewSubscription</code></a>: adding funds doesn't run it. See <a href="/docs/agent-overview#ai-usage-and-the-balance">AI Usage and the Balance</a>.</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
+<p>A deleted agent answers code <code>95</code>, <code>User agent not found</code>, with no extra fields.</p>
 <h3 id="unknown-or-disabled-commands">Unknown or disabled commands</h3>
 <p>While the agent is running, Wiro answers a slash command the agent doesn't run, such as <code>/status</code>, or one of its commands that is turned off in <a href="/docs/agent-overview#post-useragentupdatesettings"><code>enabledcommands</code></a>. No agent turn runs and nothing is charged, even while the agent is paused for its balance. Send answers at once:</p>
 <pre><code class="language-json">{
@@ -23423,7 +23430,7 @@ print(response.body);
 <tr>
 <td><code>metadata</code></td>
 <td><code>object</code></td>
-<td>Parsed JSON object (API returns it already decoded). Populated from the agent bridge on <code>agent_end</code>. Only <code>type</code> and a few keys are returned: on a finished turn (<code>type: "progressGenerate"</code>) <code>task</code>, <code>speed</code>, <code>speedType</code>, <code>elapsedTime</code>, <code>tokenCount</code> and <code>wordCount</code>; on a <code>model_change</code> marker row <code>fromModel</code> and <code>toModel</code>; on a <code>setup_result</code> row, a <a href="#handled-setup-replies">reply Wiro handles itself</a>, the answer's <code>next</code> when it left connectors to connect (as in <code>setupresult</code>), and <code>listed</code> and <code>listedfrom</code> when it was the <a href="#setup-card-listing">card listing</a>: the ids of the cards it showed and the <code>guid</code> of the message they are on; on other rows (<code>system</code>, <code>subagent</code>) usually <code>type</code> alone, and in History <code>systemcost: true</code> on a row whose cost came from a scheduled or background run. The answer text is in <code>response</code> and <code>timeline</code>, never in metadata. Empty object <code>{}</code> for <code>agent_error</code>, <code>agent_cancel</code>, or when the bridge hasn't finished yet. Message status lives in the top-level <code>status</code> field, so don't read it from <code>metadata.type</code>.</td>
+<td>Parsed JSON object (API returns it already decoded). Filled when the turn ends. Only <code>type</code> and a few keys are returned: on a finished turn (<code>type: "progressGenerate"</code>) <code>task</code>, <code>speed</code>, <code>speedType</code>, <code>elapsedTime</code>, <code>tokenCount</code> and <code>wordCount</code>; on a <code>model_change</code> marker row <code>fromModel</code> and <code>toModel</code>; on a <code>setup_result</code> row, a <a href="#handled-setup-replies">reply Wiro handles itself</a>, the answer's <code>next</code> when it left connectors to connect (as in <code>setupresult</code>), and <code>listed</code> and <code>listedfrom</code> when it was the <a href="#setup-card-listing">card listing</a>: the ids of the cards it showed and the <code>guid</code> of the message they are on; on other rows (<code>system</code>, <code>subagent</code>) usually <code>type</code> alone, and in History <code>systemcost: true</code> on a row whose cost came from a scheduled or background run. The answer text is in <code>response</code> and <code>timeline</code>, never in metadata. A turn that ended with a coded failure, such as <code>[SPEND_LIMIT_REACHED]</code> or <code>[CREDITS_EXHAUSTED]</code>, keeps <code>type: "progressGenerate"</code> and its metrics. Empty object <code>{}</code> for <code>agent_cancel</code>, for an <code>agent_error</code> that cut the turn off, such as <code>[TURN_INTERRUPTED]</code>, and while the turn is still running. Message status lives in the top-level <code>status</code> field, so don't read it from <code>metadata.type</code>: read a turn's outcome from <code>status</code> and <code>response</code>.</td>
 </tr>
 <tr>
 <td><code>attachments</code></td>
@@ -23453,7 +23460,7 @@ print(response.body);
 <tr>
 <td><code>inputtokens</code></td>
 <td><code>number|null</code></td>
-<td>Uncached input (prompt) tokens billed at the model's input rate. Populated on the assistant turn once it completes; <code>null</code> on user-only, cron, legacy, and <code>model_change</code> marker rows.</td>
+<td>Uncached input (prompt) tokens billed at the model's input rate. Populated on the assistant turn once it completes; <code>null</code> on user-only, Scheduled Task, legacy, and <code>model_change</code> marker rows.</td>
 </tr>
 <tr>
 <td><code>outputtokens</code></td>
@@ -23587,7 +23594,7 @@ print(response.body);
 </blockquote>
 <h3 id="tool-integration-and-action-values">Tool integration and action values</h3>
 <p><code>toolintegration</code> and <code>toolaction</code> say which connector a tool step works in and what the step does, so your app can show "Working in Shopify" or "Taking a screenshot" instead of only the tool's name. Each holds a word from a closed list or <code>null</code>, never free text, a host, a URL, a path, or an argument.</p>
-<p><code>toolintegration</code> is the <code>slug</code> of the connector the step works in, as <a href="/docs/agent-connectors#post-agentconnectorlist"><code>POST /AgentConnector/List</code></a> lists it, such as <code>shopify</code>, <code>google-ads</code> or <code>serper</code>, or <code>telegram</code> for the Telegram channel and <code>wiro</code> for Wiro's own tools. Name it in your app by the connector's <code>title</code>.</p>
+<p><code>toolintegration</code> is the <code>slug</code> of the connector the step works in, as <a href="/docs/agent-connectors#post-agentconnectorlist"><code>POST /AgentConnector/List</code></a> lists it, such as <code>shopify</code>, <code>google-ads</code>, <code>serper</code> or <code>wiro</code> (Wiro AI Models). Channels such as Telegram are not connectors and get no word. Name it in your app by the connector's <code>title</code>, and treat a slug the catalog doesn't list like <code>null</code>. A step that calls a connector's tool has that tool's name as its <code>toollabel</code>, <code>&lt;slug&gt;__&lt;tool&gt;</code>, such as <code>shopify__list_products</code>.</p>
 <p><code>toolaction</code> is one of these words:</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -23656,7 +23663,7 @@ print(response.body);
     &quot;contentindex&quot;: 1,
     &quot;type&quot;: &quot;tool&quot;,
     &quot;text&quot;: null,
-    &quot;toollabel&quot;: &quot;exec&quot;,
+    &quot;toollabel&quot;: &quot;shopify__list_products&quot;,
     &quot;toolstatus&quot;: &quot;completed&quot;,
     &quot;toolintegration&quot;: &quot;shopify&quot;,
     &quot;toolaction&quot;: null,
@@ -23911,7 +23918,7 @@ print(response.body);
 <tr>
 <td><code>inputtokens</code></td>
 <td><code>number|null</code></td>
-<td>Uncached input (prompt) tokens billed at the model's input rate. <code>null</code> on user-only, cron, legacy, and <code>model_change</code> marker rows.</td>
+<td>Uncached input (prompt) tokens billed at the model's input rate. <code>null</code> on user-only, Scheduled Task, legacy, and <code>model_change</code> marker rows.</td>
 </tr>
 <tr>
 <td><code>outputtokens</code></td>
@@ -24069,7 +24076,7 @@ print(response.body);
 </div>
 <blockquote>
 <p><strong>Named-but-empty sessions appear too.</strong> A session created by <a href="#post-useragentmessagerenamesession"><code>RenameSession</code></a> before its first <code>Message/Send</code> surfaces here with <code>messagecount: 0</code>, <code>lastmessage: ""</code>, and the <code>name</code> you set, so a freshly created chat shows up in the list immediately.</p>
-<p><strong>Reserved session keys.</strong> The list leaves out the reserved session keys <code>wiro:api</code>, <code>voice-prep*</code>, <code>voice-call-*</code> and <code>cs-cron-*</code>. <code>Message/History</code> and <code>DeleteSession</code> reject them too.</p>
+<p><strong>Reserved session keys.</strong> The list leaves out the platform's own threads: <code>wiro:api</code> and keys that start with <code>voice-prep</code>, <code>voice-call-</code> or <code>cs-cron-</code>. Every key the platform keeps is listed under <a href="#post-useragentmessagesend">Message/Send</a>.</p>
 <p><strong>Marker rows excluded.</strong> <code>model_change</code> marker rows are not real turns. They're skipped when building this list, so they never surface as a session's <code>lastmessage</code>.</p>
 </blockquote>
 <h2 id="post-useragentmessagedeletesession"><strong>POST</strong> /UserAgent/Message/DeleteSession</h2>
@@ -24110,7 +24117,7 @@ print(response.body);
 </div>
 <blockquote>
 <p><strong>Scope of deletion:</strong> Hard delete. The session's messages are removed permanently, not hidden. Only the caller's own messages in the session are purged. This holds in both private and collaborative team modes. Even when <code>teamsessionmode: "collaborative"</code> (e.g. Telegram group-shared sessions) means every member sees the same thread, each member's <code>DeleteSession</code> only wipes their own contributions. Compare with <code>Message/Delete</code> (per-message), which is a soft delete that hides messages instead of removing them.</p>
-<p><strong>Reserved session keys.</strong> <code>wiro:api</code>, <code>voice-prep*</code>, <code>voice-call-*</code> and <code>cs-cron-*</code> are reserved. Passing one of them as <code>sessionkey</code> returns <code>"Session not found"</code>, and <code>Sessions</code> never lists them.</p>
+<p><strong>Reserved session keys.</strong> Passing a key the platform keeps for its own threads (see <a href="#post-useragentmessagesend">Message/Send</a>) as <code>sessionkey</code> returns <code>"Session not found"</code>.</p>
 </blockquote>
 <h3 id="response_4">Response</h3>
 <pre><code class="language-json">{
@@ -24142,7 +24149,7 @@ print(response.body);
 <td><code>sessionkey</code></td>
 <td>string</td>
 <td>Yes</td>
-<td>The session to name. Reserved system keys (<code>wiro:api</code>, <code>voice-prep*</code>, <code>voice-call-*</code>, <code>cs-cron-*</code>) are rejected with <code>"Session not found"</code>, same as <code>DeleteSession</code>.</td>
+<td>The session to name. Keys the platform keeps for its own threads (see <a href="#post-useragentmessagesend">Message/Send</a>) are rejected with <code>"Session not found"</code>, same as <code>DeleteSession</code>.</td>
 </tr>
 <tr>
 <td><code>name</code></td>
@@ -24298,13 +24305,13 @@ print(response.body);
 <blockquote>
 <p><strong>Behavior depends on when the cancel hits:</strong></p>
 <ul>
-<li>If the message was <strong>already being processed</strong> by the agent bridge (status <code>agent_start</code> or <code>agent_output</code>), the bridge's abort handler fires: subscribed WebSocket clients receive an <code>agent_cancel</code> event, <code>debugoutput</code> / <code>response</code> are set to <code>[REQUEST_CANCELLED] Request cancelled.</code>, and the <code>callbackurl</code> webhook (if set) is triggered with <code>status: "agent_cancel"</code>.</li>
+<li>If the turn had <strong>already started</strong> (status <code>agent_start</code> or <code>agent_output</code>), it is stopped: subscribed WebSocket clients receive an <code>agent_cancel</code> event, <code>debugoutput</code> / <code>response</code> are set to <code>[REQUEST_CANCELLED] Request cancelled.</code>, and the <code>callbackurl</code> webhook (if set) is triggered with <code>status: "agent_cancel"</code>.</li>
 <li>If the message was <strong>still queued</strong> (status <code>agent_queue</code>) when cancelled, no processing attempt had started: the row is marked <code>agent_cancel</code>, <a href="#post-useragentmessagedetail">Message/Detail</a> and <a href="#post-useragentmessagehistory">Message/History</a> return <code>[REQUEST_CANCELLED] Request cancelled.</code> for it, <strong>no WebSocket <code>agent_cancel</code> event</strong> is broadcast, and <strong>no webhook</strong> is triggered.</li>
 </ul>
 <p>When polling for the final state, check <code>status === "agent_cancel"</code>.</p>
 </blockquote>
 <h2 id="setup-from-chat">Setup From Chat</h2>
-<p>An agent can help the people who run it set it up in the chat: turn a skill on or off, connect a connector (with its key, its vendor's sign-in or, for the <code>wiro</code> connector, a Wiro project), disconnect one, create or change a scheduled task, create or change a custom skill, add to one or undo its last change, or change its time zone. The agent never changes its own setup and never sees a key. It proposes the change as a <strong>setup card</strong>: Wiro checks the card against the agent's current setup and stores it on the message that asked for it, where it shows as a <code>setup</code> block in that message's <code>timeline[]</code>. Nothing changes until an agent admin (the owner, or an admin of the agent's team) approves the card.</p>
+<p>An agent can help the people who run it set it up in the chat: turn a skill on or off, connect a connector (with its key, its vendor's sign-in or, for the Wiro AI Models connector (<code>wiro</code>), a Wiro project), disconnect one, create or change a scheduled task, create or change a custom skill, add to one or undo its last change, or change its time zone. The agent never changes its own setup and never sees a key. It proposes the change as a <strong>setup card</strong>: Wiro checks the card against the agent's current setup and stores it on the message that asked for it, where it shows as a <code>setup</code> block in that message's <code>timeline[]</code>. Nothing changes until an agent admin (the owner, or an admin of the agent's team) approves the card.</p>
 <p>Where cards can be proposed and approved is the agent's <code>chatsetup</code> setting. Set it with <a href="/docs/agent-overview#post-useragentupdatesettings"><code>UpdateSettings</code></a> or at <a href="/docs/agent-overview#post-useragentdeploy"><code>Deploy</code></a>, and read it back as <code>chatSetup</code> on <a href="/docs/agent-overview#post-useragentdetail"><code>UserAgent/Detail</code></a>:</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -24421,7 +24428,7 @@ print(response.body);
 <tr>
 <td><code>mode</code></td>
 <td><code>string</code></td>
-<td><code>connect</code> only, written by Wiro: <code>key</code> (the card takes the values in <code>fields</code>), <code>signin</code> (the card opens the vendor's sign-in) or <code>project</code> (the card picks a Wiro project for the <code>wiro</code> connector). <code>oauth</code> and <code>provider-oauth</code> connectors sign in, the <code>wiro</code> connector takes a project, and the others take a key. See <a href="#setup-signin-cards">Connecting a connector</a>.</td>
+<td><code>connect</code> only, written by Wiro: <code>key</code> (the card takes the values in <code>fields</code>), <code>signin</code> (the card opens the vendor's sign-in) or <code>project</code> (the card picks a Wiro project for the Wiro AI Models connector, <code>wiro</code>). <code>oauth</code> and <code>provider-oauth</code> connectors sign in, Wiro AI Models takes a project, and the others take a key. See <a href="#setup-signin-cards">Connecting a connector</a>.</td>
 </tr>
 <tr>
 <td><code>fields</code></td>
@@ -24538,7 +24545,7 @@ End every post with three questions readers ask, each with a two-sentence answer
 <p>An <code>add</code> card turns on one skill (<code>util-&lt;name&gt;</code>) that the agent doesn't have, and a <code>remove</code> card turns off one it has, as the agent page does. <code>key</code> holds its name as <a href="/docs/agent-skills#post-skillslist"><code>POST /Skills/List</code></a> lists it, one name per card. A change costs nothing: every plan includes every skill, so the plan's price and included AI usage stay the same. Cards work on agents deployed from a template and on custom builds, and once a card is applied, the agent restarts to load the change. Connectors are not turned on or off: a connected connector is on, and a <a href="#setup-disconnect-cards"><code>disconnect</code> card</a> disconnects it.</p>
 <p>A change can turn on or off more than its <code>key</code>, so Wiro works out the rest and writes it on the card, and the person who approves sees the whole change. The agent never writes these fields: a proposal that sends them has them dropped.</p>
 <ul>
-<li><strong><code>with</code></strong>: on an <code>add</code>, the skills <code>key</code> depends on (<code>depends_on</code> in Skills/List) that aren't on yet, which are turned on with it. On a <code>remove</code>, the linked partners the agent page turns off together with it (removing <code>util-video-creator</code> also turns off <code>util-motion-effects</code>), and the supporting parts (<code>user_invocable: false</code>) that nothing left on still needs.</li>
+<li><strong><code>with</code></strong>: on an <code>add</code>, the skills <code>key</code> depends on (<code>depends_on</code> in Skills/List) that aren't on yet, which are turned on with it. On a <code>remove</code>, the linked partners the agent page turns off together with it (removing Video Creator (<code>util-video-creator</code>) also turns off Motion Effects (<code>util-motion-effects</code>)), and the supporting parts (<code>user_invocable: false</code>) that nothing left on still needs.</li>
 <li><strong><code>pauses</code></strong> and <strong><code>resumes</code></strong>: the scheduled tasks that stop running, or run again, because a skill they use goes off or comes back on. A paused task keeps its text and schedule.</li>
 <li><strong><code>needs</code></strong>: on an <code>add</code>, the connectors the change works with that aren't connected yet. Each gets a <code>connect</code> card, as below.</li>
 </ul>
@@ -24565,7 +24572,7 @@ End every post with three questions readers ask, each with a two-sentence answer
 <li>it would change too much at once for a chat card: more than 12 skills in <code>with</code>, or more than 20 scheduled tasks in <code>pauses</code> or <code>resumes</code>. The sentence reads <code>&lt;Title&gt; changes too many connectors, skills or scheduled tasks at once for a chat card. Change it in the agent's settings.</code>;</li>
 <li>two skills that can't be on together (<code>conflicts_with</code>) would both be on;</li>
 <li>the <code>remove</code> would take away something that skills staying on need: remove those first, or keep it;</li>
-<li>voice calls would be left without a channel: with <code>util-voice-receptionist</code> on, the Twilio Voice channel (<code>util-twilio-channel</code>) or the Web Voice channel (<code>util-web-channel</code>) must be on.</li>
+<li>voice calls would be left without a channel: with Voice Receptionist Rules (<code>util-voice-receptionist</code>) on, Twilio Voice Channel (<code>util-twilio-channel</code>) or Web Voice Channel (<code>util-web-channel</code>) must be on.</li>
 </ul>
 <p>A card refused as the agent proposes it is never stored. A card refused as it is applied changes nothing and fails, with the sentence in <code>error</code>.</p>
 <h3 id="setup-add-and-connect">Adding and connecting in one step</h3>
@@ -24575,6 +24582,113 @@ End every post with three questions readers ask, each with a two-sentence answer
 <li><strong>With a sign-in.</strong> When its <code>needs</code> names one connector with <code>mode: "signin"</code> whose <code>connect</code> card waits, start the sign-in on that <code>connect</code> card (see <a href="#setup-signin-cards">Connecting a connector</a>). Once the browser is back, send the <code>add</code> card with <code>signin: true</code>. Wiro checks that the connector reads connected: when it doesn't, nothing is applied and the answer is <code>&lt;Title&gt; is not connected yet. Finish the sign-in on the card first.</code> with <code>errorcode: "not_connected"</code>. Otherwise it applies the <code>add</code> card, then the <code>connect</code> card.</li>
 </ul>
 <p><code>setup</code> is the <code>add</code> card after the call, <code>summary</code> names both changes, such as <code>Google Play Promotional Content added. Google Play Console connected.</code>, and <code>paired</code> holds the <code>connect</code> card's outcome as <code>[{ setup, result, error }]</code>.</p>
+<p>An <code>add</code> card for Google Play Promotional Content (<code>util-googleplay-events</code>), applied with the values of its Google Play Console (<code>google-play</code>) <code>connect</code> card:</p>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;,
+    &quot;messageguid&quot;: &quot;c3d4e5f6-a7b8-9012-cdef-345678901234&quot;,
+    &quot;cardid&quot;: &quot;g7p2l4y9e1vd&quot;,
+    &quot;action&quot;: &quot;apply&quot;,
+    &quot;values&quot;: { &quot;serviceaccountjson&quot;: { &quot;type&quot;: &quot;service_account&quot;, &quot;client_email&quot;: &quot;play-agent@your-project.iam.gserviceaccount.com&quot;, &quot;private_key&quot;: &quot;YOUR_PRIVATE_KEY&quot; } }
+  }'
+</code></pre>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;setup&quot;: {
+    &quot;v&quot;: 1,
+    &quot;id&quot;: &quot;g7p2l4y9e1vd&quot;,
+    &quot;kind&quot;: &quot;add&quot;,
+    &quot;key&quot;: &quot;util-googleplay-events&quot;,
+    &quot;needs&quot;: [{ &quot;connector&quot;: &quot;google-play&quot;, &quot;title&quot;: &quot;Google Play Console&quot;, &quot;mode&quot;: &quot;key&quot; }],
+    &quot;requestedby&quot;: &quot;ada-uuid&quot;,
+    &quot;createdat&quot;: 1743350406,
+    &quot;status&quot;: &quot;applied&quot;,
+    &quot;actedat&quot;: 1743350460,
+    &quot;actedby&quot;: &quot;ada-uuid&quot;
+  },
+  &quot;restarting&quot;: true,
+  &quot;summary&quot;: &quot;Google Play Promotional Content added. Google Play Console connected.&quot;,
+  &quot;paired&quot;: [
+    {
+      &quot;setup&quot;: {
+        &quot;v&quot;: 1,
+        &quot;id&quot;: &quot;c5k8w3n1r6tf&quot;,
+        &quot;kind&quot;: &quot;connect&quot;,
+        &quot;connector&quot;: &quot;google-play&quot;,
+        &quot;title&quot;: &quot;Google Play Console&quot;,
+        &quot;authtype&quot;: &quot;fields&quot;,
+        &quot;mode&quot;: &quot;key&quot;,
+        &quot;fields&quot;: [
+          { &quot;name&quot;: &quot;serviceaccountjson&quot;, &quot;label&quot;: &quot;Service Account JSON&quot;, &quot;description&quot;: &quot;1. Go to [Google Cloud Console → IAM &amp; Admin → Service Accounts](https://console.cloud.google.com/iam-admin/serviceaccounts) ...&quot;, &quot;required&quot;: true, &quot;secret&quot;: true, &quot;format&quot;: &quot;json&quot; }
+        ],
+        &quot;requestedby&quot;: &quot;ada-uuid&quot;,
+        &quot;createdat&quot;: 1743350406,
+        &quot;status&quot;: &quot;applied&quot;,
+        &quot;actedat&quot;: 1743350460,
+        &quot;actedby&quot;: &quot;ada-uuid&quot;
+      },
+      &quot;result&quot;: true,
+      &quot;error&quot;: null
+    }
+  ]
+}
+</code></pre>
+<p><code>next</code> is absent: the pair connected the only connector the card needed. With <code>signin: true</code> the answer has the same shape. Store Review Response Rules (<code>util-store-review-response</code>), on an agent that already has App Store Connect and Google Play Console connected, needs only Google Business Profile, which signs in. Sent with <code>signin: true</code> before the browser is back from the sign-in, it applies nothing:</p>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;,
+    &quot;messageguid&quot;: &quot;e6f7a8b9-c0d1-2345-f678-90123456789a&quot;,
+    &quot;cardid&quot;: &quot;s2r6v9b4m8qa&quot;,
+    &quot;action&quot;: &quot;apply&quot;,
+    &quot;signin&quot;: true
+  }'
+</code></pre>
+<pre><code class="language-json">{
+  &quot;result&quot;: false,
+  &quot;errors&quot;: [
+    { &quot;code&quot;: 0, &quot;message&quot;: &quot;Google Business Profile is not connected yet. Finish the sign-in on the card first.&quot;, &quot;time&quot;: 1743350460 }
+  ],
+  &quot;setup&quot;: {
+    &quot;v&quot;: 1,
+    &quot;id&quot;: &quot;s2r6v9b4m8qa&quot;,
+    &quot;kind&quot;: &quot;add&quot;,
+    &quot;key&quot;: &quot;util-store-review-response&quot;,
+    &quot;needs&quot;: [{ &quot;connector&quot;: &quot;google-business&quot;, &quot;title&quot;: &quot;Google Business Profile&quot;, &quot;mode&quot;: &quot;signin&quot; }],
+    &quot;requestedby&quot;: &quot;ada-uuid&quot;,
+    &quot;createdat&quot;: 1743350406
+  },
+  &quot;restarting&quot;: false,
+  &quot;summary&quot;: &quot;&quot;,
+  &quot;errorcode&quot;: &quot;not_connected&quot;,
+  &quot;paired&quot;: [
+    {
+      &quot;setup&quot;: {
+        &quot;v&quot;: 1,
+        &quot;id&quot;: &quot;b3t7q1x5n9we&quot;,
+        &quot;kind&quot;: &quot;connect&quot;,
+        &quot;connector&quot;: &quot;google-business&quot;,
+        &quot;title&quot;: &quot;Google Business Profile&quot;,
+        &quot;authtype&quot;: &quot;provider-oauth&quot;,
+        &quot;mode&quot;: &quot;signin&quot;,
+        &quot;fields&quot;: [
+          { &quot;name&quot;: &quot;clientid&quot;, &quot;label&quot;: &quot;OAuth Client ID&quot;, &quot;description&quot;: &quot;1. In [Google Cloud Console](https://console.cloud.google.com/), create a project (or pick one) ...&quot;, &quot;required&quot;: true, &quot;secret&quot;: false, &quot;format&quot;: &quot;text&quot;, &quot;placeholder&quot;: &quot;123-abc.apps.googleusercontent.com&quot;, &quot;maxlength&quot;: 200, &quot;serveronly&quot;: true, &quot;mode&quot;: &quot;oauth&quot; },
+          { &quot;name&quot;: &quot;clientsecret&quot;, &quot;label&quot;: &quot;OAuth Client Secret&quot;, &quot;description&quot;: &quot;Google shows the **Client secret** only once ...&quot;, &quot;required&quot;: true, &quot;secret&quot;: true, &quot;format&quot;: &quot;password&quot;, &quot;maxlength&quot;: 200, &quot;serveronly&quot;: true, &quot;mode&quot;: &quot;oauth&quot; }
+        ],
+        &quot;requestedby&quot;: &quot;ada-uuid&quot;,
+        &quot;createdat&quot;: 1743350406
+      },
+      &quot;result&quot;: false,
+      &quot;error&quot;: &quot;Google Business Profile is not connected yet. Finish the sign-in on the card first.&quot;
+    }
+  ]
+}
+</code></pre>
+<p>Once the browser is back, the same call answers <code>result: true</code>, <code>summary</code> <code>Store Review Response Rules added. Google Business Profile connected.</code> and <code>paired[0].result: true</code>.</p>
 <p>When the <code>add</code> card fails as it is applied, the <code>connect</code> card stays pending, and its <code>error</code> in <code>paired</code> reads <code>&lt;Connector title&gt; is not connected: &lt;Title&gt; was not added.</code> (with a key: nothing was saved) or <code>&lt;Connector title&gt; is connected, but &lt;Title&gt; was not added.</code> (with a sign-in: the connection stays). When the <code>add</code> card has no pending <code>connect</code> card to take the values, Wiro answers <code>This card takes no key. Apply it without one.</code>, and when more than one has, <code>This card brings more than one key. Apply it, then add each key on its own card.</code> With <code>signin: true</code>, the same cases answer <code>This card has no sign-in to finish. Apply it without one.</code> (<code>errorcode: "signin_no_pair"</code>) and <code>This card brings more than one sign-in. Apply it, then connect each on its own card.</code> (<code>errorcode: "signin_many"</code>). <code>values</code> and <code>signin</code> together answer <code>Send values or signin, not both.</code> In each case nothing changes and the cards stay pending.</p>
 <p><strong>In messages sent with a project API key.</strong> When the only pending cards of the agent's latest reply are an <code>add</code> card and its <code>connect</code> card, and the key is all that is needed, the <a href="#setup-card-listing">card listing</a> ends by offering the key as the reply, and once Wiro has listed the <code>add</code> card, the key pasted as the reply applies both cards at once. A key sent before Wiro has listed the <code>add</code> card saves nothing: the stored message reads <code>[key removed]</code> in its place, and Wiro answers with the listing.</p>
 <h3 id="setup-signin-cards">Connecting a connector</h3>
@@ -24582,7 +24696,7 @@ End every post with three questions readers ask, each with a two-sentence answer
 <ul>
 <li><strong><code>mode: "key"</code></strong>: the connector's values. Apply the card with <code>values</code>, or paste the key as the reply when the card has one secret field. A card with no required field is applied by a <code>yes</code> too. A refused value saves nothing and leaves the card pending.</li>
 <li><strong><code>mode: "signin"</code></strong>: the vendor's sign-in. Applying the card with your <code>redirecturl</code>, and the keys of your own app in <code>values</code> for a connector that signs in with one, answers <code>authorizeUrl</code>. The card stays pending until the connector reads connected; the next apply of it, or any card of the same person's applied or dismissed in that chat, records it applied. A typed reply never starts a sign-in. A card from a message sent with a project API key signs in as the key's owner: the consent screen names your organization, or the app of your own whose keys you send. Only a card from a Wiro web chat turn can sign in with Wiro's own app, and it says so with <code>wiroapp: true</code>.</li>
-<li><strong><code>mode: "project"</code></strong>: a Wiro project, for the <code>wiro</code> connector. Apply the card with the id of one of your projects as <code>wiroprojectguid</code>, and no <code>values</code>: it becomes the agent's own Wiro project, as <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>CredentialProjectBind</code></a> binds it and with the same checks (see <a href="/docs/agent-connectors#the-wiro-connector">The Wiro connector</a>). Without one, a request made with a project API key binds that key's own project, and the Wiro web chat keeps the agent's own project when it has one in its workspace; otherwise the card stays pending with <code>Pick a project on the card to connect &lt;Title&gt;.</code> A typed reply never applies it, and a key pasted as the reply never goes to it.</li>
+<li><strong><code>mode: "project"</code></strong>: a Wiro project, for the Wiro AI Models connector (<code>wiro</code>). Apply the card with the id of one of your projects as <code>wiroprojectguid</code>, and no <code>values</code>: it becomes the agent's own Wiro project, as <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>CredentialProjectBind</code></a> binds it and with the same checks (see <a href="/docs/agent-connectors#the-wiro-connector">The Wiro connector</a>). Without one, a request made with a project API key binds that key's own project, and the Wiro web chat keeps the agent's own project when it has one in its workspace; otherwise the card stays pending with <code>Pick a project on the card to connect &lt;Title&gt;.</code> A typed reply never applies it, and a key pasted as the reply never goes to it.</li>
 </ul>
 <p>A <code>signin</code> card for HubSpot, which signs in with an app of your own:</p>
 <pre><code class="language-json">{
@@ -24603,7 +24717,7 @@ End every post with three questions readers ask, each with a two-sentence answer
 </code></pre>
 <p>The agent never sees a key, a token or an account list. A connector's account pickers are chosen after it connects, with <a href="/docs/agent-connectors#post-useragentconnectorsetaccounts"><code>ConnectorSetAccounts</code></a>: no card picks accounts. The whole flow, every request and answer included, is in <a href="/docs/agent-chat-integration#connecting-a-connector">Agent Chat Integration</a>.</p>
 <h3 id="setup-disconnect-cards">Disconnecting a connector</h3>
-<p>A <code>disconnect</code> card disconnects a connector, as <a href="/docs/agent-connectors#post-useragentconnectordisconnect"><code>ConnectorDisconnect</code></a> does: Wiro asks the vendor to revoke a sign-in where it can, and deletes the connection. It names the connector in <code>connector</code>, carries its <code>title</code>, and never holds a value. Once it is applied, the agent restarts without the connector's tools until it is connected again. Wiro takes a <code>disconnect</code> card only for a connector the agent has a connection for; when the connection is gone by the time the card is applied, the card fails with <code>&lt;Title&gt; is not connected.</code> Channels (Telegram, Slack or Discord) are refused, and they are changed outside the chat, with the credential endpoints or on the agent page. A <code>disconnect</code> card for the <code>wiro</code> connector removes the connector only: the agent keeps its Wiro project. A <code>yes</code> applies a <code>disconnect</code> card as it does any card that needs no values.</p>
+<p>A <code>disconnect</code> card disconnects a connector, as <a href="/docs/agent-connectors#post-useragentconnectordisconnect"><code>ConnectorDisconnect</code></a> does: Wiro asks the vendor to revoke a sign-in where it can, and deletes the connection. It names the connector in <code>connector</code>, carries its <code>title</code>, and never holds a value. Once it is applied, the agent restarts without the connector's tools until it is connected again. Wiro takes a <code>disconnect</code> card only for a connector the agent has a connection for; when the connection is gone by the time the card is applied, the card fails with <code>&lt;Title&gt; is not connected.</code> Channels (Telegram, Slack or Discord) are refused, and they are changed outside the chat, with the credential endpoints or on the agent page. A <code>disconnect</code> card for Wiro AI Models (<code>wiro</code>) removes the connector only: the agent keeps its Wiro project. A <code>yes</code> applies a <code>disconnect</code> card as it does any card that needs no values.</p>
 <h3 id="approving-setup-cards">Approving a setup card</h3>
 <p>After proposing a card, the agent asks in one short line whether to apply it, or, for a <code>connect</code> card, says how to connect it. An agent admin approves one card at a time, in one of three ways:</p>
 <ol>
@@ -24650,7 +24764,7 @@ Instructions:
 
 Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it down.
 </code></pre>
-<p>An <code>append</code> card's first line reads <code>Card 1: Add to custom skill &lt;key&gt;.</code>, followed by only the text it adds. A <code>revert</code> card's first line reads <code>Card 1: Undo the last change to custom skill &lt;key&gt;.</code>, followed by the text it restores. A <code>disconnect</code> card has one line: <code>Card 1: Disconnect &lt;Connector&gt; (what was saved to connect it is removed).</code></p>
+<p>An <code>append</code> card's first line reads <code>Card 1: Add to custom skill &lt;title&gt;.</code>, followed by only the text it adds. A <code>revert</code> card's first line reads <code>Card 1: Undo the last change to custom skill &lt;title&gt;.</code>, followed by the text it restores. <code>&lt;title&gt;</code> is the skill's title, or its key when it has none. A <code>disconnect</code> card has one line: <code>Card 1: Disconnect &lt;Connector&gt; (what was saved to connect it is removed).</code></p>
 <p>An <code>add</code> or <code>remove</code> card names what it changes by title, never by key. Its first line is <code>Card 1: Add &lt;Title&gt; (skill).</code> or <code>Card 1: Remove &lt;Title&gt; (skill).</code>, and only the lines that apply follow it: <code>Also turns on: &lt;titles&gt;.</code>, <code>Also turns off: &lt;titles&gt;.</code>, <code>Scheduled tasks that pause: &lt;titles&gt;.</code>, <code>Scheduled tasks that run again: &lt;titles&gt;.</code> and <code>Still to connect: &lt;titles&gt;.</code> A <code>connect</code> card that takes values, signs in or picks a project isn't listed: it waits for its values, its sign-in or its project. One that needs no values is listed as <code>Card 1: Connect &lt;Connector&gt;.</code> When a message sent with a project API key gets the listing while the only pending cards are an <code>add</code> card and its <code>connect</code> card, and the key is all that is needed, the listing's last line offers the key as the reply instead: <code>Reply with your &lt;Connector title&gt; key to add &lt;Title&gt; and connect it at once, "yes" to add it now and give the key later, or "no" to turn it down.</code> See <a href="#setup-add-and-connect">Adding and connecting in one step</a>.</p>
 <p>With several cards, it starts with <code>The agent proposes these setup changes. Nothing is applied yet.</code> and ends with <code>To apply one, reply "yes" and its number, such as "yes 1", one card per reply. Reply "no" to turn them all down.</code> Show this text, as it is, to the person who approves. The listing is a reply Wiro handles itself (see <a href="#handled-setup-replies">below</a>), and its <code>setupresult</code> lists no card.</p>
 <h3 id="keys-in-chat">Keys in chat</h3>
@@ -24868,7 +24982,7 @@ Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it
 <td><code>wiroprojectguid</code></td>
 <td>string</td>
 <td>No</td>
-<td><code>project</code> cards, the <code>wiro</code> connector's: the id of one of your projects, from <a href="/docs/projects"><code>POST /Project/List</code></a>. It becomes the agent's own Wiro project, as <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>CredentialProjectBind</code></a> binds it. A request made with a project API key may leave it out, to bind that key's own project.</td>
+<td><code>project</code> cards, those of the Wiro AI Models connector (<code>wiro</code>): the id of one of your projects, from <a href="/docs/projects"><code>POST /Project/List</code></a>. It becomes the agent's own Wiro project, as <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>CredentialProjectBind</code></a> binds it. A request made with a project API key may leave it out, to bind that key's own project.</td>
 </tr>
 </tbody>
 </table>
@@ -25204,7 +25318,7 @@ call 1 / content 1: answer     → Final answer text
 → If &quot;agent_error&quot;/&quot;agent_cancel&quot;: handle accordingly
 </code></pre>
 <h3 id="3-webhook-callback">3. Webhook Callback</h3>
-<p>Pass a <code>callbackurl</code> when sending the message. The system will POST the final result to your URL when the agent finishes (up to 3 retry attempts):</p>
+<p>Pass a <code>callbackurl</code> when sending the message. The system will POST the final result to your URL when the agent finishes (up to 3 tries in all, 2 seconds apart; any 2xx answer counts as delivered; see <a href="/docs/agent-webhooks">Agent Webhooks</a>):</p>
 <pre><code class="language-json">{
   &quot;messageguid&quot;: &quot;c3d4e5f6-a7b8-9012-cdef-345678901234&quot;,
   &quot;status&quot;: &quot;agent_end&quot;,
@@ -25694,7 +25808,7 @@ func main() {
 <pre><code class="language-text">WS connect              →  { &quot;type&quot;: &quot;connected&quot;, &quot;version&quot;: &quot;1.0&quot; }
 { agent_info, token: A } →  { agent_subscribed ... token: A }
 { agent_info, token: B } →  { agent_subscribed ... token: B }
-{ agent_info, token: A } →  (no-op — already subscribed)
+{ agent_info, token: A } →  { agent_subscribed ... token: A }  (a fresh snapshot; still one subscription)
 </code></pre>
 <p>After this, every server-side event for either token is forwarded to this connection. All events carry the <code>agenttoken</code> field, so your handler can route them back to the right UI surface.</p>
 <p>Typical use cases:</p>
@@ -25770,12 +25884,12 @@ func main() {
 <tr>
 <td>↓</td>
 <td><code>agent_usage_report</code></td>
-<td>Post-terminal usage/billing frame. Fires once, ~250-500 ms after a successful <code>agent_end</code>, on the same <code>agenttoken</code>. Carries the final token counts, <code>model</code> and <code>tokencost</code> for the message identified by <code>messageguid</code>. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns); follow those on the <a href="#following-an-agents-background-runs">run stream</a>.</td>
+<td>Post-terminal usage/billing frame. Fires once, ~250-500 ms after a successful <code>agent_end</code>, on the same <code>agenttoken</code>. Carries the final token counts, <code>model</code> and <code>tokencost</code> for the message identified by <code>messageguid</code>. Not emitted for replayed usage callbacks or for runs with no chat message, such as Scheduled Task runs; follow those on the <a href="#following-an-agents-background-runs">run stream</a>.</td>
 </tr>
 <tr>
 <td>↓</td>
 <td><code>agent_wiroai_runtask</code></td>
-<td>Model-run discovery frame. Fires whenever the agent itself launches a Wiro model run during a turn (e.g. generating an image or video for a skill or through the <code>wiro</code> connector). Arrives on the <code>agenttoken</code> of the turn that launched the run, carrying the new task's <code>socketaccesstoken</code> so you can subscribe to that run's <code>task_*</code> lifecycle and collect its outputs. See <a href="#model-runs-the-agent-triggers">Model runs the agent triggers</a>.</td>
+<td>Model-run discovery frame. Fires whenever the agent itself launches a Wiro model run during a turn (e.g. generating an image or video for a skill or through the Wiro AI Models connector, <code>wiro</code>). Arrives on the <code>agenttoken</code> of the turn that launched the run, carrying the new task's <code>socketaccesstoken</code> so you can subscribe to that run's <code>task_*</code> lifecycle and collect its outputs. See <a href="#model-runs-the-agent-triggers">Model runs the agent triggers</a>.</td>
 </tr>
 <tr>
 <td>↑</td>
@@ -25810,7 +25924,7 @@ func main() {
 <tr>
 <td>↓</td>
 <td><code>agent_run_start</code></td>
-<td>A background run started: a Scheduled Task, a sub-agent, or another run with no chat message. Once per run.</td>
+<td>A background run started: a Scheduled Task, work the agent moved to the background, or another run with no chat message. Once per run.</td>
 </tr>
 <tr>
 <td>↓</td>
@@ -25898,7 +26012,7 @@ func main() {
 { &quot;type&quot;: &quot;error&quot;, &quot;message&quot;: &quot;agenttoken-required&quot;, &quot;result&quot;: false }
 </code></pre>
 <p>Run stream frames (<code>agent_run_*</code>) and their two errors carry <code>useragentguid</code> instead of an <code>agenttoken</code>; see <a href="#following-an-agents-background-runs">Following an agent's background runs</a>.</p>
-<p>The <code>agent_subscribed</code> frame is a snapshot rather than a <code>message</code> wrapper. For a known token it carries <code>status</code>, <code>debugoutput</code>, <code>messageguid</code>, and <code>timeline</code> at the top level. When the token is unknown, <code>status</code> is <code>"unknown"</code> and those row-backed fields are omitted.</p>
+<p>The <code>agent_subscribed</code> frame is a snapshot rather than a <code>message</code> wrapper. For a known token it carries <code>status</code>, <code>debugoutput</code>, <code>messageguid</code>, and <code>timeline</code> at the top level. When the token is unknown, <code>status</code> is <code>"unknown"</code>, <code>timeline</code> is <code>[]</code>, and <code>debugoutput</code> and <code>messageguid</code> are left out.</p>
 <h3 id="agent_subscribed">agent_subscribed</h3>
 <p>Sent immediately after the server accepts your subscription. The <code>status</code> field reflects where the agent currently is in its lifecycle.</p>
 <ul>
@@ -25919,8 +26033,9 @@ func main() {
 <p><strong>Unknown token</strong> (<code>status</code> is <code>"unknown"</code> and no <code>debugoutput</code> field):</p>
 <pre><code class="language-json">{
   &quot;type&quot;: &quot;agent_subscribed&quot;,
-  &quot;agenttoken&quot;: &quot;wrongtoken123&quot;,
+  &quot;agenttoken&quot;: &quot;Xy7Lm2Vq9Tb4Np8Rk1Wc6Hz3Fd5Gs0&quot;,
   &quot;status&quot;: &quot;unknown&quot;,
+  &quot;timeline&quot;: [],
   &quot;result&quot;: true
 }
 </code></pre>
@@ -26032,11 +26147,49 @@ func main() {
 <p><code>version</code> is per block, not global. A turn can therefore render <code>Thinking → Answer or Tool → Thinking → Answer</code> across multiple calls. <code>reasoning</code> blocks contain only model-provided reasoning summaries, never raw chain-of-thought. <code>answer</code> blocks expose safe answer text. <code>tool</code> blocks expose only <code>toollabel</code>, <code>toolstatus</code>, <code>toolintegration</code>, and <code>toolaction</code>; their <code>text</code> is <code>null</code>, and tool IDs, arguments, and results are not public.</p>
 <p>The complete public block shape is <code>blockid</code>, <code>callindex</code>, <code>contentindex</code>, <code>type</code>, <code>text</code>, <code>phase</code>, <code>version</code>, <code>startedat</code>, and <code>updatedat</code>, and tool blocks also carry <code>toollabel</code>, <code>toolstatus</code>, <code>toolintegration</code>, and <code>toolaction</code>. Reasoning and answer blocks don't have these four fields. <code>phase</code> is <code>stream</code>, <code>end</code>, or <code>error</code>; timestamps can be <code>null</code> when unavailable. No additional internal correlation or execution metadata is emitted in this block.</p>
 <p>When the agent proposes a setup change, a <code>setup</code> block arrives the same way. It sorts after the turn's other blocks, its <code>text</code> is <code>null</code> and it carries a <code>setup</code> object instead of tool fields; see <a href="/docs/agent-messaging#setup-from-chat">Setup From Chat</a>. A pending card's block has <code>version</code> 1. When the card is applied, dismissed or fails, the block comes again with <code>version</code> 2 and the new <code>status</code>; <code>Message/Detail</code> and <code>Message/History</code> always have the current state. A pending <code>connect</code> card's block also carries <code>next</code>, the connector it connects, as <code>[{ connector, title, mode }]</code>.</p>
+<p>A pending <code>connect</code> card as it arrives:</p>
+<pre><code class="language-json">{
+  &quot;type&quot;: &quot;agent_timeline_delta&quot;,
+  &quot;agenttoken&quot;: &quot;aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb&quot;,
+  &quot;message&quot;: {
+    &quot;messageguid&quot;: &quot;c3d4e5f6-a7b8-9012-cdef-345678901234&quot;,
+    &quot;block&quot;: {
+      &quot;blockid&quot;: &quot;s:k3v9q2m8x1za&quot;,
+      &quot;callindex&quot;: 1000000,
+      &quot;contentindex&quot;: 0,
+      &quot;type&quot;: &quot;setup&quot;,
+      &quot;text&quot;: null,
+      &quot;setup&quot;: {
+        &quot;v&quot;: 1,
+        &quot;id&quot;: &quot;k3v9q2m8x1za&quot;,
+        &quot;kind&quot;: &quot;connect&quot;,
+        &quot;connector&quot;: &quot;serper&quot;,
+        &quot;title&quot;: &quot;Serper&quot;,
+        &quot;authtype&quot;: &quot;fields&quot;,
+        &quot;mode&quot;: &quot;key&quot;,
+        &quot;fields&quot;: [
+          { &quot;name&quot;: &quot;apikey&quot;, &quot;label&quot;: &quot;Serper API Key&quot;, &quot;description&quot;: &quot;Real Google web-search results as clean JSON, via [Serper.dev](https://serper.dev) ...&quot;, &quot;required&quot;: true, &quot;secret&quot;: true, &quot;format&quot;: &quot;password&quot;, &quot;placeholder&quot;: &quot;your Serper.dev API key&quot; }
+        ],
+        &quot;requestedby&quot;: &quot;ada-uuid&quot;,
+        &quot;createdat&quot;: 1743350406
+      },
+      &quot;next&quot;: [{ &quot;connector&quot;: &quot;serper&quot;, &quot;title&quot;: &quot;Serper&quot;, &quot;mode&quot;: &quot;key&quot; }],
+      &quot;phase&quot;: &quot;end&quot;,
+      &quot;version&quot;: 1,
+      &quot;startedat&quot;: 1743350406,
+      &quot;updatedat&quot;: 1743350406
+    }
+  },
+  &quot;result&quot;: true
+}
+</code></pre>
+<p>Once the card is acted on, the same <code>blockid</code> comes again with <code>"version": 2</code>, its <code>setup.status</code> (<code>applied</code>, <code>dismissed</code> or <code>failed</code>) and <code>setup.actedat</code>, and without <code>next</code>.</p>
 <p>Tool blocks carry two closed-list words:</p>
 <ul>
-<li><code>toolintegration</code> names the connector the step works in, as its <code>slug</code> from <a href="/docs/agent-connectors#post-agentconnectorlist"><code>POST /AgentConnector/List</code></a>, such as <code>shopify</code>, <code>google-ads</code> or <code>serper</code>, or <code>telegram</code> for the Telegram channel and <code>wiro</code> for Wiro's own tools. Name it in your app by the connector's <code>title</code>.</li>
+<li><code>toolintegration</code> names the connector the step works in, as its <code>slug</code> from <a href="/docs/agent-connectors#post-agentconnectorlist"><code>POST /AgentConnector/List</code></a>, such as <code>shopify</code>, <code>google-ads</code>, <code>serper</code> or <code>wiro</code> (Wiro AI Models). Channels such as Telegram are not connectors and get no word. Name it in your app by the connector's <code>title</code>.</li>
 <li><code>toolaction</code> names what the step does: <code>screenshot</code>, <code>open-page</code>, <code>read-page</code>, <code>click</code>, <code>type</code>, <code>press-key</code>, <code>wait</code>, <code>upload</code>, <code>download</code>, <code>read-file</code>, or <code>edit-media</code>.</li>
 </ul>
+<p>A step that calls a connector's tool is labelled with that tool's name, <code>&lt;slug&gt;__&lt;tool&gt;</code>, such as <code>shopify__list_orders</code> or <code>wiro__run_model</code>. The label is display text: read the connector from <code>toolintegration</code>.</p>
 <p>Each is <code>null</code> when no word fits, and a block never has both. The words come with the block's first update, and every later update of the block carries them. A later update can carry a different word if the step changed, so read them from the newest version of the block. A block whose step is rewritten and no longer fits a word keeps its last word. Treat a value you don't know like <code>null</code>; <a href="/docs/agent-messaging#tool-integration-and-action-values">Agent Messaging</a> says what each word means.</p>
 <p>A tool block update:</p>
 <pre><code class="language-json">{
@@ -26050,7 +26203,7 @@ func main() {
       &quot;contentindex&quot;: 1,
       &quot;type&quot;: &quot;tool&quot;,
       &quot;text&quot;: null,
-      &quot;toollabel&quot;: &quot;exec&quot;,
+      &quot;toollabel&quot;: &quot;shopify__list_orders&quot;,
       &quot;toolstatus&quot;: &quot;requested&quot;,
       &quot;toolintegration&quot;: &quot;shopify&quot;,
       &quot;toolaction&quot;: null,
@@ -26106,7 +26259,7 @@ func main() {
 }
 </code></pre>
 <h3 id="agent_cancel">agent_cancel</h3>
-<p>Sent when the user cancels a message before the agent completes its response (only when the abort hits the bridge mid-flight, since queued-state cancels don't broadcast this event):</p>
+<p>Sent when the user cancels a message before the agent completes its response (only when the agent had already started on the message, since queued-state cancels don't broadcast this event):</p>
 <pre><code class="language-json">{
   &quot;type&quot;: &quot;agent_cancel&quot;,
   &quot;agenttoken&quot;: &quot;aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb&quot;,
@@ -26207,10 +26360,10 @@ func main() {
 <p>It is <strong>not</strong> emitted for:</p>
 <ul>
 <li><strong>Idempotent / replayed usage callbacks</strong>: a turn is billed once, and a replayed usage callback does not re-broadcast the frame.</li>
-<li><strong>Turns with no chat message</strong>: e.g. cron- or hook-triggered turns that produce no assistant message row have no <code>messageguid</code> to key on, so no frame is sent. Follow those runs on the <a href="#following-an-agents-background-runs">run stream</a> instead.</li>
+<li><strong>Turns with no chat message</strong>: e.g. Scheduled Task runs and other runs that produce no assistant message row have no <code>messageguid</code> to key on, so no frame is sent. Follow those runs on the <a href="#following-an-agents-background-runs">run stream</a> instead.</li>
 </ul>
 <h3 id="model-runs-the-agent-triggers">Model runs the agent triggers</h3>
-<p>When the agent <strong>itself</strong> kicks off a Wiro model run during a turn (for example generating an image or a video for a skill, or through the <code>wiro</code> connector), the bridge emits an <code>agent_wiroai_runtask</code> discovery frame. It hands you the new model run's <code>socketaccesstoken</code> so you can subscribe to that run and stream its progress and final media outputs. This is how a chat product surfaces a "live activity feed" of the media the agent is producing.</p>
+<p>When the agent <strong>itself</strong> kicks off a Wiro model run during a turn (for example generating an image or a video for a skill, or through the Wiro AI Models connector, <code>wiro</code>), Wiro sends an <code>agent_wiroai_runtask</code> discovery frame. It hands you the new model run's <code>socketaccesstoken</code> so you can subscribe to that run and stream its progress and final media outputs. This is how a chat product surfaces a "live activity feed" of the media the agent is producing.</p>
 <pre><code class="language-json">{
   &quot;type&quot;: &quot;agent_wiroai_runtask&quot;,
   &quot;agenttoken&quot;: &quot;aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb&quot;,
@@ -26374,7 +26527,7 @@ func main() {
 <li><strong>Keep the token private.</strong> Whoever holds it receives the session's new messages. Read it from History when you open the session instead of storing it.</li>
 </ul>
 <h3 id="following-an-agents-background-runs">Following an agent's background runs</h3>
-<p>Some of an agent's work never shows up as a chat turn: its Scheduled Tasks, the sub-agents it starts to work on something in the background, and other runs that have no chat message, such as a reply on a connected Telegram, Slack or Discord channel. The run stream lets you follow them live: when each run starts, each step it takes, and when it ends. It also reports every Wiro model run the agent starts, in chat turns too, from start to end.</p>
+<p>Some of an agent's work never shows up as a chat turn: its Scheduled Tasks, work it moves to the background, and other runs that have no chat message, such as a reply on a connected Telegram, Slack or Discord channel. The run stream lets you follow them live: when each run starts, each step it takes, and when it ends. It also reports every Wiro model run the agent starts, in chat turns too, from start to end.</p>
 <p>The stream carries labels only. Reasoning and answer text never appear on it (a block's <code>text</code> is always <code>null</code>), and a tool step shows only its label, its status and the two closed-list words a timeline tool block has.</p>
 <p><strong>Who can follow.</strong> The agent's owner and, on a team agent, the team's admins: the same people who can read the agent's <a href="/docs/agent-logs">Logs</a>. With an API key, the check applies to the user who created the key's project, so the owner's project API key works too.</p>
 <h4 id="get-a-run-stream-token">Get a run stream token</h4>
@@ -26419,7 +26572,7 @@ func main() {
         &quot;contentindex&quot;: 1,
         &quot;type&quot;: &quot;tool&quot;,
         &quot;text&quot;: null,
-        &quot;toollabel&quot;: &quot;exec&quot;,
+        &quot;toollabel&quot;: &quot;shopify__list_orders&quot;,
         &quot;toolstatus&quot;: &quot;requested&quot;,
         &quot;toolintegration&quot;: &quot;shopify&quot;,
         &quot;toolaction&quot;: null,
@@ -26543,7 +26696,7 @@ func main() {
 </div>
 <p><code>agent_run_start</code>, <code>agent_run_block</code>, and <code>agent_run_end</code> cover only runs that have no chat message. A chat turn you start with <code>Message/Send</code> streams on its <code>agenttoken</code> and never shows up here. <code>agent_run_model_start</code> and <code>agent_run_model_end</code> cover every Wiro model run the agent starts, chat turns included.</p>
 <p>A model run can start before its run's <code>agent_run_start</code> reaches you, and in rare cases a block can too: treat either one as the run being open.</p>
-<p>A sub-agent started from a chat session:</p>
+<p>Background work started from a chat session:</p>
 <pre><code class="language-json">{
   &quot;type&quot;: &quot;agent_run_start&quot;,
   &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
@@ -26572,7 +26725,7 @@ func main() {
       &quot;contentindex&quot;: 1,
       &quot;type&quot;: &quot;tool&quot;,
       &quot;text&quot;: null,
-      &quot;toollabel&quot;: &quot;exec&quot;,
+      &quot;toollabel&quot;: &quot;shopify__list_orders&quot;,
       &quot;toolstatus&quot;: &quot;completed&quot;,
       &quot;toolintegration&quot;: &quot;shopify&quot;,
       &quot;toolaction&quot;: null,
@@ -26661,7 +26814,7 @@ func main() {
 <tr>
 <td><code>runkind</code></td>
 <td>string</td>
-<td>What kind of run it is: <code>cron</code> (a Scheduled Task), <code>subagent</code> (a sub-agent working in the background), <code>announce</code> (a run that writes the result of background work back to its chat session), or <code>other</code> (any other run with no chat message, such as a reply on a connected channel). It can change while the run is open, for example from <code>other</code> to <code>cron</code>, but never back to <code>other</code>. Every event repeats it; the value on <code>agent_run_end</code> is final. Treat a value you don't know as <code>other</code>.</td>
+<td>What kind of run it is: <code>cron</code> (a Scheduled Task), <code>subagent</code> (work the agent moved to the background), <code>announce</code> (a run that writes the result of background work back to its chat session), or <code>other</code> (any other run with no chat message, such as a reply on a connected channel). It can change while the run is open, for example from <code>other</code> to <code>cron</code>, but never back to <code>other</code>. Every event repeats it; the value on <code>agent_run_end</code> is final. Treat a value you don't know as <code>other</code>.</td>
 </tr>
 <tr>
 <td><code>root</code></td>
@@ -27301,8 +27454,9 @@ channel.stream.listen((message) {
 <p><strong><code>agent_subscribed</code> for an unknown token</strong> (<code>status: "unknown"</code>, no <code>debugoutput</code>):</p>
 <pre><code class="language-json">{
   &quot;type&quot;: &quot;agent_subscribed&quot;,
-  &quot;agenttoken&quot;: &quot;wrongtoken&quot;,
+  &quot;agenttoken&quot;: &quot;Xy7Lm2Vq9Tb4Np8Rk1Wc6Hz3Fd5Gs0&quot;,
   &quot;status&quot;: &quot;unknown&quot;,
+  &quot;timeline&quot;: [],
   &quot;result&quot;: true
 }
 </code></pre>
@@ -27403,7 +27557,7 @@ channel.stream.listen((message) {
 <h3 id="why-agenttoken-is-the-correlation-key">Why <code>agenttoken</code> is the correlation key</h3>
 <ul>
 <li><code>Message/Send</code> issues exactly one <code>agenttoken</code> per message and returns it alongside <code>messageguid</code> in the HTTP response.</li>
-<li>The bridge stamps the same <code>agenttoken</code> on every event it emits for that message.</li>
+<li>Every event for that message carries the same <code>agenttoken</code>.</li>
 <li>Multiple connections can subscribe to the same <code>agenttoken</code> and each gets the full event stream, so <code>agenttoken</code> is also the fan-out key.</li>
 <li>A single socket can hold subscriptions for many <code>agenttoken</code>s at once (see <a href="#multi-session-subscription">Multi-session subscription</a>), and the per-event <code>agenttoken</code> lets your handler dispatch into the right UI element.</li>
 </ul>
@@ -27478,7 +27632,7 @@ ws.onmessage = (event) =&gt; {
 }
 </code></pre>
 <h3 id="concurrency-multiple-in-flight-messages-on-one-session">Concurrency: multiple in-flight messages on one session</h3>
-<p>Sending two messages back-to-back in the same <code>sessionkey</code> produces two independent <code>agenttoken</code>s. Both reach the bridge in queue order; both stream events independently. Your client must:</p>
+<p>Sending two messages back-to-back in the same <code>sessionkey</code> produces two independent <code>agenttoken</code>s. The agent takes them in queue order; both stream events independently. Your client must:</p>
 <ul>
 <li>Subscribe to <strong>both</strong> <code>agenttoken</code>s (one <code>agent_info</code> frame each, and the server de-duplicates automatically).</li>
 <li>Key all UI updates on <code>agenttoken</code>, not on <code>sessionkey</code> (which is shared) or timestamps (which can interleave).</li>
@@ -27581,7 +27735,7 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
 <tbody>
 <tr>
 <td><code>Message/Send</code></td>
-<td>Token is minted, row is inserted with <code>status: "agent_queue"</code>, broadcast to all queue subscribers.</td>
+<td>Token is minted and the message is saved with <code>status: "agent_queue"</code>, which the <code>Message/Send</code> answer returns. No frame is sent; a subscribe at this point gets <code>agent_subscribed</code> with <code>status: "agent_queue"</code>.</td>
 </tr>
 <tr>
 <td>Agent starts working</td>
@@ -27601,19 +27755,19 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
 </tr>
 <tr>
 <td>Usage billed</td>
-<td>~250-500 ms after a successful <code>agent_end</code>, emits <code>agent_usage_report</code> with final token counts, <code>model</code> and <code>tokencost</code>. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns), which you follow on the <a href="#following-an-agents-background-runs">run stream</a>.</td>
+<td>~250-500 ms after a successful <code>agent_end</code>, emits <code>agent_usage_report</code> with final token counts, <code>model</code> and <code>tokencost</code>. Not emitted for replayed usage callbacks or for runs with no chat message, such as Scheduled Task runs, which you follow on the <a href="#following-an-agents-background-runs">run stream</a>.</td>
 </tr>
 <tr>
-<td>Bridge exception</td>
+<td>The turn fails</td>
 <td>Emits <code>agent_error</code> with the public failure message; the message's <code>status</code> becomes <code>agent_error</code>, and <code>response</code> and <code>debugoutput</code> hold the same text.</td>
 </tr>
 <tr>
 <td><code>Message/Cancel</code> during active stream</td>
-<td>Bridge aborts, emits <code>agent_cancel</code>; the message's <code>status</code> becomes <code>agent_cancel</code>.</td>
+<td>The agent stops and <code>agent_cancel</code> is sent; the message's <code>status</code> becomes <code>agent_cancel</code>.</td>
 </tr>
 <tr>
 <td><code>Message/Cancel</code> while queued</td>
-<td>The message's <code>status</code> becomes <code>agent_cancel</code> immediately. <strong>No WebSocket event is broadcast</strong> (the bridge never started). Clients checking via the socket must consult <code>Message/Detail</code> for queued-state cancels.</td>
+<td>The message's <code>status</code> becomes <code>agent_cancel</code> immediately. <strong>No WebSocket event is broadcast</strong> (the agent never started on it). Clients checking via the socket must consult <code>Message/Detail</code> for queued-state cancels.</td>
 </tr>
 </tbody>
 </table>
@@ -27627,7 +27781,7 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
                     {
                       "label": "JavaScript",
                       "language": "javascript",
-                      "code": "const agentToken = 'your-agent-token';\n\nconst ws = new WebSocket('wss://socket.wiro.ai/v1');\n\nws.onopen = () => {\n  console.log('Connected');\n  ws.send(JSON.stringify({\n    type: 'agent_info',\n    agenttoken: agentToken\n  }));\n};\n\nws.onmessage = (event) => {\n  const msg = JSON.parse(event.data);\n\n  switch (msg.type) {\n    case 'connected':\n      // One-shot welcome frame from server. OK to ignore.\n      break;\n\n    case 'error':\n      // Subscribe shape rejected (e.g. missing agenttoken).\n      console.error('Subscribe error:', msg.message);\n      ws.close();\n      break;\n\n    case 'agent_subscribed':\n      if (msg.status === 'unknown') {\n        console.error('Unknown token:', msg.agenttoken);\n        ws.close();\n      } else if (['agent_end', 'agent_error', 'agent_cancel'].includes(msg.status)) {\n        // We subscribed late — the agent already finished.\n        console.log('Already finished. Snapshot:', msg.debugoutput);\n        ws.close();\n      }\n      break;\n\n    case 'agent_start':\n      console.log('Agent started generating');\n      break;\n\n    case 'agent_output':\n      // message is a progressGenerate object; replace (don't append) your UI.\n      console.log('Streaming:', msg.message.raw);\n      break;\n\n    case 'agent_end':\n      console.log('Final:', msg.message.raw);\n      ws.close();\n      break;\n\n    case 'agent_error':\n      // message is the coded failure message, such as '[AGENT_UNAVAILABLE] ...'.\n      console.error('Failed:', msg.message);\n      ws.close();\n      break;\n\n    case 'agent_cancel':\n      console.warn('Cancelled:', msg.message);\n      ws.close();\n      break;\n  }\n};\n\nws.onerror = (err) => console.error('WebSocket error:', err);\nws.onclose = () => console.log('Disconnected');"
+                      "code": "const agentToken = 'your-agent-token';\n\nconst ws = new WebSocket('wss://socket.wiro.ai/v1');\nconst timelineByMessage = new Map();\n\nfunction mergeTimelineBlock(messageguid, block) {\n  const byId = timelineByMessage.get(messageguid) || new Map();\n  const previous = byId.get(block.blockid);\n  if (!previous || block.version > previous.version) {\n    byId.set(block.blockid, block);\n  }\n  timelineByMessage.set(messageguid, byId);\n  return [...byId.values()].sort(\n    (a, b) => a.callindex - b.callindex\n      || a.contentindex - b.contentindex\n      || a.blockid.localeCompare(b.blockid)\n  );\n}\n\nws.onopen = () => {\n  console.log('Connected');\n  ws.send(JSON.stringify({\n    type: 'agent_info',\n    agenttoken: agentToken\n  }));\n};\n\nws.onmessage = (event) => {\n  const msg = JSON.parse(event.data);\n\n  switch (msg.type) {\n    case 'connected':\n      // One-shot welcome frame from server. OK to ignore.\n      break;\n\n    case 'error':\n      // Subscribe shape rejected (e.g. missing agenttoken).\n      console.error('Subscribe error:', msg.message);\n      ws.close();\n      break;\n\n    case 'agent_subscribed':\n      if (msg.status === 'unknown') {\n        console.error('Unknown token:', msg.agenttoken);\n        ws.close();\n      } else if (['agent_end', 'agent_error', 'agent_cancel'].includes(msg.status)) {\n        // We subscribed late — the agent already finished.\n        console.log('Already finished. Snapshot:', msg.debugoutput);\n        ws.close();\n      }\n      break;\n\n    case 'agent_start':\n      console.log('Agent started generating');\n      break;\n\n    case 'agent_output':\n      // message is a progressGenerate object; replace (don't append) your UI.\n      console.log('Streaming:', msg.message.raw);\n      break;\n\n    case 'agent_timeline_delta':\n      // Merge msg.message.block by blockid + per-block version, then sort\n      // by callindex/contentindex. Do not append in arrival order.\n      mergeTimelineBlock(msg.message.messageguid, msg.message.block);\n      break;\n\n    case 'agent_end':\n      console.log('Final:', msg.message.raw);\n      ws.close();\n      break;\n\n    case 'agent_error':\n      // message is the coded failure message, such as '[AGENT_UNAVAILABLE] ...'.\n      console.error('Failed:', msg.message);\n      ws.close();\n      break;\n\n    case 'agent_cancel':\n      console.warn('Cancelled:', msg.message);\n      ws.close();\n      break;\n  }\n};\n\nws.onerror = (err) => console.error('WebSocket error:', err);\nws.onclose = () => console.log('Disconnected');"
                     },
                     {
                       "label": "Python",
@@ -27680,9 +27834,10 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
 <h1>Agent Webhooks</h1>
 <p class="section-subtitle">Receive agent response notifications via HTTP callbacks.</p>
 <h2 id="how-it-works">How It Works</h2>
-<p>When you send a message to an agent via <code>POST /UserAgent/Message/Send</code>, include a <code>callbackurl</code> parameter. Once the agent finishes processing on the bridge, Wiro sends a POST request to your URL with the result. Callbacks fire on <code>agent_end</code> (success), <code>agent_error</code> (failure during processing), and <code>agent_cancel</code> <strong>only when the abort hits the bridge mid-flight</strong>. Messages cancelled while still queued (status <code>agent_queue</code>, before the bridge picks them up) are marked <code>agent_cancel</code> in the database but <strong>do not fire a webhook</strong>, because there was no processing attempt to report on. See the "When the cancel webhook fires" note below for the full decision table.</p>
+<p>When you send a message to an agent via <code>POST /UserAgent/Message/Send</code>, include a <code>callbackurl</code> parameter. Once the agent's turn ends, Wiro sends a POST request to your URL with the result. Callbacks fire on <code>agent_end</code> (success), <code>agent_error</code> (failure during processing), and <code>agent_cancel</code> <strong>only when a turn that had started is stopped</strong>. Messages cancelled while still queued (status <code>agent_queue</code>, before the agent starts on them) are marked <code>agent_cancel</code> in the database but <strong>do not fire a webhook</strong>, because there was no processing attempt to report on. See the "When the cancel webhook fires" note below for the full decision table.</p>
 <p>This lets you build fully asynchronous workflows: fire a message and let your backend handle the response whenever it arrives, without polling or maintaining a WebSocket connection.</p>
-<p>A setup reply that Wiro handles itself, such as a <code>yes</code> that applies a setup card, runs no agent turn: Wiro posts its result to the <code>callbackurl</code> right away, with <code>status: "agent_end"</code>. Its <code>metadata</code> holds <code>type: "setup_result"</code>, <code>cards</code> (the ids of the cards it acted on) and, when the answer leaves connectors to connect, <code>next</code>: <code>[{ connector, title, mode, cardid?, messageguid? }]</code>, as in <code>setupresult</code>. See <a href="/docs/agent-messaging#handled-setup-replies">Replies Wiro handles itself</a>.</p>
+<p>A setup reply that Wiro handles itself, such as a <code>yes</code> that applies a setup card, runs no agent turn: Wiro posts its result to the <code>callbackurl</code> right away, with <code>status: "agent_end"</code>. Its <code>metadata</code> holds <code>type: "setup_result"</code>, <code>cards</code> (the ids of the cards it acted on) and <code>via</code> (<code>"api"</code> for a message sent with a project API key, <code>"web"</code> otherwise). It also holds <code>next</code> when the answer leaves connectors to connect (<code>[{ connector, title, mode, cardid?, messageguid? }]</code>, as in <code>setupresult</code>), <code>listed</code> and <code>listedfrom</code> for a <a href="/docs/agent-messaging#setup-card-listing">card listing</a> (the ids of the cards it showed and the <code>guid</code> of the message they are on), and <code>teamguid</code> when the message was sent in a team's workspace. See <a href="/docs/agent-messaging#handled-setup-replies">Replies Wiro handles itself</a>.</p>
+<p>An unknown or disabled slash command that Wiro answers itself, such as <code>/status</code>, is posted the same way, right away and with <code>status: "agent_end"</code>. Its <code>metadata</code> holds <code>type: "setup_result"</code>, <code>cards: []</code>, <code>command</code> (the command's name, such as <code>"status"</code>), <code>via</code> and, in a team's workspace, <code>teamguid</code>. See <a href="/docs/agent-messaging#unknown-or-disabled-commands">Unknown or disabled commands</a>.</p>
 <blockquote>
 <p><strong>Results that arrive later.</strong> When the agent moves longer work to the background, its turn ends with a short line saying the result will follow, and that line is what your <code>callbackurl</code> receives (<code>status: "agent_end"</code>). The result is added to the session later as a separate message and doesn't call the <code>callbackurl</code>. Read it with <a href="/docs/agent-messaging#post-useragentmessagehistory"><code>Message/History</code></a>, or follow the session on the <a href="/docs/agent-websocket#following-a-session">Agent WebSocket</a>.</p>
 </blockquote>
@@ -27743,7 +27898,7 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
 </code></pre>
 <blockquote>
 <p>The <code>response</code> and <code>debugoutput</code> fields hold <code>[REQUEST_CANCELLED] Request cancelled.</code>; use <code>status === "agent_cancel"</code> as the signal.</p>
-<p><strong>When the cancel webhook fires:</strong> <code>agent_cancel</code> is delivered <strong>only when the agent bridge catches an <code>AbortError</code></strong> during active processing, i.e. the message had already started on the agent side and was aborted mid-flight (via <code>POST /UserAgent/Message/Cancel</code> or an upstream timeout). For messages cancelled <strong>before</strong> they reach the bridge (still queued, or an instant <code>Message/Cancel</code> that beats dispatching), the message is marked <code>agent_cancel</code> in the database and returned as such in <code>POST /UserAgent/Message/Detail</code>, but <strong>no webhook is fired</strong>, because there was no processing attempt to report on. Use <code>POST /UserAgent/Message/Detail</code> (checking <code>status === "agent_cancel"</code>) as the canonical source of truth for cancellation; WebSocket subscribers receive the <code>agent_cancel</code> event only on active-processing aborts (same condition as the webhook). Treat the webhook as a best-effort "processing was interrupted" signal.</p>
+<p><strong>When the cancel webhook fires:</strong> <code>agent_cancel</code> is delivered <strong>only when the turn had already started and was stopped while it ran</strong> (by <code>POST /UserAgent/Message/Cancel</code> or a timeout). For messages cancelled <strong>before</strong> the agent starts on them (still queued, or an instant <code>Message/Cancel</code> that beats dispatching), the message is marked <code>agent_cancel</code> in the database and returned as such in <code>POST /UserAgent/Message/Detail</code>, but <strong>no webhook is fired</strong>, because there was no processing attempt to report on. Use <code>POST /UserAgent/Message/Detail</code> (checking <code>status === "agent_cancel"</code>) as the canonical source of truth for cancellation; WebSocket subscribers receive the <code>agent_cancel</code> event only on active-processing aborts (same condition as the webhook). Treat the webhook as a best-effort "processing was interrupted" signal.</p>
 </blockquote>
 <h3 id="field-reference">Field Reference</h3>
 <div class="docs-param-table">
@@ -27785,7 +27940,7 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
 <tr>
 <td><code>metadata</code></td>
 <td>object</td>
-<td>Structured answer data, performance metrics, and raw text. Timeline blocks are not embedded in webhooks. Empty object (<code>{}</code>) for error and cancel statuses.</td>
+<td>Structured answer data, performance metrics, and raw text. Timeline blocks are not embedded in webhooks. Empty object (<code>{}</code>) for <code>agent_cancel</code> and for an <code>agent_error</code> that cut the turn off; see <a href="#the-metadata-object">The <code>metadata</code> Object</a>.</td>
 </tr>
 <tr>
 <td><code>endedat</code></td>
@@ -27812,7 +27967,7 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
 <tr>
 <td><code>type</code></td>
 <td>string</td>
-<td>Always <code>"progressGenerate"</code>.</td>
+<td><code>"progressGenerate"</code> for an agent turn. A reply Wiro handles itself has <code>"setup_result"</code> instead, with the keys described under <a href="#how-it-works">How It Works</a>.</td>
 </tr>
 <tr>
 <td><code>task</code></td>
@@ -27847,7 +28002,7 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
 <tr>
 <td><code>tokenCount</code></td>
 <td>number</td>
-<td>Number of answer chunks received by the bridge. Use the message's billing columns for authoritative model tokens.</td>
+<td>Number of answer chunks streamed for the turn. Use the message's billing columns for authoritative model tokens.</td>
 </tr>
 <tr>
 <td><code>wordCount</code></td>
@@ -27858,10 +28013,10 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
 </table>
 </div>
 </div>
-<p>For <code>agent_error</code> and <code>agent_cancel</code>, <code>metadata</code> is an empty object <code>{}</code>. Always check <code>status</code> before accessing metadata fields.</p>
+<p>For <code>agent_cancel</code>, and for an <code>agent_error</code> that cut the turn off, such as <code>[TURN_INTERRUPTED]</code> or <code>[AGENT_UNAVAILABLE]</code> after an outage, <code>metadata</code> is an empty object <code>{}</code>. A turn that ended with a coded failure, such as <code>[SPEND_LIMIT_REACHED]</code>, <code>[CREDITS_EXHAUSTED]</code> or <code>[MODEL_NOT_ALLOWED]</code>, posts the usual <code>progressGenerate</code> metadata, and its <code>raw</code> and <code>answer</code> hold the same coded message as <code>response</code>. Read the outcome from <code>status</code> and <code>response</code>, never from <code>metadata</code>.</p>
 <p>After receiving the webhook, call <code>POST /UserAgent/Message/Detail</code> with <code>messageguid</code> whenever you need the authoritative top-level <code>timeline[]</code>. It preserves the ordered reasoning, answer, and safe tool-label/status blocks for the completed turn.</p>
 <blockquote>
-<p><strong>Note:</strong> For <code>agent_error</code> and <code>agent_cancel</code>, the webhook's <code>response</code> and <code>debugoutput</code> hold the same coded failure message as <code>POST /UserAgent/Message/Detail</code>; see <a href="/docs/agent-messaging#failed-turns">Failed turns</a>. The underlying error is never sent.</p>
+<p><strong>Note:</strong> For <code>agent_error</code> and <code>agent_cancel</code>, the webhook's <code>response</code> and <code>debugoutput</code> hold the same coded failure message as <code>POST /UserAgent/Message/Detail</code>; see <a href="/docs/agent-messaging#failed-turns">Failed turns</a>. The underlying error is never sent. A turn the agent's security rules block can also come with <code>agent_end</code> and <code>[SECURITY_BLOCKED] …</code> in <code>response</code>.</p>
 </blockquote>
 <h2 id="status-values">Status Values</h2>
 <div class="docs-param-table">
@@ -27886,7 +28041,7 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
 <td><code>agent_error</code></td>
 <td>The turn failed</td>
 <td>The public failure message; see <a href="/docs/agent-messaging#failed-turns">Failed turns</a></td>
-<td>Empty object <code>{}</code></td>
+<td>Empty object <code>{}</code>, or the usual metrics when the turn ended with a coded failure such as <code>[SPEND_LIMIT_REACHED]</code></td>
 </tr>
 <tr>
 <td><code>agent_cancel</code></td>
@@ -27903,8 +28058,8 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
 <ul>
 <li>First attempt is immediate when the agent finishes</li>
 <li>2-second delay between retries</li>
-<li>Your endpoint must return <strong>HTTP 200</strong> to acknowledge receipt</li>
-<li>Any non-200 response triggers a retry</li>
+<li>Any <strong>2xx</strong> answer counts as delivered</li>
+<li>Any other answer, a redirect (3xx) included, or no answer, is tried again</li>
 <li>After 3 failed attempts, the webhook is abandoned and the failure is logged server-side</li>
 </ul>
 <p>The message result is always persisted in the database regardless of webhook delivery. You can retrieve it at any time via <code>POST /UserAgent/Message/Detail</code>.</p>
@@ -27914,7 +28069,7 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
 <li>Always use <strong>HTTPS</strong> endpoints in production</li>
 <li>Use a public address. Wiro doesn't call a <code>callbackurl</code> whose host is, or resolves to, a private, loopback or link-local address; that message gets no webhook, and its result stays readable with <code>Message/Detail</code></li>
 <li>Validate the payload structure before processing</li>
-<li>Consider returning 200 immediately and processing the payload asynchronously to avoid timeouts</li>
+<li>Consider answering with a 2xx at once and processing the payload asynchronously to avoid timeouts</li>
 </ul>
 <h2 id="code-examples">Code Examples</h2>
 <h3 id="webhook-receiver-nodejs-express">Webhook Receiver: Node.js (Express)</h3>
@@ -36716,14 +36871,14 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
                   <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="/docs/markdown/agent-logs.md" target="_blank" class="docs-section-md-btn">View</a> <a href="/docs/markdown/agent-logs.md" download class="docs-section-md-btn">Download</a></div>
 
                   <h1>Agent Logs</h1>
-                  <p class="section-subtitle">Per-instance activity feed (tool calls, scheduled cron runs, message exchanges, and turn boundaries) for any deployed agent.</p>
+                  <p class="section-subtitle">Per-instance activity feed (tool calls, Scheduled Task runs, message exchanges, and turn boundaries) for any deployed agent.</p>
 
                   <section id="logs-overview">
                     <h2>Overview</h2>
                     <p>Every Wiro agent appends one structured <code>ActivityEvent</code> JSON line per tool call, LLM turn boundary, scheduled task run and billed turn, plus each message that arrives on a connected Telegram, Slack or Discord channel. Secrets (matched by field name and by high-entropy value), internal tool-call IDs and API credentials are redacted before an event is written, so what shows up in <code>Logs</code> is safe to show end users.</p>
-                    <p>A daily JSONL file is written for each calendar day; files older than 7 days are gzipped, files older than 180 days are deleted by the agent's daily maintenance cron.</p>
+                    <p>A daily JSONL file is written for each calendar day; files older than 7 days are gzipped, files older than 180 days are deleted by the agent's daily maintenance.</p>
                     <p>The feed also lists what people and API keys did to the agent: starts and stops, renames, skill, connector and billing changes, connections, Screen views and Take Control sessions, browser resets, and deleted log days, each with who did it. These <a href="#who-did-what-rows">who-did-what rows</a> don't depend on the agent running.</p>
-                    <p>The endpoints below are <strong>owner-or-team-admin</strong> scoped. Plain members of the agent's team receive <code>useragent-team-admin-required</code> (code <code>97</code>); outside callers receive <code>useragent-access-denied</code>.</p>
+                    <p>The endpoints below are <strong>owner-or-team-admin</strong> scoped. Plain members of the agent's team get code <code>97</code> (<code>Only a team admin can perform this action on a team-owned agent.</code>); outside callers get code <code>96</code> (<code>You don't have access to this user agent</code>).</p>
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
                         <table>
@@ -36750,12 +36905,8 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
   "ts": "2026-05-03T14:00:10.234Z",
   "kind": "tool_completed",
   "tool": "web_fetch",
-  "title": "Fetched https://blog.example.com/weekly-roundup-12",
-  "summary": {
-    "url": "https://blog.example.com/weekly-roundup-12",
-    "status": 200,
-    "bytes": 18432
-  },
+  "title": "Fetched URL: blog.example.com",
+  "summary": { "host": "blog.example.com" },
   "durationMs": 1840,
   "ok": true,
   "userUuid": "ada-uuid",
@@ -36777,27 +36928,27 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
                           </thead>
                           <tbody>
                             <tr><td><code>ts</code></td><td><code>string</code></td><td>ISO-8601 UTC datetime when the event was recorded (e.g. <code>"2026-05-03T14:00:10.234Z"</code>). Parse with <code>Date.parse(ts)</code> for arithmetic.</td></tr>
-                            <tr><td><code>kind</code></td><td><code>string</code></td><td>Fine-grained event class. One of: <code>"turn_started"</code>, <code>"turn_ended"</code> (an LLM turn boundary); <code>"tool_started"</code>, <code>"tool_completed"</code> (one pair per tool call); <code>"tool_blocked"</code> (a tool call the agent's safety rules refused); <code>"cron_finished"</code> (a scheduled task finished); <code>"user_message"</code> (a message received on a connected Telegram, Slack or Discord channel, not web chat); <code>"token_usage"</code> (a billed turn's token usage: chat / cron / voice post-call); <code>"token_usage_idempotent"</code> (a replayed usage report, already billed, informational only); <code>"media_relay"</code> (files from a reply were delivered); <code>"background_reply"</code> (a result that finished in the background was delivered to the chat). Rows about what was done to the agent have <a href="#who-did-what-rows"><code>AGENT_*</code> kinds</a>, and two note rows, <code>"runtime_log_unavailable"</code> and <code>"runtime_log_deleted"</code>, say what part of a day is missing. Show any kind you don't recognize by its <code>title</code>.</td></tr>
+                            <tr><td><code>kind</code></td><td><code>string</code></td><td>Fine-grained event class. One of: <code>"turn_started"</code>, <code>"turn_ended"</code> (an LLM turn boundary); <code>"tool_started"</code>, <code>"tool_completed"</code> (one pair per tool call); <code>"tool_blocked"</code> (a tool call the agent's safety rules refused); <code>"cron_finished"</code> (a scheduled task finished); <code>"user_message"</code> (a message received on a connected Telegram, Slack or Discord channel, not web chat); <code>"token_usage"</code> (a billed turn's token usage: chat / Scheduled Task / voice post-call); <code>"token_usage_idempotent"</code> (a replayed usage report, already billed, informational only); <code>"media_relay"</code> (files from a reply were delivered); <code>"background_reply"</code> (a result that finished in the background was delivered to the chat). Rows about what was done to the agent have <a href="#who-did-what-rows"><code>AGENT_*</code> and <code>CONNECTOR_*</code> kinds</a>, and two note rows, <code>"runtime_log_unavailable"</code> and <code>"runtime_log_deleted"</code>, say what part of a day is missing. Show any kind you don't recognize by its <code>title</code>.</td></tr>
                             <tr><td><code>tool</code></td><td><code>string?</code></td><td>Present on <code>tool_started</code> / <code>tool_completed</code> / <code>tool_blocked</code>. The name of the tool the agent used.</td></tr>
-                            <tr><td><code>toolintegration</code></td><td><code>string?</code></td><td>On <code>tool_started</code> and <code>tool_completed</code> when the step works in a connector: the connector's <code>slug</code>, for example <code>"wordpress"</code>, or a channel's key, such as <code>"telegram"</code>. Same closed list as on <a href="/docs/agent-messaging#tool-integration-and-action-values">timeline tool blocks</a>.</td></tr>
+                            <tr><td><code>toolintegration</code></td><td><code>string?</code></td><td>On <code>tool_started</code> and <code>tool_completed</code> when the step works in a connector: the connector's <code>slug</code> from <code>POST /AgentConnector/List</code>, for example <code>"wordpress"</code>, or <code>"wiro"</code> for Wiro AI Models. Same closed list as on <a href="/docs/agent-messaging#tool-integration-and-action-values">timeline tool blocks</a>.</td></tr>
                             <tr><td><code>toolaction</code></td><td><code>string?</code></td><td>On <code>tool_started</code> and <code>tool_completed</code> when a word fits the step: what it does, for example <code>"click"</code>. Same closed list as on <a href="/docs/agent-messaging#tool-integration-and-action-values">timeline tool blocks</a>. Never set together with <code>toolintegration</code>.</td></tr>
-                            <tr><td><code>title</code></td><td><code>string</code></td><td>Human-readable one-line description of what happened (e.g. <code>"Posted carousel: \"Brand voice teaser\""</code>, <code>"Fetched https://…"</code>, <code>"Token Usage"</code>). Always present.</td></tr>
+                            <tr><td><code>title</code></td><td><code>string</code></td><td>Human-readable one-line description of what happened (e.g. <code>"Fetched URL: blog.example.com"</code>, <code>"wordpress__create_post"</code>, <code>"Token Usage"</code>). Always present.</td></tr>
                             <tr><td><code>summary</code></td><td><code>object?</code></td><td>Structured event-specific payload. Opaque on the wire, so render it as JSON when expanding the row. Secret values (<code>apikey</code>, <code>apppassword</code>, <code>clientsecret</code>, <code>bearer</code>, <code>token</code>, …) are masked before the event is written. Common keys: <code>file</code>, <code>method</code>, <code>host</code>, <code>path</code>, <code>preview</code>, <code>messageCount</code>, <code>jobId</code>, <code>status</code>, <code>reason</code>.</td></tr>
                             <tr><td><code>durationMs</code></td><td><code>number?</code></td><td>Wall-clock duration in milliseconds. Populated on <code>tool_completed</code>, <code>turn_ended</code>, <code>cron_finished</code> and <code>token_usage</code> events.</td></tr>
-                            <tr><td><code>ok</code></td><td><code>boolean?</code></td><td><code>true</code> for a successful completion, <code>false</code> for a failure. Populated on <code>tool_completed</code>, <code>turn_ended</code> and <code>cron_finished</code> events, and always <code>false</code> on <code>tool_blocked</code>. Pair with <code>error</code> for failure rows. It is always <code>true</code> on <code>AGENT_*</code> rows. A <code>turn_ended</code> for a turn the caller cancelled has no <code>ok</code>, and its title reads <code>Agent turn cancelled</code>. A <code>cron_finished</code> for a Scheduled Task run that the agent's spend limit or Model Access rule paused has no <code>ok</code> either, and its title starts with <code>Paused by a spend limit:</code> or <code>Paused by a Model Access rule:</code>.</td></tr>
-                            <tr><td><code>error</code></td><td><code>string?</code></td><td>One-line failure message (when <code>ok: false</code>).</td></tr>
+                            <tr><td><code>ok</code></td><td><code>boolean?</code></td><td><code>true</code> for a successful completion, <code>false</code> for a failure. Populated on <code>tool_completed</code>, <code>turn_ended</code> and <code>cron_finished</code> events, and always <code>false</code> on <code>tool_blocked</code>. Pair with <code>error</code> for failure rows. It is always <code>true</code> on <code>AGENT_*</code> and <code>CONNECTOR_*</code> rows. A <code>turn_ended</code> for a turn the caller cancelled has no <code>ok</code>, and its title reads <code>Agent turn cancelled</code>. A <code>cron_finished</code> for a Scheduled Task run that the agent's spend limit or Model Access rule paused has no <code>ok</code> either, and its title starts with <code>Paused by a spend limit:</code> or <code>Paused by a Model Access rule:</code>.</td></tr>
+                            <tr><td><code>error</code></td><td><code>string?</code></td><td>On a failure row (<code>ok: false</code>): always the fixed sentence <code>Agent is temporarily unavailable. Please try again shortly.</code>, whatever failed. The failure's own reason never reaches the log.</td></tr>
                             <tr><td><code>cost</code></td><td><code>object?</code></td><td>Legacy per-action charge, <code>{ credits, skill, action }</code>. Only events recorded before agents switched to per-turn token billing can carry it; current events never do. See the <code>token_usage</code> event for what a turn cost.</td></tr>
-                            <tr><td><code>userUuid</code></td><td><code>string?</code></td><td>UUID of the actor who triggered the event. <code>"system"</code> for cron / internal events. May be missing on older rows, in which case the server falls back to the agent owner.</td></tr>
-                            <tr><td><code>user</code></td><td><code>object|null</code></td><td>Resolved actor: <code>{ uuid, firstname, lastname, email, username, avatar, avatarinitials }</code>. <code>null</code> when <code>userUuid</code> is <code>"system"</code> (automation / cron) or when the user record was deleted.</td></tr>
+                            <tr><td><code>userUuid</code></td><td><code>string?</code></td><td>UUID of the actor who triggered the event. <code>"system"</code> for Scheduled Task runs and other automatic events. May be missing on older rows, in which case the server falls back to the agent owner.</td></tr>
+                            <tr><td><code>user</code></td><td><code>object|null</code></td><td>Resolved actor: <code>{ uuid, firstname, lastname, email, username, avatar, avatarinitials }</code>. <code>null</code> when <code>userUuid</code> is <code>"system"</code> (automation, Scheduled Tasks) or when the user record was deleted.</td></tr>
                           </tbody>
                         </table>
                       </div>
                     </div>
-                    <div class="info-callout"><strong>What is <code>summary</code> for?</strong> Tool events carry a short summary of the call: for example the file path for file tools, the program for <code>exec</code>, or the method, host and path for web requests. Turn events carry a short <code>preview</code> (plus <code>messageCount</code> on <code>turn_ended</code>); <code>cron_finished</code> carries <code>{ jobId, status }</code>, plus <code>reason</code> (<code>spend_limit</code> or <code>model_access</code>) when <code>status</code> is <code>paused</code>; <code>user_message</code> carries <code>{ preview }</code>; <code>tool_blocked</code> carries the <code>reason</code>. Treat the object as opaque and render-on-expand, since its shape depends on the tool and may change without a docs revision.</div>
+                    <div class="info-callout"><strong>What is <code>summary</code> for?</strong> Tool events carry a short summary of the call: for example the file path for file tools, the program for <code>exec</code>, or the method, host and path for web requests. Turn events carry a short <code>preview</code> (plus <code>messageCount</code> on <code>turn_ended</code>); <code>cron_finished</code> carries <code>{ jobId, status }</code>, plus <code>reason</code> (<code>spend_limit</code> or <code>model_access</code>) when <code>status</code> is <code>paused</code>; <code>user_message</code> carries <code>{ preview }</code>; <code>tool_blocked</code> carries the <code>reason</code>. A connector's tool is named <code>&lt;slug&gt;__&lt;tool&gt;</code>, such as <code>wordpress__create_post</code>: its <code>tool</code> and <code>title</code> are that name, <code>toolintegration</code> is the connector's <code>slug</code>, and <code>summary</code> is <code>{}</code>, because a connector call's arguments and results never reach the log. A Reddit (<code>reddit</code>) call is titled <code>Reddit API operation</code>, and its <code>summary</code> is <code>{ "service": "reddit", "retentionRedacted": true }</code>. Treat the object as opaque and render-on-expand, since its shape depends on the tool and may change without a docs revision.</div>
                     <p>To tell what a tool call is doing, read <code>toolintegration</code> and <code>toolaction</code> instead of parsing <code>title</code> or <code>summary</code>. Both are missing when no word fits the step, and <code>tool_blocked</code> events don't carry them.</p>
 
                     <h3>Token-usage events</h3>
-                    <p>A <code>token_usage</code> event records the tokens and the AI usage of one billed turn: a chat reply, a cron run, or a voice post-call. A <code>token_usage_idempotent</code> event carries the <strong>same shape</strong> for a replayed usage callback that was already billed (informational; it does not deduct again). On top of the base <code>ActivityEvent</code> fields, these events add:</p>
+                    <p>A <code>token_usage</code> event records the tokens and the AI usage of one billed turn: a chat reply, a Scheduled Task run, or a voice post-call. A <code>token_usage_idempotent</code> event carries the <strong>same shape</strong> for a replayed usage callback that was already billed (informational; it does not deduct again). On top of the base <code>ActivityEvent</code> fields, these events add:</p>
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
                         <table>
@@ -36828,10 +36979,10 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
   "user": null
 }</code></pre>
                     <div class="info-callout"><strong>Nested vs flat token fields.</strong> The activity-log <code>token_usage</code> event nests its counts in <strong>camelCase</strong> under <code>tokens.{input, output, cacheRead, cacheWrite, total}</code>. <code>input</code> is uncached input and <code>total</code> is the exact sum of all four components. This is distinct from the <strong>flat, lowercase</strong> columns on message rows (<code>inputtokens</code>, <code>outputtokens</code>, <code>cachereadtokens</code>, …). Same underlying data, different shape.</div>
-                    <div class="info-callout"><strong>AI usage vs. model runs.</strong> An agent's own AI usage is counted once per LLM turn: each <code>token_usage</code> event is one billed turn, and its <code>tokencost</code> is in cents (<code>tokencost / 100</code> is the amount in USD). It comes from the plan's included usage first, then from the Wiro balance. A Wiro model the agent runs, for example for its video skill or through the <code>wiro</code> connector, is billed separately: Wiro charges it to the wallet of the workspace that owns the agent's Wiro API key at the model's usual price, passed through unchanged. That run shows up as an ordinary <code>tool_completed</code> event with no cost figure; its cost is the task's <code>totalcost</code> (see <a href="/docs/tasks#task-billing">Billing &amp; Cost</a>), and it is a <code>model-run</code> row in the agent's <a href="/docs/agent-transactions">Transactions</a>.</div>
+                    <div class="info-callout"><strong>AI usage vs. model runs.</strong> An agent's own AI usage is counted once per LLM turn: each <code>token_usage</code> event is one billed turn, and its <code>tokencost</code> is in cents (<code>tokencost / 100</code> is the amount in USD). It comes from the plan's included usage first, then from the Wiro balance. A Wiro model the agent runs, for example for its video skill or through the Wiro AI Models connector (<code>wiro</code>), is billed separately: Wiro charges it to the wallet of the workspace that owns the agent's Wiro API key at the model's usual price, passed through unchanged. That run shows up as an ordinary <code>tool_completed</code> event with no cost figure; its cost is the task's <code>totalcost</code> (see <a href="/docs/tasks#task-billing">Billing &amp; Cost</a>), and it is a <code>model-run</code> row in the agent's <a href="/docs/agent-transactions">Transactions</a>.</div>
 
                     <h3 id="who-did-what-rows">Who-did-what rows</h3>
-                    <p><code>Logs</code> and <code>LogsFile</code> also return what people and API keys did <strong>to</strong> the agent, and <code>LogsList</code> lists the days that have such rows. These rows sit in the same <code>events</code> list, in time order, with an <code>AGENT_*</code> value in <code>kind</code>. They come on top of the kinds above, which keep their meaning.</p>
+                    <p><code>Logs</code> and <code>LogsFile</code> also return what people and API keys did <strong>to</strong> the agent, and <code>LogsList</code> lists the days that have such rows. These rows sit in the same <code>events</code> list, in time order, with an <code>AGENT_*</code> or <code>CONNECTOR_*</code> value in <code>kind</code>. They come on top of the kinds above, which keep their meaning.</p>
                     <pre><code class="language-json">{
   "ts": "2026-05-03T09:12:44.000Z",
   "kind": "AGENT_RENAMED",
@@ -36864,12 +37015,14 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
                             <tr><td><code>AGENT_TRANSFERRED</code></td><td><code>Agent moved to a team workspace</code>, <code>Agent moved to the personal workspace</code>; the system's rows when the agent's team or organization is deleted read <code>Agent moved to the personal workspace: its team was deleted</code> and <code>Agent moved to the personal workspace: its organization was deleted</code></td></tr>
                             <tr><td><code>AGENT_INSTRUCTION_ADDED</code>, <code>AGENT_INSTRUCTION_UPDATED</code>, <code>AGENT_INSTRUCTION_RENAMED</code>, <code>AGENT_INSTRUCTION_DELETED</code>, <code>AGENT_INSTRUCTION_REVERTED</code></td><td><code>Custom skill added: cs-brand-voice</code>, <code>Scheduled task updated: cs-cron-blog-scanner (text, schedule 0 9 * * 1)</code>, <code>Custom skill renamed: cs-brand-voice to cs-house-style</code>, <code>Scheduled task deleted: cs-cron-blog-scanner</code>, <code>Custom skill reverted to its preset: cs-brand-voice</code></td></tr>
                             <tr><td><code>AGENT_SKILLS_UPDATED</code></td><td><code>Skills updated: util-web-channel off</code></td></tr>
-                            <tr><td><code>AGENT_CREDENTIAL_SAVED</code></td><td><code>Connector setting saved: wiro.apikey</code></td></tr>
+                            <tr><td><code>AGENT_CREDENTIAL_SAVED</code></td><td><code>Setting saved: wiro.apikey</code> (a channel, the agent's Wiro project or another setting of the agent; several fields read <code>Settings saved: …</code>; connecting a connector writes <code>CONNECTOR_CONNECTED</code>)</td></tr>
+                            <tr><td><code>AGENT_CREDENTIAL_REVEALED</code></td><td><code>Setting revealed: telegram.bottoken</code> (someone showed a saved key in full in the Wiro panel; the row never holds the key)</td></tr>
                             <tr><td><code>AGENT_CREDENTIAL_REMOVED</code></td><td><code>Disconnected: wiro</code> (the agent's Wiro project was disconnected because the agent moved to a workspace the project isn't in, or because the project's team or organization was deleted)</td></tr>
                             <tr><td><code>CONNECTOR_CONNECTED</code>, <code>CONNECTOR_DISCONNECTED</code></td><td><code>Connector connected: serper</code>, <code>Connector disconnected: serper</code> (see <a href="/docs/agent-connectors">Agent Connectors</a>). When the agent moves to a workspace its Wiro project isn't in, or its Wiro project's team or organization is deleted, Wiro writes <code>Connector disconnected: wiro</code> with <code>summary.reason</code> <code>"workspace"</code> next to the <code>AGENT_CREDENTIAL_REMOVED</code> row (see <a href="/docs/agent-connectors#moving-the-agent-to-another-workspace">Moving the agent to another workspace</a>)</td></tr>
                             <tr><td><code>CONNECTOR_ACCOUNTS_SET</code></td><td><code>Connector accounts set: facebook-pages</code></td></tr>
                             <tr><td><code>CONNECTOR_REAUTH</code></td><td><code>Connector needs to be connected again: facebook-pages</code> (written by Wiro when a sign-in expired or was revoked)</td></tr>
                             <tr><td><code>AGENT_PLAN_STARTED</code>, <code>AGENT_PLAN_RENEWED</code>, <code>AGENT_PLAN_CANCELLED</code>, <code>AGENT_PLAN_RESUMED</code></td><td><code>Starter plan started: $5.00 charged</code>, <code>Starter plan renewed: $5.00 charged</code>, <code>Plan cancelled, ends 2026-06-01</code>, <code>Plan cancellation undone</code></td></tr>
+                            <tr><td><code>AGENT_PLAN_ENDED</code></td><td><code>Starter plan ended: the wallet could not pay the renewal</code>, <code>Pro plan ended: it was set to cancel</code> (written by Wiro; the agent stops when its plan ends)</td></tr>
                             <tr><td><code>AGENT_PLAN_NOT_SAVED</code></td><td><code>Pro plan renewal did not finish: $24.00 charged</code>, <code>Max plan start did not finish: $100.00 charged</code> (the wallet paid and the plan could not be saved; see <a href="/docs/agent-transactions#plan-not-saved">Plan payments that did not finish</a>)</td></tr>
                             <tr><td><code>AGENT_TIER_UPGRADED</code></td><td><code>Plan upgraded from Starter to Pro; $12.50 charged</code></td></tr>
                             <tr><td><code>AGENT_PLAN_CHANGE_SCHEDULED</code>, <code>AGENT_PLAN_CHANGE_CANCELLED</code></td><td><code>Plan change scheduled: Pro to Starter on 2026-06-01</code>, <code>Scheduled plan change cancelled: stays on Pro</code></td></tr>
@@ -36952,16 +37105,10 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
     {
       "ts": "2026-05-03T14:02:54.902Z",
       "kind": "tool_completed",
-      "tool": "exec",
+      "tool": "wiro__run_model",
       "toolintegration": "wiro",
-      "title": "POST api.wiro.ai/v1/Run/google/nano-banana",
-      "summary": {
-        "method": "POST",
-        "host": "api.wiro.ai",
-        "path": "/v1/Run/google/nano-banana",
-        "headers": ["Content-Type: application/json", "x-api-key: ***"],
-        "body": { "prompt": "A paper boat on a calm lake at sunrise" }
-      },
+      "title": "wiro__run_model",
+      "summary": {},
       "durationMs": 640,
       "ok": true,
       "userUuid": "system",
@@ -36970,13 +37117,10 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
     {
       "ts": "2026-05-03T14:00:10.305Z",
       "kind": "tool_completed",
-      "tool": "exec",
-      "title": "Posted: \"Weekly Roundup\"",
-      "summary": {
-        "title": "Weekly Roundup",
-        "url": "https://blog.example.com/weekly-roundup-12",
-        "categories": ["AI", "Tutorial"]
-      },
+      "tool": "wordpress__create_post",
+      "toolintegration": "wordpress",
+      "title": "wordpress__create_post",
+      "summary": {},
       "durationMs": 1840,
       "ok": true,
       "userUuid": "system",
@@ -37019,7 +37163,7 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
                       <strong>About the <code>user</code> field.</strong> Every event is decorated with the resolved actor: <code>{ uuid, firstname, lastname, email, username, avatar, avatarinitials }</code>.
                       <ul>
                         <li>An event with a user's <code>userUuid</code> carries that user's profile, or <code>null</code> when the user record was deleted.</li>
-                        <li>An event triggered by <strong>automation</strong> has <code>userUuid: "system"</code> and <code>user: null</code>. That covers cron runs, the token usage of scheduled turns, and similar non-interactive writes (the system rows above).</li>
+                        <li>An event triggered by <strong>automation</strong> has <code>userUuid: "system"</code> and <code>user: null</code>. That covers Scheduled Task runs, the token usage of scheduled turns, and similar non-interactive writes (the system rows above).</li>
                         <li>An event without a <code>userUuid</code> (an incoming channel message, or a row older than user attribution) carries the agent owner's profile, so the row never shows an empty placeholder.</li>
                       </ul>
                     </div>
@@ -37063,7 +37207,7 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
     {
       "ts": "2026-05-03T09:12:44.000Z",
       "kind": "AGENT_CREDENTIAL_SAVED",
-      "title": "Connector setting saved: wiro.apikey",
+      "title": "Setting saved: wiro.apikey",
       "ok": true,
       "summary": { "fields": ["wiro.apikey"] },
       "userUuid": "ada-uuid",
@@ -37356,22 +37500,23 @@ for e in cron_runs:
                       <div class="docs-param-table-wrapper">
                         <table>
                           <thead>
-                            <tr><th>Error</th><th>When</th></tr>
+                            <tr><th>Error</th><th>Code</th><th>When</th></tr>
                           </thead>
                           <tbody>
-                            <tr><td><code>useragentguid is required</code></td><td>Missing required parameter</td></tr>
-                            <tr><td><code>date is required</code></td><td><code>LogsFile</code> / <code>LogsDelete</code> without <code>date</code></td></tr>
-                            <tr><td><code>useragent-access-denied</code></td><td>Caller is neither the owner nor on the agent's team</td></tr>
-                            <tr><td><code>useragent-team-admin-required</code></td><td>Caller is a member of the agent's team but not a team admin (code <code>97</code>)</td></tr>
-                            <tr><td><code>Agent is not assigned to a worker. It may not be running.</code></td><td>The agent isn't running on a host (never started, stopped or being moved). Start it and retry</td></tr>
-                            <tr><td><code>Worker not found</code></td><td>The agent's host is not available right now. Retry later</td></tr>
-                            <tr><td><code>Agent is temporarily unavailable. Please try again shortly.</code></td><td>The agent's host did not answer (offline, network blip). Retry</td></tr>
-                            <tr><td><code>runstream-unavailable</code></td><td><code>RunStreamToken</code> only: following runs live is not available right now. Try again later</td></tr>
+                            <tr><td><code>useragentguid is required</code></td><td>0</td><td>Missing required parameter</td></tr>
+                            <tr><td><code>date is required</code></td><td>0</td><td><code>LogsFile</code> / <code>LogsDelete</code> without <code>date</code></td></tr>
+                            <tr><td><code>User agent not found</code></td><td>95</td><td>Unknown guid, or the agent has been deleted</td></tr>
+                            <tr><td><code>You don't have access to this user agent</code></td><td>96</td><td>The caller is neither the agent's owner nor on its team</td></tr>
+                            <tr><td><code>Only a team admin can perform this action on a team-owned agent.</code></td><td>97</td><td>The caller is a plain member of the agent's team</td></tr>
+                            <tr><td><code>Agent is not assigned to a worker. It may not be running.</code></td><td>0</td><td>The agent isn't running on a host (never started, stopped or being moved). Start it and retry</td></tr>
+                            <tr><td><code>Worker not found</code></td><td>0</td><td>The agent's host is not available right now. Retry later</td></tr>
+                            <tr><td><code>Agent is temporarily unavailable. Please try again shortly.</code></td><td>0</td><td>The agent's host did not answer (offline, network blip). Retry</td></tr>
+                            <tr><td><code>runstream-unavailable</code></td><td>0</td><td><code>RunStreamToken</code> only: following runs live is not available right now. Try again later</td></tr>
                           </tbody>
                         </table>
                       </div>
                     </div>
-                    <p><code>Logs</code>, <code>LogsFile</code> and <code>LogsList</code> answer with the last three errors only when there are no who-did-what rows to show. <code>LogsDelete</code> needs the agent on a host every time. <code>RunStreamToken</code> needs no host: a stopped agent gets a token too.</p>
+                    <p><code>Logs</code>, <code>LogsFile</code> and <code>LogsList</code> answer with the three errors about the agent's host only when there are no who-did-what rows to show. <code>LogsDelete</code> needs the agent on a host every time. <code>RunStreamToken</code> needs no host: a stopped agent gets a token too.</p>
                   </section>
 
                   <section id="logs-retention">
@@ -37385,7 +37530,7 @@ for e in cron_runs:
                           <tbody>
                             <tr><td>Day 0-6</td><td>File is plain JSONL (<code>YYYY-MM-DD.jsonl</code>). Live tail + LogsFile read it directly.</td></tr>
                             <tr><td>Day 7-180</td><td>File is gzipped (<code>YYYY-MM-DD.jsonl.gz</code>). Reads are transparently decompressed; size in <code>LogsList</code> reports the on-disk compressed bytes.</td></tr>
-                            <tr><td>Day 181+</td><td>File is deleted by the agent's daily maintenance cron. <code>LogsList</code> no longer surfaces the date.</td></tr>
+                            <tr><td>Day 181+</td><td>File is deleted by the agent's daily maintenance. <code>LogsList</code> no longer surfaces the date.</td></tr>
                           </tbody>
                         </table>
                       </div>
