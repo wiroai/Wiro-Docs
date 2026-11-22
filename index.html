@@ -15638,7 +15638,7 @@ import type {
 <p>A plan's period lasts 30 days. The plan renews from the balance a day after its period ends, the next 30-day period starts then, and every renewal includes the plan's AI usage in full. Included usage that a period leaves unused doesn't carry over.</p>
 <p>When the balance can't pay a renewal, the plan ends and the agent stops (status <code>0</code>). A cancelled plan ends and stops the agent the same way, at the end of its period. An agent runs only while its plan is active, whatever its balance holds, so adding funds doesn't start it again: <a href="#post-useragentrenewsubscription"><code>RenewSubscription</code></a> pays the plan from the balance and queues the agent to start.</p>
 <h3 id="what-a-plan-includes">What a Plan Includes</h3>
-<p>Every skill and connector works on every plan. Turning a skill on or off with <a href="#post-useragentskillsapply"><code>SkillsApply</code></a> is free: the plan's price and included AI usage stay as they are. The work a skill does still uses AI usage, since its replies and scheduled tasks are agent turns billed by tokens like any other. A skill that runs Wiro models, such as <code>util-video-creator</code>, pays for those runs from the wallet of the Wiro project you connect to the agent. Connectors are included too: connecting one never changes the plan's price (see <a href="/docs/agent-connectors">Agent Connectors</a>).</p>
+<p>Every skill and connector works on every plan. Turning a skill on or off with <a href="#post-useragentskillsapply"><code>SkillsApply</code></a> is free: the plan's price and included AI usage stay as they are. The work a skill does still uses AI usage, since its replies and scheduled tasks are agent turns billed by tokens like any other. A skill that runs Wiro models, such as Video Creator (<code>util-video-creator</code>), pays for those runs from the wallet of the Wiro project you connect to the agent. Connectors are included too: connecting one never changes the plan's price (see <a href="/docs/agent-connectors">Agent Connectors</a>).</p>
 <h3 id="disk-space">Disk Space</h3>
 <p>Each plan gives the agent disk space for its files: 250 MB on Starter, 500 MB on Pro and 1 GB on Max. What counts is the agent's workspace, the media it generates and its temporary files. Chat history and the agent's system files don't count.</p>
 <p>Downloads and temporary files outside the workspace are cleared when the agent restarts, and media files from its chats are kept 3 days. Temporary files are also cleared when they pass 1 GB, on every plan: the agent then restarts on its own once the reply it is working on is done (it waits up to 20 minutes for it), which takes about a minute, and the files in its workspace stay.</p>
@@ -15686,7 +15686,7 @@ import type {
 <p>Cache-read and cache-write tokens are charged only when the model's rate defines them. <code>inputtokens</code> contains only uncached input; <code>totaltokens</code> is always the exact sum of input, output, cache-read, and cache-write tokens. For models with <code>long_context_threshold_tokens</code>, Wiro selects the long-context rate <strong>per LLM call</strong> using <code>input + cacheRead + cacheWrite</code>. You don't send anything. The agent's <a href="/docs/agent-transactions#tx-transactionlist">Transactions</a> list its AI usage as <code>ai-usage</code> rows, each with its model and its tokens and cost by kind; when Wiro measures the agent's model calls itself, one row covers every call billed since the last row, of one turn or several (see <a href="/docs/agent-transactions#metered-token-rows">Rows that cover several model calls</a>). Per-turn token counts and cost also ride on each assistant message (<code>inputtokens</code> / <code>outputtokens</code> / <code>cachereadtokens</code> / <code>cachewritetokens</code> / <code>totaltokens</code> / <code>tokencost</code> / <code>model</code>, with <code>tokencost</code> in cents, see <a href="/docs/agent-messaging">Agent Messaging</a>).</p>
 <p>AI usage comes from the plan's included usage for the period first, then from the balance. A new turn needs an active plan, and included usage left or a balance of at least $0.50. When the included usage is used up and the balance is under $0.50, the agent pauses: <a href="/docs/agent-messaging#post-useragentmessagesend"><code>POST /UserAgent/Message/Send</code></a> and <a href="#post-useragentstart"><code>POST /UserAgent/Start</code></a> are refused with code <code>97</code> until funds are added or the plan renews (see <a href="#ai-usage-and-the-balance">AI Usage and the Balance</a>).</p>
 <blockquote>
-<p><strong>Voice realtime audio is billed separately.</strong> Live voice-call audio (for <code>util-voice-receptionist</code> agents) is <strong>not</strong> the agent's AI usage. It is billed to the wallet of the agent's Wiro project (the <code>wiro</code> credential, see <a href="/docs/agent-credentials#the-agents-wiro-project">The agent's Wiro project</a>). The voice-prep turn before the call and the post-call text turn are AI usage like any other turn.</p>
+<p><strong>Voice realtime audio is billed separately.</strong> Live voice-call audio (for agents with Voice Receptionist Rules, <code>util-voice-receptionist</code>) is <strong>not</strong> the agent's AI usage. It is billed to the wallet of the agent's Wiro project (the <code>wiro</code> credential, see <a href="/docs/agent-credentials#the-agents-wiro-project">The agent's Wiro project</a>). The voice-prep turn before the call and the post-call text turn are AI usage like any other turn.</p>
 </blockquote>
 <h3 id="live-pricing-preview">Live Pricing Preview</h3>
 <p>Before you deploy, change the plan or change skills, call <a href="#post-useragentpricingpreview"><code>POST /UserAgent/PricingPreview</code></a>. It writes nothing and returns the three plans under <code>plans</code> and <code>tiers</code>, the <code>tokenRates</code>, and <code>enabledSkills</code> with every transitive <code>depends_on</code> resolved. For an agent with an active plan it also returns <code>planChange</code>: what a different <code>tier</code> would charge now and when it starts. A skill change has no price, so its <code>planChange</code> shows no charge.</p>
@@ -16727,7 +16727,7 @@ for the channel contract.</p>
 <tr>
 <td>Bundled scheduled tasks</td>
 <td>Cloned from the template's preset custom skills</td>
-<td>Materialized from the standalone cron registry</td>
+<td>Seeded from the Scheduled Tasks its skills bring</td>
 </tr>
 <tr>
 <td>Onboarding placeholders</td>
@@ -16867,7 +16867,7 @@ for the channel contract.</p>
 <ol>
 <li>Inspect <code>credentials</code> in the Deploy response (or call <code>POST /UserAgent/Detail</code>) to see each credential's fields, the <code>optional</code> / <code>extra</code> flags and the registry-driven <code>_schema</code>.</li>
 <li>Connect the services the agent works with through <a href="/docs/agent-connectors">Agent Connectors</a>: <code>POST /UserAgent/ConnectorConnect</code> with a connector's fields, or its vendor's sign-in. A template's <code>suggestedconnectors</code> on <a href="#post-agentdetail"><code>Agent/Detail</code></a> lists the ones it works with. Call <code>POST /UserAgent/CredentialUpsert</code> for channels and settings (bot tokens, the support email), and <code>POST /UserAgent/CredentialProjectBind</code> to connect the Wiro project the agent runs models with.</li>
-<li>Call <code>POST /UserAgent/CustomSkillUpsert</code> per skill to customize strategy text or cron intervals, if the template exposes any.</li>
+<li>Call <code>POST /UserAgent/CustomSkillUpsert</code> per skill to customize strategy text or Scheduled Task intervals, if the template exposes any.</li>
 <li>Once every non-optional credential is set up, <code>setuprequired</code> reads <code>false</code>. The start doesn't wait for it: the prepaid Deploy already queued the agent, Wiro starts it from the queue (<code>2</code> → <code>3</code> (Starting) → <code>4</code> (Running)), and a running agent restarts to pick up each connector you connect.</li>
 <li>If you want to re-launch a stopped agent (status <code>0</code>) or recover an errored one (status <code>5</code>), call <code>POST /UserAgent/Start</code> explicitly.</li>
 </ol>
@@ -17045,7 +17045,7 @@ for the channel contract.</p>
 </code></pre>
 <blockquote>
 <p><strong><code>MyAgents</code> returns one row per useragent with its scalar fields, the trimmed <code>agent</code> template summary, <code>subscription</code>, <code>setuprequired</code> (status-based check only), <code>usage</code> (the agent's AI usage and balance, see <a href="#usage-object">Usage object</a>), <code>spend</code> (what it cost this month, see <a href="#spend-object">Spend object</a>), <code>lastactivityat</code>, the resolved <code>enabledSkills</code> (template defaults ∪ user overrides, including transitive <code>depends_on</code> closure), <code>tokenRates</code> (per-model token rates, the same map as <code>UserAgent/Detail.tokenRates</code>), <code>agentModel</code> (the resolved chat / cron / voice-prep / voice-postcall model slugs), and <code>enabledCommands</code> (the slash-command allowlist, <code>null</code> when uncustomized).</strong> Heavier composed children (<code>credentials</code>, <code>customskills</code>, <code>scheduledskills</code>, <code>skills</code>, <code>skillsmeta</code>, <code>communicationChannels</code>, <code>enabledChannels</code>) are <strong>not</strong> included. Call <code>UserAgent/Detail</code> on a single guid for the full composed shape.</p>
-<p><strong><code>enabledSkills</code>, <code>tokenRates</code>, and <code>agentModel</code></strong> ride on each list row so a chat or pinned-agents UI can decide whether to show the realtime voice-call button (<code>enabledSkills</code> includes <code>util-web-channel</code>) and render the model picker + live token-rate card without round-tripping <code>UserAgent/Detail</code> per row.</p>
+<p><strong><code>enabledSkills</code>, <code>tokenRates</code>, and <code>agentModel</code></strong> ride on each list row so a chat or pinned-agents UI can decide whether to show the realtime voice-call button (<code>enabledSkills</code> includes Web Voice Channel, <code>util-web-channel</code>) and render the model picker + live token-rate card without round-tripping <code>UserAgent/Detail</code> per row.</p>
 </blockquote>
 <h4 id="post-useragentdetail"><strong>POST</strong> /UserAgent/Detail</h4>
 <p>Retrieves full details for a single deployed agent instance, including subscription info, its AI usage and balance (<code>usage</code>), what it cost this month (<code>spend</code>), and the resolved per-model token-rate table (<code>tokenRates</code>) plus model selection (<code>agentModel</code>).</p>
@@ -20432,7 +20432,7 @@ channel-enable endpoint or persisted switch.</p>
 <tr>
 <td><code>events[].kind</code></td>
 <td>string</td>
-<td>Fine-grained event class. One of: <code>"turn_started"</code>, <code>"turn_ended"</code> (an LLM turn boundary); <code>"tool_started"</code>, <code>"tool_completed"</code> (one pair per tool call); <code>"tool_blocked"</code> (a tool call the agent's safety rules refused); <code>"cron_finished"</code> (a scheduled task finished); <code>"user_message"</code> (a message received on a connected Telegram, Slack or Discord channel, not web chat); <code>"token_usage"</code> (a billed turn's token usage: chat / cron / voice post-call); <code>"token_usage_idempotent"</code> (a replayed usage report, already billed, informational only); <code>"media_relay"</code> (files from a reply were delivered); <code>"background_reply"</code> (a result that finished in the background was delivered to the chat). Rows about what was done to the agent have <code>AGENT_*</code> kinds, and two note rows, <code>"runtime_log_unavailable"</code> and <code>"runtime_log_deleted"</code>, say what part of a day is missing; see <a href="/docs/agent-logs#who-did-what-rows">Agent Logs</a>. Show any kind you don't recognize by its <code>title</code>.</td>
+<td>Fine-grained event class. One of: <code>"turn_started"</code>, <code>"turn_ended"</code> (an LLM turn boundary); <code>"tool_started"</code>, <code>"tool_completed"</code> (one pair per tool call); <code>"tool_blocked"</code> (a tool call the agent's safety rules refused); <code>"cron_finished"</code> (a scheduled task finished); <code>"user_message"</code> (a message received on a connected Telegram, Slack or Discord channel, not web chat); <code>"token_usage"</code> (a billed turn's token usage: chat / Scheduled Task / voice post-call); <code>"token_usage_idempotent"</code> (a replayed usage report, already billed, informational only); <code>"media_relay"</code> (files from a reply were delivered); <code>"background_reply"</code> (a result that finished in the background was delivered to the chat). Rows about what was done to the agent have <code>AGENT_*</code> kinds, and two note rows, <code>"runtime_log_unavailable"</code> and <code>"runtime_log_deleted"</code>, say what part of a day is missing; see <a href="/docs/agent-logs#who-did-what-rows">Agent Logs</a>. Show any kind you don't recognize by its <code>title</code>.</td>
 </tr>
 <tr>
 <td><code>events[].tool</code></td>
@@ -20497,7 +20497,7 @@ channel-enable endpoint or persisted switch.</p>
 <tr>
 <td><code>events[].userUuid</code></td>
 <td>string | null</td>
-<td>Originating actor's UUID. <code>"system"</code> for cron / internal events. May be missing on older rows, in which case the server falls back to the agent owner.</td>
+<td>Originating actor's UUID. <code>"system"</code> for Scheduled Task runs and internal events. May be missing on older rows, in which case the server falls back to the agent owner.</td>
 </tr>
 <tr>
 <td><code>events[].user</code></td>
@@ -21248,7 +21248,7 @@ channel-enable endpoint or persisted switch.</p>
 <tr>
 <td><code>channel</code></td>
 <td><code>"twilio"</code> | <code>"web"</code></td>
-<td>Which voice surface served the call.</td>
+<td>Which voice channel served the call.</td>
 </tr>
 <tr>
 <td><code>callsid</code></td>
@@ -22103,7 +22103,7 @@ channel-enable endpoint or persisted switch.</p>
 <tr>
 <td><strong>Per-turn token cost</strong></td>
 <td><code>tokenRates</code> (per-model)</td>
-<td>Each chat / cron / voice-prep turn is priced by the tokens its model uses, with input, cache read, cache write and output priced separately. The same on every plan: a larger plan includes more AI usage.</td>
+<td>Each chat, Scheduled Task, voice-prep and voice post-call turn is priced by the tokens its model uses, with input, cache read, cache write and output priced separately. The same on every plan: a larger plan includes more AI usage.</td>
 </tr>
 <tr>
 <td><strong>Model runs</strong></td>
@@ -22861,7 +22861,7 @@ print(response.body);
 <li><a href="/docs/agent-websocket">Agent WebSocket</a>: Real-time response streaming</li>
 <li><a href="/docs/agent-webhooks">Agent Webhooks</a>: Receive agent responses via HTTP callbacks</li>
 <li><a href="/docs/agent-transactions">Agent Transactions</a>: The agent's spending in dollars: AI usage, model runs, plan payments and funds added</li>
-<li><a href="/docs/agent-logs">Agent Logs</a>: Per-instance activity feed (tool calls, cron runs, message exchanges)</li>
+<li><a href="/docs/agent-logs">Agent Logs</a>: Per-instance activity feed (tool calls, Scheduled Task runs, message exchanges)</li>
 <li><a href="/docs/authentication">Authentication</a>: API key setup and authentication methods</li>
 </ul>
                 </article>
