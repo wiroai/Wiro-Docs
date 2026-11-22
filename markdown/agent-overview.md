@@ -109,7 +109,7 @@ When the agent's files reach the plan's size, the disk is full: the agent can't 
 - **A lower plan starts at the next renewal.** Ask for it with `allowDowngrade: true`: without it, a lower plan is refused and nothing changes. Nothing is charged or refunded. The agent keeps its current plan, price and included AI usage until the period ends, and its `nextplan` field names the plan it will renew on.
 - **Asking for the agent's current plan** cancels a scheduled move to a lower plan.
 
-Moving to a higher plan while a lower one is scheduled cancels the scheduled move first. Cancelling the plan keeps a scheduled move (see [`CancelSubscription`](#post-useragentcancelsubscription)).
+Moving to a higher plan while a lower one is scheduled cancels the scheduled move first. Cancelling a plan paid from the balance keeps a scheduled move; cancelling a plan paid by card drops it (see [`CancelSubscription`](#post-useragentcancelsubscription)).
 
 ### Paying for Plans
 
