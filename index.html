@@ -23412,7 +23412,7 @@ print(response.body);
 </blockquote>
 <h3 id="tool-integration-and-action-values">Tool integration and action values</h3>
 <p><code>toolintegration</code> and <code>toolaction</code> say which connector a tool step works in and what the step does, so your app can show "Working in Shopify" or "Taking a screenshot" instead of only the tool's name. Each holds a word from a closed list or <code>null</code>, never free text, a host, a URL, a path, or an argument.</p>
-<p><code>toolintegration</code> is the <code>slug</code> of the connector the step works in, as <a href="/docs/agent-connectors#post-agentconnectorlist"><code>POST /AgentConnector/List</code></a> lists it, such as <code>shopify</code>, <code>google-ads</code> or <code>serper</code>, or <code>telegram</code> for the Telegram channel and <code>wiro</code> for Wiro's own tools. Name it in your app by the connector's <code>title</code>.</p>
+<p><code>toolintegration</code> is the <code>slug</code> of the connector the step works in, as <a href="/docs/agent-connectors#post-agentconnectorlist"><code>POST /AgentConnector/List</code></a> lists it, such as <code>shopify</code>, <code>google-ads</code>, <code>serper</code> or <code>wiro</code> (Wiro AI Models). Channels such as Telegram are not connectors and get no word. Name it in your app by the connector's <code>title</code>, and treat a slug the catalog doesn't list like <code>null</code>. A step that calls a connector's tool has that tool's name as its <code>toollabel</code>, <code>&lt;slug&gt;__&lt;tool&gt;</code>, such as <code>shopify__list_products</code>.</p>
 <p><code>toolaction</code> is one of these words:</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -23481,7 +23481,7 @@ print(response.body);
     &quot;contentindex&quot;: 1,
     &quot;type&quot;: &quot;tool&quot;,
     &quot;text&quot;: null,
-    &quot;toollabel&quot;: &quot;exec&quot;,
+    &quot;toollabel&quot;: &quot;shopify__list_products&quot;,
     &quot;toolstatus&quot;: &quot;completed&quot;,
     &quot;toolintegration&quot;: &quot;shopify&quot;,
     &quot;toolaction&quot;: null,
@@ -25966,9 +25966,10 @@ func main() {
 <p>When the agent proposes a setup change, a <code>setup</code> block arrives the same way. It sorts after the turn's other blocks, its <code>text</code> is <code>null</code> and it carries a <code>setup</code> object instead of tool fields; see <a href="/docs/agent-messaging#setup-from-chat">Setup From Chat</a>. A pending card's block has <code>version</code> 1. When the card is applied, dismissed or fails, the block comes again with <code>version</code> 2 and the new <code>status</code>; <code>Message/Detail</code> and <code>Message/History</code> always have the current state. A pending <code>connect</code> card's block also carries <code>next</code>, the connector it connects, as <code>[{ connector, title, mode }]</code>.</p>
 <p>Tool blocks carry two closed-list words:</p>
 <ul>
-<li><code>toolintegration</code> names the connector the step works in, as its <code>slug</code> from <a href="/docs/agent-connectors#post-agentconnectorlist"><code>POST /AgentConnector/List</code></a>, such as <code>shopify</code>, <code>google-ads</code> or <code>serper</code>, or <code>telegram</code> for the Telegram channel and <code>wiro</code> for Wiro's own tools. Name it in your app by the connector's <code>title</code>.</li>
+<li><code>toolintegration</code> names the connector the step works in, as its <code>slug</code> from <a href="/docs/agent-connectors#post-agentconnectorlist"><code>POST /AgentConnector/List</code></a>, such as <code>shopify</code>, <code>google-ads</code>, <code>serper</code> or <code>wiro</code> (Wiro AI Models). Channels such as Telegram are not connectors and get no word. Name it in your app by the connector's <code>title</code>.</li>
 <li><code>toolaction</code> names what the step does: <code>screenshot</code>, <code>open-page</code>, <code>read-page</code>, <code>click</code>, <code>type</code>, <code>press-key</code>, <code>wait</code>, <code>upload</code>, <code>download</code>, <code>read-file</code>, or <code>edit-media</code>.</li>
 </ul>
+<p>A step that calls a connector's tool is labelled with that tool's name, <code>&lt;slug&gt;__&lt;tool&gt;</code>, such as <code>shopify__list_orders</code> or <code>wiro__run_model</code>. The label is display text: read the connector from <code>toolintegration</code>.</p>
 <p>Each is <code>null</code> when no word fits, and a block never has both. The words come with the block's first update, and every later update of the block carries them. A later update can carry a different word if the step changed, so read them from the newest version of the block. A block whose step is rewritten and no longer fits a word keeps its last word. Treat a value you don't know like <code>null</code>; <a href="/docs/agent-messaging#tool-integration-and-action-values">Agent Messaging</a> says what each word means.</p>
 <p>A tool block update:</p>
 <pre><code class="language-json">{
@@ -25982,7 +25983,7 @@ func main() {
       &quot;contentindex&quot;: 1,
       &quot;type&quot;: &quot;tool&quot;,
       &quot;text&quot;: null,
-      &quot;toollabel&quot;: &quot;exec&quot;,
+      &quot;toollabel&quot;: &quot;shopify__list_orders&quot;,
       &quot;toolstatus&quot;: &quot;requested&quot;,
       &quot;toolintegration&quot;: &quot;shopify&quot;,
       &quot;toolaction&quot;: null,
@@ -26351,7 +26352,7 @@ func main() {
         &quot;contentindex&quot;: 1,
         &quot;type&quot;: &quot;tool&quot;,
         &quot;text&quot;: null,
-        &quot;toollabel&quot;: &quot;exec&quot;,
+        &quot;toollabel&quot;: &quot;shopify__list_orders&quot;,
         &quot;toolstatus&quot;: &quot;requested&quot;,
         &quot;toolintegration&quot;: &quot;shopify&quot;,
         &quot;toolaction&quot;: null,
@@ -26504,7 +26505,7 @@ func main() {
       &quot;contentindex&quot;: 1,
       &quot;type&quot;: &quot;tool&quot;,
       &quot;text&quot;: null,
-      &quot;toollabel&quot;: &quot;exec&quot;,
+      &quot;toollabel&quot;: &quot;shopify__list_orders&quot;,
       &quot;toolstatus&quot;: &quot;completed&quot;,
       &quot;toolintegration&quot;: &quot;shopify&quot;,
       &quot;toolaction&quot;: null,
@@ -36293,7 +36294,7 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
                             <tr><td><code>ts</code></td><td><code>string</code></td><td>ISO-8601 UTC datetime when the event was recorded (e.g. <code>"2026-05-03T14:00:10.234Z"</code>). Parse with <code>Date.parse(ts)</code> for arithmetic.</td></tr>
                             <tr><td><code>kind</code></td><td><code>string</code></td><td>Fine-grained event class. One of: <code>"turn_started"</code>, <code>"turn_ended"</code> (an LLM turn boundary); <code>"tool_started"</code>, <code>"tool_completed"</code> (one pair per tool call); <code>"tool_blocked"</code> (a tool call the agent's safety rules refused); <code>"cron_finished"</code> (a scheduled task finished); <code>"user_message"</code> (a message received on a connected Telegram, Slack or Discord channel, not web chat); <code>"token_usage"</code> (a billed turn's token usage: chat / cron / voice post-call); <code>"token_usage_idempotent"</code> (a replayed usage report, already billed, informational only); <code>"media_relay"</code> (files from a reply were delivered); <code>"background_reply"</code> (a result that finished in the background was delivered to the chat). Rows about what was done to the agent have <a href="#who-did-what-rows"><code>AGENT_*</code> kinds</a>, and two note rows, <code>"runtime_log_unavailable"</code> and <code>"runtime_log_deleted"</code>, say what part of a day is missing. Show any kind you don't recognize by its <code>title</code>.</td></tr>
                             <tr><td><code>tool</code></td><td><code>string?</code></td><td>Present on <code>tool_started</code> / <code>tool_completed</code> / <code>tool_blocked</code>. The name of the tool the agent used.</td></tr>
-                            <tr><td><code>toolintegration</code></td><td><code>string?</code></td><td>On <code>tool_started</code> and <code>tool_completed</code> when the step works in a connector: the connector's <code>slug</code>, for example <code>"wordpress"</code>, or a channel's key, such as <code>"telegram"</code>. Same closed list as on <a href="/docs/agent-messaging#tool-integration-and-action-values">timeline tool blocks</a>.</td></tr>
+                            <tr><td><code>toolintegration</code></td><td><code>string?</code></td><td>On <code>tool_started</code> and <code>tool_completed</code> when the step works in a connector: the connector's <code>slug</code> from <code>POST /AgentConnector/List</code>, for example <code>"wordpress"</code>, or <code>"wiro"</code> for Wiro AI Models. Same closed list as on <a href="/docs/agent-messaging#tool-integration-and-action-values">timeline tool blocks</a>.</td></tr>
                             <tr><td><code>toolaction</code></td><td><code>string?</code></td><td>On <code>tool_started</code> and <code>tool_completed</code> when a word fits the step: what it does, for example <code>"click"</code>. Same closed list as on <a href="/docs/agent-messaging#tool-integration-and-action-values">timeline tool blocks</a>. Never set together with <code>toolintegration</code>.</td></tr>
                             <tr><td><code>title</code></td><td><code>string</code></td><td>Human-readable one-line description of what happened (e.g. <code>"Posted carousel: \"Brand voice teaser\""</code>, <code>"Fetched https://…"</code>, <code>"Token Usage"</code>). Always present.</td></tr>
                             <tr><td><code>summary</code></td><td><code>object?</code></td><td>Structured event-specific payload. Opaque on the wire, so render it as JSON when expanding the row. Secret values (<code>apikey</code>, <code>apppassword</code>, <code>clientsecret</code>, <code>bearer</code>, <code>token</code>, …) are masked before the event is written. Common keys: <code>file</code>, <code>method</code>, <code>host</code>, <code>path</code>, <code>preview</code>, <code>messageCount</code>, <code>jobId</code>, <code>status</code>, <code>reason</code>.</td></tr>

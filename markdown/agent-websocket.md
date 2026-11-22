@@ -284,8 +284,10 @@ When the agent proposes a setup change, a `setup` block arrives the same way. It
 
 Tool blocks carry two closed-list words:
 
-- `toolintegration` names the connector the step works in, as its `slug` from [`POST /AgentConnector/List`](/docs/agent-connectors#post-agentconnectorlist), such as `shopify`, `google-ads` or `serper`, or `telegram` for the Telegram channel and `wiro` for Wiro's own tools. Name it in your app by the connector's `title`.
+- `toolintegration` names the connector the step works in, as its `slug` from [`POST /AgentConnector/List`](/docs/agent-connectors#post-agentconnectorlist), such as `shopify`, `google-ads`, `serper` or `wiro` (Wiro AI Models). Channels such as Telegram are not connectors and get no word. Name it in your app by the connector's `title`.
 - `toolaction` names what the step does: `screenshot`, `open-page`, `read-page`, `click`, `type`, `press-key`, `wait`, `upload`, `download`, `read-file`, or `edit-media`.
+
+A step that calls a connector's tool is labelled with that tool's name, `<slug>__<tool>`, such as `shopify__list_orders` or `wiro__run_model`. The label is display text: read the connector from `toolintegration`.
 
 Each is `null` when no word fits, and a block never has both. The words come with the block's first update, and every later update of the block carries them. A later update can carry a different word if the step changed, so read them from the newest version of the block. A block whose step is rewritten and no longer fits a word keeps its last word. Treat a value you don't know like `null`; [Agent Messaging](/docs/agent-messaging#tool-integration-and-action-values) says what each word means.
 
@@ -303,7 +305,7 @@ A tool block update:
       "contentindex": 1,
       "type": "tool",
       "text": null,
-      "toollabel": "exec",
+      "toollabel": "shopify__list_orders",
       "toolstatus": "requested",
       "toolintegration": "shopify",
       "toolaction": null,
@@ -592,7 +594,7 @@ The server answers with the runs and model runs that are open right now:
         "contentindex": 1,
         "type": "tool",
         "text": null,
-        "toollabel": "exec",
+        "toollabel": "shopify__list_orders",
         "toolstatus": "requested",
         "toolintegration": "shopify",
         "toolaction": null,
@@ -698,7 +700,7 @@ A step of a Scheduled Task run finished:
       "contentindex": 1,
       "type": "tool",
       "text": null,
-      "toollabel": "exec",
+      "toollabel": "shopify__list_orders",
       "toolstatus": "completed",
       "toolintegration": "shopify",
       "toolaction": null,

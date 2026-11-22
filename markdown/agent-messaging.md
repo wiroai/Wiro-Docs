@@ -318,7 +318,7 @@ Do not compare `version` across different blocks. Keep a map keyed by `blockid`,
 
 `toolintegration` and `toolaction` say which connector a tool step works in and what the step does, so your app can show "Working in Shopify" or "Taking a screenshot" instead of only the tool's name. Each holds a word from a closed list or `null`, never free text, a host, a URL, a path, or an argument.
 
-`toolintegration` is the `slug` of the connector the step works in, as [`POST /AgentConnector/List`](/docs/agent-connectors#post-agentconnectorlist) lists it, such as `shopify`, `google-ads` or `serper`, or `telegram` for the Telegram channel and `wiro` for Wiro's own tools. Name it in your app by the connector's `title`.
+`toolintegration` is the `slug` of the connector the step works in, as [`POST /AgentConnector/List`](/docs/agent-connectors#post-agentconnectorlist) lists it, such as `shopify`, `google-ads`, `serper` or `wiro` (Wiro AI Models). Channels such as Telegram are not connectors and get no word. Name it in your app by the connector's `title`, and treat a slug the catalog doesn't list like `null`. A step that calls a connector's tool has that tool's name as its `toollabel`, `<slug>__<tool>`, such as `shopify__list_products`.
 
 `toolaction` is one of these words:
 
@@ -348,7 +348,7 @@ Two tool blocks from a `timeline[]`:
     "contentindex": 1,
     "type": "tool",
     "text": null,
-    "toollabel": "exec",
+    "toollabel": "shopify__list_products",
     "toolstatus": "completed",
     "toolintegration": "shopify",
     "toolaction": null,
