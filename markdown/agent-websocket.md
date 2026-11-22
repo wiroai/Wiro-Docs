@@ -110,15 +110,15 @@ Frames flow in two directions. `↓` = server → client, `↑` = client → ser
 | ↓ | `agent_end` | Terminal success event. Same payload shape as `agent_output` but contains the final complete text with total metrics. Emits at most once. |
 | ↓ | `agent_error` | Terminal failure event. `message` is a plain string: the turn's coded failure message, the same text `response` holds (see [Failed turns](/docs/agent-messaging#failed-turns)). Emits at most once. |
 | ↓ | `agent_cancel` | Terminal cancel event. Fires **only** when an already-active message is aborted mid-stream (via `Message/Cancel` or upstream abort). Cancels against a still-queued message do **not** broadcast this event, so check `Message/Detail` for those. Emits at most once. |
-| ↓ | `agent_usage_report` | Post-terminal usage/billing frame. Fires once, ~250-500 ms after a successful `agent_end`, on the same `agenttoken`. Carries the final token counts, `model` and `tokencost` for the message identified by `messageguid`. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns); follow those on the [run stream](#following-an-agents-background-runs). |
-| ↓ | `agent_wiroai_runtask` | Model-run discovery frame. Fires whenever the agent itself launches a Wiro model run during a turn (e.g. generating an image or video for a skill or through the `wiro` connector). Arrives on the `agenttoken` of the turn that launched the run, carrying the new task's `socketaccesstoken` so you can subscribe to that run's `task_*` lifecycle and collect its outputs. See [Model runs the agent triggers](#model-runs-the-agent-triggers). |
+| ↓ | `agent_usage_report` | Post-terminal usage/billing frame. Fires once, ~250-500 ms after a successful `agent_end`, on the same `agenttoken`. Carries the final token counts, `model` and `tokencost` for the message identified by `messageguid`. Not emitted for replayed usage callbacks or for runs with no chat message, such as Scheduled Task runs; follow those on the [run stream](#following-an-agents-background-runs). |
+| ↓ | `agent_wiroai_runtask` | Model-run discovery frame. Fires whenever the agent itself launches a Wiro model run during a turn (e.g. generating an image or video for a skill or through the Wiro AI Models connector, `wiro`). Arrives on the `agenttoken` of the turn that launched the run, carrying the new task's `socketaccesstoken` so you can subscribe to that run's `task_*` lifecycle and collect its outputs. See [Model runs the agent triggers](#model-runs-the-agent-triggers). |
 | ↑ | `agent_session_subscribe` | Follow a session with the `sessiontoken` from `Message/History`. See [Following a session](#following-a-session). |
 | ↓ | `agent_session_subscribed` | Session follow acknowledged. |
 | ↓ | `agent_message_inserted` | A message was added to a followed session between turns (a scheduled report, files sent after an answer, the result of background work). Carries the `sessiontoken` and the new row in `message`. |
 | ↑ | `agent_session_unsubscribe` | Stop following a session. No reply. |
 | ↑ | `agent_run_subscribe` | Follow an agent's background runs and model runs with the `runstreamtoken` from `POST /UserAgent/RunStreamToken`. See [Following an agent's background runs](#following-an-agents-background-runs). |
 | ↓ | `agent_run_subscribed` | Run stream follow acknowledged. Carries `expiresat` and the agent's open runs (`runs`) and model runs (`models`). |
-| ↓ | `agent_run_start` | A background run started: a Scheduled Task, a sub-agent, or another run with no chat message. Once per run. |
+| ↓ | `agent_run_start` | A background run started: a Scheduled Task, work the agent moved to the background, or another run with no chat message. Once per run. |
 | ↓ | `agent_run_block` | One step of an open background run changed. Carries one public block with `text: null`. |
 | ↓ | `agent_run_end` | A background run ended, with `ok`, `reason`, `durationms`, and `endedat`. Once per run. |
 | ↓ | `agent_run_model_start` | The agent started a Wiro model run, in a chat turn or a background run. Once per model run. |
@@ -419,7 +419,7 @@ if (msg.type === 'agent_error') {
 
 ### agent_cancel
 
-Sent when the user cancels a message before the agent completes its response (only when the abort hits the bridge mid-flight, since queued-state cancels don't broadcast this event):
+Sent when the user cancels a message before the agent completes its response (only when the agent had already started on the message, since queued-state cancels don't broadcast this event):
 
 ```json
 {
@@ -477,11 +477,11 @@ Like `agent_output`, it is a live broadcast: it is **not** replayed to clients t
 It is **not** emitted for:
 
 - **Idempotent / replayed usage callbacks**: a turn is billed once, and a replayed usage callback does not re-broadcast the frame.
-- **Turns with no chat message**: e.g. cron- or hook-triggered turns that produce no assistant message row have no `messageguid` to key on, so no frame is sent. Follow those runs on the [run stream](#following-an-agents-background-runs) instead.
+- **Turns with no chat message**: e.g. Scheduled Task runs and other runs that produce no assistant message row have no `messageguid` to key on, so no frame is sent. Follow those runs on the [run stream](#following-an-agents-background-runs) instead.
 
 ### Model runs the agent triggers
 
-When the agent **itself** kicks off a Wiro model run during a turn (for example generating an image or a video for a skill, or through the `wiro` connector), the bridge emits an `agent_wiroai_runtask` discovery frame. It hands you the new model run's `socketaccesstoken` so you can subscribe to that run and stream its progress and final media outputs. This is how a chat product surfaces a "live activity feed" of the media the agent is producing.
+When the agent **itself** kicks off a Wiro model run during a turn (for example generating an image or a video for a skill, or through the Wiro AI Models connector, `wiro`), Wiro sends an `agent_wiroai_runtask` discovery frame. It hands you the new model run's `socketaccesstoken` so you can subscribe to that run and stream its progress and final media outputs. This is how a chat product surfaces a "live activity feed" of the media the agent is producing.
 
 ```json
 {
@@ -575,7 +575,7 @@ Each message added to that session afterwards arrives as an `agent_message_inser
 
 ### Following an agent's background runs
 
-Some of an agent's work never shows up as a chat turn: its Scheduled Tasks, the sub-agents it starts to work on something in the background, and other runs that have no chat message, such as a reply on a connected Telegram, Slack or Discord channel. The run stream lets you follow them live: when each run starts, each step it takes, and when it ends. It also reports every Wiro model run the agent starts, in chat turns too, from start to end.
+Some of an agent's work never shows up as a chat turn: its Scheduled Tasks, work it moves to the background, and other runs that have no chat message, such as a reply on a connected Telegram, Slack or Discord channel. The run stream lets you follow them live: when each run starts, each step it takes, and when it ends. It also reports every Wiro model run the agent starts, in chat turns too, from start to end.
 
 The stream carries labels only. Reasoning and answer text never appear on it (a block's `text` is always `null`), and a tool step shows only its label, its status and the two closed-list words a timeline tool block has.
 
@@ -708,7 +708,7 @@ Each event carries `type`, `useragentguid`, `message`, and `result`. `result` is
 
 A model run can start before its run's `agent_run_start` reaches you, and in rare cases a block can too: treat either one as the run being open.
 
-A sub-agent started from a chat session:
+Background work started from a chat session:
 
 ```json
 {
@@ -817,7 +817,7 @@ A model run started in a chat turn, then its end:
 | `useragentguid` | string | The agent the frame belongs to, for example `"f8e7d6c5-b4a3-2190-fedc-ba0987654321"`. Route frames by it. |
 | `runref` | string \| null | Identifies one background run, for example `"q2Vt8kXw1bN0aZ3cR5sY7u"`: 22 letters, digits, `-` or `_`. Every frame of a run carries the same value. Always set on run events and in `runs`. On model events and in `models` it names the run that started the model run, and it is `null` when a chat turn started it. |
 | `modelref` | string | Identifies one model run, for example `"Hn4pW0sLx9Qe2Tm7Vb1Kd8"`: 22 letters, digits, `-` or `_`. It is not the model run's `taskid`: this stream never carries a `taskid` or a `socketaccesstoken`. |
-| `runkind` | string | What kind of run it is: `cron` (a Scheduled Task), `subagent` (a sub-agent working in the background), `announce` (a run that writes the result of background work back to its chat session), or `other` (any other run with no chat message, such as a reply on a connected channel). It can change while the run is open, for example from `other` to `cron`, but never back to `other`. Every event repeats it; the value on `agent_run_end` is final. Treat a value you don't know as `other`. |
+| `runkind` | string | What kind of run it is: `cron` (a Scheduled Task), `subagent` (work the agent moved to the background), `announce` (a run that writes the result of background work back to its chat session), or `other` (any other run with no chat message, such as a reply on a connected channel). It can change while the run is open, for example from `other` to `cron`, but never back to `other`. Every event repeats it; the value on `agent_run_end` is final. Treat a value you don't know as `other`. |
 | `root` | string | What the run belongs to: `chat` (a chat session, named in `sessionkey`), `cron` (a Scheduled Task), or `unknown` (not known yet). A later event can fill it in; once it is `chat` or `cron`, it never goes back to `unknown`. Model events don't carry it. Treat a value you don't know as `unknown`. |
 | `sessionkey` | string \| null | The key of the chat session the run works for: the `sessionkey` that `Message/Send`, `Message/Sessions` and `Message/History` use, for example `"default"`, not the session's display `name`. Up to 512 characters, and only ASCII letters and digits, `.`, `_`, `:`, `~`, `@`, `+` and `-`: a key with any other character, such as a space or `ü`, reads `null` here. A Scheduled Task run has `null` here, or its `cs-cron-` session key; `root` is `cron` either way. It is also `null` while the session isn't known yet. Once a run has a `sessionkey`, it doesn't go back to `null`. On model events it is the session key sent with the request that started the model run, or `null`. Whoever starts a session or a model run picks its key, so treat `sessionkey` as text from your users: escape it before you show it, and don't rely on it to tell who started a run. |
 | `startedat` | number | Unix seconds when the run or model run started, for example `1793491800`. When a run is first seen as it ends, `agent_run_start` and `agent_run_end` come together and `startedat` is worked out from the run's duration. |
@@ -1550,7 +1550,7 @@ The post-terminal `agent_usage_report` also names `message.messageguid`, but it 
 ### Why `agenttoken` is the correlation key
 
 - `Message/Send` issues exactly one `agenttoken` per message and returns it alongside `messageguid` in the HTTP response.
-- The bridge stamps the same `agenttoken` on every event it emits for that message.
+- Every event for that message carries the same `agenttoken`.
 - Multiple connections can subscribe to the same `agenttoken` and each gets the full event stream, so `agenttoken` is also the fan-out key.
 - A single socket can hold subscriptions for many `agenttoken`s at once (see [Multi-session subscription](#multi-session-subscription)), and the per-event `agenttoken` lets your handler dispatch into the right UI element.
 
@@ -1628,7 +1628,7 @@ ws.onmessage = (event) => {
 
 ### Concurrency: multiple in-flight messages on one session
 
-Sending two messages back-to-back in the same `sessionkey` produces two independent `agenttoken`s. Both reach the bridge in queue order; both stream events independently. Your client must:
+Sending two messages back-to-back in the same `sessionkey` produces two independent `agenttoken`s. The agent takes them in queue order; both stream events independently. Your client must:
 
 - Subscribe to **both** `agenttoken`s (one `agent_info` frame each, and the server de-duplicates automatically).
 - Key all UI updates on `agenttoken`, not on `sessionkey` (which is shared) or timestamps (which can interleave).
@@ -1739,10 +1739,10 @@ An `agenttoken` is issued per message by `POST /UserAgent/Message/Send` and stay
 | Timeline block changes | Emits one `agent_timeline_delta` update with `{ messageguid, block }`; the persisted row keeps the merged ordered timeline. |
 | Each SSE chunk | Emits `agent_output` to every active subscriber (with full accumulated `raw`). |
 | Stream finishes | Emits `agent_end` with the final `progressGenerate` payload, or `agent_error` with the public failure message when the turn failed; the message's `status` becomes terminal. |
-| Usage billed | ~250-500 ms after a successful `agent_end`, emits `agent_usage_report` with final token counts, `model` and `tokencost`. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns), which you follow on the [run stream](#following-an-agents-background-runs). |
-| Bridge exception | Emits `agent_error` with the public failure message; the message's `status` becomes `agent_error`, and `response` and `debugoutput` hold the same text. |
-| `Message/Cancel` during active stream | Bridge aborts, emits `agent_cancel`; the message's `status` becomes `agent_cancel`. |
-| `Message/Cancel` while queued | The message's `status` becomes `agent_cancel` immediately. **No WebSocket event is broadcast** (the bridge never started). Clients checking via the socket must consult `Message/Detail` for queued-state cancels. |
+| Usage billed | ~250-500 ms after a successful `agent_end`, emits `agent_usage_report` with final token counts, `model` and `tokencost`. Not emitted for replayed usage callbacks or for runs with no chat message, such as Scheduled Task runs, which you follow on the [run stream](#following-an-agents-background-runs). |
+| The turn fails | Emits `agent_error` with the public failure message; the message's `status` becomes `agent_error`, and `response` and `debugoutput` hold the same text. |
+| `Message/Cancel` during active stream | The agent stops and `agent_cancel` is sent; the message's `status` becomes `agent_cancel`. |
+| `Message/Cancel` while queued | The message's `status` becomes `agent_cancel` immediately. **No WebSocket event is broadcast** (the agent never started on it). Clients checking via the socket must consult `Message/Detail` for queued-state cancels. |
 
 **Multi-subscriber semantics**: multiple WebSocket connections can subscribe to the same `agenttoken` and all receive the same event stream in parallel. The server does not enforce a subscriber limit per token. This is how the Wiro Dashboard shows the same agent chat on multiple tabs for the same user: each tab opens its own socket and subscribes independently.
 

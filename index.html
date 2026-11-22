@@ -22749,7 +22749,7 @@ print(response.body);
 <p>Every Detail or History message row returns a top-level <code>timeline[]</code>. It is the ordered, persisted record of the turn. A turn can contain multiple interleaved blocks, for example:</p>
 <p><code>Thinking → Answer or Tool → Thinking → Answer</code></p>
 <p>Each block has an opaque deterministic <code>blockid</code>, call/content ordering coordinates, <code>type</code> (<code>reasoning</code>, <code>answer</code>, <code>tool</code>, or <code>setup</code>), safe public text, tool state or a setup card, <code>phase</code> (<code>stream</code>, <code>end</code>, or <code>error</code>), its own monotonically increasing <code>version</code>, and timestamps. Reasoning text is a model-provided reasoning summary, never raw hidden chain-of-thought. Tool blocks expose only <code>toollabel</code>, <code>toolstatus</code>, <code>toolintegration</code>, and <code>toolaction</code>, never a tool ID, arguments, results, or other internal execution metadata. <code>toolintegration</code> and <code>toolaction</code> each hold a word from a <a href="#tool-integration-and-action-values">closed list</a> or <code>null</code>. A <code>setup</code> block is a setup change the agent proposes; see <a href="#setup-from-chat">Setup From Chat</a>. When a turn ends with <code>agent_error</code> or <code>agent_cancel</code>, the server closes every block still at <code>stream</code> and sends each one as an <code>agent_timeline_delta</code>, usually just before that final event. After <code>agent_end</code>, open blocks normally close a few seconds later. A tool block that closed with <code>toolstatus</code> <code>requested</code> was cut off before it finished.</p>
-<p>Live WebSocket updates arrive as <code>agent_timeline_delta</code> events carrying one public block. Merge by <code>blockid</code>, replace that block only when its incoming <code>version</code> is strictly newer, then sort by <code>callindex</code>, <code>contentindex</code>, and <code>blockid</code>. <code>agent_subscribed.timeline</code> carries the persisted reconnect snapshot. <code>agent_output</code> remains provisional cumulative SSE output until the corresponding answer block catches up; after completion or reconnect, <code>Message/Detail</code> is authoritative.</p>
+<p>Live WebSocket updates arrive as <code>agent_timeline_delta</code> events carrying one public block. Merge by <code>blockid</code>, replace that block only when its incoming <code>version</code> is strictly newer, then sort by <code>callindex</code>, <code>contentindex</code>, and <code>blockid</code>. <code>agent_subscribed.timeline</code> carries the persisted reconnect snapshot. <code>agent_output</code> stays provisional cumulative output until the corresponding answer block catches up; after completion or reconnect, <code>Message/Detail</code> is authoritative.</p>
 <h2 id="message-lifecycle">Message Lifecycle</h2>
 <p>Every agent message progresses through a defined set of stages:</p>
 <p><code>agent_queue</code> → <code>agent_start</code> → <code>agent_output</code> → <code>agent_end</code></p>
@@ -23278,7 +23278,7 @@ print(response.body);
 <tr>
 <td><code>inputtokens</code></td>
 <td><code>number|null</code></td>
-<td>Uncached input (prompt) tokens billed at the model's input rate. Populated on the assistant turn once it completes; <code>null</code> on user-only, cron, legacy, and <code>model_change</code> marker rows.</td>
+<td>Uncached input (prompt) tokens billed at the model's input rate. Populated on the assistant turn once it completes; <code>null</code> on user-only, Scheduled Task, legacy, and <code>model_change</code> marker rows.</td>
 </tr>
 <tr>
 <td><code>outputtokens</code></td>
@@ -23736,7 +23736,7 @@ print(response.body);
 <tr>
 <td><code>inputtokens</code></td>
 <td><code>number|null</code></td>
-<td>Uncached input (prompt) tokens billed at the model's input rate. <code>null</code> on user-only, cron, legacy, and <code>model_change</code> marker rows.</td>
+<td>Uncached input (prompt) tokens billed at the model's input rate. <code>null</code> on user-only, Scheduled Task, legacy, and <code>model_change</code> marker rows.</td>
 </tr>
 <tr>
 <td><code>outputtokens</code></td>
@@ -24123,13 +24123,13 @@ print(response.body);
 <blockquote>
 <p><strong>Behavior depends on when the cancel hits:</strong></p>
 <ul>
-<li>If the message was <strong>already being processed</strong> by the agent bridge (status <code>agent_start</code> or <code>agent_output</code>), the bridge's abort handler fires: subscribed WebSocket clients receive an <code>agent_cancel</code> event, <code>debugoutput</code> / <code>response</code> are set to <code>[REQUEST_CANCELLED] Request cancelled.</code>, and the <code>callbackurl</code> webhook (if set) is triggered with <code>status: "agent_cancel"</code>.</li>
+<li>If the turn had <strong>already started</strong> (status <code>agent_start</code> or <code>agent_output</code>), it is stopped: subscribed WebSocket clients receive an <code>agent_cancel</code> event, <code>debugoutput</code> / <code>response</code> are set to <code>[REQUEST_CANCELLED] Request cancelled.</code>, and the <code>callbackurl</code> webhook (if set) is triggered with <code>status: "agent_cancel"</code>.</li>
 <li>If the message was <strong>still queued</strong> (status <code>agent_queue</code>) when cancelled, no processing attempt had started: the row is marked <code>agent_cancel</code>, <a href="#post-useragentmessagedetail">Message/Detail</a> and <a href="#post-useragentmessagehistory">Message/History</a> return <code>[REQUEST_CANCELLED] Request cancelled.</code> for it, <strong>no WebSocket <code>agent_cancel</code> event</strong> is broadcast, and <strong>no webhook</strong> is triggered.</li>
 </ul>
 <p>When polling for the final state, check <code>status === "agent_cancel"</code>.</p>
 </blockquote>
 <h2 id="setup-from-chat">Setup From Chat</h2>
-<p>An agent can help the people who run it set it up in the chat: turn a skill on or off, connect a connector (with its key, its vendor's sign-in or, for the <code>wiro</code> connector, a Wiro project), disconnect one, create or change a scheduled task, create or change a custom skill, add to one or undo its last change, or change its time zone. The agent never changes its own setup and never sees a key. It proposes the change as a <strong>setup card</strong>: Wiro checks the card against the agent's current setup and stores it on the message that asked for it, where it shows as a <code>setup</code> block in that message's <code>timeline[]</code>. Nothing changes until an agent admin (the owner, or an admin of the agent's team) approves the card.</p>
+<p>An agent can help the people who run it set it up in the chat: turn a skill on or off, connect a connector (with its key, its vendor's sign-in or, for the Wiro AI Models connector (<code>wiro</code>), a Wiro project), disconnect one, create or change a scheduled task, create or change a custom skill, add to one or undo its last change, or change its time zone. The agent never changes its own setup and never sees a key. It proposes the change as a <strong>setup card</strong>: Wiro checks the card against the agent's current setup and stores it on the message that asked for it, where it shows as a <code>setup</code> block in that message's <code>timeline[]</code>. Nothing changes until an agent admin (the owner, or an admin of the agent's team) approves the card.</p>
 <p>Where cards can be proposed and approved is the agent's <code>chatsetup</code> setting. Set it with <a href="/docs/agent-overview#post-useragentupdatesettings"><code>UpdateSettings</code></a> or at <a href="/docs/agent-overview#post-useragentdeploy"><code>Deploy</code></a>, and read it back as <code>chatSetup</code> on <a href="/docs/agent-overview#post-useragentdetail"><code>UserAgent/Detail</code></a>:</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -24246,7 +24246,7 @@ print(response.body);
 <tr>
 <td><code>mode</code></td>
 <td><code>string</code></td>
-<td><code>connect</code> only, written by Wiro: <code>key</code> (the card takes the values in <code>fields</code>), <code>signin</code> (the card opens the vendor's sign-in) or <code>project</code> (the card picks a Wiro project for the <code>wiro</code> connector). <code>oauth</code> and <code>provider-oauth</code> connectors sign in, the <code>wiro</code> connector takes a project, and the others take a key. See <a href="#setup-signin-cards">Connecting a connector</a>.</td>
+<td><code>connect</code> only, written by Wiro: <code>key</code> (the card takes the values in <code>fields</code>), <code>signin</code> (the card opens the vendor's sign-in) or <code>project</code> (the card picks a Wiro project for the Wiro AI Models connector, <code>wiro</code>). <code>oauth</code> and <code>provider-oauth</code> connectors sign in, Wiro AI Models takes a project, and the others take a key. See <a href="#setup-signin-cards">Connecting a connector</a>.</td>
 </tr>
 <tr>
 <td><code>fields</code></td>
@@ -24363,7 +24363,7 @@ End every post with three questions readers ask, each with a two-sentence answer
 <p>An <code>add</code> card turns on one skill (<code>util-&lt;name&gt;</code>) that the agent doesn't have, and a <code>remove</code> card turns off one it has, as the agent page does. <code>key</code> holds its name as <a href="/docs/agent-skills#post-skillslist"><code>POST /Skills/List</code></a> lists it, one name per card. A change costs nothing: every plan includes every skill, so the plan's price and included AI usage stay the same. Cards work on agents deployed from a template and on custom builds, and once a card is applied, the agent restarts to load the change. Connectors are not turned on or off: a connected connector is on, and a <a href="#setup-disconnect-cards"><code>disconnect</code> card</a> disconnects it.</p>
 <p>A change can turn on or off more than its <code>key</code>, so Wiro works out the rest and writes it on the card, and the person who approves sees the whole change. The agent never writes these fields: a proposal that sends them has them dropped.</p>
 <ul>
-<li><strong><code>with</code></strong>: on an <code>add</code>, the skills <code>key</code> depends on (<code>depends_on</code> in Skills/List) that aren't on yet, which are turned on with it. On a <code>remove</code>, the linked partners the agent page turns off together with it (removing <code>util-video-creator</code> also turns off <code>util-motion-effects</code>), and the supporting parts (<code>user_invocable: false</code>) that nothing left on still needs.</li>
+<li><strong><code>with</code></strong>: on an <code>add</code>, the skills <code>key</code> depends on (<code>depends_on</code> in Skills/List) that aren't on yet, which are turned on with it. On a <code>remove</code>, the linked partners the agent page turns off together with it (removing Video Creator (<code>util-video-creator</code>) also turns off Motion Effects (<code>util-motion-effects</code>)), and the supporting parts (<code>user_invocable: false</code>) that nothing left on still needs.</li>
 <li><strong><code>pauses</code></strong> and <strong><code>resumes</code></strong>: the scheduled tasks that stop running, or run again, because a skill they use goes off or comes back on. A paused task keeps its text and schedule.</li>
 <li><strong><code>needs</code></strong>: on an <code>add</code>, the connectors the change works with that aren't connected yet. Each gets a <code>connect</code> card, as below.</li>
 </ul>
@@ -24390,7 +24390,7 @@ End every post with three questions readers ask, each with a two-sentence answer
 <li>it would change too much at once for a chat card: more than 12 skills in <code>with</code>, or more than 20 scheduled tasks in <code>pauses</code> or <code>resumes</code>. The sentence reads <code>&lt;Title&gt; changes too many connectors, skills or scheduled tasks at once for a chat card. Change it in the agent's settings.</code>;</li>
 <li>two skills that can't be on together (<code>conflicts_with</code>) would both be on;</li>
 <li>the <code>remove</code> would take away something that skills staying on need: remove those first, or keep it;</li>
-<li>voice calls would be left without a channel: with <code>util-voice-receptionist</code> on, the Twilio Voice channel (<code>util-twilio-channel</code>) or the Web Voice channel (<code>util-web-channel</code>) must be on.</li>
+<li>voice calls would be left without a channel: with Voice Receptionist Rules (<code>util-voice-receptionist</code>) on, Twilio Voice Channel (<code>util-twilio-channel</code>) or Web Voice Channel (<code>util-web-channel</code>) must be on.</li>
 </ul>
 <p>A card refused as the agent proposes it is never stored. A card refused as it is applied changes nothing and fails, with the sentence in <code>error</code>.</p>
 <h3 id="setup-add-and-connect">Adding and connecting in one step</h3>
@@ -24514,7 +24514,7 @@ End every post with three questions readers ask, each with a two-sentence answer
 <ul>
 <li><strong><code>mode: "key"</code></strong>: the connector's values. Apply the card with <code>values</code>, or paste the key as the reply when the card has one secret field. A card with no required field is applied by a <code>yes</code> too. A refused value saves nothing and leaves the card pending.</li>
 <li><strong><code>mode: "signin"</code></strong>: the vendor's sign-in. Applying the card with your <code>redirecturl</code>, and the keys of your own app in <code>values</code> for a connector that signs in with one, answers <code>authorizeUrl</code>. The card stays pending until the connector reads connected; the next apply of it, or any card of the same person's applied or dismissed in that chat, records it applied. A typed reply never starts a sign-in. A card from a message sent with a project API key signs in as the key's owner: the consent screen names your organization, or the app of your own whose keys you send. Only a card from a Wiro web chat turn can sign in with Wiro's own app, and it says so with <code>wiroapp: true</code>.</li>
-<li><strong><code>mode: "project"</code></strong>: a Wiro project, for the <code>wiro</code> connector. Apply the card with the id of one of your projects as <code>wiroprojectguid</code>, and no <code>values</code>: it becomes the agent's own Wiro project, as <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>CredentialProjectBind</code></a> binds it and with the same checks (see <a href="/docs/agent-connectors#the-wiro-connector">The Wiro connector</a>). Without one, a request made with a project API key binds that key's own project, and the Wiro web chat keeps the agent's own project when it has one in its workspace; otherwise the card stays pending with <code>Pick a project on the card to connect &lt;Title&gt;.</code> A typed reply never applies it, and a key pasted as the reply never goes to it.</li>
+<li><strong><code>mode: "project"</code></strong>: a Wiro project, for the Wiro AI Models connector (<code>wiro</code>). Apply the card with the id of one of your projects as <code>wiroprojectguid</code>, and no <code>values</code>: it becomes the agent's own Wiro project, as <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>CredentialProjectBind</code></a> binds it and with the same checks (see <a href="/docs/agent-connectors#the-wiro-connector">The Wiro connector</a>). Without one, a request made with a project API key binds that key's own project, and the Wiro web chat keeps the agent's own project when it has one in its workspace; otherwise the card stays pending with <code>Pick a project on the card to connect &lt;Title&gt;.</code> A typed reply never applies it, and a key pasted as the reply never goes to it.</li>
 </ul>
 <p>A <code>signin</code> card for HubSpot, which signs in with an app of your own:</p>
 <pre><code class="language-json">{
@@ -24535,7 +24535,7 @@ End every post with three questions readers ask, each with a two-sentence answer
 </code></pre>
 <p>The agent never sees a key, a token or an account list. A connector's account pickers are chosen after it connects, with <a href="/docs/agent-connectors#post-useragentconnectorsetaccounts"><code>ConnectorSetAccounts</code></a>: no card picks accounts. The whole flow, every request and answer included, is in <a href="/docs/agent-chat-integration#connecting-a-connector">Agent Chat Integration</a>.</p>
 <h3 id="setup-disconnect-cards">Disconnecting a connector</h3>
-<p>A <code>disconnect</code> card disconnects a connector, as <a href="/docs/agent-connectors#post-useragentconnectordisconnect"><code>ConnectorDisconnect</code></a> does: Wiro asks the vendor to revoke a sign-in where it can, and deletes the connection. It names the connector in <code>connector</code>, carries its <code>title</code>, and never holds a value. Once it is applied, the agent restarts without the connector's tools until it is connected again. Wiro takes a <code>disconnect</code> card only for a connector the agent has a connection for; when the connection is gone by the time the card is applied, the card fails with <code>&lt;Title&gt; is not connected.</code> Channels (Telegram, Slack or Discord) are refused, and they are changed outside the chat, with the credential endpoints or on the agent page. A <code>disconnect</code> card for the <code>wiro</code> connector removes the connector only: the agent keeps its Wiro project. A <code>yes</code> applies a <code>disconnect</code> card as it does any card that needs no values.</p>
+<p>A <code>disconnect</code> card disconnects a connector, as <a href="/docs/agent-connectors#post-useragentconnectordisconnect"><code>ConnectorDisconnect</code></a> does: Wiro asks the vendor to revoke a sign-in where it can, and deletes the connection. It names the connector in <code>connector</code>, carries its <code>title</code>, and never holds a value. Once it is applied, the agent restarts without the connector's tools until it is connected again. Wiro takes a <code>disconnect</code> card only for a connector the agent has a connection for; when the connection is gone by the time the card is applied, the card fails with <code>&lt;Title&gt; is not connected.</code> Channels (Telegram, Slack or Discord) are refused, and they are changed outside the chat, with the credential endpoints or on the agent page. A <code>disconnect</code> card for Wiro AI Models (<code>wiro</code>) removes the connector only: the agent keeps its Wiro project. A <code>yes</code> applies a <code>disconnect</code> card as it does any card that needs no values.</p>
 <h3 id="approving-setup-cards">Approving a setup card</h3>
 <p>After proposing a card, the agent asks in one short line whether to apply it, or, for a <code>connect</code> card, says how to connect it. An agent admin approves one card at a time, in one of three ways:</p>
 <ol>
@@ -24800,7 +24800,7 @@ Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it
 <td><code>wiroprojectguid</code></td>
 <td>string</td>
 <td>No</td>
-<td><code>project</code> cards, the <code>wiro</code> connector's: the id of one of your projects, from <a href="/docs/projects"><code>POST /Project/List</code></a>. It becomes the agent's own Wiro project, as <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>CredentialProjectBind</code></a> binds it. A request made with a project API key may leave it out, to bind that key's own project.</td>
+<td><code>project</code> cards, those of the Wiro AI Models connector (<code>wiro</code>): the id of one of your projects, from <a href="/docs/projects"><code>POST /Project/List</code></a>. It becomes the agent's own Wiro project, as <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>CredentialProjectBind</code></a> binds it. A request made with a project API key may leave it out, to bind that key's own project.</td>
 </tr>
 </tbody>
 </table>
@@ -25702,12 +25702,12 @@ func main() {
 <tr>
 <td>↓</td>
 <td><code>agent_usage_report</code></td>
-<td>Post-terminal usage/billing frame. Fires once, ~250-500 ms after a successful <code>agent_end</code>, on the same <code>agenttoken</code>. Carries the final token counts, <code>model</code> and <code>tokencost</code> for the message identified by <code>messageguid</code>. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns); follow those on the <a href="#following-an-agents-background-runs">run stream</a>.</td>
+<td>Post-terminal usage/billing frame. Fires once, ~250-500 ms after a successful <code>agent_end</code>, on the same <code>agenttoken</code>. Carries the final token counts, <code>model</code> and <code>tokencost</code> for the message identified by <code>messageguid</code>. Not emitted for replayed usage callbacks or for runs with no chat message, such as Scheduled Task runs; follow those on the <a href="#following-an-agents-background-runs">run stream</a>.</td>
 </tr>
 <tr>
 <td>↓</td>
 <td><code>agent_wiroai_runtask</code></td>
-<td>Model-run discovery frame. Fires whenever the agent itself launches a Wiro model run during a turn (e.g. generating an image or video for a skill or through the <code>wiro</code> connector). Arrives on the <code>agenttoken</code> of the turn that launched the run, carrying the new task's <code>socketaccesstoken</code> so you can subscribe to that run's <code>task_*</code> lifecycle and collect its outputs. See <a href="#model-runs-the-agent-triggers">Model runs the agent triggers</a>.</td>
+<td>Model-run discovery frame. Fires whenever the agent itself launches a Wiro model run during a turn (e.g. generating an image or video for a skill or through the Wiro AI Models connector, <code>wiro</code>). Arrives on the <code>agenttoken</code> of the turn that launched the run, carrying the new task's <code>socketaccesstoken</code> so you can subscribe to that run's <code>task_*</code> lifecycle and collect its outputs. See <a href="#model-runs-the-agent-triggers">Model runs the agent triggers</a>.</td>
 </tr>
 <tr>
 <td>↑</td>
@@ -25742,7 +25742,7 @@ func main() {
 <tr>
 <td>↓</td>
 <td><code>agent_run_start</code></td>
-<td>A background run started: a Scheduled Task, a sub-agent, or another run with no chat message. Once per run.</td>
+<td>A background run started: a Scheduled Task, work the agent moved to the background, or another run with no chat message. Once per run.</td>
 </tr>
 <tr>
 <td>↓</td>
@@ -26077,7 +26077,7 @@ func main() {
 }
 </code></pre>
 <h3 id="agent_cancel">agent_cancel</h3>
-<p>Sent when the user cancels a message before the agent completes its response (only when the abort hits the bridge mid-flight, since queued-state cancels don't broadcast this event):</p>
+<p>Sent when the user cancels a message before the agent completes its response (only when the agent had already started on the message, since queued-state cancels don't broadcast this event):</p>
 <pre><code class="language-json">{
   &quot;type&quot;: &quot;agent_cancel&quot;,
   &quot;agenttoken&quot;: &quot;aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb&quot;,
@@ -26178,10 +26178,10 @@ func main() {
 <p>It is <strong>not</strong> emitted for:</p>
 <ul>
 <li><strong>Idempotent / replayed usage callbacks</strong>: a turn is billed once, and a replayed usage callback does not re-broadcast the frame.</li>
-<li><strong>Turns with no chat message</strong>: e.g. cron- or hook-triggered turns that produce no assistant message row have no <code>messageguid</code> to key on, so no frame is sent. Follow those runs on the <a href="#following-an-agents-background-runs">run stream</a> instead.</li>
+<li><strong>Turns with no chat message</strong>: e.g. Scheduled Task runs and other runs that produce no assistant message row have no <code>messageguid</code> to key on, so no frame is sent. Follow those runs on the <a href="#following-an-agents-background-runs">run stream</a> instead.</li>
 </ul>
 <h3 id="model-runs-the-agent-triggers">Model runs the agent triggers</h3>
-<p>When the agent <strong>itself</strong> kicks off a Wiro model run during a turn (for example generating an image or a video for a skill, or through the <code>wiro</code> connector), the bridge emits an <code>agent_wiroai_runtask</code> discovery frame. It hands you the new model run's <code>socketaccesstoken</code> so you can subscribe to that run and stream its progress and final media outputs. This is how a chat product surfaces a "live activity feed" of the media the agent is producing.</p>
+<p>When the agent <strong>itself</strong> kicks off a Wiro model run during a turn (for example generating an image or a video for a skill, or through the Wiro AI Models connector, <code>wiro</code>), Wiro sends an <code>agent_wiroai_runtask</code> discovery frame. It hands you the new model run's <code>socketaccesstoken</code> so you can subscribe to that run and stream its progress and final media outputs. This is how a chat product surfaces a "live activity feed" of the media the agent is producing.</p>
 <pre><code class="language-json">{
   &quot;type&quot;: &quot;agent_wiroai_runtask&quot;,
   &quot;agenttoken&quot;: &quot;aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb&quot;,
@@ -26345,7 +26345,7 @@ func main() {
 <li><strong>Keep the token private.</strong> Whoever holds it receives the session's new messages. Read it from History when you open the session instead of storing it.</li>
 </ul>
 <h3 id="following-an-agents-background-runs">Following an agent's background runs</h3>
-<p>Some of an agent's work never shows up as a chat turn: its Scheduled Tasks, the sub-agents it starts to work on something in the background, and other runs that have no chat message, such as a reply on a connected Telegram, Slack or Discord channel. The run stream lets you follow them live: when each run starts, each step it takes, and when it ends. It also reports every Wiro model run the agent starts, in chat turns too, from start to end.</p>
+<p>Some of an agent's work never shows up as a chat turn: its Scheduled Tasks, work it moves to the background, and other runs that have no chat message, such as a reply on a connected Telegram, Slack or Discord channel. The run stream lets you follow them live: when each run starts, each step it takes, and when it ends. It also reports every Wiro model run the agent starts, in chat turns too, from start to end.</p>
 <p>The stream carries labels only. Reasoning and answer text never appear on it (a block's <code>text</code> is always <code>null</code>), and a tool step shows only its label, its status and the two closed-list words a timeline tool block has.</p>
 <p><strong>Who can follow.</strong> The agent's owner and, on a team agent, the team's admins: the same people who can read the agent's <a href="/docs/agent-logs">Logs</a>. With an API key, the check applies to the user who created the key's project, so the owner's project API key works too.</p>
 <h4 id="get-a-run-stream-token">Get a run stream token</h4>
@@ -26514,7 +26514,7 @@ func main() {
 </div>
 <p><code>agent_run_start</code>, <code>agent_run_block</code>, and <code>agent_run_end</code> cover only runs that have no chat message. A chat turn you start with <code>Message/Send</code> streams on its <code>agenttoken</code> and never shows up here. <code>agent_run_model_start</code> and <code>agent_run_model_end</code> cover every Wiro model run the agent starts, chat turns included.</p>
 <p>A model run can start before its run's <code>agent_run_start</code> reaches you, and in rare cases a block can too: treat either one as the run being open.</p>
-<p>A sub-agent started from a chat session:</p>
+<p>Background work started from a chat session:</p>
 <pre><code class="language-json">{
   &quot;type&quot;: &quot;agent_run_start&quot;,
   &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
@@ -26632,7 +26632,7 @@ func main() {
 <tr>
 <td><code>runkind</code></td>
 <td>string</td>
-<td>What kind of run it is: <code>cron</code> (a Scheduled Task), <code>subagent</code> (a sub-agent working in the background), <code>announce</code> (a run that writes the result of background work back to its chat session), or <code>other</code> (any other run with no chat message, such as a reply on a connected channel). It can change while the run is open, for example from <code>other</code> to <code>cron</code>, but never back to <code>other</code>. Every event repeats it; the value on <code>agent_run_end</code> is final. Treat a value you don't know as <code>other</code>.</td>
+<td>What kind of run it is: <code>cron</code> (a Scheduled Task), <code>subagent</code> (work the agent moved to the background), <code>announce</code> (a run that writes the result of background work back to its chat session), or <code>other</code> (any other run with no chat message, such as a reply on a connected channel). It can change while the run is open, for example from <code>other</code> to <code>cron</code>, but never back to <code>other</code>. Every event repeats it; the value on <code>agent_run_end</code> is final. Treat a value you don't know as <code>other</code>.</td>
 </tr>
 <tr>
 <td><code>root</code></td>
@@ -27375,7 +27375,7 @@ channel.stream.listen((message) {
 <h3 id="why-agenttoken-is-the-correlation-key">Why <code>agenttoken</code> is the correlation key</h3>
 <ul>
 <li><code>Message/Send</code> issues exactly one <code>agenttoken</code> per message and returns it alongside <code>messageguid</code> in the HTTP response.</li>
-<li>The bridge stamps the same <code>agenttoken</code> on every event it emits for that message.</li>
+<li>Every event for that message carries the same <code>agenttoken</code>.</li>
 <li>Multiple connections can subscribe to the same <code>agenttoken</code> and each gets the full event stream, so <code>agenttoken</code> is also the fan-out key.</li>
 <li>A single socket can hold subscriptions for many <code>agenttoken</code>s at once (see <a href="#multi-session-subscription">Multi-session subscription</a>), and the per-event <code>agenttoken</code> lets your handler dispatch into the right UI element.</li>
 </ul>
@@ -27450,7 +27450,7 @@ ws.onmessage = (event) =&gt; {
 }
 </code></pre>
 <h3 id="concurrency-multiple-in-flight-messages-on-one-session">Concurrency: multiple in-flight messages on one session</h3>
-<p>Sending two messages back-to-back in the same <code>sessionkey</code> produces two independent <code>agenttoken</code>s. Both reach the bridge in queue order; both stream events independently. Your client must:</p>
+<p>Sending two messages back-to-back in the same <code>sessionkey</code> produces two independent <code>agenttoken</code>s. The agent takes them in queue order; both stream events independently. Your client must:</p>
 <ul>
 <li>Subscribe to <strong>both</strong> <code>agenttoken</code>s (one <code>agent_info</code> frame each, and the server de-duplicates automatically).</li>
 <li>Key all UI updates on <code>agenttoken</code>, not on <code>sessionkey</code> (which is shared) or timestamps (which can interleave).</li>
@@ -27573,19 +27573,19 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
 </tr>
 <tr>
 <td>Usage billed</td>
-<td>~250-500 ms after a successful <code>agent_end</code>, emits <code>agent_usage_report</code> with final token counts, <code>model</code> and <code>tokencost</code>. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns), which you follow on the <a href="#following-an-agents-background-runs">run stream</a>.</td>
+<td>~250-500 ms after a successful <code>agent_end</code>, emits <code>agent_usage_report</code> with final token counts, <code>model</code> and <code>tokencost</code>. Not emitted for replayed usage callbacks or for runs with no chat message, such as Scheduled Task runs, which you follow on the <a href="#following-an-agents-background-runs">run stream</a>.</td>
 </tr>
 <tr>
-<td>Bridge exception</td>
+<td>The turn fails</td>
 <td>Emits <code>agent_error</code> with the public failure message; the message's <code>status</code> becomes <code>agent_error</code>, and <code>response</code> and <code>debugoutput</code> hold the same text.</td>
 </tr>
 <tr>
 <td><code>Message/Cancel</code> during active stream</td>
-<td>Bridge aborts, emits <code>agent_cancel</code>; the message's <code>status</code> becomes <code>agent_cancel</code>.</td>
+<td>The agent stops and <code>agent_cancel</code> is sent; the message's <code>status</code> becomes <code>agent_cancel</code>.</td>
 </tr>
 <tr>
 <td><code>Message/Cancel</code> while queued</td>
-<td>The message's <code>status</code> becomes <code>agent_cancel</code> immediately. <strong>No WebSocket event is broadcast</strong> (the bridge never started). Clients checking via the socket must consult <code>Message/Detail</code> for queued-state cancels.</td>
+<td>The message's <code>status</code> becomes <code>agent_cancel</code> immediately. <strong>No WebSocket event is broadcast</strong> (the agent never started on it). Clients checking via the socket must consult <code>Message/Detail</code> for queued-state cancels.</td>
 </tr>
 </tbody>
 </table>
@@ -36270,12 +36270,12 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
                   <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="/docs/markdown/agent-logs.md" target="_blank" class="docs-section-md-btn">View</a> <a href="/docs/markdown/agent-logs.md" download class="docs-section-md-btn">Download</a></div>
 
                   <h1>Agent Logs</h1>
-                  <p class="section-subtitle">Per-instance activity feed (tool calls, scheduled cron runs, message exchanges, and turn boundaries) for any deployed agent.</p>
+                  <p class="section-subtitle">Per-instance activity feed (tool calls, Scheduled Task runs, message exchanges, and turn boundaries) for any deployed agent.</p>
 
                   <section id="logs-overview">
                     <h2>Overview</h2>
                     <p>Every Wiro agent appends one structured <code>ActivityEvent</code> JSON line per tool call, LLM turn boundary, scheduled task run and billed turn, plus each message that arrives on a connected Telegram, Slack or Discord channel. Secrets (matched by field name and by high-entropy value), internal tool-call IDs and API credentials are redacted before an event is written, so what shows up in <code>Logs</code> is safe to show end users.</p>
-                    <p>A daily JSONL file is written for each calendar day; files older than 7 days are gzipped, files older than 180 days are deleted by the agent's daily maintenance cron.</p>
+                    <p>A daily JSONL file is written for each calendar day; files older than 7 days are gzipped, files older than 180 days are deleted by the agent's daily maintenance.</p>
                     <p>The feed also lists what people and API keys did to the agent: starts and stops, renames, skill, connector and billing changes, connections, Screen views and Take Control sessions, browser resets, and deleted log days, each with who did it. These <a href="#who-did-what-rows">who-did-what rows</a> don't depend on the agent running.</p>
                     <p>The endpoints below are <strong>owner-or-team-admin</strong> scoped. Plain members of the agent's team get code <code>97</code> (<code>Only a team admin can perform this action on a team-owned agent.</code>); outside callers get code <code>96</code> (<code>You don't have access to this user agent</code>).</p>
                     <div class="docs-param-table">
@@ -36327,7 +36327,7 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
                           </thead>
                           <tbody>
                             <tr><td><code>ts</code></td><td><code>string</code></td><td>ISO-8601 UTC datetime when the event was recorded (e.g. <code>"2026-05-03T14:00:10.234Z"</code>). Parse with <code>Date.parse(ts)</code> for arithmetic.</td></tr>
-                            <tr><td><code>kind</code></td><td><code>string</code></td><td>Fine-grained event class. One of: <code>"turn_started"</code>, <code>"turn_ended"</code> (an LLM turn boundary); <code>"tool_started"</code>, <code>"tool_completed"</code> (one pair per tool call); <code>"tool_blocked"</code> (a tool call the agent's safety rules refused); <code>"cron_finished"</code> (a scheduled task finished); <code>"user_message"</code> (a message received on a connected Telegram, Slack or Discord channel, not web chat); <code>"token_usage"</code> (a billed turn's token usage: chat / cron / voice post-call); <code>"token_usage_idempotent"</code> (a replayed usage report, already billed, informational only); <code>"media_relay"</code> (files from a reply were delivered); <code>"background_reply"</code> (a result that finished in the background was delivered to the chat). Rows about what was done to the agent have <a href="#who-did-what-rows"><code>AGENT_*</code> and <code>CONNECTOR_*</code> kinds</a>, and two note rows, <code>"runtime_log_unavailable"</code> and <code>"runtime_log_deleted"</code>, say what part of a day is missing. Show any kind you don't recognize by its <code>title</code>.</td></tr>
+                            <tr><td><code>kind</code></td><td><code>string</code></td><td>Fine-grained event class. One of: <code>"turn_started"</code>, <code>"turn_ended"</code> (an LLM turn boundary); <code>"tool_started"</code>, <code>"tool_completed"</code> (one pair per tool call); <code>"tool_blocked"</code> (a tool call the agent's safety rules refused); <code>"cron_finished"</code> (a scheduled task finished); <code>"user_message"</code> (a message received on a connected Telegram, Slack or Discord channel, not web chat); <code>"token_usage"</code> (a billed turn's token usage: chat / Scheduled Task / voice post-call); <code>"token_usage_idempotent"</code> (a replayed usage report, already billed, informational only); <code>"media_relay"</code> (files from a reply were delivered); <code>"background_reply"</code> (a result that finished in the background was delivered to the chat). Rows about what was done to the agent have <a href="#who-did-what-rows"><code>AGENT_*</code> and <code>CONNECTOR_*</code> kinds</a>, and two note rows, <code>"runtime_log_unavailable"</code> and <code>"runtime_log_deleted"</code>, say what part of a day is missing. Show any kind you don't recognize by its <code>title</code>.</td></tr>
                             <tr><td><code>tool</code></td><td><code>string?</code></td><td>Present on <code>tool_started</code> / <code>tool_completed</code> / <code>tool_blocked</code>. The name of the tool the agent used.</td></tr>
                             <tr><td><code>toolintegration</code></td><td><code>string?</code></td><td>On <code>tool_started</code> and <code>tool_completed</code> when the step works in a connector: the connector's <code>slug</code> from <code>POST /AgentConnector/List</code>, for example <code>"wordpress"</code>, or <code>"wiro"</code> for Wiro AI Models. Same closed list as on <a href="/docs/agent-messaging#tool-integration-and-action-values">timeline tool blocks</a>.</td></tr>
                             <tr><td><code>toolaction</code></td><td><code>string?</code></td><td>On <code>tool_started</code> and <code>tool_completed</code> when a word fits the step: what it does, for example <code>"click"</code>. Same closed list as on <a href="/docs/agent-messaging#tool-integration-and-action-values">timeline tool blocks</a>. Never set together with <code>toolintegration</code>.</td></tr>
@@ -36337,8 +36337,8 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
                             <tr><td><code>ok</code></td><td><code>boolean?</code></td><td><code>true</code> for a successful completion, <code>false</code> for a failure. Populated on <code>tool_completed</code>, <code>turn_ended</code> and <code>cron_finished</code> events, and always <code>false</code> on <code>tool_blocked</code>. Pair with <code>error</code> for failure rows. It is always <code>true</code> on <code>AGENT_*</code> and <code>CONNECTOR_*</code> rows. A <code>turn_ended</code> for a turn the caller cancelled has no <code>ok</code>, and its title reads <code>Agent turn cancelled</code>. A <code>cron_finished</code> for a Scheduled Task run that the agent's spend limit or Model Access rule paused has no <code>ok</code> either, and its title starts with <code>Paused by a spend limit:</code> or <code>Paused by a Model Access rule:</code>.</td></tr>
                             <tr><td><code>error</code></td><td><code>string?</code></td><td>On a failure row (<code>ok: false</code>): always the fixed sentence <code>Agent is temporarily unavailable. Please try again shortly.</code>, whatever failed. The failure's own reason never reaches the log.</td></tr>
                             <tr><td><code>cost</code></td><td><code>object?</code></td><td>Legacy per-action charge, <code>{ credits, skill, action }</code>. Only events recorded before agents switched to per-turn token billing can carry it; current events never do. See the <code>token_usage</code> event for what a turn cost.</td></tr>
-                            <tr><td><code>userUuid</code></td><td><code>string?</code></td><td>UUID of the actor who triggered the event. <code>"system"</code> for cron / internal events. May be missing on older rows, in which case the server falls back to the agent owner.</td></tr>
-                            <tr><td><code>user</code></td><td><code>object|null</code></td><td>Resolved actor: <code>{ uuid, firstname, lastname, email, username, avatar, avatarinitials }</code>. <code>null</code> when <code>userUuid</code> is <code>"system"</code> (automation / cron) or when the user record was deleted.</td></tr>
+                            <tr><td><code>userUuid</code></td><td><code>string?</code></td><td>UUID of the actor who triggered the event. <code>"system"</code> for Scheduled Task runs and other automatic events. May be missing on older rows, in which case the server falls back to the agent owner.</td></tr>
+                            <tr><td><code>user</code></td><td><code>object|null</code></td><td>Resolved actor: <code>{ uuid, firstname, lastname, email, username, avatar, avatarinitials }</code>. <code>null</code> when <code>userUuid</code> is <code>"system"</code> (automation, Scheduled Tasks) or when the user record was deleted.</td></tr>
                           </tbody>
                         </table>
                       </div>
@@ -36347,7 +36347,7 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
                     <p>To tell what a tool call is doing, read <code>toolintegration</code> and <code>toolaction</code> instead of parsing <code>title</code> or <code>summary</code>. Both are missing when no word fits the step, and <code>tool_blocked</code> events don't carry them.</p>
 
                     <h3>Token-usage events</h3>
-                    <p>A <code>token_usage</code> event records the tokens and the AI usage of one billed turn: a chat reply, a cron run, or a voice post-call. A <code>token_usage_idempotent</code> event carries the <strong>same shape</strong> for a replayed usage callback that was already billed (informational; it does not deduct again). On top of the base <code>ActivityEvent</code> fields, these events add:</p>
+                    <p>A <code>token_usage</code> event records the tokens and the AI usage of one billed turn: a chat reply, a Scheduled Task run, or a voice post-call. A <code>token_usage_idempotent</code> event carries the <strong>same shape</strong> for a replayed usage callback that was already billed (informational; it does not deduct again). On top of the base <code>ActivityEvent</code> fields, these events add:</p>
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
                         <table>
@@ -36378,7 +36378,7 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
   "user": null
 }</code></pre>
                     <div class="info-callout"><strong>Nested vs flat token fields.</strong> The activity-log <code>token_usage</code> event nests its counts in <strong>camelCase</strong> under <code>tokens.{input, output, cacheRead, cacheWrite, total}</code>. <code>input</code> is uncached input and <code>total</code> is the exact sum of all four components. This is distinct from the <strong>flat, lowercase</strong> columns on message rows (<code>inputtokens</code>, <code>outputtokens</code>, <code>cachereadtokens</code>, …). Same underlying data, different shape.</div>
-                    <div class="info-callout"><strong>AI usage vs. model runs.</strong> An agent's own AI usage is counted once per LLM turn: each <code>token_usage</code> event is one billed turn, and its <code>tokencost</code> is in cents (<code>tokencost / 100</code> is the amount in USD). It comes from the plan's included usage first, then from the Wiro balance. A Wiro model the agent runs, for example for its video skill or through the <code>wiro</code> connector, is billed separately: Wiro charges it to the wallet of the workspace that owns the agent's Wiro API key at the model's usual price, passed through unchanged. That run shows up as an ordinary <code>tool_completed</code> event with no cost figure; its cost is the task's <code>totalcost</code> (see <a href="/docs/tasks#task-billing">Billing &amp; Cost</a>), and it is a <code>model-run</code> row in the agent's <a href="/docs/agent-transactions">Transactions</a>.</div>
+                    <div class="info-callout"><strong>AI usage vs. model runs.</strong> An agent's own AI usage is counted once per LLM turn: each <code>token_usage</code> event is one billed turn, and its <code>tokencost</code> is in cents (<code>tokencost / 100</code> is the amount in USD). It comes from the plan's included usage first, then from the Wiro balance. A Wiro model the agent runs, for example for its video skill or through the Wiro AI Models connector (<code>wiro</code>), is billed separately: Wiro charges it to the wallet of the workspace that owns the agent's Wiro API key at the model's usual price, passed through unchanged. That run shows up as an ordinary <code>tool_completed</code> event with no cost figure; its cost is the task's <code>totalcost</code> (see <a href="/docs/tasks#task-billing">Billing &amp; Cost</a>), and it is a <code>model-run</code> row in the agent's <a href="/docs/agent-transactions">Transactions</a>.</div>
 
                     <h3 id="who-did-what-rows">Who-did-what rows</h3>
                     <p><code>Logs</code> and <code>LogsFile</code> also return what people and API keys did <strong>to</strong> the agent, and <code>LogsList</code> lists the days that have such rows. These rows sit in the same <code>events</code> list, in time order, with an <code>AGENT_*</code> or <code>CONNECTOR_*</code> value in <code>kind</code>. They come on top of the kinds above, which keep their meaning.</p>
@@ -36562,7 +36562,7 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
                       <strong>About the <code>user</code> field.</strong> Every event is decorated with the resolved actor: <code>{ uuid, firstname, lastname, email, username, avatar, avatarinitials }</code>.
                       <ul>
                         <li>An event with a user's <code>userUuid</code> carries that user's profile, or <code>null</code> when the user record was deleted.</li>
-                        <li>An event triggered by <strong>automation</strong> has <code>userUuid: "system"</code> and <code>user: null</code>. That covers cron runs, the token usage of scheduled turns, and similar non-interactive writes (the system rows above).</li>
+                        <li>An event triggered by <strong>automation</strong> has <code>userUuid: "system"</code> and <code>user: null</code>. That covers Scheduled Task runs, the token usage of scheduled turns, and similar non-interactive writes (the system rows above).</li>
                         <li>An event without a <code>userUuid</code> (an incoming channel message, or a row older than user attribution) carries the agent owner's profile, so the row never shows an empty placeholder.</li>
                       </ul>
                     </div>
@@ -36929,7 +36929,7 @@ for e in cron_runs:
                           <tbody>
                             <tr><td>Day 0-6</td><td>File is plain JSONL (<code>YYYY-MM-DD.jsonl</code>). Live tail + LogsFile read it directly.</td></tr>
                             <tr><td>Day 7-180</td><td>File is gzipped (<code>YYYY-MM-DD.jsonl.gz</code>). Reads are transparently decompressed; size in <code>LogsList</code> reports the on-disk compressed bytes.</td></tr>
-                            <tr><td>Day 181+</td><td>File is deleted by the agent's daily maintenance cron. <code>LogsList</code> no longer surfaces the date.</td></tr>
+                            <tr><td>Day 181+</td><td>File is deleted by the agent's daily maintenance. <code>LogsList</code> no longer surfaces the date.</td></tr>
                           </tbody>
                         </table>
                       </div>

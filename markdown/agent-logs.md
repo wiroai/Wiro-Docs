@@ -1,12 +1,12 @@
 # Agent Logs
 
-Per-instance activity feed (tool calls, scheduled cron runs, message exchanges, and turn boundaries) for any deployed agent.
+Per-instance activity feed (tool calls, Scheduled Task runs, message exchanges, and turn boundaries) for any deployed agent.
 
 ## Overview
 
 Every Wiro agent appends one structured `ActivityEvent` JSON line per tool call, LLM turn boundary, scheduled task run and billed turn, plus each message that arrives on a connected Telegram, Slack or Discord channel. Secrets (matched by field name and by high-entropy value), internal tool-call IDs and API credentials are redacted before an event is written, so what shows up in `Logs` is safe to show end users.
 
-A daily JSONL file is written for each calendar day; files older than 7 days are gzipped, files older than 180 days are deleted by the agent's daily maintenance cron.
+A daily JSONL file is written for each calendar day; files older than 7 days are gzipped, files older than 180 days are deleted by the agent's daily maintenance.
 
 The feed also lists what people and API keys did to the agent: starts and stops, renames, skill, connector and billing changes, connections, Screen views and Take Control sessions, browser resets, and deleted log days, each with who did it. These [who-did-what rows](#who-did-what-rows) don't depend on the agent running.
 
@@ -51,7 +51,7 @@ Every event is a JSON object with this base shape:
 | Field | Type | Description |
 |-------|------|-------------|
 | `ts` | `string` | ISO-8601 UTC datetime when the event was recorded (e.g. `"2026-05-03T14:00:10.234Z"`). Parse with `Date.parse(ts)` for arithmetic. |
-| `kind` | `string` | Fine-grained event class. One of: `"turn_started"`, `"turn_ended"` (an LLM turn boundary); `"tool_started"`, `"tool_completed"` (one pair per tool call); `"tool_blocked"` (a tool call the agent's safety rules refused); `"cron_finished"` (a scheduled task finished); `"user_message"` (a message received on a connected Telegram, Slack or Discord channel, not web chat); `"token_usage"` (a billed turn's token usage: chat / cron / voice post-call); `"token_usage_idempotent"` (a replayed usage report, already billed, informational only); `"media_relay"` (files from a reply were delivered); `"background_reply"` (a result that finished in the background was delivered to the chat). Rows about what was done to the agent have [`AGENT_*` and `CONNECTOR_*` kinds](#who-did-what-rows), and two note rows, `"runtime_log_unavailable"` and `"runtime_log_deleted"`, say what part of a day is missing. Show any kind you don't recognize by its `title`. |
+| `kind` | `string` | Fine-grained event class. One of: `"turn_started"`, `"turn_ended"` (an LLM turn boundary); `"tool_started"`, `"tool_completed"` (one pair per tool call); `"tool_blocked"` (a tool call the agent's safety rules refused); `"cron_finished"` (a scheduled task finished); `"user_message"` (a message received on a connected Telegram, Slack or Discord channel, not web chat); `"token_usage"` (a billed turn's token usage: chat / Scheduled Task / voice post-call); `"token_usage_idempotent"` (a replayed usage report, already billed, informational only); `"media_relay"` (files from a reply were delivered); `"background_reply"` (a result that finished in the background was delivered to the chat). Rows about what was done to the agent have [`AGENT_*` and `CONNECTOR_*` kinds](#who-did-what-rows), and two note rows, `"runtime_log_unavailable"` and `"runtime_log_deleted"`, say what part of a day is missing. Show any kind you don't recognize by its `title`. |
 | `tool` | `string?` | Present on `tool_started` / `tool_completed` / `tool_blocked`. The name of the tool the agent used. |
 | `toolintegration` | `string?` | On `tool_started` and `tool_completed` when the step works in a connector: the connector's `slug` from `POST /AgentConnector/List`, for example `"wordpress"`, or `"wiro"` for Wiro AI Models. Same closed list as on [timeline tool blocks](/docs/agent-messaging#tool-integration-and-action-values). |
 | `toolaction` | `string?` | On `tool_started` and `tool_completed` when a word fits the step: what it does, for example `"click"`. Same closed list as on [timeline tool blocks](/docs/agent-messaging#tool-integration-and-action-values). Never set together with `toolintegration`. |
@@ -61,8 +61,8 @@ Every event is a JSON object with this base shape:
 | `ok` | `boolean?` | `true` for a successful completion, `false` for a failure. Populated on `tool_completed`, `turn_ended` and `cron_finished` events, and always `false` on `tool_blocked`. Pair with `error` for failure rows. It is always `true` on `AGENT_*` and `CONNECTOR_*` rows. A `turn_ended` for a turn the caller cancelled has no `ok`, and its title reads `Agent turn cancelled`. A `cron_finished` for a Scheduled Task run that the agent's spend limit or Model Access rule paused has no `ok` either, and its title starts with `Paused by a spend limit:` or `Paused by a Model Access rule:`. |
 | `error` | `string?` | On a failure row (`ok: false`): always the fixed sentence `Agent is temporarily unavailable. Please try again shortly.`, whatever failed. The failure's own reason never reaches the log. |
 | `cost` | `object?` | Legacy per-action charge, `{ credits, skill, action }`. Only events recorded before agents switched to per-turn token billing can carry it; current events never do. See the `token_usage` event for what a turn cost. |
-| `userUuid` | `string?` | UUID of the actor who triggered the event. `"system"` for cron / internal events. May be missing on older rows, in which case the server falls back to the agent owner. |
-| `user` | `object\|null` | Resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. `null` when `userUuid` is `"system"` (automation / cron) or when the user record was deleted. |
+| `userUuid` | `string?` | UUID of the actor who triggered the event. `"system"` for Scheduled Task runs and other automatic events. May be missing on older rows, in which case the server falls back to the agent owner. |
+| `user` | `object\|null` | Resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. `null` when `userUuid` is `"system"` (automation, Scheduled Tasks) or when the user record was deleted. |
 
 > **What is `summary` for?** Tool events carry a short summary of the call: for example the file path for file tools, the program for `exec`, or the method, host and path for web requests. Turn events carry a short `preview` (plus `messageCount` on `turn_ended`); `cron_finished` carries `{ jobId, status }`, plus `reason` (`spend_limit` or `model_access`) when `status` is `paused`; `user_message` carries `{ preview }`; `tool_blocked` carries the `reason`. A connector's tool is named `<slug>__<tool>`, such as `wordpress__create_post`: its `tool` and `title` are that name, `toolintegration` is the connector's `slug`, and `summary` is `{}`, because a connector call's arguments and results never reach the log. A Reddit (`reddit`) call is titled `Reddit API operation`, and its `summary` is `{ "service": "reddit", "retentionRedacted": true }`. Treat the object as opaque and render-on-expand, since its shape depends on the tool and may change without a docs revision.
 
@@ -70,7 +70,7 @@ To tell what a tool call is doing, read `toolintegration` and `toolaction` inste
 
 ### Token-usage events
 
-A `token_usage` event records the tokens and the AI usage of one billed turn: a chat reply, a cron run, or a voice post-call. A `token_usage_idempotent` event carries the **same shape** for a replayed usage callback that was already billed (informational; it does not deduct again). On top of the base `ActivityEvent` fields, these events add:
+A `token_usage` event records the tokens and the AI usage of one billed turn: a chat reply, a Scheduled Task run, or a voice post-call. A `token_usage_idempotent` event carries the **same shape** for a replayed usage callback that was already billed (informational; it does not deduct again). On top of the base `ActivityEvent` fields, these events add:
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -98,7 +98,7 @@ A `token_usage` event records the tokens and the AI usage of one billed turn: a 
 
 > **Nested vs flat token fields.** The activity-log `token_usage` event nests its counts in **camelCase** under `tokens.{input, output, cacheRead, cacheWrite, total}`. `input` is uncached input and `total` is the exact sum of all four components. This is distinct from the **flat, lowercase** columns on message rows (`inputtokens`, `outputtokens`, `cachereadtokens`, …). Same underlying data, different shape.
 
-> **AI usage vs. model runs.** An agent's own AI usage is counted once per LLM turn: each `token_usage` event is one billed turn, and its `tokencost` is in cents (`tokencost / 100` is the amount in USD). It comes from the plan's included usage first, then from the Wiro balance. A Wiro model the agent runs, for example for its video skill or through the `wiro` connector, is billed separately: Wiro charges it to the wallet of the workspace that owns the agent's Wiro API key at the model's usual price, passed through unchanged. That run shows up as an ordinary `tool_completed` event with no cost figure; its cost is the task's `totalcost` (see [Billing & Cost](/docs/tasks#task-billing)), and it is a `model-run` row in the agent's [Transactions](/docs/agent-transactions).
+> **AI usage vs. model runs.** An agent's own AI usage is counted once per LLM turn: each `token_usage` event is one billed turn, and its `tokencost` is in cents (`tokencost / 100` is the amount in USD). It comes from the plan's included usage first, then from the Wiro balance. A Wiro model the agent runs, for example for its video skill or through the Wiro AI Models connector (`wiro`), is billed separately: Wiro charges it to the wallet of the workspace that owns the agent's Wiro API key at the model's usual price, passed through unchanged. That run shows up as an ordinary `tool_completed` event with no cost figure; its cost is the task's `totalcost` (see [Billing & Cost](/docs/tasks#task-billing)), and it is a `model-run` row in the agent's [Transactions](/docs/agent-transactions).
 
 ### Who-did-what rows
 
@@ -270,7 +270,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Logs" \
 > **About the `user` field.** Every event is decorated with the resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`.
 >
 > - An event with a user's `userUuid` carries that user's profile, or `null` when the user record was deleted.
-> - An event triggered by **automation** has `userUuid: "system"` and `user: null`. That covers cron runs, the token usage of scheduled turns, and similar non-interactive writes (the system rows above).
+> - An event triggered by **automation** has `userUuid: "system"` and `user: null`. That covers Scheduled Task runs, the token usage of scheduled turns, and similar non-interactive writes (the system rows above).
 > - An event without a `userUuid` (an incoming channel message, or a row older than user attribution) carries the agent owner's profile, so the row never shows an empty placeholder.
 
 | Field | Type | Description |
@@ -604,7 +604,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/LogsDelete" \
 |--------|--------------|
 | Day 0-6 | File is plain JSONL (`YYYY-MM-DD.jsonl`). Live tail + LogsFile read it directly. |
 | Day 7-180 | File is gzipped (`YYYY-MM-DD.jsonl.gz`). Reads are transparently decompressed; size in `LogsList` reports the on-disk compressed bytes. |
-| Day 181+ | File is deleted by the agent's daily maintenance cron. `LogsList` no longer surfaces the date. |
+| Day 181+ | File is deleted by the agent's daily maintenance. `LogsList` no longer surfaces the date. |
 
 Who-did-what rows are kept for the same 180 days.
 
