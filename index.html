@@ -16579,13 +16579,13 @@ for the channel contract.</p>
 <td><code>credentials</code></td>
 <td>object</td>
 <td>No</td>
-<td>Inline credential groups. If a communication-channel group is included, its matching <code>credentials[credential_key]</code> object must contain all channel <code>required_fields</code>; completeness activates that channel automatically.</td>
+<td>Inline credential groups for the channels, <code>twilio-voice</code>, <code>wiro</code> and the settings (the keys <a href="/docs/agent-credentials#post-credentialslist"><code>POST /Credentials/List</code></a> lists). If a communication-channel group is included, its matching <code>credentials[credential_key]</code> object must contain all channel <code>required_fields</code>; completeness activates that channel automatically. Any other key, a connector's slug included, fails Deploy before anything is created or charged, with <code>Unknown credential: &lt;key&gt;. Connect a connector after the deploy with UserAgent/ConnectorConnect.</code></td>
 </tr>
 <tr>
 <td><code>skills</code></td>
 <td>object</td>
 <td>No</td>
-<td>Inline skill toggles <code>{ "skillname": true | false }</code>. For custom builds this seeds the initial skill set; for template deploys it overlays the template defaults.</td>
+<td>Inline skill toggles <code>{ "skillname": true | false }</code>. For custom builds this seeds the initial skill set; for template deploys it overlays the template defaults. Deploy turns on the Skills a Skill you turn on depends on (<code>depends_on</code>) by itself. Every name, on or off, must be a Skill that <a href="/docs/agent-skills#post-skillslist"><code>POST /Skills/List</code></a> lists: any other name fails Deploy before anything is created or charged, with <code>Unknown skill: &lt;name&gt;.</code>, and a name that starts with <code>int-</code> with <code>Unknown skill: &lt;name&gt;. Connectors are connected with UserAgent/ConnectorConnect, not turned on as skills.</code></td>
 </tr>
 <tr>
 <td><code>customskills</code></td>
@@ -17704,7 +17704,7 @@ for the channel contract.</p>
 <tr>
 <td><code>&lt;fieldname&gt;</code></td>
 <td><code>string|number|boolean|array</code></td>
-<td>The field value as you saved it, returned to the agent's owner and team admins. A saved secret (a <code>password</code> or <code>fileinput-base64</code> field, or such a key in a list's entries) reads <code>"••••••••"</code> instead, for every caller, and one with nothing saved reads <code>""</code>. Field types match <code>_schema.fields[].type</code>. Never returned: Wiro-managed fields, and a value the agent template holds on a field Wiro stores encrypted: such a field reads empty until you save your own.</td>
+<td>The field value as you saved it, returned to the agent's owner and team admins. A saved secret (a <code>password</code> field) reads <code>"••••••••"</code> instead, for every caller, and one with nothing saved reads <code>""</code>. Field types match <code>_schema.fields[].type</code>. Never returned: Wiro-managed fields, and a value the agent template holds on a field Wiro stores encrypted: such a field reads empty until you save your own.</td>
 </tr>
 </tbody>
 </table>
@@ -18610,7 +18610,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <h4 id="post-useragentcredentialupsert"><strong>POST</strong> /UserAgent/CredentialUpsert</h4>
 <p>Writes one or more credential fields for one or multiple providers in a single call.</p>
 <p>If the agent is <strong>starting</strong> or <strong>running</strong>, an upsert that changes a saved value triggers an automatic restart (see <a href="#automatic-restart">Automatic Restart</a>).</p>
-<p><code>CredentialUpsert</code> writes the agent's credentials: the Telegram, Slack and Discord channels, Twilio Voice, the Wiro project's key and settings such as the support email (see <a href="/docs/agent-credentials">Agent Credentials</a>). The services the agent works with are connectors: connect them with <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>ConnectorConnect</code></a>.</p>
+<p><code>CredentialUpsert</code> writes the agent's credentials: the Telegram, Slack and Discord channels, Twilio Voice, the Wiro project's key and settings such as the support email (see <a href="/docs/agent-credentials">Agent Credentials</a>). The services the agent works with are connectors: connect them with <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>ConnectorConnect</code></a>. A <code>credentialkey</code> that isn't a credential, a connector's slug included, refuses the whole request (see <a href="#credentialupsert-errors">Common errors</a>).</p>
 <p>Telegram, Slack, and Discord are optional credential groups. A channel appears
 in <code>enabledChannels</code> automatically when all of its catalog <code>required_fields</code>
 are complete. Clear any required field to disable it; there is no separate
@@ -18658,7 +18658,7 @@ channel-enable endpoint or persisted switch.</p>
 <tr>
 <td><code>credentialkey</code></td>
 <td>string</td>
-<td>The credential key: e.g. <code>"telegram"</code>, <code>"slack"</code>, <code>"twilio-voice"</code>, <code>"var-support-email"</code>. Must match one of the credentials declared in <code>credentials</code> on <code>/UserAgent/Detail</code>, or a channel from <code>POST /Skills/List</code> → <code>channels[]</code>.</td>
+<td>The credential key: <code>telegram</code>, <code>slack</code>, <code>discord</code>, <code>twilio-voice</code>, <code>wiro</code>, <code>var-support-email</code>, <code>var-website</code> or <code>var-newsletter-test-email</code>. A key that isn't a credential, a connector's slug included, fails the whole request with one <code>Unknown credential: &lt;key&gt;. Connectors are connected with UserAgent/ConnectorConnect.</code> error before the agent or any row is checked, and nothing is saved: connect that service with <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>ConnectorConnect</code></a>.</td>
 </tr>
 <tr>
 <td><code>fieldname</code></td>
@@ -18744,6 +18744,94 @@ channel-enable endpoint or persisted switch.</p>
 </div>
 <p>Treat all four fields as best-effort: the credential write itself never depends on Twilio's API call succeeding. See <a href="/docs/integration-twiliovoice-skills">Twilio Voice Channel</a> for the full lifecycle.</p>
 </blockquote>
+<h5 id="credentialupsert-errors">Common errors</h5>
+<p>Each of these comes back with <code>result: false</code> and no <code>applied</code>, and nothing is saved:</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: false,
+  &quot;errors&quot;: [
+    {
+      &quot;code&quot;: 0,
+      &quot;message&quot;: &quot;Unknown credential: google-ads. Connectors are connected with UserAgent/ConnectorConnect.&quot;,
+      &quot;time&quot;: 1795113000
+    }
+  ]
+}
+</code></pre>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Code</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Request parameter [useragentguid] required</code></td>
+<td>0</td>
+<td><code>useragentguid</code> is missing or blank</td>
+</tr>
+<tr>
+<td><code>Request parameter [fields[]] required</code></td>
+<td>0</td>
+<td><code>fields</code> is missing, not an array, or empty</td>
+</tr>
+<tr>
+<td><code>Unknown credential: &lt;key&gt;. Connectors are connected with UserAgent/ConnectorConnect.</code></td>
+<td>0</td>
+<td>A row's <code>credentialkey</code> isn't a credential, such as a connector's slug. One entry for the whole request, before the agent or any other row is checked</td>
+</tr>
+<tr>
+<td><code>User agent not found</code></td>
+<td>95</td>
+<td>Unknown guid, or the agent has been deleted</td>
+</tr>
+<tr>
+<td><code>You don't have access to this user agent</code></td>
+<td>96</td>
+<td>The caller is neither the agent's owner nor on its team</td>
+</tr>
+<tr>
+<td><code>Only a team admin can perform this action on a team-owned agent.</code></td>
+<td>97</td>
+<td>The caller is a plain member of the agent's team</td>
+</tr>
+<tr>
+<td><code>&lt;Field label&gt; is managed by the platform</code></td>
+<td>0</td>
+<td>A Wiro-managed field, such as the chat model: pick the model with <code>UpdateSettings</code></td>
+</tr>
+<tr>
+<td><code>&lt;Field label&gt; is required</code></td>
+<td>0</td>
+<td>A required field sent empty. On Telegram, Slack and Discord this disables the channel instead</td>
+</tr>
+<tr>
+<td><code>&lt;Field label&gt; has an invalid format</code></td>
+<td>0</td>
+<td>The value doesn't match the field's <code>pattern</code></td>
+</tr>
+<tr>
+<td><code>&lt;Field label&gt; must be an array</code></td>
+<td>0</td>
+<td>A list field sent as a single value</td>
+</tr>
+<tr>
+<td><code>&lt;Field label&gt; has an invalid value</code></td>
+<td>0</td>
+<td>An object sent for a single-value field</td>
+</tr>
+<tr>
+<td><code>agent-fieldname-reserved</code></td>
+<td>0</td>
+<td>A <code>fieldname</code> starting with <code>_</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 <h4 id="post-useragentcredentialprojectbind"><strong>POST</strong> /UserAgent/CredentialProjectBind</h4>
 <p>Connects the agent's Wiro project (the <code>wiro</code> key under <code>credentials</code>) to one of your Wiro projects. You name the project, and Wiro saves that project's API key on the agent. The agent's model runs are paid from the wallet of the workspace that owns the project.</p>
 <div class="docs-param-table">
@@ -18946,7 +19034,7 @@ channel-enable endpoint or persisted switch.</p>
 <td><code>credentialkey</code></td>
 <td>text</td>
 <td>Yes</td>
-<td>Provider key (e.g. <code>twilio-voice</code>). Must declare a <code>fileinput</code> field in its registry schema.</td>
+<td>The credential key. Only Twilio Voice (<code>twilio-voice</code>) has <code>fileinput</code> fields.</td>
 </tr>
 <tr>
 <td><code>fieldname</code></td>
@@ -18965,7 +19053,7 @@ channel-enable endpoint or persisted switch.</p>
 </div>
 </div>
 <blockquote>
-<p><strong><code>fileinput</code> vs <code>fileinput-base64</code>.</strong> This endpoint is the storage path for the <code>fileinput</code> type only: the file is stored by Wiro and the credential keeps a reference to it. The companion <code>fileinput-base64</code> type is stored with the credential (encrypted at rest) and is written via the standard <code>CredentialUpsert</code> JSON <code>fields[]</code> array (e.g. <code>serviceaccountjson</code> on <code>google-drive</code>/<code>google-calendar</code>/<code>google-play</code>/<code>firebase</code>, <code>privatekey</code> on <code>apple-appstore</code>). Sending a base64 field through this endpoint returns <code>Field is not a fileinput type</code>.</p>
+<p><strong>Only Twilio Voice takes a file here.</strong> The one credential with <code>fileinput</code> fields is Twilio Voice (<code>twilio-voice</code>): <code>holdaudio</code> and <code>holdmusic</code>, MP3 or WAV up to 10 MB. A key file for a service the agent works with, such as a Google service account JSON or an App Store Connect private key, belongs to that service's Connector. Send the file's text in <code>values</code> on <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>ConnectorConnect</code></a>: <code>serviceaccountjson</code> for Google Play Console (<code>google-play</code>), or <code>privatekey</code> for App Store Connect (<code>apple-appstore</code>). A connector's slug sent here answers <code>Unknown credential: &lt;key&gt;</code>.</p>
 </blockquote>
 <h5 id="request_2">Request</h5>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CredentialFileUpload&quot; \
@@ -19002,7 +19090,7 @@ channel-enable endpoint or persisted switch.</p>
 </tr>
 <tr>
 <td><code>Unknown credential: &lt;key&gt;</code></td>
-<td><code>credentialkey</code> not declared in the skill registry</td>
+<td><code>credentialkey</code> isn't a credential (a connector's slug included)</td>
 </tr>
 <tr>
 <td><code>Unknown field: &lt;name&gt;</code></td>
@@ -22086,6 +22174,22 @@ channel-enable endpoint or persisted switch.</p>
 <tr>
 <td><code>tier must be starter, pro or max</code></td>
 <td><code>Deploy</code> or <code>CreateSubscriptionCheckout</code> with a <code>tier</code> that names no plan. Nothing is created or charged.</td>
+</tr>
+<tr>
+<td><code>Unknown skill: &lt;name&gt;.</code>, or for a name that starts with <code>int-</code>, <code>Unknown skill: &lt;name&gt;. Connectors are connected with UserAgent/ConnectorConnect, not turned on as skills.</code></td>
+<td><code>Deploy</code> with a <code>skills</code> name that <code>Skills/List</code> doesn't list. Nothing is created or charged</td>
+</tr>
+<tr>
+<td><code>Unknown credential: &lt;key&gt;. Connect a connector after the deploy with UserAgent/ConnectorConnect.</code></td>
+<td><code>Deploy</code> with a <code>credentials</code> key that isn't a credential, such as a connector's slug. Nothing is created or charged</td>
+</tr>
+<tr>
+<td><code>Unknown credential: &lt;key&gt;. Connectors are connected with UserAgent/ConnectorConnect.</code></td>
+<td><code>CredentialUpsert</code> with a <code>credentialkey</code> that isn't a credential, such as a connector's slug. Nothing is saved</td>
+</tr>
+<tr>
+<td><code>Unknown skill: &lt;names&gt;</code> (code <code>0</code>)</td>
+<td><code>SkillsApply</code> with a name that <code>Skills/List</code> doesn't list. Nothing is changed</td>
 </tr>
 <tr>
 <td><code>targetTier must be starter, pro or max</code></td>

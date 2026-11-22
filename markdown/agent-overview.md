@@ -656,8 +656,8 @@ for the channel contract.
 | `cover` | string | No | Optional cover image URL for this agent, on template deploys and custom builds alike. Without it `cover` stays `null`: show the template's `agent.cover` instead (a custom build has none). |
 | `useprepaid` | boolean | Yes | Send `true`: the plan's price is paid from your Wiro balance in this call, and the agent is queued. Without it, Deploy still creates the agent and charges nothing: the agent stays at status `6` with no plan until [`CreateSubscriptionCheckout`](#post-useragentcreatesubscriptioncheckout) (`useprepaid: true`) pays it, and if it still has no plan about an hour after Deploy, it is deleted. |
 | `tier` | string | No | The plan: `"starter"` (default, $5 a month, including $5 of AI usage a month), `"pro"` ($30, including $30) or `"max"` ($100, including $100). It sets the price taken from your balance at deploy time and the AI usage included each month. The param name is `tier`. Leave it out for Starter. Any other value is refused with `tier must be starter, pro or max`, and nothing is created or charged. |
-| `credentials` | object | No | Inline credential groups. If a communication-channel group is included, its matching `credentials[credential_key]` object must contain all channel `required_fields`; completeness activates that channel automatically. |
-| `skills` | object | No | Inline skill toggles `{ "skillname": true \| false }`. For custom builds this seeds the initial skill set; for template deploys it overlays the template defaults. |
+| `credentials` | object | No | Inline credential groups for the channels, `twilio-voice`, `wiro` and the settings (the keys [`POST /Credentials/List`](/docs/agent-credentials#post-credentialslist) lists). If a communication-channel group is included, its matching `credentials[credential_key]` object must contain all channel `required_fields`; completeness activates that channel automatically. Any other key, a connector's slug included, fails Deploy before anything is created or charged, with `Unknown credential: <key>. Connect a connector after the deploy with UserAgent/ConnectorConnect.` |
+| `skills` | object | No | Inline skill toggles `{ "skillname": true \| false }`. For custom builds this seeds the initial skill set; for template deploys it overlays the template defaults. Deploy turns on the Skills a Skill you turn on depends on (`depends_on`) by itself. Every name, on or off, must be a Skill that [`POST /Skills/List`](/docs/agent-skills#post-skillslist) lists: any other name fails Deploy before anything is created or charged, with `Unknown skill: <name>.`, and a name that starts with `int-` with `Unknown skill: <name>. Connectors are connected with UserAgent/ConnectorConnect, not turned on as skills.` |
 | `customskills` | array | No | Inline custom skill rows. Each entry: `{ key, value?, interval?, enabled?, description?, _user_created? }`. A scheduled task's `interval` must be a schedule the agent can run, as in [`CustomSkillUpsert`](#post-useragentcustomskillupsert), and `"manual"` means no schedule. Otherwise Deploy fails before anything is created or charged, and the error starts with the skill's key. Up to 50 entries; add more with [`CustomSkillUpsert`](#post-useragentcustomskillupsert) once the agent is deployed. |
 | `wiroapiallowedpaths` | string[] | No | The Wiro API endpoints this agent may call with its own Wiro project key, as rules in the format described under [`UpdateSettings`](#post-useragentupdatesettings). The list is saved before the agent first starts, so it applies from the first turn. An invalid list is rejected with `invalid-wiro-api-path-rule` and no agent is created. If the list can't be saved, no agent is created either and the call returns `Failed to save wiroapiallowedpaths`; deploy again. Omit it, or send `null`, for the default list described under [`UpdateSettings`](#post-useragentupdatesettings). |
 | `chatsetup` | string | No | Setup From Chat: where people can change this agent's setup by approving setup cards in chat. `"all"` (the default) allows the Wiro web chat and messages sent with a project API key, `"webchat"` only the Wiro web chat, and `"off"` neither. Omit it, or send `null`, for `"all"`. Deploying an agent that people who must not change it will talk to, such as your customers' own users? Send `"webchat"` or `"off"`. Keep `"all"` when the people in your chats may change the agent, and decide in your own product who may approve: see [Agent Chat Integration](/docs/agent-chat-integration#who-may-apply-a-card). See [Setup From Chat](/docs/agent-messaging#setup-from-chat). |
@@ -1365,7 +1365,7 @@ Every provider entry under `credentials.<key>` carries:
 | `_filled` | `boolean` | `true` when the credential holds what the agent needs: at least one field holds a value and no required field you fill in is empty. A value the agent template holds counts, even on a secret field that reads empty here. For `setuprequired`, a credential counts only the values saved on this agent; see [Setup Required](/docs/agent-credentials#setup-required-state). |
 | `connectedat` | `string\|null` | Credentials whose setup writes one: ISO timestamp of the last successful connection. |
 | `tokenexpiresat` | `string\|null` | ISO timestamp when the current token expires, or an empty value when the provider reports no fixed expiry. |
-| `<fieldname>` | `string\|number\|boolean\|array` | The field value as you saved it, returned to the agent's owner and team admins. A saved secret (a `password` or `fileinput-base64` field, or such a key in a list's entries) reads `"••••••••"` instead, for every caller, and one with nothing saved reads `""`. Field types match `_schema.fields[].type`. Never returned: Wiro-managed fields, and a value the agent template holds on a field Wiro stores encrypted: such a field reads empty until you save your own. |
+| `<fieldname>` | `string\|number\|boolean\|array` | The field value as you saved it, returned to the agent's owner and team admins. A saved secret (a `password` field) reads `"••••••••"` instead, for every caller, and one with nothing saved reads `""`. Field types match `_schema.fields[].type`. Never returned: Wiro-managed fields, and a value the agent template holds on a field Wiro stores encrypted: such a field reads empty until you save your own. |
 
 ##### Usage object
 
@@ -1806,7 +1806,7 @@ Writes one or more credential fields for one or multiple providers in a single c
 
 If the agent is **starting** or **running**, an upsert that changes a saved value triggers an automatic restart (see [Automatic Restart](#automatic-restart)).
 
-`CredentialUpsert` writes the agent's credentials: the Telegram, Slack and Discord channels, Twilio Voice, the Wiro project's key and settings such as the support email (see [Agent Credentials](/docs/agent-credentials)). The services the agent works with are connectors: connect them with [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect).
+`CredentialUpsert` writes the agent's credentials: the Telegram, Slack and Discord channels, Twilio Voice, the Wiro project's key and settings such as the support email (see [Agent Credentials](/docs/agent-credentials)). The services the agent works with are connectors: connect them with [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect). A `credentialkey` that isn't a credential, a connector's slug included, refuses the whole request (see [Common errors](#credentialupsert-errors)).
 
 Telegram, Slack, and Discord are optional credential groups. A channel appears
 in `enabledChannels` automatically when all of its catalog `required_fields`
@@ -1822,7 +1822,7 @@ Each field row:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `credentialkey` | string | The credential key: e.g. `"telegram"`, `"slack"`, `"twilio-voice"`, `"var-support-email"`. Must match one of the credentials declared in `credentials` on `/UserAgent/Detail`, or a channel from `POST /Skills/List` → `channels[]`. |
+| `credentialkey` | string | The credential key: `telegram`, `slack`, `discord`, `twilio-voice`, `wiro`, `var-support-email`, `var-website` or `var-newsletter-test-email`. A key that isn't a credential, a connector's slug included, fails the whole request with one `Unknown credential: <key>. Connectors are connected with UserAgent/ConnectorConnect.` error before the agent or any row is checked, and nothing is saved: connect that service with [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect). |
 | `fieldname` | string | Field inside that credential: e.g. `"bottoken"`, `"allowedusers"`, `"accountsid"`. Must not start with `_` (reserved for internal sentinels such as `_isoptional`, `_isextra`). |
 | `fieldvalue` | string \| number \| array | The value to write. An empty string clears an optional single-value field; send `[]` to clear a list field. Clearing a required field fails validation, except on Telegram, Slack and Discord, where it disables the channel. |
 | `fieldstatus` | string | **Server-managed: ignored from the request body for API callers.** The server derives it from the registry (`user` for the values you save). Do not set this field. It is stripped before any write. |
@@ -1862,6 +1862,40 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 > | `twilioWebhookError` | `string` | Top-level message when the entire VoiceUrl-rewrite flow failed (auth error, network outage). The credential rows are still saved. Only the auto-configuration step failed. |
 >
 > Treat all four fields as best-effort: the credential write itself never depends on Twilio's API call succeeding. See [Twilio Voice Channel](/docs/integration-twiliovoice-skills) for the full lifecycle.
+
+<a id="credentialupsert-errors"></a>
+
+##### Common errors
+
+Each of these comes back with `result: false` and no `applied`, and nothing is saved:
+
+```json
+{
+  "result": false,
+  "errors": [
+    {
+      "code": 0,
+      "message": "Unknown credential: google-ads. Connectors are connected with UserAgent/ConnectorConnect.",
+      "time": 1795113000
+    }
+  ]
+}
+```
+
+| Error | Code | When |
+|-------|------|------|
+| `Request parameter [useragentguid] required` | 0 | `useragentguid` is missing or blank |
+| `Request parameter [fields[]] required` | 0 | `fields` is missing, not an array, or empty |
+| `Unknown credential: <key>. Connectors are connected with UserAgent/ConnectorConnect.` | 0 | A row's `credentialkey` isn't a credential, such as a connector's slug. One entry for the whole request, before the agent or any other row is checked |
+| `User agent not found` | 95 | Unknown guid, or the agent has been deleted |
+| `You don't have access to this user agent` | 96 | The caller is neither the agent's owner nor on its team |
+| `Only a team admin can perform this action on a team-owned agent.` | 97 | The caller is a plain member of the agent's team |
+| `<Field label> is managed by the platform` | 0 | A Wiro-managed field, such as the chat model: pick the model with `UpdateSettings` |
+| `<Field label> is required` | 0 | A required field sent empty. On Telegram, Slack and Discord this disables the channel instead |
+| `<Field label> has an invalid format` | 0 | The value doesn't match the field's `pattern` |
+| `<Field label> must be an array` | 0 | A list field sent as a single value |
+| `<Field label> has an invalid value` | 0 | An object sent for a single-value field |
+| `agent-fieldname-reserved` | 0 | A `fieldname` starting with `_` |
 
 #### **POST** /UserAgent/CredentialProjectBind
 
@@ -1944,11 +1978,11 @@ Unlike `CredentialUpsert`, this endpoint expects `multipart/form-data`: pass the
 | Form field | Type | Required | Description |
 |------------|------|----------|-------------|
 | `useragentguid` | text | Yes | Your UserAgent instance guid |
-| `credentialkey` | text | Yes | Provider key (e.g. `twilio-voice`). Must declare a `fileinput` field in its registry schema. |
+| `credentialkey` | text | Yes | The credential key. Only Twilio Voice (`twilio-voice`) has `fileinput` fields. |
 | `fieldname` | text | Yes | The exact `fieldname` whose registry `type` is `"fileinput"` (e.g. `holdaudio` or `holdmusic` on `twilio-voice`). |
 | `file` | file | Yes | The blob. Mimetype + size are validated against the registry's `filetypes[]` whitelist and `maxsize` (KB) cap. Default cap is 10 MB when the field omits `maxsize`. |
 
-> **`fileinput` vs `fileinput-base64`.** This endpoint is the storage path for the `fileinput` type only: the file is stored by Wiro and the credential keeps a reference to it. The companion `fileinput-base64` type is stored with the credential (encrypted at rest) and is written via the standard `CredentialUpsert` JSON `fields[]` array (e.g. `serviceaccountjson` on `google-drive`/`google-calendar`/`google-play`/`firebase`, `privatekey` on `apple-appstore`). Sending a base64 field through this endpoint returns `Field is not a fileinput type`.
+> **Only Twilio Voice takes a file here.** The one credential with `fileinput` fields is Twilio Voice (`twilio-voice`): `holdaudio` and `holdmusic`, MP3 or WAV up to 10 MB. A key file for a service the agent works with, such as a Google service account JSON or an App Store Connect private key, belongs to that service's Connector. Send the file's text in `values` on [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect): `serviceaccountjson` for Google Play Console (`google-play`), or `privatekey` for App Store Connect (`apple-appstore`). A connector's slug sent here answers `Unknown credential: <key>`.
 
 ##### Request
 
@@ -1980,7 +2014,7 @@ The `url` is the public URL of the stored file, which the agent uses at runtime.
 | Error | When |
 |-------|------|
 | `File required (form field name: file)` | Missing the `file` multipart part |
-| `Unknown credential: <key>` | `credentialkey` not declared in the skill registry |
+| `Unknown credential: <key>` | `credentialkey` isn't a credential (a connector's slug included) |
 | `Unknown field: <name>` | `fieldname` not in the credential's `credential_schema` |
 | `Field is not a fileinput type` | The schema field's `type` is not `"fileinput"` (use `CredentialUpsert` instead) |
 | `Invalid file type. Allowed: <list>` | Mimetype not in the registry's `filetypes[]` whitelist |
@@ -3676,6 +3710,10 @@ Agent-specific errors you may encounter:
 | `Subscription already active for this useragent. Cancel or modify the existing subscription instead.` | `CreateSubscriptionCheckout` called when a sub already exists |
 | `Change the plan with UpgradeTier.` | `SkillsApply` with a `tier` other than the agent's current plan |
 | `tier must be starter, pro or max` | `Deploy` or `CreateSubscriptionCheckout` with a `tier` that names no plan. Nothing is created or charged. |
+| `Unknown skill: <name>.`, or for a name that starts with `int-`, `Unknown skill: <name>. Connectors are connected with UserAgent/ConnectorConnect, not turned on as skills.` | `Deploy` with a `skills` name that `Skills/List` doesn't list. Nothing is created or charged |
+| `Unknown credential: <key>. Connect a connector after the deploy with UserAgent/ConnectorConnect.` | `Deploy` with a `credentials` key that isn't a credential, such as a connector's slug. Nothing is created or charged |
+| `Unknown credential: <key>. Connectors are connected with UserAgent/ConnectorConnect.` | `CredentialUpsert` with a `credentialkey` that isn't a credential, such as a connector's slug. Nothing is saved |
+| `Unknown skill: <names>` (code `0`) | `SkillsApply` with a name that `Skills/List` doesn't list. Nothing is changed |
 | `targetTier must be starter, pro or max` | `UpgradeTier` with a `targetTier` outside the closed enum (typos, missing parameter name, etc.) |
 | `Already on the Pro plan.` (the plan's name) | `UpgradeTier` with the agent's current plan when no lower plan is scheduled: no-op |
 | `The Starter plan is smaller than this agent's Pro plan, so this is not an upgrade. Nothing was changed. A move to a smaller plan starts at the next renewal; to ask for it, send allowDowngrade: true.` (the plans' names) | `UpgradeTier` with a `targetTier` lower than the agent's plan and no `allowDowngrade: true`. Nothing is changed or charged |
