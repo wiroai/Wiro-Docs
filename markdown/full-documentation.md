@@ -8478,7 +8478,7 @@ A session is one conversation with its own memory. `sessionkey` names it, and `"
 ## Costs
 
 - **$10 to start a turn.** Send and SendForm need at least $10 spendable in the wallet of the key's workspace. Below that, the message is refused with code `97` (`Insufficient balance`), with `walletUsd` and `minTopup` in the response, and nothing is charged.
-- **Chat.** Each turn is charged after it ends for the tokens it used, at the chat model's rates in [StudioWorkflow/Status](#post-studioworkflowstatus) (credits per 1M tokens; 1 credit is $0.01). The reply's `tokencost` shows the charge in credits: `tokencost / 100` is the amount in USD.
+- **Chat.** Each turn is charged after it ends for the tokens it used, at the chat model's rates in [StudioWorkflow/Status](#post-studioworkflowstatus) (cents per 1M tokens). The reply's `tokencost` shows the charge in cents: `tokencost / 100` is the amount in USD.
 - **Spend limits and Model Access.** The chat counts toward your workspace's [spend limits](/docs/spend-limits), and its chat model follows your [Model Access](/docs/model-access) rules: the account's or the team's, your own in a team, and those of the API key and the surface you sent the message with. A message whose chat model a rule blocks is refused with code `92` before anything runs.
 - The agent only reads the catalog, so its turns start no model runs. Saving a proposal is free, and running the saved workflow is billed like any [workflow run](/docs/workflows#costs).
 - [StudioWorkflow/Transactions](#post-studioworkflowtransactions) lists the charges.
@@ -8698,7 +8698,7 @@ A session is one conversation with its own memory. `sessionkey` names it, and `"
 
 - **$10 to start a turn.** [Message/Send](#post-studiomessagesend) and [Message/SendForm](#post-studiomessagesendform) need at least $10 spendable in the wallet of the key's workspace. Below that, the message is refused with code `97` (`Insufficient balance`), and the response carries `walletUsd`, the balance, and `minTopup`, the minimum. Nothing is charged for a refused message. Reading messages, sessions and results is free.
 - **What a turn costs.** A turn's cost depends on the models Studio runs for it, and can be more than $10.
-- **Chat.** Each turn is charged for the tokens it used, at the chat model's rates in [Studio/Status](#post-studiostatus) (credits per 1M tokens; 1 credit is $0.01). The reply shows the chat charge in `tokencost`, in credits: `tokencost / 100` is the amount in USD.
+- **Chat.** Each turn is charged for the tokens it used, at the chat model's rates in [Studio/Status](#post-studiostatus) (cents per 1M tokens). The reply shows the chat charge in `tokencost`, in cents: `tokencost / 100` is the amount in USD.
 - **Model runs.** Each model run Studio starts is charged at that model's price when it succeeds. Failed and cancelled runs are not charged. [Studio/Tasks](#post-studiotasks) shows each run's `totalcost`.
 - **Spend limits and Model Access.** The models Studio runs for you follow your workspace's [spend limits](/docs/spend-limits) and [Model Access](/docs/model-access) rules, the same as the runs you start yourself: the account's or the team's, your own in a team, and those of the API key and the surface you sent the message with. So does the chat: what it costs counts toward spend limits, and a message whose chat model a Model Access rule blocks is refused with code `92` before anything runs.
 - Charges are made within about a minute of the work finishing. [Studio/Transactions](#post-studiotransactions) lists them, and they also appear in the wallet's transactions.
@@ -8712,7 +8712,7 @@ Returns the wallet check and the chat models Studio can use. It settles your pen
 | `walletUsd` | number | Spendable balance of the workspace wallet in USD. |
 | `needsTopup` | boolean | `true` when `walletUsd` is below `minTopup`. |
 | `minTopup` | number | The balance a turn needs to start: `10`. |
-| `tokenRates` | object | Chat model rates. `default_model` is the default chat model, and `models` is keyed by model slug: each entry has `input_per_1m` and `output_per_1m` (credits per 1M tokens), optional cached-input, cache-write and long-context rates, a `label`, and `selectable: true` when you can pick it with `model`. A model you could pick that your [Model Access](/docs/model-access) rules block reads `selectable: false` and `blocked: true`. |
+| `tokenRates` | object | Chat model rates. `default_model` is the default chat model, and `models` is keyed by model slug: each entry has `input_per_1m` and `output_per_1m` (cents per 1M tokens), optional cached-input, cache-write and long-context rates, a `label`, and `selectable: true` when you can pick it with `model`. A model you could pick that your [Model Access](/docs/model-access) rules block reads `selectable: false` and `blocked: true`. |
 | `agentModel.chatModel` | string | The chat model a turn uses when you leave `model` out. |
 | `blockedModels` | string[] | The chat models you could pick that your Model Access rules block. `[]` when none is blocked. |
 | `agentModelBlocked` | boolean | `true` when your rules block `agentModel.chatModel`: a message that leaves `model` out is then refused with code `92`. |
@@ -8881,7 +8881,7 @@ Returns one message and its reply. Poll it until `status` is `agent_end`, `agent
 | `attachments` | The files you attached. |
 | `model` | The chat model that ran the turn. |
 | `inputtokens`, `outputtokens`, `cachereadtokens`, `cachewritetokens`, `totaltokens` | The turn's token use. |
-| `tokencost` | The chat charge in credits; `tokencost / 100` is the amount in USD. Model runs are charged separately (see [Studio/Tasks](#post-studiotasks)). |
+| `tokencost` | The chat charge in cents; `tokencost / 100` is the amount in USD. Model runs are charged separately (see [Studio/Tasks](#post-studiotasks)). |
 | `createdat`, `startedat`, `endedat` | Unix seconds. |
 
 ### Response
@@ -8914,7 +8914,7 @@ Returns one message and its reply. Poll it until `status` is `agent_end`, `agent
 }
 ```
 
-In this example the chat part cost 7 credits ($0.07). The two images are charged separately, as the model runs Studio started.
+In this example the chat part cost 7 cents ($0.07). The two images are charged separately, as the model runs Studio started.
 
 ## **POST** /Studio/Message/History
 
