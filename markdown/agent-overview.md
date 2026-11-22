@@ -476,7 +476,7 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
 |-----------|------|----------|-------------|
 | `guid` | string | No* | Agent guid. |
 | `slug` | string | No* | Agent slug (e.g. `"instagram-manager"`). |
-| `type` | string | No | Pass `"full"` to also include `customskills` (the template's strategies a deployer can edit) and `scheduledskills` (every scheduled task) in the response. Without `type: "full"`, the response carries the catalog header + `tiers` + `plans` + `tokenRates` + `credentials` + `skills` + `skillsmeta` + `suggestedconnectors` + `communicationChannels` only. |
+| `type` | string | No | Pass `"full"` to also include `customskills` (the template's strategies a deployer can edit) and `scheduledskills` (every scheduled task) in the response. Each row: `{ key, value, description, interval, enabled, requires_credentials, requires_connectors, _editable }`. `requires_connectors` lists the Connectors a scheduled task needs, by catalog slug (one connected runs it), and `requires_credentials` the channels and settings it needs. Without `type: "full"`, the response carries the catalog header + `tiers` + `plans` + `tokenRates` + `credentials` + `skills` + `skillsmeta` + `suggestedconnectors` + `communicationChannels` only. |
 
 > **Note:** You must provide either `guid` or `slug`. If both are provided, `slug` takes priority. Pass `type: "full"` when you need to preview custom skill keys and scheduled task cron expressions before deploying; omit it for a lightweight catalog detail call.
 
@@ -1083,6 +1083,8 @@ Retrieves full details for a single deployed agent instance, including subscript
           "value": "## Brand Voice\nTone: friendly, casual, never salesy.\nTarget Audience: indie devs and side-project builders.\n\n## Hashtag Strategy\nMax 3 per post. Always include #BuildInPublic and #Indie.\n\n## Platform Rules\n- Instagram: square images only, carousels for tutorials.\n- Twitter: thread format for posts longer than 200 chars.",
           "enabled": true,
           "interval": null,
+          "requires_credentials": [],
+          "requires_connectors": [],
           "_source": "preset-strategy",
           "_editable": true,
           "_edited": true
@@ -1093,6 +1095,8 @@ Retrieves full details for a single deployed agent instance, including subscript
           "value": "## Primary Sources\nhttps://blog.example.com/feed.xml\nhttps://news.ycombinator.com/rss\n\n## CTA URL Pattern\nhttps://example.com/posts/{slug}",
           "enabled": true,
           "interval": null,
+          "requires_credentials": [],
+          "requires_connectors": [],
           "_source": "preset-strategy",
           "_editable": true,
           "_edited": false
@@ -1105,16 +1109,24 @@ Retrieves full details for a single deployed agent instance, including subscript
           "value": "Scan the configured RSS / sitemap sources, dedupe against last 14 days, and queue up to 3 fresh items into the post pipeline.",
           "enabled": true,
           "interval": "0 */4 * * *",
+          "requires_credentials": [],
+          "requires_connectors": ["facebook-pages", "instagram", "linkedin", "tiktok", "twitter"],
           "_source": "skill-bundle",
           "_editable": true,
-          "_edited": false
+          "_edited": false,
+          "_owner_skills": ["util-social-posting-common"],
+          "_skill_off": false,
+          "_usable_credentials": [],
+          "_if_connected": {}
         },
         {
           "key": "cs-cron-weekly-roundup",
-          "description": "User-created weekly summary cron that posts a Monday recap to Telegram.",
+          "description": "User-created weekly Scheduled Task that posts a Monday recap to Telegram.",
           "value": "Every Monday at 09:00 UTC, summarize last week's published posts (titles + engagement) and post the recap to Telegram.",
           "enabled": true,
           "interval": "0 9 * * 1",
+          "requires_credentials": [],
+          "requires_connectors": [],
           "_source": "user-created",
           "_editable": true,
           "_edited": false,
@@ -1320,8 +1332,8 @@ Retrieves full details for a single deployed agent instance, including subscript
 | Field | Type | Description |
 |-------|------|-------------|
 | `credentials` | `object` | Per-provider credential map keyed by credential name (`telegram`, `twilio-voice`, `wiro`, `var-support-email`, …). Each provider object carries its saved field values, every saved secret read as the mask `"••••••••"`, plus a fixed metadata header (see "Credential object shape" below). |
-| `customskills` | `array` | Composed list of preset strategies and **non-cron** custom skills (writable instructions). Each entry: `{ key, description, value, enabled, interval: null, _source, _editable, _edited, _user_created? }`. `_source` ∈ `"preset-strategy"` \| `"user-created"`. |
-| `scheduledskills` | `array` | Composed list of **cron** skills (`cs-cron-*`). Same shape as `customskills` plus `interval` (cron expression). `_source` ∈ `"skill-bundle"` (preset cron) \| `"user-created"`. A scheduled task that skills bring also carries the fields in [Scheduled task skill fields](#scheduled-task-skill-fields). |
+| `customskills` | `array` | Composed list of preset strategies and custom skills that aren't Scheduled Tasks (writable instructions). Each entry: `{ key, description, value, enabled, interval: null, requires_credentials, requires_connectors, _source, _editable, _edited, _user_created? }`. `requires_credentials` (`string[]`) lists the channels and settings the entry needs, such as `telegram` or `wiro`; one of them set up is enough. `requires_connectors` (`string[]`) lists the Connectors a scheduled task needs, by catalog slug; one of them connected is enough. `_source` ∈ `"preset-strategy"` \| `"user-created"`. |
+| `scheduledskills` | `array` | Composed list of Scheduled Tasks (`cs-cron-*`). Same shape as `customskills` plus `interval` (cron expression). A task whose `requires_connectors` isn't empty runs only while one of those Connectors is connected. `_source` ∈ `"skill-bundle"` (a Scheduled Task the template or a skill brings) \| `"user-created"`. A scheduled task that skills bring also carries the fields in [Scheduled task skill fields](#scheduled-task-skill-fields). |
 | `skills` | `array<object>` | Currently-enabled Skills (`util-*`). Each entry: `{ name, enabled: true, _edited, _user_created }`. Toggle via `SkillsApply` (single-skill or batch). Note: object array (not string array). |
 | `skillsmeta` | `object` | Inline registry snapshot keyed by skill name: `title`, `icon`, `brand_color`, `category`, `docs_url`, `credential_key`, `requires_credentials`, `user_invocable`, `description`. Lets the panel render skill chips without a `Skills/List` round-trip. |
 | `communicationChannels` | `array` | Every external channel with this agent's state: `id`, `title`, `credentialkey`, `required_fields`, `capabilities`, `schema`, `enabled`, `configured` and `missingfields`. Also on the `Deploy` and `Update` responses; not on `MyAgents` / `PinnedAgents` rows. |
@@ -1331,17 +1343,17 @@ Retrieves full details for a single deployed agent instance, including subscript
 
 <a id="scheduled-task-skill-fields"></a>
 
-**Scheduled task skill fields.** A `scheduledskills` entry of a scheduled task that one of Wiro's skills brings (a `cs-cron-*` key from the skill registry) carries five more fields. Wiro gives the agent such a task only while a skill that brings it is on, and only while it can use one of the connectors the task needs; these fields say where it stands. A task without `_owner_skills`, such as one you wrote yourself, carries none of them and needs only the connectors its own entry lists.
+**Scheduled task skill fields.** A `scheduledskills` entry of a scheduled task that one of Wiro's skills brings (a `cs-cron-*` key from the skill registry) carries five more fields. Wiro gives the agent such a task only while a skill that brings it is on. These fields say where it stands with its skills and with the channels and settings in its `requires_credentials`. Like any scheduled task whose `requires_connectors` isn't empty, it also runs only while one of those Connectors is connected. A task without `_owner_skills`, such as one you wrote yourself, carries none of them and needs only what its own `requires_credentials` and `requires_connectors` list.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `_owner_skills` | `string[]` | The skills that bring the task. |
 | `_skill_off` | `boolean` | `true` while the task waits for skills that are off. Wiro then sends it to the agent turned off, whatever its own `enabled` says. |
 | `_off_skills` | `string[][]` | Only when `_skill_off` is `true`: what to turn on, one skill from each group. |
-| `_usable_credentials` | `string[]` | The connectors the task can use now: one of them connected is enough. |
-| `_if_connected` | `object` | One key for each connector the task needs that is not connected: the groups of skills the task would still wait for once that connector is connected. `[]` means it would run, if its own `enabled` is `true`. |
+| `_usable_credentials` | `string[]` | The channels and settings the task's credential check covers (its `requires_credentials`), such as `telegram` or `wiro`; one of them set up is enough. `[]` when it needs none. Connectors aren't listed here: see `requires_connectors`. |
+| `_if_connected` | `object` | One key for each of those channels or settings that isn't set up, with the groups of skills the task would still wait for once it is: the same groups as `_off_skills`, or `[]` when no skill holds the task back. `{}` when there are none. |
 
-To show a task as waiting, read `_skill_off`, then `_usable_credentials` and `_if_connected` for what connecting a connector would change.
+To show a task as waiting, read `_skill_off` and `_off_skills` for the skills to turn on. Then compare its `requires_connectors` with each connection's `status` on [`ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist): the task waits for a Connector until one of them reads `connected`.
 
 **Subscription & template**
 
@@ -2031,14 +2043,16 @@ The endpoint auto-normalises the skillkey to its canonical form. Bare slugs beco
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid |
 | `skillkey` | string | Yes | The skill key. Strategies use bare names (e.g. `"content-tone"` → stored as `cs-content-tone`). For a scheduled task, send its full key (e.g. `"cs-cron-social-content-scanner"`), or a bare slug together with `interval` (`"weekly-report"` → `cs-cron-weekly-report`). A `cron-<slug>` key becomes `cs-cron-<slug>` too, with or without `interval`. |
-| `value` | string | No | Strategy body / cron prompt text. Editable for preset strategies and user-created entries; bundled crons silently drop `value` writes. |
+| `value` | string | No | Strategy body / scheduled task prompt text. On a template agent, a scheduled task the template brings runs the template's text: a `value` sent for it is saved and shows on Detail and in CustomSkillHistory, but the agent doesn't use it. Every other skill and task runs its saved text, a custom build's bundled tasks included. |
 | `interval` | string | No | Cron expression (e.g. `"0 */4 * * *"`). Only persisted on `cs-cron-*` rows. On a scheduled task it must be a schedule the agent can run (see below). |
 | `enabled` | boolean | No | Turn the skill on or off. **Writable for both strategies (`cs-*`) and crons (`cs-cron-*`)**. A disabled strategy is suppressed end-to-end (it still appears in the list, but the agent never loads it). Defaults to `true` on insert. |
 | `description` | string | No | Only persisted for user-created skills (preset descriptions are template-owned). On a preset row, sending the current description back unchanged is ignored; a different text is rejected with `customskill-preset-description-not-editable`. |
 
-> **Text edits reach a running agent without a restart.** A change to the `value` or `description` of an existing skill or task goes to a running agent right away, and the agent keeps running; a starting agent restarts to load it. A new skill or task, a new `interval`, or turning one on or off with `enabled` restarts a starting or running agent, and so does any change to `cs-approval-policy`. If the running agent can't take the new text, Wiro restarts it instead. `restarting` in the response says whether the call restarted the agent.
+> **Text edits reach a running agent without a restart.** A change to the `value` or `description` of an existing skill or task goes to a running agent right away, and the agent keeps running; a starting agent restarts to load it. A new skill or task, a new `interval`, or turning one on or off with `enabled` restarts a starting or running agent, and so does any change to `cs-approval-policy`. If the running agent can't take the new text, Wiro restarts it instead. `restarting` in the response says whether the call restarted the agent. A template's own scheduled task is the exception: its text never reaches the agent.
 
 > **Schedules the agent can't run are refused.** A scheduled task's `interval` is a cron expression with five fields, `minute hour day month weekday`, such as `0 9 * * 1-5`. A schedule the agent can't run, or one whose date never comes, such as 30 February, is refused before anything is saved, and the error says what is wrong and what to write: `0 25 * * *` gets `This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.`, and `0 0 30 2 *` gets `This schedule never comes up: February has no 30th. Pick a day February has, such as 28.` Only a schedule sent in the request is checked, so a task that already has one can still be edited or turned on and off.
+
+> **A task that is on doesn't always run.** A scheduled task runs only while its gates are open: one of the Connectors in its `requires_connectors` connected, one of the channels or settings in its `requires_credentials` set up, and, for a task Wiro's skills bring, one of those Skills on (see [Scheduled task skill fields](#scheduled-task-skill-fields)). An empty list is no gate, and `enabled: true` doesn't lift one. `CustomSkillUpsert` takes neither list: a task you create here has none and runs on its schedule. Saving or clearing a credential sets `enabled` on every custom skill and scheduled task whose own `requires_credentials` names it: on while one of the credentials it lists is set up, off while none is, whatever `enabled` was before.
 
 ##### Request
 
