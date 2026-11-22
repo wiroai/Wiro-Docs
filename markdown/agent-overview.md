@@ -2116,13 +2116,15 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillRename" \
 
 ##### Error cases
 
-| Error message key | When |
+| Error | When |
 |---|---|
-| `Preset skills cannot be renamed.` | Target row has `usercreated: false` (preset-owned). This refusal comes as the sentence, with no message key. |
-| `agent-customskill-rename-flavour-mismatch` | Caller tried to rename `cs-cron-*` ↔ `cs-*`. Delete + re-create with the right kind instead. |
-| `agent-customskill-rename-collision` | `newskillkey` already exists on this useragent. |
-| `agent-customskill-rename-same-key` | `oldskillkey` equals canonicalised `newskillkey`: nothing to change. |
-| `agent-customskill-not-found` | `oldskillkey` does not exist on the useragent. |
+| `Preset skills cannot be renamed.` | Target row has `usercreated: false` (preset-owned). |
+| `Scheduled tasks and custom skills cannot be renamed into each other — delete the row and re-create it with the right kind` | Caller tried to rename `cs-cron-*` ↔ `cs-*`. Delete + re-create with the right kind instead. |
+| `A skill with that key already exists for this agent` | `newskillkey` already exists on this useragent. |
+| `The new skill key is the same as the current one — nothing to rename` | `oldskillkey` equals canonicalised `newskillkey`: nothing to change. |
+| `Skill not found` | `oldskillkey` does not exist on the useragent. |
+| `Missing useragentguid, oldskillkey, or newskillkey` | One of the three is missing or blank. |
+| `Skill key may only contain lowercase letters, digits, and single dashes between segments (e.g. lead-strategy)` | `newskillkey` isn't a valid key. |
 
 #### **POST** /UserAgent/CustomSkillAlternatives
 
@@ -2172,16 +2174,16 @@ Removes a user-created custom skill. The endpoint enforces a **hybrid delete pol
 
 | Row type | Delete result |
 |----------|--------------|
-| User-created (`usercreated: true`) on any agent | **Allowed**: row is hard-deleted, agent restarts. |
-| Registry-owned / preset-owned (`usercreated: false`) on a **template** agent (the skill also exists in the template's preset skills) | **Rejected**: `"This skill belongs to the agent preset and cannot be deleted."` Disable it via `CustomSkillUpsert` with `enabled: false` instead. |
-| Registry-owned (`usercreated: false`) on a **custom-build** agent (no preset to compare against) | **Rejected**: `"This skill is registry-owned and cannot be deleted."` Disable it via `CustomSkillUpsert` with `enabled: false` instead. Custom builds carry registry-seeded rows (e.g. `cs-approval-policy`, bundled `cs-cron-*` clones) whose runtime contract the agent depends on, even though there's no template back-reference. |
+| User-created (`usercreated: true`) under a key the agent's template doesn't have | **Allowed**: the row and its version history are deleted, and a starting or running agent restarts. |
+| `usercreated: false`: a template's skills and tasks, copied to the agent at deploy, and a custom build's registry rows (e.g. `cs-approval-policy`, bundled `cs-cron-*` tasks) | **Rejected** with `customskill-registry-not-deletable`. Disable it via `CustomSkillUpsert` with `enabled: false` instead. |
+| User-created, under a key the agent's template also has | **Rejected** with `customskill-preset-not-deletable`. Disable it via `CustomSkillUpsert` with `enabled: false` instead. |
 
-In both reject branches the response carries `suggestion: "disable-via-upsert"` so panel UIs can offer a "Disable instead" CTA without re-querying the registry.
+In both reject branches the response carries `suggestion: "disable-via-upsert"` so panel UIs can offer a "Disable instead" CTA without re-querying the registry. The message is the key itself, as shown below. Deleting a skill also deletes its version history, so it can't be reverted. A key the agent doesn't have deletes nothing and answers `result: true`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid |
-| `skillkey` | string | Yes | The skill key to remove. User-created rows only. Registry-owned rows reject with `disable-via-upsert`. |
+| `skillkey` | string | Yes | The skill key to remove. User-created rows only. Other rows are refused with `suggestion: "disable-via-upsert"`. |
 
 ##### Response (delete allowed)
 
@@ -2189,7 +2191,7 @@ In both reject branches the response carries `suggestion: "disable-via-upsert"` 
 { "result": true, "errors": [] }
 ```
 
-##### Response (preset-owned, rejected with suggestion)
+##### Response (preset-owned or registry-owned, rejected with suggestion)
 
 ```json
 {
@@ -2197,14 +2199,14 @@ In both reject branches the response carries `suggestion: "disable-via-upsert"` 
   "errors": [
     {
       "code": 0,
-      "message": "This skill belongs to the agent preset and cannot be deleted. Use enabled=false to disable it instead."
+      "message": "customskill-registry-not-deletable"
     }
   ],
   "suggestion": "disable-via-upsert"
 }
 ```
 
-##### Response (registry-owned on a custom build, rejected with suggestion)
+##### Response (your own row under a key the template has, rejected with suggestion)
 
 ```json
 {
@@ -2212,7 +2214,7 @@ In both reject branches the response carries `suggestion: "disable-via-upsert"` 
   "errors": [
     {
       "code": 0,
-      "message": "This skill is registry-owned and cannot be deleted. Use enabled=false to disable it instead."
+      "message": "customskill-preset-not-deletable"
     }
   ],
   "suggestion": "disable-via-upsert"
@@ -2221,7 +2223,7 @@ In both reject branches the response carries `suggestion: "disable-via-upsert"` 
 
 #### **POST** /UserAgent/CustomSkillHistory
 
-Returns the version history for one custom skill on a useragent: a per-write audit trail with diff metadata + the resolved actor for each entry. Powers the "Version History" modal in the panel; useful for API consumers building audit views.
+Returns the version history for one custom skill on a useragent: one entry per change, holding the state before it, with diff metadata and the resolved actor. Creating a skill with `CustomSkillUpsert` adds none. Powers the "Version History" modal in the panel; useful for API consumers building audit views.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -2247,7 +2249,7 @@ Returns the version history for one custom skill on a useragent: a per-write aud
       "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
       "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
       "skillkey": "cs-content-tone",
-      "operation": "upsert",
+      "operation": "update-user",
       "value": "## Brand Voice\nTone: friendly\n...",
       "intervalexpr": null,
       "enabled": true,
@@ -2278,8 +2280,9 @@ Returns the version history for one custom skill on a useragent: a per-write aud
 > **Field semantics.** Each row captures the **BEFORE** state of the action that produced it (the history entry is written before the change is applied). The server-computed `after_*` and `prev_*` fields give you the resolved AFTER + previous-version snapshots without you having to walk the list manually:
 >
 > - `prev_*`: value as of the immediately-older entry (`null` for the oldest row).
-> - `after_*`: value the row was left with after this action committed: pulled from the next-newer entry's BEFORE state, or from the skill's current live state for the newest entry. `null` when `operation: "delete-user"` (row was removed).
+> - `after_*`: value the row was left with after this action committed: pulled from the next-newer entry's BEFORE state, or from the skill's current live state for the newest entry.
 > - `changed_fields[]`: names of fields whose value differs from the immediately-older entry. Subset of `["value", "interval", "enabled"]`.
+> - `operation`: `update-user` (a save), `rename`, `revert-to-history`, `reset-to-preset`, `clone-deploy` or `seed-custom-build` (written at deploy), or `insert-cascade` / `update-cascade` / `delete-cascade` (a template update).
 > - `changedby_user`: resolved actor object (full shape: `uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`). `null` when `changedby` is a system value such as `"system"` or `"backfill-*"`, or when the user record was deleted.
 
 #### **POST** /UserAgent/CustomSkillRevert
@@ -2306,14 +2309,11 @@ Reverts a custom skill to either (a) the agent template's preset default or (b) 
 }
 ```
 
-`action` is `"reverted"`, `"reset-to-preset"`, `"deleted"` (preset removed upstream), or `"no-op"` (already matches target).
+`action` is `"reverted"`, `"re-inserted"` (a version of a row that no longer exists, written back), `"reset"` (back to the template's text, interval and switch), `"deleted"` (the template no longer has the skill, so the row is removed) or `"no-op"` (already matches the target).
 
 #### **POST** /UserAgent/CredentialFieldHistory
 
-Returns the per-field write history for one credential group on a useragent. Sensitive values are redacted at read time as a belt-and-suspenders guard:
-
-- A saved secret, such as a bot token or an auth token, never comes back as its value.
-- Wiro-managed credentials return an empty `entries[]`.
+Returns the earlier values of one credential's fields, newest first (up to 500). Each entry is a value a save replaced, with who replaced it (`changedby`) and when (`changedat`). A first save adds no entry, and neither does a list sent whole (Telegram `groups`, Slack `channels`, Discord `guilds`, website `urls`). A secret's earlier value reads `"[REDACTED]"`. Wiro-managed credentials return an empty `entries[]`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -2334,11 +2334,11 @@ Returns the per-field write history for one credential group on a useragent. Sen
       "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
       "credentialkey": "telegram",
       "fieldname": "allowedusers",
-      "fieldvalue": ["123456789"],
+      "fieldvalue": "[\"123456789\"]",
       "fieldstatus": "user",
       "parentfield": null,
       "ordinal": 0,
-      "operation": "upsert",
+      "operation": "update",
       "changedby": "ada-uuid",
       "changedby_user": {
         "uuid": "ada-uuid",

@@ -19288,30 +19288,38 @@ channel-enable endpoint or persisted switch.</p>
 <table>
 <thead>
 <tr>
-<th>Error message key</th>
+<th>Error</th>
 <th>When</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>Preset skills cannot be renamed.</code></td>
-<td>Target row has <code>usercreated: false</code> (preset-owned). This refusal comes as the sentence, with no message key.</td>
+<td>Target row has <code>usercreated: false</code> (preset-owned).</td>
 </tr>
 <tr>
-<td><code>agent-customskill-rename-flavour-mismatch</code></td>
+<td><code>Scheduled tasks and custom skills cannot be renamed into each other — delete the row and re-create it with the right kind</code></td>
 <td>Caller tried to rename <code>cs-cron-*</code> ↔ <code>cs-*</code>. Delete + re-create with the right kind instead.</td>
 </tr>
 <tr>
-<td><code>agent-customskill-rename-collision</code></td>
+<td><code>A skill with that key already exists for this agent</code></td>
 <td><code>newskillkey</code> already exists on this useragent.</td>
 </tr>
 <tr>
-<td><code>agent-customskill-rename-same-key</code></td>
+<td><code>The new skill key is the same as the current one — nothing to rename</code></td>
 <td><code>oldskillkey</code> equals canonicalised <code>newskillkey</code>: nothing to change.</td>
 </tr>
 <tr>
-<td><code>agent-customskill-not-found</code></td>
+<td><code>Skill not found</code></td>
 <td><code>oldskillkey</code> does not exist on the useragent.</td>
+</tr>
+<tr>
+<td><code>Missing useragentguid, oldskillkey, or newskillkey</code></td>
+<td>One of the three is missing or blank.</td>
+</tr>
+<tr>
+<td><code>Skill key may only contain lowercase letters, digits, and single dashes between segments (e.g. lead-strategy)</code></td>
+<td><code>newskillkey</code> isn't a valid key.</td>
 </tr>
 </tbody>
 </table>
@@ -19387,22 +19395,22 @@ channel-enable endpoint or persisted switch.</p>
 </thead>
 <tbody>
 <tr>
-<td>User-created (<code>usercreated: true</code>) on any agent</td>
-<td><strong>Allowed</strong>: row is hard-deleted, agent restarts.</td>
+<td>User-created (<code>usercreated: true</code>) under a key the agent's template doesn't have</td>
+<td><strong>Allowed</strong>: the row and its version history are deleted, and a starting or running agent restarts.</td>
 </tr>
 <tr>
-<td>Registry-owned / preset-owned (<code>usercreated: false</code>) on a <strong>template</strong> agent (the skill also exists in the template's preset skills)</td>
-<td><strong>Rejected</strong>: <code>"This skill belongs to the agent preset and cannot be deleted."</code> Disable it via <code>CustomSkillUpsert</code> with <code>enabled: false</code> instead.</td>
+<td><code>usercreated: false</code>: a template's skills and tasks, copied to the agent at deploy, and a custom build's registry rows (e.g. <code>cs-approval-policy</code>, bundled <code>cs-cron-*</code> tasks)</td>
+<td><strong>Rejected</strong> with <code>customskill-registry-not-deletable</code>. Disable it via <code>CustomSkillUpsert</code> with <code>enabled: false</code> instead.</td>
 </tr>
 <tr>
-<td>Registry-owned (<code>usercreated: false</code>) on a <strong>custom-build</strong> agent (no preset to compare against)</td>
-<td><strong>Rejected</strong>: <code>"This skill is registry-owned and cannot be deleted."</code> Disable it via <code>CustomSkillUpsert</code> with <code>enabled: false</code> instead. Custom builds carry registry-seeded rows (e.g. <code>cs-approval-policy</code>, bundled <code>cs-cron-*</code> clones) whose runtime contract the agent depends on, even though there's no template back-reference.</td>
+<td>User-created, under a key the agent's template also has</td>
+<td><strong>Rejected</strong> with <code>customskill-preset-not-deletable</code>. Disable it via <code>CustomSkillUpsert</code> with <code>enabled: false</code> instead.</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
-<p>In both reject branches the response carries <code>suggestion: "disable-via-upsert"</code> so panel UIs can offer a "Disable instead" CTA without re-querying the registry.</p>
+<p>In both reject branches the response carries <code>suggestion: "disable-via-upsert"</code> so panel UIs can offer a "Disable instead" CTA without re-querying the registry. The message is the key itself, as shown below. Deleting a skill also deletes its version history, so it can't be reverted. A key the agent doesn't have deletes nothing and answers <code>result: true</code>.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -19425,7 +19433,7 @@ channel-enable endpoint or persisted switch.</p>
 <td><code>skillkey</code></td>
 <td>string</td>
 <td>Yes</td>
-<td>The skill key to remove. User-created rows only. Registry-owned rows reject with <code>disable-via-upsert</code>.</td>
+<td>The skill key to remove. User-created rows only. Other rows are refused with <code>suggestion: "disable-via-upsert"</code>.</td>
 </tr>
 </tbody>
 </table>
@@ -19434,32 +19442,32 @@ channel-enable endpoint or persisted switch.</p>
 <h5 id="response-delete-allowed">Response (delete allowed)</h5>
 <pre><code class="language-json">{ &quot;result&quot;: true, &quot;errors&quot;: [] }
 </code></pre>
-<h5 id="response-preset-owned-rejected-with-suggestion">Response (preset-owned, rejected with suggestion)</h5>
+<h5 id="response-preset-owned-or-registry-owned-rejected-with-suggestion">Response (preset-owned or registry-owned, rejected with suggestion)</h5>
 <pre><code class="language-json">{
   &quot;result&quot;: false,
   &quot;errors&quot;: [
     {
       &quot;code&quot;: 0,
-      &quot;message&quot;: &quot;This skill belongs to the agent preset and cannot be deleted. Use enabled=false to disable it instead.&quot;
+      &quot;message&quot;: &quot;customskill-registry-not-deletable&quot;
     }
   ],
   &quot;suggestion&quot;: &quot;disable-via-upsert&quot;
 }
 </code></pre>
-<h5 id="response-registry-owned-on-a-custom-build-rejected-with-suggestion">Response (registry-owned on a custom build, rejected with suggestion)</h5>
+<h5 id="response-your-own-row-under-a-key-the-template-has-rejected-with-suggestion">Response (your own row under a key the template has, rejected with suggestion)</h5>
 <pre><code class="language-json">{
   &quot;result&quot;: false,
   &quot;errors&quot;: [
     {
       &quot;code&quot;: 0,
-      &quot;message&quot;: &quot;This skill is registry-owned and cannot be deleted. Use enabled=false to disable it instead.&quot;
+      &quot;message&quot;: &quot;customskill-preset-not-deletable&quot;
     }
   ],
   &quot;suggestion&quot;: &quot;disable-via-upsert&quot;
 }
 </code></pre>
 <h4 id="post-useragentcustomskillhistory"><strong>POST</strong> /UserAgent/CustomSkillHistory</h4>
-<p>Returns the version history for one custom skill on a useragent: a per-write audit trail with diff metadata + the resolved actor for each entry. Powers the "Version History" modal in the panel; useful for API consumers building audit views.</p>
+<p>Returns the version history for one custom skill on a useragent: one entry per change, holding the state before it, with diff metadata and the resolved actor. Creating a skill with <code>CustomSkillUpsert</code> adds none. Powers the "Version History" modal in the panel; useful for API consumers building audit views.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -19515,7 +19523,7 @@ channel-enable endpoint or persisted switch.</p>
       &quot;guid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
       &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
       &quot;skillkey&quot;: &quot;cs-content-tone&quot;,
-      &quot;operation&quot;: &quot;upsert&quot;,
+      &quot;operation&quot;: &quot;update-user&quot;,
       &quot;value&quot;: &quot;## Brand Voice\nTone: friendly\n...&quot;,
       &quot;intervalexpr&quot;: null,
       &quot;enabled&quot;: true,
@@ -19546,8 +19554,9 @@ channel-enable endpoint or persisted switch.</p>
 <p><strong>Field semantics.</strong> Each row captures the <strong>BEFORE</strong> state of the action that produced it (the history entry is written before the change is applied). The server-computed <code>after_*</code> and <code>prev_*</code> fields give you the resolved AFTER + previous-version snapshots without you having to walk the list manually:</p>
 <ul>
 <li><code>prev_*</code>: value as of the immediately-older entry (<code>null</code> for the oldest row).</li>
-<li><code>after_*</code>: value the row was left with after this action committed: pulled from the next-newer entry's BEFORE state, or from the skill's current live state for the newest entry. <code>null</code> when <code>operation: "delete-user"</code> (row was removed).</li>
+<li><code>after_*</code>: value the row was left with after this action committed: pulled from the next-newer entry's BEFORE state, or from the skill's current live state for the newest entry.</li>
 <li><code>changed_fields[]</code>: names of fields whose value differs from the immediately-older entry. Subset of <code>["value", "interval", "enabled"]</code>.</li>
+<li><code>operation</code>: <code>update-user</code> (a save), <code>rename</code>, <code>revert-to-history</code>, <code>reset-to-preset</code>, <code>clone-deploy</code> or <code>seed-custom-build</code> (written at deploy), or <code>insert-cascade</code> / <code>update-cascade</code> / <code>delete-cascade</code> (a template update).</li>
 <li><code>changedby_user</code>: resolved actor object (full shape: <code>uuid</code>, <code>firstname</code>, <code>lastname</code>, <code>email</code>, <code>username</code>, <code>avatar</code>, <code>avatarinitials</code>). <code>null</code> when <code>changedby</code> is a system value such as <code>"system"</code> or <code>"backfill-*"</code>, or when the user record was deleted.</li>
 </ul>
 </blockquote>
@@ -19603,13 +19612,9 @@ channel-enable endpoint or persisted switch.</p>
   &quot;current_enabled&quot;: true
 }
 </code></pre>
-<p><code>action</code> is <code>"reverted"</code>, <code>"reset-to-preset"</code>, <code>"deleted"</code> (preset removed upstream), or <code>"no-op"</code> (already matches target).</p>
+<p><code>action</code> is <code>"reverted"</code>, <code>"re-inserted"</code> (a version of a row that no longer exists, written back), <code>"reset"</code> (back to the template's text, interval and switch), <code>"deleted"</code> (the template no longer has the skill, so the row is removed) or <code>"no-op"</code> (already matches the target).</p>
 <h4 id="post-useragentcredentialfieldhistory"><strong>POST</strong> /UserAgent/CredentialFieldHistory</h4>
-<p>Returns the per-field write history for one credential group on a useragent. Sensitive values are redacted at read time as a belt-and-suspenders guard:</p>
-<ul>
-<li>A saved secret, such as a bot token or an auth token, never comes back as its value.</li>
-<li>Wiro-managed credentials return an empty <code>entries[]</code>.</li>
-</ul>
+<p>Returns the earlier values of one credential's fields, newest first (up to 500). Each entry is a value a save replaced, with who replaced it (<code>changedby</code>) and when (<code>changedat</code>). A first save adds no entry, and neither does a list sent whole (Telegram <code>groups</code>, Slack <code>channels</code>, Discord <code>guilds</code>, website <code>urls</code>). A secret's earlier value reads <code>"[REDACTED]"</code>. Wiro-managed credentials return an empty <code>entries[]</code>.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -19660,11 +19665,11 @@ channel-enable endpoint or persisted switch.</p>
       &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
       &quot;credentialkey&quot;: &quot;telegram&quot;,
       &quot;fieldname&quot;: &quot;allowedusers&quot;,
-      &quot;fieldvalue&quot;: [&quot;123456789&quot;],
+      &quot;fieldvalue&quot;: &quot;[\&quot;123456789\&quot;]&quot;,
       &quot;fieldstatus&quot;: &quot;user&quot;,
       &quot;parentfield&quot;: null,
       &quot;ordinal&quot;: 0,
-      &quot;operation&quot;: &quot;upsert&quot;,
+      &quot;operation&quot;: &quot;update&quot;,
       &quot;changedby&quot;: &quot;ada-uuid&quot;,
       &quot;changedby_user&quot;: {
         &quot;uuid&quot;: &quot;ada-uuid&quot;,
