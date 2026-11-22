@@ -5633,7 +5633,7 @@ A limit's `period` is `month` (the default), which resets on the 1st of each mon
 
 Every charge to the wallet for usage counts: model runs, workflow runs, realtime sessions, Studio, the Workflow Agent, agent plans, upgrades and credit packs. Deposits are not spending.
 
-The models Studio runs for you are checked and counted like the runs you start yourself: against the account's or the team's limits, your member limit in a team, the limit of the API key you sent the message with and the limit of the `studio` surface. What the chat of Studio and the Workflow Agent costs counts toward your limits too, on the `studio` and `workflow-agent` surfaces.
+The models Studio runs for you are checked and counted like the runs you start yourself: against the account's or the team's limits, your member limit in a team, the limit of the turn's project (the API key you sent the message with, or the workspace's [Studio project](/docs/studio#costs) for a message sent from wiro.ai) and the limit of the `studio` surface. What the chat of Studio and the Workflow Agent costs counts toward your limits too, on the `studio` and `workflow-agent` surfaces.
 
 ### When Limits Are Checked
 
@@ -6138,7 +6138,7 @@ Rules are checked before work starts:
 
 - Model runs: `/Run` and its `/sync` wait, realtime sessions, the [LLM gateway](/docs/completions-api), the [MCP server](/docs/wiro-mcp-server), the browser extensions and the dashboard
 - Workflow runs and resumes: every model step that will run must be allowed. Steps that will not run, such as the steps after a breakpoint, are not checked
-- Studio and the Workflow Agent: the models Studio runs for you, and the chat model of each message you send to Studio or the Workflow Agent, follow your own rules like the runs you start yourself: the account's or the team's rule, your member rule in a team, the rule of the API key you sent the message with and the rule of the `studio` surface, or of `workflow-agent` for a message to the Workflow Agent. A message whose chat model a rule blocks, the `model` it names or the default chat model when it names none, is refused with code `92` before anything runs. Chat models are LLM & Chat models: a rule that blocks LLM & Chat blocks them unless it allows the chat model by name, and a rule that lets only selected models run blocks them unless it allows LLM & Chat or the chat model. The Workflow Agent runs nothing but its chat model. [`/Studio/Status`](/docs/studio#post-studiostatus) and [`/StudioWorkflow/Status`](/docs/workflow-agent#post-studioworkflowstatus) list the chat models your rules block
+- Studio and the Workflow Agent: the models Studio runs for you, and the chat model of each message you send to Studio or the Workflow Agent, follow your own rules like the runs you start yourself: the account's or the team's rule, your member rule in a team, the rule of the turn's project (the API key you sent the message with, or the workspace's [Studio project](/docs/studio#costs) for a message sent from wiro.ai) and the rule of the `studio` surface, or of `workflow-agent` for a message to the Workflow Agent. A message whose chat model a rule blocks, the `model` it names or the default chat model when it names none, is refused with code `92` before anything runs. Chat models are LLM & Chat models: a rule that blocks LLM & Chat blocks them unless it allows the chat model by name, and a rule that lets only selected models run blocks them unless it allows LLM & Chat or the chat model. The Workflow Agent runs nothing but its chat model. [`/Studio/Status`](/docs/studio#post-studiostatus) and [`/StudioWorkflow/Status`](/docs/workflow-agent#post-studioworkflowstatus) list the chat models your rules block
 - The models your deployed agents run through Wiro
 - An agent's chat model: choosing one in the agent's settings, or sending `model` with `Message/Send`, follows that agent's own rule. If its rule blocks the model the agent already uses, its model calls are refused and the turn ends with `[MODEL_NOT_ALLOWED]`. A Scheduled Task whose model the rule blocks is paused rather than failed, and runs again at its next scheduled time once the model is allowed or another one is chosen
 - An agent's built-in voice: transcription of the voice notes people send the agent, and the voice replies it sends, follow that agent's own rule as Audio & Speech models. A rule that blocks Audio & Speech, or that lets only selected models run without allowing Audio & Speech, blocks them, even when it allows LLM & Chat. Voice notes are then not transcribed, and the agent replies in text. An agent that chats on a Gemini model has its voice notes transcribed by `google/gemini-3-flash`, so a rule that names that model decides them too. A rule that does not name that model blocks those voice notes unless it lets both Audio & Speech and LLM & Chat models run
@@ -8615,13 +8615,13 @@ A session is one conversation with its own memory. `sessionkey` names it, and `"
 - **$10 to start a turn.** Send and SendForm need at least $10 spendable in the wallet of the key's workspace. Below that, the message is refused with code `97` (`Insufficient balance`), with `walletUsd` and `minTopup` in the response, and nothing is charged.
 - **Project.** A call with an API key runs on that key's project. Messages sent from wiro.ai run on the workspace's Studio project, which the Workflow Agent shares with [Studio](/docs/studio#costs): the first Studio or Workflow Agent message from wiro.ai creates it, or uses the workspace's existing project named "Studio". [StudioWorkflow/Status](#post-studioworkflowstatus) shows it, and [Studio/ProjectSet](/docs/studio#post-studioprojectset) changes it.
 - **Chat.** Each turn is charged after it ends for the tokens it used, at the chat model's rates in [StudioWorkflow/Status](#post-studioworkflowstatus) (credits per 1M tokens; 1 credit is $0.01), on the turn's project and the `workflow-agent` surface. The reply's `tokencost` shows the charge in credits: `tokencost / 100` is the amount in USD.
-- **Spend limits and Model Access.** The chat counts toward your workspace's [spend limits](/docs/spend-limits), and its chat model follows your [Model Access](/docs/model-access) rules: the account's or the team's, your own in a team, those of the API key you sent the message with, and those of the `workflow-agent` [surface](/docs/tasks#task-surfaces). A message whose chat model a rule blocks is refused with code `92` before anything runs.
+- **Spend limits and Model Access.** The chat counts toward your workspace's [spend limits](/docs/spend-limits), and its chat model follows your [Model Access](/docs/model-access) rules: the account's or the team's, your own in a team, those of the turn's project (the API key you sent the message with, or the Studio project for a message sent from wiro.ai), and those of the `workflow-agent` [surface](/docs/tasks#task-surfaces). A message whose chat model a rule blocks is refused with code `92` before anything runs.
 - The agent only reads the catalog, so its turns start no model runs. Saving a proposal is free, and running the saved workflow is billed like any [workflow run](/docs/workflows#costs).
 - [StudioWorkflow/Transactions](#post-studioworkflowtransactions) lists the charges.
 
 ## **POST** /StudioWorkflow/Status
 
-Returns the wallet check, the chat models the agent can use and the workspace's Studio project, after settling your pending Workflow Agent charges. It takes no request fields, and its fields are the same as [Studio/Status](/docs/studio#post-studiostatus): `walletUsd`, `needsTopup`, `minTopup` (`10`), `tokenRates`, `agentModel.chatModel`, `blockedModels`, `agentModelBlocked`, `agentModelMessage` and `project` (`current`, `options` and `canchange`), the Studio project the Workflow Agent shares with Studio. `title` is `"Workflow Agent"`.
+Returns the wallet check, the chat models the agent can use and the project it works on, after settling your pending Workflow Agent charges. It takes no request fields, and its fields are the same as [Studio/Status](/docs/studio#post-studiostatus): `walletUsd`, `needsTopup`, `minTopup` (`10`), `tokenRates`, `agentModel.chatModel`, `blockedModels`, `agentModelBlocked`, `agentModelMessage` and `project` (`current`, `options` and `canchange`): with an API key the key's own project, signed in the workspace's Studio project, which the Workflow Agent shares with Studio. `title` is `"Workflow Agent"`.
 
 ## **POST** /StudioWorkflow/Message/Send
 
@@ -8837,12 +8837,12 @@ A session is one conversation with its own memory. `sessionkey` names it, and `"
 - **Project.** Studio works on a project of the workspace. A call with an API key runs on that key's project. Work sent from wiro.ai runs on the workspace's Studio project: one for a personal workspace and one for each team, shared by Studio and the [Workflow Agent](/docs/workflow-agent). The first Studio or Workflow Agent message sent from wiro.ai in a workspace that has none creates a project named "Studio" there, or uses the workspace's existing project of that name. It is a normal project: like any project you create, it gets an API key, and you get the email that comes with a new key. [Studio/Status](#post-studiostatus) shows it, and [Studio/ProjectSet](#post-studioprojectset) changes it.
 - **Chat.** Each turn is charged for the tokens it used, at the chat model's rates in [Studio/Status](#post-studiostatus) (credits per 1M tokens; 1 credit is $0.01), on the turn's project and the `studio` surface. The reply shows the chat charge in `tokencost`, in credits: `tokencost / 100` is the amount in USD.
 - **Model runs.** The models Studio runs for you are your own tasks, on the turn's project: [Task/List](/docs/tasks#task-list) and [Task/Detail](/docs/tasks#task-detail) return them with `surface` `studio`, and [Studio/Tasks](#post-studiotasks) lists them too. Each is charged like any model run when it finishes: at the model's price when it succeeds, and not at all when it fails or is cancelled. Studio/Tasks shows each run's `totalcost`.
-- **Spend limits and Model Access.** The models Studio runs for you follow your workspace's [spend limits](/docs/spend-limits) and [Model Access](/docs/model-access) rules, the same as the runs you start yourself: the account's or the team's, your own in a team, those of the API key you sent the message with, and those of the `studio` [surface](/docs/tasks#task-surfaces). So does the chat: what it costs counts toward spend limits, and a message whose chat model a Model Access rule blocks is refused with code `92` before anything runs.
+- **Spend limits and Model Access.** The models Studio runs for you follow your workspace's [spend limits](/docs/spend-limits) and [Model Access](/docs/model-access) rules, the same as the runs you start yourself: the account's or the team's, your own in a team, those of the turn's project (the API key you sent the message with, or the Studio project for a message sent from wiro.ai), and those of the `studio` [surface](/docs/tasks#task-surfaces). So does the chat: what it costs counts toward spend limits, and a message whose chat model a Model Access rule blocks is refused with code `92` before anything runs.
 - Chat charges are made within about a minute of the turn ending, and model runs are charged when they finish, like any model run. Both appear in the wallet's transactions, and [Studio/Transactions](#post-studiotransactions) lists the chat charges.
 
 ## **POST** /Studio/Status
 
-Returns the wallet check, the chat models Studio can use and the workspace's Studio project. It settles your pending Studio charges first, so `walletUsd` is current. It takes no request fields.
+Returns the wallet check, the chat models Studio can use and the project Studio works on. It settles your pending Studio charges first, so `walletUsd` is current. It takes no request fields.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -8854,7 +8854,7 @@ Returns the wallet check, the chat models Studio can use and the workspace's Stu
 | `blockedModels` | string[] | The chat models you could pick that your Model Access rules block. `[]` when none is blocked. |
 | `agentModelBlocked` | boolean | `true` when your rules block `agentModel.chatModel`: a message that leaves `model` out is then refused with code `92`. |
 | `agentModelMessage` | string \| null | The refusal such a message gets when `agentModelBlocked` is `true`, else `null`. |
-| `project.current` | object \| null | The workspace's Studio project, `{ "id", "name" }` with `id` as a string: the project that work sent from wiro.ai runs on (see [Costs](#costs)). `null` until the workspace has one; the first Studio or Workflow Agent message from wiro.ai creates it. A call with an API key runs on the key's project instead. |
+| `project.current` | object \| null | The project Studio works on, `{ "id", "name" }` with `id` as a string (see [Costs](#costs)). With an API key, the key's own project. Signed in, the workspace's Studio project, or `null` until the workspace has one: the first Studio or Workflow Agent message from wiro.ai creates it. |
 | `project.options` | object[] | The projects you can make the Studio project with [ProjectSet](#post-studioprojectset), each `{ "id", "name" }`. Signed in to a personal workspace, your personal projects; in a team, every team project for a team admin or the organization owner, and none for other members. Always `[]` with an API key. |
 | `project.canchange` | boolean | `true` when you can change the Studio project. `false` for team members who are not admins, and with an API key. |
 | `title` | string | The agent's name. |
@@ -8899,14 +8899,14 @@ The response also carries fields that Wiro's own apps use. Ignore the ones not l
   "agentModelBlocked": false,
   "agentModelMessage": null,
   "project": {
-    "current": { "id": "6839", "name": "Studio" },
+    "current": { "id": "48211", "name": "Production" },
     "options": [],
     "canchange": false
   }
 }
 ```
 
-This call was made with an API key, so `project.options` is empty and `project.canchange` is `false`: the key's turns run on the key's own project.
+This call was made with the API key of the Production project, so `project.current` is that project, `project.options` is empty and `project.canchange` is `false`: the key's turns always run on its own project.
 
 When a rule blocks a chat model, Status says so. With a team rule that blocks `openai/gpt-5-6-sol`, Studio's default chat model, these fields read:
 

@@ -48,7 +48,7 @@ A limit's `period` is `month` (the default), which resets on the 1st of each mon
 
 Every charge to the wallet for usage counts: model runs, workflow runs, realtime sessions, Studio, the Workflow Agent, agent plans, upgrades and credit packs. Deposits are not spending.
 
-The models Studio runs for you are checked and counted like the runs you start yourself: against the account's or the team's limits, your member limit in a team, the limit of the API key you sent the message with and the limit of the `studio` surface. What the chat of Studio and the Workflow Agent costs counts toward your limits too, on the `studio` and `workflow-agent` surfaces.
+The models Studio runs for you are checked and counted like the runs you start yourself: against the account's or the team's limits, your member limit in a team, the limit of the turn's project (the API key you sent the message with, or the workspace's [Studio project](/docs/studio#costs) for a message sent from wiro.ai) and the limit of the `studio` surface. What the chat of Studio and the Workflow Agent costs counts toward your limits too, on the `studio` and `workflow-agent` surfaces.
 
 ### When Limits Are Checked
 
