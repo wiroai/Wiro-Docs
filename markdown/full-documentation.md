@@ -13730,7 +13730,7 @@ Then connect `wordpress` with its site address, user name and application passwo
 }
 ```
 
-Then connect `twitter`, `instagram`, `linkedin` and `facebook-pages`. Each signs in with its vendor, with an app of your own: [`ConnectorConnect`](/docs/agent-connectors#connect-with-a-sign-in) answers an `authorizeUrl` for your customer to open, and the Pages or accounts to post to are picked afterwards with [account pickers](/docs/agent-connectors#account-pickers).
+Then connect `twitter`, `instagram`, `linkedin` and `facebook-pages`. Each signs in with its vendor, with an app of your own: [`ConnectorConnect`](/docs/agent-connectors#connect-with-a-sign-in) answers an `authorizeUrl` for your customer to open. X posts as the account that signed in. LinkedIn takes the id of its Company Page in the required `organizationid` field, sent with the sign-in, and posts as that Page or as the member who signed in. The Instagram accounts and Facebook Pages to post to are picked afterwards with [`ConnectorSetAccounts`](/docs/agent-connectors#post-useragentconnectorsetaccounts): see [Account Pickers](/docs/agent-connectors#account-pickers).
 
 ## Subscription & Billing for Custom Builds
 

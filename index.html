@@ -35245,7 +35245,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot; \
   &quot;credentials&quot;: {}
 }
 </code></pre>
-<p>Then connect <code>twitter</code>, <code>instagram</code>, <code>linkedin</code> and <code>facebook-pages</code>. Each signs in with its vendor, with an app of your own: <a href="/docs/agent-connectors#connect-with-a-sign-in"><code>ConnectorConnect</code></a> answers an <code>authorizeUrl</code> for your customer to open, and the Pages or accounts to post to are picked afterwards with <a href="/docs/agent-connectors#account-pickers">account pickers</a>.</p>
+<p>Then connect <code>twitter</code>, <code>instagram</code>, <code>linkedin</code> and <code>facebook-pages</code>. Each signs in with its vendor, with an app of your own: <a href="/docs/agent-connectors#connect-with-a-sign-in"><code>ConnectorConnect</code></a> answers an <code>authorizeUrl</code> for your customer to open. X posts as the account that signed in. LinkedIn takes the id of its Company Page in the required <code>organizationid</code> field, sent with the sign-in, and posts as that Page or as the member who signed in. The Instagram accounts and Facebook Pages to post to are picked afterwards with <a href="/docs/agent-connectors#post-useragentconnectorsetaccounts"><code>ConnectorSetAccounts</code></a>: see <a href="/docs/agent-connectors#account-pickers">Account Pickers</a>.</p>
 <h2 id="subscription-billing-for-custom-builds">Subscription &amp; Billing for Custom Builds</h2>
 <p>Subscriptions for custom builds work exactly like template deploys:</p>
 <ul>
