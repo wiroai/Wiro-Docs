@@ -870,7 +870,7 @@ The agent gets these tools of the Wiro MCP server, and no others:
 | `run_model` | `wiro__run_model` | Runs a model. |
 | `get_task` | `wiro__get_task` | Reads a task's status and outputs. |
 | `wait_for_task` | `wiro__wait_for_task` | Keeps waiting for a task without starting another run. |
-| `list_tasks` | `wiro__list_tasks` | Lists recent model tasks of the workspace that owns the agent's project: every project in it, and runs started on wiro.ai. |
+| `list_tasks` | `wiro__list_tasks` | Lists the recent model tasks the agent started. |
 | `cancel_task` | `wiro__cancel_task` | Cancels a queued task. |
 | `kill_task` | `wiro__kill_task` | Stops a queued or running task. |
 | `upload_file` | `wiro__upload_file` | Uploads a file from a public URL, for use as a model input. |
@@ -879,7 +879,7 @@ The agent gets these tools of the Wiro MCP server, and no others:
 
 The list can't be widened. Whatever the connector's catalog row says, Wiro gives the agent no other tool of the server, and also refuses any tool whose name has one of these words in it: `agent`, `workflow`, `billing`, `account`, `project`, `studio`, `credential`, `oauth`, `skill`, `spend`, `limit`, `access`, `wallet`, `team`, `organization`, `coupon`, `invoice`, `payment`, `key` or `user`. `tools` on [Detail](#post-agentconnectordetail) lists only the tools the agent gets.
 
-**What the task tools reach.** `list_tasks`, `get_task`, `cancel_task` and `kill_task` work on the tasks of the whole workspace that owns the agent's Wiro project, not only on the runs the agent started. `list_tasks` lists that workspace's recent model tasks with their outputs, from every project in it and from runs started on wiro.ai, and `get_task` reads any of them by its id. `cancel_task` and `kill_task` can stop any of them, and also any other task the project's creator could stop: that person's own tasks in any workspace, and the tasks of every team they are a member of. So connect the `wiro` connector only to an agent whose users may see that workspace's work. When several agents share one project, such as one agent for each of your customers, each of them can list, read and stop the others' runs.
+**What the task tools reach.** `list_tasks`, `get_task`, `wait_for_task`, `get_task_price`, `cancel_task` and `kill_task` work only on the tasks the agent started, with this connector or from the agent's skills. A task anyone else started, such as another agent on the same project, a person on wiro.ai or your own backend, is not listed, and the other tools answer for it as for a task that does not exist. Your own backend, calling with an API key of the agent's workspace, still sees every task in it. On an agent several of your users share, each of them can reach the runs the agent made for the others: use one agent per customer to keep them apart.
 
 ### Connecting it
 
@@ -934,7 +934,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
 - The project must be one you created, or any project of a team you are an admin of, and in the agent's workspace: a personal agent takes one of its owner's personal projects, a team agent one of its team's projects. The request must come from the agent's workspace too.
 - The connector follows the agent's project: a project bound later with `CredentialProjectBind` or another `ConnectorConnect` is the one its tools use after the restart. [ConnectorList](#post-useragentconnectorlist) shows the agent's current project as `wiroprojectid`, a string.
 - An agent left with no Wiro project keeps the connection, but gets no `wiro` tools until a project is bound again, and `wiroprojectid` reads `null`.
-- The agent's [Wiro API path list](/docs/agent-overview#post-useragentupdatesettings) (`wiroapiallowedpaths`) limits the Wiro API calls its skills make with the agent's own Wiro project; it doesn't apply to this connector's tools, which the list above fixes. They reach further than the default path list, which has `Task/Detail` but not `Task/List`, `Task/Cancel` or `Task/Kill`.
+- The agent's [Wiro API path list](/docs/agent-overview#post-useragentupdatesettings) (`wiroapiallowedpaths`) limits the Wiro API calls its skills make with the agent's own Wiro project; it doesn't apply to this connector's tools, which the list above fixes.
 - In chat, the agent proposes a `project` card for it, which binds the project the same way: see [Project: Wiro AI Models](/docs/agent-chat-integration#project-wiro-ai-models).
 
 ### Moving the agent to another workspace
