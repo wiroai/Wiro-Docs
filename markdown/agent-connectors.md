@@ -599,7 +599,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorList" \
       "updatedat": 1795390460,
       "tokenexpiresat": 1800574400,
       "refreshtokenexpiresat": null,
-      "scope": "pages_show_list,pages_manage_posts,pages_read_engagement",
+      "scope": "pages_show_list pages_manage_posts publish_video pages_manage_engagement pages_read_engagement pages_read_user_content pages_manage_metadata pages_messaging read_insights",
       "accounts": { "pages": ["123456789012345"] },
       "wiroprojectid": null,
       "savedvariables": ["appid", "appsecret"],
@@ -616,8 +616,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorList" \
 | `catalogstatus` | `active` while the connector is offered. `hidden` or `retired` when it left the catalog: the agent no longer gets its tools, and only a disconnect is left. |
 | `status` | See the table below. |
 | `connectedat`, `updatedat` | When the connection last connected, and its last change (Unix seconds). |
-| `tokenexpiresat`, `refreshtokenexpiresat` | Sign-in connections: when the access token and the refresh token expire, or `null`. Wiro refreshes the access token on its own. |
-| `scope` | The scopes the vendor granted, as it sent them. For a sign-in on a vendor's own MCP server whose token answer names none, the scopes Wiro asked for. |
+| `tokenexpiresat`, `refreshtokenexpiresat` | Sign-in connections: when the access token and the refresh token expire, or `null`. Wiro refreshes the access token on its own, except on a Facebook Pages or Meta Ads sign-in: Meta's token lasts about 60 days and cannot be refreshed, so when it runs out, the connector's next use (or an account listing) sets the connection to `reauth` with `lasterror: "token_not_refreshable"`, and your customer signs in again. A System User token (`mode: "key"`) set never to expire avoids this. |
+| `scope` | The scopes the vendor granted, as it sent them. When the vendor's token answer names none, as Facebook's does, the scopes Wiro asked for, separated by spaces. |
 | `accounts` | The account selection, `{ <picker key>: [ids] }`. |
 | `wiroprojectid` | Wiro AI Models (`wiro`) only: the agent's own Wiro project, the one the connector acts with, as a string, or `null` when the agent has none. See [Wiro AI Models](#the-wiro-connector). |
 | `savedvariables` | The names of the values saved for this connection, sorted. Use them to mark fields as saved; their values are never shown. |
@@ -627,7 +627,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorList" \
 |----------|---------|--------------|
 | `connected` | The agent has the connector's tools. | Connected, with Disconnect and, when it has pickers, the account choice. |
 | `pending` | A sign-in was started and has not come back yet, or the connection misses a required value. | Waiting for the sign-in, with a way to start it again; or the form, to send the missing value with ConnectorConnect. |
-| `reauth` | The sign-in expired or was revoked at the vendor: refreshing it failed (`lasterror` is a code), or the vendor's own MCP server refused it with HTTP 401 or 403 as Wiro listed the connection's accounts (`lasterror: "unauthorized"`; `"no_access_token"` when the connection held no token to send). Or the connection holds a way in the connector no longer takes (`lasterror: "auth_changed"`): a Gmail app password, or a sign-in with Wiro's own app on a connector whose `wiroapp` is `false`; sign in again with an OAuth app of your own. Until the agent's next restart, the connector's tools answer that it must be connected again; after it, the agent no longer has them. | Reconnect: start a new sign-in with ConnectorConnect. |
+| `reauth` | The sign-in expired or was revoked at the vendor: refreshing it failed (`lasterror` is a code: `token_not_refreshable` when a Facebook Pages or Meta Ads sign-in's 60-day token ran out), or the vendor's own MCP server refused it with HTTP 401 or 403 as Wiro listed the connection's accounts (`lasterror: "unauthorized"`; `"no_access_token"` when the connection held no token to send). Or the connection holds a way in the connector no longer takes (`lasterror: "auth_changed"`): a Gmail app password, or a sign-in with Wiro's own app on a connector whose `wiroapp` is `false`; sign in again with an OAuth app of your own. Until the agent's next restart, the connector's tools answer that it must be connected again; after it, the agent no longer has them. | Reconnect: start a new sign-in with ConnectorConnect. |
 | `error` | The last sign-in failed (`lasterror` says how). | Connect again. |
 
 A connector that was never connected, or was disconnected, has no row.
@@ -734,7 +734,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetAccounts" \
       "updatedat": 1795390520,
       "tokenexpiresat": 1800574400,
       "refreshtokenexpiresat": null,
-      "scope": "pages_show_list,pages_manage_posts,pages_read_engagement",
+      "scope": "pages_show_list pages_manage_posts publish_video pages_manage_engagement pages_read_engagement pages_read_user_content pages_manage_metadata pages_messaging read_insights",
       "accounts": { "pages": ["123456789012345", "234567890123456"] },
       "wiroprojectid": null,
       "savedvariables": ["appid", "appsecret"],
@@ -849,6 +849,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetAccounts" \
 
 Once the agent restarts, its TikTok Ads tools work with the saved advertisers only: a call that names any other advertiser is refused before it leaves the agent.
 
+- Campaigns, ad groups, campaign copies, and Smart+ campaigns, ad groups and ads that the agent creates start paused: turn them on with the status update tools or in TikTok Ads Manager.
+- A call that names a Business Center (`bc_id`) is refused before it leaves the agent: the connector picks advertisers only.
+- Business Center, billing and payment, TikTok One, Creator Marketplace and Reach & Frequency buying tools are not offered.
 - When TikTok's server no longer accepts the connection's sign-in (HTTP 401 or 403), `ConnectorAccounts` and `ConnectorSetAccounts` answer `The sign-in for this connector expired or was revoked, so it has to be connected again. Ask the agent's operator to reconnect it.` Start a new sign-in with [ConnectorConnect](#connect-with-a-sign-in), then list the advertisers again.
 
 ## Disconnecting

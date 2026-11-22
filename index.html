@@ -28784,7 +28784,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
       &quot;updatedat&quot;: 1795390460,
       &quot;tokenexpiresat&quot;: 1800574400,
       &quot;refreshtokenexpiresat&quot;: null,
-      &quot;scope&quot;: &quot;pages_show_list,pages_manage_posts,pages_read_engagement&quot;,
+      &quot;scope&quot;: &quot;pages_show_list pages_manage_posts publish_video pages_manage_engagement pages_read_engagement pages_read_user_content pages_manage_metadata pages_messaging read_insights&quot;,
       &quot;accounts&quot;: { &quot;pages&quot;: [&quot;123456789012345&quot;] },
       &quot;wiroprojectid&quot;: null,
       &quot;savedvariables&quot;: [&quot;appid&quot;, &quot;appsecret&quot;],
@@ -28825,11 +28825,11 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </tr>
 <tr>
 <td><code>tokenexpiresat</code>, <code>refreshtokenexpiresat</code></td>
-<td>Sign-in connections: when the access token and the refresh token expire, or <code>null</code>. Wiro refreshes the access token on its own.</td>
+<td>Sign-in connections: when the access token and the refresh token expire, or <code>null</code>. Wiro refreshes the access token on its own, except on a Facebook Pages or Meta Ads sign-in: Meta's token lasts about 60 days and cannot be refreshed, so when it runs out, the connector's next use (or an account listing) sets the connection to <code>reauth</code> with <code>lasterror: "token_not_refreshable"</code>, and your customer signs in again. A System User token (<code>mode: "key"</code>) set never to expire avoids this.</td>
 </tr>
 <tr>
 <td><code>scope</code></td>
-<td>The scopes the vendor granted, as it sent them. For a sign-in on a vendor's own MCP server whose token answer names none, the scopes Wiro asked for.</td>
+<td>The scopes the vendor granted, as it sent them. When the vendor's token answer names none, as Facebook's does, the scopes Wiro asked for, separated by spaces.</td>
 </tr>
 <tr>
 <td><code>accounts</code></td>
@@ -28874,7 +28874,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </tr>
 <tr>
 <td><code>reauth</code></td>
-<td>The sign-in expired or was revoked at the vendor: refreshing it failed (<code>lasterror</code> is a code), or the vendor's own MCP server refused it with HTTP 401 or 403 as Wiro listed the connection's accounts (<code>lasterror: "unauthorized"</code>; <code>"no_access_token"</code> when the connection held no token to send). Or the connection holds a way in the connector no longer takes (<code>lasterror: "auth_changed"</code>): a Gmail app password, or a sign-in with Wiro's own app on a connector whose <code>wiroapp</code> is <code>false</code>; sign in again with an OAuth app of your own. Until the agent's next restart, the connector's tools answer that it must be connected again; after it, the agent no longer has them.</td>
+<td>The sign-in expired or was revoked at the vendor: refreshing it failed (<code>lasterror</code> is a code: <code>token_not_refreshable</code> when a Facebook Pages or Meta Ads sign-in's 60-day token ran out), or the vendor's own MCP server refused it with HTTP 401 or 403 as Wiro listed the connection's accounts (<code>lasterror: "unauthorized"</code>; <code>"no_access_token"</code> when the connection held no token to send). Or the connection holds a way in the connector no longer takes (<code>lasterror: "auth_changed"</code>): a Gmail app password, or a sign-in with Wiro's own app on a connector whose <code>wiroapp</code> is <code>false</code>; sign in again with an OAuth app of your own. Until the agent's next restart, the connector's tools answer that it must be connected again; after it, the agent no longer has them.</td>
 <td>Reconnect: start a new sign-in with ConnectorConnect.</td>
 </tr>
 <tr>
@@ -29049,7 +29049,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
       &quot;updatedat&quot;: 1795390520,
       &quot;tokenexpiresat&quot;: 1800574400,
       &quot;refreshtokenexpiresat&quot;: null,
-      &quot;scope&quot;: &quot;pages_show_list,pages_manage_posts,pages_read_engagement&quot;,
+      &quot;scope&quot;: &quot;pages_show_list pages_manage_posts publish_video pages_manage_engagement pages_read_engagement pages_read_user_content pages_manage_metadata pages_messaging read_insights&quot;,
       &quot;accounts&quot;: { &quot;pages&quot;: [&quot;123456789012345&quot;, &quot;234567890123456&quot;] },
       &quot;wiroprojectid&quot;: null,
       &quot;savedvariables&quot;: [&quot;appid&quot;, &quot;appsecret&quot;],
@@ -29191,6 +29191,9 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </code></pre>
 <p>Once the agent restarts, its TikTok Ads tools work with the saved advertisers only: a call that names any other advertiser is refused before it leaves the agent.</p>
 <ul>
+<li>Campaigns, ad groups, campaign copies, and Smart+ campaigns, ad groups and ads that the agent creates start paused: turn them on with the status update tools or in TikTok Ads Manager.</li>
+<li>A call that names a Business Center (<code>bc_id</code>) is refused before it leaves the agent: the connector picks advertisers only.</li>
+<li>Business Center, billing and payment, TikTok One, Creator Marketplace and Reach &amp; Frequency buying tools are not offered.</li>
 <li>When TikTok's server no longer accepts the connection's sign-in (HTTP 401 or 403), <code>ConnectorAccounts</code> and <code>ConnectorSetAccounts</code> answer <code>The sign-in for this connector expired or was revoked, so it has to be connected again. Ask the agent's operator to reconnect it.</code> Start a new sign-in with <a href="#connect-with-a-sign-in">ConnectorConnect</a>, then list the advertisers again.</li>
 </ul>
 <h2 id="disconnecting">Disconnecting</h2>
