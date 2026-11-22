@@ -15271,7 +15271,7 @@ import type {
 <p>Moving to a higher plan while a lower one is scheduled cancels the scheduled move first, and cancelling the subscription clears it too.</p>
 <h3 id="paying-for-plans">Paying for Plans</h3>
 <p>Agent plans are paid from the Wiro balance of the agent's workspace: your personal balance for a personal agent, the team's balance for a team agent. A new plan, a move to a higher plan, every renewal and a plan started again after it ended are all charged there, in the dashboard, the API and MCP alike. An agent plan has no card subscription: a card only adds funds to the balance (see <a href="#adding-funds">Adding Funds</a>).</p>
-<p>When the balance can't pay a plan's price, <code>Deploy</code>, <code>CreateSubscriptionCheckout</code>, <code>UpgradeTier</code> and <code>RenewSubscription</code> are refused with code <code>97</code>, and nothing is created or charged. The message says what the balance holds and what the plan needs, and <code>neededusd</code> is the amount to add, never less than the smallest deposit:</p>
+<p>When the balance can't pay a plan's price, <code>Deploy</code>, <code>CreateSubscriptionCheckout</code>, <code>UpgradeTier</code> and <code>RenewSubscription</code> are refused with code <code>97</code>, and nothing is created or charged. The message says what the balance holds and what the plan needs (a team agent's starts <code>The team's balance is</code>), and <code>neededusd</code> is the amount to add, in USD, rounded up to the cent and never less than $20, the smallest deposit:</p>
 <pre><code class="language-json">{
   &quot;result&quot;: false,
   &quot;errors&quot;: [
@@ -15281,7 +15281,7 @@ import type {
 }
 </code></pre>
 <p>Add at least <code>neededusd</code> to the balance, then send the same call again.</p>
-<p>A plan that was paid by card before agent plans moved to the balance keeps its current period as paid. At the end of that period it renews from the balance like every other plan, or ends when the balance can't pay the renewal. Until then its <code>subscription</code> reads <code>provider: "stripe"</code> with <code>nextprovider: "prepaid"</code>, and a move to a higher plan is paid from the balance. The switch itself charges and refunds nothing.</p>
+<p>A plan that was paid by card before agent plans moved to the balance keeps its current period as paid. At the end of that period it renews from the balance like every other plan, or ends when the balance can't pay the renewal. Until then its <code>subscription</code> reads <code>provider: "stripe"</code> with <code>nextprovider: "prepaid"</code>, and a move to a higher plan is paid from the balance. The switch itself charges and refunds nothing. Such a plan can also be cancelled with <a href="#post-useragentcancelsubscription"><code>CancelSubscription</code></a>: it then ends at the end of its period instead of switching.</p>
 <h3 id="adding-funds">Adding Funds</h3>
 <p>An agent has no balance of its own: past its plan's included usage it uses the Wiro balance of its workspace, which also pays its plan. Add funds to that balance as a normal wallet deposit in the Wiro dashboard, under <strong>Credit Balance</strong> (<a href="https://wiro.ai/panel/wallet/deposit/credit-card">add funds</a>), with the agent's workspace selected. A team's balance is funded the same way (see <a href="/docs/organizations-billing">Team Billing</a>). Funds added from an agent's page in the dashboard land in the same balance and are also listed in that agent's <a href="/docs/agent-transactions">Transactions</a>. Automatic Payment tops the balance up when it runs low, agent usage included.</p>
 <p>Extra credit packs are retired: <a href="#post-useragentcreateextracreditcheckout"><code>CreateExtraCreditCheckout</code></a> charges nothing and only answers that they are. What was left of a pack bought earlier moved to the balance that paid for it, as a deposit that keeps the pack's expiry date.</p>
@@ -15300,7 +15300,7 @@ import type {
 </code></pre>
 <p>Rates are in <strong>cents per 1,000,000 tokens</strong>: <code>"input_per_1m": 625</code> is $6.25 per million input tokens. <code>input_per_1m</code> prices uncached input, <code>cached_input_per_1m</code> cache reads, <code>cache_write_per_1m</code> cache writes and <code>output_per_1m</code> output. Wiro prices every LLM call exactly, at the rates of the model that actually served it, and charges the AI usage in whole cents.</p>
 <p>Cache-read and cache-write tokens are charged only when the model's rate defines them. <code>inputtokens</code> contains only uncached input; <code>totaltokens</code> is always the exact sum of input, output, cache-read, and cache-write tokens. For models with <code>long_context_threshold_tokens</code>, Wiro selects the long-context rate <strong>per LLM call</strong> using <code>input + cacheRead + cacheWrite</code>. You don't send anything. The agent's <a href="/docs/agent-transactions#tx-transactionlist">Transactions</a> list its AI usage as <code>ai-usage</code> rows, each with its model and its tokens and cost by kind. Per-turn token counts and cost also ride on each assistant message (<code>inputtokens</code> / <code>outputtokens</code> / <code>cachereadtokens</code> / <code>cachewritetokens</code> / <code>totaltokens</code> / <code>tokencost</code> / <code>model</code>, with <code>tokencost</code> in cents, see <a href="/docs/agent-messaging">Agent Messaging</a>).</p>
-<p>AI usage comes from the plan's included usage for the period first, then from the balance. A new turn needs included usage left or a balance of at least $0.50. When both are short, the agent pauses: <a href="/docs/agent-messaging#post-useragentmessagesend"><code>POST /UserAgent/Message/Send</code></a> and <a href="#post-useragentstart"><code>POST /UserAgent/Start</code></a> are refused until funds are added or the plan renews (see <a href="#ai-usage-and-the-balance">AI Usage and the Balance</a>).</p>
+<p>AI usage comes from the plan's included usage for the period first, then from the balance. A new turn needs included usage left or a balance of at least $0.50. When both are short, the agent pauses: <a href="/docs/agent-messaging#post-useragentmessagesend"><code>POST /UserAgent/Message/Send</code></a> and <a href="#post-useragentstart"><code>POST /UserAgent/Start</code></a> are refused with code <code>97</code> until funds are added or the plan renews (see <a href="#ai-usage-and-the-balance">AI Usage and the Balance</a>).</p>
 <blockquote>
 <p><strong>Voice realtime audio is billed separately.</strong> Live voice-call audio (for <code>util-voice-receptionist</code> agents) is <strong>not</strong> the agent's AI usage. It is billed to the wallet of the agent's Wiro project (the <code>wiro</code> credential, see <a href="/docs/agent-credentials#the-agents-wiro-project">The agent's Wiro project</a>). The voice-prep turn before the call and the post-call text turn are AI usage like any other turn.</p>
 </blockquote>
@@ -17321,7 +17321,7 @@ for the channel contract.</p>
 <tr>
 <td><code>resetsat</code></td>
 <td><code>number|null</code></td>
-<td>Unix seconds when the plan renews and its included AI usage starts again. <code>null</code> when it isn't known, as in the <code>Message/Send</code> refusal.</td>
+<td>Unix seconds when the plan renews and its included AI usage starts again. <code>null</code> when the plan's renewal can't be read.</td>
 </tr>
 <tr>
 <td><code>includedusd</code></td>
@@ -17489,7 +17489,7 @@ for the channel contract.</p>
 <tr>
 <td><code>nextprovider</code></td>
 <td><code>string|null</code></td>
-<td><code>"prepaid"</code> on a plan paid by card: it renews from the balance at the end of its period. <code>null</code> otherwise.</td>
+<td><code>"prepaid"</code> on a plan paid by card: it renews from the balance at the end of its period. <code>null</code> otherwise, and on such a plan once it is cancelled.</td>
 </tr>
 </tbody>
 </table>
@@ -19645,7 +19645,8 @@ channel-enable endpoint or persisted switch.</p>
 <li>The agent is already running or queued</li>
 <li>The agent is currently stopping</li>
 <li>Setup is incomplete (status <code>6</code>)</li>
-<li>The agent has used the AI usage its plan includes and the balance is under $0.50</li>
+<li>The agent has no active plan: <code>Subscription required — please subscribe to this agent before starting it.</code>, whatever its balance</li>
+<li>The agent has used the AI usage its plan includes and the balance is under $0.50: code <code>97</code>, with the same message as <code>Message/Send</code> and the agent's <code>usage</code> as <code>agentusage</code> (see <a href="#ai-usage-and-the-balance">AI Usage and the Balance</a>)</li>
 </ul>
 <h4 id="post-useragentstop"><strong>POST</strong> /UserAgent/Stop</h4>
 <p>Stops a running agent instance. If the agent is Queued (status <code>2</code>), it is immediately set to Stopped. If it is Starting or Running (status <code>3</code>/<code>4</code>), it moves to Stopping (status <code>1</code>) and the agent is shut down gracefully.</p>
@@ -21126,6 +21127,7 @@ channel-enable endpoint or persisted switch.</p>
 <pre><code class="language-json">{
   &quot;result&quot;: false,
   &quot;retired&quot;: true,
+  &quot;url&quot;: null,
   &quot;errors&quot;: [
     { &quot;code&quot;: 0, &quot;message&quot;: &quot;Extra credit packs are retired. Your agent uses your Wiro balance after its plan's included usage. Add funds to your balance instead.&quot; }
   ]
@@ -21134,6 +21136,7 @@ channel-enable endpoint or persisted switch.</p>
 <p>Detect it by <code>retired: true</code>, and add funds to the balance instead.</p>
 <h4 id="post-useragentcancelsubscription"><strong>POST</strong> /UserAgent/CancelSubscription</h4>
 <p>Schedules the subscription to end at the current billing period's expiry (a <strong>cancel-at-period-end</strong> pattern). The agent keeps running on its plan until that moment. No refund is issued for the remaining days: the period was paid up front.</p>
+<p>A plan that was paid by card is cancelled the same way, also one that is set to switch to the balance at the end of its period: the switch is dropped, and the plan ends at the end of its period with <code>pendingdowngrade: "cancel"</code>. Nothing is charged or refunded. On a team agent, only a team admin or the organization owner can cancel such a plan.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -21168,7 +21171,7 @@ channel-enable endpoint or persisted switch.</p>
 <li><code>cancelsAt</code> is the Unix timestamp when the subscription will finish.</li>
 <li>Server-side, <code>subscription.pendingdowngrade</code> is flipped to <code>"cancel"</code> and <code>subscription.status</code> stays <code>"active"</code> until the period end. Subsequent <code>UserAgent/Detail</code> responses reflect this: <code>subscription.pendingdowngrade = "cancel"</code> and the usual <code>currentperiodend</code>.</li>
 <li>A scheduled move to a lower plan is dropped: the agent's <code>nextplan</code> goes back to <code>null</code>.</li>
-<li>To reverse the cancellation <strong>before</strong> the period ends, call <code>POST /UserAgent/RenewSubscription</code>. It clears the flag without charging the wallet again.</li>
+<li>To reverse the cancellation <strong>before</strong> the period ends, call <code>POST /UserAgent/RenewSubscription</code>. It clears the flag without charging the balance again, and a plan paid by card goes back to switching to the balance at the end of its period.</li>
 <li>When the period actually ends, the daily cron marks the subscription <code>"expired"</code> and stops the agent (<code>status: 0</code>). At that point the user must call <code>POST /UserAgent/RenewSubscription</code> (or <code>CreateSubscriptionCheckout</code> for a fresh sub) to continue.</li>
 </ul>
 <p><strong>Common errors:</strong></p>
@@ -21394,7 +21397,7 @@ channel-enable endpoint or persisted switch.</p>
 }
 </code></pre>
 <ul>
-<li>Clears <code>subscription.pendingdowngrade</code> back to <code>null</code>.</li>
+<li>Clears <code>subscription.pendingdowngrade</code> back to <code>null</code>. A plan paid by card goes back to switching to the balance at the end of its period (<code>nextprovider: "prepaid"</code>).</li>
 <li><strong>No wallet charge</strong>: you've already paid for the full period.</li>
 <li>Agent status is unchanged (still running / stopped / whatever it was).</li>
 </ul>
@@ -21436,7 +21439,7 @@ channel-enable endpoint or persisted switch.</p>
 <td>No active sub and no expired sub: agent was never subscribed, or data is gone</td>
 </tr>
 <tr>
-<td><code>Your balance is $3.10; this plan needs $30.00. Add funds to continue.</code> (the amounts)</td>
+<td><code>Your balance is $3.10; this plan needs $30.00. Add funds to continue.</code> (the amounts; a team agent's starts <code>The team's balance is</code>)</td>
 <td>The balance can't pay the renewal (code <code>97</code>, with <code>neededusd</code>). Nothing is charged</td>
 </tr>
 <tr>
@@ -21543,11 +21546,11 @@ channel-enable endpoint or persisted switch.</p>
 <p>Agent plans are paid from your Wiro balance, in the dashboard, the API and MCP alike: a new plan, a move to a higher plan and every renewal are charged to the balance of the agent's workspace, and an agent plan has no card payment. Always pass <code>useprepaid: true</code> on <code>Deploy</code> and <code>CreateSubscriptionCheckout</code>. Make sure the balance covers the plan's price before calling them; otherwise the call is refused with code <code>97</code> and <code>neededusd</code> (see <a href="#paying-for-plans">Paying for Plans</a>). The same balance pays the agent's AI usage past its plan.</p>
 <h3 id="ai-usage-and-the-balance">AI Usage and the Balance</h3>
 <p>AI usage is counted as the agent works, not at <code>Message/Send</code> time. Wiro prices the tokens of each call with the per-model <code>tokenRates</code> and takes the cost from the plan's included usage while it lasts, then from the balance. You don't send anything: billing is fully server-side. The agent's <code>usage</code> shows where it stands: <code>usedusd</code> and <code>leftusd</code> of this period's <code>includedusd</code>, <code>frombalanceusd</code> taken from the balance, and <code>balanceusd</code>, the balance it can still use. Per-turn token counts and cost also ride on each assistant message and arrive over the message WebSocket as an <code>agent_usage_report</code> frame (see <a href="/docs/agent-messaging">Agent Messaging</a> and <a href="/docs/agent-websocket">Agent WebSocket</a>).</p>
-<p>A turn that is running always finishes, so the balance can go a few cents below zero, as it can with model runs. A new turn needs included usage left or a balance of at least $0.50 (<code>usage.minbalanceusd</code>). When both are short, the agent pauses: <code>usage.paused</code> reads <code>true</code> with <code>pausedreason: "balance"</code>, <code>POST /UserAgent/Start</code> is refused, and <code>POST /UserAgent/Message/Send</code> answers code <code>97</code> with a sentence for whoever pays for the agent and the agent's <code>usage</code> as <code>agentusage</code>:</p>
+<p>A turn that is running always finishes, so the balance can go a few cents below zero, as it can with model runs. A new turn needs included usage left or a balance of at least $0.50 (<code>usage.minbalanceusd</code>). When both are short, the agent pauses: <code>usage.paused</code> reads <code>true</code> with <code>pausedreason: "balance"</code>, and <code>POST /UserAgent/Message/Send</code> and <code>POST /UserAgent/Start</code> answer code <code>97</code> with a sentence for whoever pays for the agent and the agent's <code>usage</code> as <code>agentusage</code>, whose <code>resetsat</code> is the plan's renewal. Start still needs an active plan first: an agent without one gets <code>Subscription required…</code>, whatever its balance. Tell this refusal from a plan refusal by <code>agentusage</code>, where a plan payment the balance can't cover carries <code>neededusd</code>. Send's answer:</p>
 <pre><code class="language-json">{
   &quot;result&quot;: false,
   &quot;errors&quot;: [
-    { &quot;code&quot;: 97, &quot;message&quot;: &quot;My Instagram Bot used the $30.00 of AI usage its plan includes this month, and your balance is under $0.50. Add funds to keep it running, or it starts again when the plan renews.&quot; }
+    { &quot;code&quot;: 97, &quot;message&quot;: &quot;My Instagram Bot used the $30.00 of AI usage its plan includes this month, and your balance is under $0.50. Add funds to keep it running, or it starts again when the plan renews on 1 June 2026.&quot; }
   ],
   &quot;messageguid&quot;: null,
   &quot;agenttoken&quot;: null,
@@ -21555,7 +21558,7 @@ channel-enable endpoint or persisted switch.</p>
   &quot;agentstatus&quot;: 4,
   &quot;agentusage&quot;: {
     &quot;period&quot;: &quot;2026-05&quot;,
-    &quot;resetsat&quot;: null,
+    &quot;resetsat&quot;: 1717200000,
     &quot;includedusd&quot;: 30,
     &quot;usedusd&quot;: 30,
     &quot;leftusd&quot;: 0,
@@ -21569,7 +21572,7 @@ channel-enable endpoint or persisted switch.</p>
   }
 }
 </code></pre>
-<p>For a team agent the sentence says <code>the team's balance</code>. In Telegram, Slack and Discord the agent tells people <code>This agent is paused for now. It runs again once its owner adds funds or its plan renews.</code>, with no amount. Once funds are added, the agent answers again.</p>
+<p>The date is left out when the plan's renewal can't be read, and for a team agent the sentence says <code>the team's balance</code>. In Telegram, Slack and Discord the agent tells people <code>This agent is paused for now. It runs again once its owner adds funds or its plan renews.</code>, with no amount. Once funds are added, the agent answers again.</p>
 <p>On each renewal the included usage starts again in full (<code>usedusd</code> back to <code>0</code>), and <code>usage.period</code> and <code>creditperiod</code> advance to the new <code>'YYYY-MM'</code> window. Funds added to the balance reset nothing: the agent just has more to use.</p>
 <p>For the full record (every AI usage charge, model run, plan payment and funds added), call <a href="/docs/agent-transactions#tx-transactionlist"><code>POST /UserAgent/TransactionList</code></a> (see <a href="/docs/agent-transactions">Agent Transactions</a>).</p>
 <h2 id="error-messages">Error Messages</h2>
@@ -21677,7 +21680,7 @@ channel-enable endpoint or persisted switch.</p>
 <td><code>UpgradeTier</code> to a lower plan while the subscription is cancelled at period end. Undo the cancel with <code>RenewSubscription</code> first</td>
 </tr>
 <tr>
-<td><code>Your balance is $3.10; this plan needs $100.00. Add funds to continue.</code> (the amounts)</td>
+<td><code>Your balance is $3.10; this plan needs $100.00. Add funds to continue.</code> (the amounts; a team agent's starts <code>The team's balance is</code>)</td>
 <td><code>Deploy</code>, <code>CreateSubscriptionCheckout</code>, <code>UpgradeTier</code> or <code>RenewSubscription</code> when the balance can't pay the plan (code <code>97</code>, with <code>neededusd</code>). Nothing is created or charged</td>
 </tr>
 <tr>
@@ -21725,8 +21728,8 @@ channel-enable endpoint or persisted switch.</p>
 <td><code>Message/Send</code> while the agent isn't running (any status other than <code>4</code>), for every message Wiro doesn't answer itself as a setup reply (see <a href="/docs/agent-messaging#handled-setup-replies">Replies Wiro handles itself</a>). Response includes <code>agentstatus</code> (the integer) so your client can branch on it.</td>
 </tr>
 <tr>
-<td><code>My Instagram Bot used the $30.00 of AI usage its plan includes this month, and your balance is under $0.50. Add funds to keep it running, or it starts again when the plan renews.</code> (the agent's name and the amount; for a team agent, <code>the team's balance</code>)</td>
-<td><code>Message/Send</code> (code <code>97</code>) while the agent has used the AI usage its plan includes and the balance is under $0.50. Response includes <code>agentstatus</code> and <code>agentusage</code> (the agent's <code>usage</code>), so your client can offer to add funds.</td>
+<td><code>My Instagram Bot used the $30.00 of AI usage its plan includes this month, and your balance is under $0.50. Add funds to keep it running, or it starts again when the plan renews on 1 June 2026.</code> (the agent's name, the amount and the renewal date, left out when it can't be read; for a team agent, <code>the team's balance</code>)</td>
+<td><code>Message/Send</code> or <code>Start</code> (code <code>97</code>) while the agent has used the AI usage its plan includes and the balance is under $0.50. The response includes <code>agentusage</code> (the agent's <code>usage</code>), and Send's also <code>agentstatus</code>, so your client can offer to add funds.</td>
 </tr>
 <tr>
 <td>A spend limit refusal (code <code>93</code>), such as <code>This agent's monthly spend limit is reached ($20.35 of $20.00). It resets on December 1, 2026 at 00:00 UTC.</code></td>
@@ -30388,15 +30391,15 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <p>When the agent has used the AI usage its plan includes and the balance is under $0.50, Send answers <code>result: false</code> with code <code>97</code>, <code>agentstatus</code> and <code>agentusage</code>, the agent's <a href="/docs/agent-overview#usage-object"><code>usage</code></a>:</p>
 <pre><code class="language-json">{
   &quot;result&quot;: false,
-  &quot;errors&quot;: [{ &quot;code&quot;: 97, &quot;message&quot;: &quot;Support Desk used the $30.00 of AI usage its plan includes this month, and your balance is under $0.50. Add funds to keep it running, or it starts again when the plan renews.&quot;, &quot;time&quot;: 1794654900 }],
+  &quot;errors&quot;: [{ &quot;code&quot;: 97, &quot;message&quot;: &quot;Support Desk used the $30.00 of AI usage its plan includes this month, and your balance is under $0.50. Add funds to keep it running, or it starts again when the plan renews on 1 December 2026.&quot;, &quot;time&quot;: 1794654900 }],
   &quot;messageguid&quot;: null,
   &quot;agenttoken&quot;: null,
   &quot;status&quot;: null,
   &quot;agentstatus&quot;: 4,
-  &quot;agentusage&quot;: { &quot;period&quot;: &quot;2026-11&quot;, &quot;resetsat&quot;: null, &quot;includedusd&quot;: 30, &quot;usedusd&quot;: 30, &quot;leftusd&quot;: 0, &quot;renewalusd&quot;: 30, &quot;frombalanceusd&quot;: 12.85, &quot;balanceusd&quot;: 0.31, &quot;wallet&quot;: &quot;personal&quot;, &quot;minbalanceusd&quot;: 0.5, &quot;paused&quot;: true, &quot;pausedreason&quot;: &quot;balance&quot; }
+  &quot;agentusage&quot;: { &quot;period&quot;: &quot;2026-11&quot;, &quot;resetsat&quot;: 1796083200, &quot;includedusd&quot;: 30, &quot;usedusd&quot;: 30, &quot;leftusd&quot;: 0, &quot;renewalusd&quot;: 30, &quot;frombalanceusd&quot;: 12.85, &quot;balanceusd&quot;: 0.31, &quot;wallet&quot;: &quot;personal&quot;, &quot;minbalanceusd&quot;: 0.5, &quot;paused&quot;: true, &quot;pausedreason&quot;: &quot;balance&quot; }
 }
 </code></pre>
-<p>That sentence speaks to whoever pays for the agent, which is you. Detect the refusal by <code>agentusage</code>, show your users your own words, and add funds to the balance of the agent's workspace (see <a href="/docs/agent-overview#adding-funds">Adding Funds</a>), or move the agent to a larger plan with <a href="/docs/agent-overview#post-useragentupgradetier"><code>UpgradeTier</code></a>. The agent answers again as soon as the balance is back at $0.50 or more. Your users in Telegram, Slack and Discord read <code>This agent is paused for now. It runs again once its owner adds funds or its plan renews.</code> instead, with no amount. Setup replies that Wiro answers itself still work while the agent is paused: see <a href="#replies-the-api-answers-itself">Replies the API answers itself</a>.</p>
+<p>That sentence speaks to whoever pays for the agent, which is you; it leaves out the date when the plan's renewal can't be read. Detect the refusal by <code>agentusage</code>, show your users your own words, and add funds to the balance of the agent's workspace (see <a href="/docs/agent-overview#adding-funds">Adding Funds</a>), or move the agent to a larger plan with <a href="/docs/agent-overview#post-useragentupgradetier"><code>UpgradeTier</code></a>. The agent answers again as soon as the balance is back at $0.50 or more. Your users in Telegram, Slack and Discord read <code>This agent is paused for now. It runs again once its owner adds funds or its plan renews.</code> instead, with no amount. Setup replies that Wiro answers itself still work while the agent is paused: see <a href="#replies-the-api-answers-itself">Replies the API answers itself</a>.</p>
 <h3 id="follow-the-turn">Follow the turn</h3>
 <p>Use one of three ways:</p>
 <ol>
