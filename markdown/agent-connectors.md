@@ -23,7 +23,7 @@ Every connector also has a public page, `https://wiro.ai/connectors/{slug}`, wit
 | 3b. Or start a sign-in | [`POST /UserAgent/ConnectorConnect`](#connect-with-a-sign-in) with `redirecturl` | `status: "pending"` and the `authorizeUrl` to open in the browser. |
 | 4. The browser comes back | [`GET /AgentConnector/OAuthCallback`](#the-callback-and-your-redirect-url), called by the vendor | A redirect to your `redirecturl` with `connector_connected=true` or `connector_error=<code>`. |
 | 5. Read the state | [`POST /UserAgent/ConnectorList`](#post-useragentconnectorlist) | Each connection's `status`: `connected`, `pending`, `reauth` or `error`. |
-| 6. Pick accounts | [`POST /UserAgent/ConnectorAccounts`](#post-useragentconnectoraccounts), [`POST /UserAgent/ConnectorSetAccounts`](#post-useragentconnectorsetaccounts) | The Pages, ad accounts or properties the connection can reach, and the ones it may act on. |
+| 6. Pick accounts | [`POST /UserAgent/ConnectorAccounts`](#post-useragentconnectoraccounts), [`POST /UserAgent/ConnectorSetAccounts`](#post-useragentconnectorsetaccounts) | The Pages, ad accounts, advertisers or properties the connection can reach, and the ones it may act on. |
 | 7. Disconnect | [`POST /UserAgent/ConnectorDisconnect`](#post-useragentconnectordisconnect) | The connection, its values and tokens deleted, and the agent restarts. |
 
 ### Who your customer sees
@@ -259,7 +259,7 @@ All three ways go through one call, `POST /UserAgent/ConnectorConnect`. The conn
 | `mode` | string | No | `provider-oauth` rows only: `oauth` (the default, a sign-in) or `key` (the key way in, when `modes` includes `key`). |
 | `redirecturl` | string | No | Sign-ins only: where the browser returns. See [The redirect URL](#the-redirect-url). |
 | `accounts` | object | No | A first account selection for a connector with [account pickers](#account-pickers), `{ <picker key>: [ids] }`, such as `{ "pages": ["123"] }`. Only its shape is checked here; [ConnectorSetAccounts](#post-useragentconnectorsetaccounts) checks every id with the vendor once the connector is connected. |
-| `wiroprojectguid` | string | No | The Wiro connector only: the id of the project it bills. See [The Wiro connector](#the-wiro-connector). A connector whose tools run inside the agent refuses it; one on a vendor's own MCP server ignores it. |
+| `wiroprojectguid` | string | No | The Wiro connector only: the id of one of your projects, from [`POST /Project/List`](/docs/projects). It becomes the agent's own Wiro project, as [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) binds it. See [The Wiro connector](#the-wiro-connector). A connector whose tools run inside the agent refuses it; one on a vendor's own MCP server ignores it. |
 
 ### Connect with fields
 
@@ -432,6 +432,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
 }
 ```
 
+TikTok Ads has an account picker: once it is connected, pick the advertisers it may act on, as in [TikTok Ads: sign in, then pick advertisers](#tiktok-ads-sign-in-then-pick-advertisers).
+
 The connection is now `pending`. A connection that was already `connected` stays connected while the new sign-in runs, and the new tokens replace the old ones when it finishes.
 
 **2. Open `authorizeUrl`** in your customer's browser: a new tab, a popup, or the same window. The address works for 10 minutes and once. Start a new sign-in to get a fresh one.
@@ -558,7 +560,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorList" \
 | `tokenexpiresat`, `refreshtokenexpiresat` | Sign-in connections: when the access token and the refresh token expire, or `null`. Wiro refreshes the access token on its own. |
 | `scope` | The scopes the vendor granted, as it sent them. |
 | `accounts` | The account selection, `{ <picker key>: [ids] }`. |
-| `wiroprojectid` | The Wiro connector only: the project it bills. |
+| `wiroprojectid` | The Wiro connector only: the agent's own Wiro project, the one the connector acts with, as a string, or `null` when the agent has none. See [The Wiro connector](#the-wiro-connector). |
 | `savedvariables` | The names of the values saved for this connection, sorted. Use them to mark fields as saved; their values are never shown. |
 | `lasterror` | A short code for the last failure, such as `authorization_denied`, or `null`. Never a secret. |
 
@@ -573,9 +575,9 @@ A connector that was never connected, or was disconnected, has no row.
 
 ## Account Pickers
 
-Some connectors act on accounts inside the vendor: Facebook Pages, Meta ad accounts, Google Ads customers, a GA4 property, Search Console sites, Business Profile locations, YouTube channels, apps in App Store Connect and Google Play. Their catalog row lists `accountpickers`. After the connection is `connected`, list the candidates, let your customer choose, and save the choice. The connector's tools refuse any account outside the selection, and until something is picked they have no account to act on.
+Some connectors act on accounts inside the vendor: Facebook Pages, Meta ad accounts, Google Ads customers, TikTok Ads advertisers, a GA4 property, Search Console sites, Business Profile locations, YouTube channels, apps in App Store Connect and Google Play. Their catalog row lists `accountpickers`. After the connection is `connected`, list the candidates, let your customer choose, and save the choice. The connector's tools refuse any account outside the selection, and until something is picked they have no account to act on.
 
-Account pickers belong to connectors whose tools run inside the agent (`transport: "local"`). A connector whose tools run on the vendor's own MCP server, such as TikTok Ads, has none: its `accountpickers` is empty, and `ConnectorAccounts` answers `This connector has no accounts to pick.`
+Connectors of both kinds can have account pickers. Wiro lists the candidates with one of the connector's read tools and the connection's own credentials. For a connector whose tools run on the vendor's own MCP server, such as TikTok Ads, Wiro calls that tool on the vendor's server with the connection's sign-in: see [TikTok Ads: sign in, then pick advertisers](#tiktok-ads-sign-in-then-pick-advertisers). A connector with no pickers has an empty `accountpickers`.
 
 ### **POST** /UserAgent/ConnectorAccounts
 
@@ -626,7 +628,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorAccounts" \
 | `candidates` | What this connection can reach at the vendor right now, each `{ id, name }`. |
 | `selected` | The ids saved now. |
 
-A connector whose tools run inside the agent and that has no pickers answers `pickers: []`.
+A connector with no pickers answers `pickers: []` when its tools run inside the agent, and `This connector has no accounts to pick.` when they run on the vendor's own MCP server.
 
 ### **POST** /UserAgent/ConnectorSetAccounts
 
@@ -692,10 +694,102 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetAccounts" \
 | `<label>: 1 of the accounts sent is not among the ones this connection can use.` | An id the vendor did not list for this connection. |
 | `accounts must be an object of lists of account ids.`, `accounts has too many keys.`, `Each account id is text of at most 200 characters.` | The body's shape. |
 | `This connector is not connected to the agent.` | No connected connection for this slug. |
-| `This connector has no accounts to pick.` | `ConnectorAccounts` on a connector whose tools run on the vendor's own MCP server. |
+| `This connector has no accounts to pick.` | `ConnectorAccounts` on a connector whose tools run on the vendor's own MCP server and whose catalog row lists no account pickers. |
 | `This connector's accounts cannot be listed yet.` | The connector's account lists aren't available right now. Try again later. |
-| `The sign-in for this connector expired or was revoked, so it has to be connected again. Ask the agent's operator to reconnect it.` | The sign-in could not be refreshed: the connection is now `reauth`. |
+| `The sign-in for this connector expired or was revoked, so it has to be connected again. Ask the agent's operator to reconnect it.` | The sign-in could not be refreshed, and the connection is now `reauth`. Or the vendor's own MCP server refused the connection's sign-in (HTTP 401 or 403) as Wiro listed the candidates: the connection's `status` doesn't change. Either way, start a new sign-in with [ConnectorConnect](#connect-with-a-sign-in), then list the accounts again. |
 | `The token is being refreshed. Try again in a moment.` | A refresh was under way. |
+
+### TikTok Ads: sign in, then pick advertisers
+
+TikTok Ads runs on TikTok's own MCP server and signs in on TikTok's own consent screen (`authtype: "oauth"`). Its catalog row has one account picker, `advertisers`: the advertiser accounts the agent may work with. Connecting it takes three steps.
+
+**1. Sign in.** Send `useragentguid`, `slug` and `redirecturl`, open the `authorizeUrl` the answer gives, and wait for `connector_connected=true` on your page, as in [Connect with a sign-in](#connect-with-a-sign-in).
+
+**2. List the advertisers.** Wiro asks TikTok for the advertisers the sign-in can reach, with the connection's own token:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorAccounts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "slug": "tiktok-ads"
+  }'
+```
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "pickers": [
+    {
+      "key": "advertisers",
+      "label": "Advertisers",
+      "description": "The advertiser accounts the agent may work with. It can't read or change any other advertiser the sign-in can reach.",
+      "multiple": true,
+      "candidates": [
+        { "id": "7301234567890123456", "name": "Acme Coffee" },
+        { "id": "7301234567890123457", "name": "Acme Coffee EU" }
+      ],
+      "selected": []
+    }
+  ]
+}
+```
+
+**3. Save the advertisers it may act on.** Wiro lists them again and refuses an id that is not among them:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetAccounts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "slug": "tiktok-ads",
+    "accounts": { "advertisers": ["7301234567890123456"] }
+  }'
+```
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "accounts": { "advertisers": ["7301234567890123456"] },
+  "applied": 1,
+  "restart": "scheduled",
+  "useragentconnectors": [
+    {
+      "slug": "tiktok-ads",
+      "title": "TikTok Ads",
+      "iconurl": "https://wiro.ai/images/icons/skills/tiktok.svg",
+      "category": "ads",
+      "authtype": "oauth",
+      "transport": "streamable-http",
+      "authmode": null,
+      "catalogstatus": "active",
+      "status": "connected",
+      "connectedat": 1795390400,
+      "updatedat": 1795390520,
+      "tokenexpiresat": 1795476800,
+      "refreshtokenexpiresat": null,
+      "scope": null,
+      "accounts": { "advertisers": ["7301234567890123456"] },
+      "wiroprojectid": null,
+      "savedvariables": [],
+      "lasterror": null
+    }
+  ]
+}
+```
+
+Once the agent restarts, its TikTok Ads tools work with the saved advertisers only: a call that names any other advertiser is refused before it leaves the agent.
+
+- When TikTok's server no longer accepts the connection's sign-in (HTTP 401 or 403), `ConnectorAccounts` and `ConnectorSetAccounts` answer `The sign-in for this connector expired or was revoked, so it has to be connected again. Ask the agent's operator to reconnect it.` Start a new sign-in with [ConnectorConnect](#connect-with-a-sign-in), then list the advertisers again.
+- A TikTok Ads connection that [moved over](#coming-from-credential-connectors) keeps its advertiser in `accounts.advertisers`.
 
 ## Disconnecting
 
@@ -754,7 +848,38 @@ When the agent is back up, every `connected` connection whose connector is still
 
 ## The Wiro Connector
 
-The `wiro` connector gives the agent Wiro's own tools, the ones its `tools` on [Detail](#post-agentconnectordetail) list, such as running AI models and reading their tasks. They act with the API key of one of your projects, and the model runs they start are billed to that project's wallet. Its `credentialfields` have one field with `source: "wiro_project"`: show a picker of your projects ([`POST /Project/List`](/docs/projects)) instead of an input, and send the chosen project's id as `wiroprojectguid`:
+The `wiro` connector gives the agent Wiro's own model and task tools, named `wiro__<tool>`, from the [Wiro MCP server](/docs/wiro-mcp-server). Its calls are the agent's own: they always act with the agent's own Wiro project key, the key the agent runs every Wiro model with (see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)). So:
+
+- The models they run are billed to the wallet of the workspace that owns that project, at each model's usual price.
+- Wiro counts them as the agent's own runs: the agent's own [spend limit](/docs/spend-limits) and [Model Access](/docs/model-access) rule apply to them (the `agent` scope, on the `agent` surface), as to every model the agent runs.
+- Account, agent, team and billing endpoints are refused to them, as to every call the agent makes: see the note "An agent's own calls never manage an account" under [`UserAgent/UpdateSettings`](/docs/agent-overview#post-useragentupdatesettings). The agent changes its own setup only through [setup cards](/docs/agent-messaging#setup-from-chat) that an agent admin approves.
+
+### Its tools
+
+The agent gets these tools of the Wiro MCP server, and no others:
+
+| Tool | The agent calls it | What it does |
+|------|--------------------|--------------|
+| `search_models` | `wiro__search_models` | Searches the model catalog by keyword, category or owner. |
+| `explore` | `wiro__explore` | Browses curated models, grouped by category. |
+| `recommend_model` | `wiro__recommend_model` | Finds models for a goal, best matches first. |
+| `get_model_schema` | `wiro__get_model_schema` | Reads a model's parameters and pricing. |
+| `get_task_price` | `wiro__get_task_price` | Reads the cost of a finished task. |
+| `run_model` | `wiro__run_model` | Runs a model. |
+| `get_task` | `wiro__get_task` | Reads a task's status and outputs. |
+| `wait_for_task` | `wiro__wait_for_task` | Keeps waiting for a task without starting another run. |
+| `list_tasks` | `wiro__list_tasks` | Lists earlier tasks. |
+| `cancel_task` | `wiro__cancel_task` | Cancels a queued task. |
+| `kill_task` | `wiro__kill_task` | Stops a queued or running task. |
+| `upload_file` | `wiro__upload_file` | Uploads a file from a public URL, for use as a model input. |
+| `search_docs` | `wiro__search_docs` | Searches the Wiro documentation. Read only. |
+| `get_playbook` | `wiro__get_playbook` | Reads a step-by-step guide. Read only. |
+
+The list can't be widened. Whatever the connector's catalog row says, Wiro gives the agent no other tool of the server, and also refuses any tool whose name has one of these words in it: `agent`, `workflow`, `billing`, `account`, `project`, `studio`, `credential`, `oauth`, `skill`, `spend`, `limit`, `access`, `wallet`, `team`, `organization`, `coupon`, `invoice`, `payment`, `key` or `user`. `tools` on [Detail](#post-agentconnectordetail) lists only the tools the agent gets.
+
+### Connecting it
+
+Its `credentialfields` have one field with `source: "wiro_project"`: show a picker of your projects ([`POST /Project/List`](/docs/projects)) instead of an input, and send the chosen project's id as `wiroprojectguid`. Connecting binds that project to the agent as its own Wiro project, exactly as [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) does: the same checks, the project's key saved as the agent's `wiro` credential, and a `Connector setting saved: wiro.apikey` row in the agent's [activity log](/docs/agent-logs#who-did-what-rows) when the project changed. The connector and every other Wiro call of the agent always use the same project.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
@@ -801,10 +926,16 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
 }
 ```
 
-- A request made with a project API key may leave `wiroprojectguid` out: the key's own project is used.
-- The project must be one you created, or any project of a team you are an admin of, and in the agent's workspace: a personal agent takes one of its owner's personal projects, a team agent one of its team's projects.
-- The connection shows the project's id as `wiroprojectid`, a string.
-- The agent's [Wiro API path list](/docs/agent-overview#post-useragentupdatesettings) (`wiroapiallowedpaths`) limits the Wiro API calls its skills make with the agent's own Wiro project; it doesn't apply to this connector's tools. Read the tools the connector gives on [Detail](#post-agentconnectordetail) before you connect it.
+- A request made with a project API key may leave `wiroprojectguid` out: that key's own project is bound. A request without either keeps the agent's own project while it is in the agent's workspace, and is refused with `wiroprojectguid is required` when the agent has none there.
+- The project must be one you created, or any project of a team you are an admin of, and in the agent's workspace: a personal agent takes one of its owner's personal projects, a team agent one of its team's projects. The request must come from the agent's workspace too.
+- The connector follows the agent's project: a project bound later with `CredentialProjectBind` or another `ConnectorConnect` is the one its tools use after the restart. [ConnectorList](#post-useragentconnectorlist) shows the agent's current project as `wiroprojectid`, a string.
+- An agent left with no Wiro project keeps the connection, but gets no `wiro` tools until a project is bound again, and `wiroprojectid` reads `null`.
+- The agent's [Wiro API path list](/docs/agent-overview#post-useragentupdatesettings) (`wiroapiallowedpaths`) limits the Wiro API calls its skills make with the agent's own Wiro project; it doesn't apply to this connector's tools, which the list above fixes.
+- In chat, the agent proposes a `project` card for it, which binds the project the same way: see [Project: Wiro AI Models](/docs/agent-chat-integration#project-wiro-ai-models).
+
+### Moving the agent to another workspace
+
+When the agent moves to a workspace its Wiro project isn't in, with [`Team/TransferAgent`](/docs/organizations-managing-teams#transferring-agents) or because its team or organization was deleted, Wiro disconnects the project from the agent and deletes the agent's `wiro` connection, before the agent restarts. The agent's activity log shows both: `Disconnected: wiro` (`AGENT_CREDENTIAL_REMOVED`) and `Connector disconnected: wiro` (`CONNECTOR_DISCONNECTED`, with `summary.reason` `"workspace"`). Bind a project of the new workspace, then connect the connector again.
 
 ## Errors
 
@@ -834,10 +965,12 @@ Refusals come as `result: false` with one sentence per problem in `errors`. Show
 | `ConnectorConnect` | `The connector's sign-in server did not register a client. Try again later.` | The vendor's sign-in server refused to register a client for the sign-in. |
 | `ConnectorConnect` | `This connector takes no Wiro project.` | `wiroprojectguid` on a connector whose tools run inside the agent. A connector on a vendor's own MCP server without a project field ignores it. |
 | `ConnectorConnect` | `<name> comes from the agent's Wiro project: send wiroprojectguid, not a value.` | A value sent for the Wiro connector's project field. |
-| `ConnectorConnect` | `wiroprojectguid is required: send the id of one of your projects from Project/List. ...` | The Wiro connector with no project, from a request without a project API key. |
+| `ConnectorConnect` | `wiroprojectguid is required: send the id of one of your projects from Project/List. A request made with a project API key may leave it out, to use that key's own project.` | The Wiro connector with no project, from a request without a project API key, for an agent with no project of its workspace to keep. |
 | `ConnectorConnect` | `wiroprojectguid must be a project's id from Project/List.` | A `wiroprojectguid` that isn't a project id. |
 | `ConnectorConnect` | `Project not found. Send the id of one of your projects from Project/List: one you created, or any project of a team you are an admin of.` | A project you can't use. |
 | `ConnectorConnect` | `This is a personal agent: use one of its owner's personal projects.`, `This is a team agent: use one of its team's projects.` | A project outside the agent's workspace. |
+| `ConnectorConnect` | `This agent belongs to a team. Switch to the team context to access it.`, `This agent is in your personal workspace. Switch to personal context to access it.`, `This agent belongs to a different team.` | The Wiro connector, from a request outside the agent's workspace. |
+| `ConnectorConnect` | `This project's API key no longer works: the account that created it is not active, so the agent's model runs would fail. Bind another project.`, `This project's API key no longer works: the person who created it is no longer in the team, so the agent's model runs would fail. Bind another project of the team.` | The account that created the project is not active, or has left the team. |
 | `ConnectorConnect` | `This project has no API key the connector can use.` | The project's key can't be used. |
 | `ConnectorConnect`, `ConnectorSetAccounts` | `accounts must be an object of lists of account ids.`, `accounts has too many keys.`, `Each account id is text of at most 200 characters.` | The shape of `accounts`: at most 10 keys and 500 ids per key. |
 | any | `Something went wrong. Try again.` | A temporary failure: nothing was changed. |
@@ -852,7 +985,8 @@ Connectors used to be skills that read credentials. If your code still uses thos
 |--------|-----|
 | A connector's skill (`int-<name>`) turned on with `SkillsApply` or Deploy's `skills` | Nothing to turn on: a connected connector is on. `skills` and `SkillsApply` take Skills (`util-*`) only. |
 | `int-twilio-channel`, the Twilio Voice channel | `util-twilio-channel`, a Skill: turn it on with `SkillsApply` or Deploy's `skills`. See [Twilio Voice Channel](/docs/integration-twiliovoice-skills). |
-| `int-googleplay-events`, Google Play promotional content | `util-googleplay-events`, a Skill that prepares the content for you to publish in Play Console. It works with the `google-play` connector. |
+| `int-googleplay-events`, Google Play promotional content | `util-googleplay-events`, a Skill that prepares the content for you to publish in Play Console. It works with the `google-play` connector: its `docs_url` is that connector's page, [https://wiro.ai/connectors/google-play](https://wiro.ai/connectors/google-play). |
+| `int-wiro-aimodels`, Wiro AI Models | The `wiro` connector: see [The Wiro connector](#the-wiro-connector). An agent that had it on and had a Wiro project was connected to it. |
 | `POST /Credentials/List`, `POST /Credentials/Detail` for a connector | [`POST /AgentConnector/List`](#post-agentconnectorlist), [`POST /AgentConnector/Detail`](#post-agentconnectordetail) |
 | `POST /UserAgent/CredentialUpsert` with a connector's `credentialkey` | [`POST /UserAgent/ConnectorConnect`](#connect-with-fields) with `values` |
 | `POST /UserAgentOAuth/OAuthConnect` | [`POST /UserAgent/ConnectorConnect`](#connect-with-a-sign-in) |

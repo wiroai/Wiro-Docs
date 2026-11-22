@@ -9905,7 +9905,7 @@ The Deploy response reflects the same composed shape you get from `UserAgent/Det
 |-------|---------|
 | `status: 6` | **Setup Required**: initial state for every fresh Deploy. With `useprepaid: true`, auto-queues to `status: 2` as soon as the subscription is provisioned, regardless of credential completeness. The agent then starts even if a required credential is still missing, and `UserAgent/Detail` reads `setuprequired: true` until it is filled. Fill a missing credential, such as a channel or the Wiro project the template doesn't mark optional, with `POST /UserAgent/CredentialUpsert` or `POST /UserAgent/CredentialProjectBind`: a running agent restarts to pick it up. Connectors never hold an agent at Setup Required. A row still at `status: 6` needs `POST /UserAgent/Update` first (any scalar body, even just `{ "guid": "<useragent-guid>" }`) to flip it to `status: 0` (Stopped): `Update` is the endpoint that performs the `setuprequired` re-check and the `6 → 0` transition. |
 | `status: 2` | **Queued**: `useprepaid: true` charged the wallet, the subscription was provisioned, and Wiro will start the agent. No manual `UserAgent/Start` is required. |
-| `setuprequired: true` | A non-optional credential is missing, or the row is still at `status: 6`. At `status: 6`, `Start` rejects with `Agent setup is not complete`. |
+| `setuprequired: true` | A non-optional credential is missing, or the row is still at `status: 6`. At `status: 6`, `Start` rejects with `Agent setup is not complete. Fill in the agent's required settings before starting.` |
 | `setuprequired: false` | All non-optional credentials are set up and the row has left `status: 6`. A row sitting at Setup Required reads `true` until a `POST /UserAgent/Update` call flips it 6 → 0; `Start` then launches it normally. |
 
 > **Subscription on deploy:** the `subscription` object is **not** included in the Deploy response. A prepaid subscription (`plan: "agent"`, provider `prepaid`, `tier` matches what you passed) is created server-side during the Deploy call. Call `POST /UserAgent/Detail` with the returned `guid` to read the subscription object back.
@@ -10573,7 +10573,7 @@ Writes per-agent preference toggles that are not credentials and not skill rows.
 
 > **Read vs write casing.** You **read** the current selection from the `agentModel` object on `UserAgent/Detail` / `MyAgents` / `PinnedAgents` in camelCase (`chatModel`, `cronModel`, `voicePrepModel`, `voicePostcallModel`); you **write** it here in lowercase (`chatmodel`, `cronmodel`, `voiceprepmodel`, `voicepostcallmodel`). The selectable set is exactly the models that `tokenRates.models` marks `selectable: true`. There is no separate "list models" endpoint, so read `tokenRates` to populate a picker.
 
-> **An agent's own calls never manage an account.** Calls the agent makes itself to the Wiro API with its Wiro project key are refused with HTTP `403` on account, agent, team and billing endpoints, such as `/UserAgent/*`, `/Project/*`, `/Team/*` and `/Wallet/*`, whatever `wiroapiallowedpaths` allows: `An agent can't call this endpoint. An agent admin changes the agent's setup in its settings or with a setup card in chat.` `POST /v1/UserAgent/Message/UploadAsset` stays open. An agent changes its own setup only through [setup cards](/docs/agent-messaging#setup-from-chat) that an agent admin approves. A [connector](/docs/agent-connectors)'s tools are the ones its `tools` on `AgentConnector/Detail` list, and they act with that connection's own credentials: for the `wiro` connector, its project's key.
+> **An agent's own calls never manage an account.** Calls the agent makes itself to the Wiro API with its Wiro project key are refused with HTTP `403` on account, agent, team and billing endpoints, such as `/UserAgent/*`, `/Project/*`, `/Team/*` and `/Wallet/*`, whatever `wiroapiallowedpaths` allows: `An agent can't call this endpoint. An agent admin changes the agent's setup in its settings or with a setup card in chat.` `POST /v1/UserAgent/Message/UploadAsset` stays open. An agent changes its own setup only through [setup cards](/docs/agent-messaging#setup-from-chat) that an agent admin approves. A [connector](/docs/agent-connectors)'s tools are the ones its `tools` on `AgentConnector/Detail` list, and they act with that connection's own credentials. The [`wiro` connector](/docs/agent-connectors#the-wiro-connector) acts with the agent's own Wiro project key, so its calls are the agent's own calls, and these refusals apply to them too.
 
 ##### Request
 
@@ -10931,9 +10931,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialProjectBind" \
 | `project` | `object` | The bound project: `{ id, name }`, with `id` as a string. |
 | `restart` | `string` | What the call did to the agent. `"scheduled"`: it was starting or running and now restarts with the project's key. `"none"`: nothing changed, or it isn't running and uses the key at its next start. `"failed"`: the key is saved, and the running agent picks it up when you stop and start it. |
 
-Binding the project an agent already has changes nothing and restarts nothing. Changing a project's IP whitelist gives the project a new API secret; to load it, restart the agent with `POST /UserAgent/Update` and a body of `{ "guid": "<useragent-guid>" }`.
+Binding the project an agent already has changes nothing and restarts nothing. The [`wiro` connector](/docs/agent-connectors#the-wiro-connector) always acts with the project bound here, and connecting it with `ConnectorConnect` and a `wiroprojectguid` binds a project the same way. Changing a project's IP whitelist gives the project a new API secret; to load it, restart the agent with `POST /UserAgent/Update` and a body of `{ "guid": "<useragent-guid>" }`.
 
-On an agent at `status: 6` (Setup Required), call `POST /UserAgent/Update` with `{ "guid": "<useragent-guid>" }` after binding, as after `CredentialUpsert`. Binding doesn't change `status`: `Update` moves the agent to `status: 0` (Stopped) once every required connector is set up, and `Start` refuses it until then.
+On an agent at `status: 6` (Setup Required), call `POST /UserAgent/Update` with `{ "guid": "<useragent-guid>" }` after binding, as after `CredentialUpsert`. Binding doesn't change `status`: `Update` moves the agent to `status: 0` (Stopped) once every required credential is set up, and `Start` refuses it until then.
 
 If you already hold a project's key, [`CredentialUpsert`](#post-useragentcredentialupsert) with `credentialkey` `wiro` and `fieldname` `apikey` saves it too.
 
@@ -12691,7 +12691,7 @@ Agent-specific errors you may encounter:
 | A sentence that says what is wrong and what to write, such as `This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.` or `This schedule never comes up: February has no 30th. Pick a day February has, such as 28.` | `CustomSkillUpsert` with an `interval` the agent can't run on a scheduled task, or one whose date never comes. Nothing is saved. |
 | `<skillkey>:` followed by the same sentence | `Deploy` with a `customskills` entry whose `interval` the agent can't run, or whose date never comes. Nothing is created or charged. |
 | `A deploy takes up to 50 entries in customskills, and this one sent <n>. Send at most 50, then add the rest with /UserAgent/CustomSkillUpsert once the agent is deployed.` | `Deploy` with more than 50 `customskills` entries. Nothing is created or charged. |
-| `Agent setup is not complete. Please finish setting up your connectors before starting.` | Status is `6`: call `CredentialUpsert` / `CredentialProjectBind` / `SkillsApply` / `CustomSkillUpsert` to provide required values, then `POST /UserAgent/Update` to move the agent to status `0` |
+| `Agent setup is not complete. Fill in the agent's required settings before starting.` | Status is `6`: save the agent's missing required credentials with `CredentialUpsert` or `CredentialProjectBind`, then call `POST /UserAgent/Update` to move the agent to status `0`. Connectors never hold an agent at status `6`. |
 | `Subscription required — please subscribe to this agent before starting it.` | `Start` called on a row with no active subscription AND no spendable extras (`extracredits - usedcredits ≤ 0`). Most often hit after a subscription expires with empty extras. Call `RenewSubscription` (`useprepaid: true`) to continue. |
 | `No credits available. Please renew your subscription or purchase extra credits.` | Monthly and extra credits are both exhausted |
 | `Subscription already active for this useragent. Cancel or modify the existing subscription instead.` | `CreateSubscriptionCheckout` called when a sub already exists |
@@ -14578,15 +14578,15 @@ A pending `connect` card's block also has `next`, beside `setup`: one entry `{ c
 | `key` | `string` | `add`, `remove`, `schedule` and `skill` only. On `add` and `remove`: the name of one skill (`util-<name>`) as [`POST /Skills/List`](/docs/agent-skills#post-skillslist) lists it, up to 64 characters, for example `util-weather`; see [Adding and removing skills](#setup-add-remove-cards). On `schedule` and `skill`: the scheduled task's key (`cs-cron-<name>`) or the custom skill's key (`cs-<name>`). |
 | `title` | `string` | On `connect` and `disconnect`: the connector's title, written by Wiro, up to 120 characters. On `schedule` and `skill`: optional, one line, up to 80 characters. |
 | `authtype` | `string` | `connect` only, written by Wiro: the connector's `authtype` in the catalog, `fields`, `headers`, `none`, `oauth` or `provider-oauth`. |
-| `mode` | `string` | `connect` only, written by Wiro: `key` (the card takes the values in `fields`) or `signin` (the card opens the vendor's sign-in). `oauth` and `provider-oauth` connectors sign in; the others take a key. See [Connecting a connector](#setup-signin-cards). |
-| `fields` | `object[]` | `connect` only, written by Wiro: what the card's form asks for, at most 30, in the shape of `credentialfields` on [`AgentConnector/Detail`](/docs/agent-connectors#connect-card-fields) (`name`, `label`, Markdown `description`, `required`, `secret`, `format`, and `options`, `placeholder`, `pattern`, `maxlength`, `serveronly`, `mode` or `source` where they apply). A `key` card has the connector's Connect fields, a `source: "wiro_project"` field being a project picker. A `signin` card has the fields its sign-in takes: for a connector that signs in with an app of your own, that app's keys (`serveronly: true`), never the fields of its key way. |
+| `mode` | `string` | `connect` only, written by Wiro: `key` (the card takes the values in `fields`), `signin` (the card opens the vendor's sign-in) or `project` (the card picks a Wiro project for the `wiro` connector). `oauth` and `provider-oauth` connectors sign in, the `wiro` connector takes a project, and the others take a key. See [Connecting a connector](#setup-signin-cards). |
+| `fields` | `object[]` | `connect` only, written by Wiro: what the card's form asks for, at most 30, in the shape of `credentialfields` on [`AgentConnector/Detail`](/docs/agent-connectors#connect-card-fields) (`name`, `label`, Markdown `description`, `required`, `secret`, `format`, and `options`, `placeholder`, `pattern`, `maxlength`, `serveronly`, `mode` or `source` where they apply). A `key` card has the connector's Connect fields. A `project` card has one field with `source: "wiro_project"`: a project picker, never an input. A `signin` card has the fields its sign-in takes: for a connector that signs in with an app of your own, that app's keys (`serveronly: true`), never the fields of its key way. |
 | `wiroapp` | `boolean` | `connect` only, written by Wiro and only on a card from a Wiro web chat turn: `true` when the connector signs in there with Wiro's own app, so the card needs no app keys. Never on a card from a message sent with a project API key. |
 | `cron` | `string` | `schedule` only: always on `create`, optional on `update`. A 5-field cron in the agent's time zone. A task set up from chat runs at most once an hour. |
 | `instructions` | `string` | `schedule` and `skill` only. On `create` and `update`: the full text of the task or skill, up to 20,000 characters. On `append`: only the text to add, up to 20,000 characters. On `revert`: the text the skill goes back to, which Wiro takes from the skill's history; the agent never writes it. |
 | `before` | `string` | `skill` cards with `update`, `append` or `revert` only. The skill's text when Wiro checked the card, written by Wiro, never by the agent. Show it as the text before the change; see [Changing a custom skill](#setup-skill-cards). It can be absent on older cards. |
 | `with` | `string[]` | `add` and `remove` only, written by Wiro, never by the agent. The other skills the card turns on (`add`) or off (`remove`) together with `key`, by name, sorted, at most 12. |
 | `pauses` / `resumes` | `string[]` | `add` and `remove` only, written by Wiro. The scheduled tasks (`cs-cron-<name>`) that pause, or run again, with this change, at most 20 each. |
-| `needs` | `object[]` | `add` only, written by Wiro. The connectors the skills it turns on work with (`suggested_connectors`) that aren't connected yet, at most 3, each `{ connector, title, mode }`: `connector` is the connector's slug, as a `connect` card names it, `title` is its name, and `mode` says how it connects: `key` (its values, on its `connect` card or a key pasted in the chat) or `signin` (the vendor's sign-in, started from its `connect` card). |
+| `needs` | `object[]` | `add` only, written by Wiro. The connectors the skills it turns on work with (`suggested_connectors`) that aren't connected yet, at most 3, each `{ connector, title, mode }`: `connector` is the connector's slug, as a `connect` card names it, `title` is its name, and `mode` says how it connects: `key` (its values, on its `connect` card or a key pasted in the chat), `signin` (the vendor's sign-in, started from its `connect` card) or `project` (a Wiro project, picked on its `connect` card). |
 | `timezone` | `string` | `timezone` only. The proposed IANA time zone, for example `Europe/Istanbul`. |
 | `note` | `string` | Optional. The agent's one-line note about the change, up to 300 characters. |
 | `status` | `string` | `pending`, `applied`, `dismissed` or `failed`. Absent means `pending`. |
@@ -14656,7 +14656,7 @@ Read a missing list as empty. An `add` card for Video Creator, which brings the 
 }
 ```
 
-**An `add` card and its `connect` cards.** When an `add` card's `needs` names connectors, Wiro adds a `connect` card for each of them to the same reply, right after the `add` card and whatever its `mode`, so the person sees them at once, while the reply has room (a reply holds at most three) and has no pending `connect` card for it yet. A `connect` card doesn't wait for its `add` card: each connects its connector on its own. In a typed chat, a `yes` applies the `add` card as it does any card that needs no values (see [Approving a setup card](#approving-setup-cards)), and Wiro's answer ends with what is left: `Next: paste your <Title> key as your reply.` for a `key` card, or, in a message sent with a project API key, `Next: connect <Title> to finish. Its sign-in and any app keys are entered outside this chat, never in it.` for a `signin` card. The `add` card can also take its `key` card's values, or finish with its `signin` card's sign-in; see [Adding and connecting in one step](#setup-add-and-connect). A connector the reply had no room for gets no card: the applied `add` card's summary goes on with `Still to connect: <Title>`, and the answer's `next` lists it without a card.
+**An `add` card and its `connect` cards.** When an `add` card's `needs` names connectors, Wiro adds a `connect` card for each of them to the same reply, right after the `add` card and whatever its `mode`, so the person sees them at once, while the reply has room (a reply holds at most three) and has no pending `connect` card for it yet. A `connect` card doesn't wait for its `add` card: each connects its connector on its own. In a typed chat, a `yes` applies the `add` card as it does any card that needs no values (see [Approving a setup card](#approving-setup-cards)), and Wiro's answer ends with what is left: `Next: paste your <Title> key as your reply.` for a `key` card, or, in a message sent with a project API key, `Next: connect <Title> to finish. Its sign-in and any app keys are entered outside this chat, never in it.` for a `signin` card and `Next: connect <Title> to finish. Its project is picked outside this chat.` for a `project` card. The `add` card can also take its `key` card's values, or finish with its `signin` card's sign-in; see [Adding and connecting in one step](#setup-add-and-connect). A `project` card always takes its own step. A connector the reply had no room for gets no card: the applied `add` card's summary goes on with `Still to connect: <Title>`, and the answer's `next` lists it without a card.
 
 Wiro checks an `add` or `remove` card when the agent proposes it and again when it is applied, and works out `with`, `pauses`, `resumes` and `needs` again. When the agent's skills changed in between, so that the card would now turn on more than it shows or turn off something else, nothing changes and the card fails with `This agent's connectors or skills changed after the card was made. Ask the agent again.` A dependency in `with` that was turned on in the meantime is not a change. An `add` card whose `key` itself was turned on in the meantime fails with `<Title> is already on.`, and a `remove` card whose `key` was turned off fails with `<Title> is not on this agent.`
 
@@ -14681,7 +14681,7 @@ An `add` card can finish its `connect` card's step itself, so both apply with on
 - **With a key.** When its `needs` names one connector with `mode: "key"` whose `connect` card waits on the same reply, send the `add` card's id to [`SetupCardApply`](#post-useragentmessagesetupcardapply) with that card's values in `values`. Wiro checks the values first: when a value is refused, nothing is applied and both cards stay pending. When they pass, Wiro applies the `add` card and, right after it, the `connect` card.
 - **With a sign-in.** When its `needs` names one connector with `mode: "signin"` whose `connect` card waits, start the sign-in on that `connect` card (see [Connecting a connector](#setup-signin-cards)). Once the browser is back, send the `add` card with `signin: true`. Wiro checks that the connector reads connected: when it doesn't, nothing is applied and the answer is `<Title> is not connected yet. Finish the sign-in on the card first.` with `errorcode: "not_connected"`. Otherwise it applies the `add` card, then the `connect` card.
 
-`setup` is the `add` card after the call, `summary` names both changes, such as `Video Creator added. Wiro AI Models connected.`, and `paired` holds the `connect` card's outcome as `[{ setup, result, error }]`.
+`setup` is the `add` card after the call, `summary` names both changes, such as `Google Play Promotional Content added. Google Play Console connected.`, and `paired` holds the `connect` card's outcome as `[{ setup, result, error }]`.
 
 When the `add` card fails as it is applied, the `connect` card stays pending, and its `error` in `paired` reads `<Connector title> is not connected: <Title> was not added.` (with a key: nothing was saved) or `<Connector title> is connected, but <Title> was not added.` (with a sign-in: the connection stays). When the `add` card has no pending `connect` card to take the values, Wiro answers `This card takes no key. Apply it without one.`, and when more than one has, `This card brings more than one key. Apply it, then add each key on its own card.` With `signin: true`, the same cases answer `This card has no sign-in to finish. Apply it without one.` (`errorcode: "signin_no_pair"`) and `This card brings more than one sign-in. Apply it, then connect each on its own card.` (`errorcode: "signin_many"`). `values` and `signin` together answer `Send values or signin, not both.` In each case nothing changes and the cards stay pending.
 
@@ -14691,8 +14691,9 @@ When the `add` card fails as it is applied, the `connect` card stays pending, an
 
 A `connect` card connects one connector of the catalog, with the checks and the outcome of [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect), and Wiro writes on it what its form needs: `title`, `authtype`, `mode` and `fields`. Wiro takes a `connect` card only for an active connector of the catalog that the agent doesn't have connected; a connection that waits for a sign-in, needs a new one or failed takes a card. The agent's proposal is refused with one sentence when it names a channel (`Telegram is a channel: it is connected in the agent's settings.`), a slug that isn't in the catalog, or a connector that is already connected (`<Title> is already connected.`).
 
-- **`mode: "key"`**: the connector's values. Apply the card with `values` (and `wiroprojectguid` for a `source: "wiro_project"` field), or paste the key as the reply when the card has one secret field. A card with no required field is applied by a `yes` too. A refused value saves nothing and leaves the card pending.
+- **`mode: "key"`**: the connector's values. Apply the card with `values`, or paste the key as the reply when the card has one secret field. A card with no required field is applied by a `yes` too. A refused value saves nothing and leaves the card pending.
 - **`mode: "signin"`**: the vendor's sign-in. Applying the card with your `redirecturl`, and the keys of your own app in `values` for a connector that signs in with one, answers `authorizeUrl`. The card stays pending until the connector reads connected; the next apply of it, or any card of the same person's applied or dismissed in that chat, records it applied. A typed reply never starts a sign-in. A card from a message sent with a project API key signs in as the key's owner: the consent screen names your organization, or the app of your own whose keys you send. Only a card from a Wiro web chat turn can sign in with Wiro's own app, and it says so with `wiroapp: true`.
+- **`mode: "project"`**: a Wiro project, for the `wiro` connector. Apply the card with the id of one of your projects as `wiroprojectguid`, and no `values`: it becomes the agent's own Wiro project, as [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) binds it and with the same checks (see [The Wiro connector](/docs/agent-connectors#the-wiro-connector)). Without one, a request made with a project API key binds that key's own project, and the Wiro web chat keeps the agent's own project when it has one in its workspace; otherwise the card stays pending with `Pick a project on the card to connect <Title>.` A typed reply never applies it, and a key pasted as the reply never goes to it.
 
 A `signin` card for HubSpot, which signs in with an app of your own:
 
@@ -14718,7 +14719,7 @@ The agent never sees a key, a token or an account list. A connector's account pi
 
 ### Disconnecting a connector
 
-A `disconnect` card disconnects a connector, as [`ConnectorDisconnect`](/docs/agent-connectors#post-useragentconnectordisconnect) does: Wiro asks the vendor to revoke a sign-in where it can, and deletes the connection. It names the connector in `connector`, carries its `title`, and never holds a value. Once it is applied, the agent restarts without the connector's tools until it is connected again. Wiro takes a `disconnect` card only for a connector the agent has a connection for; when the connection is gone by the time the card is applied, the card fails with `<Title> is not connected.` Channels (Telegram, Slack or Discord) are refused, and they and the Wiro project the agent runs models with are changed outside the chat, with the credential endpoints or on the agent page. A `yes` applies a `disconnect` card as it does any card that needs no values.
+A `disconnect` card disconnects a connector, as [`ConnectorDisconnect`](/docs/agent-connectors#post-useragentconnectordisconnect) does: Wiro asks the vendor to revoke a sign-in where it can, and deletes the connection. It names the connector in `connector`, carries its `title`, and never holds a value. Once it is applied, the agent restarts without the connector's tools until it is connected again. Wiro takes a `disconnect` card only for a connector the agent has a connection for; when the connection is gone by the time the card is applied, the card fails with `<Title> is not connected.` Channels (Telegram, Slack or Discord) are refused, and they are changed outside the chat, with the credential endpoints or on the agent page. A `disconnect` card for the `wiro` connector removes the connector only: the agent keeps its Wiro project. A `yes` applies a `disconnect` card as it does any card that needs no values.
 
 ### Approving a setup card
 
@@ -14728,7 +14729,7 @@ After proposing a card, the agent asks in one short line whether to apply it, or
 2. **Press Apply** on the card in the Wiro web chat.
 3. **Call** [`POST /UserAgent/Message/SetupCardApply`](#post-useragentmessagesetupcardapply) with the card's `id`. This also works after 30 minutes, as long as the card is pending.
 
-What a `yes` does depends on where it is sent and how many cards are pending (`connect` cards that take values or sign in don't count; see below):
+What a `yes` does depends on where it is sent and how many cards are pending (`connect` cards that take values, sign in or pick a project don't count; see below):
 
 | Pending cards | What `yes` does |
 |---------------|-----------------|
@@ -14736,7 +14737,7 @@ What a `yes` does depends on where it is sent and how many cards are pending (`c
 | One, in a message sent with a project API key | The first `yes` applies nothing: Wiro answers with the card's exact content (the [card listing](#setup-card-listing)). A second `yes` applies that card. |
 | Several | The first `yes` gets the card listing, which numbers the cards. Then reply `yes` and a number, such as `yes 2`, to apply that card, one card per reply. A plain `yes` never applies one of several cards. In the web chat, the card's Apply button works too. |
 
-A number works only for a card Wiro has listed: `yes 2` sent before the listing gets the listing. A message that says more, such as `yes, but at 10`, is an ordinary message for the agent. A reply such as `no` or `cancel` dismisses the pending cards of the latest reply that are less than 30 minutes old, as a `yes` acts only on those, and goes to the agent as usual. A row added to the session between turns, such as a scheduled task's report, becomes the latest reply, so a `yes` or `no` sent after it finds no cards. While the agent isn't running, Wiro answers such a reply itself when it turned cards down: `The setup change was turned down.` or `The <N> setup changes were turned down.`, with the cards' ids in `setupresult.dismissed`. A `connect` card that takes values waits for them, and a `signin` card waits for its sign-in, so a `yes` doesn't apply either. When only `connect` cards are pending, a `yes` is an ordinary message for the agent, unless one of them is a `signin` card: then Wiro answers `A yes cannot connect <Title>. Its sign-in and any app keys are entered outside this chat, never in it.`, applies nothing and starts no agent turn. A `connect` card with no required field is applied by a `yes` like any other card.
+A number works only for a card Wiro has listed: `yes 2` sent before the listing gets the listing. A message that says more, such as `yes, but at 10`, is an ordinary message for the agent. A reply such as `no` or `cancel` dismisses the pending cards of the latest reply that are less than 30 minutes old, as a `yes` acts only on those, and goes to the agent as usual. A row added to the session between turns, such as a scheduled task's report, becomes the latest reply, so a `yes` or `no` sent after it finds no cards. While the agent isn't running, Wiro answers such a reply itself when it turned cards down: `The setup change was turned down.` or `The <N> setup changes were turned down.`, with the cards' ids in `setupresult.dismissed`. A `connect` card that takes values waits for them, a `signin` card waits for its sign-in, and a `project` card waits for its project, so a `yes` applies none of them. When only `connect` cards are pending, a `yes` is an ordinary message for the agent, unless one of them is a `signin` or `project` card: then Wiro answers `A yes cannot connect <Title>. Its sign-in and any app keys are entered outside this chat, never in it.` (for a `project` card, `A yes cannot connect <Title>. Its project is picked outside this chat.`), applies nothing and starts no agent turn. A `connect` card with no required field is applied by a `yes` like any other card.
 
 Wiro applies the stored card, checked again against the agent's current setup, never anything written in the reply. A card is applied at most once. Whenever a card is applied, dismissed or fails, Wiro also marks `applied` the same person's pending `connect` cards in that chat from the last 7 days whose connectors now read connected: the one just connected, and any whose sign-in finished or that were connected elsewhere. `setup` and `setupresult` name only the card you acted on; History and Detail show the others. Only an agent admin can apply a card: a reply from anyone else changes nothing and gets `Only an agent admin can apply setup changes.` When a change needs a restart, the agent restarts to load it: continue the chat in about a minute. Replies Wiro handles itself don't have to wait for it; see [Replies Wiro handles itself](#handled-setup-replies). Cards that restart a starting or running agent: `add`, `remove`, `connect`, `disconnect` and `timezone` cards, a `schedule` or `skill` card that creates one, a `schedule` card that changes the `cron`, and `pause`, `resume`, `delete`, `disable` and `enable` cards. A card that changes only the text of a custom skill or scheduled task (`append`, `revert`, or an `update` that keeps the schedule) reaches a running agent without a restart, and `restarting` is `false`; if the agent can't take the new text, Wiro restarts it instead.
 
@@ -14756,7 +14757,7 @@ Reply "yes" to apply exactly this change, or "no" to turn it down.
 
 An `append` card's first line reads `Card 1: Add to custom skill <key>.`, followed by only the text it adds. A `revert` card's first line reads `Card 1: Undo the last change to custom skill <key>.`, followed by the text it restores. A `disconnect` card has one line: `Card 1: Disconnect <Connector> (what was saved to connect it is removed).`
 
-An `add` or `remove` card names what it changes by title, never by key. Its first line is `Card 1: Add <Title> (skill).` or `Card 1: Remove <Title> (skill).`, and only the lines that apply follow it: `Also turns on: <titles>.`, `Also turns off: <titles>.`, `Scheduled tasks that pause: <titles>.`, `Scheduled tasks that run again: <titles>.` and `Still to connect: <titles>.` A `connect` card that takes values or signs in isn't listed: it waits for its values or its sign-in. One that needs no values is listed as `Card 1: Connect <Connector>.` When a message sent with a project API key gets the listing while the only pending cards are an `add` card and its `connect` card, and the key is all that is needed, the listing's last line offers the key as the reply instead: `Reply with your <Connector title> key to add <Title> and connect it at once, "yes" to add it now and give the key later, or "no" to turn it down.` See [Adding and connecting in one step](#setup-add-and-connect).
+An `add` or `remove` card names what it changes by title, never by key. Its first line is `Card 1: Add <Title> (skill).` or `Card 1: Remove <Title> (skill).`, and only the lines that apply follow it: `Also turns on: <titles>.`, `Also turns off: <titles>.`, `Scheduled tasks that pause: <titles>.`, `Scheduled tasks that run again: <titles>.` and `Still to connect: <titles>.` A `connect` card that takes values, signs in or picks a project isn't listed: it waits for its values, its sign-in or its project. One that needs no values is listed as `Card 1: Connect <Connector>.` When a message sent with a project API key gets the listing while the only pending cards are an `add` card and its `connect` card, and the key is all that is needed, the listing's last line offers the key as the reply instead: `Reply with your <Connector title> key to add <Title> and connect it at once, "yes" to add it now and give the key later, or "no" to turn it down.` See [Adding and connecting in one step](#setup-add-and-connect).
 
 With several cards, it starts with `The agent proposes these setup changes. Nothing is applied yet.` and ends with `To apply one, reply "yes" and its number, such as "yes 1", one card per reply. Reply "no" to turn them all down.` Show this text, as it is, to the person who approves. The listing is a reply Wiro handles itself (see [below](#handled-setup-replies)), and its `setupresult` lists no card.
 
@@ -14764,13 +14765,13 @@ With several cards, it starts with `The agent proposes these setup changes. Noth
 
 While setup from chat is on for a message, Wiro keeps keys out of the agent's conversation:
 
-- **A key as the reply.** When the agent's latest reply has one pending `connect` card and it is a `key` card with one secret field (a project picker doesn't count), an agent admin can paste the key as the reply, a text message of up to 2,000 characters with no attachments. Wiro takes the reply as the key when it is in that connector's own key format, when the whole message is one key-like word, or when the key follows a word such as `key` or `token` (`my key is ...`). A sentence that only holds an id, a URL, an email address or a plain word is an ordinary message, and the card stays pending. Wiro saves the key to the connector, as the card would, and marks the card applied. The key never reaches the agent, and the stored message reads `[key saved to <Connector title>]` in its place. A key the connector refuses, or one for a connector that needs more than its key, saves nothing, and the answer says why. A key in another service's format is not saved; see [Wiro's answers](#setup-reply-lines). In a message sent with a project API key, when the only pending cards are that `connect` card and its `add` card, and the key is all that is needed, the key applies both cards once Wiro has listed the `add` card, and a key sent before that gets the listing. See [Adding and connecting in one step](#setup-add-and-connect).
+- **A key as the reply.** When the agent's latest reply has one pending `connect` card and it is a `key` card with one secret field (never a `project` card), an agent admin can paste the key as the reply, a text message of up to 2,000 characters with no attachments. Wiro takes the reply as the key when it is in that connector's own key format, when the whole message is one key-like word, or when the key follows a word such as `key` or `token` (`my key is ...`). A sentence that only holds an id, a URL, an email address or a plain word is an ordinary message, and the card stays pending. Wiro saves the key to the connector, as the card would, and marks the card applied. The key never reaches the agent, and the stored message reads `[key saved to <Connector title>]` in its place. A key the connector refuses, or one for a connector that needs more than its key, saves nothing, and the answer says why. A key in another service's format is not saved; see [Wiro's answers](#setup-reply-lines). In a message sent with a project API key, when the only pending cards are that `connect` card and its `add` card, and the key is all that is needed, the key applies both cards once Wiro has listed the `add` card, and a key sent before that gets the listing. See [Adding and connecting in one step](#setup-add-and-connect).
 - **Keys in other messages.** Wiro removes clear keys: a key format Wiro knows for a provider or connector, and a key written after a word such as `key`, `token`, `secret` or `password`. The stored text and the text the agent gets hold `[key removed]` in their place, and Send returns `contentmasked: true` with that text in `content`. The agent can then propose a `connect` card. Other ids, such as Google Sheet and Drive ids, commit hashes and order numbers, reach the agent unchanged. While a `connect` card of the latest reply waits for its key, every key-like word in any other text message of up to 2,000 characters is removed without being saved.
 - From your own backend, connect a connector with [`POST /UserAgent/ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect), or save a channel's key with [`POST /UserAgent/CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert), instead of sending them in a message.
 
 ### Replies Wiro handles itself
 
-When Wiro handles a message itself (a `yes` that applies a card or gets the [card listing](#setup-card-listing), a `yes` while a `signin` card waits, a key pasted as the reply, a reply refused because the sender isn't an agent admin, or a `no` that turned cards down while the agent isn't running), no agent turn runs and no credits are used, even when the agent has no credits left. Wiro does this whatever the agent's status, so these replies also work while the agent is stopped or restarting. [`Message/Send`](#post-useragentmessagesend) answers at once with the result:
+When Wiro handles a message itself (a `yes` that applies a card or gets the [card listing](#setup-card-listing), a `yes` while a `signin` or `project` card waits, a key pasted as the reply, a reply refused because the sender isn't an agent admin, or a `no` that turned cards down while the agent isn't running), no agent turn runs and no credits are used, even when the agent has no credits left. Wiro does this whatever the agent's status, so these replies also work while the agent is stopped or restarting. [`Message/Send`](#post-useragentmessagesend) answers at once with the result:
 
 ```json
 {
@@ -14814,7 +14815,9 @@ The lines Wiro writes in `response`:
 | `1 more setup change is still pending.` or `<N> more setup changes are still pending.` | Other cards of the same reply still wait. Reply `yes` and a card's number to apply the next one. |
 | `Next: paste your <Title> key as your reply.` or `<N> connector cards still need their keys: add each key on its card.` | `connect` cards of the same reply still wait for their keys, such as the `connect` card that came with an `add` card just applied. When one card is counted, the `Next:` line ends the answer. `<Title>` is the connector's title. When the answer says the agent is restarting, the `Next:` line goes on with `Send it now and it loads with this same restart.` |
 | `Next: connect <Title> to finish. Its sign-in and any app keys are entered outside this chat, never in it.` | In a message sent with a project API key, a `yes` applied an `add` card whose `signin` card still waits. `setupresult.next` names that card. In the Wiro web chat the line reads `Next: connect <Title> with its card in this chat.` |
+| `Next: connect <Title> to finish. Its project is picked outside this chat.` | In a message sent with a project API key, a `yes` applied an `add` card whose `project` card still waits. `setupresult.next` names that card. In the Wiro web chat the line reads `Next: connect <Title> with its card in this chat.` |
 | `A yes cannot connect <Title>. Its sign-in and any app keys are entered outside this chat, never in it.` | In a message sent with a project API key, a `yes` while only `connect` cards wait, one of them a `signin` card. Nothing was applied. In the Wiro web chat the line reads `A yes cannot sign in for you. Connect <Title> with its card in this chat.` |
+| `A yes cannot connect <Title>. Its project is picked outside this chat.` | In a message sent with a project API key, a `yes` while only `connect` cards wait, one of them a `project` card. Nothing was applied. In the Wiro web chat the line reads `A yes cannot pick the project for you. Connect <Title> with its card in this chat.` |
 | `⚠️ Not saved: <reason>. Paste the key again as your reply.` | The pasted key was refused, for example because the vendor refused it. Nothing was saved and the card stays pending. When the key was for an `add` card and its `connect` card, neither is applied. |
 | `⚠️ Not saved: <Title> is still waiting. Reply "yes" to add it, or "no" to turn it down.` | In a chat over a project API key, a key came for an `add` card and its `connect` card after the `connect` card was applied, turned down or settled elsewhere. Nothing was saved, and the `add` card still waits for a `yes` or a `no`. |
 | `That does not look like a <Connector> key, so it was not saved. Paste the <Connector> key as your reply.` | The reply holds a key in another service's format, while the latest reply's only pending `connect` card is a `key` card with one secret field. It comes whoever sent the key. Nothing was saved, the stored message reads `[key removed]` in its place, and the card stays pending. When Wiro knows the format, the sentence names it, such as `(it looks like <kind>)`. Before a name that starts with a vowel, `a` becomes `an`, as in `an Apollo key`. |
@@ -14838,7 +14841,7 @@ Applies or dismisses one setup card, starts a `signin` card's sign-in, or applie
 | `values` | object | No | `connect` cards, and `add` cards whose `needs` has one pending `key` card: `{ "<name>": value }` for the card's `fields`, as the connector's `credentialfields` on [`POST /AgentConnector/Detail`](/docs/agent-connectors#post-agentconnectordetail) list them. On a `key` card, its Connect fields; on a `signin` card, the fields its sign-in takes, such as your own app's keys. Wiro checks them as [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect) does: required fields, `format`, `pattern` and `maxlength` (see [Connect card fields](/docs/agent-connectors#connect-card-fields) for the limits), and a `json` field also takes an object. On an `add` card they are the values of its `key` card, and Wiro applies both cards in one step; see [Adding and connecting in one step](#setup-add-and-connect). Wiro saves them to the connector; they are never returned and never reach the agent. |
 | `signin` | boolean | No | `add` cards whose `needs` has one pending `signin` card: `true` once that card's sign-in connected the connector, to apply both cards in one step. Not together with `values`. |
 | `redirecturl` | string | No | `signin` cards: where the browser comes back after the sign-in, as on [`ConnectorConnect`](/docs/agent-connectors#the-redirect-url). Without one, the browser comes back to Wiro's own return page on wiro.ai. |
-| `wiroprojectguid` | string | No | `key` cards with a `source: "wiro_project"` field, such as the `wiro` connector's: the id of the project it bills, from [`POST /Project/List`](/docs/projects). A request made with a project API key may leave it out, to use that key's own project. |
+| `wiroprojectguid` | string | No | `project` cards, the `wiro` connector's: the id of one of your projects, from [`POST /Project/List`](/docs/projects). It becomes the agent's own Wiro project, as [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) binds it. A request made with a project API key may leave it out, to bind that key's own project. |
 
 **Permission**: applying needs an agent admin (the owner, or an admin of the agent's team). Any member who can see the chat can dismiss. The message must be one you can read with [Message/History](#post-useragentmessagehistory) (in private Chat Mode, your own messages), and the card must be pending: an applied or dismissed card is never applied again.
 
@@ -14890,7 +14893,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
 | `authorizeUrl` | `string` | Only when a `signin` card's sign-in started: the vendor's sign-in address, to open in the browser, for 10 minutes and once. `result` is `true`, `setup` is still pending, `summary` is empty, and `next` names the card. Once the browser is back, apply the card again to record it. |
 | `paired` | `object[]` | Only when `values` or `signin: true` are sent with a pending `add` card: its `connect` card after the call, as `[{ setup, result, error }]`. `setup` has the same shape as above, `result` is `true` when the card was applied too, and `error` is `null` or the sentence that says why not. Empty when there is no single `connect` card for it. |
 | `errorcode` | `string` | Only on some refusals of an `add` card sent with `signin: true`: `not_connected`, `signin_no_pair` or `signin_many`. |
-| `next` | `object[]` | Only when the call leaves something to connect: `[{ connector, title, mode, cardid?, messageguid? }]`. An applied `add` card lists what it needs that isn't connected yet, without the one its `connect` card connected in the same call. A `connect` card left pending, by a refused value or a sign-in just started, lists its own connector and card. |
+| `next` | `object[]` | Only when the call leaves something to connect: `[{ connector, title, mode, cardid?, messageguid? }]`. An applied `add` card lists what it needs that isn't connected yet, without the one its `connect` card connected in the same call. A `connect` card left pending, by a refused value or project or a sign-in just started, lists its own connector and card. |
 
 | Error | When |
 |-------|------|
@@ -14904,7 +14907,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
 | `This card brings more than one key. Apply it, then add each key on its own card.` | `values` sent with an `add` card that has more than one pending `connect` card. Nothing changed and the card stays pending. |
 | `This card has no sign-in to finish. Apply it without one.`, `This card brings more than one sign-in. Apply it, then connect each on its own card.`, `<Title> is not connected yet. Finish the sign-in on the card first.` | `signin: true` on an `add` card with no pending `signin` card, with more than one, or before the sign-in came back (`errorcode` `signin_no_pair`, `signin_many` or `not_connected`). Nothing changed and the cards stay pending. |
 | `Send values or signin, not both.`, `redirecturl must be a URL.`, `wiroprojectguid must be a project's id.` | A malformed request. |
-| A sentence from the connect checks, such as `Serper API Key is required.`, the vendor's own refusal, `This connector signs in with your own app: send its Client ID and Client Secret.` or `Invalid redirect URL` | A `connect` card's values were refused, as [`ConnectorConnect`](/docs/agent-connectors#errors) refuses them. Nothing was saved and the card stays pending. |
+| A sentence from the connect checks, such as `Serper API Key is required.`, the vendor's own refusal, `This connector signs in with your own app: send its Client ID and Client Secret.`, a project refusal such as `This is a team agent: use one of its team's projects.`, or `Invalid redirect URL` | A `connect` card's values or project were refused, as [`ConnectorConnect`](/docs/agent-connectors#errors) refuses them. Nothing was saved and the card stays pending. |
+| `Pick a project on the card to connect <Title>.` | A `project` card applied without `wiroprojectguid` that can't connect without one. Nothing was saved and the card stays pending. |
 | `<Title> can't be connected any more.`, `<Title> is not connected.` | A `connect` card whose connector left the catalog, or a `disconnect` card whose connection is gone. The card's `status` is now `failed`. |
 | Another sentence in `errors[0].message` | The message or card wasn't found, the card is no longer pending, or the change no longer fits the agent's setup. When the change itself fails, the card's `status` becomes `failed` with the sentence in `error`. |
 
@@ -17478,7 +17482,7 @@ Every connector also has a public page, `https://wiro.ai/connectors/{slug}`, wit
 | 3b. Or start a sign-in | [`POST /UserAgent/ConnectorConnect`](#connect-with-a-sign-in) with `redirecturl` | `status: "pending"` and the `authorizeUrl` to open in the browser. |
 | 4. The browser comes back | [`GET /AgentConnector/OAuthCallback`](#the-callback-and-your-redirect-url), called by the vendor | A redirect to your `redirecturl` with `connector_connected=true` or `connector_error=<code>`. |
 | 5. Read the state | [`POST /UserAgent/ConnectorList`](#post-useragentconnectorlist) | Each connection's `status`: `connected`, `pending`, `reauth` or `error`. |
-| 6. Pick accounts | [`POST /UserAgent/ConnectorAccounts`](#post-useragentconnectoraccounts), [`POST /UserAgent/ConnectorSetAccounts`](#post-useragentconnectorsetaccounts) | The Pages, ad accounts or properties the connection can reach, and the ones it may act on. |
+| 6. Pick accounts | [`POST /UserAgent/ConnectorAccounts`](#post-useragentconnectoraccounts), [`POST /UserAgent/ConnectorSetAccounts`](#post-useragentconnectorsetaccounts) | The Pages, ad accounts, advertisers or properties the connection can reach, and the ones it may act on. |
 | 7. Disconnect | [`POST /UserAgent/ConnectorDisconnect`](#post-useragentconnectordisconnect) | The connection, its values and tokens deleted, and the agent restarts. |
 
 ### Who your customer sees
@@ -17714,7 +17718,7 @@ All three ways go through one call, `POST /UserAgent/ConnectorConnect`. The conn
 | `mode` | string | No | `provider-oauth` rows only: `oauth` (the default, a sign-in) or `key` (the key way in, when `modes` includes `key`). |
 | `redirecturl` | string | No | Sign-ins only: where the browser returns. See [The redirect URL](#the-redirect-url). |
 | `accounts` | object | No | A first account selection for a connector with [account pickers](#account-pickers), `{ <picker key>: [ids] }`, such as `{ "pages": ["123"] }`. Only its shape is checked here; [ConnectorSetAccounts](#post-useragentconnectorsetaccounts) checks every id with the vendor once the connector is connected. |
-| `wiroprojectguid` | string | No | The Wiro connector only: the id of the project it bills. See [The Wiro connector](#the-wiro-connector). A connector whose tools run inside the agent refuses it; one on a vendor's own MCP server ignores it. |
+| `wiroprojectguid` | string | No | The Wiro connector only: the id of one of your projects, from [`POST /Project/List`](/docs/projects). It becomes the agent's own Wiro project, as [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) binds it. See [The Wiro connector](#the-wiro-connector). A connector whose tools run inside the agent refuses it; one on a vendor's own MCP server ignores it. |
 
 ### Connect with fields
 
@@ -17887,6 +17891,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
 }
 ```
 
+TikTok Ads has an account picker: once it is connected, pick the advertisers it may act on, as in [TikTok Ads: sign in, then pick advertisers](#tiktok-ads-sign-in-then-pick-advertisers).
+
 The connection is now `pending`. A connection that was already `connected` stays connected while the new sign-in runs, and the new tokens replace the old ones when it finishes.
 
 **2. Open `authorizeUrl`** in your customer's browser: a new tab, a popup, or the same window. The address works for 10 minutes and once. Start a new sign-in to get a fresh one.
@@ -18013,7 +18019,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorList" \
 | `tokenexpiresat`, `refreshtokenexpiresat` | Sign-in connections: when the access token and the refresh token expire, or `null`. Wiro refreshes the access token on its own. |
 | `scope` | The scopes the vendor granted, as it sent them. |
 | `accounts` | The account selection, `{ <picker key>: [ids] }`. |
-| `wiroprojectid` | The Wiro connector only: the project it bills. |
+| `wiroprojectid` | The Wiro connector only: the agent's own Wiro project, the one the connector acts with, as a string, or `null` when the agent has none. See [The Wiro connector](#the-wiro-connector). |
 | `savedvariables` | The names of the values saved for this connection, sorted. Use them to mark fields as saved; their values are never shown. |
 | `lasterror` | A short code for the last failure, such as `authorization_denied`, or `null`. Never a secret. |
 
@@ -18028,9 +18034,9 @@ A connector that was never connected, or was disconnected, has no row.
 
 ## Account Pickers
 
-Some connectors act on accounts inside the vendor: Facebook Pages, Meta ad accounts, Google Ads customers, a GA4 property, Search Console sites, Business Profile locations, YouTube channels, apps in App Store Connect and Google Play. Their catalog row lists `accountpickers`. After the connection is `connected`, list the candidates, let your customer choose, and save the choice. The connector's tools refuse any account outside the selection, and until something is picked they have no account to act on.
+Some connectors act on accounts inside the vendor: Facebook Pages, Meta ad accounts, Google Ads customers, TikTok Ads advertisers, a GA4 property, Search Console sites, Business Profile locations, YouTube channels, apps in App Store Connect and Google Play. Their catalog row lists `accountpickers`. After the connection is `connected`, list the candidates, let your customer choose, and save the choice. The connector's tools refuse any account outside the selection, and until something is picked they have no account to act on.
 
-Account pickers belong to connectors whose tools run inside the agent (`transport: "local"`). A connector whose tools run on the vendor's own MCP server, such as TikTok Ads, has none: its `accountpickers` is empty, and `ConnectorAccounts` answers `This connector has no accounts to pick.`
+Connectors of both kinds can have account pickers. Wiro lists the candidates with one of the connector's read tools and the connection's own credentials. For a connector whose tools run on the vendor's own MCP server, such as TikTok Ads, Wiro calls that tool on the vendor's server with the connection's sign-in: see [TikTok Ads: sign in, then pick advertisers](#tiktok-ads-sign-in-then-pick-advertisers). A connector with no pickers has an empty `accountpickers`.
 
 ### **POST** /UserAgent/ConnectorAccounts
 
@@ -18081,7 +18087,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorAccounts" \
 | `candidates` | What this connection can reach at the vendor right now, each `{ id, name }`. |
 | `selected` | The ids saved now. |
 
-A connector whose tools run inside the agent and that has no pickers answers `pickers: []`.
+A connector with no pickers answers `pickers: []` when its tools run inside the agent, and `This connector has no accounts to pick.` when they run on the vendor's own MCP server.
 
 ### **POST** /UserAgent/ConnectorSetAccounts
 
@@ -18147,10 +18153,102 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetAccounts" \
 | `<label>: 1 of the accounts sent is not among the ones this connection can use.` | An id the vendor did not list for this connection. |
 | `accounts must be an object of lists of account ids.`, `accounts has too many keys.`, `Each account id is text of at most 200 characters.` | The body's shape. |
 | `This connector is not connected to the agent.` | No connected connection for this slug. |
-| `This connector has no accounts to pick.` | `ConnectorAccounts` on a connector whose tools run on the vendor's own MCP server. |
+| `This connector has no accounts to pick.` | `ConnectorAccounts` on a connector whose tools run on the vendor's own MCP server and whose catalog row lists no account pickers. |
 | `This connector's accounts cannot be listed yet.` | The connector's account lists aren't available right now. Try again later. |
-| `The sign-in for this connector expired or was revoked, so it has to be connected again. Ask the agent's operator to reconnect it.` | The sign-in could not be refreshed: the connection is now `reauth`. |
+| `The sign-in for this connector expired or was revoked, so it has to be connected again. Ask the agent's operator to reconnect it.` | The sign-in could not be refreshed, and the connection is now `reauth`. Or the vendor's own MCP server refused the connection's sign-in (HTTP 401 or 403) as Wiro listed the candidates: the connection's `status` doesn't change. Either way, start a new sign-in with [ConnectorConnect](#connect-with-a-sign-in), then list the accounts again. |
 | `The token is being refreshed. Try again in a moment.` | A refresh was under way. |
+
+### TikTok Ads: sign in, then pick advertisers
+
+TikTok Ads runs on TikTok's own MCP server and signs in on TikTok's own consent screen (`authtype: "oauth"`). Its catalog row has one account picker, `advertisers`: the advertiser accounts the agent may work with. Connecting it takes three steps.
+
+**1. Sign in.** Send `useragentguid`, `slug` and `redirecturl`, open the `authorizeUrl` the answer gives, and wait for `connector_connected=true` on your page, as in [Connect with a sign-in](#connect-with-a-sign-in).
+
+**2. List the advertisers.** Wiro asks TikTok for the advertisers the sign-in can reach, with the connection's own token:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorAccounts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "slug": "tiktok-ads"
+  }'
+```
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "pickers": [
+    {
+      "key": "advertisers",
+      "label": "Advertisers",
+      "description": "The advertiser accounts the agent may work with. It can't read or change any other advertiser the sign-in can reach.",
+      "multiple": true,
+      "candidates": [
+        { "id": "7301234567890123456", "name": "Acme Coffee" },
+        { "id": "7301234567890123457", "name": "Acme Coffee EU" }
+      ],
+      "selected": []
+    }
+  ]
+}
+```
+
+**3. Save the advertisers it may act on.** Wiro lists them again and refuses an id that is not among them:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetAccounts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "slug": "tiktok-ads",
+    "accounts": { "advertisers": ["7301234567890123456"] }
+  }'
+```
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "accounts": { "advertisers": ["7301234567890123456"] },
+  "applied": 1,
+  "restart": "scheduled",
+  "useragentconnectors": [
+    {
+      "slug": "tiktok-ads",
+      "title": "TikTok Ads",
+      "iconurl": "https://wiro.ai/images/icons/skills/tiktok.svg",
+      "category": "ads",
+      "authtype": "oauth",
+      "transport": "streamable-http",
+      "authmode": null,
+      "catalogstatus": "active",
+      "status": "connected",
+      "connectedat": 1795390400,
+      "updatedat": 1795390520,
+      "tokenexpiresat": 1795476800,
+      "refreshtokenexpiresat": null,
+      "scope": null,
+      "accounts": { "advertisers": ["7301234567890123456"] },
+      "wiroprojectid": null,
+      "savedvariables": [],
+      "lasterror": null
+    }
+  ]
+}
+```
+
+Once the agent restarts, its TikTok Ads tools work with the saved advertisers only: a call that names any other advertiser is refused before it leaves the agent.
+
+- When TikTok's server no longer accepts the connection's sign-in (HTTP 401 or 403), `ConnectorAccounts` and `ConnectorSetAccounts` answer `The sign-in for this connector expired or was revoked, so it has to be connected again. Ask the agent's operator to reconnect it.` Start a new sign-in with [ConnectorConnect](#connect-with-a-sign-in), then list the advertisers again.
+- A TikTok Ads connection that [moved over](#coming-from-credential-connectors) keeps its advertiser in `accounts.advertisers`.
 
 ## Disconnecting
 
@@ -18209,7 +18307,38 @@ When the agent is back up, every `connected` connection whose connector is still
 
 ## The Wiro Connector
 
-The `wiro` connector gives the agent Wiro's own tools, the ones its `tools` on [Detail](#post-agentconnectordetail) list, such as running AI models and reading their tasks. They act with the API key of one of your projects, and the model runs they start are billed to that project's wallet. Its `credentialfields` have one field with `source: "wiro_project"`: show a picker of your projects ([`POST /Project/List`](/docs/projects)) instead of an input, and send the chosen project's id as `wiroprojectguid`:
+The `wiro` connector gives the agent Wiro's own model and task tools, named `wiro__<tool>`, from the [Wiro MCP server](/docs/wiro-mcp-server). Its calls are the agent's own: they always act with the agent's own Wiro project key, the key the agent runs every Wiro model with (see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)). So:
+
+- The models they run are billed to the wallet of the workspace that owns that project, at each model's usual price.
+- Wiro counts them as the agent's own runs: the agent's own [spend limit](/docs/spend-limits) and [Model Access](/docs/model-access) rule apply to them (the `agent` scope, on the `agent` surface), as to every model the agent runs.
+- Account, agent, team and billing endpoints are refused to them, as to every call the agent makes: see the note "An agent's own calls never manage an account" under [`UserAgent/UpdateSettings`](/docs/agent-overview#post-useragentupdatesettings). The agent changes its own setup only through [setup cards](/docs/agent-messaging#setup-from-chat) that an agent admin approves.
+
+### Its tools
+
+The agent gets these tools of the Wiro MCP server, and no others:
+
+| Tool | The agent calls it | What it does |
+|------|--------------------|--------------|
+| `search_models` | `wiro__search_models` | Searches the model catalog by keyword, category or owner. |
+| `explore` | `wiro__explore` | Browses curated models, grouped by category. |
+| `recommend_model` | `wiro__recommend_model` | Finds models for a goal, best matches first. |
+| `get_model_schema` | `wiro__get_model_schema` | Reads a model's parameters and pricing. |
+| `get_task_price` | `wiro__get_task_price` | Reads the cost of a finished task. |
+| `run_model` | `wiro__run_model` | Runs a model. |
+| `get_task` | `wiro__get_task` | Reads a task's status and outputs. |
+| `wait_for_task` | `wiro__wait_for_task` | Keeps waiting for a task without starting another run. |
+| `list_tasks` | `wiro__list_tasks` | Lists earlier tasks. |
+| `cancel_task` | `wiro__cancel_task` | Cancels a queued task. |
+| `kill_task` | `wiro__kill_task` | Stops a queued or running task. |
+| `upload_file` | `wiro__upload_file` | Uploads a file from a public URL, for use as a model input. |
+| `search_docs` | `wiro__search_docs` | Searches the Wiro documentation. Read only. |
+| `get_playbook` | `wiro__get_playbook` | Reads a step-by-step guide. Read only. |
+
+The list can't be widened. Whatever the connector's catalog row says, Wiro gives the agent no other tool of the server, and also refuses any tool whose name has one of these words in it: `agent`, `workflow`, `billing`, `account`, `project`, `studio`, `credential`, `oauth`, `skill`, `spend`, `limit`, `access`, `wallet`, `team`, `organization`, `coupon`, `invoice`, `payment`, `key` or `user`. `tools` on [Detail](#post-agentconnectordetail) lists only the tools the agent gets.
+
+### Connecting it
+
+Its `credentialfields` have one field with `source: "wiro_project"`: show a picker of your projects ([`POST /Project/List`](/docs/projects)) instead of an input, and send the chosen project's id as `wiroprojectguid`. Connecting binds that project to the agent as its own Wiro project, exactly as [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) does: the same checks, the project's key saved as the agent's `wiro` credential, and a `Connector setting saved: wiro.apikey` row in the agent's [activity log](/docs/agent-logs#who-did-what-rows) when the project changed. The connector and every other Wiro call of the agent always use the same project.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
@@ -18256,10 +18385,16 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
 }
 ```
 
-- A request made with a project API key may leave `wiroprojectguid` out: the key's own project is used.
-- The project must be one you created, or any project of a team you are an admin of, and in the agent's workspace: a personal agent takes one of its owner's personal projects, a team agent one of its team's projects.
-- The connection shows the project's id as `wiroprojectid`, a string.
-- The agent's [Wiro API path list](/docs/agent-overview#post-useragentupdatesettings) (`wiroapiallowedpaths`) limits the Wiro API calls its skills make with the agent's own Wiro project; it doesn't apply to this connector's tools. Read the tools the connector gives on [Detail](#post-agentconnectordetail) before you connect it.
+- A request made with a project API key may leave `wiroprojectguid` out: that key's own project is bound. A request without either keeps the agent's own project while it is in the agent's workspace, and is refused with `wiroprojectguid is required` when the agent has none there.
+- The project must be one you created, or any project of a team you are an admin of, and in the agent's workspace: a personal agent takes one of its owner's personal projects, a team agent one of its team's projects. The request must come from the agent's workspace too.
+- The connector follows the agent's project: a project bound later with `CredentialProjectBind` or another `ConnectorConnect` is the one its tools use after the restart. [ConnectorList](#post-useragentconnectorlist) shows the agent's current project as `wiroprojectid`, a string.
+- An agent left with no Wiro project keeps the connection, but gets no `wiro` tools until a project is bound again, and `wiroprojectid` reads `null`.
+- The agent's [Wiro API path list](/docs/agent-overview#post-useragentupdatesettings) (`wiroapiallowedpaths`) limits the Wiro API calls its skills make with the agent's own Wiro project; it doesn't apply to this connector's tools, which the list above fixes.
+- In chat, the agent proposes a `project` card for it, which binds the project the same way: see [Project: Wiro AI Models](/docs/agent-chat-integration#project-wiro-ai-models).
+
+### Moving the agent to another workspace
+
+When the agent moves to a workspace its Wiro project isn't in, with [`Team/TransferAgent`](/docs/organizations-managing-teams#transferring-agents) or because its team or organization was deleted, Wiro disconnects the project from the agent and deletes the agent's `wiro` connection, before the agent restarts. The agent's activity log shows both: `Disconnected: wiro` (`AGENT_CREDENTIAL_REMOVED`) and `Connector disconnected: wiro` (`CONNECTOR_DISCONNECTED`, with `summary.reason` `"workspace"`). Bind a project of the new workspace, then connect the connector again.
 
 ## Errors
 
@@ -18289,10 +18424,12 @@ Refusals come as `result: false` with one sentence per problem in `errors`. Show
 | `ConnectorConnect` | `The connector's sign-in server did not register a client. Try again later.` | The vendor's sign-in server refused to register a client for the sign-in. |
 | `ConnectorConnect` | `This connector takes no Wiro project.` | `wiroprojectguid` on a connector whose tools run inside the agent. A connector on a vendor's own MCP server without a project field ignores it. |
 | `ConnectorConnect` | `<name> comes from the agent's Wiro project: send wiroprojectguid, not a value.` | A value sent for the Wiro connector's project field. |
-| `ConnectorConnect` | `wiroprojectguid is required: send the id of one of your projects from Project/List. ...` | The Wiro connector with no project, from a request without a project API key. |
+| `ConnectorConnect` | `wiroprojectguid is required: send the id of one of your projects from Project/List. A request made with a project API key may leave it out, to use that key's own project.` | The Wiro connector with no project, from a request without a project API key, for an agent with no project of its workspace to keep. |
 | `ConnectorConnect` | `wiroprojectguid must be a project's id from Project/List.` | A `wiroprojectguid` that isn't a project id. |
 | `ConnectorConnect` | `Project not found. Send the id of one of your projects from Project/List: one you created, or any project of a team you are an admin of.` | A project you can't use. |
 | `ConnectorConnect` | `This is a personal agent: use one of its owner's personal projects.`, `This is a team agent: use one of its team's projects.` | A project outside the agent's workspace. |
+| `ConnectorConnect` | `This agent belongs to a team. Switch to the team context to access it.`, `This agent is in your personal workspace. Switch to personal context to access it.`, `This agent belongs to a different team.` | The Wiro connector, from a request outside the agent's workspace. |
+| `ConnectorConnect` | `This project's API key no longer works: the account that created it is not active, so the agent's model runs would fail. Bind another project.`, `This project's API key no longer works: the person who created it is no longer in the team, so the agent's model runs would fail. Bind another project of the team.` | The account that created the project is not active, or has left the team. |
 | `ConnectorConnect` | `This project has no API key the connector can use.` | The project's key can't be used. |
 | `ConnectorConnect`, `ConnectorSetAccounts` | `accounts must be an object of lists of account ids.`, `accounts has too many keys.`, `Each account id is text of at most 200 characters.` | The shape of `accounts`: at most 10 keys and 500 ids per key. |
 | any | `Something went wrong. Try again.` | A temporary failure: nothing was changed. |
@@ -18307,7 +18444,8 @@ Connectors used to be skills that read credentials. If your code still uses thos
 |--------|-----|
 | A connector's skill (`int-<name>`) turned on with `SkillsApply` or Deploy's `skills` | Nothing to turn on: a connected connector is on. `skills` and `SkillsApply` take Skills (`util-*`) only. |
 | `int-twilio-channel`, the Twilio Voice channel | `util-twilio-channel`, a Skill: turn it on with `SkillsApply` or Deploy's `skills`. See [Twilio Voice Channel](/docs/integration-twiliovoice-skills). |
-| `int-googleplay-events`, Google Play promotional content | `util-googleplay-events`, a Skill that prepares the content for you to publish in Play Console. It works with the `google-play` connector. |
+| `int-googleplay-events`, Google Play promotional content | `util-googleplay-events`, a Skill that prepares the content for you to publish in Play Console. It works with the `google-play` connector: its `docs_url` is that connector's page, [https://wiro.ai/connectors/google-play](https://wiro.ai/connectors/google-play). |
+| `int-wiro-aimodels`, Wiro AI Models | The `wiro` connector: see [The Wiro connector](#the-wiro-connector). An agent that had it on and had a Wiro project was connected to it. |
 | `POST /Credentials/List`, `POST /Credentials/Detail` for a connector | [`POST /AgentConnector/List`](#post-agentconnectorlist), [`POST /AgentConnector/Detail`](#post-agentconnectordetail) |
 | `POST /UserAgent/CredentialUpsert` with a connector's `credentialkey` | [`POST /UserAgent/ConnectorConnect`](#connect-with-fields) with `values` |
 | `POST /UserAgentOAuth/OAuthConnect` | [`POST /UserAgent/ConnectorConnect`](#connect-with-a-sign-in) |
@@ -18671,7 +18809,7 @@ A credential is a set of values an agent keeps for something it is, rather than 
 
 The services an agent works with (Google Ads, Shopify, HubSpot, Serper and the rest) are **connectors**, not credentials: browse, connect and disconnect them with the calls on [Agent Connectors](/docs/agent-connectors). `CredentialUpsert` doesn't take a connector's values.
 
-> **Not from the agent's chat.** [Setup cards](/docs/agent-messaging#setup-from-chat) connect connectors of the catalog only: no card saves a channel, Twilio Voice, the Wiro project or a setting. Save them with `CredentialUpsert` or `CredentialProjectBind`; in chat, the agent asks an agent admin to make the change in the agent's settings.
+> **Not from the agent's chat.** [Setup cards](/docs/agent-messaging#setup-from-chat) connect connectors of the catalog only: no card saves a channel, Twilio Voice or a setting. Save them with `CredentialUpsert`; in chat, the agent asks an agent admin to make the change in the agent's settings. The one card that sets a credential is the `wiro` connector's `project` card: it binds the agent's Wiro project, as `CredentialProjectBind` does.
 
 **Read & write paths at a glance:**
 
@@ -18920,7 +19058,7 @@ The response names the project and says what happened to the agent: `{ "result":
 
 > **Don't confuse `credentials.wiro.apikey` with your operator-level Wiro API key.** `credentials.wiro.apikey` is the project key the agent uses to run Wiro models. The `x-api-key` header you send to Wiro endpoints from your own backend is your operator key, which authenticates your request (see [Authentication](/docs/authentication)). They are the same key only when you bind the project of the key you call with.
 
-The [Wiro connector](/docs/agent-connectors#the-wiro-connector), which gives the agent Wiro's own tools, takes its project when you connect it.
+The [Wiro connector](/docs/agent-connectors#the-wiro-connector), which gives the agent Wiro's own model and task tools, always acts with this project, as the agent's own calls. Connecting it binds the project you pick, as `CredentialProjectBind` does, and moving the agent to a workspace the project isn't in disconnects both the project and the connector.
 
 ## Platform-Managed Credentials
 
@@ -19048,7 +19186,7 @@ If you skip these keys in Deploy entirely, the instance is created empty and you
 
 ## Setup Required State
 
-Every fresh Deploy starts in **Setup Required** state (`status: 6`). While an agent is at `status: 6`, `Start` refuses it with `Agent setup is not complete. Please finish setting up your connectors before starting.`
+Every fresh Deploy starts in **Setup Required** state (`status: 6`). While an agent is at `status: 6`, `Start` refuses it with `Agent setup is not complete. Fill in the agent's required settings before starting.`
 
 API deploys must always pass `useprepaid: true`. The server provisions the prepaid subscription inline and moves the agent to `status: 2` (Queued) whatever its credentials hold, and Wiro then starts it, so no `Start` call is needed. A credential the agent requires may still be incomplete while it runs: `UserAgent/Detail` reads `setuprequired: true` until every required credential is set up, and a running agent restarts to pick up each value you save.
 
@@ -19473,8 +19611,8 @@ A setup block has the usual block fields, `type: "setup"`, `text: null` and a `s
 | `connector` | `connect`, `disconnect` | The connector's slug as [`POST /AgentConnector/List`](/docs/agent-connectors#post-agentconnectorlist) lists it, such as `serper` or `hubspot`. A card names only connectors of the catalog: never a channel or a credential, and never a key's value. |
 | `title` | `connect`, `disconnect`, `schedule`, `skill` | `connect` and `disconnect`: the connector's title, written by Wiro, up to 120 characters. `schedule` and `skill`: optional, one line, up to 80 characters. |
 | `authtype` | `connect` | Written by Wiro: the connector's `authtype` in the catalog, `fields`, `headers`, `none`, `oauth` or `provider-oauth`. |
-| `mode` | `connect` | Written by Wiro: how the card connects, `key` (the values its `fields` ask for) or `signin` (the vendor's sign-in). See [Modes](#modes). |
-| `fields` | `connect` | Written by Wiro: what the card's form asks for, at most 30, in the shape of `credentialfields` on [`AgentConnector/Detail`](/docs/agent-connectors#connect-card-fields): `name`, `label`, `description` (Markdown), `required`, `secret`, `format`, and `options`, `placeholder`, `pattern`, `maxlength`, `serveronly`, `mode` or `source` where they apply. On a `key` card, the connector's Connect fields; a field with `source: "wiro_project"` is a project picker. On a `signin` card, the fields its sign-in takes: for a connector that signs in with an app of your own, that app's keys (`serveronly: true`). The fields of a connector's key way are never on a `signin` card. Empty when there is nothing to enter. |
+| `mode` | `connect` | Written by Wiro: how the card connects, `key` (the values its `fields` ask for), `signin` (the vendor's sign-in) or `project` (a Wiro project for the `wiro` connector). See [Modes](#modes). |
+| `fields` | `connect` | Written by Wiro: what the card's form asks for, at most 30, in the shape of `credentialfields` on [`AgentConnector/Detail`](/docs/agent-connectors#connect-card-fields): `name`, `label`, `description` (Markdown), `required`, `secret`, `format`, and `options`, `placeholder`, `pattern`, `maxlength`, `serveronly`, `mode` or `source` where they apply. On a `key` card, the connector's Connect fields. On a `project` card, one field with `source: "wiro_project"`: a project picker, never an input. On a `signin` card, the fields its sign-in takes: for a connector that signs in with an app of your own, that app's keys (`serveronly: true`). The fields of a connector's key way are never on a `signin` card. Empty when there is nothing to enter. |
 | `wiroapp` | `connect` | Written by Wiro, only on a card from a Wiro web chat turn: `true` when its connector signs in there with Wiro's own app. Never on a card from a chat sent with your API key, whose sign-in always takes your own app's keys. |
 | `cron` | `schedule` | Five fields, in the agent's time zone. Always on `create`, optional on `update`. A task set up from chat runs at most once an hour. |
 | `instructions` | `schedule`, `skill` | `create` and `update`: the full text. `append`: only the text to add. `revert`: the text it restores. Up to 20,000 characters on what the agent writes. |
@@ -19542,7 +19680,7 @@ When `needs` names connectors, Wiro stores a `connect` card for each of them on 
 }
 ```
 
-A connector that signs in gets a `signin` card: see [Sign-in: HubSpot](#sign-in-hubspot).
+A connector that signs in gets a `signin` card: see [Sign-in: HubSpot](#sign-in-hubspot). The `wiro` connector gets a `project` card: see [Project: Wiro AI Models](#project-wiro-ai-models).
 
 `disconnect` disconnects a connector the agent has a connection for, and carries its `title`:
 
@@ -19647,7 +19785,7 @@ Whenever a card is applied, dismissed or fails, Wiro also marks applied the same
 |------|-----------|------|---------|
 | `add` | "Add `<title>`", the `title` of `key` in `Skills/List` | `with` as "Also turns on", `pauses` and `resumes`, and each entry of `needs` with its `connect` card | Apply, Dismiss, and the buttons of its `connect` cards; see [Buttons](#buttons) |
 | `remove` | "Remove `<title>`" | `with` as "Also turns off", `pauses` and `resumes` | Apply, Dismiss |
-| `connect` | "Connect `<title>`" | By `mode`: for `key`, a form from `fields` (a project picker for a `source: "wiro_project"` field); for `signin`, the `serveronly` fields when the card has them, such as your own app's keys | Save for `key` (Connect when no field is required), Sign in for `signin`, and Dismiss |
+| `connect` | "Connect `<title>`" | By `mode`: for `key`, a form from `fields`; for `signin`, the `serveronly` fields when the card has them, such as your own app's keys; for `project`, a picker of your projects | Save for `key` (Connect when no field is required), Sign in for `signin`, Connect for `project`, and Dismiss |
 | `disconnect` | "Disconnect `<title>`" | Say that the connection is removed and the agent loses the connector's tools until it is connected again | Disconnect, Dismiss |
 | `schedule` | "Create", "Change", "Pause", "Resume" or "Delete" scheduled task `<title or key>` | The schedule in words, in the agent's time zone, and `instructions` | Apply, Dismiss |
 | `skill` | "Create", "Change", "Add to", "Undo the last change to", "Turn off" or "Turn on" custom skill `<title or key>` | `instructions`; for `update`, `append` and `revert`, `before` next to the text after the change | Apply, Dismiss |
@@ -19673,11 +19811,13 @@ Show `note`, when there is one, under the title.
 
 - **Apply**: `SetupCardApply` with `action: "apply"`.
 - **Dismiss**: `SetupCardApply` with `action: "dismiss"`. A `connect` card connects its connector on its own, so dismissing an `add` card leaves its `connect` cards pending: dismiss them too when the person turns the whole change down.
-- **A `key` card**: show its `fields` and **Save**: `SetupCardApply` with the values in `values`, and `wiroprojectguid` for a project picker. A card whose fields hold no required field connects with **Connect** and no `values`.
+- **A `key` card**: show its `fields` and **Save**: `SetupCardApply` with the values in `values`. A card whose fields hold no required field connects with **Connect** and no `values`.
 - **A `signin` card**: show its `serveronly` fields when it has them, and **Sign in**: `SetupCardApply` with those keys in `values` and your `redirecturl`. Open the answer's `authorizeUrl`. Once the browser is back on your `redirecturl` with `connector_connected=true`, call `SetupCardApply` on the card again, with no `values`: it records the card applied. See [Sign-in: HubSpot](#sign-in-hubspot).
+- **A `project` card**: show a picker of your projects and **Connect**: `SetupCardApply` with the chosen project's id as `wiroprojectguid`, and no `values`. See [Project: Wiro AI Models](#project-wiro-ai-models).
 - **An `add` card with its `connect` cards**: the `connect` cards on the same message whose `connector` is in the `add` card's `needs` belong to it. Show them inside the `add` card.
 - **Add and connect, with a key**: when the `add` card has one `key` card, show its fields and **Add and connect**: `SetupCardApply` on the `add` card with the values in `values`. Both cards apply in one step, with one restart.
 - **Add and connect, with a sign-in**: when the `add` card has one `signin` card, run **Sign in** on that `connect` card first, as above. Once the browser is back, **Add**: `SetupCardApply` on the `add` card with `signin: true` applies both cards, once the connector reads connected.
+- **Add, then pick a project**: a `project` card takes its own step. Offer **Add** on the `add` card, and **Connect** on the `project` card, in either order.
 - **Several `connect` cards**: offer **Add** alone, then each `connect` card's own button.
 - **Add now, connect later**: `SetupCardApply` on the `add` card alone, whose answer's `next` names the `connect` cards to finish later.
 
@@ -19693,10 +19833,10 @@ Show `note`, when there is one, under the title.
 | `messageguid` | string | Yes | The message that holds the card: the row whose `timeline[]` has the setup block. |
 | `cardid` | string | Yes | The card's `setup.id`. |
 | `action` | string | Yes | `"apply"` or `"dismiss"`. |
-| `values` | object | No | `{ "<name>": value }` for the card's `fields`. On a `key` card: the connector's Connect fields. On a `signin` card: the fields its sign-in takes, such as your own app's keys. Wiro checks them as [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect) does: required fields, `format`, `pattern` and `maxlength` (see [Connect card fields](/docs/agent-connectors#connect-card-fields) for the limits), and a `json` field also takes an object. A field left out keeps a value saved before. On an `add` card whose `needs` has one pending `key` card: that card's values, and Wiro applies both cards in one step. Never returned and never shown to the agent. |
+| `values` | object | No | `{ "<name>": value }` for the card's `fields`. On a `key` card: the connector's Connect fields. On a `signin` card: the fields its sign-in takes, such as your own app's keys. A `project` card takes none: send `wiroprojectguid`. Wiro checks them as [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect) does: required fields, `format`, `pattern` and `maxlength` (see [Connect card fields](/docs/agent-connectors#connect-card-fields) for the limits), and a `json` field also takes an object. A field left out keeps a value saved before. On an `add` card whose `needs` has one pending `key` card: that card's values, and Wiro applies both cards in one step. Never returned and never shown to the agent. |
 | `signin` | boolean | No | `true` on an `add` card whose `needs` has one pending `signin` card, once that card's sign-in has connected the connector: Wiro applies both cards in one step. Not together with `values`. |
 | `redirecturl` | string | No | A `signin` card: where the browser comes back after the sign-in, with the rules of [The redirect URL](/docs/agent-connectors#the-redirect-url). Send a page on your own site: without one, the browser comes back to Wiro's return page on wiro.ai. |
-| `wiroprojectguid` | string | No | A `key` card with a `source: "wiro_project"` field, such as the `wiro` connector's: the id of the project it bills, from [`POST /Project/List`](/docs/projects). Left out, a call made with your project API key uses that key's own project. |
+| `wiroprojectguid` | string | No | A `project` card, the `wiro` connector's: the id of one of your projects, from [`POST /Project/List`](/docs/projects). It becomes the agent's own Wiro project, as [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) binds it. Left out, a call made with your project API key binds that key's own project. |
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
@@ -19742,11 +19882,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
 | `errors` | `[{ code, message, time }]`. `message` is one plain sentence you can show as it is. |
 | `setup` | The card after the call: still pending after a refusal, `applied`, `dismissed` or `failed` otherwise. `null` when the call was refused before the card was read: a missing parameter, an agent or message your key can't reach, setup from chat off, a reply still running, code `97`, a card someone is applying at that moment, or a card that isn't there. |
 | `restarting` | `true` when the agent restarts to load the change. See [Restarts](#restarts). |
-| `summary` | A short phrase that says what changed, such as `Scheduled task Weekly traffic report created`, `Serper connected` or, for an `add` card applied with its `connect` card, `Video Creator added. Wiro AI Models connected.` An applied `add` card whose connectors have no `connect` card to finish them goes on with `Still to connect: <titles>`. Empty when nothing was applied. |
+| `summary` | A short phrase that says what changed, such as `Scheduled task Weekly traffic report created`, `Serper connected` or, for an `add` card applied with its `connect` card, `Google Play Promotional Content added. Google Play Console connected.` An applied `add` card whose connectors have no `connect` card to finish them goes on with `Still to connect: <titles>`. Empty when nothing was applied. |
 | `authorizeUrl` | Only when a `signin` card's sign-in started: the vendor's sign-in address, to open in the browser. It works for 10 minutes and once. `result` is `true`, the card in `setup` is still pending, `summary` is empty, and `next` names the card. See [Sign-in: HubSpot](#sign-in-hubspot). |
 | `paired` | Only when `values` or `signin: true` came with an `add` card: its `connect` card after the call, `[{ setup, result, error }]`. `result` is `true` when that card was applied too, and `error` is `null` or the sentence that says why not. `[]` when the `add` card has no single `connect` card for them. |
 | `errorcode` | Only on some refusals of an `add` card sent with `signin: true`: `not_connected` (the connector doesn't read connected yet), `signin_no_pair` (no pending `signin` card on the message for it) or `signin_many` (more than one). |
-| `next` | Only when something is left to connect: `[{ connector, title, mode, cardid?, messageguid? }]`. An applied `add` card lists the connectors it needs that still aren't connected, and a `connect` card left pending (a refused key, or a sign-in just started) lists its own connector and card. See [Your Own Connect Button](#your-own-connect-button). |
+| `next` | Only when something is left to connect: `[{ connector, title, mode, cardid?, messageguid? }]`. An applied `add` card lists the connectors it needs that still aren't connected, and a `connect` card left pending (a refused key or project, or a sign-in just started) lists its own connector and card. See [Your Own Connect Button](#your-own-connect-button). |
 
 Dismissing answers the card with `status: "dismissed"`, `restarting: false` and an empty `summary`.
 
@@ -19772,10 +19912,11 @@ A `connect` card connects its connector through `SetupCardApply`, with the check
 
 | `mode` | How it connects | Your UI | Calls |
 |--------|-----------------|---------|-------|
-| `key` | The values the vendor issues, such as an API key, typed by the person. A card with no required field connects with none. | A form from `setup.fields`: masked inputs for `secret` fields, and a project picker for a `source: "wiro_project"` field | `SetupCardApply` with `values`, and `wiroprojectguid` for a project field: the connector connects and the card is applied |
+| `key` | The values the vendor issues, such as an API key, typed by the person. A card with no required field connects with none. | A form from `setup.fields`, with masked inputs for `secret` fields | `SetupCardApply` with `values`: the connector connects and the card is applied |
 | `signin` | The vendor's consent screen, in the browser | The `serveronly` fields when the card has them (your own app's keys), and a Sign in button | `SetupCardApply` with your `redirecturl`, and the app's keys in `values`, answers `authorizeUrl`. Once the browser is back on your page, `SetupCardApply` again records the card applied |
+| `project` | One of your Wiro projects, picked for the `wiro` connector. It becomes the agent's own Wiro project. | A picker of your projects ([`POST /Project/List`](/docs/projects)) for its one `source: "wiro_project"` field, and a Connect button | `SetupCardApply` with the project's id as `wiroprojectguid` and no `values`: the project is bound, the connector connects and the card is applied |
 
-A card's `mode` follows its connector's `authtype` in the catalog: `oauth` and `provider-oauth` sign in, and `fields`, `headers` and `none` take a key. More modes can be added: show a card whose `mode` you don't know with Dismiss only, and connect its connector from your settings screen.
+A card's `mode` follows its connector in the catalog: `oauth` and `provider-oauth` connectors sign in, the `wiro` connector, whose one field is a Wiro project, gets a `project` card, and the other `fields`, `headers` and `none` connectors take a key. More modes can be added: show a card whose `mode` you don't know with Dismiss only, and connect its connector from your settings screen.
 
 ### Key: Serper
 
@@ -19822,7 +19963,71 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
 
 A value Wiro refuses (a required field missing, a format that doesn't fit, or a key the vendor refused) saves nothing: the answer is `result: false` with the sentence, and the card stays pending for the person to try again.
 
-The `wiro` connector's card is a `key` card too. Its one field has `source: "wiro_project"`: show a picker of your projects ([`POST /Project/List`](/docs/projects)) and send the chosen project's id as `wiroprojectguid`, with no `values`. Left out, a call made with your project API key uses that key's own project. See [The Wiro connector](/docs/agent-connectors#the-wiro-connector).
+### Project: Wiro AI Models
+
+The `wiro` connector gets a `project` card. Its one field has `source: "wiro_project"`: show a picker of your projects ([`POST /Project/List`](/docs/projects)) instead of an input, and never a box to type a key in:
+
+```json
+{
+  "v": 1,
+  "id": "p4r7t2w9k3mz",
+  "kind": "connect",
+  "connector": "wiro",
+  "title": "Wiro AI Models",
+  "authtype": "headers",
+  "mode": "project",
+  "fields": [
+    { "name": "wiro_credentials", "label": "Wiro credentials", "description": "", "required": true, "secret": true, "format": "password", "source": "wiro_project" }
+  ],
+  "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
+  "createdat": 1794655500
+}
+```
+
+Its block's `next` reads `[{ "connector": "wiro", "title": "Wiro AI Models", "mode": "project" }]`. **Connect** sends the chosen project's id as `wiroprojectguid`, with no `values`:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "messageguid": "b6c7d8e9-f0a1-2345-b678-901234567890",
+    "cardid": "p4r7t2w9k3mz",
+    "action": "apply",
+    "wiroprojectguid": "4821"
+  }'
+```
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "setup": {
+    "v": 1,
+    "id": "p4r7t2w9k3mz",
+    "kind": "connect",
+    "connector": "wiro",
+    "title": "Wiro AI Models",
+    "authtype": "headers",
+    "mode": "project",
+    "fields": [
+      { "name": "wiro_credentials", "label": "Wiro credentials", "description": "", "required": true, "secret": true, "format": "password", "source": "wiro_project" }
+    ],
+    "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
+    "createdat": 1794655500,
+    "status": "applied",
+    "actedat": 1794655560,
+    "actedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
+  },
+  "restarting": true,
+  "summary": "Wiro AI Models connected"
+}
+```
+
+- The project becomes the agent's own Wiro project, as [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) binds it and with the same checks, and the connector's tools act with it as the agent's own calls: see [The Wiro connector](/docs/agent-connectors#the-wiro-connector). A project Wiro refuses saves nothing, and the card stays pending with the sentence, such as `This is a team agent: use one of its team's projects.`
+- Left out, a call made with your project API key binds that key's own project. When the card can't connect without a project, it stays pending with `Pick a project on the card to connect Wiro AI Models.`, and `next` names it.
+- A `project` card never connects from a typed reply and never takes a pasted key. In a chat sent with your API key, a `yes` while only `connect` cards wait, this one among them, is answered `A yes cannot connect Wiro AI Models. Its project is picked outside this chat.`: nothing is applied and no agent turn starts.
 
 ### Sign-in: HubSpot
 
@@ -19952,7 +20157,7 @@ The agent already restarted when the sign-in came back, so `restarting` is `fals
 
 ### Connecting on your settings screen
 
-Every connector also connects without a card, on your own settings screens, with the Agent Connectors calls: [fields](/docs/agent-connectors#connect-with-fields), a [key instead of a sign-in](/docs/agent-connectors#connect-with-a-key-instead-of-a-sign-in), or the vendor's [sign-in](/docs/agent-connectors#connect-with-a-sign-in) with a `redirecturl` on your own site, then its [account pickers](/docs/agent-connectors#account-pickers). Each answers `restart` (or `connector_connected=true` on your page after a sign-in): see [Showing a restart](#showing-a-restart). A pending `connect` card for a connector connected there is recorded applied when you apply it, with no values, or the next time a card of the same person's in that chat is applied or dismissed. A channel or the agent's Wiro project is saved with [`CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert) or [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind): no card saves them.
+Every connector also connects without a card, on your own settings screens, with the Agent Connectors calls: [fields](/docs/agent-connectors#connect-with-fields), a [key instead of a sign-in](/docs/agent-connectors#connect-with-a-key-instead-of-a-sign-in), or the vendor's [sign-in](/docs/agent-connectors#connect-with-a-sign-in) with a `redirecturl` on your own site, then its [account pickers](/docs/agent-connectors#account-pickers). Each answers `restart` (or `connector_connected=true` on your page after a sign-in): see [Showing a restart](#showing-a-restart). A pending `connect` card for a connector connected there is recorded applied when you apply it, with no values, or the next time a card of the same person's in that chat is applied or dismissed. A channel is saved with [`CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert): no card saves it. The agent's Wiro project is bound with [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind), or by the `wiro` connector's `project` card, which binds it the same way.
 
 ## Your Own Connect Button
 
@@ -19963,8 +20168,8 @@ Every connector also connects without a card, on your own settings screens, with
 | Where | When | Entries |
 |-------|------|---------|
 | A setup block | On a pending `connect` card | One entry, its own connector: `{ connector, title, mode }`. No `cardid`: it is the block's own card. |
-| `SetupCardApply` answer | An `add` card applied that leaves something not connected; a `connect` card left pending, by a refused key or a sign-in just started | `{ connector, title, mode, cardid?, messageguid? }` |
-| `setupresult.next` in a `Message/Send` answer | A `yes` that applied a card: the reply's `key` cards still waiting for their key, its `signin` cards for the connectors the applied `add` card needs, and each connector that `add` card needs with no card to connect it. A `yes` while a `signin` card waits: the reply's `connect` cards. A key typed for an `add` card and its `connect` card: the other connectors that `add` card needs. | Same |
+| `SetupCardApply` answer | An `add` card applied that leaves something not connected; a `connect` card left pending, by a refused key or project, or a sign-in just started | `{ connector, title, mode, cardid?, messageguid? }` |
+| `setupresult.next` in a `Message/Send` answer | A `yes` that applied a card: the reply's `key` cards still waiting for their key, its `signin` and `project` cards for the connectors the applied `add` card needs, and each connector that `add` card needs with no card to connect it. A `yes` while a `signin` or `project` card waits: the reply's `connect` cards. A key typed for an `add` card and its `connect` card: the other connectors that `add` card needs. | Same |
 | `metadata.next` in the webhook | The same answers as `setupresult.next`, posted to the message's `callbackurl` | Same |
 
 `next` is absent when nothing is left to connect: never an empty array.
@@ -19975,7 +20180,7 @@ Every connector also connects without a card, on your own settings screens, with
 |-------|-------------|
 | `connector` | The connector's slug, as `needs[].connector` and a `connect` card's `connector` name it. |
 | `title` | Its name, one line, up to 80 characters. Use it on the button: "Connect Serper". |
-| `mode` | `key` or `signin`. See [Modes](#modes). |
+| `mode` | `key`, `signin` or `project`. See [Modes](#modes). |
 | `cardid` | The pending `connect` card that records the connection once it is made. Absent when no card records it, for example after its card was turned down. |
 | `messageguid` | The message that card is on. Present exactly when `cardid` is, and only in answers. |
 
@@ -20002,6 +20207,11 @@ async function connectFromNext(entry, useragentguid, own) {
     await openAndWaitForReturn(started.authorizeUrl); // connector_connected=true on your redirecturl
     if (cardid) return setupCardApply({ useragentguid, messageguid, cardid, action: "apply" }); // records the card
     return started;
+  }
+  if (entry.mode === "project") {
+    const wiroprojectguid = await askForProject(); // your picker of Project/List
+    if (!cardid) return connectorConnect({ useragentguid, slug: entry.connector, wiroprojectguid }); // no card records it
+    return setupCardApply({ useragentguid, messageguid, cardid, action: "apply", wiroprojectguid });
   }
   // A mode you don't know: connect it from your own settings screen.
   return openSettingsScreen(entry.connector);
@@ -20032,7 +20242,8 @@ Every refusal comes as `result: false` with one plain sentence in `errors[0].mes
 | `This card takes no key. Apply it without one.`, `This card brings more than one key. Apply it, then add each key on its own card.` | `values` on an `add` card that can't take them. |
 | `This card has no sign-in to finish. Apply it without one.` (`errorcode` `signin_no_pair`), `This card brings more than one sign-in. Apply it, then connect each on its own card.` (`signin_many`) | `signin: true` on an `add` card that can't take it. |
 | `<Title> is not connected yet. Finish the sign-in on the card first.` (`errorcode` `not_connected`) | `signin: true` before the sign-in came back. Nothing was applied. |
-| A field's sentence, such as `Serper API Key is required.`, the vendor's own refusal, `This connector signs in with your own app: send its Client ID and Client Secret.` or `Invalid redirect URL` | The checks of `ConnectorConnect` refused the card's values: show it next to the form. Nothing was saved and the card stays pending. See [Errors](/docs/agent-connectors#errors) on Agent Connectors. |
+| A field's sentence, such as `Serper API Key is required.`, the vendor's own refusal, `This connector signs in with your own app: send its Client ID and Client Secret.`, a project refusal such as `This is a team agent: use one of its team's projects.`, or `Invalid redirect URL` | The checks of `ConnectorConnect` refused the card's values or project: show it next to the form. Nothing was saved and the card stays pending. See [Errors](/docs/agent-connectors#errors) on Agent Connectors. |
+| `Pick a project on the card to connect <Title>.` | A `project` card applied without `wiroprojectguid` that can't connect without one. Show your project picker. Nothing was saved and the card stays pending. |
 | `The setup card could not be applied. Try again.` | Something went wrong. Read the card again with `Message/Detail` before you offer to try again. |
 
 These refusals carry `code` `0`, except the rights refusal, whose `code` is `97`. Check what you can before you call: that the reply has ended, that `chatSetup` is `"all"`, and that the card is pending in your copy.
@@ -20049,7 +20260,7 @@ The calls your settings screens make answer their own refusals, and a sign-in re
 
 An agent loads its setup when it starts, so most changes restart it:
 
-- `add`, `remove`, `connect` (a key saved), `disconnect` and `timezone` cards, a `schedule` or `skill` card that creates one, a `schedule` card that changes `cron`, and `pause`, `resume`, `delete`, `disable` and `enable` cards.
+- `add`, `remove`, `connect` (a key saved, or a project bound), `disconnect` and `timezone` cards, a `schedule` or `skill` card that creates one, a `schedule` card that changes `cron`, and `pause`, `resume`, `delete`, `disable` and `enable` cards.
 - A card that changes only the text of a custom skill or scheduled task (`append`, `revert`, or an `update` that keeps the schedule) reaches a running agent without a restart.
 - One change, one restart. An `add` card applied with its key restarts the agent once for both cards, and a change made while a restart is still stopping or queued loads with that restart.
 - A `signin` card's sign-in restarts the agent when the browser comes back with `connector_connected=true`. Recording the card afterwards restarts nothing.
@@ -20099,7 +20310,7 @@ While the agent isn't running, `Message/Send` answers `result: false` with `agen
 
 Before this refusal, Wiro still answers the replies it handles itself:
 
-- A `yes` that lists or applies a card (a `connect` card only when it needs no values), and a `yes` while only `connect` cards wait and one of them signs in, answered `A yes cannot connect <Title>. Its sign-in and any app keys are entered outside this chat, never in it.`
+- A `yes` that lists or applies a card (a `connect` card only when it needs no values), and a `yes` while only `connect` cards wait and one of them signs in or picks a project, answered `A yes cannot connect <Title>. Its sign-in and any app keys are entered outside this chat, never in it.` or, for a `project` card, `A yes cannot connect <Title>. Its project is picked outside this chat.`
 - A key for the only `connect` card waiting, when it is a `key` card with one secret field. Another service's key is answered too, whoever sends it, and nothing is saved: `That does not look like a <Title> key (it looks like <kind>), so it was not saved. Paste the <Title> key as your reply.` The part in brackets comes only when Wiro knows the kind, and before a title that starts with a vowel, `a` becomes `an`, as in `an Apollo key`.
 - Such a `yes`, or a key for the waiting `key` card, from a sender who isn't an agent admin, answered `Only an agent admin can apply setup changes.`
 - A `no` that turned pending cards down, answered `The setup change was turned down.` or `The <N> setup changes were turned down.`
@@ -20114,8 +20325,8 @@ Your chat can work with text alone, or people may type `yes` even where you show
 
 - **Approve.** A message that is only an approval, such as `yes`, `ok`, `approve`, `go ahead`, `evet` or `👍`, acts on the pending cards of the agent's latest reply in the same `sessionkey`, when they are less than 30 minutes old. In a chat sent with your API key, the first approval applies nothing: Wiro answers with the card listing, the exact content of the cards. A second one applies the one card listed. With several cards, `yes 2` applies card 2 once the listing has shown it, one card per reply.
 - **Turn down.** A message that is only a refusal, such as `no` or `cancel`, dismisses the pending cards of the latest reply that are less than 30 minutes old, then goes to the agent as a normal message. Older cards aren't dismissed, and the `no` goes to the agent all the same. While the agent isn't running, Wiro answers it itself: `The setup change was turned down.`, or `The <N> setup changes were turned down.` for several cards. Anyone who can write in the chat can turn cards down.
-- **A key as the reply.** When the latest reply has one pending `connect` card and it is a `key` card with one secret field (a project picker doesn't count), a key pasted as the reply can be saved to it with your key owner's rights: the key is saved, and the message is stored as `[key saved to <Connector title>]`. When the connector needs more than that key, nothing is saved and the answer names what is missing: use the card's form. In a chat sent with your API key, when the only pending cards are an `add` card and its `connect` card, and the key is all the connector needs, the key typed after the listing applies both cards at once. A key typed before that listing saves nothing: the message is stored with `[key removed]` in its place, and Wiro answers with the listing.
-- A `yes` applies a `connect` card only when it needs no values. A `key` card waits for its key, and a `signin` card never connects from a typed reply: a `yes` while it waits is answered `A yes cannot connect <Title>. Its sign-in and any app keys are entered outside this chat, never in it.`, applies nothing and starts no agent turn. Its card's Sign in connects it.
+- **A key as the reply.** When the latest reply has one pending `connect` card and it is a `key` card with one secret field (never a `project` card), a key pasted as the reply can be saved to it with your key owner's rights: the key is saved, and the message is stored as `[key saved to <Connector title>]`. When the connector needs more than that key, nothing is saved and the answer names what is missing: use the card's form. In a chat sent with your API key, when the only pending cards are an `add` card and its `connect` card, and the key is all the connector needs, the key typed after the listing applies both cards at once. A key typed before that listing saves nothing: the message is stored with `[key removed]` in its place, and Wiro answers with the listing.
+- A `yes` applies a `connect` card only when it needs no values. A `key` card waits for its key, and a `signin` card never connects from a typed reply: a `yes` while it waits is answered `A yes cannot connect <Title>. Its sign-in and any app keys are entered outside this chat, never in it.`, applies nothing and starts no agent turn. Its card's Sign in connects it. A `project` card never connects from a typed reply either: a `yes` while it waits is answered `A yes cannot connect <Title>. Its project is picked outside this chat.`, and its card's Connect, with the project picked, connects it.
 
 The latest reply is the newest row of the session, other than the replies Wiro answers itself and model switches. A row added between turns counts, such as a scheduled task's report written into that session: once it comes, a `yes` or `no` typed after it finds no cards. Your buttons still act on those cards, since `SetupCardApply` takes a pending card by its `messageguid` and `cardid`, at any age.
 
@@ -20196,7 +20407,9 @@ Wiro writes these lines in `response`, always in English. They name no site, pag
 | `Your agent is restarting to load the change. Continue in about a minute.` | The change restarts the agent (shorter when a `Next:` line follows). |
 | `Next: paste your <Title> key as your reply.` | A `key` card waits for its key. While the agent restarts, it goes on with `Send it now and it loads with this same restart.` |
 | `Next: connect <Title> to finish. Its sign-in and any app keys are entered outside this chat, never in it.` | A `yes` applied an `add` card whose `signin` card still waits. `setupresult.next` names that card. |
+| `Next: connect <Title> to finish. Its project is picked outside this chat.` | A `yes` applied an `add` card whose `project` card still waits. `setupresult.next` names that card. |
 | `A yes cannot connect <Title>. Its sign-in and any app keys are entered outside this chat, never in it.` | A `yes` while only `connect` cards wait, one of them a `signin` card. Nothing was applied. |
+| `A yes cannot connect <Title>. Its project is picked outside this chat.` | A `yes` while only `connect` cards wait, one of them a `project` card. Nothing was applied. |
 | `⚠️ Not saved: <reason>. Paste the key again as your reply.` | The key was refused. Nothing was saved. |
 | `That does not look like a <Title> key (it looks like <kind>), so it was not saved. Paste the <Title> key as your reply.` | The key pasted is another service's, and the only `connect` card waiting is a `key` card with one secret field. It comes whoever sent the key. The part in brackets is there only when Wiro knows the kind. Before a title that starts with a vowel, `a` becomes `an`, as in `an Apollo key`. |
 | `⚠️ Not saved: <Add title> is still waiting. Reply "yes" to add it, or "no" to turn it down.` | A key typed for an `add` card whose `connect` card no longer waits. |
@@ -21128,7 +21341,7 @@ Each row also carries `user`, your key owner's account, left out here. The rows 
 - Replies Wiro answers itself (`agenttoken: null`, `status: "agent_end"`) show `response` as plain text.
 - Setup cards show the right title, body and buttons for their kind and state, `add` cards together with their `connect` cards.
 - Apply waits for the reply to finish; Apply and Dismiss call `SetupCardApply`, and the card updates from the answer's `setup` (which can be `null`) and from later `version` 2 blocks.
-- Each connect mode has its flow: `key` (the card's `fields` as `values`) and `signin` (`SetupCardApply` with your `redirecturl` and your app's keys, the browser sign-in, then `SetupCardApply` again to record the card); any connector also connects on your settings screens with the [Agent Connectors](/docs/agent-connectors) calls, account pickers included.
+- Each connect mode has its flow: `key` (the card's `fields` as `values`), `signin` (`SetupCardApply` with your `redirecturl` and your app's keys, the browser sign-in, then `SetupCardApply` again to record the card) and `project` (your project picker, then `SetupCardApply` with `wiroprojectguid`); any connector also connects on your settings screens with the [Agent Connectors](/docs/agent-connectors) calls, account pickers included.
 - `next` from blocks, `SetupCardApply` answers, `setupresult` and webhooks turns into your own Connect buttons.
 - Every `result: false` shows its sentence or your own words; code branches on codes and statuses, never on sentences.
 - Every restart signal (`restarting`, `restart`, `connector_connected=true`, and the saves that answer none) shows a restarting line until `UserAgent/Detail` reads `status: 4`, and the poll stops at `0`, `5` or `6`; Send refusals during a restart are shown as they are.
@@ -21273,7 +21486,7 @@ Lists all skills in the registry.
 | `brand_color` | `string\|null` | Brand background colour (hex) for chips and cards. |
 | `brand_text_color` | `string\|null` | Foreground colour to render on top of `brand_color`. |
 | `brand_logo_filter` | `string\|null` | CSS `filter` value applied to monochrome SVG icons (e.g. `"brightness(0) invert(1)"`) so the same source SVG renders correctly on light and dark brand colours. |
-| `docs_url` | `string\|null` | Slug or path of a page about the skill on this docs site, when it has one. Frontends prefix with `/docs/` when rendering. |
+| `docs_url` | `string\|null` | The page about the skill, when it has one: a slug or path on this docs site, which frontends prefix with `/docs/`, such as `integration-twiliovoice-skills` for `util-twilio-channel`, or a full `https` address, used as it is, such as `https://wiro.ai/connectors/google-play` for `util-googleplay-events`, whose page is its connector's. Empty when there is none. |
 | `requires_credentials` | `boolean` | `true` when the skill needs a credential the operator must supply (effectively `true` whenever `credential_key` names a credential you supply). |
 | `credential_key` | `string\|null` | The credential this skill needs, when it needs one (see [Agent Credentials](/docs/agent-credentials)); [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail) shows its schema. `null` for skills that need none. |
 | `additional_credential_keys` | `array<string>` | **Optional: only present when the skill reads further credentials,** such as `["var-support-email"]` for the support-email setting; most skills omit this field entirely. |
@@ -22026,7 +22239,7 @@ The voice channels are Skills too: `util-twilio-channel` answers phone calls thr
 An agent runs Wiro's own AI models (image, video, audio and LLM generation, cover images, model discovery) two ways:
 
 - **With its Wiro project.** Skills such as `util-video-creator` and the voice skills run their models with the agent's Wiro project, the `wiro` credential. Pick or create a project at [wiro.ai/panel/project](https://wiro.ai/panel/project) and connect it in the agent's settings, or through the API with `POST /UserAgent/CredentialProjectBind`. Each run is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project). See [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project).
-- **With the Wiro connector.** The `wiro` connector gives the agent Wiro's own tools (`wiro__*`), the ones its `tools` on [`AgentConnector/Detail`](/docs/agent-connectors#post-agentconnectordetail) list, such as running any model. They act with the key of the project you connect it with, and their runs are billed to that project. See [The Wiro connector](/docs/agent-connectors#the-wiro-connector).
+- **With the Wiro connector.** The `wiro` connector gives the agent Wiro's own model and task tools (`wiro__*`), the ones its `tools` on [`AgentConnector/Detail`](/docs/agent-connectors#post-agentconnectordetail) list, such as running any model. They act with the agent's own Wiro project, the same one: connecting the connector binds the project you pick to the agent, as `CredentialProjectBind` does. Their runs are the agent's own, billed to that project's wallet under the agent's spend limit and Model Access rule. See [The Wiro connector](/docs/agent-connectors#the-wiro-connector).
 
 The agent starts without a Wiro project. Where the template marks the project required (`optional: false`), `UserAgent/Detail` reads `setuprequired: true` until it is connected.
 
@@ -22624,7 +22837,7 @@ A `token_usage` event records the token spend and credit deduction for one bille
 | `AGENT_SKILLS_UPDATED` | `Skills updated: util-web-channel off` |
 | `AGENT_CREDENTIAL_SAVED` | `Connector setting saved: wiro.apikey` |
 | `AGENT_CREDENTIAL_REMOVED` | `Disconnected: wiro` (the agent's Wiro project was disconnected because the agent moved to a workspace the project isn't in) |
-| `CONNECTOR_CONNECTED`, `CONNECTOR_DISCONNECTED` | `Connector connected: serper`, `Connector disconnected: serper` (see [Agent Connectors](/docs/agent-connectors)) |
+| `CONNECTOR_CONNECTED`, `CONNECTOR_DISCONNECTED` | `Connector connected: serper`, `Connector disconnected: serper` (see [Agent Connectors](/docs/agent-connectors)). When the agent moves to a workspace its Wiro project isn't in, Wiro writes `Connector disconnected: wiro` with `summary.reason` `"workspace"` next to the `AGENT_CREDENTIAL_REMOVED` row (see [Moving the agent to another workspace](/docs/agent-connectors#moving-the-agent-to-another-workspace)) |
 | `CONNECTOR_ACCOUNTS_SET` | `Connector accounts set: facebook-pages` |
 | `CONNECTOR_REAUTH` | `Connector needs to be connected again: facebook-pages` (written by Wiro when a sign-in expired or was revoked) |
 | `AGENT_PLAN_STARTED`, `AGENT_PLAN_RENEWED`, `AGENT_PLAN_CANCELLED`, `AGENT_PLAN_RESUMED` | `Starter plan started: $5.00 charged`, `Starter plan renewed: $5.00 charged`, `Plan cancelled, ends 2026-06-01`, `Plan cancellation undone` |
@@ -23831,11 +24044,13 @@ Transfers an agent instance between workspaces: personal to team, team to person
 | `targetteamguid` | string | Yes | Target team guid, or empty string `""` for personal |
 
 When an agent is transferred:
+
 - The agent's `teamguid` is updated
 - Active subscriptions and credit purchases move with the agent
 - Its chat history moves with it
 - The agent is restarted with the new context
 - Future billing is charged to the new workspace's wallet
+- When the agent's Wiro project isn't in the new workspace, the agent is disconnected from it, and its [`wiro` connector](/docs/agent-connectors#moving-the-agent-to-another-workspace) is disconnected too: the answer's `wiroproject` reads `"cleared"`, and its `notes` hold `The agent's Wiro project belongs to another workspace, so the agent was disconnected from it. Pick a project of its new workspace so the agent can run models again.`
 - [Take Control](/docs/agent-overview#take-control) stays off for an agent that has been in a team after it moves back to a personal workspace, until its owner [resets its browser](/docs/agent-overview#resetting-the-browser): the browser goes with it, signed in wherever the team's chats signed in
 
 ## **POST** /Team/TransferProject

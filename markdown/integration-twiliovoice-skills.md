@@ -17,7 +17,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   }'
 ```
 
-**Skill:** `util-twilio-channel`, the phone channel.
+**Skill:** `util-twilio-channel`, the phone channel. Its `docs_url` in [`Skills/List`](/docs/agent-skills#post-skillslist) is this page, `integration-twiliovoice-skills`.
 
 **Credential:** `twilio-voice`, the Account SID, Auth Token and phone numbers below.
 

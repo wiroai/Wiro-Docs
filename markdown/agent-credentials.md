@@ -15,7 +15,7 @@ A credential is a set of values an agent keeps for something it is, rather than 
 
 The services an agent works with (Google Ads, Shopify, HubSpot, Serper and the rest) are **connectors**, not credentials: browse, connect and disconnect them with the calls on [Agent Connectors](/docs/agent-connectors). `CredentialUpsert` doesn't take a connector's values.
 
-> **Not from the agent's chat.** [Setup cards](/docs/agent-messaging#setup-from-chat) connect connectors of the catalog only: no card saves a channel, Twilio Voice, the Wiro project or a setting. Save them with `CredentialUpsert` or `CredentialProjectBind`; in chat, the agent asks an agent admin to make the change in the agent's settings.
+> **Not from the agent's chat.** [Setup cards](/docs/agent-messaging#setup-from-chat) connect connectors of the catalog only: no card saves a channel, Twilio Voice or a setting. Save them with `CredentialUpsert`; in chat, the agent asks an agent admin to make the change in the agent's settings. The one card that sets a credential is the `wiro` connector's `project` card: it binds the agent's Wiro project, as `CredentialProjectBind` does.
 
 **Read & write paths at a glance:**
 
@@ -264,7 +264,7 @@ The response names the project and says what happened to the agent: `{ "result":
 
 > **Don't confuse `credentials.wiro.apikey` with your operator-level Wiro API key.** `credentials.wiro.apikey` is the project key the agent uses to run Wiro models. The `x-api-key` header you send to Wiro endpoints from your own backend is your operator key, which authenticates your request (see [Authentication](/docs/authentication)). They are the same key only when you bind the project of the key you call with.
 
-The [Wiro connector](/docs/agent-connectors#the-wiro-connector), which gives the agent Wiro's own tools, takes its project when you connect it.
+The [Wiro connector](/docs/agent-connectors#the-wiro-connector), which gives the agent Wiro's own model and task tools, always acts with this project, as the agent's own calls. Connecting it binds the project you pick, as `CredentialProjectBind` does, and moving the agent to a workspace the project isn't in disconnects both the project and the connector.
 
 ## Platform-Managed Credentials
 
@@ -392,7 +392,7 @@ If you skip these keys in Deploy entirely, the instance is created empty and you
 
 ## Setup Required State
 
-Every fresh Deploy starts in **Setup Required** state (`status: 6`). While an agent is at `status: 6`, `Start` refuses it with `Agent setup is not complete. Please finish setting up your connectors before starting.`
+Every fresh Deploy starts in **Setup Required** state (`status: 6`). While an agent is at `status: 6`, `Start` refuses it with `Agent setup is not complete. Fill in the agent's required settings before starting.`
 
 API deploys must always pass `useprepaid: true`. The server provisions the prepaid subscription inline and moves the agent to `status: 2` (Queued) whatever its credentials hold, and Wiro then starts it, so no `Start` call is needed. A credential the agent requires may still be incomplete while it runs: `UserAgent/Detail` reads `setuprequired: true` until every required credential is set up, and a running agent restarts to pick up each value you save.
 

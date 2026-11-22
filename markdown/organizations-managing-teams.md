@@ -287,11 +287,13 @@ Transfers an agent instance between workspaces: personal to team, team to person
 | `targetteamguid` | string | Yes | Target team guid, or empty string `""` for personal |
 
 When an agent is transferred:
+
 - The agent's `teamguid` is updated
 - Active subscriptions and credit purchases move with the agent
 - Its chat history moves with it
 - The agent is restarted with the new context
 - Future billing is charged to the new workspace's wallet
+- When the agent's Wiro project isn't in the new workspace, the agent is disconnected from it, and its [`wiro` connector](/docs/agent-connectors#moving-the-agent-to-another-workspace) is disconnected too: the answer's `wiroproject` reads `"cleared"`, and its `notes` hold `The agent's Wiro project belongs to another workspace, so the agent was disconnected from it. Pick a project of its new workspace so the agent can run models again.`
 - [Take Control](/docs/agent-overview#take-control) stays off for an agent that has been in a team after it moves back to a personal workspace, until its owner [resets its browser](/docs/agent-overview#resetting-the-browser): the browser goes with it, signed in wherever the team's chats signed in
 
 ## **POST** /Team/TransferProject
