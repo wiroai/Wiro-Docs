@@ -60,7 +60,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
     "useragentguid": "your-useragent-guid",
     "fields": [
       { "credentialkey": "mastodon", "fieldname": "instanceurl", "fieldvalue": "https://mastodon.social" },
-      { "credentialkey": "mastodon", "fieldname": "accesstoken", "fieldvalue": "YOUR_MASTODON_ACCESS_TOKEN" }
+      { "credentialkey": "mastodon", "fieldname": "token", "fieldvalue": "YOUR_MASTODON_ACCESS_TOKEN" }
     ]
   }'
 ```
@@ -105,7 +105,7 @@ With setup cards on, a person can ask the agent in chat to post to Mastodon. The
   "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
   "cardid": "h6w3k9p2m5tc",
   "action": "apply",
-  "values": { "instanceurl": "https://mastodon.social", "accesstoken": "YOUR_MASTODON_ACCESS_TOKEN" }
+  "values": { "instanceurl": "https://mastodon.social", "token": "YOUR_MASTODON_ACCESS_TOKEN" }
 }
 ```
 
@@ -116,7 +116,7 @@ A value in the wrong shape is refused with the field's message, such as `Server 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `instanceurl` | string (URL) | Yes | Your server's address, starting with `https://`, such as `https://mastodon.social`. A profile link is accepted; only the server address is used. Not a secret: it is shown as saved. |
-| `accesstoken` | string (secret) | Yes | The access token of the application you created (20 to 512 letters, digits and `-._~+/=`). Encrypted at rest. |
+| `token` | string (secret) | Yes | The access token of the application you created (20 to 512 letters, digits and `-._~+/=`). Encrypted at rest. |
 
 ## Credentials schema (as returned by `POST /UserAgent/Detail`)
 
@@ -126,7 +126,7 @@ A value in the wrong shape is refused with the field's message, such as `Server 
   "optional": false,
   "extra": false,
   "instanceurl": "https://mastodon.social",
-  "accesstoken": "••••••••"
+  "token": "••••••••"
 }
 ```
 

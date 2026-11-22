@@ -47541,7 +47541,7 @@ if (params.get("threads_connected") === "true") {
     "useragentguid": "your-useragent-guid",
     "fields": [
       { "credentialkey": "mastodon", "fieldname": "instanceurl", "fieldvalue": "https://mastodon.social" },
-      { "credentialkey": "mastodon", "fieldname": "accesstoken", "fieldvalue": "YOUR_MASTODON_ACCESS_TOKEN" }
+      { "credentialkey": "mastodon", "fieldname": "token", "fieldvalue": "YOUR_MASTODON_ACCESS_TOKEN" }
     ]
   }'</code></pre>
                     <p>Or fill it in the panel: <strong><a href="https://wiro.ai/panel/agents" target="_blank" rel="noopener">My Agents</a></strong> → open agent → <strong>Connectors → Mastodon</strong>.</p>
@@ -47572,7 +47572,7 @@ if (params.get("threads_connected") === "true") {
   "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
   "cardid": "h6w3k9p2m5tc",
   "action": "apply",
-  "values": { "instanceurl": "https://mastodon.social", "accesstoken": "YOUR_MASTODON_ACCESS_TOKEN" }
+  "values": { "instanceurl": "https://mastodon.social", "token": "YOUR_MASTODON_ACCESS_TOKEN" }
 }</code></pre>
                     <p>A value in the wrong shape is refused with the field's message, such as <code>Server Address has an invalid format</code> for an <code>http://</code> address, and the card stays pending. With only one of the two fields, the answer is <code>Saved &lt;field&gt; for Mastodon. Still needed: &lt;field&gt;.</code> and the card waits for the other.</p>
                   </section>
@@ -47587,7 +47587,7 @@ if (params.get("threads_connected") === "true") {
                           </thead>
                           <tbody>
                             <tr><td><code>instanceurl</code></td><td>string (URL)</td><td>Yes</td><td>Your server's address, starting with <code>https://</code>, such as <code>https://mastodon.social</code>. A profile link is accepted; only the server address is used. Not a secret: it is shown as saved.</td></tr>
-                            <tr><td><code>accesstoken</code></td><td>string (secret)</td><td>Yes</td><td>The access token of the application you created (20 to 512 letters, digits and <code>-._~+/=</code>). Encrypted at rest.</td></tr>
+                            <tr><td><code>token</code></td><td>string (secret)</td><td>Yes</td><td>The access token of the application you created (20 to 512 letters, digits and <code>-._~+/=</code>). Encrypted at rest.</td></tr>
                           </tbody>
                         </table>
                       </div>
@@ -47601,7 +47601,7 @@ if (params.get("threads_connected") === "true") {
   "optional": false,
   "extra": false,
   "instanceurl": "https://mastodon.social",
-  "accesstoken": "••••••••"
+  "token": "••••••••"
 }</code></pre>
                     <p>On a custom build with <code>int-mastodon-post</code> on, <code>optional</code> and <code>extra</code> are <code>false</code>: Mastodon is that skill's own connector.</p>
                   </section>
