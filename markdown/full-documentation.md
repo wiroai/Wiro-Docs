@@ -26143,6 +26143,7 @@ name one, or ask for all of them.
 | `flow_replaced` | A newer sign-in or token check for the same agent and credential replaced this sign-in, whoever started it, so nothing from it was saved. | Use the newer sign-in or check, or start again with `OAuthConnect`. |
 | `authorization_denied` | User cancelled, or not listed in App Roles (Development Mode). | Add as Tester (Step 5), retry. |
 | `token_exchange_failed` | Wrong App Secret or redirect URI mismatch. | Re-copy App Secret; verify redirect URI exactly. |
+| Facebook shows `Invalid Scopes` | The app was set up with use cases and has not added a permission the connection asks for, such as `read_insights`. Facebook shows this only to the app's developers, which in own mode is usually the person connecting. | In the app, open **Use cases → Manage everything on your Page**, add every permission in the scope table above, then connect again. |
 | `no_pages` | User has no administered Facebook Pages. | Ask the user to create/administer a Page first, retry. |
 | `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before Facebook returned. | Start again with `OAuthConnect` for an existing agent. |
 | `Facebook credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `appid` / `appsecret` are missing. | Call `POST /UserAgent/CredentialUpsert` with `facebook-pages.appid` and `facebook-pages.appsecret`, then retry. |
