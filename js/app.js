@@ -178,6 +178,14 @@ function parseLegacyHash(hash) {
   return sections.find((s) => s.slug === slug) ? slug : null;
 }
 
+// The same kind of link to a page that is no longer in the docs, such as
+// /docs#/integration-metaads-skills. Its path is where serve.js answers:
+// a 301 to the page it became (RETIRED_PAGES), or the not-found page.
+function parseMovedHash(hash) {
+  const match = /^#\/([a-z0-9-]+)\/?$/.exec(hash || '');
+  return match && !sections.some((s) => s.slug === match[1]) ? match[1] : null;
+}
+
 function decodeFragment(hash) {
   try {
     return decodeURIComponent((hash || '').replace(/^#/, ''));
@@ -1309,8 +1317,9 @@ function initScrollbarReveal() {
 
 function init() {
   const legacySlug = parseLegacyHash(window.location.hash);
-  if (legacySlug && !getSectionElement(legacySlug)) {
-    window.location.replace(`${BASE_PATH}/${legacySlug}`);
+  const movedSlug = parseMovedHash(window.location.hash);
+  if (movedSlug || (legacySlug && !getSectionElement(legacySlug))) {
+    window.location.replace(`${BASE_PATH}/${movedSlug || legacySlug}`);
     return;
   }
 

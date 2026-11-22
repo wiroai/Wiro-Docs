@@ -68,7 +68,9 @@ const sectionMap = Object.fromEntries(sections.map(s => [s.slug, s]));
 // Pages that left the docs. The per-connector integration pages became the connector
 // catalog's own pages on the site, https://wiro.ai/connectors/{slug}, and the API they
 // described is the Agent Connectors page: each old address, and the address of its
-// Markdown copy, answers 301 with the connector's page.
+// Markdown copy, answers 301 with the connector's page. Links from before path URLs
+// (/docs#/integration-metaads-skills) get here too: app.js sends a #/slug that names
+// no page in the docs to /docs/slug.
 const CONNECTOR_PAGE = 'https://wiro.ai/connectors/';
 const RETIRED_PAGES = {
   'integration-metaads-skills': CONNECTOR_PAGE + 'meta-ads',
@@ -122,6 +124,7 @@ const RETIRED_PAGES = {
   'integration-tumblr-skills': CONNECTOR_PAGE + 'tumblr',
   'integration-apollo': CONNECTOR_PAGE + 'apollo',
   'integration-appstore': CONNECTOR_PAGE + 'apple-appstore',
+  'integration-brevo': CONNECTOR_PAGE + 'brevo',
   'integration-facebook': CONNECTOR_PAGE + 'facebook-pages',
   'integration-firebase': CONNECTOR_PAGE + 'firebase',
   'integration-gmail': CONNECTOR_PAGE + 'gmail',
@@ -130,14 +133,17 @@ const RETIRED_PAGES = {
   'integration-googleplay': CONNECTOR_PAGE + 'google-play',
   'integration-hubspot': CONNECTOR_PAGE + 'hubspot',
   'integration-instagram': CONNECTOR_PAGE + 'instagram',
+  'integration-lemlist': CONNECTOR_PAGE + 'lemlist',
   'integration-linkedin': CONNECTOR_PAGE + 'linkedin',
   'integration-mailchimp': CONNECTOR_PAGE + 'mailchimp',
   'integration-metaads': CONNECTOR_PAGE + 'meta-ads',
+  'integration-sendgrid': CONNECTOR_PAGE + 'sendgrid',
   'integration-tiktok': CONNECTOR_PAGE + 'tiktok',
   'integration-twitter': CONNECTOR_PAGE + 'twitter',
   'integration-wordpress': CONNECTOR_PAGE + 'wordpress',
   'integration-google-search-skills': CONNECTOR_PAGE + 'serper',
   'integration-telegram': `${BASE}/integration-telegram-skills`,
+  'voice-agent-twilio-channel': `${BASE}/integration-twiliovoice-skills`,
 };
 const RETIRED_MARKDOWN = /^markdown\/([a-z0-9-]+)\.md$/;
 
