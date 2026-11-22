@@ -35290,7 +35290,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <tbody>
 <tr>
 <td><strong>Template deploy</strong></td>
-<td>The marketplace already has an agent that does what you need (Instagram Manager, Push Notifications, App Review Support, …). You inherit the template's default skill set + configuration.</td>
+<td>The marketplace already has an agent that does what you need (Social Manager, Push Notification Manager, App Review Support, …). You inherit the template's default skill set + configuration.</td>
 <td><code>POST /UserAgent/Deploy</code> with <code>agentguid</code></td>
 </tr>
 <tr>
@@ -35338,7 +35338,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <p><strong>Custom builds don't share a marketplace listing.</strong> They are private to your account; nothing about a custom agent appears on <code>/Agent/List</code> or <code>/Agent/Detail</code>. Discovery happens through your own product surface.</p>
 </blockquote>
 <h2 id="step-1-browse-available-skills">Step 1: Browse Available Skills</h2>
-<p>Custom builds start from the <strong>skill registry</strong>, the catalogue of every Skill the platform supports: rule sets, playbooks and keyless tools such as weather and diagrams. Browse it with <a href="/docs/agent-skills#post-skillslist"><code>POST /Skills/List</code></a> and inspect details with <a href="/docs/agent-skills#post-skillsdetail"><code>POST /Skills/Detail</code></a>. The outside services the agent works with are connectors, which you pick from the <a href="#step-1c-pick-the-connectors">connector catalog</a> and connect after Deploy.</p>
+<p>Custom builds start from the <strong>skill registry</strong>, the catalogue of every Skill the platform supports: rule sets, playbooks, the voice channels and tools such as weather and diagrams. Browse it with <a href="/docs/agent-skills#post-skillslist"><code>POST /Skills/List</code></a> and inspect details with <a href="/docs/agent-skills#post-skillsdetail"><code>POST /Skills/Detail</code></a>. The outside services the agent works with are connectors, which you pick from the <a href="#step-1c-pick-the-connectors">connector catalog</a> and connect after Deploy.</p>
 <p>Both endpoints are <strong>public, so no authentication is required.</strong></p>
 <pre><code class="language-bash"># Browse every Skill
 curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
@@ -35351,12 +35351,13 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
 <li><code>category</code>: <code>util</code>, for every registry skill</li>
 <li><code>credential_key</code>: which credential the skill needs, or <code>null</code> (most skills need none)</li>
 <li><code>requires_credentials</code>: boolean, whether the user must supply a credential before the skill can run</li>
-<li><code>depends_on</code>: array of skill names that must also be enabled (Wiro auto-enables transitive deps)</li>
+<li><code>depends_on</code>: skills that must be on with it. Deploy's <code>skills</code> turns them on by itself; <a href="#step-4-refine-skills-after-deploy"><code>SkillsApply</code></a> refuses with code <code>101</code> and <code>deps[]</code> unless you send them in the same call</li>
 <li><code>conflicts_with</code>: array of skill names that cannot coexist with this one</li>
+<li><code>suggested_connectors</code>: the connectors the skill works with, by catalog slug, when it has any (for example <code>["brevo", "hubspot", "mailchimp", "sendgrid"]</code> on Newsletter Compose Rules (<code>util-newsletter-compose</code>)); pick from them in <a href="#step-1c-pick-the-connectors">Step 1c</a> and connect them in <a href="#step-3b-connect-the-connectors">Step 3b</a></li>
 <li><code>pricing</code>: <code>billing_model: "tokens"</code>; its <code>monthly_price_weight_usd</code> and <code>monthly_credits_weight</code> are <code>0</code> on every skill, since every plan includes every skill</li>
 </ul>
 <blockquote>
-<p><strong>Use <a href="/docs/agent-skills#post-skillscapabilities"><code>POST /Skills/Capabilities</code></a></strong> to discover the closed-set capability vocabulary (the high-level tasks skills can perform). Useful when you want to find every skill that can "post-content" or "send-email".</p>
+<p><strong>Use <a href="/docs/agent-skills#post-skillscapabilities"><code>POST /Skills/Capabilities</code></a></strong> to discover the closed-set capability vocabulary (the high-level tasks skills can perform). Useful when you want to find every skill with a tag such as <code>social_publishing</code> or <code>email_publishing</code>.</p>
 </blockquote>
 <h2 id="step-1b-discover-communication-channels">Step 1b: Discover Communication Channels</h2>
 <p>The same <code>POST /Skills/List</code> response also includes a top-level <code>channels[]</code>
@@ -35527,16 +35528,25 @@ pricing.</p>
         &quot;voicePrepModel&quot;: &quot;openai/gpt-5.4-mini&quot;,
         &quot;voicePostcallModel&quot;: &quot;openai/gpt-5.4&quot;
       },
-      &quot;skills&quot;: [&quot;util-anti-ai-human-copy&quot;, &quot;util-chat-markdown-reporting&quot;],
-      &quot;customskills&quot;: [],
+      &quot;skills&quot;: [
+        { &quot;name&quot;: &quot;util-anti-ai-human-copy&quot;,      &quot;enabled&quot;: true, &quot;_edited&quot;: true, &quot;_user_created&quot;: false },
+        { &quot;name&quot;: &quot;util-chat-markdown-reporting&quot;, &quot;enabled&quot;: true, &quot;_edited&quot;: true, &quot;_user_created&quot;: false }
+      ],
+      &quot;customskills&quot;: [
+        { &quot;key&quot;: &quot;cs-approval-policy&quot;, &quot;description&quot;: &quot;Approval policy: how the agent should gate publish/send/modify actions before executing them.&quot;, &quot;value&quot;: &quot;# Approval Policy\n\nThis skill controls whether the agent waits for operator approval before ...&quot;, &quot;interval&quot;: null, &quot;enabled&quot;: true, &quot;requires_credentials&quot;: [], &quot;requires_connectors&quot;: [], &quot;_source&quot;: &quot;skill-bundle&quot;, &quot;_editable&quot;: true, &quot;_edited&quot;: false, &quot;_user_created&quot;: false },
+        { &quot;key&quot;: &quot;cs-my-custom-strategy&quot;, &quot;description&quot;: &quot;Defines how your agent should behave.&quot;, &quot;value&quot;: &quot;# My Custom Strategy\n\nDescribe how the agent should behave for your specific use case. ...&quot;, &quot;interval&quot;: null, &quot;enabled&quot;: true, &quot;requires_credentials&quot;: [], &quot;requires_connectors&quot;: [], &quot;_source&quot;: &quot;user-created&quot;, &quot;_editable&quot;: true, &quot;_edited&quot;: false, &quot;_user_created&quot;: true }
+      ],
       &quot;scheduledskills&quot;: [
         {
           &quot;key&quot;: &quot;cs-cron-weekly-research&quot;,
           &quot;value&quot;: &quot;Every Monday, research this week's topic with serper__web_search, write a 600-word article, save it as a WordPress draft with the WordPress connector's tools (wordpress__*), and post the draft link to Telegram.&quot;,
           &quot;interval&quot;: &quot;0 9 * * 1&quot;,
           &quot;enabled&quot;: true,
+          &quot;requires_credentials&quot;: [],
+          &quot;requires_connectors&quot;: [],
           &quot;_source&quot;: &quot;user-created&quot;,
           &quot;_editable&quot;: true,
+          &quot;_edited&quot;: true,
           &quot;_user_created&quot;: true
         }
       ],
@@ -35546,7 +35556,7 @@ pricing.</p>
       &quot;enabledChannels&quot;: [&quot;telegram&quot;],
       &quot;teamsessionmode&quot;: &quot;private&quot;,
       &quot;credentials&quot;: {
-        &quot;telegram&quot;: { &quot;_connected&quot;: false, &quot;optional&quot;: false, &quot;extra&quot;: false, &quot;bottoken&quot;: &quot;••••••••&quot;, &quot;allowedusers&quot;: [&quot;123456789&quot;] }
+        &quot;telegram&quot;: { &quot;_connected&quot;: true, &quot;optional&quot;: true, &quot;extra&quot;: false, &quot;bottoken&quot;: &quot;••••••••&quot;, &quot;allowedusers&quot;: [&quot;123456789&quot;] }
       },
       &quot;agent&quot;: {
         &quot;custom&quot;: true,
@@ -35571,10 +35581,24 @@ pricing.</p>
 <li><code>agentguid: null</code> confirms this is a custom build with no marketplace template.</li>
 <li><code>agent.custom: true</code> is the synthesized template placeholder. Same shape as a template's <code>agent</code> block but no <code>slug</code> / <code>cover</code> / <code>categories</code> (custom builds aren't in the marketplace).</li>
 <li><code>scheduledskills</code> already contains the cron from the Deploy body. Deploy stores each <code>customskills</code> key in its full form, as <code>CustomSkillUpsert</code> does: a bare slug with an <code>interval</code> becomes <code>cs-cron-&lt;slug&gt;</code>, one without becomes <code>cs-&lt;slug&gt;</code>, and a key that isn't a slug fails the deploy before anything is created or charged.</li>
+<li><code>skills</code> lists each enabled skill as an object (<code>name</code>, <code>enabled</code>, <code>_edited</code>, <code>_user_created</code>), the same shape as <a href="/docs/agent-overview#post-useragentdetail"><code>UserAgent/Detail</code></a>. The skills you sent read <code>_edited: true</code>.</li>
+<li>Every custom build starts with two custom skills in <code>customskills</code>: Approval Policy (<code>cs-approval-policy</code>), which you can edit or turn off but not rename or delete, and My Custom Strategy (<code>cs-my-custom-strategy</code>). When neither the Deploy body nor the skills you picked bring a scheduled task, <code>scheduledskills</code> also gets the sample My Scheduled Task (<code>cs-cron-my-scheduled-task</code>). It stays off until you write it and turn it on with <code>CustomSkillUpsert</code>.</li>
 <li><code>status: 2</code> means Deploy auto-queued the instance because <code>useprepaid: true</code> provisioned a subscription in the same call. Wiro starts the agent from the queue; you do <strong>not</strong> need to call <code>POST /UserAgent/Start</code> after a prepaid deploy.</li>
 <li>Communication-channel credentials are validated independently from <code>skills</code>. Every channel group present in <code>credentials</code> must contain all of its <code>required_fields</code> or Deploy fails without leaving a partial agent behind.</li>
+<li>A channel group in <code>credentials</code> always reads <code>optional: true</code>. Its <code>_connected</code> turns true once every one of its <code>required_fields</code> is filled, the same check as <code>configured</code> on its <code>communicationChannels</code> row.</li>
+<li><code>skills</code> takes Skills (<code>util-*</code>) only, and <code>credentials</code> takes the credentials the registry lists: channels, <code>wiro</code>, <code>twilio-voice</code> and settings. Anything else fails the Deploy before anything is created or charged, with <code>Unknown skill: &lt;name&gt;.</code> (for a retired <code>int-*</code> name it adds <code>Connectors are connected with UserAgent/ConnectorConnect, not turned on as skills.</code>) or <code>Unknown credential: &lt;key&gt;. Connect a connector after the deploy with UserAgent/ConnectorConnect.</code> Connect connectors in <a href="#step-3b-connect-the-connectors">Step 3b</a>.</li>
 <li>The Telegram bot token you sent comes back as <code>"••••••••"</code>: like <code>UserAgent/Detail</code>, the response shows a saved secret only as the mask.</li>
 </ul>
+<p>When the balance can't pay the plan, Deploy is refused with code <code>97</code>, nothing is created or charged, and <code>neededusd</code> is the amount to add, never less than the $20 deposit minimum. Add at least that much on <a href="https://wiro.ai/panel/billing">wiro.ai/panel/billing</a> and send the same Deploy again (see <a href="/docs/agent-overview#paying-for-plans">Paying for Plans</a>):</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: false,
+  &quot;useragents&quot;: [],
+  &quot;errors&quot;: [
+    { &quot;code&quot;: 97, &quot;message&quot;: &quot;Your balance is $3.10; this plan needs $30.00. Add funds to continue.&quot; }
+  ],
+  &quot;neededusd&quot;: 26.9
+}
+</code></pre>
 <h2 id="step-3b-connect-the-connectors">Step 3b: Connect the Connectors</h2>
 <p>Connect each service to the new agent with <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>POST /UserAgent/ConnectorConnect</code></a>, with your customer's own credentials. Serper and WordPress take fields:</p>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot; \
@@ -35597,7 +35621,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot; \
 </code></pre>
 <p>Each answers <code>status: "connected"</code> and restarts the running agent, which then has the connector's tools (<code>serper__web_search</code>, <code>wordpress__*</code>) that the scheduled task above names. A connector that signs in with its vendor answers an <code>authorizeUrl</code> instead: see <a href="/docs/agent-connectors#connect-with-a-sign-in">Connect with a sign-in</a>. Check every connection with <a href="/docs/agent-connectors#post-useragentconnectorlist"><code>POST /UserAgent/ConnectorList</code></a>.</p>
 <h2 id="step-4-refine-skills-after-deploy">Step 4: Refine Skills After Deploy</h2>
-<p>Toggle skills on/off after deploy with <a href="/docs/agent-overview#post-useragentskillsapply"><code>POST /UserAgent/SkillsApply</code></a>. Even when you only want to flip a single skill, send it as a one-entry <code>skills</code> map. The endpoint triggers exactly one agent restart, applies the whole batch or none of it, and never charges: every plan includes every skill, so the price and the included AI usage stay the same. Template deploys accept the same call.</p>
+<p>Toggle skills on/off after deploy with <a href="/docs/agent-overview#post-useragentskillsapply"><code>POST /UserAgent/SkillsApply</code></a>. Even when you only want to flip a single skill, send it as a one-entry <code>skills</code> map. Turning a Skill on needs its <code>depends_on</code> on too: add the ones that are off to the same map, since <code>SkillsApply</code> turns on only the names you send and refuses the change with code <code>101</code> and <code>deps[]</code> otherwise. The endpoint triggers exactly one agent restart, applies the whole batch or none of it, and never charges: every plan includes every skill, so the price and the included AI usage stay the same. Template deploys accept the same call.</p>
 <h3 id="single-skill-enable">Single-skill enable</h3>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/SkillsApply&quot; \
   -H &quot;Content-Type: application/json&quot; \
@@ -35675,7 +35699,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot; \
   ]
 }
 </code></pre>
-<p>Then connect <code>serper</code> with its API key.</p>
+<p>Then connect Serper (<code>serper</code>) with its API key.</p>
 <h3 id="b-wordpress-publisher-with-weekly-research">B. WordPress publisher with weekly research</h3>
 <pre><code class="language-json">{
   &quot;custom&quot;: true,
@@ -35703,7 +35727,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot; \
   ]
 }
 </code></pre>
-<p>Then connect <code>wordpress</code> with its site address, user name and application password.</p>
+<p>Then connect WordPress (<code>wordpress</code>) with its site address (<code>url</code>), user name (<code>user</code>) and application password (<code>apppassword</code>).</p>
 <h3 id="c-multi-channel-social-poster">C. Multi-channel social poster</h3>
 <pre><code class="language-json">{
   &quot;custom&quot;: true,
@@ -35717,7 +35741,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot; \
   &quot;credentials&quot;: {}
 }
 </code></pre>
-<p>Then connect <code>twitter</code>, <code>instagram</code>, <code>linkedin</code> and <code>facebook-pages</code>. Each signs in with its vendor, with an app of your own: <a href="/docs/agent-connectors#connect-with-a-sign-in"><code>ConnectorConnect</code></a> answers an <code>authorizeUrl</code> for your customer to open. X posts as the account that signed in. LinkedIn takes the id of its Company Page in the required <code>organizationid</code> field, sent with the sign-in, and posts as that Page or as the member who signed in. The Instagram accounts and Facebook Pages to post to are picked afterwards with <a href="/docs/agent-connectors#post-useragentconnectorsetaccounts"><code>ConnectorSetAccounts</code></a>: see <a href="/docs/agent-connectors#account-pickers">Account Pickers</a>.</p>
+<p>Then connect X (<code>twitter</code>), Instagram (<code>instagram</code>), LinkedIn (<code>linkedin</code>) and Facebook Pages (<code>facebook-pages</code>). Each signs in with its vendor through an app of your own: list <code>https://api.wiro.ai/v1/AgentConnector/OAuthCallback</code> as a redirect URI in each app first, since your <code>redirecturl</code> is only where Wiro sends the browser afterwards. <a href="/docs/agent-connectors#connect-with-a-sign-in"><code>ConnectorConnect</code></a> answers an <code>authorizeUrl</code> for your customer to open. X posts as the account that signed in. LinkedIn takes the id of its Company Page in the required <code>organizationid</code> field, sent with the sign-in, and posts as that Page or as the member who signed in. The Instagram accounts and Facebook Pages to post to are picked afterwards with <a href="/docs/agent-connectors#post-useragentconnectorsetaccounts"><code>ConnectorSetAccounts</code></a>: see <a href="/docs/agent-connectors#account-pickers">Account Pickers</a>.</p>
 <h2 id="subscription-billing-for-custom-builds">Subscription &amp; Billing for Custom Builds</h2>
 <p>Subscriptions for custom builds work exactly like template deploys:</p>
 <ul>
