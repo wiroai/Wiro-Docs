@@ -22,8 +22,9 @@ This integration covers **advertising only**. It does not post organic videos to
 
 | Mode | Status | Notes |
 |------|--------|-------|
-| `"wiro"` | Available (the only mode) | One-click connect through Wiro's TikTok for Business app. You don't create a developer app, request an API key, or go through app review. |
-| Customer-owned app or pasted token | Not offered | TikTok Ads has no `"own"` or `"api_key"` mode. `OAuthConnect` rejects any other `authmethod` with `Unsupported connection mode for TikTok Ads`. |
+| `"wiro"` | Available | One-click connect through Wiro's TikTok for Business app. You don't create a developer app, request an API key, or go through app review. |
+| `"own"` | Available | Your own client for the TikTok for Business MCP server, registered once with TikTok's dynamic client registration. The consent screen names your app instead of Wiro AI. There is no client secret: the connection uses PKCE. See "Connect with your own client" below. |
+| Pasted token | Not offered | TikTok Ads has no `"api_key"` mode. `OAuthConnect` rejects any other `authmethod` with `Unsupported connection mode for TikTok Ads`. |
 
 > **Authorization lasts 30 days.** TikTok ends every TikTok for Business authorization 30 days after it is granted, and refreshing the access token does not extend it. Reconnect with the same TikTok for Business account to renew it (see "The 30-day authorization" below).
 
@@ -40,6 +41,61 @@ This integration covers **advertising only**. It does not post organic videos to
 3. Sign in to TikTok for Business and approve the consent screen. It names the app **Wiro AI** and asks for the `mcp:tt4b` permission scope.
 4. Back in Wiro, pick the advertisers the agent may manage. You can select several; when your account has exactly one advertiser, it is selected for you.
 5. Wiro saves the selection and restarts the agent if it was running, so the agent picks up the new connection.
+
+## Connect with your own client
+
+Use this when the people who connect should see your app's name on TikTok's consent screen instead of Wiro AI. One client serves all of your agents.
+
+### Step 1: Register a client once
+
+TikTok's MCP server registers public clients on request. Use your app name and Wiro's redirect URI:
+
+```bash
+curl -X POST "https://business-api.tiktok.com/open_mcp/tt-ads-mcp-flat/oauth/register" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_name": "Your App Name",
+    "redirect_uris": ["https://api.wiro.ai/v1/UserAgentOAuth/TikTokAdsCallback"],
+    "token_endpoint_auth_method": "none"
+  }'
+```
+
+The response holds a `client_id` and no secret. Keep the `client_id`.
+
+### Step 2: Save the client ID to Wiro
+
+In the dashboard, switch the **TikTok Ads** card to your own app, paste the **Client ID** and save. With the API:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "tiktok-ads", "fieldname": "clientid",   "fieldvalue": "YOUR_CLIENT_ID" },
+      { "credentialkey": "tiktok-ads", "fieldname": "authmethod", "fieldvalue": "own" }
+    ]
+  }'
+```
+
+### Step 3: Connect
+
+Start the connection with `"authmethod": "own"`:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "tiktok-ads",
+    "redirecturl": "https://your-app.com/settings/integrations",
+    "authmethod": "own"
+  }'
+```
+
+Everything after sign-in works as in the Wiro app: you pick the advertisers, tokens refresh on their own, and the 30-day authorization applies the same way.
 
 ## The 30-day authorization
 
@@ -288,7 +344,7 @@ All endpoints require Wiro authentication: see [Authentication](/docs/authentica
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"tiktok-ads"`. |
 | `redirecturl` | string | Yes | HTTPS URL (or `http://localhost` / `http://127.0.0.1` for development) where the browser returns after TikTok. |
-| `authmethod` | string | No | `"wiro"`: the default and the only accepted value. |
+| `authmethod` | string | No | `"wiro"` (the default) or `"own"` for your own client (see "Connect with your own client"). |
 
 Response: `{ result, errors, authorizeUrl, flowid }`. If `result: false`, inspect `errors[0].message`. Common messages: `Request parameter [useragentguid] required`, `Request parameter [credentialkey] required`, `Request parameter [redirecturl] required`, `Invalid redirect URL`, `User agent not found or unauthorized`, `Unsupported connection mode for TikTok Ads`, and `TikTok Ads credentials not configured`.
 
@@ -379,7 +435,8 @@ To change **what** the reports include (tracking quality gates, kill thresholds,
 | `account_list_too_large` | The TikTok for Business user can access more than 500 advertisers. | Connect with a TikTok for Business user that has access to fewer advertisers. |
 | `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before TikTok returned. | Start again with `OAuthConnect` for an existing agent. |
 | `internal_error` | Unexpected server error during callback processing. | Retry once. If it persists, contact Wiro support with the timestamp and your `useragentguid`. |
-| `Unsupported connection mode for TikTok Ads` | Returned in `OAuthConnect`'s `errors[]` when `authmethod` is anything other than `"wiro"`. | Omit `authmethod` or send `"wiro"`. |
+| `Unsupported connection mode for TikTok Ads` | Returned in `OAuthConnect`'s `errors[]` when `authmethod` is anything other than `"wiro"` or `"own"`. | Omit `authmethod`, or send `"wiro"` or `"own"`. |
+| `TikTok Ads credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but no `clientid` is saved. | Save the client ID with `UserAgent/CredentialUpsert` (see "Connect with your own client"), then connect again. |
 | `TikTok Ads credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when TikTok Ads is not available for this account. | Contact Wiro support. |
 | `flow_waiting` | Returned by `SetPickerAccounts` (`The sign-in is not finished yet. Finish it, then choose the accounts.`) while the sign-in has started but TikTok hasn't sent the user back yet, so there is no list to save from. | Let the user finish on TikTok's consent screen, then save the selection. Don't call `OAuthConnect` again meanwhile: it would replace the sign-in under way. |
 | `TikTok Ads account not connected` | Returned by `SetPickerAccounts` when the sign-in's list is open but the sign-in's token is no longer saved. | Run Steps 1-2 again, then save the selection. |

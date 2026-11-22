@@ -21,7 +21,7 @@ Instagram Login issues an Instagram User access token and publishes through
 
 **Skills that use this integration:**
 
-- `int-instagram-post`: Publish feed carousels, Reels, and Stories; any agent can also post a finished video as a Reel
+- `int-instagram-post`: Publish feed carousels, Reels, and Stories, and read post and account insights; any agent can also post a finished video as a Reel
 
 **Agents that typically enable this integration:**
 
@@ -94,9 +94,12 @@ of Instagram Content Publishing.
    - `pages_read_engagement`
    - `ads_read`
    - `ads_management`
+   - `instagram_manage_insights` (optional) when the agent should read
+     [insights](#insights)
 
 Meta's Page-linked publishing contract requires both ads permissions when the
-Page role is granted through Business Manager.
+Page role is granted through Business Manager. `instagram_manage_insights` is
+needed only for insights; a token without it still publishes.
 
 If a permission does not appear, add the matching app use case through Meta's
 [use-case permission mapping](https://developers.facebook.com/documentation/development/create-an-app/use-cases-permission-mapping).
@@ -437,7 +440,8 @@ active mode.
 ## Using the Skill
 
 Once Instagram professional accounts are connected, the agent uses
-`int-instagram-post` to publish feed carousels, reels, and stories. A request
+`int-instagram-post` to publish feed carousels, reels, and stories, and to read
+their [insights](#insights). A request
 must identify one account when multiple are connected; the agent never guesses
 or publishes to all accounts from an ambiguous instruction. To adjust
 the Social Manager's bundled `cs-cron-social-content-scanner` schedule, call
@@ -485,6 +489,37 @@ in chat, and name the account when several are connected.
 
 Instagram allows each account 50 posts through the API in 24 hours.
 
+## Insights
+
+The agent can also read how a connected account is doing. Ask in chat, for
+example "How did my last 10 Instagram posts do?" or "Instagram reach and
+follower change for October". Reading insights posts nothing and changes
+nothing, so it needs no approval. When several accounts are connected, name
+one, or ask for all of them.
+
+| What | The agent reports | Instagram metrics |
+|------|-------------------|-------------------|
+| Posts, carousels and Reels | Reach, views, saves, shares, comments, likes, and total interactions per post | `reach`, `views`, `saved`, `shares`, `comments`, `likes`, `total_interactions` |
+| Stories (System User mode only) | Reach, views, shares, and total interactions while the story is live | `reach`, `views`, `shares`, `total_interactions` |
+| The account over a date range | Reach, views, total interactions, and accounts engaged | `reach`, `views`, `total_interactions`, `accounts_engaged` |
+| Followers | Accounts that followed and accounts that unfollowed in the range, and the current follower count | `follows_and_unfollows`, `followers_count` |
+
+- **Aggregate numbers only.** The agent never reads comment text, commenter
+  names, follower lists, or audience demographics.
+- **Permission.** System User mode needs `instagram_manage_insights` on the
+  token: generate a new token that includes it (see
+  [Step 1](#recommended-system-user-token)), save it, and connect again.
+  Instagram Login already requests `instagram_business_manage_insights`. When
+  the permission is missing, the agent asks you to reconnect with it.
+- **Date range.** Every reply names its date range. Without one, the agent uses
+  the last 28 days ending yesterday. Instagram keeps account metrics for 90
+  days and post metrics for up to 2 years, and its numbers can be up to 48
+  hours behind.
+- **Limits.** Story metrics last 24 hours, and Instagram hides story numbers
+  below 5. Follows and unfollows need at least 100 followers. Instagram has no
+  insights for the single photos inside a carousel. When Instagram has no
+  number yet, the agent says so instead of showing 0.
+
 ## Troubleshooting
 
 | Error code | Meaning | What to do |
@@ -520,6 +555,14 @@ it. It asks you to connect one instead of posting, and scheduled posting runs
 do nothing. Connect an account (in System User mode, select it with
 `SetPickerAccounts` as in Step 4) and ask again.
 
+### The agent asks you to reconnect for insights
+
+Instagram refused an insights read because the connection lacks the insights
+permission. In System User mode, generate a new token that also grants
+`instagram_manage_insights`, save it with `CredentialUpsert`, and repeat Steps
+3 and 4. With Instagram Login, connect again (Step 8) and allow insights
+access. Publishing keeps working in the meantime.
+
 ## Multi-Tenant Architecture
 
 1. **One Wiro agent instance per customer.**
@@ -542,3 +585,5 @@ do nothing. Connect an account (in System User mode, select it with
 - [Meta Ads integration](/docs/integration-metaads-skills): for Instagram-placement paid ads.
 - [Meta for Developers: Instagram Graph API](https://developers.facebook.com/docs/instagram-api)
 - [Meta for Developers: Content Publishing API comparison](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/content-publishing/)
+- [Meta for Developers: Instagram media insights](https://developers.facebook.com/docs/instagram-platform/reference/instagram-media/insights)
+- [Meta for Developers: Instagram account insights](https://developers.facebook.com/docs/instagram-platform/api-reference/instagram-user/insights)

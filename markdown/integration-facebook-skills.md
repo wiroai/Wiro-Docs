@@ -14,7 +14,7 @@ Customer-owned OAuth remains available as an advanced path.
 
 **Skills that use this integration:**
 
-- `int-facebookpage-post`: Publish text, photo, and video posts to a Facebook Page
+- `int-facebookpage-post`: Publish text, photo, and video posts to a Facebook Page, and read Page and post insights
 
 **Agents that typically enable this integration:**
 
@@ -35,7 +35,8 @@ Customer-owned OAuth remains available as an advanced path.
 - **A deployed agent** (see [Agent Overview](/docs/agent-overview)); keep the `useragents[0].guid`.
 - **A Meta Business account** ([business.facebook.com](https://business.facebook.com/)).
 - **At least one Facebook Page assigned to the connecting principal** with the
-  `CREATE_CONTENT` task. Add `MODERATE` when the agent should add comments.
+  `CREATE_CONTENT` task. Add `MODERATE` when the agent should add comments, and
+  `ANALYZE` when it should read insights.
 - **Recommended direct mode:** a System User and the Business app used to
   generate its token.
 - **Advanced OAuth mode:** a Meta Developer account, your own Business app, and
@@ -52,7 +53,7 @@ and does not require entering an App ID or App Secret in Wiro.
 2. Create or select a System User.
 3. Assign every Facebook Page the agent may publish to with the
    `CREATE_CONTENT` task. Also assign `MODERATE` when the agent should add
-   comments.
+   comments, and `ANALYZE` when it should read [insights](#insights).
 4. Select **Generate new token** and choose the Business app used for the
    integration.
 5. At **Set expiration**, choose **Never** when Meta offers it. Some businesses
@@ -65,6 +66,7 @@ and does not require entering an App ID or App Secret in Wiro.
    - `pages_manage_posts`
    - `pages_manage_engagement` when comments are needed
    - `publish_video` when Page video publishing is needed
+   - `read_insights` (optional) when Page and post insights are needed
 
 If a permission is absent from the token dialog, add the corresponding app use
 case using Meta's
@@ -183,7 +185,7 @@ You can reuse a single Meta App for Facebook Page, Instagram, and Meta Ads.
 Wiro requests these exact scopes:
 
 ```
-pages_show_list,pages_manage_posts,publish_video,pages_manage_engagement,pages_read_engagement,pages_read_user_content,pages_manage_metadata,pages_messaging
+pages_show_list,pages_manage_posts,publish_video,pages_manage_engagement,pages_read_engagement,pages_read_user_content,pages_manage_metadata,pages_messaging,read_insights
 ```
 
 | Permission | Why |
@@ -196,6 +198,7 @@ pages_show_list,pages_manage_posts,publish_video,pages_manage_engagement,pages_r
 | `pages_read_user_content` | Read user-generated content on the Page (for context). |
 | `pages_manage_metadata` | Webhook subscriptions and Page metadata. |
 | `pages_messaging` | Send and receive messages on behalf of the Page (some skills use this). |
+| `read_insights` | Read Page and post insights (see [Insights](#insights)). |
 
 These work without App Review in Development Mode for any Facebook user in App Roles.
 
@@ -244,7 +247,7 @@ Response:
 ```json
 {
   "result": true,
-  "authorizeUrl": "https://www.facebook.com/v26.0/dialog/oauth?client_id=...&redirect_uri=...&scope=pages_show_list%2Cpages_manage_posts%2Cpublish_video%2Cpages_manage_engagement%2Cpages_read_engagement%2Cpages_read_user_content%2Cpages_manage_metadata%2Cpages_messaging&auth_type=rerequest&response_type=code&state=...",
+  "authorizeUrl": "https://www.facebook.com/v26.0/dialog/oauth?client_id=...&redirect_uri=...&scope=pages_show_list%2Cpages_manage_posts%2Cpublish_video%2Cpages_manage_engagement%2Cpages_read_engagement%2Cpages_read_user_content%2Cpages_manage_metadata%2Cpages_messaging%2Cread_insights&auth_type=rerequest&response_type=code&state=...",
   "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
   "errors": []
 }
@@ -466,7 +469,8 @@ then select the Pages again.
 ## Using the Skill
 
 Once the Facebook Page is connected, the agent uses
-`int-facebookpage-post` to publish text, photo, and video posts. To adjust the
+`int-facebookpage-post` to publish text, photo, and video posts, and to read
+Page and post [insights](#insights). To adjust the
 Social Manager's bundled `cs-cron-social-content-scanner` schedule, call
 `POST /UserAgent/CustomSkillUpsert` with `enabled` and `interval` only:
 
@@ -490,6 +494,38 @@ The agent posts an approved draft, or the text, link and media you give it in
 chat. Hashtags, calls to action and links come from the draft, `cs-content-tone`,
 or the agent's preferences; without hashtag rules the agent adds 1 to 3. Facebook
 makes links clickable, so a draft's page link goes into the post.
+
+## Insights
+
+The agent can also read how a connected Page and its posts are doing. Ask in
+chat, for example "How did my last 10 Facebook posts do?" or "Facebook Page
+views and follower change for October". Reading insights posts nothing and
+changes nothing, so it needs no approval. When several Pages are connected,
+name one, or ask for all of them.
+
+| What | The agent reports | Facebook metrics |
+|------|-------------------|------------------|
+| Posts | Views, unique viewers, reactions by type, activity by type (such as comments and shares), and clicks per post | `post_media_view`, `post_total_media_view_unique`, `post_reactions_by_type_total`, `post_activity_by_action_type`, `post_clicks` |
+| The Page over a date range | Views, post engagements, new follows, unfollows, and the follower total on the first and last day | `page_media_view`, `page_post_engagements`, `page_daily_follows_unique`, `page_daily_unfollows_unique`, `page_follows` |
+| Page reach | Unique viewers in the 28 days ending on the range's last day | `page_total_media_view_unique` |
+
+- **Aggregate numbers only.** The agent never reads comment text, commenter
+  names, follower lists, or audience demographics.
+- **Permission.** Page insights need `read_insights` and the `ANALYZE` task on
+  the Page. In System User mode, assign `ANALYZE` (see
+  [Step 1](#recommended-system-user-token)), generate a new token that also
+  grants `read_insights`, save it, and connect again. Customer-owned OAuth
+  requests `read_insights`; a connection made before it was added needs one
+  more sign-in. When the permission is missing, the agent asks you to
+  reconnect with it.
+- **Date range.** Every reply names its date range. Without one, the agent uses
+  the last 28 days ending yesterday. One request covers at most 90 days,
+  Facebook keeps two years, and most Page metrics update once a day.
+- **Limits.** A Page needs at least 100 likes for insights. Page insights don't
+  count Reel interactions, and Facebook has no saves metric for Page posts.
+  Meta retired `page_impressions`, `post_impressions`, and the `page_fans`
+  metrics in 2025; the views metrics above replace them. When Facebook has no
+  number yet, the agent says so instead of showing 0.
 
 ## Troubleshooting
 
@@ -534,6 +570,15 @@ you to connect one instead of posting, and scheduled posting runs do nothing.
 Connect a Page and select it with `SetPickerAccounts` (Step 4, or Step 9 for
 OAuth), then ask again.
 
+### The agent asks you to reconnect for insights
+
+Facebook refused an insights read because the connection lacks `read_insights`
+or the Page's `ANALYZE` task. In System User mode, assign `ANALYZE`, generate a
+new token that also grants `read_insights`, save it with `CredentialUpsert`,
+and repeat Steps 3 and 4. With customer-owned OAuth, connect again (Step 7),
+allow the permission, and select the Pages (Step 9). Publishing keeps working
+in the meantime.
+
 ## Multi-Tenant Architecture
 
 1. **One Wiro agent instance per customer.**
@@ -544,9 +589,10 @@ OAuth), then ask again.
    Roles, review status, and consent branding.
 4. **Every Page token is isolated** per useragent. Customer A's token is never
    returned to or shared with Customer B.
-5. **Asset tasks must remain current.** Losing `CREATE_CONTENT` or `MODERATE`
-   access invalidates the corresponding publish or comment capability. Monitor
-   `OAuthStatus` and require reconnection when it becomes disconnected.
+5. **Asset tasks must remain current.** Losing `CREATE_CONTENT`, `MODERATE`, or
+   `ANALYZE` access invalidates the corresponding publish, comment, or insights
+   capability. Monitor `OAuthStatus` and require reconnection when it becomes
+   disconnected.
 
 ## Related
 
@@ -557,3 +603,4 @@ OAuth), then ask again.
 - [Instagram integration](/docs/integration-instagram-skills)
 - [Meta for Developers: Pages API](https://developers.facebook.com/docs/pages-api)
 - [Meta for Developers: System User API calls](https://developers.facebook.com/docs/marketing-api/system-users/guides/api-calls/)
+- [Meta for Developers: Page insights](https://developers.facebook.com/docs/graph-api/reference/page/insights)

@@ -23111,7 +23111,7 @@ print(response.body);
 </blockquote>
 <h3 id="tool-integration-and-action-values">Tool integration and action values</h3>
 <p><code>toolintegration</code> and <code>toolaction</code> say which connector a tool step works in and what the step does, so your app can show "Working in Shopify" or "Taking a screenshot" instead of only the tool's name. Each holds a word from a closed list or <code>null</code>, never free text, a host, a URL, a path, or an argument.</p>
-<p><code>toolintegration</code> is the <code>key</code> of the connector the step works in, as <a href="/docs/agent-credentials#post-credentialslist"><code>POST /Credentials/List</code></a> lists it: <code>adjust</code>, <code>apollo</code>, <code>apple-appstore</code>, <code>brevo</code>, <code>calendarific</code>, <code>facebook-pages</code>, <code>firebase</code>, <code>ga4</code>, <code>gmail</code>, <code>google-ads</code>, <code>google-business</code>, <code>google-calendar</code>, <code>google-drive</code>, <code>google-merchant-center</code>, <code>google-play</code>, <code>hubspot</code>, <code>instagram</code>, <code>lemlist</code>, <code>linkedin</code>, <code>mailchimp</code>, <code>meta-ads</code>, <code>reddit</code>, <code>roasit</code>, <code>sendgrid</code>, <code>serper</code>, <code>shopify</code>, <code>telegram</code>, <code>tiktok</code>, <code>tiktok-ads</code>, <code>twitter</code>, <code>wiro</code>, <code>woocommerce</code>, <code>wordpress</code>, or <code>youtube</code>.</p>
+<p><code>toolintegration</code> is the <code>key</code> of the connector the step works in, as <a href="/docs/agent-credentials#post-credentialslist"><code>POST /Credentials/List</code></a> lists it: <code>adapty</code>, <code>adjust</code>, <code>apollo</code>, <code>apple-appstore</code>, <code>brevo</code>, <code>calendarific</code>, <code>dataforseo</code>, <code>facebook-pages</code>, <code>firebase</code>, <code>ga4</code>, <code>gmail</code>, <code>google-ads</code>, <code>google-business</code>, <code>google-calendar</code>, <code>google-drive</code>, <code>google-merchant-center</code>, <code>google-play</code>, <code>google-search-console</code>, <code>hubspot</code>, <code>instagram</code>, <code>keepa</code>, <code>lemlist</code>, <code>linkedin</code>, <code>mailchimp</code>, <code>meta-ads</code>, <code>reddit</code>, <code>revenuecat</code>, <code>roasit</code>, <code>sendgrid</code>, <code>serper</code>, <code>shopify</code>, <code>telegram</code>, <code>tiktok</code>, <code>tiktok-ads</code>, <code>twitter</code>, <code>wiro</code>, <code>woocommerce</code>, <code>wordpress</code>, or <code>youtube</code>.</p>
 <p><code>toolaction</code> is one of these words:</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -25574,7 +25574,7 @@ func main() {
 <p>When the agent proposes a setup change, a <code>setup</code> block arrives the same way. It sorts after the turn's other blocks, its <code>text</code> is <code>null</code> and it carries a <code>setup</code> object instead of tool fields; see <a href="/docs/agent-messaging#setup-from-chat">Setup From Chat</a>. A pending card's block has <code>version</code> 1. When the card is applied, dismissed or fails, the block comes again with <code>version</code> 2 and the new <code>status</code>; <code>Message/Detail</code> and <code>Message/History</code> always have the current state. A pending <code>connect</code> card's block also carries <code>next</code>, the connector it connects, as <code>[{ connector, title, mode }]</code>.</p>
 <p>Tool blocks carry two closed-list words:</p>
 <ul>
-<li><code>toolintegration</code> names the connector the step works in, as its <code>key</code> from <a href="/docs/agent-credentials#post-credentialslist"><code>POST /Credentials/List</code></a>: <code>adjust</code>, <code>apollo</code>, <code>apple-appstore</code>, <code>brevo</code>, <code>calendarific</code>, <code>facebook-pages</code>, <code>firebase</code>, <code>ga4</code>, <code>gmail</code>, <code>google-ads</code>, <code>google-business</code>, <code>google-calendar</code>, <code>google-drive</code>, <code>google-merchant-center</code>, <code>google-play</code>, <code>hubspot</code>, <code>instagram</code>, <code>lemlist</code>, <code>linkedin</code>, <code>mailchimp</code>, <code>meta-ads</code>, <code>reddit</code>, <code>roasit</code>, <code>sendgrid</code>, <code>serper</code>, <code>shopify</code>, <code>telegram</code>, <code>tiktok</code>, <code>tiktok-ads</code>, <code>twitter</code>, <code>wiro</code>, <code>woocommerce</code>, <code>wordpress</code>, or <code>youtube</code>.</li>
+<li><code>toolintegration</code> names the connector the step works in, as its <code>key</code> from <a href="/docs/agent-credentials#post-credentialslist"><code>POST /Credentials/List</code></a>: <code>adapty</code>, <code>adjust</code>, <code>apollo</code>, <code>apple-appstore</code>, <code>brevo</code>, <code>calendarific</code>, <code>dataforseo</code>, <code>facebook-pages</code>, <code>firebase</code>, <code>ga4</code>, <code>gmail</code>, <code>google-ads</code>, <code>google-business</code>, <code>google-calendar</code>, <code>google-drive</code>, <code>google-merchant-center</code>, <code>google-play</code>, <code>google-search-console</code>, <code>hubspot</code>, <code>instagram</code>, <code>keepa</code>, <code>lemlist</code>, <code>linkedin</code>, <code>mailchimp</code>, <code>meta-ads</code>, <code>reddit</code>, <code>revenuecat</code>, <code>roasit</code>, <code>sendgrid</code>, <code>serper</code>, <code>shopify</code>, <code>telegram</code>, <code>tiktok</code>, <code>tiktok-ads</code>, <code>twitter</code>, <code>wiro</code>, <code>woocommerce</code>, <code>wordpress</code>, or <code>youtube</code>.</li>
 <li><code>toolaction</code> names what the step does: <code>screenshot</code>, <code>open-page</code>, <code>read-page</code>, <code>click</code>, <code>type</code>, <code>press-key</code>, <code>wait</code>, <code>upload</code>, <code>download</code>, <code>read-file</code>, or <code>edit-media</code>.</li>
 </ul>
 <p>Each is <code>null</code> when no word fits, and a block never has both. The words come with the block's first update, and every later update of the block carries them. A later update can carry a different word if the step changed, so read them from the newest version of the block. A block whose step is rewritten and no longer fits a word keeps its last word. Treat a value you don't know like <code>null</code>; <a href="/docs/agent-messaging#tool-integration-and-action-values">Agent Messaging</a> says what each word means.</p>
@@ -28368,6 +28368,11 @@ email tools, CRMs) through three credential methods:</p>
 <td><a href="/docs/integration-ga4-skills">Google Analytics 4 Skills</a> (shares Google OAuth client with Google Ads)</td>
 </tr>
 <tr>
+<td>Google Search Console</td>
+<td>Own only (Wiro mode coming soon)</td>
+<td><a href="/docs/integration-searchconsole-skills">Google Search Console Skills</a> (shares Google OAuth client with Google Analytics 4)</td>
+</tr>
+<tr>
 <td>Merchant Center</td>
 <td>Own only (Wiro mode coming soon)</td>
 <td><a href="/docs/integration-merchantcenter-skills">Merchant Center Skills</a> (shares Google OAuth client with Google Ads)</td>
@@ -28392,7 +28397,7 @@ email tools, CRMs) through three credential methods:</p>
 </div>
 </div>
 <blockquote>
-<p><strong>Google OAuth is shared across 4 APIs.</strong> Google Ads, YouTube, Google Analytics 4, and Merchant Center can all be authorized through one of your own OAuth clients (one Google Cloud project, one OAuth 2.0 Client ID, multiple API scopes), or you can set up separate ones per product. Wiro's shared client for "wiro" mode is coming soon. Google Business Profile is not part of that shared client: it is own mode only, and the Google Cloud project behind your OAuth client must be approved for Business Profile API access.</p>
+<p><strong>Google OAuth is shared across 5 APIs.</strong> Google Ads, YouTube, Google Analytics 4, Merchant Center and Google Search Console can all be authorized through one of your own OAuth clients (one Google Cloud project, one OAuth 2.0 Client ID, multiple API scopes), or you can set up separate ones per product. Wiro's shared client for "wiro" mode is coming soon. Google Business Profile is not part of that shared client: it is own mode only, and the Google Cloud project behind your OAuth client must be approved for Business Profile API access.</p>
 </blockquote>
 <h3 id="service-account-integrations">Service Account Integrations</h3>
 <div class="docs-param-table">
@@ -28494,6 +28499,22 @@ pending provider review.</p>
 <tr>
 <td>Roasit</td>
 <td><a href="/docs/integration-roasit-skills">Roasit Skills</a></td>
+</tr>
+<tr>
+<td>DataForSEO</td>
+<td><a href="/docs/integration-dataforseo-skills">DataForSEO Skills</a></td>
+</tr>
+<tr>
+<td>Keepa</td>
+<td><a href="/docs/integration-keepa-skills">Keepa Skills</a></td>
+</tr>
+<tr>
+<td>RevenueCat</td>
+<td><a href="/docs/integration-revenuecat-skills">RevenueCat Skills</a></td>
+</tr>
+<tr>
+<td>Adapty</td>
+<td><a href="/docs/integration-adapty-skills">Adapty Skills</a></td>
 </tr>
 <tr>
 <td>Brevo</td>
@@ -28913,6 +28934,11 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect&quot; \
 <td>GA4</td>
 <td><code>ga4_connected=true&amp;ga4_properties=[...]</code></td>
 <td><code>ga4_error=...</code></td>
+</tr>
+<tr>
+<td>Google Search Console</td>
+<td><code>gsc_connected=true&amp;gsc_sites=[...]</code></td>
+<td><code>gsc_error=...</code></td>
 </tr>
 <tr>
 <td>Google Business Profile</td>
@@ -35500,6 +35526,31 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <td><a href="/docs/integration-roasit-skills">Roasit Skills</a></td>
 </tr>
 <tr>
+<td><code>int-search-console</code></td>
+<td><code>google-search-console</code> (OAuth, your own Google Cloud client)</td>
+<td><a href="/docs/integration-searchconsole-skills">Google Search Console Skills</a></td>
+</tr>
+<tr>
+<td><code>int-dataforseo</code></td>
+<td><code>dataforseo</code> (API login and password)</td>
+<td><a href="/docs/integration-dataforseo-skills">DataForSEO Skills</a></td>
+</tr>
+<tr>
+<td><code>int-keepa</code></td>
+<td><code>keepa</code> (API key)</td>
+<td><a href="/docs/integration-keepa-skills">Keepa Skills</a></td>
+</tr>
+<tr>
+<td><code>int-revenuecat</code></td>
+<td><code>revenuecat</code> (secret API key)</td>
+<td><a href="/docs/integration-revenuecat-skills">RevenueCat Skills</a></td>
+</tr>
+<tr>
+<td><code>int-adapty</code></td>
+<td><code>adapty</code> (secret API key)</td>
+<td><a href="/docs/integration-adapty-skills">Adapty Skills</a></td>
+</tr>
+<tr>
 <td><code>int-brevo-email</code></td>
 <td><code>brevo</code> (API key)</td>
 <td><a href="/docs/integration-brevo-skills">Brevo Skills</a></td>
@@ -38325,13 +38376,18 @@ agent model.</p>
 <tbody>
 <tr>
 <td><code>"wiro"</code></td>
-<td>Available (the only mode)</td>
+<td>Available</td>
 <td>One-click connect through Wiro's TikTok for Business app. You don't create a developer app, request an API key, or go through app review.</td>
 </tr>
 <tr>
-<td>Customer-owned app or pasted token</td>
+<td><code>"own"</code></td>
+<td>Available</td>
+<td>Your own client for the TikTok for Business MCP server, registered once with TikTok's dynamic client registration. The consent screen names your app instead of Wiro AI. There is no client secret: the connection uses PKCE. See "Connect with your own client" below.</td>
+</tr>
+<tr>
+<td>Pasted token</td>
 <td>Not offered</td>
-<td>TikTok Ads has no <code>"own"</code> or <code>"api_key"</code> mode. <code>OAuthConnect</code> rejects any other <code>authmethod</code> with <code>Unsupported connection mode for TikTok Ads</code>.</td>
+<td>TikTok Ads has no <code>"api_key"</code> mode. <code>OAuthConnect</code> rejects any other <code>authmethod</code> with <code>Unsupported connection mode for TikTok Ads</code>.</td>
 </tr>
 </tbody>
 </table>
@@ -38354,6 +38410,45 @@ agent model.</p>
 <li>Back in Wiro, pick the advertisers the agent may manage. You can select several; when your account has exactly one advertiser, it is selected for you.</li>
 <li>Wiro saves the selection and restarts the agent if it was running, so the agent picks up the new connection.</li>
 </ol>
+<h2 id="connect-with-your-own-client">Connect with your own client</h2>
+<p>Use this when the people who connect should see your app's name on TikTok's consent screen instead of Wiro AI. One client serves all of your agents.</p>
+<h3 id="step-1-register-a-client-once">Step 1: Register a client once</h3>
+<p>TikTok's MCP server registers public clients on request. Use your app name and Wiro's redirect URI:</p>
+<pre><code class="language-bash">curl -X POST &quot;https://business-api.tiktok.com/open_mcp/tt-ads-mcp-flat/oauth/register&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;client_name&quot;: &quot;Your App Name&quot;,
+    &quot;redirect_uris&quot;: [&quot;https://api.wiro.ai/v1/UserAgentOAuth/TikTokAdsCallback&quot;],
+    &quot;token_endpoint_auth_method&quot;: &quot;none&quot;
+  }'
+</code></pre>
+<p>The response holds a <code>client_id</code> and no secret. Keep the <code>client_id</code>.</p>
+<h3 id="step-2-save-the-client-id-to-wiro">Step 2: Save the client ID to Wiro</h3>
+<p>In the dashboard, switch the <strong>TikTok Ads</strong> card to your own app, paste the <strong>Client ID</strong> and save. With the API:</p>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CredentialUpsert&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;your-useragent-guid&quot;,
+    &quot;fields&quot;: [
+      { &quot;credentialkey&quot;: &quot;tiktok-ads&quot;, &quot;fieldname&quot;: &quot;clientid&quot;,   &quot;fieldvalue&quot;: &quot;YOUR_CLIENT_ID&quot; },
+      { &quot;credentialkey&quot;: &quot;tiktok-ads&quot;, &quot;fieldname&quot;: &quot;authmethod&quot;, &quot;fieldvalue&quot;: &quot;own&quot; }
+    ]
+  }'
+</code></pre>
+<h3 id="step-3-connect">Step 3: Connect</h3>
+<p>Start the connection with <code>"authmethod": "own"</code>:</p>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;your-useragent-guid&quot;,
+    &quot;credentialkey&quot;: &quot;tiktok-ads&quot;,
+    &quot;redirecturl&quot;: &quot;https://your-app.com/settings/integrations&quot;,
+    &quot;authmethod&quot;: &quot;own&quot;
+  }'
+</code></pre>
+<p>Everything after sign-in works as in the Wiro app: you pick the advertisers, tokens refresh on their own, and the 30-day authorization applies the same way.</p>
 <h2 id="the-30-day-authorization">The 30-day authorization</h2>
 <ul>
 <li>TikTok ends every TikTok for Business authorization <strong>30 days</strong> after it is granted. Refreshing the access token does not extend it; this is TikTok's rule, not a Wiro setting.</li>
@@ -38678,7 +38773,7 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
 <td><code>authmethod</code></td>
 <td>string</td>
 <td>No</td>
-<td><code>"wiro"</code>: the default and the only accepted value.</td>
+<td><code>"wiro"</code> (the default) or <code>"own"</code> for your own client (see "Connect with your own client").</td>
 </tr>
 </tbody>
 </table>
@@ -38899,8 +38994,13 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
 </tr>
 <tr>
 <td><code>Unsupported connection mode for TikTok Ads</code></td>
-<td>Returned in <code>OAuthConnect</code>'s <code>errors[]</code> when <code>authmethod</code> is anything other than <code>"wiro"</code>.</td>
-<td>Omit <code>authmethod</code> or send <code>"wiro"</code>.</td>
+<td>Returned in <code>OAuthConnect</code>'s <code>errors[]</code> when <code>authmethod</code> is anything other than <code>"wiro"</code> or <code>"own"</code>.</td>
+<td>Omit <code>authmethod</code>, or send <code>"wiro"</code> or <code>"own"</code>.</td>
+</tr>
+<tr>
+<td><code>TikTok Ads credentials not configured</code></td>
+<td>Returned in <code>OAuthConnect</code>'s <code>errors[]</code> when <code>authmethod: "own"</code> but no <code>clientid</code> is saved.</td>
+<td>Save the client ID with <code>UserAgent/CredentialUpsert</code> (see "Connect with your own client"), then connect again.</td>
 </tr>
 <tr>
 <td><code>TikTok Ads credentials not configured</code></td>
@@ -39422,7 +39522,7 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
                     <p>The Facebook Page integration uses Meta Graph API v26 with a separate Page-scoped access token for every selected Page. The recommended direct mode accepts a Meta Business Manager System User token, validates it only on Wiro's server, discovers its assigned Pages, and derives the selected Page tokens. The API never returns the Page tokens, and the System User token never reaches the agent. Customer-owned OAuth remains available as an advanced path.</p>
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
-                      <li><code>int-facebookpage-post</code>: Publish text, photo, and video posts to a Facebook Page</li>
+                      <li><code>int-facebookpage-post</code>: Publish text, photo, and video posts to a Facebook Page, and read Page and post insights</li>
                     </ul>
                     <p><strong>Agents that typically enable this integration:</strong></p>
                     <ul>
@@ -39469,7 +39569,7 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
                       <li><strong>A Wiro API key</strong> (see <a href="/docs/authentication" class="docs-link">Authentication</a>).</li>
                       <li><strong>A deployed agent</strong> (see <a href="/docs/agent-overview" class="docs-link">Agent Overview</a>); keep the <code>useragents[0].guid</code>.</li>
                       <li><strong>A Meta Business account</strong> (<a href="https://business.facebook.com/" class="docs-link" target="_blank">business.facebook.com</a>).</li>
-                      <li><strong>At least one Facebook Page assigned to the connecting principal</strong> with the <code>CREATE_CONTENT</code> task. Add <code>MODERATE</code> when the agent should add comments.</li>
+                      <li><strong>At least one Facebook Page assigned to the connecting principal</strong> with the <code>CREATE_CONTENT</code> task. Add <code>MODERATE</code> when the agent should add comments, and <code>ANALYZE</code> when it should read insights.</li>
                       <li><strong>Recommended direct mode:</strong> a System User and the Business app used to generate its token.</li>
                       <li><strong>Advanced OAuth mode:</strong> a Meta Developer account, your own Business app, and an HTTPS callback URL for your backend.</li>
                     </ul>
@@ -39483,7 +39583,7 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
                     <ol>
                       <li>Open <a href="https://business.facebook.com/latest/settings/system_users" class="docs-link" target="_blank" rel="noopener">Meta Business Settings → Users → System Users</a>.</li>
                       <li>Create or select a System User.</li>
-                      <li>Assign every Facebook Page the agent may publish to with the <code>CREATE_CONTENT</code> task. Also assign <code>MODERATE</code> when the agent should add comments.</li>
+                      <li>Assign every Facebook Page the agent may publish to with the <code>CREATE_CONTENT</code> task. Also assign <code>MODERATE</code> when the agent should add comments, and <code>ANALYZE</code> when it should read <a href="#insights" class="docs-link">insights</a>.</li>
                       <li>Select <strong>Generate new token</strong> and choose the Business app used for the integration.</li>
                       <li>At <strong>Set expiration</strong>, choose <strong>Never</strong> when Meta offers it. Some businesses are required to use an expiring token; reconnect Wiro with a newly generated token before that token expires.</li>
                       <li>Grant:
@@ -39494,6 +39594,7 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
                           <li><code>pages_manage_posts</code></li>
                           <li><code>pages_manage_engagement</code> when comments are needed</li>
                           <li><code>publish_video</code> when Page video publishing is needed</li>
+                          <li><code>read_insights</code> (optional) when Page and post insights are needed</li>
                         </ul>
                       </li>
                     </ol>
@@ -39578,7 +39679,7 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
 
                     <h3>Step 3: Note the required permissions</h3>
                     <p>Wiro requests these exact scopes:</p>
-                    <pre><code>pages_show_list,pages_manage_posts,publish_video,pages_manage_engagement,pages_read_engagement,pages_read_user_content,pages_manage_metadata,pages_messaging</code></pre>
+                    <pre><code>pages_show_list,pages_manage_posts,publish_video,pages_manage_engagement,pages_read_engagement,pages_read_user_content,pages_manage_metadata,pages_messaging,read_insights</code></pre>
                     <div class="docs-comparison-table">
                       <table>
                         <thead>
@@ -39620,6 +39721,10 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
                             <td><code>pages_messaging</code></td>
                             <td>Send and receive messages on behalf of the Page (some skills use this).</td>
                           </tr>
+                          <tr>
+                            <td><code>read_insights</code></td>
+                            <td>Read Page and post insights (see <a href="#insights" class="docs-link">Insights</a>).</td>
+                          </tr>
                         </tbody>
                       </table>
                     </div>
@@ -39658,7 +39763,7 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
                     <p>Response:</p>
                     <pre><code>{
   "result": true,
-  "authorizeUrl": "https://www.facebook.com/v26.0/dialog/oauth?client_id=...&amp;redirect_uri=...&amp;scope=pages_show_list%2Cpages_manage_posts%2Cpublish_video%2Cpages_manage_engagement%2Cpages_read_engagement%2Cpages_read_user_content%2Cpages_manage_metadata%2Cpages_messaging&amp;auth_type=rerequest&amp;response_type=code&amp;state=...",
+  "authorizeUrl": "https://www.facebook.com/v26.0/dialog/oauth?client_id=...&amp;redirect_uri=...&amp;scope=pages_show_list%2Cpages_manage_posts%2Cpublish_video%2Cpages_manage_engagement%2Cpages_read_engagement%2Cpages_read_user_content%2Cpages_manage_metadata%2Cpages_messaging%2Cread_insights&amp;auth_type=rerequest&amp;response_type=code&amp;state=...",
   "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
   "errors": []
 }</code></pre>
@@ -39901,7 +40006,7 @@ if (params.get("fb_connected") === "true") {
 
                   <section id="using-the-skill">
                     <h2>Using the Skill</h2>
-                    <p>Once the Facebook Page is connected, the agent uses <code>int-facebookpage-post</code> to publish text, photo, and video posts. To adjust the Social Manager's bundled <code>cs-cron-social-content-scanner</code> schedule, call <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only:</p>
+                    <p>Once the Facebook Page is connected, the agent uses <code>int-facebookpage-post</code> to publish text, photo, and video posts, and to read Page and post <a href="#insights" class="docs-link">insights</a>. To adjust the Social Manager's bundled <code>cs-cron-social-content-scanner</code> schedule, call <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only:</p>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -39913,6 +40018,45 @@ if (params.get("fb_connected") === "true") {
   }'</code></pre>
                     <p>To change <strong>what</strong> the scheduled task posts (topics, tone, content angle), edit the paired preference skill <code>cs-content-tone</code> instead (see <a href="/docs/agent-skills#updating-preference-skills" class="docs-link">Agent Skills → Updating Preference Skills</a>).</p>
                     <p>The agent posts an approved draft, or the text, link and media you give it in chat. Hashtags, calls to action and links come from the draft, <code>cs-content-tone</code>, or the agent's preferences; without hashtag rules the agent adds 1 to 3. Facebook makes links clickable, so a draft's page link goes into the post.</p>
+                  </section>
+
+                  <section id="insights">
+                    <h2>Insights</h2>
+                    <p>The agent can also read how a connected Page and its posts are doing. Ask in chat, for example "How did my last 10 Facebook posts do?" or "Facebook Page views and follower change for October". Reading insights posts nothing and changes nothing, so it needs no approval. When several Pages are connected, name one, or ask for all of them.</p>
+                    <div class="docs-comparison-table">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>What</th>
+                            <th>The agent reports</th>
+                            <th>Facebook metrics</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td>Posts</td>
+                            <td>Views, unique viewers, reactions by type, activity by type (such as comments and shares), and clicks per post</td>
+                            <td><code>post_media_view</code>, <code>post_total_media_view_unique</code>, <code>post_reactions_by_type_total</code>, <code>post_activity_by_action_type</code>, <code>post_clicks</code></td>
+                          </tr>
+                          <tr>
+                            <td>The Page over a date range</td>
+                            <td>Views, post engagements, new follows, unfollows, and the follower total on the first and last day</td>
+                            <td><code>page_media_view</code>, <code>page_post_engagements</code>, <code>page_daily_follows_unique</code>, <code>page_daily_unfollows_unique</code>, <code>page_follows</code></td>
+                          </tr>
+                          <tr>
+                            <td>Page reach</td>
+                            <td>Unique viewers in the 28 days ending on the range's last day</td>
+                            <td><code>page_total_media_view_unique</code></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <ul>
+                      <li><strong>Aggregate numbers only.</strong> The agent never reads comment text, commenter names, follower lists, or audience demographics.</li>
+                      <li><strong>Permission.</strong> Page insights need <code>read_insights</code> and the <code>ANALYZE</code> task on the Page. In System User mode, assign <code>ANALYZE</code> (see <a href="#recommended-system-user-token" class="docs-link">Step 1</a>), generate a new token that also grants <code>read_insights</code>, save it, and connect again. Customer-owned OAuth requests <code>read_insights</code>; a connection made before it was added needs one more sign-in. When the permission is missing, the agent asks you to reconnect with it.</li>
+                      <li><strong>Date range.</strong> Every reply names its date range. Without one, the agent uses the last 28 days ending yesterday. One request covers at most 90 days, Facebook keeps two years, and most Page metrics update once a day.</li>
+                      <li><strong>Limits.</strong> A Page needs at least 100 likes for insights. Page insights don't count Reel interactions, and Facebook has no saves metric for Page posts. Meta retired <code>page_impressions</code>, <code>post_impressions</code>, and the <code>page_fans</code> metrics in 2025; the views metrics above replace them. When Facebook has no number yet, the agent says so instead of showing 0.</li>
+                    </ul>
                   </section>
 
                   <section id="troubleshooting">
@@ -40003,6 +40147,9 @@ if (params.get("fb_connected") === "true") {
 
                     <h3>The agent says no Facebook Page is connected</h3>
                     <p>The agent has <code>int-facebookpage-post</code>, but no Page is connected to it. It asks you to connect one instead of posting, and scheduled posting runs do nothing. Connect a Page and select it with <code>SetPickerAccounts</code> (Step 4, or Step 9 for OAuth), then ask again.</p>
+
+                    <h3>The agent asks you to reconnect for insights</h3>
+                    <p>Facebook refused an insights read because the connection lacks <code>read_insights</code> or the Page's <code>ANALYZE</code> task. In System User mode, assign <code>ANALYZE</code>, generate a new token that also grants <code>read_insights</code>, save it with <code>CredentialUpsert</code>, and repeat Steps 3 and 4. With customer-owned OAuth, connect again (Step 7), allow the permission, and select the Pages (Step 9). Publishing keeps working in the meantime.</p>
                   </section>
 
                   <section id="multi-tenant-architecture">
@@ -40012,7 +40159,7 @@ if (params.get("fb_connected") === "true") {
                       <li><strong>Recommended direct mode:</strong> each customer supplies a System User token from their own Business Portfolio. No browser consent screen or shared Wiro Meta app is involved.</li>
                       <li><strong>Advanced OAuth mode:</strong> each customer-owned Meta app controls its own App Roles, review status, and consent branding.</li>
                       <li><strong>Every Page token is isolated</strong> per useragent. Customer A's token is never returned to or shared with Customer B.</li>
-                      <li><strong>Asset tasks must remain current.</strong> Losing <code>CREATE_CONTENT</code> or <code>MODERATE</code> access invalidates the corresponding publish or comment capability. Monitor <code>OAuthStatus</code> and require reconnection when it becomes disconnected.</li>
+                      <li><strong>Asset tasks must remain current.</strong> Losing <code>CREATE_CONTENT</code>, <code>MODERATE</code>, or <code>ANALYZE</code> access invalidates the corresponding publish, comment, or insights capability. Monitor <code>OAuthStatus</code> and require reconnection when it becomes disconnected.</li>
                     </ol>
                   </section>
 
@@ -40026,6 +40173,7 @@ if (params.get("fb_connected") === "true") {
                       <li><a href="/docs/integration-instagram-skills" class="docs-link">Instagram integration</a></li>
                       <li><a href="https://developers.facebook.com/docs/pages-api" class="docs-link" target="_blank" rel="noopener">Meta for Developers: Pages API</a></li>
                       <li><a href="https://developers.facebook.com/docs/marketing-api/system-users/guides/api-calls/" class="docs-link" target="_blank" rel="noopener">Meta for Developers: System User API calls</a></li>
+                      <li><a href="https://developers.facebook.com/docs/graph-api/reference/page/insights" class="docs-link" target="_blank" rel="noopener">Meta for Developers: Page insights</a></li>
                     </ul>
                   </section>
                 </article>
@@ -40044,7 +40192,7 @@ if (params.get("fb_connected") === "true") {
                     <p>The two token types use different official hosts: System User mode derives a Facebook Page access token and publishes through <code>graph.facebook.com/v26.0</code>; Instagram Login issues an Instagram User access token and publishes through <code>graph.instagram.com/v26.0</code>. Wiro selects the matching host automatically.</p>
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
-                      <li><code>int-instagram-post</code>: Publish feed carousels, Reels, and Stories; any agent can also post a finished video as a Reel</li>
+                      <li><code>int-instagram-post</code>: Publish feed carousels, Reels, and Stories, and read post and account insights; any agent can also post a finished video as a Reel</li>
                     </ul>
                     <p><strong>Agents that typically enable this integration:</strong></p>
                     <ul>
@@ -40129,10 +40277,11 @@ if (params.get("fb_connected") === "true") {
                           <li><code>pages_read_engagement</code></li>
                           <li><code>ads_read</code></li>
                           <li><code>ads_management</code></li>
+                          <li><code>instagram_manage_insights</code> (optional) when the agent should read <a href="#insights" class="docs-link">insights</a></li>
                         </ul>
                       </li>
                     </ol>
-                    <p>Meta's Page-linked publishing contract requires both ads permissions when the Page role is granted through Business Manager.</p>
+                    <p>Meta's Page-linked publishing contract requires both ads permissions when the Page role is granted through Business Manager. <code>instagram_manage_insights</code> is needed only for insights; a token without it still publishes.</p>
                     <p>If a permission does not appear, add the matching app use case through Meta's <a href="https://developers.facebook.com/documentation/development/create-an-app/use-cases-permission-mapping" class="docs-link" target="_blank" rel="noopener">use-case permission mapping</a>. The Business app must not require <code>appsecret_proof</code> on every request because direct mode does not collect its App Secret.</p>
 
                     <h3>Step 2: Save the token</h3>
@@ -40466,7 +40615,7 @@ if (params.get("ig_connected") === "true") {
 
                   <section id="using-the-skill">
                     <h2>Using the Skill</h2>
-                    <p>Once Instagram professional accounts are connected, the agent uses <code>int-instagram-post</code> to publish feed carousels, reels, and stories. A request must identify one account when multiple are connected; the agent never guesses or publishes to all accounts from an ambiguous instruction. To adjust the Social Manager's bundled <code>cs-cron-social-content-scanner</code> schedule, call <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only:</p>
+                    <p>Once Instagram professional accounts are connected, the agent uses <code>int-instagram-post</code> to publish feed carousels, reels, and stories, and to read their <a href="#insights" class="docs-link">insights</a>. A request must identify one account when multiple are connected; the agent never guesses or publishes to all accounts from an ambiguous instruction. To adjust the Social Manager's bundled <code>cs-cron-social-content-scanner</code> schedule, call <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only:</p>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -40488,6 +40637,50 @@ if (params.get("ig_connected") === "true") {
                       <li><strong>The reply</strong> carries the Reel's link. If publishing fails, the agent checks the account's latest posts first, since the Reel may already be live.</li>
                     </ul>
                     <p>Instagram allows each account 50 posts through the API in 24 hours.</p>
+                  </section>
+
+                  <section id="insights">
+                    <h2>Insights</h2>
+                    <p>The agent can also read how a connected account is doing. Ask in chat, for example "How did my last 10 Instagram posts do?" or "Instagram reach and follower change for October". Reading insights posts nothing and changes nothing, so it needs no approval. When several accounts are connected, name one, or ask for all of them.</p>
+                    <div class="docs-comparison-table">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>What</th>
+                            <th>The agent reports</th>
+                            <th>Instagram metrics</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td>Posts, carousels and Reels</td>
+                            <td>Reach, views, saves, shares, comments, likes, and total interactions per post</td>
+                            <td><code>reach</code>, <code>views</code>, <code>saved</code>, <code>shares</code>, <code>comments</code>, <code>likes</code>, <code>total_interactions</code></td>
+                          </tr>
+                          <tr>
+                            <td>Stories (System User mode only)</td>
+                            <td>Reach, views, shares, and total interactions while the story is live</td>
+                            <td><code>reach</code>, <code>views</code>, <code>shares</code>, <code>total_interactions</code></td>
+                          </tr>
+                          <tr>
+                            <td>The account over a date range</td>
+                            <td>Reach, views, total interactions, and accounts engaged</td>
+                            <td><code>reach</code>, <code>views</code>, <code>total_interactions</code>, <code>accounts_engaged</code></td>
+                          </tr>
+                          <tr>
+                            <td>Followers</td>
+                            <td>Accounts that followed and accounts that unfollowed in the range, and the current follower count</td>
+                            <td><code>follows_and_unfollows</code>, <code>followers_count</code></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <ul>
+                      <li><strong>Aggregate numbers only.</strong> The agent never reads comment text, commenter names, follower lists, or audience demographics.</li>
+                      <li><strong>Permission.</strong> System User mode needs <code>instagram_manage_insights</code> on the token: generate a new token that includes it (see <a href="#recommended-system-user-token" class="docs-link">Step 1</a>), save it, and connect again. Instagram Login already requests <code>instagram_business_manage_insights</code>. When the permission is missing, the agent asks you to reconnect with it.</li>
+                      <li><strong>Date range.</strong> Every reply names its date range. Without one, the agent uses the last 28 days ending yesterday. Instagram keeps account metrics for 90 days and post metrics for up to 2 years, and its numbers can be up to 48 hours behind.</li>
+                      <li><strong>Limits.</strong> Story metrics last 24 hours, and Instagram hides story numbers below 5. Follows and unfollows need at least 100 followers. Instagram has no insights for the single photos inside a carousel. When Instagram has no number yet, the agent says so instead of showing 0.</li>
+                    </ul>
                   </section>
 
                   <section id="troubleshooting">
@@ -40569,6 +40762,9 @@ if (params.get("ig_connected") === "true") {
 
                     <h3>The agent says no Instagram account is connected</h3>
                     <p>The agent has <code>int-instagram-post</code>, but no Instagram account is connected to it. It asks you to connect one instead of posting, and scheduled posting runs do nothing. Connect an account (in System User mode, select it with <code>SetPickerAccounts</code> as in Step 4) and ask again.</p>
+
+                    <h3>The agent asks you to reconnect for insights</h3>
+                    <p>Instagram refused an insights read because the connection lacks the insights permission. In System User mode, generate a new token that also grants <code>instagram_manage_insights</code>, save it with <code>CredentialUpsert</code>, and repeat Steps 3 and 4. With Instagram Login, connect again (Step 8) and allow insights access. Publishing keeps working in the meantime.</p>
                   </section>
 
                   <section id="multi-tenant-architecture">
@@ -40592,6 +40788,8 @@ if (params.get("ig_connected") === "true") {
                       <li><a href="/docs/integration-metaads-skills" class="docs-link">Meta Ads integration</a>: for Instagram-placement paid ads.</li>
                       <li><a href="https://developers.facebook.com/docs/instagram-api" class="docs-link" target="_blank" rel="noopener">Meta for Developers: Instagram Graph API</a></li>
                       <li><a href="https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/content-publishing/" class="docs-link" target="_blank" rel="noopener">Meta for Developers: Content Publishing API comparison</a></li>
+                      <li><a href="https://developers.facebook.com/docs/instagram-platform/reference/instagram-media/insights" class="docs-link" target="_blank" rel="noopener">Meta for Developers: Instagram media insights</a></li>
+                      <li><a href="https://developers.facebook.com/docs/instagram-platform/api-reference/instagram-user/insights" class="docs-link" target="_blank" rel="noopener">Meta for Developers: Instagram account insights</a></li>
                     </ul>
                   </section>
                 </article>
@@ -43688,6 +43886,980 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
                 </article>
               </div>
 
+              <!-- ==================== INTEGRATION: GOOGLE SEARCH CONSOLE ==================== -->
+              <div class="docs-page-section" data-page="integration-searchconsole-skills" style="display: none">
+                <article class="docs-section">
+                  <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="/docs/markdown/integration-searchconsole-skills.md" target="_blank" class="docs-section-md-btn">View</a> <a href="/docs/markdown/integration-searchconsole-skills.md" download class="docs-section-md-btn">Download</a></div>
+                  <h1>Google Search Console Integration</h1>
+                  <p class="section-subtitle">Connect your agent to Google Search Console for read-only organic search reporting: clicks, impressions, click-through rate and average position by query, page, country and device, period comparisons, sitemap status and URL Inspection.</p>
+
+                  <section id="overview">
+                    <h2>Overview</h2>
+                    <p>The Google Search Console integration uses Google OAuth 2.0 with the Google Search Console API and the read-only scope <code>https://www.googleapis.com/auth/webmasters.readonly</code>. The agent reads Search Console data only: it cannot add or remove properties, submit or delete sitemaps, or request indexing.</p>
+                    <p><strong>Skills that use this integration:</strong></p>
+                    <ul>
+                      <li><code>int-search-console</code>: Search Analytics reporting (top, rising and falling queries and pages, period comparisons), sitemap status and URL Inspection, read-only</li>
+                    </ul>
+                    <p><strong>Agents that typically enable this integration:</strong></p>
+                    <ul>
+                      <li>Content and SEO agents that plan or check articles against real search demand</li>
+                      <li>Any agent that reports on Google organic search next to Google Analytics 4</li>
+                    </ul>
+                  </section>
+
+                  <section id="availability">
+                    <h2>Availability</h2>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Mode</th><th>Status</th><th>Notes</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>"own"</code></td><td>Available</td><td>Your own Google Cloud project and OAuth client.</td></tr>
+                            <tr><td><code>"wiro"</code></td><td>Coming soon</td><td>Wiro's shared Google Cloud project is not enabled for Search Console yet. Until then, <code>OAuthConnect</code> in Wiro mode, which is also what you get when you leave out <code>authmethod</code>, returns <code>Sign-in with the platform's app is not enabled for Google Search Console</code>.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section id="prerequisites">
+                    <h2>Prerequisites</h2>
+                    <ul>
+                      <li><strong>A Wiro API key</strong> (see <a href="/docs/authentication">Authentication</a>).</li>
+                      <li><strong>A deployed agent</strong> (see <a href="/docs/agent-overview">Agent Overview</a>).</li>
+                      <li><strong>A Search Console property</strong> the connecting Google account can open as an owner, full user or restricted user. Properties the account has not verified are not listed.</li>
+                      <li><strong>A Google Cloud project</strong> with the Google Search Console API enabled.</li>
+                      <li><strong>An HTTPS callback URL</strong>.</li>
+                    </ul>
+                  </section>
+
+                  <section id="own-mode">
+                    <h2>Own Mode</h2>
+
+                    <h3>Step 1: Create a Google Cloud Project</h3>
+                    <ol>
+                      <li><a href="https://console.cloud.google.com/" target="_blank" rel="noopener">console.cloud.google.com</a> → create a project, or use the one behind your Google Analytics 4 client.</li>
+                      <li><strong>APIs &amp; Services → Library</strong> → enable the <a href="https://console.cloud.google.com/apis/library/searchconsole.googleapis.com" target="_blank" rel="noopener">Google Search Console API</a>.</li>
+                      <li><strong>OAuth consent screen</strong>:
+                        <ul>
+                          <li><strong>External</strong> user type for multi-tenant use</li>
+                          <li>App name, support email, developer contact</li>
+                          <li>Add the scope <code>webmasters.readonly</code> (<code>https://www.googleapis.com/auth/webmasters.readonly</code>)</li>
+                          <li>While the app is in <strong>Testing</strong>, only the test users you list can connect, and Google ends their authorization 7 days after consent. Add the connecting Google account as a test user, or publish the app (<strong>In production</strong>) so the agent keeps access.</li>
+                        </ul>
+                      </li>
+                    </ol>
+
+                    <h3>Step 2: Create OAuth Client</h3>
+                    <p><strong>APIs &amp; Services → Credentials → Create Credentials → OAuth client ID</strong>:</p>
+                    <ul>
+                      <li>Application type: <strong>Web application</strong></li>
+                      <li><strong>Authorized redirect URIs</strong>: <code>https://api.wiro.ai/v1/UserAgentOAuth/SearchConsoleCallback</code></li>
+                    </ul>
+                    <p>The OAuth client you made for Google Analytics 4 works too: add this redirect URI to it and enable the Google Search Console API in its project.</p>
+                    <p>Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> to your agent credentials.</p>
+
+                    <h3>Step 3: Connect</h3>
+                    <p>Save the Client ID and Client Secret with <code>POST /UserAgent/CredentialUpsert</code>:</p>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "google-search-console", "fieldname": "clientid", "fieldvalue": "123-abc.apps.googleusercontent.com" },
+      { "credentialkey": "google-search-console", "fieldname": "clientsecret", "fieldvalue": "YOUR_CLIENT_SECRET" },
+      { "credentialkey": "google-search-console", "fieldname": "authmethod", "fieldvalue": "own" }
+    ]
+  }'</code></pre>
+                    <p>Then start <code>OAuthConnect</code> in <code>own</code> mode:</p>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "google-search-console",
+    "redirecturl": "https://your-app.com/settings/integrations",
+    "authmethod": "own"
+  }'</code></pre>
+                    <p>The response returns <code>{ result: true, authorizeUrl: "...", flowid: "..." }</code>. Redirect the user to <code>authorizeUrl</code>. Google asks which Google account to connect, even when the browser is already signed in to one, and asks for read-only access to Search Console data.</p>
+
+                    <h3>Step 4: Property Picker</h3>
+                    <p>After consent, the user returns with <code>?gsc_connected=true&amp;gsc_sites=&lt;URL-encoded-JSON&gt;</code>. Each entry is <code>{ id, displayName, permissionLevel }</code>: <code>id</code> is the property exactly as Search Console names it (<code>sc-domain:example.com</code> for a Domain property, or the full address of a URL-prefix property with its trailing slash, such as <code>https://www.example.com/</code>), <code>displayName</code> the same without the <code>sc-domain:</code> prefix, and <code>permissionLevel</code> Google's permission level for the connecting account (for example <code>siteOwner</code>, <code>siteFullUser</code> or <code>siteRestrictedUser</code>). Properties the account has not verified are left out. Map the user's choice to the picker shape and call <code>SetPickerAccounts</code>:</p>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "google-search-console",
+    "accounts": [
+      { "siteurl": "sc-domain:example.com", "sitename": "example.com" }
+    ]
+  }'</code></pre>
+                    <p>Pass several <code>{ siteurl, sitename }</code> entries to authorize the agent against several properties at once (<code>id</code> becomes <code>siteurl</code>). Wiro saves each property's <code>displayName</code> from its list as <code>sitename</code>, so a name you send is not read. <code>permissionLevel</code> is handy for your UI, but it is not stored. Wiro saves only properties from this sign-in's list, under the names it lists, when the call comes from the same Wiro account within 15 minutes. The first save uses the list up: to change the selection later, connect again. See <a href="/docs/agent-credentials#post-useragentoauthsetpickeraccounts">SetPickerAccounts</a>.</p>
+                  </section>
+
+                  <section id="disconnect">
+                    <h2>Disconnect</h2>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthDisconnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "google-search-console"
+  }'</code></pre>
+                    <p>Clears the tokens and the selected properties in Wiro. Your Client ID and Client Secret are kept, so you can connect again without saving them again. Wiro does not ask Google to revoke the authorization.</p>
+                  </section>
+
+                  <section id="status">
+                    <h2>Status</h2>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "google-search-console"
+  }'</code></pre>
+                    <p>Response:</p>
+                    <pre><code class="language-json">{
+  "result": true,
+  "connected": true,
+  "accounts": [
+    { "id": "sc-domain:example.com", "name": "example.com" }
+  ],
+  "connectedat": "2026-11-21T12:00:00.000Z",
+  "tokenexpiresat": "2026-11-21T13:00:00.000Z",
+  "errors": []
+}</code></pre>
+                    <p><code>accounts[]</code> carries one entry per selected property (<code>id</code> = <code>siteurl</code>, <code>name</code> = <code>sitename</code>).</p>
+                  </section>
+
+                  <section id="agent-usage">
+                    <h2>What the agent does with this integration</h2>
+
+                    <h3>Search performance reports</h3>
+                    <p>Agent runs Search Analytics queries on operator request:</p>
+                    <pre><code>Operator → "top queries for the last 28 days"
+Agent → POST /webmasters/v3/sites/sc-domain%3Aexample.com/searchAnalytics/query
+     with dimensions=[query], type=web, rowLimit=25
+     and a date range that ends on the last day with data</code></pre>
+                    <p>Every answer names the property, the date range, the search type and Google Search Console as the source. Queries can be grouped and filtered by query, page, country, device, date and search appearance.</p>
+
+                    <h3>Period comparisons and movers</h3>
+                    <p>Agent compares two periods of the same length (for example the last 28 days against the 28 days before, or against the same dates a year earlier) and lists the queries and pages that gained or lost the most clicks, with the change in impressions, click-through rate and average position.</p>
+
+                    <h3>Sitemaps and URL Inspection</h3>
+                    <p>Agent lists the property's submitted sitemaps with their errors, warnings and last download, and inspects single URLs on request: index verdict, coverage, canonical URLs, last crawl, robots.txt and page fetch state. Google allows 2,000 URL inspections per property per day.</p>
+
+                    <h3>Data freshness</h3>
+                    <p>Google says Search Console data is typically available after 2-3 days. The agent finds the last day with data before it reports, does not read the newest days as a drop, and uses Pacific Time dates as Search Console does.</p>
+                  </section>
+
+                  <section id="troubleshooting">
+                    <h2>Troubleshooting</h2>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>Sign-in with the platform's app is not enabled for Google Search Console</code> in <code>OAuthConnect</code>'s <code>errors[]</code></td><td>Wiro mode isn't available yet, and it is the default when <code>authmethod</code> is left out</td><td>Save your OAuth client (Step 3) and call <code>OAuthConnect</code> with <code>"authmethod": "own"</code></td></tr>
+                            <tr><td><code>Google Search Console credentials not configured</code> in <code>OAuthConnect</code>'s <code>errors[]</code></td><td><code>authmethod: "own"</code> without a saved <code>clientid</code> and <code>clientsecret</code></td><td>Save them (Step 3), then retry</td></tr>
+                            <tr><td><code>gsc_error=no_accounts</code> on your <code>redirecturl</code></td><td>Google listed no verified Search Console property for this user, and Wiro saved nothing: the account has no property or only unverified ones, or the Google Search Console API is not enabled in your project. In the last case <code>gsc_error_detail</code> carries Google's status, such as <code>PERMISSION_DENIED</code></td><td>Enable the API (Step 1), or connect with a Google account that has access to a verified property, then call <code>OAuthConnect</code> again</td></tr>
+                            <tr><td><code>invalid_grant</code></td><td>Refresh token expired or revoked; a consent screen still in Testing expires it 7 days after consent</td><td>Publish the consent screen, then re-connect via <code>OAuthConnect</code></td></tr>
+                            <tr><td><code>403 Request had insufficient authentication scopes</code></td><td>The consent did not include <code>webmasters.readonly</code></td><td>Add the scope to the consent screen (Step 1) and connect again</td></tr>
+                            <tr><td>The agent reports a 403 for one property</td><td>The Google account lost access to it, or the property is no longer verified</td><td>Restore the account's access in Search Console, or connect again and pick another property</td></tr>
+                            <tr><td><code>OAuthStatus</code> returns <code>connected: false</code> right after consent</td><td>No property has been saved yet; the connection is complete only once <code>SetPickerAccounts</code> stores at least one</td><td>Call <code>SetPickerAccounts</code> with a property from <code>gsc_sites</code> (Step 4)</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <h3><code>redirect_uri_mismatch</code> on Google's page</h3>
+                    <p>The Authorized redirect URIs of your OAuth client don't include <code>https://api.wiro.ai/v1/UserAgentOAuth/SearchConsoleCallback</code> exactly as written. Google stops on its own error page, so nothing comes back to your <code>redirecturl</code>. Add the URI (Step 2) and connect again.</p>
+
+                    <h3><code>Error 403: access_denied</code> on Google's page</h3>
+                    <p>The app is in Testing and the Google account is not one of its test users. Add the account under test users (Step 1), or publish the app, then connect again.</p>
+                  </section>
+
+                  <section id="skill-reference">
+                    <h2>Skill reference</h2>
+                    <ul>
+                      <li><a href="/docs/agent-skills">agent-skills.md</a>: custom skill schema and the <code>int-search-console</code> key</li>
+                    </ul>
+                  </section>
+                </article>
+              </div>
+              <!-- ==================== INTEGRATION: DATAFORSEO ==================== -->
+              <div class="docs-page-section" data-page="integration-dataforseo-skills" style="display: none">
+                <article class="docs-section">
+                  <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="/docs/markdown/integration-dataforseo-skills.md" target="_blank" class="docs-section-md-btn">View</a> <a href="/docs/markdown/integration-dataforseo-skills.md" download class="docs-section-md-btn">Download</a></div>
+                  <h1>DataForSEO Integration</h1>
+                  <p class="section-subtitle">Give your agent keyword, search and app store data from your own DataForSEO account: search volume, CPC and competition, keyword difficulty, related keywords, SERP features, Google Trends, local map rankings, Google Shopping prices and app store rankings.</p>
+
+                  <section id="overview">
+                    <h2>Overview</h2>
+                    <p><a href="https://dataforseo.com" target="_blank" rel="noopener">DataForSEO</a> sells SEO and marketing data through a pay-as-you-go API. This integration connects an agent to your own DataForSEO account with its API login and API password, so content, SEO, ads and app marketing agents work from real numbers instead of guesses. The agent only reads data: every answer names DataForSEO as the source, gives the date of the numbers and says what the requests cost.</p>
+                    <p><strong>Skills that use this integration:</strong></p>
+                    <ul>
+                      <li><code>int-dataforseo</code>: Read-only research through the DataForSEO API: Google Ads search volume, CPC and competition for up to 1,000 keywords per request, DataForSEO Labs keyword difficulty, related keywords and keyword ideas, Google SERP features (featured snippets, People Also Ask, local packs, AI Overviews), Google Trends, Google Maps rankings by coordinate (a local rank grid), Google Shopping prices and Google Play / App Store rankings.</li>
+                    </ul>
+                    <p><strong>Agents that typically enable this integration:</strong></p>
+                    <ul>
+                      <li><a href="https://wiro.ai/agents/blog-content-editor" target="_blank" rel="noopener">Blog Content Editor</a>: pick topics with real search volume and difficulty, and see what Google already shows for them, before drafting.</li>
+                      <li><a href="https://wiro.ai/agents/google-ads-manager" target="_blank" rel="noopener">Google Ads Manager</a>: check search volume, CPC and competition before adding keywords.</li>
+                      <li>Custom SEO, local marketing, e-commerce and app marketing agents.</li>
+                    </ul>
+                  </section>
+
+                  <section id="availability">
+                    <h2>Availability</h2>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Mode</th><th>Status</th><th>Notes</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td>API Login + API Password (DataForSEO)</td><td>Available</td><td>The API login and API password from your DataForSEO dashboard. DataForSEO bills each request to your own balance (pay-as-you-go). No extra charge on the agent: like every skill, it is included in every plan.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section id="prerequisites">
+                    <h2>Prerequisites</h2>
+                    <ul>
+                      <li><strong>A Wiro API key</strong> (see <a href="/docs/authentication">Authentication</a>).</li>
+                      <li><strong>A deployed agent</strong> (see <a href="/docs/agent-overview">Agent Overview</a>).</li>
+                      <li><strong>A DataForSEO account</strong> with balance. New accounts get a $1 trial credit; the minimum top-up is $50.</li>
+                    </ul>
+                  </section>
+
+                  <section id="setup">
+                    <h2>Setup</h2>
+
+                    <h3>Step 1: Copy your DataForSEO API login and API password</h3>
+                    <ol>
+                      <li>Sign up or sign in at <a href="https://app.dataforseo.com/register" target="_blank" rel="noopener">app.dataforseo.com</a>.</li>
+                      <li>Open <strong>API Access</strong> in the dashboard menu (<a href="https://app.dataforseo.com/api-access" target="_blank" rel="noopener">app.dataforseo.com/api-access</a>).</li>
+                      <li>Copy the <strong>API login</strong>. On newer accounts it is a string DataForSEO generated; on older accounts it can be your sign-up email.</li>
+                      <li>Copy the <strong>API password</strong>. It is shown for the first 24 hours after you sign up; after that, click <strong>Send by e-mail</strong> and DataForSEO mails it to your account address.</li>
+                    </ol>
+                    <div class="info-callout"><p>The API password is not the password you sign in to DataForSEO with. Using the sign-in password is the most common cause of a <code>40100</code> "not authorized" error.</p></div>
+
+                    <h3>Step 2: Save the credential to Wiro</h3>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "dataforseo", "fieldname": "login", "fieldvalue": "YOUR_DATAFORSEO_API_LOGIN" },
+      { "credentialkey": "dataforseo", "fieldname": "password", "fieldvalue": "YOUR_DATAFORSEO_API_PASSWORD" }
+    ]
+  }'</code></pre>
+                    <p>Or fill it in the panel: <strong><a href="https://wiro.ai/panel/agents" target="_blank" rel="noopener">My Agents</a></strong> → open agent → <strong>Connectors → DataForSEO</strong>.</p>
+
+                    <h3>Step 3: Enable the skill</h3>
+                    <p>DataForSEO ships <strong>available but off</strong>. Turn <code>int-dataforseo</code> on for the agent:</p>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skills": { "int-dataforseo": true },
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000"
+  }'</code></pre>
+                    <p>Or flip the toggle in the panel under <strong>Skills</strong> (see <a href="/docs/agent-skills#toggling-integration-skills">Agent Skills</a>).</p>
+
+                    <h3>Step 4: Start the agent</h3>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'</code></pre>
+                  </section>
+
+                  <section id="credential-fields">
+                    <h2>Credential Fields</h2>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>login</code></td><td>string</td><td>Yes</td><td>DataForSEO API login, from the API Access page. One word with no colon. Encrypted at rest.</td></tr>
+                            <tr><td><code>password</code></td><td>string (secret)</td><td>Yes</td><td>DataForSEO API password, not the sign-in password. Encrypted at rest.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section id="credentials-schema">
+                    <h2>Credentials schema (as returned by <code>POST /UserAgent/Detail</code>)</h2>
+                    <pre><code class="language-json">"dataforseo": {
+  "_connected": true,
+  "optional": false,
+  "extra": false,
+  "login": "your-api-login",
+  "password": "••••••••"
+}</code></pre>
+                  </section>
+
+                  <section id="what-the-agent-can-pull">
+                    <h2>What the agent can pull</h2>
+                    <p>The agent calls the DataForSEO v3 API at <code>https://api.dataforseo.com/v3/</code> with HTTP Basic auth (your API login and API password), sends a whole keyword list in one request, and checks DataForSEO's own <code>status_code</code> in every answer: DataForSEO can answer HTTP 200 with an error inside.</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Data</th><th>DataForSEO endpoint</th><th>How</th><th>Date the agent reports</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td>Search volume, CPC and competition (up to 1,000 keywords)</td><td>Keywords Data: Google Ads Search Volume</td><td>Live</td><td>The 12 months the monthly average covers</td></tr>
+                            <tr><td>Keyword difficulty (up to 1,000 keywords)</td><td>DataForSEO Labs: Bulk Keyword Difficulty</td><td>Live</td><td>The Labs data update date</td></tr>
+                            <tr><td>Related keywords and keyword ideas</td><td>DataForSEO Labs: Related Keywords, Keyword Ideas</td><td>Live</td><td>Each keyword's last update</td></tr>
+                            <tr><td>SERP features for a query</td><td>SERP: Google Organic (advanced)</td><td>Live</td><td>When DataForSEO loaded the page</td></tr>
+                            <tr><td>Interest over time (up to 5 keywords)</td><td>Keywords Data: Google Trends Explore</td><td>Live</td><td>The window of the graph</td></tr>
+                            <tr><td>Google Maps rank at a point, local rank grid</td><td>SERP: Google Maps (advanced) at a coordinate</td><td>Live, one request per grid point</td><td>When each point was loaded</td></tr>
+                            <tr><td>Google Shopping prices</td><td>Merchant: Google Shopping Products</td><td>Posted, then collected</td><td>When DataForSEO loaded the results</td></tr>
+                            <tr><td>App store rankings for a keyword</td><td>App Data: Google Play and App Store App Searches</td><td>Posted, then collected</td><td>When DataForSEO loaded the results</td></tr>
+                            <tr><td>Keywords an app ranks for (United States, English)</td><td>DataForSEO Labs: Keywords For App</td><td>Live</td><td>Each ranking's last check</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p>Results are aggregate: keywords, volumes, ranks, prices, domains and business or app names. When DataForSEO fails, the agent says so; it never falls back to another source or to scraping Google.</p>
+
+                    <h3 id="local-rank-grid">Local rank grid</h3>
+                    <p>Google ranks local results by where the searcher is, so a business ranks differently across its area. For a local rank grid the agent runs the same Google Maps search from evenly spaced points around the business (3 x 3 by default, up to 5 x 5, at a spacing you choose), one request per point, and reports the business's rank at each point in a table laid out like the map, with its average rank and the number of points where it is in the top 3.</p>
+
+                    <h3 id="posted-tasks">Posted tasks</h3>
+                    <p>Google Shopping and app store searches have no live mode at DataForSEO. The agent posts every query in one request, then collects each result by its task id; collecting is free for 30 days. When results are not ready within the turn, the agent lists the task ids and collects them on your next request.</p>
+                  </section>
+
+                  <section id="cost-billing">
+                    <h2>Cost &amp; billing</h2>
+                    <ul>
+                      <li><strong>DataForSEO</strong> bills each request to your own DataForSEO balance, pay-as-you-go with no subscription, and funds do not expire. The agent reports the cost DataForSEO returns with each answer. Location lookups, the balance check and collecting a posted task are free. See <a href="https://dataforseo.com/pricing" target="_blank" rel="noopener">DataForSEO pricing</a> for each API's rates.</li>
+                      <li><strong>The agent:</strong> every plan includes the integration, so it changes neither the agent's price nor its credits. As with every agent turn, the work is billed on the LLM tokens it uses, from the agent's existing credits.</li>
+                    </ul>
+                  </section>
+
+                  <section id="troubleshooting">
+                    <h2>Troubleshooting</h2>
+                    <ul>
+                      <li><strong><code>40100</code> / HTTP 401 (not authorized):</strong> The API login or API password is wrong. Copy both again from API Access; the API password is not your sign-in password.</li>
+                      <li><strong><code>40200</code> / <code>40210</code> (balance):</strong> Your DataForSEO balance is too low. Top it up in the DataForSEO dashboard.</li>
+                      <li><strong><code>40104</code>:</strong> Your DataForSEO account is not verified yet. Complete the verification in the DataForSEO dashboard.</li>
+                      <li><strong><code>40207</code> (IP not allowed):</strong> Your DataForSEO account accepts API requests only from the IP addresses on its allowlist. Clear the allowlist in the API Access section of the DataForSEO dashboard so the agent can connect.</li>
+                      <li><strong><code>40202</code> (rate limit):</strong> Too many requests in a minute; Google Ads volume requests are limited to 12 a minute per account. The agent retries once, then stops.</li>
+                      <li><strong>"Results are being prepared":</strong> A posted Google Shopping or app store task is still in DataForSEO's queue. Ask again in a few minutes; the agent collects it by its task id.</li>
+                      <li><strong>Agent says "not connected" with both fields filled:</strong> The agent restarts to pick up new credentials; give it a moment after saving, then retry.</li>
+                    </ul>
+                  </section>
+
+                  <section id="related">
+                    <h2>Related</h2>
+                    <ul>
+                      <li><a href="/docs/agent-credentials">Agent Credentials &amp; OAuth</a></li>
+                      <li><a href="/docs/agent-skills">Agent Skills</a></li>
+                      <li><a href="/docs/integration-serper-search-skills">Serper Web Search Integration</a></li>
+                      <li><a href="/docs/integration-googleads-skills">Google Ads Integration</a></li>
+                    </ul>
+                  </section>
+                </article>
+              </div>
+              <!-- ==================== INTEGRATION: KEEPA ==================== -->
+              <div class="docs-page-section" data-page="integration-keepa-skills" style="display: none">
+                <article class="docs-section">
+                  <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="/docs/markdown/integration-keepa-skills.md" target="_blank" class="docs-section-md-btn">View</a> <a href="/docs/markdown/integration-keepa-skills.md" download class="docs-section-md-btn">Download</a></div>
+                  <h1>Keepa Integration</h1>
+                  <p class="section-subtitle">Give your agent Amazon price, sales rank and offer history from Keepa, read with your own Keepa API key, so pricing, catalog and competitor agents answer with real numbers and dates.</p>
+
+                  <section id="overview">
+                    <h2>Overview</h2>
+                    <p><a href="https://keepa.com" target="_blank" rel="noopener">Keepa</a> tracks Amazon products and keeps their price, sales rank and offer history. This integration lets an agent read that history through the Keepa API with your own key: prices now, averages, the lowest and highest prices with their dates, daily or weekly price and rank tables, Amazon product search, best seller lists, categories and Keepa's product finder. It only reads data: nothing on Keepa or Amazon changes.</p>
+                    <p><strong>Skills that use this integration:</strong></p>
+                    <ul>
+                      <li><code>int-keepa</code>: Read-only Keepa API calls for product price and sales rank history (with statistics), product search, best sellers, category search and lookup, and the product finder. Every answer names the source (Keepa), the marketplace and the date range, and reports the Keepa tokens left.</li>
+                    </ul>
+                    <p><strong>Agents that typically enable this integration:</strong></p>
+                    <ul>
+                      <li>Custom pricing, catalog and Amazon seller agents that watch competitor prices and sales ranks.</li>
+                      <li>Commerce agents that run a Shopify or WooCommerce store and want Amazon price context before they reprice.</li>
+                    </ul>
+                  </section>
+
+                  <section id="availability">
+                    <h2>Availability</h2>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Mode</th><th>Status</th><th>Notes</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td>API Key (Keepa)</td>
+                              <td>Available</td>
+                              <td>Your own Keepa API access key (64 letters and digits) with an active Keepa API plan. The integration is included in every plan at no extra charge; Keepa tokens come from your Keepa plan.</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section id="prerequisites">
+                    <h2>Prerequisites</h2>
+                    <ul>
+                      <li><strong>A Wiro API key</strong> (see <a href="/docs/authentication">Authentication</a>).</li>
+                      <li><strong>A deployed agent</strong> (see <a href="/docs/agent-overview">Agent Overview</a>).</li>
+                      <li><strong>A Keepa account with an active API plan</strong> (<a href="https://keepa.com/api/pricing" target="_blank" rel="noopener">keepa.com/api/pricing</a>). Keepa says a Keepa Pro subscription includes a small API allowance, enough to try it; an API plan sets the rate for regular use.</li>
+                    </ul>
+                  </section>
+
+                  <section id="setup">
+                    <h2>Setup</h2>
+
+                    <h3>Step 1: Get a Keepa API key</h3>
+                    <ol>
+                      <li>Sign in at <a href="https://keepa.com" target="_blank" rel="noopener">keepa.com</a> and open the <a href="https://keepa.com/api" target="_blank" rel="noopener">API page</a>.</li>
+                      <li>Subscribe to an API plan. Plans differ in how many tokens they add per minute, are billed monthly by Keepa and can be canceled at any time.</li>
+                      <li>Copy your <strong>API access key</strong> (64 letters and digits) from the API page.</li>
+                    </ol>
+                    <div class="info-callout"><p>The key is all the agent needs: there is no app to register and no sign-in. Keep it secret, since anyone with the key can spend your tokens. You can generate a new key on the same page at any time.</p></div>
+
+                    <h3>Step 2: Save the credential to Wiro</h3>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "keepa", "fieldname": "apikey", "fieldvalue": "YOUR_KEEPA_API_KEY" }
+    ]
+  }'</code></pre>
+                    <p>Or fill it in the panel: <strong><a href="https://wiro.ai/panel/agents" target="_blank" rel="noopener">My Agents</a></strong> → open agent → <strong>Connectors → Keepa</strong>.</p>
+                    <p>A value that is not exactly 64 letters and digits is refused when you save it.</p>
+
+                    <h3>Step 3: Enable the skill</h3>
+                    <p>Keepa ships <strong>available but off</strong>. Turn <code>int-keepa</code> on for the agent:</p>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skills": { "int-keepa": true },
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000"
+  }'</code></pre>
+                    <p>Or flip the toggle in the panel under <strong>Skills</strong> (see <a href="/docs/agent-skills#toggling-integration-skills">Agent Skills</a>).</p>
+
+                    <h3>Step 4: Start the agent</h3>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'</code></pre>
+                  </section>
+
+                  <section id="credential-fields">
+                    <h2>Credential Fields</h2>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>apikey</code></td>
+                              <td>string (secret)</td>
+                              <td>Yes</td>
+                              <td>Keepa API access key, exactly 64 letters and digits. Encrypted at rest.</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section id="credentials-schema">
+                    <h2>Credentials schema (as returned by <code>POST /UserAgent/Detail</code>)</h2>
+                    <pre><code class="language-json">"keepa": {
+  "_connected": true,
+  "optional": false,
+  "extra": false,
+  "apikey": "••••••••"
+}</code></pre>
+                    <p>On a custom build with <code>int-keepa</code> on, <code>optional</code> and <code>extra</code> are <code>false</code>: Keepa is that skill's own connector.</p>
+                  </section>
+
+                  <section id="what-the-agent-can-look-up">
+                    <h2>What the agent can look up</h2>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Request</th><th>Keepa endpoint</th><th>Keepa tokens</th><th>What comes back</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td>Token status</td><td><code>/token</code></td><td>0</td><td>Tokens left, refill rate and time to the next refill.</td></tr>
+                            <tr><td>Product history</td><td><code>/product</code> with <code>stats</code> and <code>days</code></td><td>1 per product (up to 100 per call)</td><td>Prices now, 30 and 90 day averages, lowest and highest in the range with dates, lowest ever, daily or weekly tables of any price or rank series, sales rank drops, Amazon's "bought in past month" bracket. Products are found by ASIN, or by UPC, EAN, GTIN or ISBN-13.</td></tr>
+                            <tr><td>Product search</td><td><code>/search?type=product</code></td><td>10 per search</td><td>Up to 20 products in Amazon's search order (sponsored results left out), with price now and sales rank.</td></tr>
+                            <tr><td>Best sellers</td><td><code>/bestsellers</code></td><td>50 per list (0 when Keepa has no list)</td><td>The ranked ASIN list of a category or product group: by current rank, by the 30, 90 or 180 day average rank, or for a past month (last 36 months).</td></tr>
+                            <tr><td>Category search and lookup</td><td><code>/search?type=category</code>, <code>/category</code></td><td>1</td><td>Category ids, names, the path to the root, product counts and average Buy Box price.</td></tr>
+                            <tr><td>Product finder</td><td><code>/query</code></td><td>10 + 1 per 100 ASINs</td><td>ASINs matching filters such as category, brand, price range, sales rank, monthly sold, or a price drop against the 90 day average.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p>The Keepa options that cost extra tokens stay off unless you ask for that data:</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Option</th><th>Extra Keepa tokens</th><th>Adds</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>offers</code></td><td>6 per page of 10 offers found (5 when there are none), instead of the base 1</td><td>Live marketplace offers, Buy Box history, FBA, FBM and Amazon Warehouse prices, rating and review history</td></tr>
+                            <tr><td><code>buybox</code></td><td>2 per product</td><td>Buy Box price history and Buy Box statistics</td></tr>
+                            <tr><td><code>stock</code></td><td>2 per product, when stock data comes back</td><td>Stock levels</td></tr>
+                            <tr><td><code>rating</code></td><td>up to 1 per product</td><td>Rating and review count history</td></tr>
+                            <tr><td><code>historical-variations</code></td><td>1 per product with a parent ASIN</td><td>Variations that are no longer listed</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section id="supported-marketplaces">
+                    <h2>Supported marketplaces</h2>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Domain id</th><th>Marketplace</th><th>Currency</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td>1</td><td>amazon.com</td><td>USD</td></tr>
+                            <tr><td>2</td><td>amazon.co.uk</td><td>GBP</td></tr>
+                            <tr><td>3</td><td>amazon.de</td><td>EUR</td></tr>
+                            <tr><td>4</td><td>amazon.fr</td><td>EUR</td></tr>
+                            <tr><td>5</td><td>amazon.co.jp</td><td>JPY</td></tr>
+                            <tr><td>6</td><td>amazon.ca</td><td>CAD</td></tr>
+                            <tr><td>8</td><td>amazon.it</td><td>EUR</td></tr>
+                            <tr><td>9</td><td>amazon.es</td><td>EUR</td></tr>
+                            <tr><td>10</td><td>amazon.in</td><td>INR</td></tr>
+                            <tr><td>11</td><td>amazon.com.mx</td><td>MXN</td></tr>
+                            <tr><td>12</td><td>amazon.com.br</td><td>BRL</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p>These are all the marketplaces Keepa covers. <strong>Amazon.com.tr (Türkiye) is not supported</strong>, and neither are amazon.com.au, amazon.nl, amazon.se, amazon.pl, amazon.com.be, amazon.ae, amazon.sa, amazon.sg and amazon.eg. Asked about one of them, the agent says Keepa does not cover it.</p>
+                  </section>
+
+                  <section id="how-the-agent-reads-keepa-data">
+                    <h2>How the agent reads Keepa data</h2>
+                    <ul>
+                      <li><strong>Time:</strong> Keepa stores minutes since its own epoch. The agent converts them to UTC dates: Unix milliseconds = (Keepa time + 21564000) × 60000.</li>
+                      <li><strong>Prices</strong> are integers in the currency's smallest unit (cents, pence, paise; yen have none). <code>-1</code> means there was no offer at that time, never a price of zero.</li>
+                      <li><strong>Sales rank</strong> is the rank in the product's main category; lower is better. History holds a point only when a value changed.</li>
+                      <li><strong>New and Used prices:</strong> until 2026-02-22 Keepa recorded the lowest listing price, and from 2026-02-23 the lowest price including shipping. The agent says so when a range spans that date.</li>
+                      <li><strong>History series</strong> the agent can tabulate include Amazon's own offer, the lowest New and Used prices, the sales rank, the list price, offer counts, and (with the matching option) the Buy Box, FBA, FBM and Warehouse prices, rating and reviews.</li>
+                      <li><strong>Every answer</strong> names the source, the marketplace and the date range, for example "Source: Keepa · amazon.de · 2026-08-23 to 2026-11-21 (UTC)", followed by the tokens used and left.</li>
+                    </ul>
+                  </section>
+
+                  <section id="keepa-tokens-billing">
+                    <h2>Keepa tokens &amp; billing</h2>
+                    <ul>
+                      <li><strong>Keepa plans</strong> add a fixed number of tokens per minute. Unused tokens expire after 60 minutes, so a plan holds at most one hour's worth. Keepa bills the plan monthly to your Keepa account.</li>
+                      <li><strong>Before a costly call</strong> (a search, a best seller list, the product finder) the agent checks your balance; when the call costs more than you have left, it says so and asks first in chat, and skips it in a scheduled task.</li>
+                      <li><strong>When tokens run out</strong>, Keepa answers HTTP 429. The agent stops and says in one sentence when the next call can run; it never retries in a loop.</li>
+                      <li><strong>Billing on Wiro:</strong> every plan includes the integration, so it changes neither the agent's price nor its credits. As with every agent turn, its work is billed on the LLM tokens it uses, from the agent's existing credits.</li>
+                    </ul>
+                  </section>
+
+                  <section id="troubleshooting">
+                    <h2>Troubleshooting</h2>
+                    <ul>
+                      <li><strong>402 "No active API plan found":</strong> the key is unknown or its Keepa plan has ended. Check the plan on the <a href="https://keepa.com/api" target="_blank" rel="noopener">Keepa API page</a>, or save the current key again if you generated a new one.</li>
+                      <li><strong>400 invalidParameter:</strong> a request parameter was wrong; the error names it. A rejected <code>key</code> means the saved key is not the one Keepa issued.</li>
+                      <li><strong>429:</strong> out of Keepa tokens. Wait for the refill the agent names, or move to a larger Keepa plan.</li>
+                      <li><strong>500:</strong> a Keepa error. The agent retries once, then reports that Keepa is not answering.</li>
+                      <li><strong>Empty best seller list:</strong> Keepa has no list for that category on that marketplace; no tokens were used.</li>
+                      <li><strong>A marketplace is "not covered":</strong> Keepa has no data for it (for example amazon.com.tr).</li>
+                      <li><strong>Agent says "not connected" with the key filled:</strong> the agent restarts to pick up new credentials; give it a moment after saving, then retry.</li>
+                    </ul>
+                  </section>
+
+                  <section id="related">
+                    <h2>Related</h2>
+                    <ul>
+                      <li><a href="/docs/agent-credentials">Agent Credentials &amp; OAuth</a></li>
+                      <li><a href="/docs/agent-skills">Agent Skills</a></li>
+                      <li><a href="/docs/integration-shopify-skills">Shopify Skills</a> / <a href="/docs/integration-woocommerce-skills">WooCommerce Skills</a>: your own store's catalog and prices</li>
+                      <li><a href="/docs/integration-merchantcenter-skills">Merchant Center Skills</a>: Google Shopping product feeds</li>
+                    </ul>
+                  </section>
+                </article>
+              </div>
+              <!-- ==================== INTEGRATION: REVENUECAT ==================== -->
+              <div class="docs-page-section" data-page="integration-revenuecat-skills" style="display: none">
+                <article class="docs-section">
+                  <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="/docs/markdown/integration-revenuecat-skills.md" target="_blank" class="docs-section-md-btn">View</a> <a href="/docs/markdown/integration-revenuecat-skills.md" download class="docs-section-md-btn">Download</a></div>
+                  <h1>RevenueCat Integration</h1>
+                  <p class="section-subtitle">Connect your agent to RevenueCat subscription analytics: MRR, revenue, active subscriptions and trials, churn, conversion, retention and LTV charts, read with your own RevenueCat secret API key. Aggregate numbers only, never customer records.</p>
+
+                  <section id="overview">
+                    <h2>Overview</h2>
+                    <p><a href="https://www.revenuecat.com" target="_blank" rel="noopener">RevenueCat</a> runs in-app subscriptions across the App Store, Google Play, Stripe, Amazon and its own web billing. This integration lets an agent read your project's aggregate subscription numbers through the RevenueCat REST API v2: the same overview cards and charts the RevenueCat dashboard shows.</p>
+                    <p><strong>Skills that use this integration:</strong></p>
+                    <ul>
+                      <li><code>int-revenuecat</code>: Read-only RevenueCat reporting. Overview metrics (MRR, active subscriptions, active trials, revenue, new and active customers), revenue for any date range, charts (revenue, MRR, ARR, churn, trials, trial and paid conversion, retention, LTV, refunds, cohorts) by date range and resolution with the filters and segments each chart offers, and the project's apps, products, offerings and entitlements.</li>
+                    </ul>
+                    <p><strong>Agents that typically enable this integration:</strong></p>
+                    <ul>
+                      <li>Custom app-growth and reporting agents that answer questions about subscription revenue.</li>
+                      <li>Any agent that reports on an app's subscription business next to its ads or store numbers.</li>
+                    </ul>
+                  </section>
+
+                  <section id="availability">
+                    <h2>Availability</h2>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Mode</th><th>Status</th><th>Notes</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td>Secret API key (RevenueCat REST API v2)</td><td>Available</td><td>One read-only v2 secret key per agent. It reads the RevenueCat project the key belongs to. No extra charge: like every skill, it is included in every plan.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section id="prerequisites">
+                    <h2>Prerequisites</h2>
+                    <ul>
+                      <li><strong>A Wiro API key</strong> (see <a href="/docs/authentication">Authentication</a>).</li>
+                      <li><strong>A deployed agent</strong> (see <a href="/docs/agent-overview">Agent Overview</a>).</li>
+                      <li><strong>A RevenueCat project</strong>, and a project admin who can create its API keys.</li>
+                    </ul>
+                  </section>
+
+                  <section id="setup">
+                    <h2>Setup</h2>
+
+                    <h3>Step 1: Create a RevenueCat v2 secret key</h3>
+                    <ol>
+                      <li>Sign in to <a href="https://app.revenuecat.com" target="_blank" rel="noopener">RevenueCat</a> and open your project.</li>
+                      <li>Open <strong>Project settings</strong>, then <strong>API keys</strong>.</li>
+                      <li>Click <strong>+ New secret API key</strong>, give it a name (for example <code>Wiro agent</code>) and choose version <strong>V2</strong>.</li>
+                      <li>Set its permissions: read-only for <strong>Charts &amp; Metrics</strong> (overview and charts) and <strong>Project configuration</strong>, and no access to <strong>Customer information</strong>.</li>
+                      <li>Create the key and copy it. It starts with <code>sk_</code>.</li>
+                    </ol>
+                    <div class="info-callout"><p>A v1 key does not work with the v2 API. The agent never reads customer data, so the key needs no Customer information access. Deleting the key in RevenueCat cuts the agent off immediately.</p></div>
+
+                    <h3>Step 2: Save the credential to Wiro</h3>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "revenuecat", "fieldname": "apikey", "fieldvalue": "sk_YOUR_REVENUECAT_KEY" }
+    ]
+  }'</code></pre>
+                    <p>Or fill it in the panel: <strong><a href="https://wiro.ai/panel/agents" target="_blank" rel="noopener">My Agents</a></strong> → open agent → <strong>Connectors → RevenueCat</strong>.</p>
+
+                    <h3>Step 3: Turn on the skill</h3>
+                    <p>RevenueCat Metrics ships <strong>available but off</strong>. Turn <code>int-revenuecat</code> on for the agent:</p>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skills": { "int-revenuecat": true },
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000"
+  }'</code></pre>
+                    <p>Or flip the toggle in the panel under <strong>Skills</strong> (see <a href="/docs/agent-skills#toggling-integration-skills">Agent Skills</a>).</p>
+
+                    <h3>Step 4: Start the agent</h3>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'</code></pre>
+                  </section>
+
+                  <section id="credential-fields">
+                    <h2>Credential Fields</h2>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>apikey</code></td><td>string (secret)</td><td>Yes</td><td>RevenueCat REST API v2 secret key, starting with <code>sk_</code>. Encrypted at rest.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section id="credentials-schema">
+                    <h2>Credentials schema (as returned by <code>POST /UserAgent/Detail</code>)</h2>
+                    <pre><code class="language-json">"revenuecat": {
+  "_connected": true,
+  "optional": false,
+  "extra": false,
+  "apikey": "••••••••"
+}</code></pre>
+                    <p>On an agent you build yourself with <code>int-revenuecat</code> on, the card is required (<code>optional: false</code>): the agent's setup is complete once the key is saved.</p>
+                  </section>
+
+                  <section id="what-the-agent-reports">
+                    <h2>What the agent reports</h2>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Source</th><th>What it gives</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td>Overview</td><td>Active Trials, Active Subscriptions and MRR as of now; Revenue, New Customers and Active Customers for the last 28 days.</td></tr>
+                            <tr><td>Revenue</td><td>Gross revenue, revenue net of taxes, or proceeds (after taxes and store commissions) for any date range.</td></tr>
+                            <tr><td>Charts</td><td><code>revenue</code>, <code>mrr</code>, <code>arr</code>, <code>actives</code>, <code>trials</code>, <code>churn</code>, <code>trial_conversion_rate</code>, <code>initial_conversion</code>, <code>conversion_to_paying</code>, <code>subscription_retention</code>, <code>ltv_per_customer</code>, <code>ltv_per_paying_customer</code>, <code>cohort_explorer</code>, <code>refund_rate</code> and the rest of RevenueCat's charts, by day, week, month, quarter or year, with the filters and segments each chart offers (such as country, store, product or app).</td></tr>
+                            <tr><td>Configuration</td><td>Apps, products, offerings (and which one is current) and entitlements.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p>Every report names its source and its date range. Chart dates are in UTC, as in RevenueCat's charts. A partial period (the current one, or a first period that starts mid-way) is called out and left out of trends, and money is shown in the currency RevenueCat returns (USD unless you ask for another).</p>
+                  </section>
+
+                  <section id="privacy">
+                    <h2>Privacy</h2>
+                    <p>The agent reads aggregate numbers only. It never reads customers, subscribers, subscriptions, purchases, invoices, audiences or collaborators, and requests to customer endpoints are refused. A question about one customer is declined.</p>
+                  </section>
+
+                  <section id="billing">
+                    <h2>Billing</h2>
+                    <p>Every plan includes the integration, so it changes neither the agent's price nor its credits. As with every agent turn, reports are billed on the LLM tokens they use, from the agent's existing credits.</p>
+                  </section>
+
+                  <section id="rate-limits">
+                    <h2>Rate limits</h2>
+                    <p>RevenueCat allows each key 25 Charts &amp; Metrics requests a minute (overview, revenue and charts) and 60 Project configuration requests a minute. The agent keeps its calls few; when RevenueCat asks it to slow down, it waits and retries once.</p>
+                  </section>
+
+                  <section id="troubleshooting">
+                    <h2>Troubleshooting</h2>
+                    <ul>
+                      <li><strong>401:</strong> The key was revoked or mistyped, or it is a v1 key. Create a new v2 secret key and save it again.</li>
+                      <li><strong>403:</strong> The key lacks a permission. Give it read access to Charts &amp; Metrics and Project configuration.</li>
+                      <li><strong>429:</strong> RevenueCat's rate limit. The agent waits the time RevenueCat names and retries once.</li>
+                      <li><strong>Numbers differ from App Store Connect or Google Play:</strong> RevenueCat counts differently; for example, Google counts trials as active subscriptions and RevenueCat does not.</li>
+                      <li><strong>Agent says "not connected" with the key filled:</strong> The agent restarts to pick up new credentials; give it a moment after saving, then retry.</li>
+                    </ul>
+                  </section>
+
+                  <section id="related">
+                    <h2>Related</h2>
+                    <ul>
+                      <li><a href="/docs/agent-credentials">Agent Credentials &amp; OAuth</a></li>
+                      <li><a href="/docs/agent-skills">Agent Skills</a></li>
+                      <li><a href="/docs/integration-adapty-skills">Adapty Integration</a></li>
+                      <li><a href="/docs/integration-roasit-skills">Roasit Integration</a></li>
+                    </ul>
+                  </section>
+                </article>
+              </div>
+              <!-- ==================== INTEGRATION: ADAPTY ==================== -->
+              <div class="docs-page-section" data-page="integration-adapty-skills" style="display: none">
+                <article class="docs-section">
+                  <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="/docs/markdown/integration-adapty-skills.md" target="_blank" class="docs-section-md-btn">View</a> <a href="/docs/markdown/integration-adapty-skills.md" download class="docs-section-md-btn">Download</a></div>
+                  <h1>Adapty Integration</h1>
+                  <p class="section-subtitle">Connect your agent to Adapty subscription analytics: revenue, MRR, ARR, subscriptions, trials, conversions, funnels, retention, LTV and install cohorts, read with your app's Adapty secret API key. Aggregate numbers only, never user profiles.</p>
+
+                  <section id="overview">
+                    <h2>Overview</h2>
+                    <p><a href="https://adapty.io" target="_blank" rel="noopener">Adapty</a> runs in-app subscriptions and paywalls for mobile apps. This integration lets an agent read the numbers the Adapty Dashboard's analytics show for one app, through Adapty's Analytics Export API.</p>
+                    <p><strong>Skills that use this integration:</strong></p>
+                    <ul>
+                      <li><code>int-adapty</code>: Read-only Adapty reporting. Charts (revenue, proceeds and net revenue, MRR, ARR, ARPU, ARPPU, active and new subscriptions, trials, cancellations, expirations, refunds, installs), conversion rates, funnels, retention, LTV and install cohorts, by date range with an optional comparison period, filters (country, store, product, segment, attribution, offer) and one grouping per report.</li>
+                    </ul>
+                    <p><strong>Agents that typically enable this integration:</strong></p>
+                    <ul>
+                      <li>Custom app-growth and reporting agents that answer questions about subscription revenue.</li>
+                      <li>Any agent that reports on an app's subscription business next to its ads or store numbers.</li>
+                    </ul>
+                  </section>
+
+                  <section id="availability">
+                    <h2>Availability</h2>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Mode</th><th>Status</th><th>Notes</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td>Secret API key (Adapty Analytics Export API)</td><td>Available</td><td>One Adapty secret key per agent. Adapty keys belong to one app, so the agent reports on that app. No extra charge: like every skill, it is included in every plan.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section id="prerequisites">
+                    <h2>Prerequisites</h2>
+                    <ul>
+                      <li><strong>A Wiro API key</strong> (see <a href="/docs/authentication">Authentication</a>).</li>
+                      <li><strong>A deployed agent</strong> (see <a href="/docs/agent-overview">Agent Overview</a>).</li>
+                      <li><strong>An Adapty app</strong> with subscription data, and access to its App settings.</li>
+                    </ul>
+                  </section>
+
+                  <section id="setup">
+                    <h2>Setup</h2>
+
+                    <h3>Step 1: Copy the app's Adapty secret key</h3>
+                    <ol>
+                      <li>Sign in to the <a href="https://app.adapty.io" target="_blank" rel="noopener">Adapty Dashboard</a> and pick the app.</li>
+                      <li>Open <a href="https://app.adapty.io/settings/general" target="_blank" rel="noopener">App settings</a> and stay on the <strong>General</strong> tab.</li>
+                      <li>In <strong>API keys</strong>, copy the <strong>Secret key</strong>. It starts with <code>secret_live_</code>.</li>
+                    </ol>
+                    <div class="info-callout"><p>The agent uses the key only with Adapty's Analytics Export API and reads aggregate analytics only, never user profiles. To cut the agent off, click <strong>Generate new key</strong> in App settings and delete the old key.</p></div>
+
+                    <h3>Step 2: Save the credential to Wiro</h3>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "adapty", "fieldname": "apikey", "fieldvalue": "secret_live_YOUR_ADAPTY_KEY" }
+    ]
+  }'</code></pre>
+                    <p>Or fill it in the panel: <strong><a href="https://wiro.ai/panel/agents" target="_blank" rel="noopener">My Agents</a></strong> → open agent → <strong>Connectors → Adapty</strong>.</p>
+
+                    <h3>Step 3: Turn on the skill</h3>
+                    <p>Adapty Analytics ships <strong>available but off</strong>. Turn <code>int-adapty</code> on for the agent:</p>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skills": { "int-adapty": true },
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000"
+  }'</code></pre>
+                    <p>Or flip the toggle in the panel under <strong>Skills</strong> (see <a href="/docs/agent-skills#toggling-integration-skills">Agent Skills</a>).</p>
+
+                    <h3>Step 4: Start the agent</h3>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'</code></pre>
+                  </section>
+
+                  <section id="credential-fields">
+                    <h2>Credential Fields</h2>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>apikey</code></td><td>string (secret)</td><td>Yes</td><td>The app's Adapty secret API key, starting with <code>secret_live_</code>. Encrypted at rest.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section id="credentials-schema">
+                    <h2>Credentials schema (as returned by <code>POST /UserAgent/Detail</code>)</h2>
+                    <pre><code class="language-json">"adapty": {
+  "_connected": true,
+  "optional": false,
+  "extra": false,
+  "apikey": "••••••••"
+}</code></pre>
+                    <p>On an agent you build yourself with <code>int-adapty</code> on, the card is required (<code>optional: false</code>): the agent's setup is complete once the key is saved.</p>
+                  </section>
+
+                  <section id="what-the-agent-reports">
+                    <h2>What the agent reports</h2>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Report</th><th>What it gives</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td>Charts</td><td><code>revenue</code> (with proceeds and net revenue), <code>mrr</code>, <code>arr</code>, <code>arpu</code>, <code>arppu</code>, <code>subscriptions_active</code>, <code>subscriptions_new</code>, <code>subscriptions_renewal_cancelled</code>, <code>subscriptions_expired</code>, <code>trials_active</code>, <code>trials_new</code>, <code>trials_renewal_cancelled</code>, <code>trials_expired</code>, <code>grace_period</code>, <code>billing_issue</code>, <code>refund_events</code>, <code>refund_money</code>, <code>non_subscriptions</code> and <code>installs</code>, by day, week, month, quarter or year.</td></tr>
+                            <tr><td>Conversion</td><td>Conversion rates between subscription states, such as paid to more than 6 months.</td></tr>
+                            <tr><td>Funnel</td><td>Users at each stage from install and paywall view to trial, paid and renewals, with drop-off.</td></tr>
+                            <tr><td>Retention</td><td>Retention period by period, counted from the purchase or from the trial.</td></tr>
+                            <tr><td>LTV</td><td>Realized lifetime value on revenue, proceeds and net revenue.</td></tr>
+                            <tr><td>Cohorts</td><td>Install-date cohorts: installs, subscribers, revenue, ARPU and ARPPU per period, with Adapty's predictions.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p>Every report can take a comparison period, filters (country, store, store product, subscription duration, offer, attribution, and Adapty segment, audience, paywall, placement or flow ids) and one grouping. Money is in USD, as Adapty exports it. Every report names its source and its date range; chart revenue counts on the day of each transaction, and cohort revenue on each user's install date.</p>
+                  </section>
+
+                  <section id="privacy">
+                    <h2>Privacy</h2>
+                    <p>The agent reads aggregate analytics only. It uses the key only with Adapty's Analytics Export API, never Adapty's server-side API, so it never reads user profiles. A question about one user is declined.</p>
+                  </section>
+
+                  <section id="billing">
+                    <h2>Billing</h2>
+                    <p>Every plan includes the integration, so it changes neither the agent's price nor its credits. As with every agent turn, reports are billed on the LLM tokens they use, from the agent's existing credits.</p>
+                  </section>
+
+                  <section id="rate-limits">
+                    <h2>Rate limits</h2>
+                    <p>Adapty allows 2 requests a second per app, shared by all of the app's keys. The agent sends its calls one after another; when Adapty asks it to slow down, it waits about a minute and retries once.</p>
+                  </section>
+
+                  <section id="troubleshooting">
+                    <h2>Troubleshooting</h2>
+                    <ul>
+                      <li><strong>401:</strong> The key was replaced or mistyped. Copy the app's current secret key from App settings and save it again.</li>
+                      <li><strong>400:</strong> A filter or option Adapty does not accept, such as a product id without its store (<code>app_store:premium_monthly</code>). The agent reads Adapty's message and fixes the request once.</li>
+                      <li><strong>429:</strong> Adapty's rate limit. The agent waits about a minute and retries once.</li>
+                      <li><strong>Numbers for another app:</strong> One key reads one app. Connect that app's key on another agent.</li>
+                      <li><strong>Agent says "not connected" with the key filled:</strong> The agent restarts to pick up new credentials; give it a moment after saving, then retry.</li>
+                    </ul>
+                  </section>
+
+                  <section id="related">
+                    <h2>Related</h2>
+                    <ul>
+                      <li><a href="/docs/agent-credentials">Agent Credentials &amp; OAuth</a></li>
+                      <li><a href="/docs/agent-skills">Agent Skills</a></li>
+                      <li><a href="/docs/integration-revenuecat-skills">RevenueCat Integration</a></li>
+                      <li><a href="/docs/integration-roasit-skills">Roasit Integration</a></li>
+                    </ul>
+                  </section>
+                </article>
+              </div>
               <!-- ==================== INTEGRATION: HUBSPOT ==================== -->
               <div class="docs-page-section" data-page="integration-hubspot-skills" style="display: none">
                 <article class="docs-section">

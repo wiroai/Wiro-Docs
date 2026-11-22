@@ -447,12 +447,13 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 | Google Ads | Own only (Wiro mode coming soon) | [Google Ads Skills](/docs/integration-googleads-skills) |
 | YouTube | Own only (Wiro mode coming soon) | [YouTube Skills](/docs/integration-youtube-skills) (shares Google OAuth client with Google Ads) |
 | Google Analytics 4 | Own only (Wiro mode coming soon) | [Google Analytics 4 Skills](/docs/integration-ga4-skills) (shares Google OAuth client with Google Ads) |
+| Google Search Console | Own only (Wiro mode coming soon) | [Google Search Console Skills](/docs/integration-searchconsole-skills) (shares Google OAuth client with Google Analytics 4) |
 | Merchant Center | Own only (Wiro mode coming soon) | [Merchant Center Skills](/docs/integration-merchantcenter-skills) (shares Google OAuth client with Google Ads) |
 | Google Business Profile | Own only (your Google Cloud project, approved for Business Profile API access) | [Google Business Profile Skills](/docs/integration-googlebusiness-skills) |
 | HubSpot | Wiro + Own | [HubSpot Skills](/docs/integration-hubspot-skills) |
 | Mailchimp | Wiro + Own + API Key | [Mailchimp Skills](/docs/integration-mailchimp-skills) |
 
-> **Google OAuth is shared across 4 APIs.** Google Ads, YouTube, Google Analytics 4, and Merchant Center can all be authorized through one of your own OAuth clients (one Google Cloud project, one OAuth 2.0 Client ID, multiple API scopes), or you can set up separate ones per product. Wiro's shared client for "wiro" mode is coming soon. Google Business Profile is not part of that shared client: it is own mode only, and the Google Cloud project behind your OAuth client must be approved for Business Profile API access.
+> **Google OAuth is shared across 5 APIs.** Google Ads, YouTube, Google Analytics 4, Merchant Center and Google Search Console can all be authorized through one of your own OAuth clients (one Google Cloud project, one OAuth 2.0 Client ID, multiple API scopes), or you can set up separate ones per product. Wiro's shared client for "wiro" mode is coming soon. Google Business Profile is not part of that shared client: it is own mode only, and the Google Cloud project behind your OAuth client must be approved for Business Profile API access.
 
 ### Service Account Integrations
 
@@ -486,6 +487,10 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 | Apollo | [Apollo Skills](/docs/integration-apollo-skills) |
 | Lemlist | [Lemlist Skills](/docs/integration-lemlist-skills) |
 | Roasit | [Roasit Skills](/docs/integration-roasit-skills) |
+| DataForSEO | [DataForSEO Skills](/docs/integration-dataforseo-skills) |
+| Keepa | [Keepa Skills](/docs/integration-keepa-skills) |
+| RevenueCat | [RevenueCat Skills](/docs/integration-revenuecat-skills) |
+| Adapty | [Adapty Skills](/docs/integration-adapty-skills) |
 | Brevo | [Brevo Skills](/docs/integration-brevo-skills) |
 | SendGrid | [SendGrid Skills](/docs/integration-sendgrid-skills) |
 | Twilio Voice | [Twilio Voice](/docs/integration-twiliovoice-skills) |
@@ -806,6 +811,7 @@ Provider-specific paths: `XCallback`, `TikTokCallback`, `IGCallback`, `FBCallbac
 | Merchant Center | `mc_connected=true&mc_accounts=[...]` | `mc_error=...` (+ `mc_error_detail=...` with `no_accounts`) |
 | YouTube | `yt_connected=true&yt_channels=[...]` | `yt_error=...` |
 | GA4 | `ga4_connected=true&ga4_properties=[...]` | `ga4_error=...` |
+| Google Search Console | `gsc_connected=true&gsc_sites=[...]` | `gsc_error=...` |
 | Google Business Profile | `gbp_connected=true&gbp_accounts=[...]` | `gbp_error=...` |
 | HubSpot | `hubspot_connected=true&hubspot_portal=...&hubspot_name=...` | `hubspot_error=...` |
 | Mailchimp | `mailchimp_connected=true&mailchimp_account=...` | `mailchimp_error=...` |

@@ -985,6 +985,11 @@ Skills that depend on third-party credentials. Follow the linked integration pag
 | `int-firebase-push` | `firebase` (Service Account) | [Firebase Skills](/docs/integration-firebase-skills) |
 | `int-wordpress-post` | `wordpress` (App Password) | [WordPress Skills](/docs/integration-wordpress-skills) |
 | `int-roasit-attribution` | `roasit` (API token) | [Roasit Skills](/docs/integration-roasit-skills) |
+| `int-search-console` | `google-search-console` (OAuth, your own Google Cloud client) | [Google Search Console Skills](/docs/integration-searchconsole-skills) |
+| `int-dataforseo` | `dataforseo` (API login and password) | [DataForSEO Skills](/docs/integration-dataforseo-skills) |
+| `int-keepa` | `keepa` (API key) | [Keepa Skills](/docs/integration-keepa-skills) |
+| `int-revenuecat` | `revenuecat` (secret API key) | [RevenueCat Skills](/docs/integration-revenuecat-skills) |
+| `int-adapty` | `adapty` (secret API key) | [Adapty Skills](/docs/integration-adapty-skills) |
 | `int-brevo-email` | `brevo` (API key) | [Brevo Skills](/docs/integration-brevo-skills) |
 | `int-sendgrid-email` | `sendgrid` (API key) | [SendGrid Skills](/docs/integration-sendgrid-skills) |
 | `int-appstore-reviews`, `int-appstore-metadata`, `int-appstore-events` | `apple-appstore` (JWT / Service Account) | [App Store Skills](/docs/integration-appstore-skills) |
