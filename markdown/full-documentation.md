@@ -5486,7 +5486,7 @@ Each limit caps one scope of the wallet's spending:
 | `member` | The member's `useruuid` from `/Team/Member/List` | One team member's spending in the team (team wallets only). A member's spending includes their dashboard runs in the team workspace and every run made with the API key of a team project they created |
 | `project` | The project's `id` from `/Project/List` | One API key: what is spent with that project's key |
 | `surface` | `web`, `api`, `mcp`, `llm-gateway`, `extension` or `agent` | One way in (see Surfaces below) |
-| `agent` | The agent's `guid` (its `useragentguid`) | One deployed agent: what the agent itself spends, its own model runs and the credits its replies use (100 credits = $1). Its plan, upgrades and credit packs count toward the wallet's other limits, not this one |
+| `agent` | The agent's `guid` (its `useragentguid`) | One deployed agent: all of its AI usage, both what its plan includes and what the balance pays, and its own model runs. Its plan payments count toward the wallet's other limits, not this one |
 
 ### Surfaces
 
@@ -5509,9 +5509,11 @@ A limit's `period` is `month` (the default), which resets on the 1st of each mon
 
 ### What Counts
 
-Every charge to the wallet for usage counts: model runs, workflow runs, realtime sessions, Studio, the Workflow Agent, agent plans, upgrades and credit packs. Deposits are not spending.
+Every charge to the wallet for usage counts: model runs, workflow runs, realtime sessions, Studio, the Workflow Agent, agent plans and upgrades, and the AI usage of an agent that the balance pays. Deposits are not spending.
 
 The models Studio runs for you are checked and counted like the runs you start yourself: against the account's or the team's limits, your member limit in a team, the limit of the API key you sent the message with and the limit of the surface you sent it from. What the chat of Studio and the Workflow Agent costs counts toward your limits too.
+
+An agent's AI usage counts in two ways. What its plan's included usage covers counts only toward the agent's own limit: the plan payment already counted toward the wallet's limits. What the balance pays once the included usage is used up counts toward the agent's own limit, the account's or the team's limit and the limit of the `agent` surface. Member and API key limits don't apply to an agent's AI usage. The models an agent runs count like any other model run, and toward the agent's own limit too.
 
 ### When Limits Are Checked
 
@@ -5519,12 +5521,12 @@ Limits are checked before work starts:
 
 - Model runs, workflow runs and workflow resumes, and each step of a workflow run before the step starts
 - Studio and Workflow Agent messages, and the models Studio runs for you
-- An agent deploy, upgrade, renewal or credit pack purchase that a person starts
-- Messages to an agent, against that agent's own limit
+- An agent deploy, upgrade or renewal that a person starts
+- Messages to an agent, against that agent's own limit and, once its plan's included usage is used up, against the account's or the team's limit and the limit of the `agent` surface
 
-When the price of the work is known before it starts, as for fixed-price models, workflow runs and agent purchases, the work is refused if spending so far, plus what work in progress holds, plus that price would go over the limit. Otherwise it is refused once the limit has no room left.
+When the price of the work is known before it starts, as for fixed-price models, workflow runs and agent plans, the work is refused if spending so far, plus what work in progress holds, plus that price would go over the limit. Otherwise it is refused once the limit has no room left.
 
-Work that is already running finishes and is charged, with two exceptions. A realtime session ends after the turn that uses up a limit, the same way it ends when the balance runs out: its WebSocket clients get a `task_session_stopped` event with `reason` `spend_limit`, code `93` and the refusal `/Run` would give (see [Realtime Voice](/docs/realtime-voice-conversation#realtime-end-session)). An agent's voice call is a realtime session too and ends the same way: a web voice call then gets `session_end` with `reason` `spend_limit` (see [Web Voice](/docs/integration-webvoice-skills#websocket-protocol)), and a caller on the phone hears a short notice before the call ends. An agent whose own limit is used up pauses at its next model call, even in the middle of a reply (see below).
+Work that is already running finishes and is charged, with two exceptions. A realtime session ends after the turn that uses up a limit, the same way it ends when the balance runs out: its WebSocket clients get a `task_session_stopped` event with `reason` `spend_limit`, code `93` and the refusal `/Run` would give (see [Realtime Voice](/docs/realtime-voice-conversation#realtime-end-session)). An agent's voice call is a realtime session too and ends the same way: a web voice call then gets `session_end` with `reason` `spend_limit` (see [Web Voice](/docs/integration-webvoice-skills#websocket-protocol)), and a caller on the phone hears a short notice before the call ends. An agent pauses at its next model call when a limit that covers it is used up, even in the middle of a reply (see below).
 
 Automatic monthly renewals of running agents are never refused by a limit. They count toward the account's limit and, in a team, toward the limit of the member who started the plan, never toward a surface, API key or agent limit.
 
@@ -5561,7 +5563,7 @@ When the price of the work is known before it starts, the message says what is l
 
 Nothing runs and nothing is charged. Retrying does not help until the limit resets or someone who manages it raises it. Through the [LLM gateway](/docs/completions-api#gateway-errors) the refusal is an HTTP `402` error with code `spend_limit_reached`, and the [MCP server](/docs/wiro-mcp-server) returns it as a tool error.
 
-When an agent's own limit is used up, the agent pauses. A turn that is running stops at its next model call (see [Failed turns](/docs/agent-messaging#failed-turns)), new messages to the agent are refused, and its Scheduled Tasks are paused rather than failed. In Telegram, Slack and Discord it tells people so in a plain sentence, with the time the limit resets when that is known. Once the limit resets, is raised or is removed, the agent answers again and each Scheduled Task runs at its next scheduled time, with no restart.
+When a limit that covers an agent is used up, the agent pauses: its own limit at any time, and the account's or the team's limit or the `agent` surface's limit once its plan's included usage is used up. While included usage is left, those wallet limits don't stop it. A turn that is running stops at its next model call (see [Failed turns](/docs/agent-messaging#failed-turns)), new messages to the agent are refused, and its Scheduled Tasks are paused rather than failed. In Telegram, Slack and Discord it tells people so in a plain sentence, with the time the limit resets when that is known. Once the limit resets, is raised or is removed, the agent answers again and each Scheduled Task runs at its next scheduled time, with no restart.
 
 ### Alert Emails
 
@@ -5918,7 +5920,7 @@ Returns what the call's workspace has spent this month or today, in total and by
 | `usage.agents` | Spending per deployed agent, with the agent's title as `label` |
 | `heldusd` in a row of `usage.surfaces`, `usage.members`, `usage.projects` or `usage.agents` | What work in progress holds for that row, present only when it holds something. A member, API key or agent whose only spending so far is held work is listed with `spentusd` `0` |
 
-An agent plan's automatic renewal counts in `totalusd` and, in a team, in the row of the member who started the plan, but in no row of `usage.surfaces`, `usage.projects` or `usage.agents`, so those rows can add up to less than `totalusd`.
+An agent plan's automatic renewal counts in `totalusd` and, in a team, in the row of the member who started the plan, but in no row of `usage.surfaces`, `usage.projects` or `usage.agents`, so those rows can add up to less than `totalusd`. An agent's row counts what its own limit counts, so it also holds the AI usage its plan covered, which is not in `totalusd`: the plan payment already is.
 
 For other breakdowns, `/Project/UsageSummary` gives usage per project and `/Task/Stat` gives time-series task execution data. Both filter by the active workspace.
 
@@ -6008,8 +6010,8 @@ Rules are checked before work starts:
 - Workflow runs and resumes: every model step that will run must be allowed. Steps that will not run, such as the steps after a breakpoint, are not checked
 - Studio and the Workflow Agent: the models Studio runs for you, and the chat model of each message you send to Studio or the Workflow Agent, follow your own rules like the runs you start yourself: the account's or the team's rule, your member rule in a team, the rule of the API key you sent the message with and the rule of the surface you sent it from. A message whose chat model a rule blocks, the `model` it names or the default chat model when it names none, is refused with code `92` before anything runs. Chat models are LLM & Chat models: a rule that blocks LLM & Chat blocks them unless it allows the chat model by name, and a rule that lets only selected models run blocks them unless it allows LLM & Chat or the chat model. The Workflow Agent runs nothing but its chat model. [`/Studio/Status`](/docs/studio#post-studiostatus) and [`/StudioWorkflow/Status`](/docs/workflow-agent#post-studioworkflowstatus) list the chat models your rules block
 - The models your deployed agents run through Wiro
-- An agent's chat model: choosing one in the agent's settings, or sending `model` with `Message/Send`, follows that agent's own rule. If its rule blocks the model the agent already uses, its model calls are refused and the turn ends with `[MODEL_NOT_ALLOWED]`. A Scheduled Task whose model the rule blocks is paused rather than failed, and runs again at its next scheduled time once the model is allowed or another one is chosen
-- An agent's built-in voice: transcription of the voice notes people send the agent, and the voice replies it sends, follow that agent's own rule as Audio & Speech models. A rule that blocks Audio & Speech, or that lets only selected models run without allowing Audio & Speech, blocks them, even when it allows LLM & Chat. Voice notes are then not transcribed, and the agent replies in text. An agent that chats on a Gemini model has its voice notes transcribed by `google/gemini-3-flash`, so a rule that names that model decides them too. A rule that does not name that model blocks those voice notes unless it lets both Audio & Speech and LLM & Chat models run
+- An agent's chat model: choosing one in the agent's settings, or sending `model` with `Message/Send`, follows that agent's own rule, the account's or the team's rule and the rule of the `agent` surface, since the agent's AI usage past its plan is paid from the wallet. Member and API key rules don't apply to it. If one of these rules blocks the model the agent already uses, its model calls are refused and the turn ends with `[MODEL_NOT_ALLOWED]`. A Scheduled Task whose model a rule blocks is paused rather than failed, and runs again at its next scheduled time once the model is allowed or another one is chosen
+- An agent's built-in voice: transcription of the voice notes people send the agent, and the voice replies it sends, follow the same rules as its chat model, as Audio & Speech models. A rule that blocks Audio & Speech, or that lets only selected models run without allowing Audio & Speech, blocks them, even when it allows LLM & Chat. Voice notes are then not transcribed, and the agent replies in text. An agent that chats on a Gemini model has its voice notes transcribed by `google/gemini-3-flash`, so a rule that names that model decides them too. A rule that does not name that model blocks those voice notes unless it lets both Audio & Speech and LLM & Chat models run
 
 A change applies to work that starts after it. Work that is already running is not stopped, and a deployed agent's chat model and voice follow a change within about a minute. Browsing models is not affected: `/Tool/List`, `/Tool/Detail` and the LLM gateway's model list show the same models whatever the rules.
 
