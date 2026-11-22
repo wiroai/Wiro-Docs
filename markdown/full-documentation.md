@@ -19084,7 +19084,7 @@ Build your own chat for a Wiro agent, setup from chat included: every call, ever
 
 This guide is for products that put a Wiro agent behind their own interface. Your users talk to the agent in your app. Your backend calls the API with your project API key, and your app shows the agent's answers, its setup cards and the connect steps with your own design. Your users never leave your product.
 
-It covers the whole cycle in order: sending messages and showing answers, the setup cards the agent proposes, applying them, connecting connectors, restarts, errors, chats without cards, the agent's live Screen and Take Control in your app, security, two worked examples and a checklist. Every request and answer is shown as JSON, so the guide can also be handed to a coding assistant that builds the integration for you.
+It covers the whole cycle in order: sending messages and showing answers, the setup cards the agent proposes, applying them, connecting connectors, restarts, errors, chats without cards, the agent's live Screen and Take Control in your app, security, three worked examples and a checklist. Every request and answer is shown as JSON, so the guide can also be handed to a coding assistant that builds the integration for you.
 
 ### What setup from chat is
 
