@@ -117,6 +117,20 @@ One row per page, in sidebar order. Each path is live under `https://wiro.ai`.
 | Telegram | `/docs/integration-telegram-skills` | [integration-telegram-skills.md](./markdown/integration-telegram-skills.md) |
 | Firebase | `/docs/integration-firebase-skills` | [integration-firebase-skills.md](./markdown/integration-firebase-skills.md) |
 | WordPress | `/docs/integration-wordpress-skills` | [integration-wordpress-skills.md](./markdown/integration-wordpress-skills.md) |
+| Blogger | `/docs/integration-blogger-skills` | [integration-blogger-skills.md](./markdown/integration-blogger-skills.md) |
+| dev.to | `/docs/integration-devto-skills` | [integration-devto-skills.md](./markdown/integration-devto-skills.md) |
+| Hashnode | `/docs/integration-hashnode-skills` | [integration-hashnode-skills.md](./markdown/integration-hashnode-skills.md) |
+| Qiita | `/docs/integration-qiita-skills` | [integration-qiita-skills.md](./markdown/integration-qiita-skills.md) |
+| HackMD | `/docs/integration-hackmd-skills` | [integration-hackmd-skills.md](./markdown/integration-hackmd-skills.md) |
+| Notion | `/docs/integration-notion-skills` | [integration-notion-skills.md](./markdown/integration-notion-skills.md) |
+| GitBook | `/docs/integration-gitbook-skills` | [integration-gitbook-skills.md](./markdown/integration-gitbook-skills.md) |
+| beehiiv | `/docs/integration-beehiiv-skills` | [integration-beehiiv-skills.md](./markdown/integration-beehiiv-skills.md) |
+| Kaggle | `/docs/integration-kaggle-skills` | [integration-kaggle-skills.md](./markdown/integration-kaggle-skills.md) |
+| Threads | `/docs/integration-threads-skills` | [integration-threads-skills.md](./markdown/integration-threads-skills.md) |
+| Bluesky | `/docs/integration-bluesky-skills` | [integration-bluesky-skills.md](./markdown/integration-bluesky-skills.md) |
+| Mastodon | `/docs/integration-mastodon-skills` | [integration-mastodon-skills.md](./markdown/integration-mastodon-skills.md) |
+| Pinterest | `/docs/integration-pinterest-skills` | [integration-pinterest-skills.md](./markdown/integration-pinterest-skills.md) |
+| Tumblr | `/docs/integration-tumblr-skills` | [integration-tumblr-skills.md](./markdown/integration-tumblr-skills.md) |
 | App Store Connect | `/docs/integration-appstore-skills` | [integration-appstore-skills.md](./markdown/integration-appstore-skills.md) |
 | Google Play | `/docs/integration-googleplay-skills` | [integration-googleplay-skills.md](./markdown/integration-googleplay-skills.md) |
 | Apollo | `/docs/integration-apollo-skills` | [integration-apollo-skills.md](./markdown/integration-apollo-skills.md) |

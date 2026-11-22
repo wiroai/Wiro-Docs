@@ -169,6 +169,20 @@
   <url><loc>https://wiro.ai/docs/integration-telegram-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://wiro.ai/docs/integration-firebase-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://wiro.ai/docs/integration-wordpress-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://wiro.ai/docs/integration-blogger-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://wiro.ai/docs/integration-devto-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://wiro.ai/docs/integration-hashnode-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://wiro.ai/docs/integration-qiita-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://wiro.ai/docs/integration-hackmd-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://wiro.ai/docs/integration-notion-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://wiro.ai/docs/integration-gitbook-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://wiro.ai/docs/integration-beehiiv-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://wiro.ai/docs/integration-kaggle-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://wiro.ai/docs/integration-threads-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://wiro.ai/docs/integration-bluesky-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://wiro.ai/docs/integration-mastodon-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://wiro.ai/docs/integration-pinterest-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://wiro.ai/docs/integration-tumblr-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://wiro.ai/docs/integration-appstore-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://wiro.ai/docs/integration-googleplay-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://wiro.ai/docs/integration-apollo-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
