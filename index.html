@@ -34221,6 +34221,8 @@ complete. Channels are not skills and do not affect pricing.</p>
       &quot;value&quot;: &quot;## Brand Voice\nTone: friendly, casual, never salesy.\nTarget Audience: indie devs and side-project builders.\n\n## Hashtag Strategy\nMax 3 per post. Always include #BuildInPublic and #Indie.\n\n## Platform Rules\n- Instagram: square images only, carousels for tutorials.\n- Twitter: thread format for posts longer than 200 chars.&quot;,
       &quot;enabled&quot;: true,
       &quot;interval&quot;: null,
+      &quot;requires_credentials&quot;: [],
+      &quot;requires_connectors&quot;: [],
       &quot;_source&quot;: &quot;preset-strategy&quot;,
       &quot;_editable&quot;: true,
       &quot;_edited&quot;: true
@@ -34233,6 +34235,8 @@ complete. Channels are not skills and do not affect pricing.</p>
       &quot;value&quot;: &quot;Scan the configured RSS / sitemap sources, dedupe against last 14 days, and queue up to 3 fresh items into the post pipeline.&quot;,
       &quot;enabled&quot;: true,
       &quot;interval&quot;: &quot;0 */4 * * *&quot;,
+      &quot;requires_credentials&quot;: [],
+      &quot;requires_connectors&quot;: [&quot;facebook-pages&quot;, &quot;instagram&quot;, &quot;linkedin&quot;, &quot;tiktok&quot;, &quot;twitter&quot;],
       &quot;_source&quot;: &quot;skill-bundle&quot;,
       &quot;_editable&quot;: true,
       &quot;_edited&quot;: false
@@ -34243,6 +34247,8 @@ complete. Channels are not skills and do not affect pricing.</p>
       &quot;value&quot;: &quot;Every Monday at 09:00 UTC, summarize last week's published posts (titles + engagement) and post the recap to Telegram.&quot;,
       &quot;enabled&quot;: true,
       &quot;interval&quot;: &quot;0 9 * * 1&quot;,
+      &quot;requires_credentials&quot;: [],
+      &quot;requires_connectors&quot;: [],
       &quot;_source&quot;: &quot;user-created&quot;,
       &quot;_editable&quot;: true,
       &quot;_edited&quot;: false,
@@ -34277,7 +34283,7 @@ complete. Channels are not skills and do not affect pricing.</p>
 <tr>
 <td><code>value</code></td>
 <td>string</td>
-<td>Skill instructions / cron prompt body. Populated only for editable preference skills and user-created entries; bundled crons have it empty.</td>
+<td>The text of the preference or task: the one you wrote, or else the template's.</td>
 </tr>
 <tr>
 <td><code>description</code></td>
@@ -34295,19 +34301,29 @@ complete. Channels are not skills and do not affect pricing.</p>
 <td>Cron expression for scheduled execution, or <code>null</code> for preference skills. Writable on scheduled tasks; ignored on preferences.</td>
 </tr>
 <tr>
+<td><code>requires_connectors</code></td>
+<td>string[]</td>
+<td>Scheduled tasks only (<code>[]</code> on preferences): the connectors the task works with, by catalog slug. The task runs only while at least one of them is connected, that is, its row on <a href="/docs/agent-connectors#post-useragentconnectorlist"><code>POST /UserAgent/ConnectorList</code></a> has <code>status: "connected"</code> and <code>catalogstatus: "active"</code>; until then the agent skips every run. This gate never changes <code>enabled</code>: a task waiting for a connector can still read <code>enabled: true</code>. <code>[]</code> means no connector gate; a task you add with <code>CustomSkillUpsert</code> has <code>[]</code>.</td>
+</tr>
+<tr>
+<td><code>requires_credentials</code></td>
+<td>string[]</td>
+<td>The channels and settings the task needs, by credential key, such as <code>telegram</code>: one of them set up is enough. Saving or clearing one of them turns the task on or off. Usually <code>[]</code>.</td>
+</tr>
+<tr>
 <td><code>_source</code></td>
 <td>string</td>
-<td><code>preset-strategy</code> (editable preference), <code>skill-bundle</code> (a scheduled task that comes with the agent template), or <code>user-created</code> (cron added via <code>CustomSkillUpsert</code>).</td>
+<td><code>preset-strategy</code> (editable preference), <code>skill-bundle</code> (a scheduled task that comes with the agent template; on a custom build, any row the agent came with, such as Approval Policy), or <code>user-created</code> (a row added via <code>CustomSkillUpsert</code>).</td>
 </tr>
 <tr>
 <td><code>_editable</code></td>
 <td>boolean</td>
-<td>Convenience flag: <code>true</code> for preset strategies and user-created rows (you can write <code>value</code>), <code>false</code> for template scheduled tasks (you can only write <code>enabled</code> / <code>interval</code>).</td>
+<td><code>true</code> for preferences, your own rows and the scheduled tasks the template marks editable, <code>false</code> for its other scheduled tasks. On a template agent, every scheduled task that came with the template runs the template's text, whatever <code>value</code> you write; a custom build runs the text you write.</td>
 </tr>
 <tr>
 <td><code>_user_created</code></td>
 <td>boolean</td>
-<td>Present (and <code>true</code>) only on <code>_source: "user-created"</code> rows. Omitted on preset strategies and skill-bundled crons.</td>
+<td><code>true</code> on rows you created (<code>_source: "user-created"</code>). A template's own rows leave it out; on a custom build, the rows the agent came with read <code>false</code>.</td>
 </tr>
 </tbody>
 </table>
@@ -34317,7 +34333,7 @@ complete. Channels are not skills and do not affect pricing.</p>
 <p>Agent responses merge three sources into a single set of custom-skill rows:</p>
 <ol>
 <li><strong>Preset strategies</strong> (<code>_source: "preset-strategy"</code>): preferences defined by the agent preset (e.g. <code>cs-content-tone</code>, <code>cs-ad-strategy</code>). You can write <code>value</code>.</li>
-<li><strong>Bundled crons</strong> (<code>_source: "skill-bundle"</code>): scheduled tasks that come with the agent template, such as a daily performance report. A task that works with a connector stays off until that connector is connected. You can write <code>interval</code> and <code>enabled</code>, but <strong>not</strong> <code>value</code> (the template owns the task's instruction text).</li>
+<li><strong>Bundled crons</strong> (<code>_source: "skill-bundle"</code>): scheduled tasks that come with the agent template, such as a daily performance report. A task that works with connectors runs only while one of them is connected, and that never changes its <code>enabled</code>. You can write <code>interval</code> and <code>enabled</code>. A <code>value</code> you write is saved, but on a template agent the task keeps running the template's instruction text. On a custom build, the rows the agent came with, such as the tasks its Skills bring, read <code>skill-bundle</code> too and run the text you write.</li>
 <li><strong>User-created rows</strong> (<code>_source: "user-created"</code>): entries added via <code>POST /UserAgent/CustomSkillUpsert</code>. You can write all fields. Crons are flagged via <code>interval</code> (or an explicit <code>cs-cron-</code> prefix), not <code>usercreated</code>.</li>
 </ol>
 <h2 id="updating-preference-skills">Updating Preference Skills</h2>
@@ -34345,9 +34361,9 @@ complete. Channels are not skills and do not affect pricing.</p>
   }'
 </code></pre>
 <h2 id="managing-scheduled-tasks">Managing Scheduled Tasks</h2>
-<p>Scheduled tasks run on a cron schedule: bundled ones (<code>_source: "skill-bundle"</code>) come with the agent template, and one that works with connectors stays off until one of them is connected. User-created ones (<code>_source: "user-created"</code>) are added at any time.</p>
+<p>Scheduled tasks run on a cron schedule: bundled ones (<code>_source: "skill-bundle"</code>) come with the agent template, and a new agent starts with them turned on (<code>enabled: true</code>); one that works with connectors runs only while one of them is connected. User-created ones (<code>_source: "user-created"</code>) are added at any time.</p>
 <blockquote>
-<p><strong>For bundled crons, only <code>enabled</code> and <code>interval</code> are writable.</strong> The task body (<code>value</code>) comes from the agent template and is restored whenever the agent restarts. To change <strong>what</strong> a bundled scheduled task does, edit the paired preference skill (e.g. <code>content-tone</code> is read by <code>cs-cron-social-content-scanner</code> at runtime). For user-created crons, all three (<code>value</code>, <code>interval</code>, <code>enabled</code>) are writable.</p>
+<p><strong>On a template agent, bundled crons run the template's text.</strong> Write <code>enabled</code> and <code>interval</code>: a <code>value</code> you send is saved and shown on <code>UserAgent/Detail</code>, but the agent keeps running the task body (<code>value</code>) the template has. To change <strong>what</strong> a bundled scheduled task does, edit the paired preference skill (e.g. <code>content-tone</code> is read by <code>cs-cron-social-content-scanner</code> at runtime). For user-created crons, and for every cron of a custom build, all three (<code>value</code>, <code>interval</code>, <code>enabled</code>) take effect.</p>
 </blockquote>
 <h3 id="example-change-a-bundled-crons-frequency">Example: Change a bundled cron's frequency</h3>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
@@ -34393,7 +34409,13 @@ complete. Channels are not skills and do not affect pricing.</p>
     &quot;skillkey&quot;: &quot;cs-cron-weekly-health-check&quot;
   }'
 </code></pre>
-<p>Preset-owned crons cannot be deleted: the call returns <code>This skill belongs to the agent preset and cannot be deleted. Use enabled=false to disable it instead.</code> with <code>suggestion: "disable-via-upsert"</code>. Disable them via <code>CustomSkillUpsert</code> + <code>enabled: false</code>.</p>
+<p>A task or preference the agent came with, from its template or, on a custom build, from a Skill or from Wiro (such as Approval Policy), can't be deleted: the call answers <code>customskill-registry-not-deletable</code> (<code>customskill-preset-not-deletable</code> for one you created whose key the template also has) with <code>suggestion: "disable-via-upsert"</code>, and nothing changes. Disable it via <code>CustomSkillUpsert</code> + <code>enabled: false</code> instead.</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: false,
+  &quot;errors&quot;: [{ &quot;code&quot;: 0, &quot;message&quot;: &quot;customskill-registry-not-deletable&quot; }],
+  &quot;suggestion&quot;: &quot;disable-via-upsert&quot;
+}
+</code></pre>
 <h3 id="example-rename-a-user-created-custom-skill">Example: Rename a user-created custom skill</h3>
 <p>Only user-created rows (<code>_source: "user-created"</code>) can be renamed through <code>CustomSkillRename</code>. The skillkey flavour is preserved: a <code>cs-cron-*</code> scheduled task cannot be renamed to a <code>cs-*</code> strategy (delete + re-create with the right kind instead). The full version-history chain follows the rename under the new key, and a <code>rename</code> audit event is appended.</p>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillRename&quot; \
@@ -34451,7 +34473,7 @@ complete. Channels are not skills and do not affect pricing.</p>
 </div>
 </div>
 <h2 id="version-history-audit-and-revert">Version History: Audit and Revert</h2>
-<p>Every write through <code>CustomSkillUpsert</code> appends a row to the version history. Read it via <code>POST /UserAgent/CustomSkillHistory</code>; revert to any version (or to the preset default) via <code>POST /UserAgent/CustomSkillRevert</code>.</p>
+<p>Each change saved with <code>CustomSkillUpsert</code>, each rename and each revert adds a row to the version history. Creating a skill and a save that changes nothing add none, and <code>CustomSkillDelete</code> deletes a skill's history with it. Each entry's <code>operation</code> says what wrote it: <code>clone-deploy</code> (the copy Deploy made of a template's or a Skill's row), <code>update-user</code> (a save), <code>rename</code>, <code>reset-to-preset</code> or <code>revert-to-history</code>, or <code>update-cascade</code>, <code>insert-cascade</code> and <code>delete-cascade</code> for a template update Wiro applied. Read it via <code>POST /UserAgent/CustomSkillHistory</code>; revert to any version (or to the preset default) via <code>POST /UserAgent/CustomSkillRevert</code>.</p>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillHistory&quot; \
   -H &quot;Content-Type: application/json&quot; \
   -H &quot;x-api-key: YOUR_API_KEY&quot; \
@@ -34474,7 +34496,7 @@ complete. Channels are not skills and do not affect pricing.</p>
       &quot;guid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
       &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
       &quot;skillkey&quot;: &quot;cs-content-tone&quot;,
-      &quot;operation&quot;: &quot;upsert&quot;,
+      &quot;operation&quot;: &quot;update-user&quot;,
       &quot;value&quot;: &quot;## Brand Voice\nTone: professional...&quot;,
       &quot;intervalexpr&quot;: null,
       &quot;enabled&quot;: true,
@@ -34502,7 +34524,7 @@ complete. Channels are not skills and do not affect pricing.</p>
       &quot;guid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;,
       &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
       &quot;skillkey&quot;: &quot;cs-content-tone&quot;,
-      &quot;operation&quot;: &quot;upsert&quot;,
+      &quot;operation&quot;: &quot;update-user&quot;,
       &quot;value&quot;: &quot;## Brand Voice\nTone: friendly...&quot;,
       &quot;intervalexpr&quot;: null,
       &quot;enabled&quot;: true,
@@ -34589,7 +34611,7 @@ complete. Channels are not skills and do not affect pricing.</p>
 <p><code>idempotencyKey</code> is required: use a UUID per "user clicks Save" event. A Skill whose <code>depends_on</code> would stay off is refused with code <code>101</code> and <code>deps[]</code>, and nothing changes: send its dependencies in the same call. The full response shape and error-code table live on <a href="/docs/agent-overview#post-useragentskillsapply"><code>SkillsApply</code></a>.</p>
 <blockquote>
 <p><strong>Template deploys too.</strong> <code>SkillsApply</code> works on agents deployed from a marketplace template as well as on custom builds. On a template agent, a skill you change overrides the template for that skill only; later template updates still reach every skill you never changed.</p>
-<p><strong>Scheduled tasks follow their connectors.</strong> A template's scheduled task that works with a connector, such as a daily Google Ads report, stays off while that connector isn't connected, and turns on when it is. You don't need to touch it on its own.</p>
+<p><strong>Scheduled tasks wait for their connectors.</strong> A template's scheduled task that works with a connector, such as a daily Google Ads report, runs only while that connector is connected. Connecting or disconnecting a connector never changes the task's <code>enabled</code>: a new agent starts with its template's tasks turned on, and a task that is off stays off until you turn it on with <code>CustomSkillUpsert</code> (<code>enabled: true</code>).</p>
 </blockquote>
 <h2 id="preview-a-skill-change">Preview a Skill Change</h2>
 <p>Before you commit <code>SkillsApply</code> (or the user clicks Save in your UI), call <code>POST /UserAgent/PricingPreview</code> to see the skill set the change would leave, with its <code>depends_on</code> resolved. No state is mutated, and the price and included AI usage stay the plan's: its <code>planChange</code> shows no charge. Its <code>enabledSkills</code> includes the <code>depends_on</code> skills, but <code>SkillsApply</code> does not add them: send every name <code>enabledSkills</code> adds in the same <code>SkillsApply</code> call. See <a href="/docs/agent-overview#post-useragentpricingpreview"><code>PricingPreview</code></a> for the full response shape.</p>
@@ -34639,7 +34661,7 @@ complete. Channels are not skills and do not affect pricing.</p>
   &quot;scheduledskills&quot;: [
     {
       &quot;key&quot;: &quot;cs-cron-push-scanner&quot;,
-      &quot;value&quot;: &quot;&quot;,
+      &quot;value&quot;: &quot;Scan for upcoming holidays and craft push notification suggestions.\n\n0. Read the cs-push-preferences skill first...&quot;,
       &quot;description&quot;: &quot;Scan holidays and craft push notification suggestions&quot;,
       &quot;enabled&quot;: true,
       &quot;interval&quot;: &quot;0 9 * * *&quot;,
@@ -34648,7 +34670,7 @@ complete. Channels are not skills and do not affect pricing.</p>
     },
     {
       &quot;key&quot;: &quot;cs-cron-push-dispatcher&quot;,
-      &quot;value&quot;: &quot;&quot;,
+      &quot;value&quot;: &quot;Send queued push notifications that are due.\n\n0. Read the cs-push-preferences skill first...&quot;,
       &quot;description&quot;: &quot;Send queued push notifications on schedule&quot;,
       &quot;enabled&quot;: true,
       &quot;interval&quot;: &quot;0 * * * *&quot;,
@@ -34691,7 +34713,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <h2 id="available-skills-by-agent">Available Skills by Agent</h2>
 <blockquote>
 <p><strong>Connectors:</strong> the services these agents work with (Google Ads, Meta Ads, WordPress, Brevo and the rest) are connectors, each connected with your own credentials. See <a href="/docs/agent-connectors">Agent Connectors</a>, and each connector's page at <code>https://wiro.ai/connectors/{slug}</code>.</p>
-<p><strong>Discovery is canonical.</strong> Skill keys evolve as agent templates are updated. To see the exact keys for a specific agent instance, always fetch <code>POST /UserAgent/Detail</code> first. The top-level <code>customskills</code> / <code>scheduledskills</code> arrays are the source of truth. The tables below reflect current intended keys; <code>CustomSkillUpsert</code> silently accepts keys that exist on the instance and returns <code>skill-not-found</code> for unknown keys without altering other state.</p>
+<p><strong>Discovery is canonical.</strong> Skill keys evolve as agent templates are updated. To see the exact keys for a specific agent instance, always fetch <code>POST /UserAgent/Detail</code> first. The top-level <code>customskills</code> / <code>scheduledskills</code> arrays are the source of truth. The tables below reflect current intended keys; <code>CustomSkillUpsert</code> with a key the agent doesn't have creates a user-created row: a scheduled task when you send <code>interval</code> (or a <code>cs-cron-</code> key), else a preference.</p>
 </blockquote>
 <h3 id="preferences-editable-instructions">Preferences (Editable Instructions)</h3>
 <div class="docs-param-table">
@@ -34784,13 +34806,13 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <td>Social Manager</td>
 <td><code>cs-cron-social-content-scanner</code></td>
 <td><code>0 */4 * * *</code></td>
-<td>Content discovery and draft posts with rotating strategies (reads <code>content-tone</code>; disabled by default)</td>
+<td>Content discovery and draft posts with rotating strategies (reads <code>content-tone</code>)</td>
 </tr>
 <tr>
 <td>Social Manager</td>
 <td><code>cs-cron-social-drive-scanner</code></td>
 <td><code>0 10 * * *</code></td>
-<td>Scans Google Drive for new post assets and prepares posts (disabled by default)</td>
+<td>Scans Google Drive for new post assets and prepares posts</td>
 </tr>
 <tr>
 <td>Blog Content Editor</td>
@@ -34802,19 +34824,19 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <td>Blog Content Editor</td>
 <td><code>cs-cron-blog-gmail-checker</code></td>
 <td><code>*/30 * * * *</code></td>
-<td>Checks the inbox for topic requests and writing instructions (disabled by default)</td>
+<td>Checks the inbox for topic requests and writing instructions</td>
 </tr>
 <tr>
 <td>App Review Support</td>
 <td><code>cs-cron-review-scanner</code></td>
 <td><code>0 */2 * * *</code></td>
-<td>Scans App Store and Google Play for new reviews and prepares replies (reads <code>review-preferences</code>; disabled by default)</td>
+<td>Scans App Store and Google Play for new reviews and prepares replies (reads <code>review-preferences</code>)</td>
 </tr>
 <tr>
 <td>App Event Manager</td>
 <td><code>cs-cron-app-event-scanner</code></td>
 <td><code>0 9 * * 1</code></td>
-<td>Scans global holidays and suggests App Store in-app events (reads <code>event-preferences</code>; disabled by default)</td>
+<td>Scans global holidays and suggests App Store in-app events (reads <code>event-preferences</code>)</td>
 </tr>
 <tr>
 <td>Push Notification Manager</td>
@@ -34832,31 +34854,31 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <td>Newsletter Manager</td>
 <td><code>cs-cron-newsletter-sender</code></td>
 <td><code>0 9 * * 1</code></td>
-<td>Newsletter drafting and sending (reads <code>newsletter-strategy</code>; disabled by default)</td>
+<td>Newsletter drafting and sending (reads <code>newsletter-strategy</code>)</td>
 </tr>
 <tr>
 <td>Newsletter Manager</td>
 <td><code>cs-cron-newsletter-subscriber-scanner</code></td>
 <td><code>0 10 * * *</code></td>
-<td>Daily subscriber list health check and bounce monitoring (disabled by default)</td>
+<td>Daily subscriber list health check and bounce monitoring</td>
 </tr>
 <tr>
 <td>Lead Generation Manager</td>
 <td><code>cs-cron-lead-prospect-scanner</code></td>
 <td><code>0 10 * * 1</code></td>
-<td>Weekly prospect search, enrichment and scoring (reads <code>lead-strategy</code>; disabled by default)</td>
+<td>Weekly prospect search, enrichment and scoring (reads <code>lead-strategy</code>)</td>
 </tr>
 <tr>
 <td>Lead Generation Manager</td>
 <td><code>cs-cron-lead-outreach-reporter</code></td>
 <td><code>0 9 * * *</code></td>
-<td>Daily outreach performance report (disabled by default)</td>
+<td>Daily outreach performance report</td>
 </tr>
 <tr>
 <td>Lead Generation Manager</td>
 <td><code>cs-cron-lead-reply-handler</code></td>
 <td><code>0 */4 * * *</code></td>
-<td>Checks new replies, analyzes sentiment and proposes responses (disabled by default)</td>
+<td>Checks new replies, analyzes sentiment and proposes responses</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
@@ -34886,37 +34908,37 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <td>Google Ads Manager</td>
 <td><code>cs-cron-googleads-audience-refresher</code></td>
 <td><code>0 7 * * *</code></td>
-<td>Daily Customer Match refresh from a connected CRM (HubSpot, Apollo, Lemlist) or a Google Drive CSV (disabled by default)</td>
+<td>Daily Customer Match refresh from a connected CRM (HubSpot, Apollo, lemlist) or a Google Drive CSV</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
 <td><code>cs-cron-googleads-drive-scanner</code></td>
 <td><code>0 10 * * *</code></td>
-<td>Scans Google Drive for new creative folders and proposes campaigns (disabled by default)</td>
+<td>Scans Google Drive for new creative folders and proposes campaigns</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
 <td><code>cs-cron-merchant-center-scanner</code></td>
 <td><code>30 8 * * *</code></td>
-<td>Daily Merchant Center product feed health check (runs only when Merchant Center is connected; disabled by default)</td>
+<td>Daily Merchant Center product feed health check (runs only when Merchant Center is connected)</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
 <td><code>cs-cron-ga4-attribution-auditor</code></td>
 <td><code>0 11 * * 1</code></td>
-<td>Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default)</td>
+<td>Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected)</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
 <td><code>cs-cron-adjust-creative-roas-reporter</code></td>
 <td><code>0 10 * * *</code></td>
-<td>Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default)</td>
+<td>Daily Adjust creative-level ROAS report with scale/pause recommendations</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
 <td><code>cs-cron-roasit-creative-roas-reporter</code></td>
 <td><code>30 10 * * *</code></td>
-<td>Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default)</td>
+<td>Daily Roasit creative-level ROAS report with scale/pause recommendations</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
@@ -34952,19 +34974,19 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <td>Meta Ads Manager</td>
 <td><code>cs-cron-ga4-attribution-auditor</code></td>
 <td><code>0 11 * * 1</code></td>
-<td>Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default)</td>
+<td>Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected)</td>
 </tr>
 <tr>
 <td>Meta Ads Manager</td>
 <td><code>cs-cron-adjust-creative-roas-reporter</code></td>
 <td><code>0 10 * * *</code></td>
-<td>Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default)</td>
+<td>Daily Adjust creative-level ROAS report with scale/pause recommendations</td>
 </tr>
 <tr>
 <td>Meta Ads Manager</td>
 <td><code>cs-cron-roasit-creative-roas-reporter</code></td>
 <td><code>30 10 * * *</code></td>
-<td>Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default)</td>
+<td>Daily Roasit creative-level ROAS report with scale/pause recommendations</td>
 </tr>
 <tr>
 <td>Meta Ads Manager</td>
@@ -34976,7 +34998,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <td>TikTok Ads Manager</td>
 <td><code>cs-cron-tiktokads-performance-reporter</code></td>
 <td><code>0 9 * * *</code></td>
-<td>Performance reporting per advertiser, plus the 30-day reconnect reminder (reads <code>ad-strategy</code>)</td>
+<td>Performance reporting per advertiser (reads <code>ad-strategy</code>); when the TikTok sign-in has expired it stops and says TikTok Ads needs reconnecting</td>
 </tr>
 <tr>
 <td>TikTok Ads Manager</td>
@@ -35000,19 +35022,19 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <td>TikTok Ads Manager</td>
 <td><code>cs-cron-ga4-attribution-auditor</code></td>
 <td><code>0 11 * * 1</code></td>
-<td>Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default)</td>
+<td>Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected)</td>
 </tr>
 <tr>
 <td>TikTok Ads Manager</td>
 <td><code>cs-cron-adjust-creative-roas-reporter</code></td>
 <td><code>0 10 * * *</code></td>
-<td>Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default)</td>
+<td>Daily Adjust creative-level ROAS report with scale/pause recommendations</td>
 </tr>
 <tr>
 <td>TikTok Ads Manager</td>
 <td><code>cs-cron-roasit-creative-roas-reporter</code></td>
 <td><code>30 10 * * *</code></td>
-<td>Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default)</td>
+<td>Daily Roasit creative-level ROAS report with scale/pause recommendations</td>
 </tr>
 <tr>
 <td>TikTok Ads Manager</td>
@@ -35035,7 +35057,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <ol>
 <li><code>POST /UserAgent/CustomSkillUpsert</code> writes your preference <code>value</code> for key <code>content-tone</code> (stored as <code>cs-content-tone</code>).</li>
 <li>When the agent starts, each <code>customskills</code> / <code>scheduledskills</code> row becomes a skill named by its key: a preference skill with key <code>cs-content-tone</code> becomes the skill <code>cs-content-tone</code>, and a scheduled task with key <code>cs-cron-social-content-scanner</code> becomes <code>cs-cron-social-content-scanner</code>.</li>
-<li>The scheduled task's <code>value</code> (shipped with the agent template, not user-editable) references its paired preference by its skill name, <code>cs-&lt;preference-key&gt;</code>, for example: <code>0. Read the cs-content-tone skill first and follow all its rules. 1. ...</code></li>
+<li>The scheduled task's <code>value</code> (on a template agent, always the template's text) references its paired preference by its skill name, <code>cs-&lt;preference-key&gt;</code>, for example: <code>0. Read the cs-content-tone skill first and follow all its rules. 1. ...</code></li>
 <li>At each cron tick, the agent LLM reads <code>cs-content-tone</code>, applies your instructions, then executes the scan/report/dispatch workflow.</li>
 </ol>
 <blockquote>
@@ -35044,7 +35066,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <p>This means <strong>your editable preference becomes the single place to customize agent behavior</strong> (brand voice, target audience, content sources, holiday markets, etc.), and the bundled scheduled task is a thin orchestration layer that defers to your preference.</p>
 <h3 id="using-connectors-in-skills">Using Connectors in Skills</h3>
 <p>A connected connector gives the agent its tools, named <code>&lt;slug&gt;__&lt;tool&gt;</code>, such as <code>serper__web_search</code> or <code>bluesky__create_post</code>. A template's scheduled tasks call them by these names, and your own custom skills can too: tell the agent which tools to use and when, for example "Research the topic with <code>serper__web_search</code> before you write." See <a href="/docs/agent-connectors#what-the-agent-gets">What the Agent Gets</a>.</p>
-<p>A template's scheduled task that needs a connector stays off until that connector is connected, so connect the ones a template works with after you deploy it, with <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>POST /UserAgent/ConnectorConnect</code></a>. The template's <code>suggestedconnectors</code> on <a href="/docs/agent-overview#post-agentdetail"><code>POST /Agent/Detail</code></a> lists them by slug; nothing connects by itself.</p>
+<p>A template's scheduled task that needs a connector runs only while that connector is connected, so connect the ones a template works with after you deploy it, with <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>POST /UserAgent/ConnectorConnect</code></a>. The template's <code>suggestedconnectors</code> on <a href="/docs/agent-overview#post-agentdetail"><code>POST /Agent/Detail</code></a> lists them by slug; nothing connects by itself.</p>
 <p>Agents can optionally forward operator notifications to a Telegram bot via the <code>telegram</code> credential (see <a href="/docs/integration-telegram-skills">Telegram Channel</a>). This is never required; every agent remains fully usable over web chat and the <a href="/docs/agent-messaging">Messaging API</a> without a bot configured.</p>
 <h3 id="utility-skills">Utility Skills</h3>
 <p><code>util-*</code> skills need no outside account. Most are rule sets that come with an agent template. These three can be added to any agent with <a href="#turning-skills-on-and-off"><code>SkillsApply</code></a>, on any plan and at no charge:</p>
@@ -35115,7 +35137,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <td>Write <code>value</code></td>
 <td><code>CustomSkillUpsert</code></td>
 <td>Yes</td>
-<td><strong>No: silently dropped</strong> (skill owns the cron body)</td>
+<td>Saved and shown, but a template agent runs the template's text (a custom build runs yours)</td>
 <td>Yes</td>
 </tr>
 <tr>
@@ -35164,7 +35186,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <td>Read history</td>
 <td><code>CustomSkillHistory</code></td>
 <td>Yes</td>
-<td>Yes (only <code>enabled</code> / <code>interval</code> writes show up)</td>
+<td>Yes</td>
 <td>Yes (post-rename, the chain is migrated under the new key; a <code>rename</code> event marks the transition)</td>
 </tr>
 <tr>
@@ -35187,7 +35209,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 </div>
 <ul>
 <li>Send only the fields you want to change. Omitted fields keep their current values.</li>
-<li>Unknown skill keys return <code>skill-not-found</code> in the <code>errors[]</code> without altering other state.</li>
+<li>A key the agent doesn't have creates a user-created row: a scheduled task when you send <code>interval</code> (or a <code>cs-cron-</code> key), else a preference.</li>
 <li>To clear a cron schedule, call <code>CustomSkillUpsert</code> with <code>enabled: false</code>. Setting <code>interval: ""</code> or <code>null</code> also clears it.</li>
 <li>A schedule must be one the agent can run, written as five fields, <code>minute hour day month weekday</code>, such as <code>0 9 * * 1-5</code>. A schedule the agent can't run, or one whose date never comes, such as 30 February, is refused and nothing is saved. The error says what is wrong and what to write, for example <code>This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.</code></li>
 <li>Skill toggles (top-level <code>skills[]</code>) are a separate endpoint (see <a href="#turning-skills-on-and-off">Turning Skills On and Off</a> and <a href="/docs/agent-overview#post-useragentskillsapply"><code>SkillsApply</code></a>).</li>

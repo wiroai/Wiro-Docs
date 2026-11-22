@@ -267,6 +267,8 @@ Once you've deployed a useragent, its current custom skills live under `customsk
       "value": "## Brand Voice\nTone: friendly, casual, never salesy.\nTarget Audience: indie devs and side-project builders.\n\n## Hashtag Strategy\nMax 3 per post. Always include #BuildInPublic and #Indie.\n\n## Platform Rules\n- Instagram: square images only, carousels for tutorials.\n- Twitter: thread format for posts longer than 200 chars.",
       "enabled": true,
       "interval": null,
+      "requires_credentials": [],
+      "requires_connectors": [],
       "_source": "preset-strategy",
       "_editable": true,
       "_edited": true
@@ -279,6 +281,8 @@ Once you've deployed a useragent, its current custom skills live under `customsk
       "value": "Scan the configured RSS / sitemap sources, dedupe against last 14 days, and queue up to 3 fresh items into the post pipeline.",
       "enabled": true,
       "interval": "0 */4 * * *",
+      "requires_credentials": [],
+      "requires_connectors": ["facebook-pages", "instagram", "linkedin", "tiktok", "twitter"],
       "_source": "skill-bundle",
       "_editable": true,
       "_edited": false
@@ -289,6 +293,8 @@ Once you've deployed a useragent, its current custom skills live under `customsk
       "value": "Every Monday at 09:00 UTC, summarize last week's published posts (titles + engagement) and post the recap to Telegram.",
       "enabled": true,
       "interval": "0 9 * * 1",
+      "requires_credentials": [],
+      "requires_connectors": [],
       "_source": "user-created",
       "_editable": true,
       "_edited": false,
@@ -307,20 +313,22 @@ Once you've deployed a useragent, its current custom skills live under `customsk
 | Field | Type | Description |
 |-------|------|-------------|
 | `key` | string | Canonical key. **Always carries the `cs-` runtime prefix.** Strategies are `cs-<slug>`; crons are `cs-cron-<slug>`. The server normalises bare slugs you send to `CustomSkillUpsert`: `"content-tone"` becomes `cs-content-tone`, `"weekly-health-check"` with `interval: "0 9 * * 1"` becomes `cs-cron-weekly-health-check`. |
-| `value` | string | Skill instructions / cron prompt body. Populated only for editable preference skills and user-created entries; bundled crons have it empty. |
+| `value` | string | The text of the preference or task: the one you wrote, or else the template's. |
 | `description` | string | Human-readable description. **Writable only on user-created rows.** Sending a *different* `description` for a preset strategy or a skill-bundled cron is rejected with `customskill-preset-description-not-editable`; sending the current one back unchanged is ignored. |
 | `enabled` | boolean | Whether the skill is active. **Writable for both strategies (`cs-*`) and crons (`cs-cron-*`)**. A disabled strategy is suppressed end-to-end (kept in the merged `customskills[]` so it still appears in the list, but the agent never loads it). |
 | `interval` | string \| null | Cron expression for scheduled execution, or `null` for preference skills. Writable on scheduled tasks; ignored on preferences. |
-| `_source` | string | `preset-strategy` (editable preference), `skill-bundle` (a scheduled task that comes with the agent template), or `user-created` (cron added via `CustomSkillUpsert`). |
-| `_editable` | boolean | Convenience flag: `true` for preset strategies and user-created rows (you can write `value`), `false` for template scheduled tasks (you can only write `enabled` / `interval`). |
-| `_user_created` | boolean | Present (and `true`) only on `_source: "user-created"` rows. Omitted on preset strategies and skill-bundled crons. |
+| `requires_connectors` | string[] | Scheduled tasks only (`[]` on preferences): the connectors the task works with, by catalog slug. The task runs only while at least one of them is connected, that is, its row on [`POST /UserAgent/ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist) has `status: "connected"` and `catalogstatus: "active"`; until then the agent skips every run. This gate never changes `enabled`: a task waiting for a connector can still read `enabled: true`. `[]` means no connector gate; a task you add with `CustomSkillUpsert` has `[]`. |
+| `requires_credentials` | string[] | The channels and settings the task needs, by credential key, such as `telegram`: one of them set up is enough. Saving or clearing one of them turns the task on or off. Usually `[]`. |
+| `_source` | string | `preset-strategy` (editable preference), `skill-bundle` (a scheduled task that comes with the agent template; on a custom build, any row the agent came with, such as Approval Policy), or `user-created` (a row added via `CustomSkillUpsert`). |
+| `_editable` | boolean | `true` for preferences, your own rows and the scheduled tasks the template marks editable, `false` for its other scheduled tasks. On a template agent, every scheduled task that came with the template runs the template's text, whatever `value` you write; a custom build runs the text you write. |
+| `_user_created` | boolean | `true` on rows you created (`_source: "user-created"`). A template's own rows leave it out; on a custom build, the rows the agent came with read `false`. |
 
 ### Understanding `_source`
 
 Agent responses merge three sources into a single set of custom-skill rows:
 
 1. **Preset strategies** (`_source: "preset-strategy"`): preferences defined by the agent preset (e.g. `cs-content-tone`, `cs-ad-strategy`). You can write `value`.
-2. **Bundled crons** (`_source: "skill-bundle"`): scheduled tasks that come with the agent template, such as a daily performance report. A task that works with a connector stays off until that connector is connected. You can write `interval` and `enabled`, but **not** `value` (the template owns the task's instruction text).
+2. **Bundled crons** (`_source: "skill-bundle"`): scheduled tasks that come with the agent template, such as a daily performance report. A task that works with connectors runs only while one of them is connected, and that never changes its `enabled`. You can write `interval` and `enabled`. A `value` you write is saved, but on a template agent the task keeps running the template's instruction text. On a custom build, the rows the agent came with, such as the tasks its Skills bring, read `skill-bundle` too and run the text you write.
 3. **User-created rows** (`_source: "user-created"`): entries added via `POST /UserAgent/CustomSkillUpsert`. You can write all fields. Crons are flagged via `interval` (or an explicit `cs-cron-` prefix), not `usercreated`.
 
 ## Updating Preference Skills
@@ -359,9 +367,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
 
 ## Managing Scheduled Tasks
 
-Scheduled tasks run on a cron schedule: bundled ones (`_source: "skill-bundle"`) come with the agent template, and one that works with connectors stays off until one of them is connected. User-created ones (`_source: "user-created"`) are added at any time.
+Scheduled tasks run on a cron schedule: bundled ones (`_source: "skill-bundle"`) come with the agent template, and a new agent starts with them turned on (`enabled: true`); one that works with connectors runs only while one of them is connected. User-created ones (`_source: "user-created"`) are added at any time.
 
-> **For bundled crons, only `enabled` and `interval` are writable.** The task body (`value`) comes from the agent template and is restored whenever the agent restarts. To change **what** a bundled scheduled task does, edit the paired preference skill (e.g. `content-tone` is read by `cs-cron-social-content-scanner` at runtime). For user-created crons, all three (`value`, `interval`, `enabled`) are writable.
+> **On a template agent, bundled crons run the template's text.** Write `enabled` and `interval`: a `value` you send is saved and shown on `UserAgent/Detail`, but the agent keeps running the task body (`value`) the template has. To change **what** a bundled scheduled task does, edit the paired preference skill (e.g. `content-tone` is read by `cs-cron-social-content-scanner` at runtime). For user-created crons, and for every cron of a custom build, all three (`value`, `interval`, `enabled`) take effect.
 
 ### Example: Change a bundled cron's frequency
 
@@ -420,7 +428,15 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillDelete" \
   }'
 ```
 
-Preset-owned crons cannot be deleted: the call returns `This skill belongs to the agent preset and cannot be deleted. Use enabled=false to disable it instead.` with `suggestion: "disable-via-upsert"`. Disable them via `CustomSkillUpsert` + `enabled: false`.
+A task or preference the agent came with, from its template or, on a custom build, from a Skill or from Wiro (such as Approval Policy), can't be deleted: the call answers `customskill-registry-not-deletable` (`customskill-preset-not-deletable` for one you created whose key the template also has) with `suggestion: "disable-via-upsert"`, and nothing changes. Disable it via `CustomSkillUpsert` + `enabled: false` instead.
+
+```json
+{
+  "result": false,
+  "errors": [{ "code": 0, "message": "customskill-registry-not-deletable" }],
+  "suggestion": "disable-via-upsert"
+}
+```
 
 ### Example: Rename a user-created custom skill
 
@@ -454,7 +470,7 @@ Successful responses include the canonical `newskillkey` the server ended up wri
 
 ## Version History: Audit and Revert
 
-Every write through `CustomSkillUpsert` appends a row to the version history. Read it via `POST /UserAgent/CustomSkillHistory`; revert to any version (or to the preset default) via `POST /UserAgent/CustomSkillRevert`.
+Each change saved with `CustomSkillUpsert`, each rename and each revert adds a row to the version history. Creating a skill and a save that changes nothing add none, and `CustomSkillDelete` deletes a skill's history with it. Each entry's `operation` says what wrote it: `clone-deploy` (the copy Deploy made of a template's or a Skill's row), `update-user` (a save), `rename`, `reset-to-preset` or `revert-to-history`, or `update-cascade`, `insert-cascade` and `delete-cascade` for a template update Wiro applied. Read it via `POST /UserAgent/CustomSkillHistory`; revert to any version (or to the preset default) via `POST /UserAgent/CustomSkillRevert`.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillHistory" \
@@ -481,7 +497,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillHistory" \
       "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
       "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
       "skillkey": "cs-content-tone",
-      "operation": "upsert",
+      "operation": "update-user",
       "value": "## Brand Voice\nTone: professional...",
       "intervalexpr": null,
       "enabled": true,
@@ -509,7 +525,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillHistory" \
       "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
       "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
       "skillkey": "cs-content-tone",
-      "operation": "upsert",
+      "operation": "update-user",
       "value": "## Brand Voice\nTone: friendly...",
       "intervalexpr": null,
       "enabled": true,
@@ -614,7 +630,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
 
 > **Template deploys too.** `SkillsApply` works on agents deployed from a marketplace template as well as on custom builds. On a template agent, a skill you change overrides the template for that skill only; later template updates still reach every skill you never changed.
 
-> **Scheduled tasks follow their connectors.** A template's scheduled task that works with a connector, such as a daily Google Ads report, stays off while that connector isn't connected, and turns on when it is. You don't need to touch it on its own.
+> **Scheduled tasks wait for their connectors.** A template's scheduled task that works with a connector, such as a daily Google Ads report, runs only while that connector is connected. Connecting or disconnecting a connector never changes the task's `enabled`: a new agent starts with its template's tasks turned on, and a task that is off stays off until you turn it on with `CustomSkillUpsert` (`enabled: true`).
 
 ## Preview a Skill Change
 
@@ -679,7 +695,7 @@ Response excerpt (top-level `customskills` and `scheduledskills`):
   "scheduledskills": [
     {
       "key": "cs-cron-push-scanner",
-      "value": "",
+      "value": "Scan for upcoming holidays and craft push notification suggestions.\n\n0. Read the cs-push-preferences skill first...",
       "description": "Scan holidays and craft push notification suggestions",
       "enabled": true,
       "interval": "0 9 * * *",
@@ -688,7 +704,7 @@ Response excerpt (top-level `customskills` and `scheduledskills`):
     },
     {
       "key": "cs-cron-push-dispatcher",
-      "value": "",
+      "value": "Send queued push notifications that are due.\n\n0. Read the cs-push-preferences skill first...",
       "description": "Send queued push notifications on schedule",
       "enabled": true,
       "interval": "0 * * * *",
@@ -737,7 +753,7 @@ All three requests succeed independently. The agent restarts once: the server co
 
 > **Connectors:** the services these agents work with (Google Ads, Meta Ads, WordPress, Brevo and the rest) are connectors, each connected with your own credentials. See [Agent Connectors](/docs/agent-connectors), and each connector's page at `https://wiro.ai/connectors/{slug}`.
 
-> **Discovery is canonical.** Skill keys evolve as agent templates are updated. To see the exact keys for a specific agent instance, always fetch `POST /UserAgent/Detail` first. The top-level `customskills` / `scheduledskills` arrays are the source of truth. The tables below reflect current intended keys; `CustomSkillUpsert` silently accepts keys that exist on the instance and returns `skill-not-found` for unknown keys without altering other state.
+> **Discovery is canonical.** Skill keys evolve as agent templates are updated. To see the exact keys for a specific agent instance, always fetch `POST /UserAgent/Detail` first. The top-level `customskills` / `scheduledskills` arrays are the source of truth. The tables below reflect current intended keys; `CustomSkillUpsert` with a key the agent doesn't have creates a user-created row: a scheduled task when you send `interval` (or a `cs-cron-` key), else a preference.
 
 ### Preferences (Editable Instructions)
 
@@ -761,45 +777,45 @@ All three requests succeed independently. The agent restarts once: the server co
 
 | Agent | Skill Key | Cron | What It Does |
 |-------|-----------|------|--------------|
-| Social Manager | `cs-cron-social-content-scanner` | `0 */4 * * *` | Content discovery and draft posts with rotating strategies (reads `content-tone`; disabled by default) |
-| Social Manager | `cs-cron-social-drive-scanner` | `0 10 * * *` | Scans Google Drive for new post assets and prepares posts (disabled by default) |
+| Social Manager | `cs-cron-social-content-scanner` | `0 */4 * * *` | Content discovery and draft posts with rotating strategies (reads `content-tone`) |
+| Social Manager | `cs-cron-social-drive-scanner` | `0 10 * * *` | Scans Google Drive for new post assets and prepares posts |
 | Blog Content Editor | `cs-cron-blog-scanner` | `0 9 * * *` | Topic discovery and article drafting (reads `content-strategy`) |
-| Blog Content Editor | `cs-cron-blog-gmail-checker` | `*/30 * * * *` | Checks the inbox for topic requests and writing instructions (disabled by default) |
-| App Review Support | `cs-cron-review-scanner` | `0 */2 * * *` | Scans App Store and Google Play for new reviews and prepares replies (reads `review-preferences`; disabled by default) |
-| App Event Manager | `cs-cron-app-event-scanner` | `0 9 * * 1` | Scans global holidays and suggests App Store in-app events (reads `event-preferences`; disabled by default) |
+| Blog Content Editor | `cs-cron-blog-gmail-checker` | `*/30 * * * *` | Checks the inbox for topic requests and writing instructions |
+| App Review Support | `cs-cron-review-scanner` | `0 */2 * * *` | Scans App Store and Google Play for new reviews and prepares replies (reads `review-preferences`) |
+| App Event Manager | `cs-cron-app-event-scanner` | `0 9 * * 1` | Scans global holidays and suggests App Store in-app events (reads `event-preferences`) |
 | Push Notification Manager | `cs-cron-push-scanner` | `0 9 * * *` | Scans holidays and prepares push notification suggestions (reads `push-preferences`) |
 | Push Notification Manager | `cs-cron-push-dispatcher` | `0 * * * *` | Sends queued push notifications on schedule |
-| Newsletter Manager | `cs-cron-newsletter-sender` | `0 9 * * 1` | Newsletter drafting and sending (reads `newsletter-strategy`; disabled by default) |
-| Newsletter Manager | `cs-cron-newsletter-subscriber-scanner` | `0 10 * * *` | Daily subscriber list health check and bounce monitoring (disabled by default) |
-| Lead Generation Manager | `cs-cron-lead-prospect-scanner` | `0 10 * * 1` | Weekly prospect search, enrichment and scoring (reads `lead-strategy`; disabled by default) |
-| Lead Generation Manager | `cs-cron-lead-outreach-reporter` | `0 9 * * *` | Daily outreach performance report (disabled by default) |
-| Lead Generation Manager | `cs-cron-lead-reply-handler` | `0 */4 * * *` | Checks new replies, analyzes sentiment and proposes responses (disabled by default) |
+| Newsletter Manager | `cs-cron-newsletter-sender` | `0 9 * * 1` | Newsletter drafting and sending (reads `newsletter-strategy`) |
+| Newsletter Manager | `cs-cron-newsletter-subscriber-scanner` | `0 10 * * *` | Daily subscriber list health check and bounce monitoring |
+| Lead Generation Manager | `cs-cron-lead-prospect-scanner` | `0 10 * * 1` | Weekly prospect search, enrichment and scoring (reads `lead-strategy`) |
+| Lead Generation Manager | `cs-cron-lead-outreach-reporter` | `0 9 * * *` | Daily outreach performance report |
+| Lead Generation Manager | `cs-cron-lead-reply-handler` | `0 */4 * * *` | Checks new replies, analyzes sentiment and proposes responses |
 | Google Ads Manager | `cs-cron-googleads-performance-reporter` | `0 9 * * *` | Daily performance report with recommendations (reads `ad-strategy`) |
 | Google Ads Manager | `cs-cron-googleads-recommendations-fetcher` | `0 8 * * *` | Daily Google Ads recommendations: safe items become low-risk suggestions, risky ones wait for your approval |
 | Google Ads Manager | `cs-cron-googleads-competitor-scanner` | `0 10 * * 1` | Weekly competitor analysis, keyword opportunities and account health audit |
 | Google Ads Manager | `cs-cron-googleads-holiday-planner` | `0 10 * * 3` | Upcoming holidays and seasonal campaign suggestions |
-| Google Ads Manager | `cs-cron-googleads-audience-refresher` | `0 7 * * *` | Daily Customer Match refresh from a connected CRM (HubSpot, Apollo, Lemlist) or a Google Drive CSV (disabled by default) |
-| Google Ads Manager | `cs-cron-googleads-drive-scanner` | `0 10 * * *` | Scans Google Drive for new creative folders and proposes campaigns (disabled by default) |
-| Google Ads Manager | `cs-cron-merchant-center-scanner` | `30 8 * * *` | Daily Merchant Center product feed health check (runs only when Merchant Center is connected; disabled by default) |
-| Google Ads Manager | `cs-cron-ga4-attribution-auditor` | `0 11 * * 1` | Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default) |
-| Google Ads Manager | `cs-cron-adjust-creative-roas-reporter` | `0 10 * * *` | Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default) |
-| Google Ads Manager | `cs-cron-roasit-creative-roas-reporter` | `30 10 * * *` | Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default) |
+| Google Ads Manager | `cs-cron-googleads-audience-refresher` | `0 7 * * *` | Daily Customer Match refresh from a connected CRM (HubSpot, Apollo, lemlist) or a Google Drive CSV |
+| Google Ads Manager | `cs-cron-googleads-drive-scanner` | `0 10 * * *` | Scans Google Drive for new creative folders and proposes campaigns |
+| Google Ads Manager | `cs-cron-merchant-center-scanner` | `30 8 * * *` | Daily Merchant Center product feed health check (runs only when Merchant Center is connected) |
+| Google Ads Manager | `cs-cron-ga4-attribution-auditor` | `0 11 * * 1` | Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected) |
+| Google Ads Manager | `cs-cron-adjust-creative-roas-reporter` | `0 10 * * *` | Daily Adjust creative-level ROAS report with scale/pause recommendations |
+| Google Ads Manager | `cs-cron-roasit-creative-roas-reporter` | `30 10 * * *` | Daily Roasit creative-level ROAS report with scale/pause recommendations |
 | Google Ads Manager | `cs-cron-ads-recommendation-cleanup` | `0 0 * * *` | Nightly cleanup of expired recommendations |
 | Meta Ads Manager | `cs-cron-metaads-performance-reporter` | `0 9 * * *` | Daily performance report with creative health, audience analysis and recommendations (reads `ad-strategy`) |
 | Meta Ads Manager | `cs-cron-metaads-audience-scanner` | `0 10 * * 1` | Weekly audience, creative health and account health audit |
 | Meta Ads Manager | `cs-cron-metaads-holiday-planner` | `0 10 * * 3` | Upcoming holidays and seasonal campaign suggestions |
 | Meta Ads Manager | `cs-cron-metaads-drive-scanner` | `0 10 * * *` | Scans Google Drive for new creative folders and proposes campaigns |
-| Meta Ads Manager | `cs-cron-ga4-attribution-auditor` | `0 11 * * 1` | Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default) |
-| Meta Ads Manager | `cs-cron-adjust-creative-roas-reporter` | `0 10 * * *` | Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default) |
-| Meta Ads Manager | `cs-cron-roasit-creative-roas-reporter` | `30 10 * * *` | Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default) |
+| Meta Ads Manager | `cs-cron-ga4-attribution-auditor` | `0 11 * * 1` | Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected) |
+| Meta Ads Manager | `cs-cron-adjust-creative-roas-reporter` | `0 10 * * *` | Daily Adjust creative-level ROAS report with scale/pause recommendations |
+| Meta Ads Manager | `cs-cron-roasit-creative-roas-reporter` | `30 10 * * *` | Daily Roasit creative-level ROAS report with scale/pause recommendations |
 | Meta Ads Manager | `cs-cron-ads-recommendation-cleanup` | `0 0 * * *` | Nightly cleanup of expired recommendations |
-| TikTok Ads Manager | `cs-cron-tiktokads-performance-reporter` | `0 9 * * *` | Performance reporting per advertiser, plus the 30-day reconnect reminder (reads `ad-strategy`) |
+| TikTok Ads Manager | `cs-cron-tiktokads-performance-reporter` | `0 9 * * *` | Performance reporting per advertiser (reads `ad-strategy`); when the TikTok sign-in has expired it stops and says TikTok Ads needs reconnecting |
 | TikTok Ads Manager | `cs-cron-tiktokads-audience-scanner` | `0 10 * * 1` | Weekly audience, creative health and account health audit |
 | TikTok Ads Manager | `cs-cron-tiktokads-holiday-planner` | `0 10 * * 3` | Upcoming holidays and seasonal campaign suggestions |
 | TikTok Ads Manager | `cs-cron-tiktokads-drive-scanner` | `0 10 * * *` | Scans Google Drive for new creative folders and proposes TikTok Ads campaigns (does nothing until Google Drive is connected) |
-| TikTok Ads Manager | `cs-cron-ga4-attribution-auditor` | `0 11 * * 1` | Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default) |
-| TikTok Ads Manager | `cs-cron-adjust-creative-roas-reporter` | `0 10 * * *` | Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default) |
-| TikTok Ads Manager | `cs-cron-roasit-creative-roas-reporter` | `30 10 * * *` | Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default) |
+| TikTok Ads Manager | `cs-cron-ga4-attribution-auditor` | `0 11 * * 1` | Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected) |
+| TikTok Ads Manager | `cs-cron-adjust-creative-roas-reporter` | `0 10 * * *` | Daily Adjust creative-level ROAS report with scale/pause recommendations |
+| TikTok Ads Manager | `cs-cron-roasit-creative-roas-reporter` | `30 10 * * *` | Daily Roasit creative-level ROAS report with scale/pause recommendations |
 | TikTok Ads Manager | `cs-cron-ads-recommendation-cleanup` | `0 0 * * *` | Nightly cleanup of expired recommendations |
 | Google Review Manager | `cs-cron-google-review-scanner` | `0 */2 * * *` | Scans Google Business Profile locations for new reviews and prepares replies |
 
@@ -809,7 +825,7 @@ Each scheduled task reads its paired preference skill at runtime. The mechanism:
 
 1. `POST /UserAgent/CustomSkillUpsert` writes your preference `value` for key `content-tone` (stored as `cs-content-tone`).
 2. When the agent starts, each `customskills` / `scheduledskills` row becomes a skill named by its key: a preference skill with key `cs-content-tone` becomes the skill `cs-content-tone`, and a scheduled task with key `cs-cron-social-content-scanner` becomes `cs-cron-social-content-scanner`.
-3. The scheduled task's `value` (shipped with the agent template, not user-editable) references its paired preference by its skill name, `cs-<preference-key>`, for example: `0. Read the cs-content-tone skill first and follow all its rules. 1. ...`
+3. The scheduled task's `value` (on a template agent, always the template's text) references its paired preference by its skill name, `cs-<preference-key>`, for example: `0. Read the cs-content-tone skill first and follow all its rules. 1. ...`
 4. At each cron tick, the agent LLM reads `cs-content-tone`, applies your instructions, then executes the scan/report/dispatch workflow.
 
 > **Slug normalization:** the `<slug>` in `cs-<slug>` / `cs-cron-<slug>` is the raw key lowercased with any run of non-alphanumeric characters replaced by a single `-` (leading/trailing dashes trimmed). Template keys already follow this shape so the slug matches 1:1.
@@ -820,7 +836,7 @@ This means **your editable preference becomes the single place to customize agen
 
 A connected connector gives the agent its tools, named `<slug>__<tool>`, such as `serper__web_search` or `bluesky__create_post`. A template's scheduled tasks call them by these names, and your own custom skills can too: tell the agent which tools to use and when, for example "Research the topic with `serper__web_search` before you write." See [What the Agent Gets](/docs/agent-connectors#what-the-agent-gets).
 
-A template's scheduled task that needs a connector stays off until that connector is connected, so connect the ones a template works with after you deploy it, with [`POST /UserAgent/ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect). The template's `suggestedconnectors` on [`POST /Agent/Detail`](/docs/agent-overview#post-agentdetail) lists them by slug; nothing connects by itself.
+A template's scheduled task that needs a connector runs only while that connector is connected, so connect the ones a template works with after you deploy it, with [`POST /UserAgent/ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect). The template's `suggestedconnectors` on [`POST /Agent/Detail`](/docs/agent-overview#post-agentdetail) lists them by slug; nothing connects by itself.
 
 Agents can optionally forward operator notifications to a Telegram bot via the `telegram` credential (see [Telegram Channel](/docs/integration-telegram-skills)). This is never required; every agent remains fully usable over web chat and the [Messaging API](/docs/agent-messaging) without a bot configured.
 
@@ -869,19 +885,19 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialProjectBind" \
 
 | Operation | Endpoint | Allowed on preset strategy (`_source: preset-strategy`) | Allowed on skill-bundled cron (`_source: skill-bundle`) | Allowed on user-created cron (`_source: user-created`) |
 |---|---|---|---|---|
-| Write `value` | `CustomSkillUpsert` | Yes | **No: silently dropped** (skill owns the cron body) | Yes |
+| Write `value` | `CustomSkillUpsert` | Yes | Saved and shown, but a template agent runs the template's text (a custom build runs yours) | Yes |
 | Write `interval` | `CustomSkillUpsert` | **No: silently dropped** (strategies aren't scheduled) | Yes | Yes |
 | Write `enabled` | `CustomSkillUpsert` | Yes (disabling suppresses the strategy end-to-end) | Yes | Yes |
 | Write `description` | `CustomSkillUpsert` | **No: a changed text is rejected** with `customskill-preset-description-not-editable` (the current text is ignored) | **No: a changed text is rejected** with `customskill-preset-description-not-editable` (the current text is ignored) | Yes |
 | Create | `CustomSkillUpsert` with a new key | n/a | n/a | Yes |
 | Rename key (+ optional description) | `CustomSkillRename` | **No: preset-forbidden** | **No: preset-forbidden** | Yes (flavour preserved; `cs-cron-*` ↔ `cs-*` rejected) |
 | Delete | `CustomSkillDelete` | **Rejected with `suggestion: "disable-via-upsert"`** | **Rejected with `suggestion: "disable-via-upsert"`** | Yes (hard delete: live row + full history purged) |
-| Read history | `CustomSkillHistory` | Yes | Yes (only `enabled` / `interval` writes show up) | Yes (post-rename, the chain is migrated under the new key; a `rename` event marks the transition) |
+| Read history | `CustomSkillHistory` | Yes | Yes | Yes (post-rename, the chain is migrated under the new key; a `rename` event marks the transition) |
 | Revert to preset | `CustomSkillRevert` (`source: "preset"`) | Yes | Yes (resets `interval` / `enabled` to preset defaults) | Yes (deletes the row if no preset baseline exists) |
 | Revert to a version | `CustomSkillRevert` (`source: "history"`) | Yes | Yes | Yes |
 
 - Send only the fields you want to change. Omitted fields keep their current values.
-- Unknown skill keys return `skill-not-found` in the `errors[]` without altering other state.
+- A key the agent doesn't have creates a user-created row: a scheduled task when you send `interval` (or a `cs-cron-` key), else a preference.
 - To clear a cron schedule, call `CustomSkillUpsert` with `enabled: false`. Setting `interval: ""` or `null` also clears it.
 - A schedule must be one the agent can run, written as five fields, `minute hour day month weekday`, such as `0 9 * * 1-5`. A schedule the agent can't run, or one whose date never comes, such as 30 February, is refused and nothing is saved. The error says what is wrong and what to write, for example `This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.`
 - Skill toggles (top-level `skills[]`) are a separate endpoint (see [Turning Skills On and Off](#turning-skills-on-and-off) and [`SkillsApply`](/docs/agent-overview#post-useragentskillsapply)).
