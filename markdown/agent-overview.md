@@ -1299,7 +1299,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `description` | `string\|null` | Long-form description shown on the agent card. |
 | `cover` | `string\|null` | Per-instance cover URL, `null` until one is set with `Deploy`, `Update` or `Cover`. Show `agent.cover` when it is `null`. |
 | `categories` | `array<string>` | Inherited from the template at deploy; editable via `Update`. |
-| `pinned` | `boolean` | `true` when the user pinned this instance to the global header dropdown. Mutate via `Pin`. |
+| `pinned` | `boolean` | `true` when the agent is pinned to its workspace's header dropdown (on a team agent, for every member). Mutate via `Pin`. |
 
 **Plan & AI usage**
 
@@ -2493,7 +2493,7 @@ Two body shapes:
 | `skills` | `array<string>` | A | Draft mode only: the proposed enabled skill set. |
 | `useragentguid` | string | B | Required for non-draft previews. |
 | `skillOverrides` | object | No | Override the persisted state with `{ skillname: boolean }` for the preview. Omit for "current state" preview. |
-| `tier` | string | No | `"starter"`, `"pro"` or `"max"`: the plan to preview. Defaults to the agent's plan, or Starter in a draft. The response lists all three plans under `tiers`. |
+| `tier` | string | No | `"starter"`, `"pro"` or `"max"`: the plan to preview. Defaults to the plan the agent's renewal bills: a scheduled lower plan (`nextplan`), else its own plan; Starter in a draft. A value that names no plan is ignored. The response lists all three plans under `tiers`. |
 | `withScheduledTasks` | boolean | No | Body B only. When `true`, the response also carries `scheduledTasks`: the scheduled tasks the `skillOverrides` would stop and start. |
 
 ##### Response
@@ -2951,7 +2951,7 @@ A failed call answers `result: false` with `runstreamtoken` and `expiresat` set 
 
 #### **POST** /UserAgent/Pin
 
-Pins or unpins an agent instance from the user's pinned-agents quick list. Pinned agents appear in the global header dropdown (`PinnedAgents`) and get an unread badge from `PinnedUnread`.
+Pins or unpins an agent in its workspace. `pinned` is a flag on the agent: on a team agent any team member can set it, and every member's `PinnedAgents` shows it. Pinned agents appear in the global header dropdown (`PinnedAgents`) and get an unread badge from `PinnedUnread`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -2966,7 +2966,7 @@ Pins or unpins an agent instance from the user's pinned-agents quick list. Pinne
 
 #### **POST** /UserAgent/PinnedAgents
 
-Lists the user's pinned agents. Returns the **same composed shape as `MyAgents`**: every field that appears on a `MyAgents` row except `lastactivityat` appears here, just filtered to `pinned: true`.
+Lists the pinned agents of the API key's workspace. Returns the **same composed shape as `MyAgents`**: every field that appears on a `MyAgents` row except `lastactivityat` appears here, just filtered to `pinned: true`.
 
 No request body fields are required: the workspace of your API key's project scopes the response.
 
@@ -3359,6 +3359,8 @@ A Take Control session:
 | `canControl` | boolean | Whether this caller may take control of this agent now, as in `ScreenInfo`. A view's answer tells you whether to offer Take Control. |
 | `maxSeconds` | number | The longest the session can last: `1800` (30 minutes) to watch, `900` (15 minutes) in control. |
 | `idleSeconds` | number | Control only: control ends after this many seconds without a key or pointer event (`120`). |
+
+<a id="screenstart-errors"></a>
 
 ##### Common errors
 
@@ -3905,7 +3907,7 @@ detail = requests.post(
     json={"slug": "instagram-manager"}
 ).json()
 agent = detail["agents"][0]
-print(f"Credentials needed: {list(agent['credentials'].keys())}")
+print(f"Connectors to connect: {agent['suggestedconnectors']}")  # e.g. ['instagram']
 
 # Deploy a new instance (prepaid wallet, Starter plan)
 deploy = requests.post(
@@ -3921,7 +3923,8 @@ deploy = requests.post(
 instance_guid = deploy["useragents"][0]["guid"]
 print(f"Deployed: {instance_guid}")
 
-# Connect a connector (see Agent Connectors)
+# Connect a Connector that takes a key, Serper here. Instagram connects by
+# signing in instead (see Agent Connectors)
 requests.post(
     "https://api.wiro.ai/v1/UserAgent/ConnectorConnect",
     headers=headers,
@@ -4021,6 +4024,7 @@ async function main() {
     { slug: 'instagram-manager' }
   );
   const agent = detail.data.agents[0];
+  console.log('Connectors to connect:', agent.suggestedconnectors); // e.g. ['instagram']
 
   // Deploy a new instance (prepaid wallet, Starter plan)
   const deploy = await axios.post(
@@ -4031,7 +4035,8 @@ async function main() {
   const instanceGuid = deploy.data.useragents[0].guid;
   console.log('Deployed:', instanceGuid);
 
-  // Connect a connector (see Agent Connectors)
+  // Connect a Connector that takes a key, Serper here. Instagram connects by
+  // signing in instead (see Agent Connectors)
   await axios.post(
     'https://api.wiro.ai/v1/UserAgent/ConnectorConnect',
     {

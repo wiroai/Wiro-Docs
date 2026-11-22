@@ -17422,7 +17422,7 @@ for the channel contract.</p>
 <tr>
 <td><code>pinned</code></td>
 <td><code>boolean</code></td>
-<td><code>true</code> when the user pinned this instance to the global header dropdown. Mutate via <code>Pin</code>.</td>
+<td><code>true</code> when the agent is pinned to its workspace's header dropdown (on a team agent, for every member). Mutate via <code>Pin</code>.</td>
 </tr>
 </tbody>
 </table>
@@ -19933,7 +19933,7 @@ channel-enable endpoint or persisted switch.</p>
 <td><code>tier</code></td>
 <td>string</td>
 <td>No</td>
-<td><code>"starter"</code>, <code>"pro"</code> or <code>"max"</code>: the plan to preview. Defaults to the agent's plan, or Starter in a draft. The response lists all three plans under <code>tiers</code>.</td>
+<td><code>"starter"</code>, <code>"pro"</code> or <code>"max"</code>: the plan to preview. Defaults to the plan the agent's renewal bills: a scheduled lower plan (<code>nextplan</code>), else its own plan; Starter in a draft. A value that names no plan is ignored. The response lists all three plans under <code>tiers</code>.</td>
 </tr>
 <tr>
 <td><code>withScheduledTasks</code></td>
@@ -20811,7 +20811,7 @@ channel-enable endpoint or persisted switch.</p>
 </div>
 </div>
 <h4 id="post-useragentpin"><strong>POST</strong> /UserAgent/Pin</h4>
-<p>Pins or unpins an agent instance from the user's pinned-agents quick list. Pinned agents appear in the global header dropdown (<code>PinnedAgents</code>) and get an unread badge from <code>PinnedUnread</code>.</p>
+<p>Pins or unpins an agent in its workspace. <code>pinned</code> is a flag on the agent: on a team agent any team member can set it, and every member's <code>PinnedAgents</code> shows it. Pinned agents appear in the global header dropdown (<code>PinnedAgents</code>) and get an unread badge from <code>PinnedUnread</code>.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -20844,7 +20844,7 @@ channel-enable endpoint or persisted switch.</p>
 <pre><code class="language-json">{ &quot;result&quot;: true, &quot;errors&quot;: [] }
 </code></pre>
 <h4 id="post-useragentpinnedagents"><strong>POST</strong> /UserAgent/PinnedAgents</h4>
-<p>Lists the user's pinned agents. Returns the <strong>same composed shape as <code>MyAgents</code></strong>: every field that appears on a <code>MyAgents</code> row except <code>lastactivityat</code> appears here, just filtered to <code>pinned: true</code>.</p>
+<p>Lists the pinned agents of the API key's workspace. Returns the <strong>same composed shape as <code>MyAgents</code></strong>: every field that appears on a <code>MyAgents</code> row except <code>lastactivityat</code> appears here, just filtered to <code>pinned: true</code>.</p>
 <p>No request body fields are required: the workspace of your API key's project scopes the response.</p>
 <h5 id="response_25">Response</h5>
 <pre><code class="language-json">{
@@ -22490,7 +22490,7 @@ detail = requests.post(
     json={&quot;slug&quot;: &quot;instagram-manager&quot;}
 ).json()
 agent = detail[&quot;agents&quot;][0]
-print(f&quot;Credentials needed: {list(agent['credentials'].keys())}&quot;)
+print(f&quot;Connectors to connect: {agent['suggestedconnectors']}&quot;)  # e.g. ['instagram']
 
 # Deploy a new instance (prepaid wallet, Starter plan)
 deploy = requests.post(
@@ -22506,7 +22506,8 @@ deploy = requests.post(
 instance_guid = deploy[&quot;useragents&quot;][0][&quot;guid&quot;]
 print(f&quot;Deployed: {instance_guid}&quot;)
 
-# Connect a connector (see Agent Connectors)
+# Connect a Connector that takes a key, Serper here. Instagram connects by
+# signing in instead (see Agent Connectors)
 requests.post(
     &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot;,
     headers=headers,
@@ -22603,6 +22604,7 @@ async function main() {
     { slug: 'instagram-manager' }
   );
   const agent = detail.data.agents[0];
+  console.log('Connectors to connect:', agent.suggestedconnectors); // e.g. ['instagram']
 
   // Deploy a new instance (prepaid wallet, Starter plan)
   const deploy = await axios.post(
@@ -22613,7 +22615,8 @@ async function main() {
   const instanceGuid = deploy.data.useragents[0].guid;
   console.log('Deployed:', instanceGuid);
 
-  // Connect a connector (see Agent Connectors)
+  // Connect a Connector that takes a key, Serper here. Instagram connects by
+  // signing in instead (see Agent Connectors)
   await axios.post(
     'https://api.wiro.ai/v1/UserAgent/ConnectorConnect',
     {
@@ -22865,12 +22868,12 @@ print(response.body);
                     {
                       "label": "Python",
                       "language": "python",
-                      "code": "import requests\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\n# List available agents (no auth required)\ncatalog = requests.post(\n    \"https://api.wiro.ai/v1/Agent/List\",\n    json={\"limit\": 10}\n).json()\nfor agent in catalog[\"agents\"]:\n    print(f\"{agent['title']} ({agent['slug']}): Starter ${agent['tiers']['starter']['priceUsd']}/mo\")\n\n# Get agent details by slug\ndetail = requests.post(\n    \"https://api.wiro.ai/v1/Agent/Detail\",\n    json={\"slug\": \"instagram-manager\"}\n).json()\nagent = detail[\"agents\"][0]\nprint(f\"Credentials needed: {list(agent['credentials'].keys())}\")\n\n# Deploy a new instance (prepaid wallet, Starter plan)\ndeploy = requests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Deploy\",\n    headers=headers,\n    json={\n        \"agentguid\": agent[\"guid\"],\n        \"title\": \"My Instagram Bot\",\n        \"useprepaid\": True,\n        \"tier\": \"starter\"\n    }\n).json()\ninstance_guid = deploy[\"useragents\"][0][\"guid\"]\nprint(f\"Deployed: {instance_guid}\")\n\n# Connect a connector (see Agent Connectors)\nrequests.post(\n    \"https://api.wiro.ai/v1/UserAgent/ConnectorConnect\",\n    headers=headers,\n    json={\n        \"useragentguid\": instance_guid,\n        \"slug\": \"serper\",\n        \"values\": { \"apikey\": \"YOUR_SERPER_API_KEY\" }\n    }\n)\n\n# A prepaid Deploy already queued the agent: start it only when it is stopped (0) or errored (5)\ninstance = requests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Detail\",\n    headers=headers,\n    json={\"guid\": instance_guid}\n).json()\nif instance[\"useragents\"][0][\"status\"] in (0, 5):\n    requests.post(\n        \"https://api.wiro.ai/v1/UserAgent/Start\",\n        headers=headers,\n        json={\"guid\": instance_guid}\n    )\n\n# Check status\nimport time\nwhile True:\n    resp = requests.post(\n        \"https://api.wiro.ai/v1/UserAgent/Detail\",\n        headers=headers,\n        json={\"guid\": instance_guid}\n    ).json()\n    status = resp[\"useragents\"][0][\"status\"]\n    print(f\"Status: {status}\")\n    if status == 4:\n        print(\"Agent is running!\")\n        break\n    if status == 5:\n        print(\"Agent errored\")\n        break\n    time.sleep(5)\n\n# Move up to Pro (prorated, debited from wallet)\nrequests.post(\n    \"https://api.wiro.ai/v1/UserAgent/UpgradeTier\",\n    headers=headers,\n    json={\"guid\": instance_guid, \"targetTier\": \"pro\"}\n)\n\n# Read the agent's AI usage and the balance it runs on past its plan\nusage = requests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Detail\",\n    headers=headers,\n    json={\"guid\": instance_guid}\n).json()[\"useragents\"][0][\"usage\"]\nprint(f\"AI usage: ${usage['usedusd']:.2f} of ${usage['includedusd']:.2f}, balance ${usage['balanceusd']:.2f}\")\n\n# List your deployed agents\nmy_agents = requests.post(\n    \"https://api.wiro.ai/v1/UserAgent/MyAgents\",\n    headers=headers,\n    json={\"limit\": 50}\n).json()\nfor ua in my_agents[\"useragents\"]:\n    print(f\"{ua['title']} - status: {ua['status']} - plan: {ua.get('tier')}\")\n\n# Stop the agent\nrequests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Stop\",\n    headers=headers,\n    json={\"guid\": instance_guid}\n)\n"
+                      "code": "import requests\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\n# List available agents (no auth required)\ncatalog = requests.post(\n    \"https://api.wiro.ai/v1/Agent/List\",\n    json={\"limit\": 10}\n).json()\nfor agent in catalog[\"agents\"]:\n    print(f\"{agent['title']} ({agent['slug']}): Starter ${agent['tiers']['starter']['priceUsd']}/mo\")\n\n# Get agent details by slug\ndetail = requests.post(\n    \"https://api.wiro.ai/v1/Agent/Detail\",\n    json={\"slug\": \"instagram-manager\"}\n).json()\nagent = detail[\"agents\"][0]\nprint(f\"Connectors to connect: {agent['suggestedconnectors']}\")  # e.g. ['instagram']\n\n# Deploy a new instance (prepaid wallet, Starter plan)\ndeploy = requests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Deploy\",\n    headers=headers,\n    json={\n        \"agentguid\": agent[\"guid\"],\n        \"title\": \"My Instagram Bot\",\n        \"useprepaid\": True,\n        \"tier\": \"starter\"\n    }\n).json()\ninstance_guid = deploy[\"useragents\"][0][\"guid\"]\nprint(f\"Deployed: {instance_guid}\")\n\n# Connect a Connector that takes a key, Serper here. Instagram connects by\n# signing in instead (see Agent Connectors)\nrequests.post(\n    \"https://api.wiro.ai/v1/UserAgent/ConnectorConnect\",\n    headers=headers,\n    json={\n        \"useragentguid\": instance_guid,\n        \"slug\": \"serper\",\n        \"values\": { \"apikey\": \"YOUR_SERPER_API_KEY\" }\n    }\n)\n\n# A prepaid Deploy already queued the agent: start it only when it is stopped (0) or errored (5)\ninstance = requests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Detail\",\n    headers=headers,\n    json={\"guid\": instance_guid}\n).json()\nif instance[\"useragents\"][0][\"status\"] in (0, 5):\n    requests.post(\n        \"https://api.wiro.ai/v1/UserAgent/Start\",\n        headers=headers,\n        json={\"guid\": instance_guid}\n    )\n\n# Check status\nimport time\nwhile True:\n    resp = requests.post(\n        \"https://api.wiro.ai/v1/UserAgent/Detail\",\n        headers=headers,\n        json={\"guid\": instance_guid}\n    ).json()\n    status = resp[\"useragents\"][0][\"status\"]\n    print(f\"Status: {status}\")\n    if status == 4:\n        print(\"Agent is running!\")\n        break\n    if status == 5:\n        print(\"Agent errored\")\n        break\n    time.sleep(5)\n\n# Move up to Pro (prorated, debited from wallet)\nrequests.post(\n    \"https://api.wiro.ai/v1/UserAgent/UpgradeTier\",\n    headers=headers,\n    json={\"guid\": instance_guid, \"targetTier\": \"pro\"}\n)\n\n# Read the agent's AI usage and the balance it runs on past its plan\nusage = requests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Detail\",\n    headers=headers,\n    json={\"guid\": instance_guid}\n).json()[\"useragents\"][0][\"usage\"]\nprint(f\"AI usage: ${usage['usedusd']:.2f} of ${usage['includedusd']:.2f}, balance ${usage['balanceusd']:.2f}\")\n\n# List your deployed agents\nmy_agents = requests.post(\n    \"https://api.wiro.ai/v1/UserAgent/MyAgents\",\n    headers=headers,\n    json={\"limit\": 50}\n).json()\nfor ua in my_agents[\"useragents\"]:\n    print(f\"{ua['title']} - status: {ua['status']} - plan: {ua.get('tier')}\")\n\n# Stop the agent\nrequests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Stop\",\n    headers=headers,\n    json={\"guid\": instance_guid}\n)\n"
                     },
                     {
                       "label": "Node.js",
                       "language": "javascript",
-                      "code": "const axios = require('axios');\n\nconst headers = {\n  'x-api-key': 'YOUR_API_KEY',\n  'Content-Type': 'application/json'\n};\n\nasync function main() {\n  // List available agents (no auth required)\n  const catalog = await axios.post(\n    'https://api.wiro.ai/v1/Agent/List',\n    { limit: 10 }\n  );\n  catalog.data.agents.forEach(a =>\n    console.log(`${a.title} (${a.slug}): Starter $${a.tiers.starter.priceUsd}/mo`)\n  );\n\n  // Get agent details by slug\n  const detail = await axios.post(\n    'https://api.wiro.ai/v1/Agent/Detail',\n    { slug: 'instagram-manager' }\n  );\n  const agent = detail.data.agents[0];\n\n  // Deploy a new instance (prepaid wallet, Starter plan)\n  const deploy = await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Deploy',\n    { agentguid: agent.guid, title: 'My Instagram Bot', useprepaid: true, tier: 'starter' },\n    { headers }\n  );\n  const instanceGuid = deploy.data.useragents[0].guid;\n  console.log('Deployed:', instanceGuid);\n\n  // Connect a connector (see Agent Connectors)\n  await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/ConnectorConnect',\n    {\n      useragentguid: instanceGuid,\n      slug: 'serper',\n      values: { apikey: 'YOUR_SERPER_API_KEY' }\n    },\n    { headers }\n  );\n\n  // A prepaid Deploy already queued the agent: start it only when it is stopped (0) or errored (5)\n  const current = await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Detail',\n    { guid: instanceGuid },\n    { headers }\n  );\n  if ([0, 5].includes(current.data.useragents[0].status)) {\n    await axios.post(\n      'https://api.wiro.ai/v1/UserAgent/Start',\n      { guid: instanceGuid },\n      { headers }\n    );\n  }\n\n  // Poll until running\n  while (true) {\n    const resp = await axios.post(\n      'https://api.wiro.ai/v1/UserAgent/Detail',\n      { guid: instanceGuid },\n      { headers }\n    );\n    const status = resp.data.useragents[0].status;\n    console.log('Status:', status);\n    if (status === 4) { console.log('Agent is running!'); break; }\n    if (status === 5) { console.log('Agent errored'); break; }\n    await new Promise(r => setTimeout(r, 5000));\n  }\n\n  // Move up to Pro\n  await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/UpgradeTier',\n    { guid: instanceGuid, targetTier: 'pro' },\n    { headers }\n  );\n\n  // Read the agent's AI usage and the balance it runs on past its plan\n  const usageResp = await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Detail',\n    { guid: instanceGuid },\n    { headers }\n  );\n  const usage = usageResp.data.useragents[0].usage;\n  console.log(`AI usage: $${usage.usedusd} of $${usage.includedusd}, balance $${usage.balanceusd}`);\n\n  // Stop the agent\n  await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Stop',\n    { guid: instanceGuid },\n    { headers }\n  );\n}\n\nmain();\n"
+                      "code": "const axios = require('axios');\n\nconst headers = {\n  'x-api-key': 'YOUR_API_KEY',\n  'Content-Type': 'application/json'\n};\n\nasync function main() {\n  // List available agents (no auth required)\n  const catalog = await axios.post(\n    'https://api.wiro.ai/v1/Agent/List',\n    { limit: 10 }\n  );\n  catalog.data.agents.forEach(a =>\n    console.log(`${a.title} (${a.slug}): Starter $${a.tiers.starter.priceUsd}/mo`)\n  );\n\n  // Get agent details by slug\n  const detail = await axios.post(\n    'https://api.wiro.ai/v1/Agent/Detail',\n    { slug: 'instagram-manager' }\n  );\n  const agent = detail.data.agents[0];\n  console.log('Connectors to connect:', agent.suggestedconnectors); // e.g. ['instagram']\n\n  // Deploy a new instance (prepaid wallet, Starter plan)\n  const deploy = await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Deploy',\n    { agentguid: agent.guid, title: 'My Instagram Bot', useprepaid: true, tier: 'starter' },\n    { headers }\n  );\n  const instanceGuid = deploy.data.useragents[0].guid;\n  console.log('Deployed:', instanceGuid);\n\n  // Connect a Connector that takes a key, Serper here. Instagram connects by\n  // signing in instead (see Agent Connectors)\n  await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/ConnectorConnect',\n    {\n      useragentguid: instanceGuid,\n      slug: 'serper',\n      values: { apikey: 'YOUR_SERPER_API_KEY' }\n    },\n    { headers }\n  );\n\n  // A prepaid Deploy already queued the agent: start it only when it is stopped (0) or errored (5)\n  const current = await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Detail',\n    { guid: instanceGuid },\n    { headers }\n  );\n  if ([0, 5].includes(current.data.useragents[0].status)) {\n    await axios.post(\n      'https://api.wiro.ai/v1/UserAgent/Start',\n      { guid: instanceGuid },\n      { headers }\n    );\n  }\n\n  // Poll until running\n  while (true) {\n    const resp = await axios.post(\n      'https://api.wiro.ai/v1/UserAgent/Detail',\n      { guid: instanceGuid },\n      { headers }\n    );\n    const status = resp.data.useragents[0].status;\n    console.log('Status:', status);\n    if (status === 4) { console.log('Agent is running!'); break; }\n    if (status === 5) { console.log('Agent errored'); break; }\n    await new Promise(r => setTimeout(r, 5000));\n  }\n\n  // Move up to Pro\n  await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/UpgradeTier',\n    { guid: instanceGuid, targetTier: 'pro' },\n    { headers }\n  );\n\n  // Read the agent's AI usage and the balance it runs on past its plan\n  const usageResp = await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Detail',\n    { guid: instanceGuid },\n    { headers }\n  );\n  const usage = usageResp.data.useragents[0].usage;\n  console.log(`AI usage: $${usage.usedusd} of $${usage.includedusd}, balance $${usage.balanceusd}`);\n\n  // Stop the agent\n  await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Stop',\n    { guid: instanceGuid },\n    { headers }\n  );\n}\n\nmain();\n"
                     },
                     {
                       "label": "PHP",
