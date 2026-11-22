@@ -171,8 +171,8 @@ A richer variant of white-label chat: besides replying with text, the agent **ge
 
 **Shape:**
 
-- One deployed agent whose Wiro project is set to your project (see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project). The agent runs models with that project's key from its skills, or with the tools of the Wiro AI Models connector, `wiro` (see [The Wiro connector](/docs/agent-connectors#the-wiro-connector)).
-- One `sessionkey` per end user (Pattern 2 above): the same agent instance serves everyone, and each user's chat history is isolated by session. The agent's model runs are not: with Wiro AI Models (`wiro`), each user can reach the runs the agent made for the others (see [The Wiro connector](/docs/agent-connectors#the-wiro-connector)).
+- One deployed agent whose Wiro project is set to your project (see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project). The agent runs models with that project's key from its skills, or with the tools of the Wiro AI Models connector, `wiro` (see [Wiro AI Models](/docs/agent-connectors#the-wiro-connector)).
+- One `sessionkey` per end user (Pattern 2 above): the same agent instance serves everyone, and each user's chat history is isolated by session. The agent's model runs are not: with Wiro AI Models (`wiro`), each user can reach the runs the agent made for the others (see [Wiro AI Models](/docs/agent-connectors#the-wiro-connector)).
 - A single WebSocket connection carries three things at once: the streaming chat reply, the per-turn token-usage report, and discovery of any model runs the agent launches.
 
 **End-to-end sequence an integrator replicates:**

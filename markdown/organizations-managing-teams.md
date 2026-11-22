@@ -293,7 +293,7 @@ When an agent is transferred:
 - Its chat history moves with it
 - The agent is restarted with the new context
 - Future billing is charged to the new workspace's wallet
-- When the agent's Wiro project isn't in the new workspace, the agent is disconnected from it, and its [`wiro` connector](/docs/agent-connectors#moving-the-agent-to-another-workspace) is disconnected too (see `wiroproject` below)
+- When the agent's Wiro project isn't in the new workspace, the agent is disconnected from it, and its [Wiro AI Models (`wiro`)](/docs/agent-connectors#moving-the-agent-to-another-workspace) connector is disconnected too (see `wiroproject` below)
 - [Take Control](/docs/agent-overview#take-control) stays off for an agent that has been in a team after it moves back to a personal workspace, until its owner [resets its browser](/docs/agent-overview#resetting-the-browser): the browser goes with it, signed in wherever the team's chats signed in
 
 The answer's `wiroproject` says what happened to the agent's Wiro project, the project its model runs are paid from, and `notes` lists sentences to show the person who moved it:

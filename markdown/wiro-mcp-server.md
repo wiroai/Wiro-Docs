@@ -861,7 +861,7 @@ runs on `workflow`, whichever way they are sent (see
 [Surfaces](/docs/tasks#task-surfaces)). The tools of an agent's Wiro AI Models
 connector also reach Wiro through this server, but their calls are the agent's
 own and count on the `agent` surface, under that agent's spend limits and Model
-Access rule (see [The Wiro connector](/docs/agent-connectors#the-wiro-connector)).
+Access rule (see [Wiro AI Models](/docs/agent-connectors#the-wiro-connector)).
 When a limit refuses work (error code `93`), the
 tool returns an error with Wiro's message and a note: nothing ran and nothing
 was charged, and the work should not be tried again until the limit resets or

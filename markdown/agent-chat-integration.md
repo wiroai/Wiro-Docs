@@ -952,7 +952,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
 }
 ```
 
-- The project becomes the agent's own Wiro project, as [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) binds it and with the same checks, and the connector's tools act with it as the agent's own calls: see [The Wiro connector](/docs/agent-connectors#the-wiro-connector). A project Wiro refuses saves nothing, and the card stays pending with the sentence, such as `This is a team agent: use one of its team's projects.`
+- The project becomes the agent's own Wiro project, as [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) binds it and with the same checks, and the connector's tools act with it as the agent's own calls: see [Wiro AI Models](/docs/agent-connectors#the-wiro-connector). A project Wiro refuses saves nothing, and the card stays pending with the sentence, such as `This is a team agent: use one of its team's projects.`
 - Left out, a call made with your project API key binds that key's own project. When the card can't connect without a project, it stays pending with `Pick a project on the card to connect Wiro AI Models.`, and `next` names it.
 - A `project` card never connects from a typed reply and never takes a pasted key. In a chat sent with your API key, a `yes` while only `connect` cards wait, this one among them, is answered `A yes cannot connect Wiro AI Models. Its project is picked outside this chat.`: nothing is applied and no agent turn starts.
 
