@@ -20318,7 +20318,7 @@ channel-enable endpoint or persisted switch.</p>
 </div>
 </div>
 <h4 id="post-useragentlogs"><strong>POST</strong> /UserAgent/Logs</h4>
-<p>Live activity feed for a useragent: what the agent did, when, and which user triggered it. The agent records one event per skill invocation, scheduled task and user message, grouped by day; this endpoint returns the latest N events for a given date, each with the user who triggered it. What people and API keys did to the agent is in the same list, as <code>AGENT_*</code> rows; see <a href="/docs/agent-logs#who-did-what-rows">Agent Logs</a>.</p>
+<p>Live activity feed for a useragent: what the agent did, when, and which user triggered it. The agent records one event per skill invocation, scheduled task and user message, grouped by day; this endpoint returns the latest N events for a given date, each with the user who triggered it. What people and API keys did to the agent is in the same list, as <code>AGENT_*</code> and <code>CONNECTOR_*</code> rows; see <a href="/docs/agent-logs#who-did-what-rows">Agent Logs</a>.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -20441,7 +20441,7 @@ channel-enable endpoint or persisted switch.</p>
 <tr>
 <td><code>events[].kind</code></td>
 <td>string</td>
-<td>Fine-grained event class. One of: <code>"turn_started"</code>, <code>"turn_ended"</code> (an LLM turn boundary); <code>"tool_started"</code>, <code>"tool_completed"</code> (one pair per tool call); <code>"tool_blocked"</code> (a tool call the agent's safety rules refused); <code>"cron_finished"</code> (a scheduled task finished); <code>"user_message"</code> (a message received on a connected Telegram, Slack or Discord channel, not web chat); <code>"token_usage"</code> (a billed turn's token usage: chat / Scheduled Task / voice post-call); <code>"token_usage_idempotent"</code> (a replayed usage report, already billed, informational only); <code>"media_relay"</code> (files from a reply were delivered); <code>"background_reply"</code> (a result that finished in the background was delivered to the chat). Rows about what was done to the agent have <code>AGENT_*</code> kinds, and two note rows, <code>"runtime_log_unavailable"</code> and <code>"runtime_log_deleted"</code>, say what part of a day is missing; see <a href="/docs/agent-logs#who-did-what-rows">Agent Logs</a>. Show any kind you don't recognize by its <code>title</code>.</td>
+<td>Fine-grained event class. One of: <code>"turn_started"</code>, <code>"turn_ended"</code> (an LLM turn boundary); <code>"tool_started"</code>, <code>"tool_completed"</code> (one pair per tool call); <code>"tool_blocked"</code> (a tool call the agent's safety rules refused); <code>"cron_finished"</code> (a scheduled task finished); <code>"user_message"</code> (a message received on a connected Telegram, Slack or Discord channel, not web chat); <code>"token_usage"</code> (a billed turn's token usage: chat / Scheduled Task / voice post-call); <code>"token_usage_idempotent"</code> (a replayed usage report, already billed, informational only); <code>"media_relay"</code> (files from a reply were delivered); <code>"background_reply"</code> (a result that finished in the background was delivered to the chat). Rows about what was done to the agent have <code>AGENT_*</code> and <code>CONNECTOR_*</code> kinds, and two note rows, <code>"runtime_log_unavailable"</code> and <code>"runtime_log_deleted"</code>, say what part of a day is missing; see <a href="/docs/agent-logs#who-did-what-rows">Agent Logs</a>. Show any kind you don't recognize by its <code>title</code>.</td>
 </tr>
 <tr>
 <td><code>events[].tool</code></td>
@@ -20476,7 +20476,7 @@ channel-enable endpoint or persisted switch.</p>
 <tr>
 <td><code>events[].ok</code></td>
 <td>boolean | null</td>
-<td><code>true</code> on success, <code>false</code> on failure. Populated on <code>tool_completed</code>, <code>turn_ended</code> and <code>cron_finished</code> events, and always <code>false</code> on <code>tool_blocked</code>. Pair with <code>error</code> for failures. It is always <code>true</code> on <code>AGENT_*</code> rows. A <code>turn_ended</code> for a turn the caller cancelled has no <code>ok</code>, and its title reads <code>Agent turn cancelled</code>. A <code>cron_finished</code> for a Scheduled Task run that the agent's spend limit or Model Access rule paused has no <code>ok</code> either, and its title starts with <code>Paused by a spend limit:</code> or <code>Paused by a Model Access rule:</code>.</td>
+<td><code>true</code> on success, <code>false</code> on failure. Populated on <code>tool_completed</code>, <code>turn_ended</code> and <code>cron_finished</code> events, and always <code>false</code> on <code>tool_blocked</code>. Pair with <code>error</code> for failures. It is always <code>true</code> on <code>AGENT_*</code> and <code>CONNECTOR_*</code> rows. A <code>turn_ended</code> for a turn the caller cancelled has no <code>ok</code>, and its title reads <code>Agent turn cancelled</code>. A <code>cron_finished</code> for a Scheduled Task run that the agent's spend limit or Model Access rule paused has no <code>ok</code> either, and its title starts with <code>Paused by a spend limit:</code> or <code>Paused by a Model Access rule:</code>.</td>
 </tr>
 <tr>
 <td><code>events[].error</code></td>
