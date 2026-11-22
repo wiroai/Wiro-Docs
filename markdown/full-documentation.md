@@ -12794,7 +12794,7 @@ Starts a browser-embedded realtime voice session with the agent. Returns two opa
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | The agent must be running (`status: 4`) with the Web Voice Channel Skill (`util-web-channel`) on. The Voice Receptionist and Voice Sales Rep templates have it on. On another agent, turn it on with [`SkillsApply`](#post-useragentskillsapply) together with the two Skills it depends on, Voice Receptionist Rules (`util-voice-receptionist`) and Voice Call Prep Rules (`util-voice-call-prep`): `{ "util-web-channel": true, "util-voice-receptionist": true, "util-voice-call-prep": true }`. Sent alone, it is refused with code `101` and `deps[]` unless those two are already on. Deploy's `skills` turns them on itself. |
+| `useragentguid` | string | Yes | The agent must be running (`status: 4`) with the Web Voice Channel Skill (`util-web-channel`) on. The Voice Receptionist template has it on. On another agent, turn it on with [`SkillsApply`](#post-useragentskillsapply) together with the two Skills it depends on, Voice Receptionist Rules (`util-voice-receptionist`) and Voice Call Prep Rules (`util-voice-call-prep`): `{ "util-web-channel": true, "util-voice-receptionist": true, "util-voice-call-prep": true }`. Sent alone, it is refused with code `101` and `deps[]` unless those two are already on. Deploy's `skills` turns them on itself. |
 | `session_metadata.page_url` | string | No | Page URL the caller opened the mic from (≤ 2048 chars). Echoed back on Call History. |
 | `session_metadata.display_identifier` | string | No | Operator-supplied display name. 1-100 chars, Unicode letters / numbers / spaces / `@ . _ - ' +`; other characters silently dropped. |
 
@@ -12824,7 +12824,7 @@ Starts a browser-embedded realtime voice session with the agent. Returns two opa
 | `This agent belongs to a team. Switch to the team context to access it.` | Team agent called from a personal workspace or personal project key by a caller who is no longer a member of the agent's team. |
 | `This agent belongs to a different team.` | Team agent called from another team's workspace or project key by a caller who is no longer a member of the agent's team. |
 | `Agent is not running` | Useragent is not in `status: 4`. |
-| `util-web-channel not enabled` | The Web Voice Channel Skill (`util-web-channel`) is off. Turn it on with `SkillsApply` together with `util-voice-receptionist` and `util-voice-call-prep` (sent alone it gets `101`), or deploy from the Voice Receptionist or Voice Sales Rep template. |
+| `util-web-channel not enabled` | The Web Voice Channel Skill (`util-web-channel`) is off. Turn it on with `SkillsApply` together with `util-voice-receptionist` and `util-voice-call-prep` (sent alone it gets `101`), or deploy from the Voice Receptionist template. |
 | `Web voice from this origin needs an API key.` | Bearer auth with an Origin outside the allow-list. |
 | `Rate limit: max N web voice sessions per hour` | Operator burned through the per-hour cap. |
 

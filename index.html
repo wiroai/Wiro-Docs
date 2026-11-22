@@ -21034,7 +21034,7 @@ channel-enable endpoint or persisted switch.</p>
 <td><code>useragentguid</code></td>
 <td>string</td>
 <td>Yes</td>
-<td>The agent must be running (<code>status: 4</code>) with the Web Voice Channel Skill (<code>util-web-channel</code>) on. The Voice Receptionist and Voice Sales Rep templates have it on. On another agent, turn it on with <a href="#post-useragentskillsapply"><code>SkillsApply</code></a> together with the two Skills it depends on, Voice Receptionist Rules (<code>util-voice-receptionist</code>) and Voice Call Prep Rules (<code>util-voice-call-prep</code>): <code>{ "util-web-channel": true, "util-voice-receptionist": true, "util-voice-call-prep": true }</code>. Sent alone, it is refused with code <code>101</code> and <code>deps[]</code> unless those two are already on. Deploy's <code>skills</code> turns them on itself.</td>
+<td>The agent must be running (<code>status: 4</code>) with the Web Voice Channel Skill (<code>util-web-channel</code>) on. The Voice Receptionist template has it on. On another agent, turn it on with <a href="#post-useragentskillsapply"><code>SkillsApply</code></a> together with the two Skills it depends on, Voice Receptionist Rules (<code>util-voice-receptionist</code>) and Voice Call Prep Rules (<code>util-voice-call-prep</code>): <code>{ "util-web-channel": true, "util-voice-receptionist": true, "util-voice-call-prep": true }</code>. Sent alone, it is refused with code <code>101</code> and <code>deps[]</code> unless those two are already on. Deploy's <code>skills</code> turns them on itself.</td>
 </tr>
 <tr>
 <td><code>session_metadata.page_url</code></td>
@@ -21097,7 +21097,7 @@ channel-enable endpoint or persisted switch.</p>
 </tr>
 <tr>
 <td><code>util-web-channel not enabled</code></td>
-<td>The Web Voice Channel Skill (<code>util-web-channel</code>) is off. Turn it on with <code>SkillsApply</code> together with <code>util-voice-receptionist</code> and <code>util-voice-call-prep</code> (sent alone it gets <code>101</code>), or deploy from the Voice Receptionist or Voice Sales Rep template.</td>
+<td>The Web Voice Channel Skill (<code>util-web-channel</code>) is off. Turn it on with <code>SkillsApply</code> together with <code>util-voice-receptionist</code> and <code>util-voice-call-prep</code> (sent alone it gets <code>101</code>), or deploy from the Voice Receptionist template.</td>
 </tr>
 <tr>
 <td><code>Web voice from this origin needs an API key.</code></td>
