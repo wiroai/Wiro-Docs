@@ -15581,7 +15581,7 @@ import type {
 <p><strong>Authenticated endpoints</strong>: All <code>UserAgent/*</code> endpoints require a valid API key.</p>
 <p>For full details, see <a href="/docs/authentication">Authentication</a>.</p>
 <h2 id="pricing-model-plans-ai-usage-balance">Pricing Model: Plans, AI Usage &amp; Balance</h2>
-<p>Every agent runs on one of three monthly plans, and the plan alone sets its price, the AI usage it includes and its disk space. Templates and custom builds use the same plans, and the skills an agent has never change the price. AI usage is what the agent's own model uses on each turn, priced by its tokens. Once the plan's included usage for the period is used up, the agent runs on the Wiro balance of its workspace, the same balance your model runs use.</p>
+<p>Every agent runs on one of three monthly plans, and the plan alone sets its price, the AI usage it includes and its disk space. Templates and custom builds use the same plans, and the skills an agent has never change the price. AI usage is what the agent's own model uses on each turn, priced by its tokens. Once the plan's included usage for the period is used up, the agent runs on the Wiro balance of its workspace, the same balance your model runs use. Its AI usage draws on that balance's deposits and store revenue; coupon credit isn't counted for it (see <a href="#usage-object"><code>usage.balanceusd</code></a>).</p>
 <h3 id="plans">Plans</h3>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -17764,7 +17764,7 @@ for the channel contract.</p>
 <tr>
 <td><code>balanceusd</code></td>
 <td><code>number</code></td>
-<td>The spendable balance of the wallet the agent uses.</td>
+<td>What the agent's AI usage can draw on in the wallet it uses: deposits and store revenue. Coupon credit isn't counted, so it can read less than the wallet shows.</td>
 </tr>
 <tr>
 <td><code>wallet</code></td>

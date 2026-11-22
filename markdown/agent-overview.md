@@ -53,7 +53,7 @@ For full details, see [Authentication](/docs/authentication).
 
 ## Pricing Model: Plans, AI Usage & Balance
 
-Every agent runs on one of three monthly plans, and the plan alone sets its price, the AI usage it includes and its disk space. Templates and custom builds use the same plans, and the skills an agent has never change the price. AI usage is what the agent's own model uses on each turn, priced by its tokens. Once the plan's included usage for the period is used up, the agent runs on the Wiro balance of its workspace, the same balance your model runs use.
+Every agent runs on one of three monthly plans, and the plan alone sets its price, the AI usage it includes and its disk space. Templates and custom builds use the same plans, and the skills an agent has never change the price. AI usage is what the agent's own model uses on each turn, priced by its tokens. Once the plan's included usage for the period is used up, the agent runs on the Wiro balance of its workspace, the same balance your model runs use. Its AI usage draws on that balance's deposits and store revenue; coupon credit isn't counted for it (see [`usage.balanceusd`](#usage-object)).
 
 ### Plans
 
@@ -1392,7 +1392,7 @@ Every provider entry under `credentials.<key>` carries:
 | `leftusd` | `number` | The included AI usage left this period. |
 | `renewalusd` | `number` | The AI usage the next renewal includes: the agent's plan's, or the scheduled plan's when `nextplan` is set. |
 | `frombalanceusd` | `number` | The AI usage charged to the balance this period, after the included usage ran out. |
-| `balanceusd` | `number` | The spendable balance of the wallet the agent uses. |
+| `balanceusd` | `number` | What the agent's AI usage can draw on in the wallet it uses: deposits and store revenue. Coupon credit isn't counted, so it can read less than the wallet shows. |
 | `wallet` | `string` | `"personal"` (the owner's balance) or `"team"` (the team's balance). |
 | `minbalanceusd` | `number` | The balance a new turn needs once the included usage is used up: `0.5`. |
 | `paused` | `boolean` | `true` while the agent can't start a new turn because it has no active plan or its balance is short (see `pausedreason`). A reached [spend limit](/docs/spend-limits) doesn't set it: `Message/Send` then answers code `93`. |
