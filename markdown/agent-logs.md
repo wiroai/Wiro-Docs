@@ -10,7 +10,7 @@ A daily JSONL file is written for each calendar day; files older than 7 days are
 
 The feed also lists what people and API keys did to the agent: starts and stops, renames, skill, connector and billing changes, connections, Screen views and Take Control sessions, browser resets, and deleted log days, each with who did it. These [who-did-what rows](#who-did-what-rows) don't depend on the agent running.
 
-The endpoints below are **owner-or-team-admin** scoped. Plain members of the agent's team receive `useragent-team-admin-required` (code `97`); outside callers receive `useragent-access-denied`.
+The endpoints below are **owner-or-team-admin** scoped. Plain members of the agent's team get code `97` (`Only a team admin can perform this action on a team-owned agent.`); outside callers get code `96` (`You don't have access to this user agent`).
 
 | Endpoint | Purpose |
 |----------|---------|
@@ -31,12 +31,8 @@ Every event is a JSON object with this base shape:
   "ts": "2026-05-03T14:00:10.234Z",
   "kind": "tool_completed",
   "tool": "web_fetch",
-  "title": "Fetched https://blog.example.com/weekly-roundup-12",
-  "summary": {
-    "url": "https://blog.example.com/weekly-roundup-12",
-    "status": 200,
-    "bytes": 18432
-  },
+  "title": "Fetched URL: blog.example.com",
+  "summary": { "host": "blog.example.com" },
   "durationMs": 1840,
   "ok": true,
   "userUuid": "ada-uuid",
@@ -55,20 +51,20 @@ Every event is a JSON object with this base shape:
 | Field | Type | Description |
 |-------|------|-------------|
 | `ts` | `string` | ISO-8601 UTC datetime when the event was recorded (e.g. `"2026-05-03T14:00:10.234Z"`). Parse with `Date.parse(ts)` for arithmetic. |
-| `kind` | `string` | Fine-grained event class. One of: `"turn_started"`, `"turn_ended"` (an LLM turn boundary); `"tool_started"`, `"tool_completed"` (one pair per tool call); `"tool_blocked"` (a tool call the agent's safety rules refused); `"cron_finished"` (a scheduled task finished); `"user_message"` (a message received on a connected Telegram, Slack or Discord channel, not web chat); `"token_usage"` (a billed turn's token usage: chat / cron / voice post-call); `"token_usage_idempotent"` (a replayed usage report, already billed, informational only); `"media_relay"` (files from a reply were delivered); `"background_reply"` (a result that finished in the background was delivered to the chat). Rows about what was done to the agent have [`AGENT_*` kinds](#who-did-what-rows), and two note rows, `"runtime_log_unavailable"` and `"runtime_log_deleted"`, say what part of a day is missing. Show any kind you don't recognize by its `title`. |
+| `kind` | `string` | Fine-grained event class. One of: `"turn_started"`, `"turn_ended"` (an LLM turn boundary); `"tool_started"`, `"tool_completed"` (one pair per tool call); `"tool_blocked"` (a tool call the agent's safety rules refused); `"cron_finished"` (a scheduled task finished); `"user_message"` (a message received on a connected Telegram, Slack or Discord channel, not web chat); `"token_usage"` (a billed turn's token usage: chat / cron / voice post-call); `"token_usage_idempotent"` (a replayed usage report, already billed, informational only); `"media_relay"` (files from a reply were delivered); `"background_reply"` (a result that finished in the background was delivered to the chat). Rows about what was done to the agent have [`AGENT_*` and `CONNECTOR_*` kinds](#who-did-what-rows), and two note rows, `"runtime_log_unavailable"` and `"runtime_log_deleted"`, say what part of a day is missing. Show any kind you don't recognize by its `title`. |
 | `tool` | `string?` | Present on `tool_started` / `tool_completed` / `tool_blocked`. The name of the tool the agent used. |
 | `toolintegration` | `string?` | On `tool_started` and `tool_completed` when the step works in a connector: the connector's `slug` from `POST /AgentConnector/List`, for example `"wordpress"`, or `"wiro"` for Wiro AI Models. Same closed list as on [timeline tool blocks](/docs/agent-messaging#tool-integration-and-action-values). |
 | `toolaction` | `string?` | On `tool_started` and `tool_completed` when a word fits the step: what it does, for example `"click"`. Same closed list as on [timeline tool blocks](/docs/agent-messaging#tool-integration-and-action-values). Never set together with `toolintegration`. |
-| `title` | `string` | Human-readable one-line description of what happened (e.g. `"Posted carousel: \"Brand voice teaser\""`, `"Fetched https://…"`, `"Token Usage"`). Always present. |
+| `title` | `string` | Human-readable one-line description of what happened (e.g. `"Fetched URL: blog.example.com"`, `"wordpress__create_post"`, `"Token Usage"`). Always present. |
 | `summary` | `object?` | Structured event-specific payload. Opaque on the wire, so render it as JSON when expanding the row. Secret values (`apikey`, `apppassword`, `clientsecret`, `bearer`, `token`, …) are masked before the event is written. Common keys: `file`, `method`, `host`, `path`, `preview`, `messageCount`, `jobId`, `status`, `reason`. |
 | `durationMs` | `number?` | Wall-clock duration in milliseconds. Populated on `tool_completed`, `turn_ended`, `cron_finished` and `token_usage` events. |
-| `ok` | `boolean?` | `true` for a successful completion, `false` for a failure. Populated on `tool_completed`, `turn_ended` and `cron_finished` events, and always `false` on `tool_blocked`. Pair with `error` for failure rows. It is always `true` on `AGENT_*` rows. A `turn_ended` for a turn the caller cancelled has no `ok`, and its title reads `Agent turn cancelled`. A `cron_finished` for a Scheduled Task run that the agent's spend limit or Model Access rule paused has no `ok` either, and its title starts with `Paused by a spend limit:` or `Paused by a Model Access rule:`. |
-| `error` | `string?` | One-line failure message (when `ok: false`). |
+| `ok` | `boolean?` | `true` for a successful completion, `false` for a failure. Populated on `tool_completed`, `turn_ended` and `cron_finished` events, and always `false` on `tool_blocked`. Pair with `error` for failure rows. It is always `true` on `AGENT_*` and `CONNECTOR_*` rows. A `turn_ended` for a turn the caller cancelled has no `ok`, and its title reads `Agent turn cancelled`. A `cron_finished` for a Scheduled Task run that the agent's spend limit or Model Access rule paused has no `ok` either, and its title starts with `Paused by a spend limit:` or `Paused by a Model Access rule:`. |
+| `error` | `string?` | On a failure row (`ok: false`): always the fixed sentence `Agent is temporarily unavailable. Please try again shortly.`, whatever failed. The failure's own reason never reaches the log. |
 | `cost` | `object?` | Legacy per-action charge, `{ credits, skill, action }`. Only events recorded before agents switched to per-turn token billing can carry it; current events never do. See the `token_usage` event for what a turn cost. |
 | `userUuid` | `string?` | UUID of the actor who triggered the event. `"system"` for cron / internal events. May be missing on older rows, in which case the server falls back to the agent owner. |
 | `user` | `object\|null` | Resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. `null` when `userUuid` is `"system"` (automation / cron) or when the user record was deleted. |
 
-> **What is `summary` for?** Tool events carry a short summary of the call: for example the file path for file tools, the program for `exec`, or the method, host and path for web requests. Turn events carry a short `preview` (plus `messageCount` on `turn_ended`); `cron_finished` carries `{ jobId, status }`, plus `reason` (`spend_limit` or `model_access`) when `status` is `paused`; `user_message` carries `{ preview }`; `tool_blocked` carries the `reason`. Treat the object as opaque and render-on-expand, since its shape depends on the tool and may change without a docs revision.
+> **What is `summary` for?** Tool events carry a short summary of the call: for example the file path for file tools, the program for `exec`, or the method, host and path for web requests. Turn events carry a short `preview` (plus `messageCount` on `turn_ended`); `cron_finished` carries `{ jobId, status }`, plus `reason` (`spend_limit` or `model_access`) when `status` is `paused`; `user_message` carries `{ preview }`; `tool_blocked` carries the `reason`. A connector's tool is named `<slug>__<tool>`, such as `wordpress__create_post`: its `tool` and `title` are that name, `toolintegration` is the connector's `slug`, and `summary` is `{}`, because a connector call's arguments and results never reach the log. A Reddit (`reddit`) call is titled `Reddit API operation`, and its `summary` is `{ "service": "reddit", "retentionRedacted": true }`. Treat the object as opaque and render-on-expand, since its shape depends on the tool and may change without a docs revision.
 
 To tell what a tool call is doing, read `toolintegration` and `toolaction` instead of parsing `title` or `summary`. Both are missing when no word fits the step, and `tool_blocked` events don't carry them.
 
@@ -106,7 +102,7 @@ A `token_usage` event records the tokens and the AI usage of one billed turn: a 
 
 ### Who-did-what rows
 
-`Logs` and `LogsFile` also return what people and API keys did **to** the agent, and `LogsList` lists the days that have such rows. These rows sit in the same `events` list, in time order, with an `AGENT_*` value in `kind`. They come on top of the kinds above, which keep their meaning.
+`Logs` and `LogsFile` also return what people and API keys did **to** the agent, and `LogsList` lists the days that have such rows. These rows sit in the same `events` list, in time order, with an `AGENT_*` or `CONNECTOR_*` value in `kind`. They come on top of the kinds above, which keep their meaning.
 
 ```json
 {
@@ -139,12 +135,14 @@ A `token_usage` event records the tokens and the AI usage of one billed turn: a 
 | `AGENT_TRANSFERRED` | `Agent moved to a team workspace`, `Agent moved to the personal workspace`; the system's rows when the agent's team or organization is deleted read `Agent moved to the personal workspace: its team was deleted` and `Agent moved to the personal workspace: its organization was deleted` |
 | `AGENT_INSTRUCTION_ADDED`, `AGENT_INSTRUCTION_UPDATED`, `AGENT_INSTRUCTION_RENAMED`, `AGENT_INSTRUCTION_DELETED`, `AGENT_INSTRUCTION_REVERTED` | `Custom skill added: cs-brand-voice`, `Scheduled task updated: cs-cron-blog-scanner (text, schedule 0 9 * * 1)`, `Custom skill renamed: cs-brand-voice to cs-house-style`, `Scheduled task deleted: cs-cron-blog-scanner`, `Custom skill reverted to its preset: cs-brand-voice` |
 | `AGENT_SKILLS_UPDATED` | `Skills updated: util-web-channel off` |
-| `AGENT_CREDENTIAL_SAVED` | `Connector setting saved: wiro.apikey` |
+| `AGENT_CREDENTIAL_SAVED` | `Setting saved: wiro.apikey` (a channel, the agent's Wiro project or another setting of the agent; several fields read `Settings saved: …`; connecting a connector writes `CONNECTOR_CONNECTED`) |
+| `AGENT_CREDENTIAL_REVEALED` | `Setting revealed: telegram.bottoken` (someone showed a saved key in full in the Wiro panel; the row never holds the key) |
 | `AGENT_CREDENTIAL_REMOVED` | `Disconnected: wiro` (the agent's Wiro project was disconnected because the agent moved to a workspace the project isn't in, or because the project's team or organization was deleted) |
 | `CONNECTOR_CONNECTED`, `CONNECTOR_DISCONNECTED` | `Connector connected: serper`, `Connector disconnected: serper` (see [Agent Connectors](/docs/agent-connectors)). When the agent moves to a workspace its Wiro project isn't in, or its Wiro project's team or organization is deleted, Wiro writes `Connector disconnected: wiro` with `summary.reason` `"workspace"` next to the `AGENT_CREDENTIAL_REMOVED` row (see [Moving the agent to another workspace](/docs/agent-connectors#moving-the-agent-to-another-workspace)) |
 | `CONNECTOR_ACCOUNTS_SET` | `Connector accounts set: facebook-pages` |
 | `CONNECTOR_REAUTH` | `Connector needs to be connected again: facebook-pages` (written by Wiro when a sign-in expired or was revoked) |
 | `AGENT_PLAN_STARTED`, `AGENT_PLAN_RENEWED`, `AGENT_PLAN_CANCELLED`, `AGENT_PLAN_RESUMED` | `Starter plan started: $5.00 charged`, `Starter plan renewed: $5.00 charged`, `Plan cancelled, ends 2026-06-01`, `Plan cancellation undone` |
+| `AGENT_PLAN_ENDED` | `Starter plan ended: the wallet could not pay the renewal`, `Pro plan ended: it was set to cancel` (written by Wiro; the agent stops when its plan ends) |
 | `AGENT_PLAN_NOT_SAVED` | `Pro plan renewal did not finish: $24.00 charged`, `Max plan start did not finish: $100.00 charged` (the wallet paid and the plan could not be saved; see [Plan payments that did not finish](/docs/agent-transactions#plan-not-saved)) |
 | `AGENT_TIER_UPGRADED` | `Plan upgraded from Starter to Pro; $12.50 charged` |
 | `AGENT_PLAN_CHANGE_SCHEDULED`, `AGENT_PLAN_CHANGE_CANCELLED` | `Plan change scheduled: Pro to Starter on 2026-06-01`, `Scheduled plan change cancelled: stays on Pro` |
@@ -213,16 +211,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Logs" \
     {
       "ts": "2026-05-03T14:02:54.902Z",
       "kind": "tool_completed",
-      "tool": "exec",
+      "tool": "wiro__run_model",
       "toolintegration": "wiro",
-      "title": "POST api.wiro.ai/v1/Run/google/nano-banana",
-      "summary": {
-        "method": "POST",
-        "host": "api.wiro.ai",
-        "path": "/v1/Run/google/nano-banana",
-        "headers": ["Content-Type: application/json", "x-api-key: ***"],
-        "body": { "prompt": "A paper boat on a calm lake at sunrise" }
-      },
+      "title": "wiro__run_model",
+      "summary": {},
       "durationMs": 640,
       "ok": true,
       "userUuid": "system",
@@ -231,13 +223,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Logs" \
     {
       "ts": "2026-05-03T14:00:10.305Z",
       "kind": "tool_completed",
-      "tool": "exec",
-      "title": "Posted: \"Weekly Roundup\"",
-      "summary": {
-        "title": "Weekly Roundup",
-        "url": "https://blog.example.com/weekly-roundup-12",
-        "categories": ["AI", "Tutorial"]
-      },
+      "tool": "wordpress__create_post",
+      "toolintegration": "wordpress",
+      "title": "wordpress__create_post",
+      "summary": {},
       "durationMs": 1840,
       "ok": true,
       "userUuid": "system",
@@ -319,7 +308,7 @@ With a `lines` cap, older who-did-what rows of the day can take the place of the
     {
       "ts": "2026-05-03T09:12:44.000Z",
       "kind": "AGENT_CREDENTIAL_SAVED",
-      "title": "Connector setting saved: wiro.apikey",
+      "title": "Setting saved: wiro.apikey",
       "ok": true,
       "summary": { "fields": ["wiro.apikey"] },
       "userUuid": "ada-uuid",
@@ -595,18 +584,19 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/LogsDelete" \
 
 ## Errors
 
-| Error | When |
-|-------|------|
-| `useragentguid is required` | Missing required parameter |
-| `date is required` | `LogsFile` / `LogsDelete` without `date` |
-| `useragent-access-denied` | Caller is neither the owner nor on the agent's team |
-| `useragent-team-admin-required` | Caller is a member of the agent's team but not a team admin (code `97`) |
-| `Agent is not assigned to a worker. It may not be running.` | The agent isn't running on a host (never started, stopped or being moved). Start it and retry |
-| `Worker not found` | The agent's host is not available right now. Retry later |
-| `Agent is temporarily unavailable. Please try again shortly.` | The agent's host did not answer (offline, network blip). Retry |
-| `runstream-unavailable` | `RunStreamToken` only: following runs live is not available right now. Try again later |
+| Error | Code | When |
+|-------|------|------|
+| `useragentguid is required` | 0 | Missing required parameter |
+| `date is required` | 0 | `LogsFile` / `LogsDelete` without `date` |
+| `User agent not found` | 95 | Unknown guid, or the agent has been deleted |
+| `You don't have access to this user agent` | 96 | The caller is neither the agent's owner nor on its team |
+| `Only a team admin can perform this action on a team-owned agent.` | 97 | The caller is a plain member of the agent's team |
+| `Agent is not assigned to a worker. It may not be running.` | 0 | The agent isn't running on a host (never started, stopped or being moved). Start it and retry |
+| `Worker not found` | 0 | The agent's host is not available right now. Retry later |
+| `Agent is temporarily unavailable. Please try again shortly.` | 0 | The agent's host did not answer (offline, network blip). Retry |
+| `runstream-unavailable` | 0 | `RunStreamToken` only: following runs live is not available right now. Try again later |
 
-`Logs`, `LogsFile` and `LogsList` answer with the last three errors only when there are no who-did-what rows to show. `LogsDelete` needs the agent on a host every time. `RunStreamToken` needs no host: a stopped agent gets a token too.
+`Logs`, `LogsFile` and `LogsList` answer with the three errors about the agent's host only when there are no who-did-what rows to show. `LogsDelete` needs the agent on a host every time. `RunStreamToken` needs no host: a stopped agent gets a token too.
 
 ## Retention & Rotation
 

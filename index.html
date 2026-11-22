@@ -36238,7 +36238,7 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
                     <p>Every Wiro agent appends one structured <code>ActivityEvent</code> JSON line per tool call, LLM turn boundary, scheduled task run and billed turn, plus each message that arrives on a connected Telegram, Slack or Discord channel. Secrets (matched by field name and by high-entropy value), internal tool-call IDs and API credentials are redacted before an event is written, so what shows up in <code>Logs</code> is safe to show end users.</p>
                     <p>A daily JSONL file is written for each calendar day; files older than 7 days are gzipped, files older than 180 days are deleted by the agent's daily maintenance cron.</p>
                     <p>The feed also lists what people and API keys did to the agent: starts and stops, renames, skill, connector and billing changes, connections, Screen views and Take Control sessions, browser resets, and deleted log days, each with who did it. These <a href="#who-did-what-rows">who-did-what rows</a> don't depend on the agent running.</p>
-                    <p>The endpoints below are <strong>owner-or-team-admin</strong> scoped. Plain members of the agent's team receive <code>useragent-team-admin-required</code> (code <code>97</code>); outside callers receive <code>useragent-access-denied</code>.</p>
+                    <p>The endpoints below are <strong>owner-or-team-admin</strong> scoped. Plain members of the agent's team get code <code>97</code> (<code>Only a team admin can perform this action on a team-owned agent.</code>); outside callers get code <code>96</code> (<code>You don't have access to this user agent</code>).</p>
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
                         <table>
@@ -36265,12 +36265,8 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
   "ts": "2026-05-03T14:00:10.234Z",
   "kind": "tool_completed",
   "tool": "web_fetch",
-  "title": "Fetched https://blog.example.com/weekly-roundup-12",
-  "summary": {
-    "url": "https://blog.example.com/weekly-roundup-12",
-    "status": 200,
-    "bytes": 18432
-  },
+  "title": "Fetched URL: blog.example.com",
+  "summary": { "host": "blog.example.com" },
   "durationMs": 1840,
   "ok": true,
   "userUuid": "ada-uuid",
@@ -36292,15 +36288,15 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
                           </thead>
                           <tbody>
                             <tr><td><code>ts</code></td><td><code>string</code></td><td>ISO-8601 UTC datetime when the event was recorded (e.g. <code>"2026-05-03T14:00:10.234Z"</code>). Parse with <code>Date.parse(ts)</code> for arithmetic.</td></tr>
-                            <tr><td><code>kind</code></td><td><code>string</code></td><td>Fine-grained event class. One of: <code>"turn_started"</code>, <code>"turn_ended"</code> (an LLM turn boundary); <code>"tool_started"</code>, <code>"tool_completed"</code> (one pair per tool call); <code>"tool_blocked"</code> (a tool call the agent's safety rules refused); <code>"cron_finished"</code> (a scheduled task finished); <code>"user_message"</code> (a message received on a connected Telegram, Slack or Discord channel, not web chat); <code>"token_usage"</code> (a billed turn's token usage: chat / cron / voice post-call); <code>"token_usage_idempotent"</code> (a replayed usage report, already billed, informational only); <code>"media_relay"</code> (files from a reply were delivered); <code>"background_reply"</code> (a result that finished in the background was delivered to the chat). Rows about what was done to the agent have <a href="#who-did-what-rows"><code>AGENT_*</code> kinds</a>, and two note rows, <code>"runtime_log_unavailable"</code> and <code>"runtime_log_deleted"</code>, say what part of a day is missing. Show any kind you don't recognize by its <code>title</code>.</td></tr>
+                            <tr><td><code>kind</code></td><td><code>string</code></td><td>Fine-grained event class. One of: <code>"turn_started"</code>, <code>"turn_ended"</code> (an LLM turn boundary); <code>"tool_started"</code>, <code>"tool_completed"</code> (one pair per tool call); <code>"tool_blocked"</code> (a tool call the agent's safety rules refused); <code>"cron_finished"</code> (a scheduled task finished); <code>"user_message"</code> (a message received on a connected Telegram, Slack or Discord channel, not web chat); <code>"token_usage"</code> (a billed turn's token usage: chat / cron / voice post-call); <code>"token_usage_idempotent"</code> (a replayed usage report, already billed, informational only); <code>"media_relay"</code> (files from a reply were delivered); <code>"background_reply"</code> (a result that finished in the background was delivered to the chat). Rows about what was done to the agent have <a href="#who-did-what-rows"><code>AGENT_*</code> and <code>CONNECTOR_*</code> kinds</a>, and two note rows, <code>"runtime_log_unavailable"</code> and <code>"runtime_log_deleted"</code>, say what part of a day is missing. Show any kind you don't recognize by its <code>title</code>.</td></tr>
                             <tr><td><code>tool</code></td><td><code>string?</code></td><td>Present on <code>tool_started</code> / <code>tool_completed</code> / <code>tool_blocked</code>. The name of the tool the agent used.</td></tr>
                             <tr><td><code>toolintegration</code></td><td><code>string?</code></td><td>On <code>tool_started</code> and <code>tool_completed</code> when the step works in a connector: the connector's <code>slug</code> from <code>POST /AgentConnector/List</code>, for example <code>"wordpress"</code>, or <code>"wiro"</code> for Wiro AI Models. Same closed list as on <a href="/docs/agent-messaging#tool-integration-and-action-values">timeline tool blocks</a>.</td></tr>
                             <tr><td><code>toolaction</code></td><td><code>string?</code></td><td>On <code>tool_started</code> and <code>tool_completed</code> when a word fits the step: what it does, for example <code>"click"</code>. Same closed list as on <a href="/docs/agent-messaging#tool-integration-and-action-values">timeline tool blocks</a>. Never set together with <code>toolintegration</code>.</td></tr>
-                            <tr><td><code>title</code></td><td><code>string</code></td><td>Human-readable one-line description of what happened (e.g. <code>"Posted carousel: \"Brand voice teaser\""</code>, <code>"Fetched https://…"</code>, <code>"Token Usage"</code>). Always present.</td></tr>
+                            <tr><td><code>title</code></td><td><code>string</code></td><td>Human-readable one-line description of what happened (e.g. <code>"Fetched URL: blog.example.com"</code>, <code>"wordpress__create_post"</code>, <code>"Token Usage"</code>). Always present.</td></tr>
                             <tr><td><code>summary</code></td><td><code>object?</code></td><td>Structured event-specific payload. Opaque on the wire, so render it as JSON when expanding the row. Secret values (<code>apikey</code>, <code>apppassword</code>, <code>clientsecret</code>, <code>bearer</code>, <code>token</code>, …) are masked before the event is written. Common keys: <code>file</code>, <code>method</code>, <code>host</code>, <code>path</code>, <code>preview</code>, <code>messageCount</code>, <code>jobId</code>, <code>status</code>, <code>reason</code>.</td></tr>
                             <tr><td><code>durationMs</code></td><td><code>number?</code></td><td>Wall-clock duration in milliseconds. Populated on <code>tool_completed</code>, <code>turn_ended</code>, <code>cron_finished</code> and <code>token_usage</code> events.</td></tr>
-                            <tr><td><code>ok</code></td><td><code>boolean?</code></td><td><code>true</code> for a successful completion, <code>false</code> for a failure. Populated on <code>tool_completed</code>, <code>turn_ended</code> and <code>cron_finished</code> events, and always <code>false</code> on <code>tool_blocked</code>. Pair with <code>error</code> for failure rows. It is always <code>true</code> on <code>AGENT_*</code> rows. A <code>turn_ended</code> for a turn the caller cancelled has no <code>ok</code>, and its title reads <code>Agent turn cancelled</code>. A <code>cron_finished</code> for a Scheduled Task run that the agent's spend limit or Model Access rule paused has no <code>ok</code> either, and its title starts with <code>Paused by a spend limit:</code> or <code>Paused by a Model Access rule:</code>.</td></tr>
-                            <tr><td><code>error</code></td><td><code>string?</code></td><td>One-line failure message (when <code>ok: false</code>).</td></tr>
+                            <tr><td><code>ok</code></td><td><code>boolean?</code></td><td><code>true</code> for a successful completion, <code>false</code> for a failure. Populated on <code>tool_completed</code>, <code>turn_ended</code> and <code>cron_finished</code> events, and always <code>false</code> on <code>tool_blocked</code>. Pair with <code>error</code> for failure rows. It is always <code>true</code> on <code>AGENT_*</code> and <code>CONNECTOR_*</code> rows. A <code>turn_ended</code> for a turn the caller cancelled has no <code>ok</code>, and its title reads <code>Agent turn cancelled</code>. A <code>cron_finished</code> for a Scheduled Task run that the agent's spend limit or Model Access rule paused has no <code>ok</code> either, and its title starts with <code>Paused by a spend limit:</code> or <code>Paused by a Model Access rule:</code>.</td></tr>
+                            <tr><td><code>error</code></td><td><code>string?</code></td><td>On a failure row (<code>ok: false</code>): always the fixed sentence <code>Agent is temporarily unavailable. Please try again shortly.</code>, whatever failed. The failure's own reason never reaches the log.</td></tr>
                             <tr><td><code>cost</code></td><td><code>object?</code></td><td>Legacy per-action charge, <code>{ credits, skill, action }</code>. Only events recorded before agents switched to per-turn token billing can carry it; current events never do. See the <code>token_usage</code> event for what a turn cost.</td></tr>
                             <tr><td><code>userUuid</code></td><td><code>string?</code></td><td>UUID of the actor who triggered the event. <code>"system"</code> for cron / internal events. May be missing on older rows, in which case the server falls back to the agent owner.</td></tr>
                             <tr><td><code>user</code></td><td><code>object|null</code></td><td>Resolved actor: <code>{ uuid, firstname, lastname, email, username, avatar, avatarinitials }</code>. <code>null</code> when <code>userUuid</code> is <code>"system"</code> (automation / cron) or when the user record was deleted.</td></tr>
@@ -36308,7 +36304,7 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
                         </table>
                       </div>
                     </div>
-                    <div class="info-callout"><strong>What is <code>summary</code> for?</strong> Tool events carry a short summary of the call: for example the file path for file tools, the program for <code>exec</code>, or the method, host and path for web requests. Turn events carry a short <code>preview</code> (plus <code>messageCount</code> on <code>turn_ended</code>); <code>cron_finished</code> carries <code>{ jobId, status }</code>, plus <code>reason</code> (<code>spend_limit</code> or <code>model_access</code>) when <code>status</code> is <code>paused</code>; <code>user_message</code> carries <code>{ preview }</code>; <code>tool_blocked</code> carries the <code>reason</code>. Treat the object as opaque and render-on-expand, since its shape depends on the tool and may change without a docs revision.</div>
+                    <div class="info-callout"><strong>What is <code>summary</code> for?</strong> Tool events carry a short summary of the call: for example the file path for file tools, the program for <code>exec</code>, or the method, host and path for web requests. Turn events carry a short <code>preview</code> (plus <code>messageCount</code> on <code>turn_ended</code>); <code>cron_finished</code> carries <code>{ jobId, status }</code>, plus <code>reason</code> (<code>spend_limit</code> or <code>model_access</code>) when <code>status</code> is <code>paused</code>; <code>user_message</code> carries <code>{ preview }</code>; <code>tool_blocked</code> carries the <code>reason</code>. A connector's tool is named <code>&lt;slug&gt;__&lt;tool&gt;</code>, such as <code>wordpress__create_post</code>: its <code>tool</code> and <code>title</code> are that name, <code>toolintegration</code> is the connector's <code>slug</code>, and <code>summary</code> is <code>{}</code>, because a connector call's arguments and results never reach the log. A Reddit (<code>reddit</code>) call is titled <code>Reddit API operation</code>, and its <code>summary</code> is <code>{ "service": "reddit", "retentionRedacted": true }</code>. Treat the object as opaque and render-on-expand, since its shape depends on the tool and may change without a docs revision.</div>
                     <p>To tell what a tool call is doing, read <code>toolintegration</code> and <code>toolaction</code> instead of parsing <code>title</code> or <code>summary</code>. Both are missing when no word fits the step, and <code>tool_blocked</code> events don't carry them.</p>
 
                     <h3>Token-usage events</h3>
@@ -36346,7 +36342,7 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
                     <div class="info-callout"><strong>AI usage vs. model runs.</strong> An agent's own AI usage is counted once per LLM turn: each <code>token_usage</code> event is one billed turn, and its <code>tokencost</code> is in cents (<code>tokencost / 100</code> is the amount in USD). It comes from the plan's included usage first, then from the Wiro balance. A Wiro model the agent runs, for example for its video skill or through the <code>wiro</code> connector, is billed separately: Wiro charges it to the wallet of the workspace that owns the agent's Wiro API key at the model's usual price, passed through unchanged. That run shows up as an ordinary <code>tool_completed</code> event with no cost figure; its cost is the task's <code>totalcost</code> (see <a href="/docs/tasks#task-billing">Billing &amp; Cost</a>), and it is a <code>model-run</code> row in the agent's <a href="/docs/agent-transactions">Transactions</a>.</div>
 
                     <h3 id="who-did-what-rows">Who-did-what rows</h3>
-                    <p><code>Logs</code> and <code>LogsFile</code> also return what people and API keys did <strong>to</strong> the agent, and <code>LogsList</code> lists the days that have such rows. These rows sit in the same <code>events</code> list, in time order, with an <code>AGENT_*</code> value in <code>kind</code>. They come on top of the kinds above, which keep their meaning.</p>
+                    <p><code>Logs</code> and <code>LogsFile</code> also return what people and API keys did <strong>to</strong> the agent, and <code>LogsList</code> lists the days that have such rows. These rows sit in the same <code>events</code> list, in time order, with an <code>AGENT_*</code> or <code>CONNECTOR_*</code> value in <code>kind</code>. They come on top of the kinds above, which keep their meaning.</p>
                     <pre><code class="language-json">{
   "ts": "2026-05-03T09:12:44.000Z",
   "kind": "AGENT_RENAMED",
@@ -36379,12 +36375,14 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
                             <tr><td><code>AGENT_TRANSFERRED</code></td><td><code>Agent moved to a team workspace</code>, <code>Agent moved to the personal workspace</code>; the system's rows when the agent's team or organization is deleted read <code>Agent moved to the personal workspace: its team was deleted</code> and <code>Agent moved to the personal workspace: its organization was deleted</code></td></tr>
                             <tr><td><code>AGENT_INSTRUCTION_ADDED</code>, <code>AGENT_INSTRUCTION_UPDATED</code>, <code>AGENT_INSTRUCTION_RENAMED</code>, <code>AGENT_INSTRUCTION_DELETED</code>, <code>AGENT_INSTRUCTION_REVERTED</code></td><td><code>Custom skill added: cs-brand-voice</code>, <code>Scheduled task updated: cs-cron-blog-scanner (text, schedule 0 9 * * 1)</code>, <code>Custom skill renamed: cs-brand-voice to cs-house-style</code>, <code>Scheduled task deleted: cs-cron-blog-scanner</code>, <code>Custom skill reverted to its preset: cs-brand-voice</code></td></tr>
                             <tr><td><code>AGENT_SKILLS_UPDATED</code></td><td><code>Skills updated: util-web-channel off</code></td></tr>
-                            <tr><td><code>AGENT_CREDENTIAL_SAVED</code></td><td><code>Connector setting saved: wiro.apikey</code></td></tr>
+                            <tr><td><code>AGENT_CREDENTIAL_SAVED</code></td><td><code>Setting saved: wiro.apikey</code> (a channel, the agent's Wiro project or another setting of the agent; several fields read <code>Settings saved: …</code>; connecting a connector writes <code>CONNECTOR_CONNECTED</code>)</td></tr>
+                            <tr><td><code>AGENT_CREDENTIAL_REVEALED</code></td><td><code>Setting revealed: telegram.bottoken</code> (someone showed a saved key in full in the Wiro panel; the row never holds the key)</td></tr>
                             <tr><td><code>AGENT_CREDENTIAL_REMOVED</code></td><td><code>Disconnected: wiro</code> (the agent's Wiro project was disconnected because the agent moved to a workspace the project isn't in, or because the project's team or organization was deleted)</td></tr>
                             <tr><td><code>CONNECTOR_CONNECTED</code>, <code>CONNECTOR_DISCONNECTED</code></td><td><code>Connector connected: serper</code>, <code>Connector disconnected: serper</code> (see <a href="/docs/agent-connectors">Agent Connectors</a>). When the agent moves to a workspace its Wiro project isn't in, or its Wiro project's team or organization is deleted, Wiro writes <code>Connector disconnected: wiro</code> with <code>summary.reason</code> <code>"workspace"</code> next to the <code>AGENT_CREDENTIAL_REMOVED</code> row (see <a href="/docs/agent-connectors#moving-the-agent-to-another-workspace">Moving the agent to another workspace</a>)</td></tr>
                             <tr><td><code>CONNECTOR_ACCOUNTS_SET</code></td><td><code>Connector accounts set: facebook-pages</code></td></tr>
                             <tr><td><code>CONNECTOR_REAUTH</code></td><td><code>Connector needs to be connected again: facebook-pages</code> (written by Wiro when a sign-in expired or was revoked)</td></tr>
                             <tr><td><code>AGENT_PLAN_STARTED</code>, <code>AGENT_PLAN_RENEWED</code>, <code>AGENT_PLAN_CANCELLED</code>, <code>AGENT_PLAN_RESUMED</code></td><td><code>Starter plan started: $5.00 charged</code>, <code>Starter plan renewed: $5.00 charged</code>, <code>Plan cancelled, ends 2026-06-01</code>, <code>Plan cancellation undone</code></td></tr>
+                            <tr><td><code>AGENT_PLAN_ENDED</code></td><td><code>Starter plan ended: the wallet could not pay the renewal</code>, <code>Pro plan ended: it was set to cancel</code> (written by Wiro; the agent stops when its plan ends)</td></tr>
                             <tr><td><code>AGENT_PLAN_NOT_SAVED</code></td><td><code>Pro plan renewal did not finish: $24.00 charged</code>, <code>Max plan start did not finish: $100.00 charged</code> (the wallet paid and the plan could not be saved; see <a href="/docs/agent-transactions#plan-not-saved">Plan payments that did not finish</a>)</td></tr>
                             <tr><td><code>AGENT_TIER_UPGRADED</code></td><td><code>Plan upgraded from Starter to Pro; $12.50 charged</code></td></tr>
                             <tr><td><code>AGENT_PLAN_CHANGE_SCHEDULED</code>, <code>AGENT_PLAN_CHANGE_CANCELLED</code></td><td><code>Plan change scheduled: Pro to Starter on 2026-06-01</code>, <code>Scheduled plan change cancelled: stays on Pro</code></td></tr>
@@ -36467,16 +36465,10 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
     {
       "ts": "2026-05-03T14:02:54.902Z",
       "kind": "tool_completed",
-      "tool": "exec",
+      "tool": "wiro__run_model",
       "toolintegration": "wiro",
-      "title": "POST api.wiro.ai/v1/Run/google/nano-banana",
-      "summary": {
-        "method": "POST",
-        "host": "api.wiro.ai",
-        "path": "/v1/Run/google/nano-banana",
-        "headers": ["Content-Type: application/json", "x-api-key: ***"],
-        "body": { "prompt": "A paper boat on a calm lake at sunrise" }
-      },
+      "title": "wiro__run_model",
+      "summary": {},
       "durationMs": 640,
       "ok": true,
       "userUuid": "system",
@@ -36485,13 +36477,10 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
     {
       "ts": "2026-05-03T14:00:10.305Z",
       "kind": "tool_completed",
-      "tool": "exec",
-      "title": "Posted: \"Weekly Roundup\"",
-      "summary": {
-        "title": "Weekly Roundup",
-        "url": "https://blog.example.com/weekly-roundup-12",
-        "categories": ["AI", "Tutorial"]
-      },
+      "tool": "wordpress__create_post",
+      "toolintegration": "wordpress",
+      "title": "wordpress__create_post",
+      "summary": {},
       "durationMs": 1840,
       "ok": true,
       "userUuid": "system",
@@ -36578,7 +36567,7 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
     {
       "ts": "2026-05-03T09:12:44.000Z",
       "kind": "AGENT_CREDENTIAL_SAVED",
-      "title": "Connector setting saved: wiro.apikey",
+      "title": "Setting saved: wiro.apikey",
       "ok": true,
       "summary": { "fields": ["wiro.apikey"] },
       "userUuid": "ada-uuid",
@@ -36871,22 +36860,23 @@ for e in cron_runs:
                       <div class="docs-param-table-wrapper">
                         <table>
                           <thead>
-                            <tr><th>Error</th><th>When</th></tr>
+                            <tr><th>Error</th><th>Code</th><th>When</th></tr>
                           </thead>
                           <tbody>
-                            <tr><td><code>useragentguid is required</code></td><td>Missing required parameter</td></tr>
-                            <tr><td><code>date is required</code></td><td><code>LogsFile</code> / <code>LogsDelete</code> without <code>date</code></td></tr>
-                            <tr><td><code>useragent-access-denied</code></td><td>Caller is neither the owner nor on the agent's team</td></tr>
-                            <tr><td><code>useragent-team-admin-required</code></td><td>Caller is a member of the agent's team but not a team admin (code <code>97</code>)</td></tr>
-                            <tr><td><code>Agent is not assigned to a worker. It may not be running.</code></td><td>The agent isn't running on a host (never started, stopped or being moved). Start it and retry</td></tr>
-                            <tr><td><code>Worker not found</code></td><td>The agent's host is not available right now. Retry later</td></tr>
-                            <tr><td><code>Agent is temporarily unavailable. Please try again shortly.</code></td><td>The agent's host did not answer (offline, network blip). Retry</td></tr>
-                            <tr><td><code>runstream-unavailable</code></td><td><code>RunStreamToken</code> only: following runs live is not available right now. Try again later</td></tr>
+                            <tr><td><code>useragentguid is required</code></td><td>0</td><td>Missing required parameter</td></tr>
+                            <tr><td><code>date is required</code></td><td>0</td><td><code>LogsFile</code> / <code>LogsDelete</code> without <code>date</code></td></tr>
+                            <tr><td><code>User agent not found</code></td><td>95</td><td>Unknown guid, or the agent has been deleted</td></tr>
+                            <tr><td><code>You don't have access to this user agent</code></td><td>96</td><td>The caller is neither the agent's owner nor on its team</td></tr>
+                            <tr><td><code>Only a team admin can perform this action on a team-owned agent.</code></td><td>97</td><td>The caller is a plain member of the agent's team</td></tr>
+                            <tr><td><code>Agent is not assigned to a worker. It may not be running.</code></td><td>0</td><td>The agent isn't running on a host (never started, stopped or being moved). Start it and retry</td></tr>
+                            <tr><td><code>Worker not found</code></td><td>0</td><td>The agent's host is not available right now. Retry later</td></tr>
+                            <tr><td><code>Agent is temporarily unavailable. Please try again shortly.</code></td><td>0</td><td>The agent's host did not answer (offline, network blip). Retry</td></tr>
+                            <tr><td><code>runstream-unavailable</code></td><td>0</td><td><code>RunStreamToken</code> only: following runs live is not available right now. Try again later</td></tr>
                           </tbody>
                         </table>
                       </div>
                     </div>
-                    <p><code>Logs</code>, <code>LogsFile</code> and <code>LogsList</code> answer with the last three errors only when there are no who-did-what rows to show. <code>LogsDelete</code> needs the agent on a host every time. <code>RunStreamToken</code> needs no host: a stopped agent gets a token too.</p>
+                    <p><code>Logs</code>, <code>LogsFile</code> and <code>LogsList</code> answer with the three errors about the agent's host only when there are no who-did-what rows to show. <code>LogsDelete</code> needs the agent on a host every time. <code>RunStreamToken</code> needs no host: a stopped agent gets a token too.</p>
                   </section>
 
                   <section id="logs-retention">
