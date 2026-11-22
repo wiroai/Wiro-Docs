@@ -96,7 +96,7 @@ When the agent finishes, Wiro sends a **POST** request to your `callbackurl` wit
 | `content` | string | The original user message you sent. |
 | `response` | string | The agent's full response text on success. For errors, contains the error message. For cancellation, contains the abort reason. |
 | `debugoutput` | string | Same as `response`: the full accumulated output text. Included for consistency with the polling API. |
-| `metadata` | object | Structured answer data, performance metrics, and raw text. Timeline blocks are not embedded in webhooks. Empty object (`{}`) for error and cancel statuses. |
+| `metadata` | object | Structured answer data, performance metrics, and raw text. Timeline blocks are not embedded in webhooks. Empty object (`{}`) for `agent_cancel` and for an `agent_error` that cut the turn off; see [The `metadata` Object](#the-metadata-object). |
 | `endedat` | number | Unix timestamp (UTC seconds) when processing finished. |
 
 ### The `metadata` Object
@@ -115,18 +115,18 @@ On successful completion (`agent_end`), the `metadata` object contains the struc
 | `tokenCount` | number | Number of answer chunks received by the bridge. Use the message's billing columns for authoritative model tokens. |
 | `wordCount` | number | Total words in the response. |
 
-For `agent_error` and `agent_cancel`, `metadata` is an empty object `{}`. Always check `status` before accessing metadata fields.
+For `agent_cancel`, and for an `agent_error` that cut the turn off, such as `[TURN_INTERRUPTED]` or `[AGENT_UNAVAILABLE]` after an outage, `metadata` is an empty object `{}`. A turn that ended with a coded failure, such as `[SPEND_LIMIT_REACHED]`, `[CREDITS_EXHAUSTED]` or `[MODEL_NOT_ALLOWED]`, posts the usual `progressGenerate` metadata, and its `raw` and `answer` hold the same coded message as `response`. Read the outcome from `status` and `response`, never from `metadata`.
 
 After receiving the webhook, call `POST /UserAgent/Message/Detail` with `messageguid` whenever you need the authoritative top-level `timeline[]`. It preserves the ordered reasoning, answer, and safe tool-label/status blocks for the completed turn.
 
-> **Note:** For `agent_error` and `agent_cancel`, the webhook's `response` and `debugoutput` hold the same coded failure message as `POST /UserAgent/Message/Detail`; see [Failed turns](/docs/agent-messaging#failed-turns). The underlying error is never sent.
+> **Note:** For `agent_error` and `agent_cancel`, the webhook's `response` and `debugoutput` hold the same coded failure message as `POST /UserAgent/Message/Detail`; see [Failed turns](/docs/agent-messaging#failed-turns). The underlying error is never sent. A turn the agent's security rules block can also come with `agent_end` and `[SECURITY_BLOCKED] …` in `response`.
 
 ## Status Values
 
 | Status | Description | `response` contains | `metadata` contains |
 |--------|-------------|---------------------|---------------------|
 | `agent_end` | Agent completed successfully | Full response text | Structured answer and metrics |
-| `agent_error` | The turn failed | The public failure message; see [Failed turns](/docs/agent-messaging#failed-turns) | Empty object `{}` |
+| `agent_error` | The turn failed | The public failure message; see [Failed turns](/docs/agent-messaging#failed-turns) | Empty object `{}`, or the usual metrics when the turn ended with a coded failure such as `[SPEND_LIMIT_REACHED]` |
 | `agent_cancel` | Message was cancelled before completion | `[REQUEST_CANCELLED] Request cancelled.` | Empty object `{}` |
 
 ## Retry Policy

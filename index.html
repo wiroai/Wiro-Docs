@@ -22812,7 +22812,7 @@ print(response.body);
 <tbody>
 <tr>
 <td><code>[SECURITY_BLOCKED]</code></td>
-<td><code>agent_error</code></td>
+<td><code>agent_error</code>, or <code>agent_end</code> when the block came back as the answer</td>
 <td>The agent's security rules blocked the message.</td>
 <td>Change the message and send it again.</td>
 </tr>
@@ -22849,7 +22849,7 @@ print(response.body);
 <tr>
 <td><code>[CREDITS_EXHAUSTED]</code></td>
 <td><code>agent_error</code></td>
-<td>The agent has used the AI usage its plan includes and its balance is under $0.50, so its model calls were refused. Every try fails until funds are added or the plan renews.</td>
+<td>The agent has used the AI usage its plan includes and its balance is under $0.50, so its model calls were refused. A turn that is already running stops at its next model call. Every try fails until funds are added or the plan renews.</td>
 <td>Add funds to the balance of the agent's workspace (see <a href="/docs/agent-overview#adding-funds">Adding Funds</a>), or wait for the plan to renew. Don't send the message again before that.</td>
 </tr>
 <tr>
@@ -22868,6 +22868,7 @@ print(response.body);
 </table>
 </div>
 </div>
+<p>A turn the agent's security rules block can also end with <code>agent_end</code>, with <code>[SECURITY_BLOCKED] …</code> as its <code>response</code>, so match these codes on <code>response</code> whatever the status.</p>
 <p>The full texts:</p>
 <pre><code class="language-text">[SECURITY_BLOCKED] The agent's security rules blocked this message. Change it and send it again.
 [SAFETY_POLICY_BLOCKED] The model's provider declined this request under its safety policy. Rephrase it and send it again.
@@ -23247,7 +23248,7 @@ print(response.body);
 <tr>
 <td><code>metadata</code></td>
 <td><code>object</code></td>
-<td>Parsed JSON object (API returns it already decoded). Populated from the agent bridge on <code>agent_end</code>. Only <code>type</code> and a few keys are returned: on a finished turn (<code>type: "progressGenerate"</code>) <code>task</code>, <code>speed</code>, <code>speedType</code>, <code>elapsedTime</code>, <code>tokenCount</code> and <code>wordCount</code>; on a <code>model_change</code> marker row <code>fromModel</code> and <code>toModel</code>; on a <code>setup_result</code> row, a <a href="#handled-setup-replies">reply Wiro handles itself</a>, the answer's <code>next</code> when it left connectors to connect (as in <code>setupresult</code>), and <code>listed</code> and <code>listedfrom</code> when it was the <a href="#setup-card-listing">card listing</a>: the ids of the cards it showed and the <code>guid</code> of the message they are on; on other rows (<code>system</code>, <code>subagent</code>) usually <code>type</code> alone, and in History <code>systemcost: true</code> on a row whose cost came from a scheduled or background run. The answer text is in <code>response</code> and <code>timeline</code>, never in metadata. Empty object <code>{}</code> for <code>agent_error</code>, <code>agent_cancel</code>, or when the bridge hasn't finished yet. Message status lives in the top-level <code>status</code> field, so don't read it from <code>metadata.type</code>.</td>
+<td>Parsed JSON object (API returns it already decoded). Filled when the turn ends. Only <code>type</code> and a few keys are returned: on a finished turn (<code>type: "progressGenerate"</code>) <code>task</code>, <code>speed</code>, <code>speedType</code>, <code>elapsedTime</code>, <code>tokenCount</code> and <code>wordCount</code>; on a <code>model_change</code> marker row <code>fromModel</code> and <code>toModel</code>; on a <code>setup_result</code> row, a <a href="#handled-setup-replies">reply Wiro handles itself</a>, the answer's <code>next</code> when it left connectors to connect (as in <code>setupresult</code>), and <code>listed</code> and <code>listedfrom</code> when it was the <a href="#setup-card-listing">card listing</a>: the ids of the cards it showed and the <code>guid</code> of the message they are on; on other rows (<code>system</code>, <code>subagent</code>) usually <code>type</code> alone, and in History <code>systemcost: true</code> on a row whose cost came from a scheduled or background run. The answer text is in <code>response</code> and <code>timeline</code>, never in metadata. A turn that ended with a coded failure, such as <code>[SPEND_LIMIT_REACHED]</code> or <code>[CREDITS_EXHAUSTED]</code>, keeps <code>type: "progressGenerate"</code> and its metrics. Empty object <code>{}</code> for <code>agent_cancel</code>, for an <code>agent_error</code> that cut the turn off, such as <code>[TURN_INTERRUPTED]</code>, and while the turn is still running. Message status lives in the top-level <code>status</code> field, so don't read it from <code>metadata.type</code>: read a turn's outcome from <code>status</code> and <code>response</code>.</td>
 </tr>
 <tr>
 <td><code>attachments</code></td>
@@ -27609,7 +27610,7 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
 <tr>
 <td><code>metadata</code></td>
 <td>object</td>
-<td>Structured answer data, performance metrics, and raw text. Timeline blocks are not embedded in webhooks. Empty object (<code>{}</code>) for error and cancel statuses.</td>
+<td>Structured answer data, performance metrics, and raw text. Timeline blocks are not embedded in webhooks. Empty object (<code>{}</code>) for <code>agent_cancel</code> and for an <code>agent_error</code> that cut the turn off; see <a href="#the-metadata-object">The <code>metadata</code> Object</a>.</td>
 </tr>
 <tr>
 <td><code>endedat</code></td>
@@ -27682,10 +27683,10 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
 </table>
 </div>
 </div>
-<p>For <code>agent_error</code> and <code>agent_cancel</code>, <code>metadata</code> is an empty object <code>{}</code>. Always check <code>status</code> before accessing metadata fields.</p>
+<p>For <code>agent_cancel</code>, and for an <code>agent_error</code> that cut the turn off, such as <code>[TURN_INTERRUPTED]</code> or <code>[AGENT_UNAVAILABLE]</code> after an outage, <code>metadata</code> is an empty object <code>{}</code>. A turn that ended with a coded failure, such as <code>[SPEND_LIMIT_REACHED]</code>, <code>[CREDITS_EXHAUSTED]</code> or <code>[MODEL_NOT_ALLOWED]</code>, posts the usual <code>progressGenerate</code> metadata, and its <code>raw</code> and <code>answer</code> hold the same coded message as <code>response</code>. Read the outcome from <code>status</code> and <code>response</code>, never from <code>metadata</code>.</p>
 <p>After receiving the webhook, call <code>POST /UserAgent/Message/Detail</code> with <code>messageguid</code> whenever you need the authoritative top-level <code>timeline[]</code>. It preserves the ordered reasoning, answer, and safe tool-label/status blocks for the completed turn.</p>
 <blockquote>
-<p><strong>Note:</strong> For <code>agent_error</code> and <code>agent_cancel</code>, the webhook's <code>response</code> and <code>debugoutput</code> hold the same coded failure message as <code>POST /UserAgent/Message/Detail</code>; see <a href="/docs/agent-messaging#failed-turns">Failed turns</a>. The underlying error is never sent.</p>
+<p><strong>Note:</strong> For <code>agent_error</code> and <code>agent_cancel</code>, the webhook's <code>response</code> and <code>debugoutput</code> hold the same coded failure message as <code>POST /UserAgent/Message/Detail</code>; see <a href="/docs/agent-messaging#failed-turns">Failed turns</a>. The underlying error is never sent. A turn the agent's security rules block can also come with <code>agent_end</code> and <code>[SECURITY_BLOCKED] …</code> in <code>response</code>.</p>
 </blockquote>
 <h2 id="status-values">Status Values</h2>
 <div class="docs-param-table">
@@ -27710,7 +27711,7 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
 <td><code>agent_error</code></td>
 <td>The turn failed</td>
 <td>The public failure message; see <a href="/docs/agent-messaging#failed-turns">Failed turns</a></td>
-<td>Empty object <code>{}</code></td>
+<td>Empty object <code>{}</code>, or the usual metrics when the turn ended with a coded failure such as <code>[SPEND_LIMIT_REACHED]</code></td>
 </tr>
 <tr>
 <td><code>agent_cancel</code></td>
