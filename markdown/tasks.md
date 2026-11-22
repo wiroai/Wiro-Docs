@@ -156,7 +156,7 @@ The label is the surface's name in the dashboard.
 Some work fits more than one surface, such as a workflow run started with an API key. The first match in this order decides:
 
 1. **Who does the work**: Studio, the Workflow Agent or one of your deployed agents. Messages to Studio and the Workflow Agent, the other calls to their `/Studio` and `/StudioWorkflow` endpoints and the models Studio runs for you count as `studio` and `workflow-agent`, and a deployed agent's own calls as `agent`.
-2. **What it is**: a workflow run, its resumes and every step it runs count as `workflow`. A workflow that a deployed agent, Studio or the Workflow Agent starts keeps that surface instead.
+2. **What it is**: a workflow run, its resumes and every step they run count as `workflow`. A run or resume that one of your deployed agents sends counts as `agent` instead. Each resume counts on the surface of the call that resumes it: if an agent started a run and you resume it with an API key, the remaining steps count as `workflow`.
 3. **Which client sends it**: the LLM gateway (`llm-gateway`), a Wiro browser extension (`extension`) or MCP (`mcp`).
 4. **Which credential it uses**: an API key (`api`), else a signed-in session (`web`).
 
