@@ -29,7 +29,7 @@ Each rule covers one scope of the wallet's work, the same scopes as [spend limit
 | `mcp` | The hosted [Wiro MCP server](/docs/wiro-mcp-server) at `mcp.wiro.ai`, and the Wiro MCP package when it names itself (see [Surfaces](/docs/tasks#task-surfaces)) |
 | `llm-gateway` | The OpenAI and Anthropic compatible [LLM gateway](/docs/completions-api) at `llm.wiro.ai` |
 | `extension` | Only the Wiro browser extensions |
-| `agent` | Your deployed agents' own runs |
+| `agent` | Your deployed agents: the models they run through Wiro, the chat models they answer with and their built-in voice |
 | `studio` | [Studio](/docs/studio): the chat model of each message you send it, and the models it runs for you |
 | `workflow-agent` | The [Workflow Agent](/docs/workflow-agent): the chat model of each message you send it |
 | `workflow` | [Workflow](/docs/workflows) runs and resumes, and every step they run |
