@@ -64,7 +64,7 @@ Every event is a JSON object with this base shape:
 | `durationMs` | `number?` | Wall-clock duration in milliseconds. Populated on `tool_completed`, `turn_ended`, `cron_finished` and `token_usage` events. |
 | `ok` | `boolean?` | `true` for a successful completion, `false` for a failure. Populated on `tool_completed`, `turn_ended` and `cron_finished` events, and always `false` on `tool_blocked`. Pair with `error` for failure rows. It is always `true` on `AGENT_*` rows. A `turn_ended` for a turn the caller cancelled has no `ok`, and its title reads `Agent turn cancelled`. A `cron_finished` for a Scheduled Task run that the agent's spend limit or Model Access rule paused has no `ok` either, and its title starts with `Paused by a spend limit:` or `Paused by a Model Access rule:`. |
 | `error` | `string?` | One-line failure message (when `ok: false`). |
-| `cost` | `object?` | Legacy per-action credit charge, `{ credits, skill, action }`. Only events recorded before agents switched to per-turn token billing can carry it; current events never do. See the `token_usage` event for what a turn cost. |
+| `cost` | `object?` | Legacy per-action charge, `{ credits, skill, action }`. Only events recorded before agents switched to per-turn token billing can carry it; current events never do. See the `token_usage` event for what a turn cost. |
 | `userUuid` | `string?` | UUID of the actor who triggered the event. `"system"` for cron / internal events. May be missing on older rows, in which case the server falls back to the agent owner. |
 | `user` | `object\|null` | Resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. `null` when `userUuid` is `"system"` (automation / cron) or when the user record was deleted. |
 
@@ -74,16 +74,16 @@ To tell what a tool call is doing, read `toolintegration` and `toolaction` inste
 
 ### Token-usage events
 
-A `token_usage` event records the token spend and credit deduction for one billed turn: a chat reply, a cron run, or a voice post-call. A `token_usage_idempotent` event carries the **same shape** for a replayed usage callback that was already billed (informational; it does not deduct again). On top of the base `ActivityEvent` fields, these events add:
+A `token_usage` event records the tokens and the AI usage of one billed turn: a chat reply, a cron run, or a voice post-call. A `token_usage_idempotent` event carries the **same shape** for a replayed usage callback that was already billed (informational; it does not deduct again). On top of the base `ActivityEvent` fields, these events add:
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `model` | `string` | Canonical model slug that served the turn (e.g. `"openai/gpt-5.4"`). |
 | `tokens` | `object` | Nested token counts in **camelCase**: `{ input, output, cacheRead, cacheWrite, total }` (each an integer). |
-| `tokencost` | `number` | Credits deducted for the turn (1 credit = $0.01). |
+| `tokencost` | `number` | The turn's AI usage, in cents (`5` is $0.05). |
 | `durationMs` | `number` | Wall-clock duration of the turn in milliseconds. |
 | `calls` | `number` | Number of LLM calls made during the turn. |
-| `remainingcredits` | `number` | Credit pool remaining after the deduction. |
+| `remainingcredits` | `number` | Deprecated: kept for older readers and will be removed. Read the agent's AI usage and balance from `usage` on [`UserAgent/Detail`](/docs/agent-overview#usage-object). |
 
 ```json
 {
@@ -95,7 +95,6 @@ A `token_usage` event records the token spend and credit deduction for one bille
   "tokencost": 5,
   "durationMs": 4200,
   "calls": 2,
-  "remainingcredits": 9995,
   "userUuid": "system",
   "user": null
 }
@@ -103,7 +102,7 @@ A `token_usage` event records the token spend and credit deduction for one bille
 
 > **Nested vs flat token fields.** The activity-log `token_usage` event nests its counts in **camelCase** under `tokens.{input, output, cacheRead, cacheWrite, total}`. `input` is uncached input and `total` is the exact sum of all four components. This is distinct from the **flat, lowercase** columns on message rows (`inputtokens`, `outputtokens`, `cachereadtokens`, …). Same underlying data, different shape.
 
-> **Credits vs. wallet.** An agent's own credits are spent once per LLM turn: each `token_usage` event is one billed turn, and its `tokencost` is in credits (100 credits = $1). A Wiro model the agent runs, for example for its video skill or through the `wiro` connector, is billed separately: Wiro charges it to the wallet of the workspace that owns the agent's Wiro API key at the model's usual price, passed through unchanged. That run shows up as an ordinary `tool_completed` event with no credit figure; its cost is the task's `totalcost` (see [Billing & Cost](/docs/tasks#task-billing)).
+> **AI usage vs. model runs.** An agent's own AI usage is counted once per LLM turn: each `token_usage` event is one billed turn, and its `tokencost` is in cents (`tokencost / 100` is the amount in USD). It comes from the plan's included usage first, then from the Wiro balance. A Wiro model the agent runs, for example for its video skill or through the `wiro` connector, is billed separately: Wiro charges it to the wallet of the workspace that owns the agent's Wiro API key at the model's usual price, passed through unchanged. That run shows up as an ordinary `tool_completed` event with no cost figure; its cost is the task's `totalcost` (see [Billing & Cost](/docs/tasks#task-billing)), and it is a `model-run` row in the agent's [Transactions](/docs/agent-transactions).
 
 ### Who-did-what rows
 
@@ -150,8 +149,8 @@ A `token_usage` event records the token spend and credit deduction for one bille
 | `AGENT_TIER_UPGRADED` | `Plan upgraded from Starter to Pro; $12.50 charged` |
 | `AGENT_PLAN_CHANGE_SCHEDULED`, `AGENT_PLAN_CHANGE_CANCELLED` | `Plan change scheduled: Pro to Starter on 2026-06-01`, `Scheduled plan change cancelled: stays on Pro` |
 | `AGENT_PLAN_MOVE_SCHEDULED` | `Moves to the Starter plan ($5.00 a month) on 2026-06-01` (an agent subscribed before the three plans) |
-| `AGENT_CREDITS_PURCHASED` | `Extra credits bought: small pack, 1000 credits, $10.00 charged` |
-| `AGENT_CHECKOUT_CREATED` | `Card checkout link created: plan` |
+| `AGENT_CREDITS_PURCHASED` | Older rows only: a pack bought before packs were retired, with what it cost |
+| `AGENT_CHECKOUT_CREATED` | Older rows only: a card checkout link for a plan, from before plans moved to the balance |
 | `AGENT_LOG_DAY_DELETED` | `Activity log day deleted: 2026-05-02` |
 | `AGENT_SCREEN_VIEWED`, `AGENT_SCREEN_CONTROLLED` | `Watched the agent's screen`, `Took control of the agent's screen` |
 | `AGENT_SCREEN_CONTROL_ENDED` | `Control of the agent's screen ended after 4 minutes 10 seconds: handed back` (`summary: { seconds, reason }`; see [Screen in the Activity Log](/docs/agent-overview#screen-in-the-activity-log)) |
@@ -208,7 +207,6 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Logs" \
       "tokencost": 5,
       "durationMs": 4200,
       "calls": 2,
-      "remainingcredits": 9995,
       "userUuid": "system",
       "user": null
     },
@@ -624,7 +622,7 @@ Who-did-what rows are kept for the same 180 days.
 
 ## What's Next
 
-- [Agent Transactions](/docs/agent-transactions): Credit ledger for the same useragent, the audit trail of every credit movement
+- [Agent Transactions](/docs/agent-transactions): What the same useragent cost, in dollars: AI usage, model runs, plan payments and funds added
 - [Agent Messaging](/docs/agent-messaging): User-facing message exchanges (with full prompts and responses)
 - [Agent WebSocket](/docs/agent-websocket#following-an-agents-background-runs): Follow the agent's Scheduled Tasks, background runs and model runs live
 - [Agent Overview](/docs/agent-overview): Full agent endpoint catalog

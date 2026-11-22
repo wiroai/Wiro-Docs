@@ -23,7 +23,7 @@ Toggle `util-web-channel` on a useragent and a single REST call (`POST /UserAgen
 | Web (this page) | Browser mic on **your** site | "Open mic" button on a product / support / sales page. No phone number, no per-minute Twilio bill. |
 | [Twilio](/docs/integration-twiliovoice-skills) | Inbound PSTN phone call | A real phone number ringing. Twilio bills per inbound minute. |
 
-> No third-party billing on this channel. The live call audio is billed to the agent's Wiro project (its `wiro` credential, see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)), against the wallet of the workspace that owns it. It is **not** charged to the agent's platform credit pool. The voice-prep turn and the post-call text turn are billed as normal token deducts (`action: "tokens"`) on [`POST /UserAgent/TransactionList`](/docs/agent-transactions#tx-transactionlist).
+> No third-party billing on this channel. The live call audio is billed to the agent's Wiro project (its `wiro` credential, see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)), against the wallet of the workspace that owns it. It is **not** the agent's AI usage. The voice-prep turn and the post-call text turn are AI usage like any other turn, listed as `ai-usage` rows on [`POST /UserAgent/TransactionList`](/docs/agent-transactions#tx-transactionlist).
 
 ## Availability
 
@@ -344,6 +344,6 @@ The bridge transcodes server-side if a downstream model needs a different sample
 
 - [Twilio Voice](/docs/integration-twiliovoice-skills): pair the same agent with a real phone number for inbound PSTN calls. Both channels surface in the same [Call History](/docs/integration-twiliovoice-skills#call-history) feed.
 - [Realtime Voice Conversation](/docs/realtime-voice-conversation): the underlying model-level realtime protocol (used by `wiro.ai/models/openai/gpt-realtime-mini`, etc.). Web Channel is the agent-aware wrapper around it.
-- [Agent Overview](/docs/agent-overview): useragent statuses, token-based credit metering, and the rest of the agent surface.
+- [Agent Overview](/docs/agent-overview): useragent statuses, plans, AI usage and the balance, and the rest of the agent surface.
 - [Agent Skills](/docs/agent-skills): toggling `util-web-channel` on any agent.
 - [Agent Use Cases: Voice Receptionist](/docs/agent-use-cases), the preset that ships Web + Twilio channels on by default.

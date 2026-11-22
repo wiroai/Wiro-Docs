@@ -36,7 +36,7 @@ A session is one conversation with its own memory. `sessionkey` names it, and `"
 - **$10 to start a turn.** [Message/Send](#post-studiomessagesend) and [Message/SendForm](#post-studiomessagesendform) need at least $10 spendable in the wallet of the key's workspace. Below that, the message is refused with code `97` (`Insufficient balance`), and the response carries `walletUsd`, the balance, and `minTopup`, the minimum. Nothing is charged for a refused message. Reading messages, sessions and results is free.
 - **What a turn costs.** A turn's cost depends on the models Studio runs for it, and can be more than $10.
 - **Project.** Studio works on a project of the workspace. A call with an API key runs on that key's project. Work sent from wiro.ai runs on the workspace's Studio project: one for a personal workspace and one for each team, shared by Studio and the [Workflow Agent](/docs/workflow-agent). The first Studio or Workflow Agent message sent from wiro.ai in a workspace that has none creates a project named "Studio" there, or uses the workspace's existing project of that name. It is a normal project: like any project you create, it gets an API key, and you get the email that comes with a new key. [Studio/Status](#post-studiostatus) shows it, and [Studio/ProjectSet](#post-studioprojectset) changes it.
-- **Chat.** Each turn is charged for the tokens it used, at the chat model's rates in [Studio/Status](#post-studiostatus) (credits per 1M tokens; 1 credit is $0.01), on the turn's project and the `studio` surface. The reply shows the chat charge in `tokencost`, in credits: `tokencost / 100` is the amount in USD.
+- **Chat.** Each turn is charged for the tokens it used, at the chat model's rates in [Studio/Status](#post-studiostatus) (cents per 1M tokens), on the turn's project and the `studio` surface. The reply shows the chat charge in `tokencost`, in cents: `tokencost / 100` is the amount in USD.
 - **Model runs.** The models Studio runs for you are your own tasks, on the turn's project: [Task/List](/docs/tasks#task-list) and [Task/Detail](/docs/tasks#task-detail) return them with `surface` `studio`, and [Studio/Tasks](#post-studiotasks) lists them too. Each is charged like any model run when it finishes: at the model's price when it succeeds, and not at all when it fails or is cancelled. Studio/Tasks shows each run's `totalcost`.
 - **Spend limits and Model Access.** The models Studio runs for you follow your workspace's [spend limits](/docs/spend-limits) and [Model Access](/docs/model-access) rules, the same as the runs you start yourself: the account's or the team's, your own in a team, those of the turn's project (the API key you sent the message with, or the Studio project for a message sent from wiro.ai), and those of the `studio` [surface](/docs/tasks#task-surfaces). So does the chat: what it costs counts toward spend limits, and a message whose chat model a Model Access rule blocks is refused with code `92` before anything runs.
 - Chat charges are made within about a minute of the turn ending, and model runs are charged when they finish, like any model run. Both appear in the wallet's transactions, and [Studio/Transactions](#post-studiotransactions) lists the chat charges.
@@ -50,7 +50,7 @@ Returns the wallet check, the chat models Studio can use and the project Studio 
 | `walletUsd` | number | Spendable balance of the workspace wallet in USD. |
 | `needsTopup` | boolean | `true` when `walletUsd` is below `minTopup`. |
 | `minTopup` | number | The balance a turn needs to start: `10`. |
-| `tokenRates` | object | Chat model rates. `default_model` is the default chat model, and `models` is keyed by model slug: each entry has `input_per_1m` and `output_per_1m` (credits per 1M tokens), optional cached-input, cache-write and long-context rates, a `label`, and `selectable: true` when you can pick it with `model`. A model you could pick that your [Model Access](/docs/model-access) rules block reads `selectable: false` and `blocked: true`. |
+| `tokenRates` | object | Chat model rates. `default_model` is the default chat model, and `models` is keyed by model slug: each entry has `input_per_1m` and `output_per_1m` (cents per 1M tokens), optional cached-input, cache-write and long-context rates, a `label`, and `selectable: true` when you can pick it with `model`. A model you could pick that your [Model Access](/docs/model-access) rules block reads `selectable: false` and `blocked: true`. |
 | `agentModel.chatModel` | string | The chat model a turn uses when you leave `model` out. |
 | `blockedModels` | string[] | The chat models you could pick that your Model Access rules block. `[]` when none is blocked. |
 | `agentModelBlocked` | boolean | `true` when your rules block `agentModel.chatModel`: a message that leaves `model` out is then refused with code `92`. |
@@ -270,7 +270,7 @@ Returns one message and its reply. Poll it until `status` is `agent_end`, `agent
 | `attachments` | The files you attached. |
 | `model` | The chat model that ran the turn. |
 | `inputtokens`, `outputtokens`, `cachereadtokens`, `cachewritetokens`, `totaltokens` | The turn's token use. |
-| `tokencost` | The chat charge in credits; `tokencost / 100` is the amount in USD. Model runs are charged separately (see [Studio/Tasks](#post-studiotasks)). |
+| `tokencost` | The chat charge in cents; `tokencost / 100` is the amount in USD. Model runs are charged separately (see [Studio/Tasks](#post-studiotasks)). |
 | `createdat`, `startedat`, `endedat` | Unix seconds. |
 
 ### Response
@@ -303,7 +303,7 @@ Returns one message and its reply. Poll it until `status` is `agent_end`, `agent
 }
 ```
 
-In this example the chat part cost 7 credits ($0.07). The two images are charged separately, as the model runs Studio started.
+In this example the chat part cost 7 cents ($0.07). The two images are charged separately, as the model runs Studio started.
 
 ## **POST** /Studio/Message/History
 

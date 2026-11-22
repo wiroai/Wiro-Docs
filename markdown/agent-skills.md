@@ -144,10 +144,10 @@ complete. Channels are not skills and do not affect pricing.
 | Sub-field | Type | Description |
 |-----------|------|-------------|
 | `monthly_price_weight_usd` | `number` | Always `0`: a skill adds nothing to the agent's price. |
-| `monthly_credits_weight` | `number` | Always `0`: a skill adds nothing to the agent's monthly credits. |
-| `billing_model` | `string` | Always `"tokens"`. Per-turn conversation cost is token-metered at the agent's per-model `tokenRates` (credits per 1M input / output / cached-input tokens). See [token billing in the Agent Overview](/docs/agent-overview#token-billing). Voice skills bill realtime audio to the wallet of the agent's Wiro project (the `wiro` credential); the voice-prep and post-call text turns are normal token deducts. |
+| `monthly_credits_weight` | `number` | Always `0`: a skill adds nothing to the AI usage the agent's plan includes. |
+| `billing_model` | `string` | Always `"tokens"`. Per-turn conversation cost is token-metered at the agent's per-model `tokenRates` (cents per 1M tokens, with input, cache read, cache write and output priced separately), from the plan's included AI usage first and then from the Wiro balance. See [token billing in the Agent Overview](/docs/agent-overview#token-billing). Voice skills bill realtime audio to the wallet of the agent's Wiro project (the `wiro` credential); the voice-prep and post-call text turns are AI usage like any other turn. |
 
-> **Every plan includes every skill.** An agent's price and monthly credits come from its plan (Starter, Pro or Max), never from its skills, so turning a skill on or off changes neither. See [Pricing Model](/docs/agent-overview#pricing-model-plans-credits-token-billing).
+> **Every plan includes every skill.** An agent's price and the AI usage it includes come from its plan (Starter, Pro or Max), never from its skills, so turning a skill on or off changes neither. See [Pricing Model](/docs/agent-overview#pricing-model-plans-ai-usage-balance).
 
 
 ### **POST** /Skills/Detail
@@ -602,7 +602,7 @@ The top-level `skills[]` array on `UserAgent/Detail` lists every Skill on the in
 2. Uses **idempotency**: concurrent calls or client retries can't apply the change twice.
 3. Is **atomic**: the whole batch lands, or none of it does.
 
-A skill change costs nothing: every plan includes every skill, so the agent's price and credits stay the same.
+A skill change costs nothing: every plan includes every skill, so the agent's price and included AI usage stay the same.
 
 **Single-skill enable:**
 
@@ -644,7 +644,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
 
 ## Preview a Skill Change
 
-Before you commit `SkillsApply` (or the user clicks Save in your UI), call `POST /UserAgent/PricingPreview` to see the skill set the change would leave, with its `depends_on` resolved. No state is mutated, and the price and credits stay the plan's: its `planChange` shows no charge and no credit change. See [`PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) for the full response shape.
+Before you commit `SkillsApply` (or the user clicks Save in your UI), call `POST /UserAgent/PricingPreview` to see the skill set the change would leave, with its `depends_on` resolved. No state is mutated, and the price and included AI usage stay the plan's: its `planChange` shows no charge. See [`PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) for the full response shape.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \

@@ -142,21 +142,21 @@ When the agent isn't running, Send answers `result: false` with `agentstatus` an
 
 See [Restarts](#restarts) for the other sentences.
 
-When the agent has used all its credits, Send answers `result: false` with `agentstatus` and `agentbalance`:
+When the agent has used the AI usage its plan includes and the balance is under $0.50, Send answers `result: false` with code `97`, `agentstatus` and `agentusage`, the agent's [`usage`](/docs/agent-overview#usage-object):
 
 ```json
 {
   "result": false,
-  "errors": [{ "code": 0, "message": "Agent has no remaining credits. Renew your subscription or buy a credit pack to continue.", "time": 1794654900 }],
+  "errors": [{ "code": 97, "message": "Support Desk used the $30.00 of AI usage its plan includes this month, and your balance is under $0.50. Add funds to keep it running, or it starts again when the plan renews on 1 December 2026.", "time": 1794654900 }],
   "messageguid": null,
   "agenttoken": null,
   "status": null,
   "agentstatus": 4,
-  "agentbalance": { "monthlycredits": 3000, "extracredits": 0, "usedcredits": 3000, "remainingcredits": 0 }
+  "agentusage": { "period": "2026-11", "resetsat": 1796083200, "includedusd": 30, "usedusd": 30, "leftusd": 0, "renewalusd": 30, "frombalanceusd": 12.85, "balanceusd": 0.31, "wallet": "personal", "minbalanceusd": 0.5, "paused": true, "pausedreason": "balance" }
 }
 ```
 
-That sentence speaks to whoever pays for the agent, which is you. Detect the refusal by `agentbalance`, show your users your own words, and add credits from your backend: an [extra credit pack](/docs/agent-overview#extra-credit-packs) with `useprepaid: true`, or a larger plan with [`UpgradeTier`](/docs/agent-overview#post-useragentupgradetier). Setup replies that Wiro answers itself still work without credits: see [Replies the API answers itself](#replies-the-api-answers-itself).
+That sentence speaks to whoever pays for the agent, which is you; it leaves out the date when the plan's renewal can't be read. Detect the refusal by `agentusage`, show your users your own words, and add funds to the balance of the agent's workspace (see [Adding Funds](/docs/agent-overview#adding-funds)), or move the agent to a larger plan with [`UpgradeTier`](/docs/agent-overview#post-useragentupgradetier). The agent answers again as soon as the balance is back at $0.50 or more. Your users in Telegram, Slack and Discord read `This agent is paused for now. It runs again once its owner adds funds or its plan renews.` instead, with no amount. Setup replies that Wiro answers itself still work while the agent is paused: see [Replies the API answers itself](#replies-the-api-answers-itself).
 
 ### Follow the turn
 
@@ -218,7 +218,7 @@ A turn that fails ends with `status: "agent_error"`, and a cancelled one with `"
 | `[SPEND_LIMIT_REACHED]` | `agent_error` | The agent's spend limit is used up: show the sentence as it is. |
 | `[USAGE_CEILING_REACHED]` | `agent_error` | The agent reached its hourly or daily safety ceiling for AI model calls: say it runs again when that hour or day is over. |
 | `[MODEL_NOT_ALLOWED]` | `agent_error` | The agent's Model Access rule blocks the model it uses: show the sentence as it is. |
-| `[CREDITS_EXHAUSTED]` | `agent_error` | The agent has no credits left: say it runs again once credits are added or its plan renews, and don't offer to try again before that. |
+| `[CREDITS_EXHAUSTED]` | `agent_error` | The agent has used the AI usage its plan includes and the balance is under $0.50: say it runs again once funds are added or its plan renews, and don't offer to try again before that. |
 | `[AGENT_UNAVAILABLE]` | `agent_error` | Anything else, a message that couldn't be queued included: offer to try again shortly. |
 | `[REQUEST_CANCELLED]` | `agent_cancel` | The turn was cancelled. |
 
@@ -309,9 +309,9 @@ Some messages are answered by Wiro itself, with no agent turn: a `yes` that appl
 }
 ```
 
-Show `response` as the reply, as plain text. There is nothing to follow on the WebSocket. In `Message/History` the row reads `status: "agent_end"`, `metadata: { "type": "setup_result" }` and an empty `timeline`. When the answer leaves connectors to connect, `metadata` also keeps its `next`, and a card listing keeps `listed` and `listedfrom` there: see [Replies Wiro handles itself](/docs/agent-messaging#handled-setup-replies). These replies use no credits, and Wiro gives them while the agent is stopped or restarting too: see [Messages during a restart](#messages-during-a-restart) for which ones.
+Show `response` as the reply, as plain text. There is nothing to follow on the WebSocket. In `Message/History` the row reads `status: "agent_end"`, `metadata: { "type": "setup_result" }` and an empty `timeline`. When the answer leaves connectors to connect, `metadata` also keeps its `next`, and a card listing keeps `listed` and `listedfrom` there: see [Replies Wiro handles itself](/docs/agent-messaging#handled-setup-replies). These replies cost nothing, and Wiro gives them while the agent is stopped or restarting too: see [Messages during a restart](#messages-during-a-restart) for which ones.
 
-Wiro also answers a slash command the agent doesn't run, such as `/status`, or one of its commands that is turned off, while the agent is running. It uses no credits, even when the agent has none left, and the answer has no `setupresult`:
+Wiro also answers a slash command the agent doesn't run, such as `/status`, or one of its commands that is turned off, while the agent is running. It costs nothing, even while the agent is paused for its balance, and the answer has no `setupresult`:
 
 ```json
 {
@@ -2121,7 +2121,7 @@ Each row also carries `user`, your key owner's account, left out here. The rows 
 - Each conversation has its own `sessionkey`, and you check that every `messageguid` a person acts on is in their session.
 - Message rows and cards name your key's owner: your UI shows your own names for the sender.
 - Messages go out with `Message/Send`; replies are followed on the WebSocket or with `Message/Detail`, and loaded with `Message/History`; rows added between turns arrive on the session's `sessiontoken`.
-- Failed turns are told apart by their bracketed code, and an out-of-credits refusal by `agentbalance`.
+- Failed turns are told apart by their bracketed code, and the refusal of an agent paused for its balance by `agentusage`.
 - Timeline blocks are merged by `blockid` and newer `version`, sorted by `callindex`, `contentindex`, `blockid`, and drawn by `type`; unknown types and kinds are skipped.
 - Replies Wiro answers itself (`agenttoken: null`, `status: "agent_end"`) show `response` as plain text.
 - Setup cards show the right title, body and buttons for their kind and state, `add` cards together with their `connect` cards.

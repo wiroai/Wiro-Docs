@@ -19,7 +19,7 @@ The two paths produce the **same useragent shape** at the end (same `customskill
 | `agent.cover` on the response | Template's cover image | The `cover` you sent at Deploy (or a placeholder) |
 | Cascade updates | When Wiro updates the template, your useragent reconciles | No template: the agent is fully owned by you |
 
-Both paths are sold on the same three plans, Starter at $5, Pro at $30 and Max at $100 a month (see [Pricing Model](/docs/agent-overview#pricing-model-plans-credits-token-billing)), and the skills you pick never change the price.
+Both paths are sold on the same three plans, Starter at $5, Pro at $30 and Max at $100 a month, each including its own price in AI usage (see [Pricing Model](/docs/agent-overview#pricing-model-plans-ai-usage-balance)), and the skills you pick never change the price.
 
 > **Custom builds don't share a marketplace listing.** They are private to your account; nothing about a custom agent appears on `/Agent/List` or `/Agent/Detail`. Discovery happens through your own product surface.
 
@@ -128,10 +128,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
   "errors": [],
   "tier": "pro",
   "totalPriceUsd": 30,
-  "totalMonthlyCredits": 3000,
   "skillBreakdown": [
-    { "skill": "util-anti-ai-human-copy",      "priceUsd": 0, "credits": 0, "billing_model": "tokens" },
-    { "skill": "util-chat-markdown-reporting", "priceUsd": 0, "credits": 0, "billing_model": "tokens" }
+    { "skill": "util-anti-ai-human-copy",      "priceUsd": 0, "billing_model": "tokens" },
+    { "skill": "util-chat-markdown-reporting", "priceUsd": 0, "billing_model": "tokens" }
   ],
   "enabledSkills": ["util-anti-ai-human-copy", "util-chat-markdown-reporting"],
   "directSkills":  ["util-anti-ai-human-copy", "util-chat-markdown-reporting"],
@@ -147,32 +146,32 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
     }
   },
   "tiers": {
-    "starter": { "priceUsd": 5,   "credits": 500 },
-    "pro":     { "priceUsd": 30,  "credits": 3000 },
-    "max":     { "priceUsd": 100, "credits": 10000 }
+    "starter": { "priceUsd": 5 },
+    "pro":     { "priceUsd": 30 },
+    "max":     { "priceUsd": 100 }
   },
   "plans": [
-    { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500,   "diskMb": 250 },
-    { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000,  "diskMb": 500 },
-    { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000, "diskMb": 1024 }
+    { "key": "starter", "title": "Starter", "priceUsd": 5,   "includedUsageUsd": 5,   "diskMb": 250 },
+    { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "includedUsageUsd": 30,  "diskMb": 500 },
+    { "key": "max",     "title": "Max",     "priceUsd": 100, "includedUsageUsd": 100, "diskMb": 1024 }
   ]
 }
 ```
 
 Read the response:
 
-- `tiers` → the three plans: what your wallet is charged each month and the credits each one grants. The skills don't change these numbers.
-- `plans` → the same three plans as a list with their names (`key`, `title`, `priceUsd`, `monthlyCredits`) and their disk space in MB (`diskMb`).
-- `totalPriceUsd` and `totalMonthlyCredits` → the plan you passed in `tier`.
-- `tokenRates` → per-model token rates (credits per 1M input / output / cached-input tokens). Each conversation turn is metered against these (see [token billing](/docs/agent-overview#token-billing)).
+- `tiers` → the three plans: what your balance is charged each month. The skills don't change these numbers.
+- `plans` → the same three plans as a list with their names (`key`, `title`, `priceUsd`), the AI usage each includes a month (`includedUsageUsd`) and their disk space in MB (`diskMb`).
+- `totalPriceUsd` → the price of the plan you passed in `tier`, which is also the AI usage it includes each month.
+- `tokenRates` → per-model token rates, in cents per 1M tokens, with input, cache read, cache write and output priced separately. Each conversation turn is metered against these (see [token billing](/docs/agent-overview#token-billing)).
 - `skillBreakdown[]` → each skill with `priceUsd: 0`, since every plan includes every skill.
 - `enabledSkills` → final closure (includes any transitively-enabled `depends_on`).
 
-> **The plan sets the price.** A custom build pays its plan's price whatever skills it has: $5 a month with 500 credits on Starter, $30 with 3,000 on Pro, $100 with 10,000 on Max. Per-turn conversation cost is metered separately against the agent's `tokenRates` (see [token billing](/docs/agent-overview#token-billing)).
+> **The plan sets the price.** A custom build pays its plan's price whatever skills it has: $5 a month on Starter, $30 on Pro and $100 on Max, each including the same amount of AI usage a month. Each turn is metered against the agent's `tokenRates`, from the plan's included usage first and then from your Wiro balance (see [token billing](/docs/agent-overview#token-billing)).
 
 ## Step 3: Deploy the Custom Agent
 
-Send the same skill set you previewed to `POST /UserAgent/Deploy` with `custom: true` and `useprepaid: true`. The price of the plan you pass in `tier` is debited immediately.
+Send the same skill set you previewed to `POST /UserAgent/Deploy` with `custom: true` and `useprepaid: true`. The price of the plan you pass in `tier` is taken from your Wiro balance immediately.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
@@ -222,10 +221,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
       "tier": "pro",
       "status": 2,
       "setuprequired": false,
-      "monthlycredits": 3000,
       "monthlypriceusd": 30,
-      "remainingcredits": 3000,
-      "renewalcredits": 3000,
       "creditperiod": "2026-05",
       "tokenRates": {
         "default_model": "openai/gpt-5.6-sol",
@@ -269,19 +265,14 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
         "custom": true,
         "title": "Research Writer",
         "tiers": {
-          "starter": { "priceUsd": 5,   "credits": 500 },
-          "pro":     { "priceUsd": 30,  "credits": 3000 },
-          "max":     { "priceUsd": 100, "credits": 10000 }
+          "starter": { "priceUsd": 5 },
+          "pro":     { "priceUsd": 30 },
+          "max":     { "priceUsd": 100 }
         },
         "plans": [
-          { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500,   "diskMb": 250 },
-          { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000,  "diskMb": 500 },
-          { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000, "diskMb": 1024 }
-        ],
-        "extracreditpacks": [
-          { "packkey": "small",  "credits": 1000,  "priceusd": 10,  "enabled": true },
-          { "packkey": "medium", "credits": 5000,  "priceusd": 50,  "enabled": true },
-          { "packkey": "large",  "credits": 20000, "priceusd": 200, "enabled": true }
+          { "key": "starter", "title": "Starter", "priceUsd": 5,   "includedUsageUsd": 5,   "diskMb": 250 },
+          { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "includedUsageUsd": 30,  "diskMb": 500 },
+          { "key": "max",     "title": "Max",     "priceUsd": 100, "includedUsageUsd": 100, "diskMb": 1024 }
         ]
       }
     }
@@ -326,7 +317,7 @@ Each answers `status: "connected"` and restarts the running agent, which then ha
 
 ## Step 4: Refine Skills After Deploy
 
-Toggle skills on/off after deploy with [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply). Even when you only want to flip a single skill, send it as a one-entry `skills` map. The endpoint triggers exactly one agent restart, applies the whole batch or none of it, and never charges: every plan includes every skill, so the price and the credits stay the same. Template deploys accept the same call.
+Toggle skills on/off after deploy with [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply). Even when you only want to flip a single skill, send it as a one-entry `skills` map. The endpoint triggers exactly one agent restart, applies the whole batch or none of it, and never charges: every plan includes every skill, so the price and the included AI usage stay the same. Template deploys accept the same call.
 
 ### Single-skill enable
 
@@ -360,12 +351,6 @@ The response confirms the skill set and the restart:
     "newPriceUsd": 30,
     "delta": 0,
     "deltaUsd": 0,
-    "previousMonthlyCredits": 3000,
-    "newMonthlyCredits": 3000,
-    "deltaCredits": 0,
-    "creditsNow": 0,
-    "creditsThisPeriod": 3000,
-    "creditsFromRenewal": 3000,
     "periodEnd": null,
     "stripeProrationApplied": false,
     "prepaidWalletDelta": null,
@@ -486,14 +471,14 @@ Subscriptions for custom builds work exactly like template deploys:
 
 - A 30-day prepaid subscription row (`plan: "agent"`, `tier: <starter|pro|max>`, `provider: "prepaid"`) is inserted at Deploy.
 - `POST /UserAgent/CancelSubscription` schedules cancel-at-period-end.
-- `POST /UserAgent/RenewSubscription` either undoes a pending cancel (no charge) or creates a fresh 30-day period (wallet charged).
-- `POST /UserAgent/UpgradeTier` changes the plan: a higher plan starts now with a prorated wallet debit, a lower plan (sent with `allowDowngrade: true`) at the next renewal.
+- `POST /UserAgent/RenewSubscription` either undoes a pending cancel (no charge) or creates a fresh 30-day period (balance charged).
+- `POST /UserAgent/UpgradeTier` changes the plan: a higher plan starts now with a prorated charge to the balance, a lower plan (sent with `allowDowngrade: true`) at the next renewal.
 
-Turning a skill on or off never changes the subscription: the plan's price and credits stay the same (see Step 4 above).
+Turning a skill on or off never changes the subscription: the plan's price and included AI usage stay the same (see Step 4 above).
 
 ## Limits & Notes
 
-- **A build costs its plan's price, whatever its skills.** One skill or twenty, Starter is $5 a month with 500 credits, Pro $30 with 3,000 and Max $100 with 10,000.
+- **A build costs its plan's price, whatever its skills.** One skill or twenty, Starter is $5 a month, Pro $30 and Max $100, each including its own price in AI usage.
 - **Conflict / dependency violations are surfaced eagerly.** If you toggle on two mutually-exclusive skills, `SkillsApply` returns code `102` with a `conflicts[]` array; if a `depends_on` is missing, code `101` with `deps[]`. Resolve in the UI before committing.
 - **Custom builds receive the same auto-restart on configuration changes** as template deploys (status `3`/`4` → status `1`, then re-queued).
 - **Cover image:** custom builds can ship a `cover` URL in the Deploy body, or upload one later via [`POST /UserAgent/Cover`](/docs/agent-overview#post-useragentcover).
@@ -505,4 +490,4 @@ Turning a skill on or off never changes the subscription: the plan's price and c
 - [Agent Skills](/docs/agent-skills): Discover the skill registry and configure preferences + scheduled tasks
 - [Agent Credentials](/docs/agent-credentials): Channels, the Wiro project and settings
 - [Agent Messaging](/docs/agent-messaging): Chat with your custom agent
-- [Agent Transactions](/docs/agent-transactions): Audit credit deductions, renewals, and grants
+- [Agent Transactions](/docs/agent-transactions): See what the agent costs: AI usage, model runs and plan payments
