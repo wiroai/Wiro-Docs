@@ -499,3 +499,245 @@ Business errors come back with HTTP 200, `result: false` and an `errors` array, 
 | `You must be a member of this team to perform this action` | HTTP 403 | A team project's key whose creator is no longer a member of the team. |
 
 Authentication errors are listed in the [Error Reference](/docs/error-reference).
+
+## Code Examples
+
+### curl (Send)
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/Studio/Message/Send" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "message": "Two square banner images for a bakery weekend sale, warm colors",
+    "sessionkey": "bakery-banners"
+  }'
+```
+
+### curl (Detail)
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/Studio/Message/Detail" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+    "sessionkey": "bakery-banners"
+  }'
+```
+
+### curl (Tasks)
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/Studio/Tasks" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "limit": 20 }'
+```
+
+### curl (SendForm)
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/Studio/Message/SendForm" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "message=Put this mug on a wooden table in morning light" \
+  -F "sessionkey=mug-shots" \
+  -F "attachments=@/path/to/mug.jpg"
+```
+
+### Python
+
+```python
+import time
+import requests
+
+BASE = "https://api.wiro.ai/v1"
+headers = {"x-api-key": "YOUR_API_KEY", "Content-Type": "application/json"}
+session = "bakery-banners"
+
+# 1. Send the brief
+sent = requests.post(f"{BASE}/Studio/Message/Send", headers=headers, json={
+    "message": "Two square banner images for a bakery weekend sale, warm colors",
+    "sessionkey": session,
+}).json()
+if not sent["result"]:
+    raise SystemExit(sent["errors"])
+
+# 2. Poll until the turn ends
+while True:
+    detail = requests.post(f"{BASE}/Studio/Message/Detail", headers=headers, json={
+        "messageguid": sent["messageguid"],
+        "sessionkey": session,
+    }).json()["data"]
+    if detail["status"] in ("agent_end", "agent_error", "agent_cancel"):
+        break
+    time.sleep(3)
+
+print(detail["response"])
+print("Chat charge (USD):", (detail.get("tokencost") or 0) / 100)
+
+# 3. The model runs Studio started, with their files and cost
+tasks = requests.post(f"{BASE}/Studio/Tasks", headers=headers, json={"limit": 10}).json()
+for task in tasks["tasks"]:
+    files = [o.get("url") for o in task["outputs"] if o.get("url")]
+    print(task["model"]["slugproject"], task["status"], task["totalcost"], files)
+```
+
+### Node.js
+
+```javascript
+const axios = require('axios');
+
+const BASE = 'https://api.wiro.ai/v1';
+const headers = { 'x-api-key': 'YOUR_API_KEY', 'Content-Type': 'application/json' };
+const session = 'bakery-banners';
+
+const { data: sent } = await axios.post(`${BASE}/Studio/Message/Send`, {
+  message: "Two square banner images for a bakery weekend sale, warm colors",
+  sessionkey: session
+}, { headers });
+if (!sent.result) throw new Error(JSON.stringify(sent.errors));
+
+let detail;
+do {
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+  const { data } = await axios.post(`${BASE}/Studio/Message/Detail`, {
+    messageguid: sent.messageguid,
+    sessionkey: session
+  }, { headers });
+  detail = data.data;
+} while (!['agent_end', 'agent_error', 'agent_cancel'].includes(detail.status));
+
+console.log(detail.response);
+console.log('Chat charge (USD):', (detail.tokencost || 0) / 100);
+
+const { data: runs } = await axios.post(`${BASE}/Studio/Tasks`, { limit: 10 }, { headers });
+for (const task of runs.tasks) {
+  console.log(task.model.slugproject, task.status, task.totalcost, task.outputs.map((o) => o.url));
+}
+```
+
+### PHP
+
+```php
+<?php
+function wiro($path, $body) {
+    $ch = curl_init("https://api.wiro.ai/v1" . $path);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        "Content-Type: application/json",
+        "x-api-key: YOUR_API_KEY"
+    ]);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $response = json_decode(curl_exec($ch), true);
+    curl_close($ch);
+    return $response;
+}
+
+$sent = wiro("/Studio/Message/Send", [
+    "message" => "Two square banner images for a bakery weekend sale, warm colors",
+    "sessionkey" => "bakery-banners"
+]);
+
+do {
+    sleep(3);
+    $detail = wiro("/Studio/Message/Detail", [
+        "messageguid" => $sent["messageguid"],
+        "sessionkey" => "bakery-banners"
+    ])["data"];
+} while (!in_array($detail["status"], ["agent_end", "agent_error", "agent_cancel"]));
+
+echo $detail["response"];
+```
+
+### C#
+
+```csharp
+using System.Net.Http.Json;
+using System.Text.Json;
+
+using var client = new HttpClient { BaseAddress = new Uri("https://api.wiro.ai/v1/") };
+client.DefaultRequestHeaders.Add("x-api-key", "YOUR_API_KEY");
+
+var sent = await (await client.PostAsJsonAsync("Studio/Message/Send", new {
+    message = "Two square banner images for a bakery weekend sale, warm colors",
+    sessionkey = "bakery-banners"
+})).Content.ReadFromJsonAsync<JsonElement>();
+var messageGuid = sent.GetProperty("messageguid").GetString();
+
+JsonElement data;
+string status;
+do {
+    await Task.Delay(3000);
+    var detail = await (await client.PostAsJsonAsync("Studio/Message/Detail", new {
+        messageguid = messageGuid,
+        sessionkey = "bakery-banners"
+    })).Content.ReadFromJsonAsync<JsonElement>();
+    data = detail.GetProperty("data");
+    status = data.GetProperty("status").GetString();
+} while (status != "agent_end" && status != "agent_error" && status != "agent_cancel");
+
+Console.WriteLine(data.GetProperty("response").GetString());
+```
+
+### Go
+
+```go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+    "time"
+)
+
+func wiro(path string, body map[string]interface{}) map[string]interface{} {
+    payload, _ := json.Marshal(body)
+    req, _ := http.NewRequest("POST", "https://api.wiro.ai/v1"+path, bytes.NewBuffer(payload))
+    req.Header.Set("Content-Type", "application/json")
+    req.Header.Set("x-api-key", "YOUR_API_KEY")
+    resp, err := http.DefaultClient.Do(req)
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    var out map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&out)
+    return out
+}
+
+func main() {
+    sent := wiro("/Studio/Message/Send", map[string]interface{}{
+        "message":    "Two square banner images for a bakery weekend sale, warm colors",
+        "sessionkey": "bakery-banners",
+    })
+
+    for {
+        time.Sleep(3 * time.Second)
+        detail := wiro("/Studio/Message/Detail", map[string]interface{}{
+            "messageguid": sent["messageguid"],
+            "sessionkey":  "bakery-banners",
+        })["data"].(map[string]interface{})
+        status := detail["status"].(string)
+        if status == "agent_end" || status == "agent_error" || status == "agent_cancel" {
+            fmt.Println(detail["response"])
+            break
+        }
+    }
+}
+```
+
+### Response (Send)
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "status": "agent_queue"
+}
+```
