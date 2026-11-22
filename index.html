@@ -4839,7 +4839,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                               <td><code>modelName</code></td>
                               <td>string</td>
                               <td>No</td>
-                              <td>Only the runs of the models whose owner or slug contains this text, ignoring case. When no model matches, the list is empty</td>
+                              <td>Only the runs of the models whose owner or slug contains this text, ignoring case. When no model matches, the list is empty and <code>errors</code> holds <code>There is no task yet.</code> with code <code>1</code></td>
                             </tr>
                             <tr>
                               <td><code>start</code></td>

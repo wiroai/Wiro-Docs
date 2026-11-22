@@ -4342,7 +4342,7 @@ Lists the tasks of the call's workspace, newest first. A team project's API key 
 | `type` | string | No | `"model"` for model runs, `"train"` for training runs, or `"running"` for the tasks that have not ended and were not cancelled, queued ones included. Left out: every task |
 | `projectid` | string | No | Only the tasks of this project, by its `id` from `/Project/List` |
 | `modelid` | string | No | Only the runs of this model, by its `id` from [`/Tool/List`](/docs/models) |
-| `modelName` | string | No | Only the runs of the models whose owner or slug contains this text, ignoring case. When no model matches, the list is empty |
+| `modelName` | string | No | Only the runs of the models whose owner or slug contains this text, ignoring case. When no model matches, the list is empty and `errors` holds `There is no task yet.` with code `1` |
 | `start` | number | No | How many tasks to skip, for the next page. Default: `0` |
 | `limit` | number | No | How many tasks to return. Default: `20`, maximum `1000` |
 
