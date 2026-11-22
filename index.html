@@ -40112,6 +40112,11 @@ if (params.get("fb_connected") === "true") {
                             <td>Re-copy App Secret; verify redirect URI exactly.</td>
                           </tr>
                           <tr>
+                            <td>Facebook shows <code>Invalid Scopes</code></td>
+                            <td>The app was set up with use cases and has not added a permission the connection asks for, such as <code>read_insights</code>. Facebook shows this only to the app's developers, which in own mode is usually the person connecting.</td>
+                            <td>In the app, open <strong>Use cases → Manage everything on your Page</strong>, add every permission in the scope table above, then connect again.</td>
+                          </tr>
+                          <tr>
                             <td><code>no_pages</code></td>
                             <td>User has no administered Facebook Pages.</td>
                             <td>Ask the user to create/administer a Page first, retry.</td>
