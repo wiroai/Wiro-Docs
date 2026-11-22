@@ -30049,7 +30049,7 @@ Future&lt;void&gt; main() async {
 </div>
 <p>The services an agent works with (Google Ads, Shopify, HubSpot, Serper and the rest) are <strong>connectors</strong>, not credentials: browse, connect and disconnect them with the calls on <a href="/docs/agent-connectors">Agent Connectors</a>. <code>CredentialUpsert</code> doesn't take a connector's values: a row whose <code>credentialkey</code> is a connector's slug refuses the whole request before anything is saved, its other rows included, with <code>{ "result": false, "errors": [{ "code": 0, "message": "Unknown credential: shopify. Connectors are connected with UserAgent/ConnectorConnect." }] }</code>.</p>
 <blockquote>
-<p><strong>Not from the agent's chat.</strong> <a href="/docs/agent-messaging#setup-from-chat">Setup cards</a> connect connectors of the catalog only: no card saves a channel, Twilio Voice or a setting. Save them with <code>CredentialUpsert</code>; in chat, the agent asks an agent admin to make the change in the agent's settings. The one card that sets a credential is the <code>wiro</code> connector's <code>project</code> card: it binds the agent's Wiro project, as <code>CredentialProjectBind</code> does.</p>
+<p><strong>Not from the agent's chat.</strong> <a href="/docs/agent-messaging#setup-from-chat">Setup cards</a> connect connectors of the catalog only: no card saves a channel, Twilio Voice or a setting. Save them with <code>CredentialUpsert</code>; in chat, the agent asks an agent admin to make the change in the agent's settings. The one card that sets a credential is the <code>project</code> card of Wiro AI Models (<code>wiro</code>): it binds the agent's Wiro project, as <code>CredentialProjectBind</code> does.</p>
 </blockquote>
 <p><strong>Read &amp; write paths at a glance:</strong></p>
 <div class="docs-param-table">
@@ -30501,7 +30501,7 @@ Completing the required fields again reactivates it automatically.</p>
 <blockquote>
 <p><strong>Don't confuse <code>credentials.wiro.apikey</code> with your operator-level Wiro API key.</strong> <code>credentials.wiro.apikey</code> is the project key the agent uses to run Wiro models. The <code>x-api-key</code> header you send to Wiro endpoints from your own backend is your operator key, which authenticates your request (see <a href="/docs/authentication">Authentication</a>). They are the same key only when you bind the project of the key you call with.</p>
 </blockquote>
-<p>The <a href="/docs/agent-connectors#the-wiro-connector">Wiro connector</a>, which gives the agent Wiro's own model and task tools, always acts with this project, as the agent's own calls. Connecting it binds the project you pick, as <code>CredentialProjectBind</code> does, and moving the agent to a workspace the project isn't in disconnects both the project and the connector.</p>
+<p>The <a href="/docs/agent-connectors#the-wiro-connector">Wiro AI Models (<code>wiro</code>)</a> connector, which gives the agent Wiro's own model and task tools, always acts with this project, as the agent's own calls. Connecting it binds the project you pick, as <code>CredentialProjectBind</code> does; disconnecting it leaves the project bound, so the agent's Skills keep running models with it. Moving the agent to a workspace the project isn't in disconnects both the project and the connector.</p>
 <h2 id="platform-managed-credentials">Platform-Managed Credentials</h2>
 <p>Some credential fields are <strong>managed by Wiro</strong>. You don't provide them, and they are never returned in API responses.</p>
 <ul>
