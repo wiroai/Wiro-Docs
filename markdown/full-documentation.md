@@ -194,6 +194,8 @@ A project is a container that holds your **API keys**, **authentication settings
 - A project has no wallet of its own. Its runs are paid from your personal wallet, or from the team wallet for a team project
 - You can create multiple projects under one account
 
+Each workspace also has a Studio project: the project [Studio](/docs/studio) and the [Workflow Agent](/docs/workflow-agent) work on for messages sent from wiro.ai, so their usage is tracked there. The first such message in a workspace that has none uses its project named "Studio", or creates one with that name, with its own API key and the email that comes with a new key. You can pick another project with [Studio/ProjectSet](/docs/studio#post-studioprojectset); in a team, a team admin or the organization owner can. If the Studio project is deleted, the next such message gives the workspace one again the same way. Messages sent with an API key run on that key's own project.
+
 ## Creating a Project
 
 1. Go to your [Dashboard](https://wiro.ai/panel)
@@ -4175,6 +4177,8 @@ with a `debugerror`, but clients must keep waiting until
 > persisted `status: "task_error"` in Task/Detail. Both are non-terminal; only
 > `task_postprocess_end` and `task_cancel` close the task.
 
+<a id="task-surfaces"></a>
+
 ## Surfaces
 
 Every task records its surface: the way its work came in, such as an API key, MCP or Studio. Task/Detail and Task/List return it as `surface`, and Task/List can list the tasks of one surface. [Spend limits](/docs/spend-limits) and [Model Access](/docs/model-access) rules use the same surfaces and decide them the same way, so a task's `surface` is the one its run counted on.
@@ -4198,7 +4202,7 @@ The label is the surface's name in the dashboard.
 Some work fits more than one surface, such as a workflow run started with an API key. The first match in this order decides:
 
 1. **Who does the work**: Studio, the Workflow Agent or one of your deployed agents. Messages to Studio and the Workflow Agent, the other calls to their `/Studio` and `/StudioWorkflow` endpoints and the models Studio runs for you count as `studio` and `workflow-agent`, and a deployed agent's own calls as `agent`.
-2. **What it is**: a workflow run, its resumes and every step it runs count as `workflow`. A workflow that a deployed agent, Studio or the Workflow Agent starts keeps that surface instead.
+2. **What it is**: a workflow run, its resumes and every step they run count as `workflow`. A run or resume that one of your deployed agents sends counts as `agent` instead. Each resume counts on the surface of the call that resumes it: if an agent started a run and you resume it with an API key, the remaining steps count as `workflow`.
 3. **Which client sends it**: the LLM gateway (`llm-gateway`), a Wiro browser extension (`extension`) or MCP (`mcp`).
 4. **Which credential it uses**: an API key (`api`), else a signed-in session (`web`).
 
@@ -4210,7 +4214,7 @@ The Wiro MCP package (`@wiro-ai/wiro-mcp`) counts as `mcp` when it names itself 
 
 ### Older Tasks
 
-Tasks from before surfaces were recorded have one only where it is certain: workflow steps, the runs of deployed agents, Studio and the Workflow Agent, and runs from MCP, the LLM gateway and the browser extensions. Runs with an API key and dashboard runs have one from late October 2026 on. Other tasks have `surface: null`: the dashboard shows no label for them, and a `surface` filter never lists them.
+Tasks from before surfaces were recorded have one only where it is certain: workflow steps, the runs of deployed agents, and runs from MCP, the LLM gateway and the browser extensions. Runs with an API key and dashboard runs have one from late October 2026 on. Such a task has the surface it would count on today, so an older workflow step has `workflow`, or `agent` when one of your deployed agents started its run, though at the time a workflow run counted on the surface it was started from. The model runs Studio made before they became your own tasks are not in your task list: [Studio/Tasks](/docs/studio#post-studiotasks) lists them. Other tasks have `surface: null`: the dashboard shows no label for them, and a `surface` filter never lists them.
 
 ## LLM Models
 
@@ -4262,6 +4266,8 @@ amount charged.
 Plain-text integrations can use `debugoutput`. Tool integrations must inspect
 `segments`, `finishreason`, and `pexit`. A final structured validation failure
 produces a non-zero `pexit`.
+
+<a id="task-detail"></a>
 
 ## **POST** /Task/Detail
 
@@ -4324,7 +4330,7 @@ Retrieves the current status and output of a task. You can query by either `task
 | `modeldescription` | `string` | Description of the model that was executed. |
 | `modelslugowner` | `string` | Model owner slug (e.g. `"google"`, `"wiro"`). |
 | `modelslugproject` | `string` | Model project slug (e.g. `"nano-banana-pro"`). |
-| `surface` | `string \| null` | The way the task came in, such as `"api"` (see [Surfaces](#surfaces)). `null` for an older task whose surface is not known for certain. |
+| `surface` | `string \| null` | The way the task came in, such as `"api"` (see [Surfaces](#task-surfaces)). `null` for an older task whose surface is not known for certain. |
 | `outputs` | `array` | Output files (CDN URLs) or structured LLM content (`contenttype: "raw"`). |
 
 ## **POST** /Task/List
@@ -4333,7 +4339,7 @@ Lists the tasks of the call's workspace, newest first. A team project's API key 
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `surface` | string | No | Only the tasks of one [surface](#surfaces): `web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, `studio`, `workflow-agent` or `workflow`. Empty or left out: every surface |
+| `surface` | string | No | Only the tasks of one [surface](#task-surfaces): `web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, `studio`, `workflow-agent` or `workflow`. Empty or left out: every surface |
 | `type` | string | No | `"model"` for model runs, `"train"` for training runs, or `"running"` for the tasks that have not ended and were not cancelled, queued ones included. Left out: every task |
 | `projectid` | string | No | Only the tasks of this project, by its `id` from `/Project/List` |
 | `modelid` | string | No | Only the runs of this model, by its `id` from [`/Tool/List`](/docs/models) |
@@ -4392,7 +4398,7 @@ Without `surface`, the list leaves out the tasks that workflow runs start for th
 | Field | Type | Description |
 |-------|------|-------------|
 | `total` | `string` | How many tasks match, counting every page. |
-| `tasklist` | `array` | The tasks of this page, newest first, each with the fields of [Task/Detail](#post-taskdetail), `surface` included. |
+| `tasklist` | `array` | The tasks of this page, newest first, each with the fields of [Task/Detail](#task-detail), `surface` included. |
 
 ### Errors
 
@@ -5478,6 +5484,8 @@ Empty `inputs` (`{}`) = flat rate for all configurations. Specific `inputs` = pr
 
 Successful runs only (`pexit: "0"`). Cost recorded in `totalcost` field of Task/Detail. Server errors, queue time, and cancelled tasks are never billed.
 
+The same balance pays agent plans and the AI usage an agent uses once its plan's included usage is used up (see [Pricing Model](/docs/agent-overview#pricing-model-plans-ai-usage-balance)). An agent's plan payments and AI usage have no task: read one agent's with [`UserAgent/TransactionList`](/docs/agent-transactions), or the whole workspace's with `Wallet/TransactionList` and `surface: "agent"` (see [Wallet Billing Flow](/docs/organizations-api-access#billing-flow)).
+
 Pricing page: https://wiro.ai/product/pricing
 
 ## Spend Limits
@@ -5557,7 +5565,7 @@ The error message includes your current balance and the calculated limit, so you
 A refused request returns HTTP `200` with `"result": false` and an error with code `96`. No task is created and nothing is charged. Handle it in one of these ways:
 
 - **Wait and retry:** send the same request again after a growing wait, for example 2, 4, then 8 seconds, up to a minute. The code examples on the [Concurrency Limits](/docs/concurrency-limits) page do this: they look for the number `96` in `errors[].code`, retry only that code, treat `"result": true` as success and stop after 8 attempts.
-- **Queue on your side:** keep at most as many unfinished tasks as your limit allows, and send the next request when a task reaches `task_postprocess_end` or `task_cancel` ([Task/Detail](/docs/tasks) or the [WebSocket](/docs/websocket)). Tasks started on the website, by agents and by workflows, and in a team by other members, use the same slots.
+- **Queue on your side:** keep at most as many unfinished tasks as your limit allows, and send the next request when a task reaches `task_postprocess_end` or `task_cancel` ([Task/Detail](/docs/tasks) or the [WebSocket](/docs/websocket)). Tasks started on the website, by Studio for you (from wiro.ai or with your API key), by agents and by workflows, and in a team by other members, use the same slots.
 - **Direct LLM Gateway:** through the [Direct LLM Gateway](/docs/completions-api) the refusal arrives as HTTP `429` with error type `rate_limit_error` and a `retry-after` header; wait that many seconds before you retry. A streamed Responses request has already answered `200`, so it ends with `response.failed` carrying code `rate_limit_exceeded` and has no such header; use a growing wait there.
 - **Wiro MCP server:** through the [Wiro MCP server](/docs/wiro-mcp-server), `run_model` returns the same message as its tool error.
 
@@ -5614,7 +5622,7 @@ Each limit caps one scope of the wallet's spending:
 | `workflow-agent` | the Workflow Agent | The [Workflow Agent](/docs/workflow-agent): the messages you send it |
 | `workflow` | workflows | [Workflow](/docs/workflows) runs and resumes, and every step they run |
 
-When work fits more than one surface, the first match in this order decides: who does it (Studio, the Workflow Agent or a deployed agent), what it is (a workflow run and its steps, unless a deployed agent, Studio or the Workflow Agent started it), which client sends it (the LLM gateway, a browser extension or MCP), and last which credential it uses (an API key, else a signed-in session). So a message to Studio sent with an API key counts on `studio`, and a workflow run started with an API key or through MCP on `workflow`. Each task records the surface it counted on: see [Surfaces](/docs/tasks#task-surfaces). Refusal messages and `/SpendLimit/Usage` name a surface by its label.
+When work fits more than one surface, the first match in this order decides: who does it (Studio, the Workflow Agent or a deployed agent), what it is (a workflow run or resume and the steps it runs, unless one of your deployed agents sends it), which client sends it (the LLM gateway, a browser extension or MCP), and last which credential it uses (an API key, else a signed-in session). So a message to Studio sent with an API key counts on `studio`, and a workflow run started with an API key or through MCP on `workflow`. Each task records the surface it counted on: see [Surfaces](/docs/tasks#task-surfaces). Refusal messages and `/SpendLimit/Usage` name a surface by its label.
 
 Studio, the Workflow Agent and workflows used to have no surface of their own. Studio and Workflow Agent work counted on `web`, or on `api` when it was sent with an API key, and a workflow run counted on the surface that started it. Limits that were already set were not changed, so a limit on `web` or `api` no longer covers this work: to cap it by surface, set a limit on `studio`, `workflow-agent` or `workflow`.
 
@@ -5645,7 +5653,7 @@ When the price of the work is known before it starts, as for fixed-price models,
 
 Work that is already running finishes and is charged, with two exceptions. A realtime session ends after the turn that uses up a limit, the same way it ends when the balance runs out: its WebSocket clients get a `task_session_stopped` event with `reason` `spend_limit`, code `93` and the refusal `/Run` would give (see [Realtime Voice](/docs/realtime-voice-conversation#realtime-end-session)). An agent's voice call is a realtime session too and ends the same way: a web voice call then gets `session_end` with `reason` `spend_limit` (see [Web Voice](/docs/integration-webvoice-skills#websocket-protocol)), and a caller on the phone hears a short notice before the call ends. An agent pauses at its next model call when a limit that covers it is used up, even in the middle of a reply (see below).
 
-Every agent plan payment, a deploy, a move to a higher plan or a renewal, counts toward the account's or the team's limit and the limit of the `agent` surface, whichever way it was made, and in a team toward the limit of the member who bought the plan. A payment made with an API key also counts toward that key's limit. A plan payment never counts toward the agent's own limit. Automatic monthly renewals of running agents count the same way, with no API key, and are never refused by a limit.
+Every agent plan payment, a deploy, a move to a higher plan or a renewal, counts toward the account's or the team's limit and the limit of the `agent` surface, whichever way it was made, and in a team toward the limit of the member who bought the plan. A payment made with an API key also counts toward that key's limit. A plan payment never counts toward the agent's own limit. Automatic renewals of agent plans, every 30 days whether or not the agent is running, count the same way, with no API key, and are never refused by a limit.
 
 ### Work in Progress
 
@@ -5888,6 +5896,8 @@ Adds a spend limit to the call's workspace, or changes the existing limit with t
 | `That agent is not in this workspace.` | An `agent` limit for an agent of another workspace |
 | `Too many changes to Spend Limits and Model Access in the last hour. Try again later.` | With API keys, this workspace's spend limits and Model Access rules have been changed 60 times in the last hour |
 
+<a id="spend-limit-preview"></a>
+
 ## **POST** /SpendLimit/Preview
 
 Shows what `/SpendLimit/Set` would do, and changes nothing. It takes the same body as `/SpendLimit/Set` and checks it the same way, so only the people who can change limits can call it. Use it to see which workspace a change lands in, the limit as it would be saved and the limit it would replace.
@@ -6077,12 +6087,12 @@ Each rule covers one scope of the wallet's work, the same scopes as [spend limit
 | `mcp` | The hosted [Wiro MCP server](/docs/wiro-mcp-server) at `mcp.wiro.ai`, and the Wiro MCP package when it names itself (see [Surfaces](/docs/tasks#task-surfaces)) |
 | `llm-gateway` | The OpenAI and Anthropic compatible [LLM gateway](/docs/completions-api) at `llm.wiro.ai` |
 | `extension` | Only the Wiro browser extensions |
-| `agent` | Your deployed agents' own runs |
+| `agent` | Your deployed agents: the models they run through Wiro, the chat models they answer with and their built-in voice |
 | `studio` | [Studio](/docs/studio): the chat model of each message you send it, and the models it runs for you |
 | `workflow-agent` | The [Workflow Agent](/docs/workflow-agent): the chat model of each message you send it |
 | `workflow` | [Workflow](/docs/workflows) runs and resumes, and every step they run |
 
-A run counts on one surface, decided the same way as for [spend limits](/docs/spend-limits): the first match among who does it (Studio, the Workflow Agent or a deployed agent), what it is (a workflow run and its steps, unless a deployed agent, Studio or the Workflow Agent started it), which client sends it (the LLM gateway, a browser extension or MCP), and last which credential it uses (an API key, else a signed-in session). So a message to Studio sent with an API key counts on `studio`, and a workflow run started with an API key or through MCP on `workflow`. See [Surfaces](/docs/tasks#task-surfaces).
+A run counts on one surface, decided the same way as for [spend limits](/docs/spend-limits): the first match among who does it (Studio, the Workflow Agent or a deployed agent), what it is (a workflow run or resume and the steps it runs, unless one of your deployed agents sends it), which client sends it (the LLM gateway, a browser extension or MCP), and last which credential it uses (an API key, else a signed-in session). So a message to Studio sent with an API key counts on `studio`, and a workflow run started with an API key or through MCP on `workflow`. See [Surfaces](/docs/tasks#task-surfaces).
 
 Studio, the Workflow Agent and workflows used to have no surface of their own. Studio and Workflow Agent work counted on `web`, or on `api` when it was sent with an API key, and a workflow run counted on the surface that started it. Rules that were already set were not changed, so a rule on `web` or `api` no longer covers this work: to decide its models by surface, set a rule on `studio`, `workflow-agent` or `workflow`.
 
@@ -6401,6 +6411,8 @@ Adds a rule to the call's workspace, or replaces the rule with the same `scope` 
 | `That agent is not in this workspace.` | An `agent` rule for an agent of another workspace |
 | `Too many changes to Spend Limits and Model Access in the last hour. Try again later.` | With API keys, this workspace's spend limits and Model Access rules have been changed 60 times in the last hour |
 
+<a id="model-access-preview"></a>
+
 ## **POST** /ModelAccess/Preview
 
 Shows what `/ModelAccess/Set` would do, and changes nothing. It takes the same body as `/ModelAccess/Set` and checks it the same way, so only the people who can change rules can call it. Use it to see which workspace a change lands in, the rule as it would be saved and the rule it would replace. For an `agent` rule, it also says whether the rule would block the chat model the agent answers with.
@@ -6638,6 +6650,7 @@ Understand API error responses, error codes, and how to handle them.
 | `97` | Insufficient Balance | Not enough funds to run the model |
 | `98` | Authentication Required | Sign in required to access this model |
 | `99` | Token Invalid | Bearer token missing, invalid, or expired |
+| `110` | Plan Payment Not Finished | The wallet paid for an agent plan (`Deploy`, `CreateSubscriptionCheckout`, `RenewSubscription` or `UpgradeTier`), but the plan change could not be saved. Never send the call again: a retry charges again. Contact support. See [Agent Overview](/docs/agent-overview#error-messages) |
 
 ## Error Response Format
 
@@ -6648,7 +6661,7 @@ Understand API error responses, error codes, and how to handle them.
 }
 ```
 
-All API responses return HTTP `200`. Auth errors return HTTP `401`.
+Most errors return HTTP `200`, so use the `result` field and error `code` to determine success or failure, whatever the status. Some errors also use another HTTP status, such as `401` for a failed API key or bearer token, `404` for an unknown endpoint and `403` for the Studio and Workflow Agent team check (see below).
 
 ## Team API Key Errors
 
@@ -6682,6 +6695,7 @@ Public endpoints such as `Tool/List` and `Agent/List` still answer a key whose c
 | `1` | Kill failed | Kill |
 | `0` | Task not completed | InputOutputDelete |
 | `0` | Missing identifier | Detail, Kill |
+| `0` | Unknown surface: "surface must be one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow." | List |
 | `0` | Permission denied | Detail, Cancel |
 
 ---
@@ -7697,11 +7711,11 @@ is `"studio"`, `"workflow-agent"` or the guid of one of your own agents:
 | `update_agent` | Change an agent's name, description, time zone, models, chat commands and setup from chat |
 | `apply_agent_skills` | Turn skills on or off; every plan includes every skill, so a change costs nothing |
 | `set_agent_credentials` | Save an agent's chat channel keys (such as a Telegram bot token), Twilio Voice and settings |
-| `connect_agent_connector` | Connect a connector to an agent: save its keys, or start its sign-in, which you approve in your browser. A connector that runs with a Wiro project shows the project and its wallet first |
+| `connect_agent_connector` | Connect a connector to an agent: save its keys, or start its sign-in, which you approve in your browser. The Wiro AI Models connector (`wiro`) gives the agent Wiro's model, task and file upload tools, plus read-only docs search and playbooks; it shows the project it runs with and its wallet first, and connecting it also sets that project, as `bind_agent_project` does |
 | `set_agent_connector_accounts` | Choose the accounts a connected connector may act on, such as its ad accounts, pages or channels |
 | `disconnect_agent_connector` | Disconnect a connector from an agent, after your confirmation |
 | `list_projects` | List the projects of the connected project's workspace, to pick one for an agent; no keys are shown |
-| `bind_agent_project` | Connect an agent to a Wiro project so it can run models, with no key in the chat; shows the project first, then asks for your confirmation |
+| `bind_agent_project` | Set the Wiro project an agent's video and voice skills run models with, with no key in the chat; shows the project first, then asks for your confirmation. It gives the agent no model tools: connect the Wiro AI Models connector (`wiro`) for those |
 | `manage_agent_custom_skill` | Add, edit, schedule, restore or remove an agent's own instructions and scheduled tasks; turning off its approval policy or changing its rules needs your confirmation |
 | `manage_agent_billing` | Subscribe, move to another plan, cancel or renew, paid from your Wiro balance, after your confirmation; `buy_credits` is retired and charges nothing |
 | `get_agent_activity` | Read an agent's AI usage, its transactions in dollars and its activity logs, including who changed what on it |
@@ -7753,7 +7767,8 @@ Prompts: `build_workflow`, `deploy_agent`, `create_with_studio` and
 
 Paid work: model and workflow runs, Studio and Workflow Agent turns, and
 messages to your own agents (from the AI usage the agent's plan includes, then
-your Wiro balance) cost money. Before a run or a Studio or Workflow Agent turn,
+your Wiro balance; an agent without an active plan does not run, whatever the
+balance holds) cost money. Before a run or a Studio or Workflow Agent turn,
 the assistant tells you the expected cost and waits for your yes. Agent plans and
 moves to a larger plan are paid from your Wiro balance and first return a quote
 (for a move inside a billing period, the amount Wiro works out for the time left) and act only
@@ -7776,7 +7791,11 @@ browser extensions on the `extension` surface. The
 for now, as calls with its API key. Messages to Studio and the Workflow Agent
 count on the `studio` and `workflow-agent` surfaces, and workflow runs on
 `workflow`, whichever way they are sent (see
-[Surfaces](/docs/tasks#task-surfaces)). When a limit refuses work (error code `93`), the
+[Surfaces](/docs/tasks#task-surfaces)). The tools of an agent's Wiro AI Models
+connector also reach Wiro through this server, but their calls are the agent's
+own and count on the `agent` surface, under that agent's spend limits and Model
+Access rule (see [The Wiro connector](/docs/agent-connectors#the-wiro-connector)).
+When a limit refuses work (error code `93`), the
 tool returns an error with Wiro's message and a note: nothing ran and nothing
 was charged, and the work should not be tried again until the limit resets or
 someone who manages it raises it. `get_controls` shows the limit and when it
@@ -7968,11 +7987,11 @@ Common questions about using the Wiro API.
 
 **Can I use a webhook instead of polling?** Yes. All models support an optional `callbackUrl` parameter. It must be a public `http(s)` address.
 
-**What are Wiro Agents?** Wiro Agents are autonomous AI assistants that you deploy and manage via the API. Unlike single model runs, agents can connect to third-party services (Twitter, Google Ads, HubSpot, etc.), maintain conversation memory across sessions, and run scheduled tasks automatically. See the [Agent Overview](/docs/agent-overview) for details.
+**What are Wiro Agents?** Wiro Agents are autonomous AI assistants that you deploy and manage via the API. Unlike single model runs, agents can connect to third-party services (X, Google Ads, HubSpot and more), maintain conversation memory across sessions, and run scheduled tasks automatically. See the [Agent Overview](/docs/agent-overview) for details.
 
 **How do I deploy an agent?** Pick a template in the [agent catalog](https://wiro.ai/agents) or build your own, then call `POST /UserAgent/Deploy` with `useprepaid: true` and a plan in `tier`: `starter` ($5 a month), `pro` ($30) or `max` ($100), each including its own price in AI usage a month. Your Wiro balance pays the plan, and Wiro queues the agent to start on its own. Then connect the services it uses. Every plan includes every skill and connector. See [Agent Overview](/docs/agent-overview) for the full lifecycle.
 
-**How much does an agent cost?** Each agent runs on one of three monthly plans: Starter ($5 a month), Pro ($30) or Max ($100), each paid from your Wiro balance and including its own price in AI usage: Pro includes $30 of AI usage a month. Every plan includes every skill and connector, so turning one on or off costs nothing. Each turn the agent runs is priced by the tokens its model uses; once the included usage is used up, the agent uses your Wiro balance, the same balance model runs use, and a new turn needs at least $0.50 there. A higher plan starts at once; a lower plan starts at the next renewal. See [Pricing Model](/docs/agent-overview#pricing-model-plans-ai-usage-balance).
+**How much does an agent cost?** Each agent runs on one of three monthly plans: Starter ($5 a month), Pro ($30) or Max ($100), each paid from the Wiro balance of the agent's workspace and including its own price in AI usage: Pro includes $30 of AI usage a month. Every plan includes every skill and connector, so turning one on or off costs nothing. Each turn the agent runs is priced by the tokens its model uses; once the included usage is used up, the agent uses the Wiro balance of its workspace (for a team agent, the team's), the same balance model runs use, and a new turn needs at least $0.50 there in deposits and store revenue: coupon credit doesn't count toward it. The models the agent runs, such as images and videos, are paid at each model's own price from the wallet of the agent's Wiro project, never from the included usage. A higher plan starts at once; a lower plan starts at the next renewal. See [Pricing Model](/docs/agent-overview#pricing-model-plans-ai-usage-balance).
 
 **How much disk space does my agent have?** Starter gives an agent 250 MB, Pro 500 MB and Max 1 GB for its files: the workspace, generated media and temporary files. Chat history and system files don't count. Downloads and temporary files outside the workspace are cleared when the agent restarts, and when they pass 1 GB. When the disk is full, the agent can't save new files until some are deleted or it moves to a bigger plan. `UserAgent/Detail` shows the usage in `disk`. See [Disk Space](/docs/agent-overview#disk-space).
 
@@ -8188,7 +8207,7 @@ A resume runs the remaining steps exactly as the run started them, with the same
 - The expected cost of a run is the sum of the model prices for the settings each step uses, from [Tool/Detail](/docs/models). A run's `totalcost` shows the list price of the steps finished so far, and once the run has ended `chargedcost` and `discountamount` show what the wallet paid. `chargedcost` is `null` while a step's charge is still settling.
 - The workspace's [spend limits](/docs/spend-limits) apply when a run starts or resumes, and again before each step starts. A run is refused with code `93` when its known price would go over a limit that covers it, or once that limit has no room left. Each step is checked the same way with its own price, and holds that price until it is charged. A step a limit refuses fails with cause `spend-limit-reached`, and the run ends as `failed`: resume it with [RunResume](#post-workflowrunresume) once the limit allows.
 - The workspace's [Model Access](/docs/model-access) rules apply when a run starts or resumes: when a rule blocks the model of a step that will run, the run is refused with code `92` before anything runs, and the message names that model. When the workflow's steps are hidden from you, as on a protected workflow from another workspace, the message names your rule but not the model, for example `Your account can't use one of the models this workflow runs. Model Access rules decide which models can run.` Steps that will not run, such as the steps after a breakpoint, are not checked.
-- A run, its resumes and every step it runs count on the `workflow` [surface](/docs/tasks#task-surfaces) of spend limits and Model Access, whether you start it with an API key, through MCP or in the dashboard, and each step's task has `surface` `workflow`. A run that a deployed agent, Studio or the Workflow Agent starts keeps that surface instead. Before workflows had their own surface, a run counted on the surface it was started from, such as `api`.
+- A run, its resumes and every step it runs count on the `workflow` [surface](/docs/tasks#task-surfaces) of spend limits and Model Access, whether you start it with an API key, through MCP or in the dashboard, and each step's task has `surface` `workflow`. A run or resume that one of your deployed agents sends counts on `agent` instead. Each resume counts on the surface of the call that resumes it, and the tasks of the steps it runs carry that surface. Before workflows had their own surface, a run counted on the surface it was started from, such as `api`.
 
 ## **POST** /Workflow/List
 
@@ -8793,6 +8812,125 @@ Business errors come back with HTTP 200, `result: false` and an `errors` array. 
 
 Authentication errors are listed in the [Error Reference](/docs/error-reference).
 
+## Code Examples
+
+### curl (Send)
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/StudioWorkflow/Message/Send" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "message": "A workflow that turns a recipe text into a short cooking video with a voice-over. Input: the recipe. Output: one vertical video under 30 seconds.",
+    "sessionkey": "recipe-video"
+  }'
+```
+
+### curl (Detail)
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/StudioWorkflow/Message/Detail" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "messageguid": "0b7f2c1e-5d4a-4c3b-9a8f-1e2d3c4b5a69",
+    "sessionkey": "recipe-video"
+  }'
+```
+
+### Python
+
+```python
+import json
+import re
+import time
+import requests
+
+BASE = "https://api.wiro.ai/v1"
+headers = {"x-api-key": "YOUR_API_KEY", "Content-Type": "application/json"}
+session = "recipe-video"
+
+sent = requests.post(f"{BASE}/StudioWorkflow/Message/Send", headers=headers, json={
+    "message": "A workflow that turns a recipe text into a short cooking video with a voice-over.",
+    "sessionkey": session,
+}).json()
+if not sent["result"]:
+    raise SystemExit(sent["errors"])
+
+while True:
+    detail = requests.post(f"{BASE}/StudioWorkflow/Message/Detail", headers=headers, json={
+        "messageguid": sent["messageguid"],
+        "sessionkey": session,
+    }).json()["data"]
+    if detail["status"] in ("agent_end", "agent_error", "agent_cancel"):
+        break
+    time.sleep(3)
+
+# Each proposal is a ```wiro-workflow fenced block in the reply
+blocks = re.findall(r"^ {0,3}```wiro-workflow[ \t]*\n(.*?)\n {0,3}```[ \t]*$",
+                    detail["response"], re.S | re.M)
+proposals = [json.loads(block) for block in blocks]
+for p in proposals:
+    print(p["title"], "-", len(p["contents"]["nodes"]) - 1, "steps")
+
+if proposals:
+    contents = proposals[0]["contents"]
+    prepared = requests.post(f"{BASE}/Workflow/Prepare", headers=headers, json={
+        "contents": contents, "mode": "create",
+    }).json()
+    if prepared["result"]:
+        saved = requests.post(f"{BASE}/Workflow/Add", headers=headers, json={
+            "slug": "recipe-video",
+            "title": proposals[0]["title"],
+            "contents": json.dumps(prepared["contents"]),
+        }).json()
+        print(saved)
+    else:
+        print(prepared["issues"])
+```
+
+### Node.js
+
+```javascript
+const axios = require('axios');
+
+const BASE = 'https://api.wiro.ai/v1';
+const headers = { 'x-api-key': 'YOUR_API_KEY', 'Content-Type': 'application/json' };
+const session = 'recipe-video';
+
+const { data: sent } = await axios.post(`${BASE}/StudioWorkflow/Message/Send`, {
+  message: 'A workflow that turns a recipe text into a short cooking video with a voice-over.',
+  sessionkey: session
+}, { headers });
+if (!sent.result) throw new Error(JSON.stringify(sent.errors));
+
+let detail;
+do {
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+  const { data } = await axios.post(`${BASE}/StudioWorkflow/Message/Detail`, {
+    messageguid: sent.messageguid,
+    sessionkey: session
+  }, { headers });
+  detail = data.data;
+} while (!['agent_end', 'agent_error', 'agent_cancel'].includes(detail.status));
+
+const fence = /^ {0,3}```wiro-workflow[ \t]*\n([\s\S]*?)\n {0,3}```[ \t]*$/gm;
+const proposals = [...detail.response.matchAll(fence)].map((m) => JSON.parse(m[1]));
+proposals.forEach((p) => console.log(p.title));
+```
+
+### Response (Send)
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "messageguid": "0b7f2c1e-5d4a-4c3b-9a8f-1e2d3c4b5a69",
+  "agenttoken": "Qm7Tz2LpX9vKc4RwN8yHa3JdF6sGb1",
+  "status": "agent_queue"
+}
+```
+
 ---
 
 
@@ -8835,8 +8973,9 @@ A session is one conversation with its own memory. `sessionkey` names it, and `"
 - **What a turn costs.** A turn's cost depends on the models Studio runs for it, and can be more than $10.
 - **Project.** Studio works on a project of the workspace. A call with an API key runs on that key's project. Work sent from wiro.ai runs on the workspace's Studio project: one for a personal workspace and one for each team, shared by Studio and the [Workflow Agent](/docs/workflow-agent). The first Studio or Workflow Agent message sent from wiro.ai in a workspace that has none creates a project named "Studio" there, or uses the workspace's existing project of that name. It is a normal project: like any project you create, it gets an API key, and you get the email that comes with a new key. [Studio/Status](#post-studiostatus) shows it, and [Studio/ProjectSet](#post-studioprojectset) changes it.
 - **Chat.** Each turn is charged for the tokens it used, at the chat model's rates in [Studio/Status](#post-studiostatus) (cents per 1M tokens), on the turn's project and the `studio` surface. The reply shows the chat charge in `tokencost`, in cents: `tokencost / 100` is the amount in USD.
-- **Model runs.** The models Studio runs for you are your own tasks, on the turn's project: [Task/List](/docs/tasks#task-list) and [Task/Detail](/docs/tasks#task-detail) return them with `surface` `studio`, and [Studio/Tasks](#post-studiotasks) lists them too. Each is charged like any model run when it finishes: at the model's price when it succeeds, and not at all when it fails or is cancelled. Studio/Tasks shows each run's `totalcost`.
+- **Model runs.** The models Studio runs for you are your own tasks, on the turn's project: [Task/List](/docs/tasks#task-list) and [Task/Detail](/docs/tasks#task-detail) return them with `surface` `studio`, and [Studio/Tasks](#post-studiotasks) lists them too. Each is charged like any model run when it finishes: at the model's price when it succeeds, and not at all when it fails or is cancelled. Studio/Tasks shows each run's `totalcost`. The runs Studio made before its runs became your own tasks are not your tasks: Studio/Tasks still lists them, but Task/List does not show them and Task/Detail does not find them.
 - **Spend limits and Model Access.** The models Studio runs for you follow your workspace's [spend limits](/docs/spend-limits) and [Model Access](/docs/model-access) rules, the same as the runs you start yourself: the account's or the team's, your own in a team, those of the turn's project (the API key you sent the message with, or the Studio project for a message sent from wiro.ai), and those of the `studio` [surface](/docs/tasks#task-surfaces). So does the chat: what it costs counts toward spend limits, and a message whose chat model a Model Access rule blocks is refused with code `92` before anything runs.
+- **Concurrency limit.** The models Studio runs for you count toward your workspace's [concurrency limit](/docs/concurrency-limits), like the runs you start yourself: while its balance is $250 or less, one unfinished task for each full $10 of balance, never less than 1, so one at a time below $20. Studio can't start a model while your unfinished tasks fill that limit, and while Studio's runs are unfinished, your own runs over it are refused with code `96`.
 - Chat charges are made within about a minute of the turn ending, and model runs are charged when they finish, like any model run. Both appear in the wallet's transactions, and [Studio/Transactions](#post-studiotransactions) lists the chat charges.
 
 ## **POST** /Studio/Status
@@ -8854,7 +8993,7 @@ Returns the wallet check, the chat models Studio can use and the project Studio 
 | `agentModelBlocked` | boolean | `true` when your rules block `agentModel.chatModel`: a message that leaves `model` out is then refused with code `92`. |
 | `agentModelMessage` | string \| null | The refusal such a message gets when `agentModelBlocked` is `true`, else `null`. |
 | `project.current` | object \| null | The project Studio works on, `{ "id", "name" }` with `id` as a string (see [Costs](#costs)). With an API key, the key's own project. Signed in, the workspace's Studio project, or `null` until the workspace has one: the first Studio or Workflow Agent message from wiro.ai creates it. |
-| `project.options` | object[] | The projects you can make the Studio project with [ProjectSet](#post-studioprojectset), each `{ "id", "name" }`. Signed in to a personal workspace, your personal projects; in a team, every team project for a team admin or the organization owner, and none for other members. Always `[]` with an API key. |
+| `project.options` | object[] | The projects you can make the Studio project with [ProjectSet](#post-studioprojectset), each `{ "id", "name" }`, newest first, at most 100. Signed in to a personal workspace, your personal projects; in a team, every team project for a team admin or the organization owner, and none for other members. Always `[]` with an API key. ProjectSet also takes any other project of the workspace by its `id`. |
 | `project.canchange` | boolean | `true` when you can change the Studio project. `false` for team members who are not admins, and with an API key. |
 | `title` | string | The agent's name. |
 | `status` | number | Always `4`. |
@@ -8944,11 +9083,11 @@ A message that leaves `model` out is then refused with `agentModelMessage`. Send
 
 ## **POST** /Studio/ProjectSet
 
-Changes the workspace's Studio project: the project that Studio and the [Workflow Agent](/docs/workflow-agent) work on for messages sent from wiro.ai. It works only signed in, in the dashboard or with a signed-in user's Bearer token, and changes your personal workspace's Studio project, or the team's when `x-team-guid` names a team. In a personal workspace you can pick any of your personal projects; in a team, a team admin or the organization owner can pick any team project. `project.options` in [Studio/Status](#post-studiostatus) lists them. A call with an API key always runs on the key's project, so ProjectSet refuses it.
+Changes the workspace's Studio project: the project that Studio and the [Workflow Agent](/docs/workflow-agent) work on for messages sent from wiro.ai. It works only signed in, in the dashboard or with a signed-in user's Bearer token, and changes your personal workspace's Studio project, or the team's when `x-team-guid` names a team. In a personal workspace you can pick any of your personal projects; in a team, a team admin or the organization owner can pick any team project. `project.options` in [Studio/Status](#post-studiostatus) lists the newest 100 of them. A call with an API key always runs on the key's project, so ProjectSet refuses it.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `projectid` | string | Yes | The project's `id`, from `project.options` in Studio/Status. |
+| `projectid` | string | Yes | The project's `id`, such as one from `project.options` in Studio/Status. |
 
 ### Response
 
@@ -8967,8 +9106,8 @@ Studio/Status then shows the new project. For a team admin, signed in, it reads:
   "project": {
     "current": { "id": "7001", "name": "Mobile App" },
     "options": [
-      { "id": "6839", "name": "Studio" },
-      { "id": "7001", "name": "Mobile App" }
+      { "id": "7001", "name": "Mobile App" },
+      { "id": "6839", "name": "Studio" }
     ],
     "canchange": true
   }
@@ -9297,6 +9436,248 @@ Business errors come back with HTTP 200, `result: false` and an `errors` array, 
 
 Authentication errors are listed in the [Error Reference](/docs/error-reference).
 
+## Code Examples
+
+### curl (Send)
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/Studio/Message/Send" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "message": "Two square banner images for a bakery weekend sale, warm colors",
+    "sessionkey": "bakery-banners"
+  }'
+```
+
+### curl (Detail)
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/Studio/Message/Detail" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+    "sessionkey": "bakery-banners"
+  }'
+```
+
+### curl (Tasks)
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/Studio/Tasks" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "limit": 20 }'
+```
+
+### curl (SendForm)
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/Studio/Message/SendForm" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "message=Put this mug on a wooden table in morning light" \
+  -F "sessionkey=mug-shots" \
+  -F "attachments=@/path/to/mug.jpg"
+```
+
+### Python
+
+```python
+import time
+import requests
+
+BASE = "https://api.wiro.ai/v1"
+headers = {"x-api-key": "YOUR_API_KEY", "Content-Type": "application/json"}
+session = "bakery-banners"
+
+# 1. Send the brief
+sent = requests.post(f"{BASE}/Studio/Message/Send", headers=headers, json={
+    "message": "Two square banner images for a bakery weekend sale, warm colors",
+    "sessionkey": session,
+}).json()
+if not sent["result"]:
+    raise SystemExit(sent["errors"])
+
+# 2. Poll until the turn ends
+while True:
+    detail = requests.post(f"{BASE}/Studio/Message/Detail", headers=headers, json={
+        "messageguid": sent["messageguid"],
+        "sessionkey": session,
+    }).json()["data"]
+    if detail["status"] in ("agent_end", "agent_error", "agent_cancel"):
+        break
+    time.sleep(3)
+
+print(detail["response"])
+print("Chat charge (USD):", (detail.get("tokencost") or 0) / 100)
+
+# 3. The model runs Studio started, with their files and cost
+tasks = requests.post(f"{BASE}/Studio/Tasks", headers=headers, json={"limit": 10}).json()
+for task in tasks["tasks"]:
+    files = [o.get("url") for o in task["outputs"] if o.get("url")]
+    print(task["model"]["slugproject"], task["status"], task["totalcost"], files)
+```
+
+### Node.js
+
+```javascript
+const axios = require('axios');
+
+const BASE = 'https://api.wiro.ai/v1';
+const headers = { 'x-api-key': 'YOUR_API_KEY', 'Content-Type': 'application/json' };
+const session = 'bakery-banners';
+
+const { data: sent } = await axios.post(`${BASE}/Studio/Message/Send`, {
+  message: "Two square banner images for a bakery weekend sale, warm colors",
+  sessionkey: session
+}, { headers });
+if (!sent.result) throw new Error(JSON.stringify(sent.errors));
+
+let detail;
+do {
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+  const { data } = await axios.post(`${BASE}/Studio/Message/Detail`, {
+    messageguid: sent.messageguid,
+    sessionkey: session
+  }, { headers });
+  detail = data.data;
+} while (!['agent_end', 'agent_error', 'agent_cancel'].includes(detail.status));
+
+console.log(detail.response);
+console.log('Chat charge (USD):', (detail.tokencost || 0) / 100);
+
+const { data: runs } = await axios.post(`${BASE}/Studio/Tasks`, { limit: 10 }, { headers });
+for (const task of runs.tasks) {
+  console.log(task.model.slugproject, task.status, task.totalcost, task.outputs.map((o) => o.url));
+}
+```
+
+### PHP
+
+```php
+<?php
+function wiro($path, $body) {
+    $ch = curl_init("https://api.wiro.ai/v1" . $path);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        "Content-Type: application/json",
+        "x-api-key: YOUR_API_KEY"
+    ]);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $response = json_decode(curl_exec($ch), true);
+    curl_close($ch);
+    return $response;
+}
+
+$sent = wiro("/Studio/Message/Send", [
+    "message" => "Two square banner images for a bakery weekend sale, warm colors",
+    "sessionkey" => "bakery-banners"
+]);
+
+do {
+    sleep(3);
+    $detail = wiro("/Studio/Message/Detail", [
+        "messageguid" => $sent["messageguid"],
+        "sessionkey" => "bakery-banners"
+    ])["data"];
+} while (!in_array($detail["status"], ["agent_end", "agent_error", "agent_cancel"]));
+
+echo $detail["response"];
+```
+
+### C#
+
+```csharp
+using System.Net.Http.Json;
+using System.Text.Json;
+
+using var client = new HttpClient { BaseAddress = new Uri("https://api.wiro.ai/v1/") };
+client.DefaultRequestHeaders.Add("x-api-key", "YOUR_API_KEY");
+
+var sent = await (await client.PostAsJsonAsync("Studio/Message/Send", new {
+    message = "Two square banner images for a bakery weekend sale, warm colors",
+    sessionkey = "bakery-banners"
+})).Content.ReadFromJsonAsync<JsonElement>();
+var messageGuid = sent.GetProperty("messageguid").GetString();
+
+JsonElement data;
+string status;
+do {
+    await Task.Delay(3000);
+    var detail = await (await client.PostAsJsonAsync("Studio/Message/Detail", new {
+        messageguid = messageGuid,
+        sessionkey = "bakery-banners"
+    })).Content.ReadFromJsonAsync<JsonElement>();
+    data = detail.GetProperty("data");
+    status = data.GetProperty("status").GetString();
+} while (status != "agent_end" && status != "agent_error" && status != "agent_cancel");
+
+Console.WriteLine(data.GetProperty("response").GetString());
+```
+
+### Go
+
+```go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+    "time"
+)
+
+func wiro(path string, body map[string]interface{}) map[string]interface{} {
+    payload, _ := json.Marshal(body)
+    req, _ := http.NewRequest("POST", "https://api.wiro.ai/v1"+path, bytes.NewBuffer(payload))
+    req.Header.Set("Content-Type", "application/json")
+    req.Header.Set("x-api-key", "YOUR_API_KEY")
+    resp, err := http.DefaultClient.Do(req)
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    var out map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&out)
+    return out
+}
+
+func main() {
+    sent := wiro("/Studio/Message/Send", map[string]interface{}{
+        "message":    "Two square banner images for a bakery weekend sale, warm colors",
+        "sessionkey": "bakery-banners",
+    })
+
+    for {
+        time.Sleep(3 * time.Second)
+        detail := wiro("/Studio/Message/Detail", map[string]interface{}{
+            "messageguid": sent["messageguid"],
+            "sessionkey":  "bakery-banners",
+        })["data"].(map[string]interface{})
+        status := detail["status"].(string)
+        if status == "agent_end" || status == "agent_error" || status == "agent_cancel" {
+            fmt.Println(detail["response"])
+            break
+        }
+    }
+}
+```
+
+### Response (Send)
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "status": "agent_queue"
+}
+```
+
 ---
 
 
@@ -9355,7 +9736,7 @@ For full details, see [Authentication](/docs/authentication).
 
 ## Pricing Model: Plans, AI Usage & Balance
 
-Every agent runs on one of three monthly plans, and the plan alone sets its price, the AI usage it includes and its disk space. Templates and custom builds use the same plans, and the skills an agent has never change the price. AI usage is what the agent's own model uses on each turn, priced by its tokens. Once the plan's included usage for the period is used up, the agent runs on the Wiro balance of its workspace, the same balance your model runs use.
+Every agent runs on one of three monthly plans, and the plan alone sets its price, the AI usage it includes and its disk space. Templates and custom builds use the same plans, and the skills an agent has never change the price. AI usage is what the agent's own model uses on each turn, priced by its tokens. Once the plan's included usage for the period is used up, the agent runs on the Wiro balance of its workspace, the same balance your model runs use. Its AI usage draws on that balance's deposits and store revenue; coupon credit isn't counted for it (see [`usage.balanceusd`](#usage-object)).
 
 ### Plans
 
@@ -9385,11 +9766,13 @@ Each plan includes its own price in AI usage: Pro costs $30 a month and includes
 }
 ```
 
-A plan renews every 30 days from the balance, and every renewal includes the plan's AI usage in full. Included usage that a period leaves unused doesn't carry over.
+A plan's period lasts 30 days. The plan renews from the balance a day after its period ends, the next 30-day period starts then, and every renewal includes the plan's AI usage in full. Included usage that a period leaves unused doesn't carry over.
+
+When the balance can't pay a renewal, the plan ends and the agent stops (status `0`). A cancelled plan ends and stops the agent the same way, at the end of its period. An agent runs only while its plan is active, whatever its balance holds, so adding funds doesn't start it again: [`RenewSubscription`](#post-useragentrenewsubscription) pays the plan from the balance and queues the agent to start.
 
 ### What a Plan Includes
 
-Every skill and connector works on every plan. Turning a skill on or off with [`SkillsApply`](#post-useragentskillsapply) is free: the plan's price and included AI usage stay as they are. The work a skill does still uses AI usage, since its replies and scheduled tasks are agent turns billed by tokens like any other. A skill that runs Wiro models, such as `util-video-creator`, pays for those runs from the wallet of the Wiro project you connect to the agent. Connectors are included too: connecting one never changes the plan's price (see [Agent Connectors](/docs/agent-connectors)).
+Every skill and connector works on every plan. Turning a skill on or off with [`SkillsApply`](#post-useragentskillsapply) is free: the plan's price and included AI usage stay as they are. The work a skill does still uses AI usage, since its replies and scheduled tasks are agent turns billed by tokens like any other. A skill that runs Wiro models, such as Video Creator (`util-video-creator`), pays for those runs from the wallet of the Wiro project you connect to the agent. Connectors are included too: connecting one never changes the plan's price (see [Agent Connectors](/docs/agent-connectors)).
 
 ### Disk Space
 
@@ -9409,7 +9792,7 @@ When the agent's files reach the plan's size, the disk is full: the agent can't 
 - **A lower plan starts at the next renewal.** Ask for it with `allowDowngrade: true`: without it, a lower plan is refused and nothing changes. Nothing is charged or refunded. The agent keeps its current plan, price and included AI usage until the period ends, and its `nextplan` field names the plan it will renew on.
 - **Asking for the agent's current plan** cancels a scheduled move to a lower plan.
 
-Moving to a higher plan while a lower one is scheduled cancels the scheduled move first, and cancelling the subscription clears it too.
+Moving to a higher plan while a lower one is scheduled cancels the scheduled move first. Cancelling a plan paid from the balance keeps a scheduled move; cancelling a plan paid by card drops it (see [`CancelSubscription`](#post-useragentcancelsubscription)).
 
 ### Paying for Plans
 
@@ -9428,6 +9811,8 @@ When the balance can't pay a plan's price, `Deploy`, `CreateSubscriptionCheckout
 ```
 
 Add at least `neededusd` to the balance, then send the same call again.
+
+Every plan payment also counts on [Spend Limits](/docs/spend-limits): the account's or team's limit and the `agent` surface's, automatic renewals included. When a new plan, a move to a higher plan or a renewal you ask for would take spending over one of them, `Deploy`, `CreateSubscriptionCheckout`, `UpgradeTier` and `RenewSubscription` are refused with code `93` and the limit's message, and nothing is created or charged. An automatic renewal is counted, never refused.
 
 A plan that was paid by card before agent plans moved to the balance keeps its current period as paid. At the end of that period it renews from the balance like every other plan, or ends when the balance can't pay the renewal. Until then its `subscription` reads `provider: "stripe"` with `nextprovider: "prepaid"`, and a move to a higher plan is paid from the balance. The switch itself charges and refunds nothing. Such a plan can also be cancelled with [`CancelSubscription`](#post-useragentcancelsubscription): it then ends at the end of its period instead of switching.
 
@@ -9459,9 +9844,9 @@ Rates are in **cents per 1,000,000 tokens**: `"input_per_1m": 625` is $6.25 per 
 
 Cache-read and cache-write tokens are charged only when the model's rate defines them. `inputtokens` contains only uncached input; `totaltokens` is always the exact sum of input, output, cache-read, and cache-write tokens. For models with `long_context_threshold_tokens`, Wiro selects the long-context rate **per LLM call** using `input + cacheRead + cacheWrite`. You don't send anything. The agent's [Transactions](/docs/agent-transactions#tx-transactionlist) list its AI usage as `ai-usage` rows, each with its model and its tokens and cost by kind; when Wiro measures the agent's model calls itself, one row covers every call billed since the last row, of one turn or several (see [Rows that cover several model calls](/docs/agent-transactions#metered-token-rows)). Per-turn token counts and cost also ride on each assistant message (`inputtokens` / `outputtokens` / `cachereadtokens` / `cachewritetokens` / `totaltokens` / `tokencost` / `model`, with `tokencost` in cents, see [Agent Messaging](/docs/agent-messaging)).
 
-AI usage comes from the plan's included usage for the period first, then from the balance. A new turn needs included usage left or a balance of at least $0.50. When both are short, the agent pauses: [`POST /UserAgent/Message/Send`](/docs/agent-messaging#post-useragentmessagesend) and [`POST /UserAgent/Start`](#post-useragentstart) are refused with code `97` until funds are added or the plan renews (see [AI Usage and the Balance](#ai-usage-and-the-balance)).
+AI usage comes from the plan's included usage for the period first, then from the balance. A new turn needs an active plan, and included usage left or a balance of at least $0.50. When the included usage is used up and the balance is under $0.50, the agent pauses: [`POST /UserAgent/Message/Send`](/docs/agent-messaging#post-useragentmessagesend) and [`POST /UserAgent/Start`](#post-useragentstart) are refused with code `97` until funds are added or the plan renews (see [AI Usage and the Balance](#ai-usage-and-the-balance)).
 
-> **Voice realtime audio is billed separately.** Live voice-call audio (for `util-voice-receptionist` agents) is **not** the agent's AI usage. It is billed to the wallet of the agent's Wiro project (the `wiro` credential, see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)). The voice-prep turn before the call and the post-call text turn are AI usage like any other turn.
+> **Voice realtime audio is billed separately.** Live voice-call audio (for agents with Voice Receptionist Rules, `util-voice-receptionist`) is **not** the agent's AI usage. It is billed to the wallet of the agent's Wiro project (the `wiro` credential, see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)). The voice-prep turn before the call and the post-call text turn are AI usage like any other turn.
 
 ### Live Pricing Preview
 
@@ -9476,7 +9861,7 @@ Before agents were billed in dollars, these fields counted credits. They still c
 | `monthlycredits`, `renewalcredits`, `usedcredits`, `remainingcredits` | Agent rows: `Deploy`, `MyAgents`, `Detail`, `Update`, `Cover`, `PinnedAgents` | [`usage`](#usage-object): `includedusd`, `renewalusd`, `usedusd`, `leftusd` |
 | `extracredits`, `extracreditsexpiry` | Agent rows | Nothing: an agent has no balance of its own |
 | `credits` in `tiers`, `monthlyCredits` in `plans` | Catalog, agent rows, `PricingPreview` | `includedUsageUsd` in `plans` |
-| `extracreditpacks` | `Agent/Detail`, `agent` on agent rows | Nothing: it is always `[]` |
+| `extracreditpacks` | `Agent/List` rows, `Agent/Detail`, `agent` on agent rows | Nothing: it is always `[]` |
 | Credit counts in plan answers, such as `totalMonthlyCredits`, `creditsNow`, `creditsThisPeriod`, `creditsFromRenewal`, `newMonthlyCredits` and `monthlycredits` | `PricingPreview`, `SkillsApply`, `UpgradeTier`, `CreateSubscriptionCheckout`, `RenewSubscription` | The answer's USD fields, and `usage` on `Detail` once the change is made |
 | `remainingcredits` | `agent_usage_report` frames, `token_usage` log events | `usage` on `Detail` |
 | `agentbalance` | The `Message/Send` refusal for AI usage | `agentusage` |
@@ -9505,7 +9890,7 @@ Every deployed agent instance has a numeric status that reflects its current sta
 | `3` | Starting | The agent is starting up. |
 | `4` | Running | Agent is live and ready to receive messages. |
 | `5` | Error | Agent encountered an error during execution. Call Start to retry. |
-| `6` | Setup Required | Agent needs credentials or configuration before it can start. Provide them via `CredentialUpsert` / `CredentialProjectBind` / `CustomSkillUpsert` / `SkillsApply`, then call `POST /UserAgent/Update`. |
+| `6` | Setup Required | The agent has no plan yet: it was deployed without `useprepaid: true`, and nothing was charged. Pay its plan with [`CreateSubscriptionCheckout`](#post-useragentcreatesubscriptioncheckout) (`useprepaid: true`), which queues it (status `2`). Credentials and connectors never hold an agent here. An agent that has never had a plan and has never started is deleted about an hour after Deploy. |
 
 ### Automatic Restart
 
@@ -9776,7 +10161,7 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
 |-----------|------|----------|-------------|
 | `guid` | string | No* | Agent guid. |
 | `slug` | string | No* | Agent slug (e.g. `"instagram-manager"`). |
-| `type` | string | No | Pass `"full"` to also include `customskills` (the template's strategies a deployer can edit) and `scheduledskills` (every scheduled task) in the response. Without `type: "full"`, the response carries the catalog header + `tiers` + `plans` + `tokenRates` + `credentials` + `skills` + `skillsmeta` + `suggestedconnectors` + `communicationChannels` only. |
+| `type` | string | No | Pass `"full"` to also include `customskills` (the template's strategies a deployer can edit) and `scheduledskills` (every scheduled task) in the response. Each row: `{ key, value, description, interval, enabled, requires_credentials, requires_connectors, _editable }`. `requires_connectors` lists the Connectors a scheduled task needs, by catalog slug (one connected runs it), and `requires_credentials` the channels and settings it needs. Without `type: "full"`, the response carries the catalog header + `tiers` + `plans` + `tokenRates` + `credentials` + `skills` + `skillsmeta` + `suggestedconnectors` + `communicationChannels` only (plus the deprecated `extracreditpacks: []`). |
 
 > **Note:** You must provide either `guid` or `slug`. If both are provided, `slug` takes priority. Pass `type: "full"` when you need to preview custom skill keys and scheduled task cron expressions before deploying; omit it for a lightweight catalog detail call.
 
@@ -9894,9 +10279,9 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
 
 | Flag | Type | Meaning |
 |------|------|---------|
-| `_connected` | boolean | **Connection readiness indicator** for a credential whose setup writes a connection time. Plain value credentials, such as the channels, can remain `false`; use `setuprequired` to determine overall setup readiness. A connector's state is its `status` on [`ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist). |
+| `_connected` | boolean | On a channel (Telegram, Slack, Discord), `true` once every field in its `required_fields` is filled. `false` on other credentials, where `_filled` and `_required_missing` tell the state; use `setuprequired` for overall setup readiness. A connector's state is its `status` on [`ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist). |
 | `optional` | boolean | `true` when the template marks this credential as not required for the agent to run. Agents can start even if `optional: true` credentials are empty. A credential nothing on the agent asks for reads `true`, with `extra: false`. |
-| `extra` | boolean | `true` when the template groups the credential under "extra integrations" in the UI (disabled by default until the user opts into the skill). |
+| `extra` | boolean | `true` when the agent template marks this credential as an optional extra; the panel lists it after the required ones. |
 | `_editable` | object | Map of `fieldname → true\|false` over the registry schema: `false` for a field the caller can't write (platform-managed or computed). |
 | `_schema` | object | Inlined registry descriptor: `{ title, icon, brand_color, brand_text_color, brand_logo_filter, docs_url, credential_mode, channel, fields[] }`, where `channel` describes a communication channel and is `null` or absent on any other credential. Lets a UI render the form without a separate `Credentials/Detail` round-trip. Other keys are for Wiro's own panel: ignore them. |
 
@@ -9933,7 +10318,7 @@ All endpoints below require authentication.
 
 Creates a new agent instance from a catalog template, **or** builds a brand-new custom agent (no template).
 
-> **Agent plans are paid from your Wiro balance.** Pass `useprepaid: true` + `tier`. The plan's price is taken from the balance of the workspace you deploy into, and the instance is created server-side in one call. An agent plan has no card payment, in the dashboard or the API. Add funds to your balance on [wiro.ai/panel/billing](https://wiro.ai/panel/billing) before calling Deploy: when the balance is short, Deploy is refused with code `97` and `neededusd` (see [Paying for Plans](#paying-for-plans)).
+> **Agent plans are paid from your Wiro balance.** Pass `useprepaid: true` + `tier`. The plan's price is taken from the balance of the workspace you deploy into, and the instance is created server-side in one call. An agent plan has no card payment, in the dashboard or the API. Add funds to your balance under **Credit Balance** ([add funds](https://wiro.ai/panel/wallet/deposit/credit-card)) before calling Deploy: when the balance is short, Deploy is refused with code `97` and `neededusd` (see [Paying for Plans](#paying-for-plans)).
 
 Prepaid deploy (`useprepaid: true` + `tier`) charges your wallet for the chosen plan's price immediately and inserts a 30-day subscription row (`plan: "agent"`, `provider: "prepaid"`). **Every fresh Deploy lands at `status: 6` first**. The row is then auto-queued to `status: 2` (Queued) once the prepaid subscription is provisioned. No manual `UserAgent/Start` is needed for prepaid deploys; Wiro starts the agent from the queue.
 
@@ -9953,11 +10338,11 @@ for the channel contract.
 | `custom` | boolean | Conditional | Pass `true` to deploy a custom-built agent (no marketplace template). Mutually exclusive with `agentguid`. See [Agent Builder](/docs/agent-builder) for the full builder flow. |
 | `title` | string | Yes | Display name for your instance. |
 | `description` | string | No | Optional description (custom builds: free-text describing what the agent does). |
-| `cover` | string | No | Optional cover image URL. Custom builds only. Template deploys clone the agent's cover automatically. |
-| `useprepaid` | boolean | Yes | Must be `true`. Pays the plan's price from your Wiro balance in a single server-side call. |
+| `cover` | string | No | Optional cover image URL for this agent, on template deploys and custom builds alike. Without it `cover` stays `null`: show the template's `agent.cover` instead (a custom build has none). |
+| `useprepaid` | boolean | Yes | Send `true`: the plan's price is paid from your Wiro balance in this call, and the agent is queued. Without it, Deploy still creates the agent and charges nothing: the agent stays at status `6` with no plan until [`CreateSubscriptionCheckout`](#post-useragentcreatesubscriptioncheckout) (`useprepaid: true`) pays it, and if it still has no plan about an hour after Deploy, it is deleted. |
 | `tier` | string | No | The plan: `"starter"` (default, $5 a month, including $5 of AI usage a month), `"pro"` ($30, including $30) or `"max"` ($100, including $100). It sets the price taken from your balance at deploy time and the AI usage included each month. The param name is `tier`. Leave it out for Starter. Any other value is refused with `tier must be starter, pro or max`, and nothing is created or charged. |
-| `credentials` | object | No | Inline credential groups. If a communication-channel group is included, its matching `credentials[credential_key]` object must contain all channel `required_fields`; completeness activates that channel automatically. |
-| `skills` | object | No | Inline skill toggles `{ "skillname": true \| false }`. For custom builds this seeds the initial skill set; for template deploys it overlays the template defaults. |
+| `credentials` | object | No | Inline credential groups for the channels, `twilio-voice`, `wiro` and the settings (the keys [`POST /Credentials/List`](/docs/agent-credentials#post-credentialslist) lists). If a communication-channel group is included, its matching `credentials[credential_key]` object must contain all channel `required_fields`; completeness activates that channel automatically. Any other key, a connector's slug included, fails Deploy before anything is created or charged, with `Unknown credential: <key>. Connect a connector after the deploy with UserAgent/ConnectorConnect.` |
+| `skills` | object | No | Inline skill toggles `{ "skillname": true \| false }`. For custom builds this seeds the initial skill set; for template deploys it overlays the template defaults. Deploy turns on the Skills a Skill you turn on depends on (`depends_on`) by itself. Every name, on or off, must be a Skill that [`POST /Skills/List`](/docs/agent-skills#post-skillslist) lists: any other name fails Deploy before anything is created or charged, with `Unknown skill: <name>.`, and a name that starts with `int-` with `Unknown skill: <name>. Connectors are connected with UserAgent/ConnectorConnect, not turned on as skills.` |
 | `customskills` | array | No | Inline custom skill rows. Each entry: `{ key, value?, interval?, enabled?, description?, _user_created? }`. A scheduled task's `interval` must be a schedule the agent can run, as in [`CustomSkillUpsert`](#post-useragentcustomskillupsert), and `"manual"` means no schedule. Otherwise Deploy fails before anything is created or charged, and the error starts with the skill's key. Up to 50 entries; add more with [`CustomSkillUpsert`](#post-useragentcustomskillupsert) once the agent is deployed. |
 | `wiroapiallowedpaths` | string[] | No | The Wiro API endpoints this agent may call with its own Wiro project key, as rules in the format described under [`UpdateSettings`](#post-useragentupdatesettings). The list is saved before the agent first starts, so it applies from the first turn. An invalid list is rejected with `invalid-wiro-api-path-rule` and no agent is created. If the list can't be saved, no agent is created either and the call returns `Failed to save wiroapiallowedpaths`; deploy again. Omit it, or send `null`, for the default list described under [`UpdateSettings`](#post-useragentupdatesettings). |
 | `chatsetup` | string | No | Setup From Chat: where people can change this agent's setup by approving setup cards in chat. `"all"` (the default) allows the Wiro web chat and messages sent with a project API key, `"webchat"` only the Wiro web chat, and `"off"` neither. Omit it, or send `null`, for `"all"`. Deploying an agent that people who must not change it will talk to, such as your customers' own users? Send `"webchat"` or `"off"`. Keep `"all"` when the people in your chats may change the agent, and decide in your own product who may approve: see [Agent Chat Integration](/docs/agent-chat-integration#who-may-apply-a-card). See [Setup From Chat](/docs/agent-messaging#setup-from-chat). |
@@ -10021,8 +10406,8 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
 |--------|------------------------------|-------------------------------|
 | Linked marketplace template | Snapshotted from the resolved template | None: no template back-reference |
 | `categories` | Cloned from the agent template | `null` (custom agents have no marketplace categories) |
-| `cover` | Cloned from `agent.cover` automatically | Optional: pass `cover` in the body if you want one |
-| Bundled scheduled tasks | Cloned from the template's preset custom skills | Materialized from the standalone cron registry |
+| `cover` | `null` unless you pass one; the template's cover shows through `agent.cover` | Optional: pass `cover` in the body if you want one |
+| Bundled scheduled tasks | Cloned from the template's preset custom skills | Seeded from the Scheduled Tasks its skills bring |
 | Onboarding placeholders | None: the template ships its own preset strategies | One invocation-only `cs-my-custom-strategy` and one scheduled `cs-cron-my-scheduled-task` are seeded so the panel always has something to render under "Custom Skills" / "Scheduled Tasks" |
 | Platform-managed credentials | Set up by Wiro | Set up by Wiro |
 | Marketplace run counter | Bumped by 1 | Not touched (custom agents have no template to count against) |
@@ -10054,7 +10439,10 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
           "groups": []
         }
       },
-      "skills": ["util-social-posting-common", "util-anti-ai-human-copy"],
+      "skills": [
+        { "name": "util-social-posting-common", "enabled": true, "_edited": false, "_user_created": false },
+        { "name": "util-anti-ai-human-copy",    "enabled": true, "_edited": false, "_user_created": false }
+      ],
       "customskills": [],
       "scheduledskills": [],
       "monthlypriceusd": 5,
@@ -10080,9 +10468,9 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
       ],
       "enabledChannels": [],
       "teamsessionmode": "private",
-      "status": 6,
-      "setuprequired": true,
-      "pinned": false,
+      "status": 2,
+      "setuprequired": false,
+      "pinned": true,
       "agent": {
         "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "title": "Instagram Manager",
@@ -10113,10 +10501,10 @@ The Deploy response reflects the same composed shape you get from `UserAgent/Det
 
 | Field | Meaning |
 |-------|---------|
-| `status: 6` | **Setup Required**: initial state for every fresh Deploy. With `useprepaid: true`, auto-queues to `status: 2` as soon as the subscription is provisioned, regardless of credential completeness. The agent then starts even if a required credential is still missing, and `UserAgent/Detail` reads `setuprequired: true` until it is filled. Fill a missing credential, such as a channel or the Wiro project the template doesn't mark optional, with `POST /UserAgent/CredentialUpsert` or `POST /UserAgent/CredentialProjectBind`: a running agent restarts to pick it up. Connectors never hold an agent at Setup Required. A row still at `status: 6` needs `POST /UserAgent/Update` first (any scalar body, even just `{ "guid": "<useragent-guid>" }`) to flip it to `status: 0` (Stopped): `Update` is the endpoint that performs the `setuprequired` re-check and the `6 → 0` transition. |
+| `status: 6` | **Setup Required**: initial state for every fresh Deploy. With `useprepaid: true`, auto-queues to `status: 2` as soon as the subscription is provisioned, regardless of credential completeness. The agent then starts even if a required credential is still missing, and `UserAgent/Detail` reads `setuprequired: true` until it is filled. Fill a missing credential, such as a channel or the Wiro project the template doesn't mark optional, with `POST /UserAgent/CredentialUpsert` or `POST /UserAgent/CredentialProjectBind`: a running agent restarts to pick it up. Connectors never hold an agent at Setup Required. A row still at `status: 6` has no plan, because it was deployed without `useprepaid: true`. [`CreateSubscriptionCheckout`](#post-useragentcreatesubscriptioncheckout) with `useprepaid: true` pays it and queues the agent (`status: 2`). |
 | `status: 2` | **Queued**: `useprepaid: true` charged the wallet, the subscription was provisioned, and Wiro will start the agent. No manual `UserAgent/Start` is required. |
 | `setuprequired: true` | A non-optional credential is missing, or the row is still at `status: 6`. At `status: 6`, `Start` rejects with `Agent setup is not complete. Fill in the agent's required settings before starting.` |
-| `setuprequired: false` | All non-optional credentials are set up and the row has left `status: 6`. A row sitting at Setup Required reads `true` until a `POST /UserAgent/Update` call flips it 6 → 0; `Start` then launches it normally. |
+| `setuprequired: false` | All non-optional credentials are set up and the row has left `status: 6`. A row sitting at Setup Required reads `true` until it leaves `status: 6`. |
 
 > **Subscription on deploy:** the `subscription` object is **not** included in the Deploy response. A prepaid subscription (`plan: "agent"`, provider `prepaid`, `tier` matches what you passed) is created server-side during the Deploy call. Call `POST /UserAgent/Detail` with the returned `guid` to read the subscription object back.
 
@@ -10124,7 +10512,7 @@ Next steps for the API integration flow:
 
 1. Inspect `credentials` in the Deploy response (or call `POST /UserAgent/Detail`) to see each credential's fields, the `optional` / `extra` flags and the registry-driven `_schema`.
 2. Connect the services the agent works with through [Agent Connectors](/docs/agent-connectors): `POST /UserAgent/ConnectorConnect` with a connector's fields, or its vendor's sign-in. A template's `suggestedconnectors` on [`Agent/Detail`](#post-agentdetail) lists the ones it works with. Call `POST /UserAgent/CredentialUpsert` for channels and settings (bot tokens, the support email), and `POST /UserAgent/CredentialProjectBind` to connect the Wiro project the agent runs models with.
-3. Call `POST /UserAgent/CustomSkillUpsert` per skill to customize strategy text or cron intervals, if the template exposes any.
+3. Call `POST /UserAgent/CustomSkillUpsert` per skill to customize strategy text or Scheduled Task intervals, if the template exposes any.
 4. Once every non-optional credential is set up, `setuprequired` reads `false`. The start doesn't wait for it: the prepaid Deploy already queued the agent, Wiro starts it from the queue (`2` → `3` (Starting) → `4` (Running)), and a running agent restarts to pick up each connector you connect.
 5. If you want to re-launch a stopped agent (status `0`) or recover an errored one (status `5`), call `POST /UserAgent/Start` explicitly.
 
@@ -10186,7 +10574,7 @@ Lists all agent instances deployed under your account.
       "creditsyncat": 1714694410,
       "usage": {
         "period": "2026-05",
-        "resetsat": 1717200000,
+        "resetsat": 1780272000,
         "includedusd": 30,
         "usedusd": 12.4,
         "leftusd": 17.6,
@@ -10216,8 +10604,8 @@ Lists all agent instances deployed under your account.
         "status": "active",
         "amount": 30,
         "currency": "usd",
-        "currentperiodend": 1717200000,
-        "renewaldate": "2026-06-01T00:00:00.000Z",
+        "currentperiodend": 1780272000,
+        "renewaldate": "2026-06-02T00:00:00.000Z",
         "daysremaining": 62,
         "pendingdowngrade": null,
         "provider": "prepaid"
@@ -10233,7 +10621,12 @@ Lists all agent instances deployed under your account.
           "starter": { "priceUsd": 5 },
           "pro":     { "priceUsd": 30 },
           "max":     { "priceUsd": 100 }
-        }
+        },
+        "plans": [
+          { "key": "starter", "title": "Starter", "priceUsd": 5,   "includedUsageUsd": 5,   "diskMb": 250 },
+          { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "includedUsageUsd": 30,  "diskMb": 500 },
+          { "key": "max",     "title": "Max",     "priceUsd": 100, "includedUsageUsd": 100, "diskMb": 1024 }
+        ]
       },
       "enabledSkills": ["util-social-posting-common", "util-anti-ai-human-copy", "util-chat-markdown-reporting"],
       "tokenRates": {
@@ -10267,7 +10660,7 @@ Lists all agent instances deployed under your account.
 
 > **`MyAgents` returns one row per useragent with its scalar fields, the trimmed `agent` template summary, `subscription`, `setuprequired` (status-based check only), `usage` (the agent's AI usage and balance, see [Usage object](#usage-object)), `spend` (what it cost this month, see [Spend object](#spend-object)), `lastactivityat`, the resolved `enabledSkills` (template defaults ∪ user overrides, including transitive `depends_on` closure), `tokenRates` (per-model token rates, the same map as `UserAgent/Detail.tokenRates`), `agentModel` (the resolved chat / cron / voice-prep / voice-postcall model slugs), and `enabledCommands` (the slash-command allowlist, `null` when uncustomized).** Heavier composed children (`credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `communicationChannels`, `enabledChannels`) are **not** included. Call `UserAgent/Detail` on a single guid for the full composed shape.
 
-> **`enabledSkills`, `tokenRates`, and `agentModel`** ride on each list row so a chat or pinned-agents UI can decide whether to show the realtime voice-call button (`enabledSkills` includes `util-web-channel`) and render the model picker + live token-rate card without round-tripping `UserAgent/Detail` per row.
+> **`enabledSkills`, `tokenRates`, and `agentModel`** ride on each list row so a chat or pinned-agents UI can decide whether to show the realtime voice-call button (`enabledSkills` includes Web Voice Channel, `util-web-channel`) and render the model picker + live token-rate card without round-tripping `UserAgent/Detail` per row.
 
 #### **POST** /UserAgent/Detail
 
@@ -10292,7 +10685,7 @@ Retrieves full details for a single deployed agent instance, including subscript
       "title": "My Instagram Bot",
       "description": null,
       "categories": ["social-media", "marketing"],
-      "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
+      "cover": null,
       "tier": "pro",
       "nextplan": null,
       "status": 4,
@@ -10375,6 +10768,8 @@ Retrieves full details for a single deployed agent instance, including subscript
           "value": "## Brand Voice\nTone: friendly, casual, never salesy.\nTarget Audience: indie devs and side-project builders.\n\n## Hashtag Strategy\nMax 3 per post. Always include #BuildInPublic and #Indie.\n\n## Platform Rules\n- Instagram: square images only, carousels for tutorials.\n- Twitter: thread format for posts longer than 200 chars.",
           "enabled": true,
           "interval": null,
+          "requires_credentials": [],
+          "requires_connectors": [],
           "_source": "preset-strategy",
           "_editable": true,
           "_edited": true
@@ -10385,6 +10780,8 @@ Retrieves full details for a single deployed agent instance, including subscript
           "value": "## Primary Sources\nhttps://blog.example.com/feed.xml\nhttps://news.ycombinator.com/rss\n\n## CTA URL Pattern\nhttps://example.com/posts/{slug}",
           "enabled": true,
           "interval": null,
+          "requires_credentials": [],
+          "requires_connectors": [],
           "_source": "preset-strategy",
           "_editable": true,
           "_edited": false
@@ -10397,16 +10794,24 @@ Retrieves full details for a single deployed agent instance, including subscript
           "value": "Scan the configured RSS / sitemap sources, dedupe against last 14 days, and queue up to 3 fresh items into the post pipeline.",
           "enabled": true,
           "interval": "0 */4 * * *",
+          "requires_credentials": [],
+          "requires_connectors": ["facebook-pages", "instagram", "linkedin", "tiktok", "twitter"],
           "_source": "skill-bundle",
           "_editable": true,
-          "_edited": false
+          "_edited": false,
+          "_owner_skills": ["util-social-posting-common"],
+          "_skill_off": false,
+          "_usable_credentials": [],
+          "_if_connected": {}
         },
         {
           "key": "cs-cron-weekly-roundup",
-          "description": "User-created weekly summary cron that posts a Monday recap to Telegram.",
+          "description": "User-created weekly Scheduled Task that posts a Monday recap to Telegram.",
           "value": "Every Monday at 09:00 UTC, summarize last week's published posts (titles + engagement) and post the recap to Telegram.",
           "enabled": true,
           "interval": "0 9 * * 1",
+          "requires_credentials": [],
+          "requires_connectors": [],
           "_source": "user-created",
           "_editable": true,
           "_edited": false,
@@ -10473,7 +10878,7 @@ Retrieves full details for a single deployed agent instance, including subscript
       "creditsyncat": 1714694410,
       "usage": {
         "period": "2026-05",
-        "resetsat": 1717200000,
+        "resetsat": 1780272000,
         "includedusd": 30,
         "usedusd": 12.4,
         "leftusd": 17.6,
@@ -10523,8 +10928,8 @@ Retrieves full details for a single deployed agent instance, including subscript
         "status": "active",
         "amount": 30,
         "currency": "usd",
-        "currentperiodend": 1717200000,
-        "renewaldate": "2026-06-01T00:00:00.000Z",
+        "currentperiodend": 1780272000,
+        "renewaldate": "2026-06-02T00:00:00.000Z",
         "daysremaining": 28,
         "pendingdowngrade": null,
         "provider": "prepaid"
@@ -10575,9 +10980,9 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `teamguid` | `string\|null` | Team GUID when the agent is team-scoped. `null` for personal agents. |
 | `title` | `string` | Display name you gave this instance at deploy. |
 | `description` | `string\|null` | Long-form description shown on the agent card. |
-| `cover` | `string\|null` | Per-instance cover URL. Falls back to `agent.cover` for template deploys; `null` for custom builds without an uploaded cover. |
+| `cover` | `string\|null` | Per-instance cover URL, `null` until one is set with `Deploy`, `Update` or `Cover`. Show `agent.cover` when it is `null`. |
 | `categories` | `array<string>` | Inherited from the template at deploy; editable via `Update`. |
-| `pinned` | `boolean` | `true` when the user pinned this instance to the global header dropdown. Mutate via `Pin`. |
+| `pinned` | `boolean` | `true` when the agent is pinned to its workspace's header dropdown (on a team agent, for every member). Mutate via `Pin`. |
 
 **Plan & AI usage**
 
@@ -10612,8 +11017,8 @@ Retrieves full details for a single deployed agent instance, including subscript
 | Field | Type | Description |
 |-------|------|-------------|
 | `credentials` | `object` | Per-provider credential map keyed by credential name (`telegram`, `twilio-voice`, `wiro`, `var-support-email`, …). Each provider object carries its saved field values, every saved secret read as the mask `"••••••••"`, plus a fixed metadata header (see "Credential object shape" below). |
-| `customskills` | `array` | Composed list of preset strategies and **non-cron** custom skills (writable instructions). Each entry: `{ key, description, value, enabled, interval: null, _source, _editable, _edited, _user_created? }`. `_source` ∈ `"preset-strategy"` \| `"user-created"`. |
-| `scheduledskills` | `array` | Composed list of **cron** skills (`cs-cron-*`). Same shape as `customskills` plus `interval` (cron expression). `_source` ∈ `"skill-bundle"` (preset cron) \| `"user-created"`. A scheduled task that skills bring also carries the fields in [Scheduled task skill fields](#scheduled-task-skill-fields). |
+| `customskills` | `array` | Composed list of preset strategies and custom skills that aren't Scheduled Tasks (writable instructions). Each entry: `{ key, description, value, enabled, interval: null, requires_credentials, requires_connectors, _source, _editable, _edited, _user_created? }`. `requires_credentials` (`string[]`) lists the channels and settings the entry needs, such as `telegram` or `wiro`; one of them set up is enough. `requires_connectors` (`string[]`) lists the Connectors a scheduled task needs, by catalog slug; one of them connected is enough. `_source` ∈ `"preset-strategy"` \| `"user-created"`. |
+| `scheduledskills` | `array` | Composed list of Scheduled Tasks (`cs-cron-*`). Same shape as `customskills` plus `interval` (cron expression). A task whose `requires_connectors` isn't empty runs only while one of those Connectors is connected. `_source` ∈ `"skill-bundle"` (a Scheduled Task the template or a skill brings) \| `"user-created"`. A scheduled task that skills bring also carries the fields in [Scheduled task skill fields](#scheduled-task-skill-fields). |
 | `skills` | `array<object>` | Currently-enabled Skills (`util-*`). Each entry: `{ name, enabled: true, _edited, _user_created }`. Toggle via `SkillsApply` (single-skill or batch). Note: object array (not string array). |
 | `skillsmeta` | `object` | Inline registry snapshot keyed by skill name: `title`, `icon`, `brand_color`, `category`, `docs_url`, `credential_key`, `requires_credentials`, `user_invocable`, `description`. Lets the panel render skill chips without a `Skills/List` round-trip. |
 | `communicationChannels` | `array` | Every external channel with this agent's state: `id`, `title`, `credentialkey`, `required_fields`, `capabilities`, `schema`, `enabled`, `configured` and `missingfields`. Also on the `Deploy` and `Update` responses; not on `MyAgents` / `PinnedAgents` rows. |
@@ -10623,23 +11028,23 @@ Retrieves full details for a single deployed agent instance, including subscript
 
 <a id="scheduled-task-skill-fields"></a>
 
-**Scheduled task skill fields.** A `scheduledskills` entry of a scheduled task that one of Wiro's skills brings (a `cs-cron-*` key from the skill registry) carries five more fields. Wiro gives the agent such a task only while a skill that brings it is on, and only while it can use one of the connectors the task needs; these fields say where it stands. A task without `_owner_skills`, such as one you wrote yourself, carries none of them and needs only the connectors its own entry lists.
+**Scheduled task skill fields.** A `scheduledskills` entry of a scheduled task that one of Wiro's skills brings (a `cs-cron-*` key from the skill registry) carries five more fields. Wiro gives the agent such a task only while a skill that brings it is on. These fields say where it stands with its skills and with the channels and settings in its `requires_credentials`. Like any scheduled task whose `requires_connectors` isn't empty, it also runs only while one of those Connectors is connected. A task without `_owner_skills`, such as one you wrote yourself, carries none of them and needs only what its own `requires_credentials` and `requires_connectors` list.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `_owner_skills` | `string[]` | The skills that bring the task. |
 | `_skill_off` | `boolean` | `true` while the task waits for skills that are off. Wiro then sends it to the agent turned off, whatever its own `enabled` says. |
 | `_off_skills` | `string[][]` | Only when `_skill_off` is `true`: what to turn on, one skill from each group. |
-| `_usable_credentials` | `string[]` | The connectors the task can use now: one of them connected is enough. |
-| `_if_connected` | `object` | One key for each connector the task needs that is not connected: the groups of skills the task would still wait for once that connector is connected. `[]` means it would run, if its own `enabled` is `true`. |
+| `_usable_credentials` | `string[]` | The channels and settings the task's credential check covers (its `requires_credentials`), such as `telegram` or `wiro`; one of them set up is enough. `[]` when it needs none. Connectors aren't listed here: see `requires_connectors`. |
+| `_if_connected` | `object` | One key for each of those channels or settings that isn't set up, with the groups of skills the task would still wait for once it is: the same groups as `_off_skills`, or `[]` when no skill holds the task back. `{}` when there are none. |
 
-To show a task as waiting, read `_skill_off`, then `_usable_credentials` and `_if_connected` for what connecting a connector would change.
+To show a task as waiting, read `_skill_off` and `_off_skills` for the skills to turn on. Then compare its `requires_connectors` with each connection's `status` on [`ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist): the task waits for a Connector until one of them reads `connected`.
 
 **Subscription & template**
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `subscription` | `object\|null` | Active subscription info (see "Subscription object" below), or `null` when the agent has no active subscription. It reads `plan: "agent"` and, since plans are paid from the Wiro balance, `provider: "prepaid"` (see [Paying for Plans](#paying-for-plans) for a plan that was paid by card). |
+| `subscription` | `object\|null` | The agent's subscription (see "Subscription object" below): its active one, else its newest, so a plan that ended reads `status: "expired"`. `null` when the agent has never had a plan. It reads `plan: "agent"` and, since plans are paid from the Wiro balance, `provider: "prepaid"` (see [Paying for Plans](#paying-for-plans) for a plan that was paid by card). |
 | `agent` | `object` | Parent template summary: `{ guid, title, slug, headline, description, cover, icon, categories, tiers, plans }`. For custom builds (`agent.custom: true`) it's a synthesized placeholder instead: `{ custom: true, slug, cover: null, icon: null, tiers, plans }`, with no `guid`, `title`, `headline`, `description` or `categories`. Read the agent's title and cover from the useragent itself. |
 
 ##### Credential object shape
@@ -10648,16 +11053,14 @@ Every provider entry under `credentials.<key>` carries:
 
 | Sub-field | Type | Description |
 |-----------|------|-------------|
-| `_connected` | `boolean` | Connection-readiness flag for a credential whose setup writes a connection time. Plain value credentials, such as the channels, can remain `false`; for those use `_required_missing` or inspect the field values directly. A connector's state is its `status` on [`ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist). |
+| `_connected` | `boolean` | On a channel (Telegram, Slack, Discord), `true` once every field in its `required_fields` is filled. `false` on other credentials, where `_filled` and `_required_missing` tell the state. A connector's state is its `status` on [`ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist). |
 | `optional` | `boolean` | `true` when the agent template marks this credential as optional (the agent can run without it). `false` for required credentials. A credential nothing on the agent asks for reads `true`, with `extra: false`. |
-| `extra` | `boolean` | `true` when this credential surfaces in the "alternative" / secondary group on the panel (rare; most credentials are primary). |
+| `extra` | `boolean` | `true` when the agent template marks this credential as an optional extra; the panel lists it after the required ones. |
 | `_editable` | `object` | Per-field edit map: `{ fieldname: true\|false }`. `false` means the field is read-only (platform-managed or computed). The frontend uses this to disable inputs. |
 | `_schema` | `object` | Inline registry descriptor: `title`, `icon`, `brand_color`, `docs_url`, `credential_mode`, `channel` (on the external chat channels) and `fields[]`. Other keys are for Wiro's own panel: ignore them. |
 | `_required_missing` | `boolean` | `true` when this credential is required (`optional: false`) and a required field you fill in is still empty. Drives the "needs attention" bullet on each credential card and the aggregate count badge in the agent's settings. Always `false` on an optional credential. A list field counts as empty while its rows hold nothing but a choice or a switch, such as a default platform on an otherwise blank row. A value the agent template holds counts as filled, even on a secret field that reads empty here. |
 | `_filled` | `boolean` | `true` when the credential holds what the agent needs: at least one field holds a value and no required field you fill in is empty. A value the agent template holds counts, even on a secret field that reads empty here. For `setuprequired`, a credential counts only the values saved on this agent; see [Setup Required](/docs/agent-credentials#setup-required-state). |
-| `connectedat` | `string\|null` | Credentials whose setup writes one: ISO timestamp of the last successful connection. |
-| `tokenexpiresat` | `string\|null` | ISO timestamp when the current token expires, or an empty value when the provider reports no fixed expiry. |
-| `<fieldname>` | `string\|number\|boolean\|array` | The field value as you saved it, returned to the agent's owner and team admins. A saved secret (a `password` or `fileinput-base64` field, or such a key in a list's entries) reads `"••••••••"` instead, for every caller, and one with nothing saved reads `""`. Field types match `_schema.fields[].type`. Never returned: Wiro-managed fields, and a value the agent template holds on a field Wiro stores encrypted: such a field reads empty until you save your own. |
+| `<fieldname>` | `string\|number\|boolean\|array` | The field value as you saved it, returned to the agent's owner and team admins. A saved secret (a `password` field) reads `"••••••••"` instead, for every caller, and one with nothing saved reads `""`. Field types match `_schema.fields[].type`. Never returned: Wiro-managed fields, and a value the agent template holds on a field Wiro stores encrypted: such a field reads empty until you save your own. |
 
 ##### Usage object
 
@@ -10666,17 +11069,17 @@ Every provider entry under `credentials.<key>` carries:
 | Sub-field | Type | Description |
 |-----------|------|-------------|
 | `period` | `string` | `'YYYY-MM'` tag of the current billing period. |
-| `resetsat` | `number\|null` | Unix seconds when the plan renews and its included AI usage starts again. `null` when the plan's renewal can't be read. |
+| `resetsat` | `number\|null` | Unix seconds when the plan's period ends (`subscription.currentperiodend`). The renewal that starts the included AI usage again runs up to a day later. On Detail, MyAgents and PinnedAgents, a plan that ended shows the ended period's end. `null` when there is no period to show or it can't be read. |
 | `includedusd` | `number` | The AI usage this period includes. After a move to a higher plan inside the period, the higher plan counts only for the time left, so it reads between the two plans' amounts until the next renewal. |
 | `usedusd` | `number` | The included AI usage used this period. |
 | `leftusd` | `number` | The included AI usage left this period. |
 | `renewalusd` | `number` | The AI usage the next renewal includes: the agent's plan's, or the scheduled plan's when `nextplan` is set. |
 | `frombalanceusd` | `number` | The AI usage charged to the balance this period, after the included usage ran out. |
-| `balanceusd` | `number` | The spendable balance of the wallet the agent uses. |
+| `balanceusd` | `number` | What the agent's AI usage can draw on in the wallet it uses: deposits and store revenue. Coupon credit isn't counted, so it can read less than the wallet shows. |
 | `wallet` | `string` | `"personal"` (the owner's balance) or `"team"` (the team's balance). |
 | `minbalanceusd` | `number` | The balance a new turn needs once the included usage is used up: `0.5`. |
-| `paused` | `boolean` | `true` while the agent takes no new turns. |
-| `pausedreason` | `string\|null` | `"balance"`: the included usage is used up and the balance is under `minbalanceusd`. `"spendlimit"`: a [spend limit](/docs/spend-limits) that covers the agent is reached. `null` while it runs. |
+| `paused` | `boolean` | `true` while the agent can't start a new turn because it has no active plan or its balance is short (see `pausedreason`). A reached [spend limit](/docs/spend-limits) doesn't set it: `Message/Send` then answers code `93`. |
+| `pausedreason` | `string\|null` | `"plan"`: the agent has no active plan, because its plan ended or it never had one. It doesn't run until a plan is paid: [`RenewSubscription`](#post-useragentrenewsubscription) renews a plan that ended, and [`CreateSubscriptionCheckout`](#post-useragentcreatesubscriptioncheckout) (`useprepaid: true`) starts a new one. Adding funds doesn't start it. `"balance"`: the included usage is used up and the balance is under `minbalanceusd`; adding funds runs it again. `null` otherwise, also while a spend limit holds the agent. |
 
 ##### Spend object
 
@@ -10701,8 +11104,8 @@ Every provider entry under `credentials.<key>` carries:
 | `amount` | `number` | The monthly USD price actually being charged. Mirrors `useragent.monthlypriceusd`. |
 | `currency` | `string` | Always `"usd"`. |
 | `currentperiodend` | `number\|null` | Unix seconds when the current billing period ends. |
-| `renewaldate` | `string\|null` | ISO-8601 string of the same period-end timestamp (convenience for display). |
-| `daysremaining` | `number` | Days until `currentperiodend`. |
+| `renewaldate` | `string\|null` | ISO-8601 time the plan next renews, or ends when it is cancelled: one day after `currentperiodend` for a plan paid from the balance, the period end for a plan paid by card. `null` unless the subscription is active. |
+| `daysremaining` | `number` | Days until `renewaldate`, rounded up; `0` unless the subscription is active. |
 | `pendingdowngrade` | `string\|null` | `"cancel"` after `CancelSubscription`; `null` for normal active subs. A move to a lower plan shows in the agent's `nextplan`, not here. |
 | `provider` | `string` | `"prepaid"`: the plan is paid from the Wiro balance. `"stripe"` only on a plan paid by card before agent plans moved to the balance, until its period ends. |
 | `nextprovider` | `string\|null` | `"prepaid"` on a plan paid by card: it renews from the balance at the end of its period. `null` otherwise, and on such a plan once it is cancelled. |
@@ -10751,7 +11154,7 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 > | Show the agent's live Screen, and Take Control, in your own app | [`POST /UserAgent/Realtime/ScreenInfo`](#post-useragentrealtimescreeninfo) · [`ScreenStart`](#post-useragentrealtimescreenstart) |
 > | Soft-delete a useragent | [`POST /UserAgent/Delete`](#post-useragentdelete) |
 
-> **Note:** `CredentialUpsert` and `CredentialProjectBind` save credential fields **but do not transition `status: 6` on their own**. After setting up the missing credentials, call `POST /UserAgent/Update` once (any scalar body works, even just `{ "guid": "<useragent-guid>" }`) to trigger the `setuprequired` re-check; that's the call that flips `status: 6 → 0` (Stopped) so the next `Start` succeeds.
+> **Note:** `CredentialUpsert` and `CredentialProjectBind` never change `status`. An agent at `status: 6` has no plan: pay it with [`CreateSubscriptionCheckout`](#post-useragentcreatesubscriptioncheckout) (`useprepaid: true`), which queues it.
 
 ##### Response
 
@@ -10829,20 +11232,20 @@ Writes per-agent preference toggles that are not credentials and not skill rows.
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid. |
-| `timezone` | string\|null | No | IANA timezone identifier (e.g. `"Europe/Istanbul"`, `"America/New_York"`, `"Asia/Tokyo"`). Pass `null`, `""`, or the literal `"UTC"` to **clear** the override; the agent then uses UTC. Unknown zones are rejected with `invalid-timezone`. |
+| `timezone` | string\|null | No | IANA timezone identifier (e.g. `"Europe/Istanbul"`, `"America/New_York"`, `"Asia/Tokyo"`). Pass `null`, `""`, or the literal `"UTC"` to **clear** the override; the agent then uses UTC. Unknown zones are rejected with `Invalid timezone — must be a valid IANA identifier (e.g. 'Europe/Istanbul').` |
 | `teamsessionmode` | string | No | Unified Chat Mode: `"private"` isolates each team member's Wiro web-chat history and native agent memory plus each approved external-channel DM operator; `"collaborative"` shares both runtime contexts. Personal agents can set it because external-channel DMs can have multiple operators. Web and external-channel message lists remain separate transports; room/thread sessions remain room-scoped. Channel activation remains credential-derived. On a team agent, `"private"` also keeps the agent's Screen closed to the team (see [Who Can Watch](#who-can-watch)). |
-| `chatmodel` | string\|null | No | Canonical model slug for **chat replies** (e.g. `"openai/gpt-5.6-sol"`). Must be a **selectable** model, i.e. `tokenRates.models[<slug>].selectable === true`; an unknown / non-selectable slug is rejected with `invalid-model-selection`. A model that the agent's own [Model Access](/docs/model-access) rule blocks is refused with code `92`. Pass `null` or `""` to clear the override and fall back to the platform default. |
+| `chatmodel` | string\|null | No | Canonical model slug for **chat replies** (e.g. `"openai/gpt-5.6-sol"`). Must be a **selectable** model, i.e. `tokenRates.models[<slug>].selectable === true`; an unknown / non-selectable slug is rejected with `Invalid model: <slug> is not in the selectable model allowlist.` A model that the agent's own [Model Access](/docs/model-access) rule blocks is refused with code `92`. Pass `null` or `""` to clear the override and fall back to the platform default. |
 | `cronmodel` | string\|null | No | Same rules as `chatmodel`, applied to **scheduled (cron) turns**. |
 | `voiceprepmodel` | string\|null | No | Same rules as `chatmodel`, applied to the **voice-call prep** turn (context assembled before a realtime call). |
 | `voicepostcallmodel` | string\|null | No | Same rules as `chatmodel`, applied to the **post-call summary** turn after a realtime voice call ends. |
-| `enabledcommands` | string[] | No | Allowlist of in-chat **slash commands** the agent exposes, as an array of command keys **without** the leading slash (e.g. `["agent_help", "new_session", "agent_status"]`). Validated against the command catalog: an unknown key is rejected with `invalid-command-selection`, a non-array value with `invalid-command-list`. Order is preserved and duplicates are removed. An empty array `[]` is valid and **hides the slash-command menu** entirely. Omit the field to leave the current allowlist untouched. |
+| `enabledcommands` | string[] | No | Allowlist of in-chat **slash commands** the agent exposes, as an array of command keys **without** the leading slash (e.g. `["agent_help", "new_session", "agent_status"]`). Validated against the command catalog: an unknown key is rejected with `Invalid command: <key> is not a known agent command.`, a non-array value with `enabledcommands must be an array of command keys.` Order is preserved and duplicates are removed. An empty array `[]` is valid and **hides the slash-command menu** entirely. Omit the field to leave the current allowlist untouched. |
 | `wiroapiallowedpaths` | string[]\|null | No | Limits the agent's own calls to the Wiro API, the ones its skills make with its Wiro project key (for example to run models), to the endpoints you list. It doesn't cover the tools of the [`wiro` connector](/docs/agent-connectors#the-wiro-connector): those are the ones its `tools` on `AgentConnector/Detail` list. Each rule is a method in capitals (`GET`, `POST`, `PUT`, `PATCH`, `DELETE` or `HEAD`), one space and a `/v1` path, such as `"POST /v1/Task/Detail"`. A `*` stands for exactly one whole path segment: `"POST /v1/Run/*/*"` allows every model run, while `"POST /v1/Run/x*"` is invalid. Up to 64 rules of at most 200 characters each; duplicates are removed and the order is kept. Calls to endpoints that no rule matches are refused. `[]` refuses every call, model runs included; `null` removes your list, and the agent goes back to the default list. An invalid rule, or a value that isn't an array, is rejected with `invalid-wiro-api-path-rule`, and nothing in the request is saved. Omit the field to keep the current list. An agent with no list of its own uses the default list: `POST /v1/Run/*/*`, `POST /v1/Task/Detail`, `POST /v1/Tool/List`, `POST /v1/Tool/Detail`, `POST /v1/Tool/UploadModelPostImage` and `POST /v1/UserAgent/Message/UploadAsset`. If a custom skill of yours calls another endpoint, send a list that includes it. |
 | `chatsetup` | string\|null | No | Setup From Chat: where people can change the agent's setup by approving setup cards in chat. `"all"` (the default): in the Wiro web chat and in messages sent with a project API key, such as from your backend or an MCP client. `"webchat"`: only in the Wiro web chat on wiro.ai. `"off"`: never from chat; the agent says that an agent admin makes the change in the agent's settings. `null` goes back to `"all"`, and any other value is rejected with `chatsetup must be off, webchat or all`. Agents that your customers or many people talk to usually choose `"webchat"` or `"off"`; see [Setup From Chat](/docs/agent-messaging#setup-from-chat). Read it back as `chatSetup` on [`UserAgent/Detail`](#post-useragentdetail). |
 | `screen` | string\|null | No | Screen: whether the agent's [Screen](#screen-and-take-control) opens, in the Wiro panel and in your own app through [`ScreenStart`](#post-useragentrealtimescreenstart) with a project API key. The people who manage the agent (its owner and the team's admins) watch its computer live, and the owner of a personal agent that has never been in a team, or whose browser was reset after it last left one, can take control of it. `"on"` (the default) or `"off"`. `"off"` closes it for everyone, watching and Take Control alike, in the panel and in your app, and also closes screens that are open, a Take Control session included, within about half a minute. On a team agent whose Chat Mode is `"private"` the screen stays closed to the team whatever this says. `null` goes back to `"on"`, and any other value is rejected with `screen must be on or off`. It never restarts the agent. Read it back as `screen` on [`UserAgent/Detail`](#post-useragentdetail). |
 
 > **Slash-command catalog.** Valid `enabledcommands` keys are: `agent_help`, `new_session`, `agent_status`, `agent_limits`, `last_scan`, `last_heartbeat`, `agent_restart`, `clear_all_sessions`, `clear_history`. Read the agent's current allowlist from the `enabledCommands` field (camelCase) on [`UserAgent/Detail`](#post-useragentdetail) / `MyAgents` / `PinnedAgents`, where `null` means the operator never customized it (all commands available) and an array (including `[]`) is an explicit allowlist.
 
-> **Omitted fields are preserved.** The handler distinguishes between "field not in the body" and "field present with `null`/`""`/value", so a POST that carries only `timezone` does **not** touch `teamsessionmode` or any model field, and vice versa. Sending an empty body (none of the recognised fields) is rejected with `nothing-to-update` to avoid charging a no-op restart.
+> **Omitted fields are preserved.** The handler distinguishes between "field not in the body" and "field present with `null`/`""`/value", so a POST that carries only `timezone` does **not** touch `teamsessionmode` or any model field, and vice versa. Sending an empty body (none of the recognised fields) is rejected with `No fields supplied to update.`, so it never restarts the agent for nothing.
 
 > **Read vs write casing.** You **read** the current selection from the `agentModel` object on `UserAgent/Detail` / `MyAgents` / `PinnedAgents` in camelCase (`chatModel`, `cronModel`, `voicePrepModel`, `voicePostcallModel`); you **write** it here in lowercase (`chatmodel`, `cronmodel`, `voiceprepmodel`, `voicepostcallmodel`). The selectable set is exactly the models that `tokenRates.models` marks `selectable: true`. There is no separate "list models" endpoint, so read `tokenRates` to populate a picker.
 
@@ -10948,22 +11351,26 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
 
 ##### Common errors
 
-| Code | Message key | When |
+Each of these comes back with HTTP 200 and `result: false`, like every API answer (see [Error Reference](/docs/error-reference)), and nothing is saved:
+
+| `errors[0].code` | Message | When |
 |------|-------------|------|
-| 400 | `request-parameter-required` | `useragentguid` missing from the body. |
-| 400 | `nothing-to-update` | Body had none of the recognised fields (`timezone`, `teamsessionmode`, a model override, `enabledcommands`, `wiroapiallowedpaths`, `chatsetup` or `screen`). |
-| 400 | `invalid-timezone` | `timezone` is not a valid IANA time zone. |
-| 400 | `teamsessionmode must be private or collaborative` | `teamsessionmode` wasn't one of the two supported values. |
-| 400 | `directchatmode is not accepted` | Obsolete separate mode was sent instead of unified `teamsessionmode`. |
-| 400 | `invalid-model-selection` | A model override (`chatmodel` / `cronmodel` / `voiceprepmodel` / `voicepostcallmodel`) was an unknown or non-selectable slug (`tokenRates.models[<slug>].selectable !== true`). |
-| 400 | `invalid-command-list` | `enabledcommands` was present but not an array. |
-| 400 | `invalid-command-selection` | `enabledcommands` contained a key that isn't in the slash-command catalog. |
-| 400 | `invalid-wiro-api-path-rule` | `wiroapiallowedpaths` was not an array, or a rule broke the format or the limits above. |
-| 400 | `chatsetup must be off, webchat or all` | `chatsetup` wasn't `"all"`, `"webchat"`, `"off"` or `null`. |
-| 400 | `screen must be on or off` | `screen` wasn't `"on"`, `"off"` or `null`. |
-| 403 | `useragent-access-denied` | Caller is neither the owner nor on the agent's team. |
-| 403 | `useragent-team-admin-required` | Caller is a member of the agent's team but not a team admin. Carries `errors[0].code: 97`. |
-| 500 | `failed-to-update-useragent` | DB write failed (transient, safe to retry). |
+| 0 | `Request parameter [useragentguid] required` | `useragentguid` missing from the body. |
+| 0 | `No fields supplied to update.` | Body had none of the recognised fields (`timezone`, `teamsessionmode`, a model override, `enabledcommands`, `wiroapiallowedpaths`, `chatsetup` or `screen`). |
+| 0 | `Invalid timezone — must be a valid IANA identifier (e.g. 'Europe/Istanbul').` | `timezone` is not a valid IANA time zone. |
+| 0 | `teamsessionmode must be private or collaborative` | `teamsessionmode` wasn't one of the two supported values. |
+| 0 | `directchatmode is not accepted; teamsessionmode is the unified chat mode` | Obsolete separate mode was sent instead of unified `teamsessionmode`. |
+| 0 | `Invalid model: <slug> is not in the selectable model allowlist.` | A model override (`chatmodel` / `cronmodel` / `voiceprepmodel` / `voicepostcallmodel`) was an unknown or non-selectable slug (`tokenRates.models[<slug>].selectable !== true`). |
+| 92 | The Model Access rule's sentence, such as `This agent can't use openai/gpt-5.5. Model Access rules decide which models can run.` | A model override that a [Model Access](/docs/model-access) rule for the agent blocks. |
+| 0 | `enabledcommands must be an array of command keys.` | `enabledcommands` was present but not an array. |
+| 0 | `Invalid command: <key> is not a known agent command.` | `enabledcommands` contained a key that isn't in the slash-command catalog. |
+| 0 | `invalid-wiro-api-path-rule` | `wiroapiallowedpaths` was not an array, or a rule broke the format or the limits above. |
+| 0 | `chatsetup must be off, webchat or all` | `chatsetup` wasn't `"all"`, `"webchat"`, `"off"` or `null`. |
+| 0 | `screen must be on or off` | `screen` wasn't `"on"`, `"off"` or `null`. |
+| 95 | `User agent not found` | Unknown guid, or the agent has been deleted. |
+| 96 | `You don't have access to this user agent` | Caller is neither the owner nor on the agent's team. |
+| 97 | `Only a team admin can perform this action on a team-owned agent.` | Caller is a member of the agent's team but not a team admin. |
+| 0 | `Failed to update user agent — please retry.` | The write failed (transient, safe to retry). |
 
 #### **POST** /UserAgent/ResetBrowser
 
@@ -11098,7 +11505,7 @@ Writes one or more credential fields for one or multiple providers in a single c
 
 If the agent is **starting** or **running**, an upsert that changes a saved value triggers an automatic restart (see [Automatic Restart](#automatic-restart)).
 
-`CredentialUpsert` writes the agent's credentials: the Telegram, Slack and Discord channels, Twilio Voice, the Wiro project's key and settings such as the support email (see [Agent Credentials](/docs/agent-credentials)). The services the agent works with are connectors: connect them with [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect).
+`CredentialUpsert` writes the agent's credentials: the Telegram, Slack and Discord channels, Twilio Voice, the Wiro project's key and settings such as the support email (see [Agent Credentials](/docs/agent-credentials)). The services the agent works with are connectors: connect them with [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect). A `credentialkey` that isn't a credential, a connector's slug included, refuses the whole request (see [Common errors](#credentialupsert-errors)).
 
 Telegram, Slack, and Discord are optional credential groups. A channel appears
 in `enabledChannels` automatically when all of its catalog `required_fields`
@@ -11114,7 +11521,7 @@ Each field row:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `credentialkey` | string | The credential key: e.g. `"telegram"`, `"slack"`, `"twilio-voice"`, `"var-support-email"`. Must match one of the credentials declared in `credentials` on `/UserAgent/Detail`, or a channel from `POST /Skills/List` → `channels[]`. |
+| `credentialkey` | string | The credential key: `telegram`, `slack`, `discord`, `twilio-voice`, `wiro`, `var-support-email`, `var-website` or `var-newsletter-test-email`. A key that isn't a credential, a connector's slug included, fails the whole request with one `Unknown credential: <key>. Connectors are connected with UserAgent/ConnectorConnect.` error before the agent or any row is checked, and nothing is saved: connect that service with [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect). |
 | `fieldname` | string | Field inside that credential: e.g. `"bottoken"`, `"allowedusers"`, `"accountsid"`. Must not start with `_` (reserved for internal sentinels such as `_isoptional`, `_isextra`). |
 | `fieldvalue` | string \| number \| array | The value to write. An empty string clears an optional single-value field; send `[]` to clear a list field. Clearing a required field fails validation, except on Telegram, Slack and Discord, where it disables the channel. |
 | `fieldstatus` | string | **Server-managed: ignored from the request body for API callers.** The server derives it from the registry (`user` for the values you save). Do not set this field. It is stripped before any write. |
@@ -11154,6 +11561,40 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 > | `twilioWebhookError` | `string` | Top-level message when the entire VoiceUrl-rewrite flow failed (auth error, network outage). The credential rows are still saved. Only the auto-configuration step failed. |
 >
 > Treat all four fields as best-effort: the credential write itself never depends on Twilio's API call succeeding. See [Twilio Voice Channel](/docs/integration-twiliovoice-skills) for the full lifecycle.
+
+<a id="credentialupsert-errors"></a>
+
+##### Common errors
+
+Each of these comes back with `result: false` and no `applied`, and nothing is saved:
+
+```json
+{
+  "result": false,
+  "errors": [
+    {
+      "code": 0,
+      "message": "Unknown credential: google-ads. Connectors are connected with UserAgent/ConnectorConnect.",
+      "time": 1795113000
+    }
+  ]
+}
+```
+
+| Error | Code | When |
+|-------|------|------|
+| `Request parameter [useragentguid] required` | 0 | `useragentguid` is missing or blank |
+| `Request parameter [fields[]] required` | 0 | `fields` is missing, not an array, or empty |
+| `Unknown credential: <key>. Connectors are connected with UserAgent/ConnectorConnect.` | 0 | A row's `credentialkey` isn't a credential, such as a connector's slug. One entry for the whole request, before the agent or any other row is checked |
+| `User agent not found` | 95 | Unknown guid, or the agent has been deleted |
+| `You don't have access to this user agent` | 96 | The caller is neither the agent's owner nor on its team |
+| `Only a team admin can perform this action on a team-owned agent.` | 97 | The caller is a plain member of the agent's team |
+| `<Field label> is managed by the platform` | 0 | A Wiro-managed field, such as the chat model: pick the model with `UpdateSettings` |
+| `<Field label> is required` | 0 | A required field sent empty. On Telegram, Slack and Discord this disables the channel instead |
+| `<Field label> has an invalid format` | 0 | The value doesn't match the field's `pattern` |
+| `<Field label> must be an array` | 0 | A list field sent as a single value |
+| `<Field label> has an invalid value` | 0 | An object sent for a single-value field |
+| `agent-fieldname-reserved` | 0 | A `fieldname` starting with `_` |
 
 #### **POST** /UserAgent/CredentialProjectBind
 
@@ -11201,7 +11642,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialProjectBind" \
 
 Binding the project an agent already has changes nothing and restarts nothing. The [`wiro` connector](/docs/agent-connectors#the-wiro-connector) always acts with the project bound here, and connecting it with `ConnectorConnect` and a `wiroprojectguid` binds a project the same way. Changing a project's IP whitelist gives the project a new API secret; to load it, restart the agent with `POST /UserAgent/Update` and a body of `{ "guid": "<useragent-guid>" }`.
 
-On an agent at `status: 6` (Setup Required), call `POST /UserAgent/Update` with `{ "guid": "<useragent-guid>" }` after binding, as after `CredentialUpsert`. Binding doesn't change `status`: `Update` moves the agent to `status: 0` (Stopped) once every required credential is set up, and `Start` refuses it until then.
+Binding doesn't change `status`. An agent at `status: 6` (Setup Required) has no plan: pay it with [`CreateSubscriptionCheckout`](#post-useragentcreatesubscriptioncheckout) (`useprepaid: true`), which queues it.
 
 If you already hold a project's key, [`CredentialUpsert`](#post-useragentcredentialupsert) with `credentialkey` `wiro` and `fieldname` `apikey` saves it too.
 
@@ -11236,11 +11677,11 @@ Unlike `CredentialUpsert`, this endpoint expects `multipart/form-data`: pass the
 | Form field | Type | Required | Description |
 |------------|------|----------|-------------|
 | `useragentguid` | text | Yes | Your UserAgent instance guid |
-| `credentialkey` | text | Yes | Provider key (e.g. `twilio-voice`). Must declare a `fileinput` field in its registry schema. |
+| `credentialkey` | text | Yes | The credential key. Only Twilio Voice (`twilio-voice`) has `fileinput` fields. |
 | `fieldname` | text | Yes | The exact `fieldname` whose registry `type` is `"fileinput"` (e.g. `holdaudio` or `holdmusic` on `twilio-voice`). |
 | `file` | file | Yes | The blob. Mimetype + size are validated against the registry's `filetypes[]` whitelist and `maxsize` (KB) cap. Default cap is 10 MB when the field omits `maxsize`. |
 
-> **`fileinput` vs `fileinput-base64`.** This endpoint is the storage path for the `fileinput` type only: the file is stored by Wiro and the credential keeps a reference to it. The companion `fileinput-base64` type is stored with the credential (encrypted at rest) and is written via the standard `CredentialUpsert` JSON `fields[]` array (e.g. `serviceaccountjson` on `google-drive`/`google-calendar`/`google-play`/`firebase`, `privatekey` on `apple-appstore`). Sending a base64 field through this endpoint returns `Field is not a fileinput type`.
+> **Only Twilio Voice takes a file here.** This endpoint stores the file of a credential field whose `type` is `fileinput`: Wiro keeps the file and the credential keeps a reference to it. The one credential with `fileinput` fields is Twilio Voice (`twilio-voice`): `holdaudio` and `holdmusic`, MP3 or WAV up to 10 MB. A key file for a service the agent works with, such as a Google service account JSON or an App Store Connect private key, belongs to that service's Connector and is not a credential. Send the file's text in `values` on [`POST /UserAgent/ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect): `serviceaccountjson` for Google Play Console (`google-play`), or `privatekey` for App Store Connect (`apple-appstore`). A connector sent here as `credentialkey` answers `Unknown credential: <key>`, and a field of another type `Field is not a fileinput type`.
 
 ##### Request
 
@@ -11272,7 +11713,7 @@ The `url` is the public URL of the stored file, which the agent uses at runtime.
 | Error | When |
 |-------|------|
 | `File required (form field name: file)` | Missing the `file` multipart part |
-| `Unknown credential: <key>` | `credentialkey` not declared in the skill registry |
+| `Unknown credential: <key>` | `credentialkey` isn't a credential (a connector's slug included) |
 | `Unknown field: <name>` | `fieldname` not in the credential's `credential_schema` |
 | `Field is not a fileinput type` | The schema field's `type` is not `"fileinput"` (use `CredentialUpsert` instead) |
 | `Invalid file type. Allowed: <list>` | Mimetype not in the registry's `filetypes[]` whitelist |
@@ -11289,14 +11730,16 @@ The endpoint auto-normalises the skillkey to its canonical form. Bare slugs beco
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid |
 | `skillkey` | string | Yes | The skill key. Strategies use bare names (e.g. `"content-tone"` → stored as `cs-content-tone`). For a scheduled task, send its full key (e.g. `"cs-cron-social-content-scanner"`), or a bare slug together with `interval` (`"weekly-report"` → `cs-cron-weekly-report`). A `cron-<slug>` key becomes `cs-cron-<slug>` too, with or without `interval`. |
-| `value` | string | No | Strategy body / cron prompt text. Editable for preset strategies and user-created entries; bundled crons silently drop `value` writes. |
+| `value` | string | No | Strategy body / scheduled task prompt text. On a template agent, a scheduled task the template brings runs the template's text: a `value` sent for it is saved and shows on Detail and in CustomSkillHistory, but the agent doesn't use it. Every other skill and task runs its saved text, a custom build's bundled tasks included. |
 | `interval` | string | No | Cron expression (e.g. `"0 */4 * * *"`). Only persisted on `cs-cron-*` rows. On a scheduled task it must be a schedule the agent can run (see below). |
 | `enabled` | boolean | No | Turn the skill on or off. **Writable for both strategies (`cs-*`) and crons (`cs-cron-*`)**. A disabled strategy is suppressed end-to-end (it still appears in the list, but the agent never loads it). Defaults to `true` on insert. |
 | `description` | string | No | Only persisted for user-created skills (preset descriptions are template-owned). On a preset row, sending the current description back unchanged is ignored; a different text is rejected with `customskill-preset-description-not-editable`. |
 
-> **Text edits reach a running agent without a restart.** A change to the `value` or `description` of an existing skill or task goes to a running agent right away, and the agent keeps running; a starting agent restarts to load it. A new skill or task, a new `interval`, or turning one on or off with `enabled` restarts a starting or running agent, and so does any change to `cs-approval-policy`. If the running agent can't take the new text, Wiro restarts it instead. `restarting` in the response says whether the call restarted the agent.
+> **Text edits reach a running agent without a restart.** A change to the `value` or `description` of an existing skill or task goes to a running agent right away, and the agent keeps running; a starting agent restarts to load it. A new skill or task, a new `interval`, or turning one on or off with `enabled` restarts a starting or running agent, and so does any change to `cs-approval-policy`. If the running agent can't take the new text, Wiro restarts it instead. `restarting` in the response says whether the call restarted the agent. A template's own scheduled task is the exception: its text never reaches the agent.
 
 > **Schedules the agent can't run are refused.** A scheduled task's `interval` is a cron expression with five fields, `minute hour day month weekday`, such as `0 9 * * 1-5`. A schedule the agent can't run, or one whose date never comes, such as 30 February, is refused before anything is saved, and the error says what is wrong and what to write: `0 25 * * *` gets `This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.`, and `0 0 30 2 *` gets `This schedule never comes up: February has no 30th. Pick a day February has, such as 28.` Only a schedule sent in the request is checked, so a task that already has one can still be edited or turned on and off.
+
+> **A task that is on doesn't always run.** A scheduled task runs only while its gates are open: one of the Connectors in its `requires_connectors` connected, one of the channels or settings in its `requires_credentials` set up, and, for a task Wiro's skills bring, one of those Skills on (see [Scheduled task skill fields](#scheduled-task-skill-fields)). An empty list is no gate, and `enabled: true` doesn't lift one. `CustomSkillUpsert` takes neither list: a task you create here has none and runs on its schedule. Saving or clearing a credential sets `enabled` on every custom skill and scheduled task whose own `requires_credentials` names it: on while one of the credentials it lists is set up, off while none is, whatever `enabled` was before.
 
 ##### Request
 
@@ -11360,13 +11803,15 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillRename" \
 
 ##### Error cases
 
-| Error message key | When |
+| Error | When |
 |---|---|
-| `Preset skills cannot be renamed.` | Target row has `usercreated: false` (preset-owned). This refusal comes as the sentence, with no message key. |
-| `agent-customskill-rename-flavour-mismatch` | Caller tried to rename `cs-cron-*` ↔ `cs-*`. Delete + re-create with the right kind instead. |
-| `agent-customskill-rename-collision` | `newskillkey` already exists on this useragent. |
-| `agent-customskill-rename-same-key` | `oldskillkey` equals canonicalised `newskillkey`: nothing to change. |
-| `agent-customskill-not-found` | `oldskillkey` does not exist on the useragent. |
+| `Preset skills cannot be renamed.` | Target row has `usercreated: false` (preset-owned). |
+| `Scheduled tasks and custom skills cannot be renamed into each other — delete the row and re-create it with the right kind` | Caller tried to rename `cs-cron-*` ↔ `cs-*`. Delete + re-create with the right kind instead. |
+| `A skill with that key already exists for this agent` | `newskillkey` already exists on this useragent. |
+| `The new skill key is the same as the current one — nothing to rename` | `oldskillkey` equals canonicalised `newskillkey`: nothing to change. |
+| `Skill not found` | `oldskillkey` does not exist on the useragent. |
+| `Missing useragentguid, oldskillkey, or newskillkey` | One of the three is missing or blank. |
+| `Skill key may only contain lowercase letters, digits, and single dashes between segments (e.g. lead-strategy)` | `newskillkey` isn't a valid key. |
 
 #### **POST** /UserAgent/CustomSkillAlternatives
 
@@ -11416,16 +11861,16 @@ Removes a user-created custom skill. The endpoint enforces a **hybrid delete pol
 
 | Row type | Delete result |
 |----------|--------------|
-| User-created (`usercreated: true`) on any agent | **Allowed**: row is hard-deleted, agent restarts. |
-| Registry-owned / preset-owned (`usercreated: false`) on a **template** agent (the skill also exists in the template's preset skills) | **Rejected**: `"This skill belongs to the agent preset and cannot be deleted."` Disable it via `CustomSkillUpsert` with `enabled: false` instead. |
-| Registry-owned (`usercreated: false`) on a **custom-build** agent (no preset to compare against) | **Rejected**: `"This skill is registry-owned and cannot be deleted."` Disable it via `CustomSkillUpsert` with `enabled: false` instead. Custom builds carry registry-seeded rows (e.g. `cs-approval-policy`, bundled `cs-cron-*` clones) whose runtime contract the agent depends on, even though there's no template back-reference. |
+| User-created (`usercreated: true`) under a key the agent's template doesn't have | **Allowed**: the row and its version history are deleted, and a starting or running agent restarts. |
+| `usercreated: false`: a template's skills and tasks, copied to the agent at deploy, and a custom build's registry rows (e.g. `cs-approval-policy`, bundled `cs-cron-*` tasks) | **Rejected** with `customskill-registry-not-deletable`. Disable it via `CustomSkillUpsert` with `enabled: false` instead. |
+| User-created, under a key the agent's template also has | **Rejected** with `customskill-preset-not-deletable`. Disable it via `CustomSkillUpsert` with `enabled: false` instead. |
 
-In both reject branches the response carries `suggestion: "disable-via-upsert"` so panel UIs can offer a "Disable instead" CTA without re-querying the registry.
+In both reject branches the response carries `suggestion: "disable-via-upsert"` so panel UIs can offer a "Disable instead" CTA without re-querying the registry. The message is the key itself, as shown below. Deleting a skill also deletes its version history, so it can't be reverted. A key the agent doesn't have deletes nothing and answers `result: true`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid |
-| `skillkey` | string | Yes | The skill key to remove. User-created rows only. Registry-owned rows reject with `disable-via-upsert`. |
+| `skillkey` | string | Yes | The skill key to remove. User-created rows only. Other rows are refused with `suggestion: "disable-via-upsert"`. |
 
 ##### Response (delete allowed)
 
@@ -11433,7 +11878,7 @@ In both reject branches the response carries `suggestion: "disable-via-upsert"` 
 { "result": true, "errors": [] }
 ```
 
-##### Response (preset-owned, rejected with suggestion)
+##### Response (preset-owned or registry-owned, rejected with suggestion)
 
 ```json
 {
@@ -11441,14 +11886,14 @@ In both reject branches the response carries `suggestion: "disable-via-upsert"` 
   "errors": [
     {
       "code": 0,
-      "message": "This skill belongs to the agent preset and cannot be deleted. Use enabled=false to disable it instead."
+      "message": "customskill-registry-not-deletable"
     }
   ],
   "suggestion": "disable-via-upsert"
 }
 ```
 
-##### Response (registry-owned on a custom build, rejected with suggestion)
+##### Response (your own row under a key the template has, rejected with suggestion)
 
 ```json
 {
@@ -11456,7 +11901,7 @@ In both reject branches the response carries `suggestion: "disable-via-upsert"` 
   "errors": [
     {
       "code": 0,
-      "message": "This skill is registry-owned and cannot be deleted. Use enabled=false to disable it instead."
+      "message": "customskill-preset-not-deletable"
     }
   ],
   "suggestion": "disable-via-upsert"
@@ -11465,7 +11910,7 @@ In both reject branches the response carries `suggestion: "disable-via-upsert"` 
 
 #### **POST** /UserAgent/CustomSkillHistory
 
-Returns the version history for one custom skill on a useragent: a per-write audit trail with diff metadata + the resolved actor for each entry. Powers the "Version History" modal in the panel; useful for API consumers building audit views.
+Returns the version history for one custom skill on a useragent: one entry per change, holding the state before it, with diff metadata and the resolved actor. Creating a skill with `CustomSkillUpsert` adds none. Powers the "Version History" modal in the panel; useful for API consumers building audit views.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -11491,7 +11936,7 @@ Returns the version history for one custom skill on a useragent: a per-write aud
       "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
       "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
       "skillkey": "cs-content-tone",
-      "operation": "upsert",
+      "operation": "update-user",
       "value": "## Brand Voice\nTone: friendly\n...",
       "intervalexpr": null,
       "enabled": true,
@@ -11522,8 +11967,9 @@ Returns the version history for one custom skill on a useragent: a per-write aud
 > **Field semantics.** Each row captures the **BEFORE** state of the action that produced it (the history entry is written before the change is applied). The server-computed `after_*` and `prev_*` fields give you the resolved AFTER + previous-version snapshots without you having to walk the list manually:
 >
 > - `prev_*`: value as of the immediately-older entry (`null` for the oldest row).
-> - `after_*`: value the row was left with after this action committed: pulled from the next-newer entry's BEFORE state, or from the skill's current live state for the newest entry. `null` when `operation: "delete-user"` (row was removed).
+> - `after_*`: value the row was left with after this action committed: pulled from the next-newer entry's BEFORE state, or from the skill's current live state for the newest entry.
 > - `changed_fields[]`: names of fields whose value differs from the immediately-older entry. Subset of `["value", "interval", "enabled"]`.
+> - `operation`: `update-user` (a save), `rename`, `revert-to-history`, `reset-to-preset`, `clone-deploy` or `seed-custom-build` (written at deploy), or `insert-cascade` / `update-cascade` / `delete-cascade` (a template update).
 > - `changedby_user`: resolved actor object (full shape: `uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`). `null` when `changedby` is a system value such as `"system"` or `"backfill-*"`, or when the user record was deleted.
 
 #### **POST** /UserAgent/CustomSkillRevert
@@ -11550,14 +11996,11 @@ Reverts a custom skill to either (a) the agent template's preset default or (b) 
 }
 ```
 
-`action` is `"reverted"`, `"reset-to-preset"`, `"deleted"` (preset removed upstream), or `"no-op"` (already matches target).
+`action` is `"reverted"`, `"re-inserted"` (a version of a row that no longer exists, written back), `"reset"` (back to the template's text, interval and switch), `"deleted"` (the template no longer has the skill, so the row is removed) or `"no-op"` (already matches the target).
 
 #### **POST** /UserAgent/CredentialFieldHistory
 
-Returns the per-field write history for one credential group on a useragent. Sensitive values are redacted at read time as a belt-and-suspenders guard:
-
-- A saved secret, such as a bot token or an auth token, never comes back as its value.
-- Wiro-managed credentials return an empty `entries[]`.
+Returns the earlier values of one credential's fields, newest first (up to 500). Each entry is a value a save replaced, with who replaced it (`changedby`) and when (`changedat`). A first save adds no entry, and neither does a list sent whole (Telegram `groups`, Slack `channels`, Discord `guilds`, website `urls`). A secret's earlier value reads `"[REDACTED]"`. Wiro-managed credentials return an empty `entries[]`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -11578,11 +12021,11 @@ Returns the per-field write history for one credential group on a useragent. Sen
       "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
       "credentialkey": "telegram",
       "fieldname": "allowedusers",
-      "fieldvalue": ["123456789"],
+      "fieldvalue": "[\"123456789\"]",
       "fieldstatus": "user",
       "parentfield": null,
       "ordinal": 0,
-      "operation": "upsert",
+      "operation": "update",
       "changedby": "ada-uuid",
       "changedby_user": {
         "uuid": "ada-uuid",
@@ -11616,11 +12059,11 @@ Designed for both the Skill Editor modal (multiple toggles in one save) and one-
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid (template deploy or custom build) |
-| `skills` | object | Yes | Map of `{ "skillname": true \| false }` for every skill you want to set. Skills not in the map keep their current state. |
+| `skills` | object | Yes | Map of `{ "skillname": true \| false }` for every Skill (`util-*`) you want to set. Skills not in the map keep their current state. A Skill you turn on needs the Skills in its `depends_on`, and theirs, on already or in the same map: `SkillsApply` doesn't turn them on and refuses the change with `101`. [`PricingPreview`](#post-useragentpricingpreview) with the same `skillOverrides` lists the whole set in `enabledSkills`. Connectors aren't in this map: connect one with [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect). |
 | `tier` | string | No | Kept for older clients. Skills never change the plan: a value other than the agent's current plan is refused with `Change the plan with UpgradeTier.` |
-| `idempotencyKey` | string | Yes | Caller-generated unique key (UUID recommended). Replays of the same key return the cached response without applying the change again. |
+| `idempotencyKey` | string | Yes | Caller-generated unique key (UUID recommended), a new one for each change. For 10 minutes, the same key with the same `skills` returns the first call's answer without applying the change again, and the same key with other `skills` is refused with `107`. After that, the key of a change that was applied is spent: a call with it that would change something is refused with `107`, and one that changes nothing answers `noOp: true`. |
 
-**Headers:** No extra header is needed. For team agents, use an API key from a project in the agent's team. Keys from another workspace are rejected.
+**Headers:** No extra header is needed. For team agents, use an API key from a project in the agent's team. Keys from another workspace are rejected. The caller must be the agent's owner or a team admin of its team. Plain team members are refused with code `97`, `Only a team admin can perform this action on a team-owned agent.`
 
 ##### Request
 
@@ -11690,11 +12133,13 @@ When every entry in your `skills` map already matches the persisted state, the e
 
 | Code | Meaning |
 |------|---------|
-| `101` | `skillsapply-deps-violation`: a final enabled skill has unsatisfied `depends_on`. Body includes `deps[]`. |
-| `102` | `skillsapply-conflict`: two finally-enabled skills are mutually exclusive. Body includes `conflicts[]`. |
-| `104` | `skillsapply-in-progress`: another `SkillsApply` is already running on this useragent. Wait and retry. |
+| `0` | `Unknown skill: <names>`: a name in `skills` that is not a Skill, such as one that starts with `int-` (Connectors are connected with [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect), not toggled). Nothing is changed. A name the agent still has can still be turned off. |
+| `101` | `Cannot apply: some skills require other skills to be enabled.`: a Skill that would be on needs one in its `depends_on` that would be off. Body includes `deps[]` (`{ skill, requires }`). Send those Skills in the same map. |
+| `102` | `Cannot apply: some skills conflict with each other.`: two Skills that would be on are mutually exclusive. Body includes `conflicts[]`. |
+| `104` | `A skill update is already in progress for this agent — please retry shortly.`: another skill change or plan change of this agent is running. Wait and retry. |
 | `105` | `Change the plan with UpgradeTier.`: the `tier` sent is not the agent's current plan. Nothing is changed. Change the plan with [`UpgradeTier`](#post-useragentupgradetier), and send skill changes without `tier`. |
-| `108` | `skillsapply-db-tx-failed`: DB transaction rolled back; safe to retry with a new idempotency key. |
+| `107` | `This idempotencyKey was already used for a different skill change. Nothing was changed; send a new idempotencyKey.` (the same key with other `skills` within 10 minutes), `This idempotencyKey was already used for an earlier skill change. Nothing was changed; send a new idempotencyKey.` (the key of a change that was applied, used later), or `Cached response corrupt — please retry with a new idempotency key.` Send a new `idempotencyKey`. |
+| `108` | `Failed to apply skill changes — please retry.`: nothing was changed. Retry with a new idempotency key. |
 
 #### **POST** /UserAgent/PricingPreview
 
@@ -11731,7 +12176,7 @@ Two body shapes:
 | `skills` | `array<string>` | A | Draft mode only: the proposed enabled skill set. |
 | `useragentguid` | string | B | Required for non-draft previews. |
 | `skillOverrides` | object | No | Override the persisted state with `{ skillname: boolean }` for the preview. Omit for "current state" preview. |
-| `tier` | string | No | `"starter"`, `"pro"` or `"max"`: the plan to preview. Defaults to the agent's plan, or Starter in a draft. The response lists all three plans under `tiers`. |
+| `tier` | string | No | `"starter"`, `"pro"` or `"max"`: the plan to preview. Defaults to the plan the agent's renewal bills: a scheduled lower plan (`nextplan`), else its own plan; Starter in a draft. A value that names no plan is ignored. The response lists all three plans under `tiers`. |
 | `withScheduledTasks` | boolean | No | Body B only. When `true`, the response also carries `scheduledTasks`: the scheduled tasks the `skillOverrides` would stop and start. |
 
 ##### Response
@@ -11845,7 +12290,8 @@ If the useragent already has an active subscription, the call rejects with `Subs
 | Error | When |
 |-------|------|
 | `A checkout for this agent is already being opened. Try again in a moment.` | Another subscription request for the same agent is in progress |
-| `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | Another plan payment from the same wallet is still going through |
+| `We couldn't confirm this agent's previous checkout. Please try again in a minute.` | Wiro couldn't confirm the agent's current plan or an earlier checkout before charging; nothing is charged. Send the call again in a minute |
+| `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | Another plan payment from the same wallet is still going through (code `104`) |
 | `The wallet was charged $X.XX, but the plan could not be saved. Please contact support and do not try again.` (code `110`) | With `useprepaid: true`: the wallet paid and the plan could not be saved. Never send the call again: a retry charges again. The agent's plan and included AI usage stay as they were until support finishes the change; the payment is a `plan` row in its Transactions, and its activity log has an `AGENT_PLAN_NOT_SAVED` row for it (see [Plan payments that did not finish](/docs/agent-transactions#plan-not-saved)). `Deploy` with `useprepaid: true` answers the same, keeps the agent and returns its guid in `existingUserAgentGuid` |
 
 #### **POST** /UserAgent/Start
@@ -11872,9 +12318,10 @@ Start will fail (returns `{ "result": false, "errors": [...] }`) if:
 
 - The agent is already running or queued
 - The agent is currently stopping
-- Setup is incomplete (status `6`)
+- The agent is at status `6`, with no plan yet: `Agent setup is not complete. Fill in the agent's required settings before starting.` Pay its plan with `CreateSubscriptionCheckout` (`useprepaid: true`), which queues it
 - The agent has no active plan: `Subscription required — please subscribe to this agent before starting it.`, whatever its balance
 - The agent has used the AI usage its plan includes and the balance is under $0.50: code `97`, with the same message as `Message/Send` and the agent's `usage` as `agentusage` (see [AI Usage and the Balance](#ai-usage-and-the-balance))
+- The caller is a plain member of the agent's team: code `97`, `Only a team admin can perform this action on a team-owned agent.`, with no `agentusage`
 
 #### **POST** /UserAgent/Stop
 
@@ -11906,11 +12353,11 @@ Soft-deletes a useragent. Delete stamps `deletedat` (returned in the response) a
 
 ##### Guards (run in this order)
 
-1. **Access**: owner of the row or a team admin of the UA's team. Members get `useragent-team-admin-required` (code `97`); strangers get `useragent-access-denied` (code `96`); unknown / already-deleted rows get `useragent-not-found` (code `95`).
-2. **Status**: must be in a clean terminal state: `0` (Stopped), `5` (Error), or `6` (Setup Required); `5` passes only once the agent no longer holds its runtime. Anything in flight (`1` Stopping, `2` Queued, `3` Starting, `4` Running) is rejected with `useragent-delete-running`, and so is an errored agent that still holds its runtime. Stop the agent first and wait for status `0`.
-3. **Active subscription**: a subscription with `status: "active"` blocks delete (`useragent-delete-sub-active`). `CancelSubscription` doesn't lift this right away: the subscription stays `active` until its period ends (`cancelsAt`) and is then marked expired. An expired, cancelled or refunded subscription, or none at all, passes.
+1. **Access**: owner of the row or a team admin of the UA's team. Members get `Only a team admin can perform this action on a team-owned agent.` (code `97`); strangers get `You don't have access to this user agent` (code `96`); unknown / already-deleted rows get `User agent not found` (code `95`).
+2. **Status**: must be in a clean terminal state: `0` (Stopped), `5` (Error), or `6` (Setup Required); `5` passes only once the agent no longer holds its runtime. Anything in flight (`1` Stopping, `2` Queued, `3` Starting, `4` Running) is rejected with `Stop the agent before deleting it.` (code `0`), and so is an errored agent that still holds its runtime. Stop the agent first and wait for status `0`.
+3. **Active subscription**: a subscription with `status: "active"` blocks delete with `Cancel the agent's subscription before deleting it.` (code `0`) until `CancelSubscription` has set it to end (`pendingdowngrade: "cancel"`). After that the agent can be deleted right away: the rest of the paid period is forfeited, nothing is refunded, and the plan ends at `cancelsAt` without renewing. A plan paid by card before agent plans moved to the balance (`provider: "stripe"`) still blocks after `CancelSubscription` until its period ends (`cancelsAt`) and it is marked expired. An expired, cancelled or refunded subscription, or none at all, passes.
 
-Delete is safe to repeat: calling it again on an agent that's already deleted returns `useragent-not-found` (code `95`, as in guard 1), so treat that code on a retry as already deleted. The stored `deletedat` never changes.
+Delete is safe to repeat: calling it again on an agent that's already deleted returns `User agent not found` (code `95`, as in guard 1), so treat that code on a retry as already deleted. The stored `deletedat` never changes.
 
 ##### Response
 
@@ -11929,11 +12376,11 @@ Delete is safe to repeat: calling it again on an agent that's already deleted re
 
 | Error code / message | When |
 |----------------------|------|
-| `useragent-not-found` (95) | Unknown guid, or the row is already soft-deleted |
-| `useragent-access-denied` (96) | Caller is not the owner and not a member of the UA's team |
-| `useragent-team-admin-required` (97) | Caller is a team member but not a team admin on the UA's team |
-| `useragent-delete-running` | Status is `1` / `2` / `3` / `4`, or `5` while the agent still holds its runtime. Call `Stop` first and retry once status reaches `0` |
-| `useragent-delete-sub-active` | An active subscription is still attached. After `CancelSubscription` it stays active until the period ends (`cancelsAt`); retry once it has expired |
+| `User agent not found` (95) | Unknown guid, or the row is already soft-deleted |
+| `You don't have access to this user agent` (96) | Caller is not the owner and not a member of the UA's team |
+| `Only a team admin can perform this action on a team-owned agent.` (97) | Caller is a team member but not a team admin on the UA's team |
+| `Stop the agent before deleting it.` (0) | Status is `1` / `2` / `3` / `4`, or `5` while the agent still holds its runtime. Call `Stop` first and retry once status reaches `0` |
+| `Cancel the agent's subscription before deleting it.` (0) | An active subscription that `CancelSubscription` hasn't set to end. Call `CancelSubscription`, then `Delete` again. A plan paid by card before plans moved to the balance blocks until its period ends (`cancelsAt`); retry once it has expired |
 
 #### **POST** /UserAgent/Logs
 
@@ -12020,7 +12467,7 @@ Poll every 30 seconds or more.
 |-------|------|-------------|
 | `events[]` | array | One row per activity entry, **newest first** (descending by `ts`), so `events[0]` is the most recent event. Do not re-reverse for display. |
 | `events[].ts` | string | ISO-8601 UTC datetime when the event was emitted (e.g. `"2026-05-03T14:00:01.000Z"`). Parse with `Date.parse(ts)` for arithmetic. |
-| `events[].kind` | string | Fine-grained event class. One of: `"turn_started"`, `"turn_ended"` (an LLM turn boundary); `"tool_started"`, `"tool_completed"` (one pair per tool call); `"tool_blocked"` (a tool call the agent's safety rules refused); `"cron_finished"` (a scheduled task finished); `"user_message"` (a message received on a connected Telegram, Slack or Discord channel, not web chat); `"token_usage"` (a billed turn's token usage: chat / cron / voice post-call); `"token_usage_idempotent"` (a replayed usage report, already billed, informational only); `"media_relay"` (files from a reply were delivered); `"background_reply"` (a result that finished in the background was delivered to the chat). Rows about what was done to the agent have `AGENT_*` kinds, and two note rows, `"runtime_log_unavailable"` and `"runtime_log_deleted"`, say what part of a day is missing; see [Agent Logs](/docs/agent-logs#who-did-what-rows). Show any kind you don't recognize by its `title`. |
+| `events[].kind` | string | Fine-grained event class. One of: `"turn_started"`, `"turn_ended"` (an LLM turn boundary); `"tool_started"`, `"tool_completed"` (one pair per tool call); `"tool_blocked"` (a tool call the agent's safety rules refused); `"cron_finished"` (a scheduled task finished); `"user_message"` (a message received on a connected Telegram, Slack or Discord channel, not web chat); `"token_usage"` (a billed turn's token usage: chat / Scheduled Task / voice post-call); `"token_usage_idempotent"` (a replayed usage report, already billed, informational only); `"media_relay"` (files from a reply were delivered); `"background_reply"` (a result that finished in the background was delivered to the chat). Rows about what was done to the agent have `AGENT_*` kinds, and two note rows, `"runtime_log_unavailable"` and `"runtime_log_deleted"`, say what part of a day is missing; see [Agent Logs](/docs/agent-logs#who-did-what-rows). Show any kind you don't recognize by its `title`. |
 | `events[].tool` | string \| null | Present on `tool_started` / `tool_completed` / `tool_blocked`. The name of the tool the agent used. |
 | `events[].toolintegration` | string \| null | On `tool_started` / `tool_completed` when the step works in a connector: the connector's `slug` (for example `"wordpress"`), or a channel's key such as `"telegram"`. Same closed list as on [timeline tool blocks](/docs/agent-messaging#tool-integration-and-action-values). |
 | `events[].toolaction` | string \| null | On `tool_started` / `tool_completed` when a word fits the step: what it does (for example `"click"`). Same closed list as on [timeline tool blocks](/docs/agent-messaging#tool-integration-and-action-values). Never set together with `toolintegration`. |
@@ -12033,7 +12480,7 @@ Poll every 30 seconds or more.
 | `events[].tokens` | object \| null | Token breakdown on `token_usage` events: `{ input, output, cacheRead, cacheWrite, total }`, **nested camelCase** (distinct from the flat lowercase `inputtokens` / `outputtokens` / … columns on message + transaction rows; same underlying data, different shape). |
 | `events[].tokencost` | number \| null | The turn's AI usage, in cents: `5` is $0.05. Present on `token_usage` events. |
 | `events[].calls` | number \| null | Number of LLM calls made in the billed turn. Present on `token_usage` events. |
-| `events[].userUuid` | string \| null | Originating actor's UUID. `"system"` for cron / internal events. May be missing on older rows, in which case the server falls back to the agent owner. |
+| `events[].userUuid` | string \| null | Originating actor's UUID. `"system"` for Scheduled Task runs and internal events. May be missing on older rows, in which case the server falls back to the agent owner. |
 | `events[].user` | object \| null | Resolved user shape (`uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`) when the actor is a real user. `null` for `system` events. |
 | `date` | string | The date that was actually read (`YYYY-MM-DD`). |
 | `totalLines` | number | **Total rows for the day**, who-did-what rows and notes included, whatever the `lines` cap. Use this to show "showing X of Y events" headers. |
@@ -12187,7 +12634,7 @@ A failed call answers `result: false` with `runstreamtoken` and `expiresat` set 
 
 #### **POST** /UserAgent/Pin
 
-Pins or unpins an agent instance from the user's pinned-agents quick list. Pinned agents appear in the global header dropdown (`PinnedAgents`) and get an unread badge from `PinnedUnread`.
+Pins or unpins an agent in its workspace. `pinned` is a flag on the agent: on a team agent any team member can set it, and every member's `PinnedAgents` shows it. Pinned agents appear in the global header dropdown (`PinnedAgents`) and get an unread badge from `PinnedUnread`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -12202,7 +12649,7 @@ Pins or unpins an agent instance from the user's pinned-agents quick list. Pinne
 
 #### **POST** /UserAgent/PinnedAgents
 
-Lists the user's pinned agents. Returns the **same composed shape as `MyAgents`**: every field that appears on a `MyAgents` row except `lastactivityat` appears here, just filtered to `pinned: true`.
+Lists the pinned agents of the API key's workspace. Returns the **same composed shape as `MyAgents`**: every field that appears on a `MyAgents` row except `lastactivityat` appears here, just filtered to `pinned: true`.
 
 No request body fields are required: the workspace of your API key's project scopes the response.
 
@@ -12229,7 +12676,7 @@ No request body fields are required: the workspace of your API key's project sco
       "creditsyncat": 1714694410,
       "usage": {
         "period": "2026-05",
-        "resetsat": 1717200000,
+        "resetsat": 1780272000,
         "includedusd": 30,
         "usedusd": 12.4,
         "leftusd": 17.6,
@@ -12259,8 +12706,8 @@ No request body fields are required: the workspace of your API key's project sco
         "status": "active",
         "amount": 30,
         "currency": "usd",
-        "currentperiodend": 1717200000,
-        "renewaldate": "2026-06-01T00:00:00.000Z",
+        "currentperiodend": 1780272000,
+        "renewaldate": "2026-06-02T00:00:00.000Z",
         "daysremaining": 28,
         "pendingdowngrade": null,
         "provider": "prepaid"
@@ -12276,7 +12723,12 @@ No request body fields are required: the workspace of your API key's project sco
           "starter": { "priceUsd": 5 },
           "pro":     { "priceUsd": 30 },
           "max":     { "priceUsd": 100 }
-        }
+        },
+        "plans": [
+          { "key": "starter", "title": "Starter", "priceUsd": 5,   "includedUsageUsd": 5,   "diskMb": 250 },
+          { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "includedUsageUsd": 30,  "diskMb": 500 },
+          { "key": "max",     "title": "Max",     "priceUsd": 100, "includedUsageUsd": 100, "diskMb": 1024 }
+        ]
       },
       "enabledSkills": ["util-social-posting-common", "util-anti-ai-human-copy", "util-chat-markdown-reporting"],
       "tokenRates": {
@@ -12342,7 +12794,7 @@ Starts a browser-embedded realtime voice session with the agent. Returns two opa
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Useragent must be in `status: 4` and have `util-web-channel` enabled (Voice Receptionist / Voice Sales Rep presets enable it by default; toggle it on other agents via `SkillsApply`). |
+| `useragentguid` | string | Yes | The agent must be running (`status: 4`) with the Web Voice Channel Skill (`util-web-channel`) on. The Voice Receptionist and Voice Sales Rep templates have it on. On another agent, turn it on with [`SkillsApply`](#post-useragentskillsapply) together with the two Skills it depends on, Voice Receptionist Rules (`util-voice-receptionist`) and Voice Call Prep Rules (`util-voice-call-prep`): `{ "util-web-channel": true, "util-voice-receptionist": true, "util-voice-call-prep": true }`. Sent alone, it is refused with code `101` and `deps[]` unless those two are already on. Deploy's `skills` turns them on itself. |
 | `session_metadata.page_url` | string | No | Page URL the caller opened the mic from (≤ 2048 chars). Echoed back on Call History. |
 | `session_metadata.display_identifier` | string | No | Operator-supplied display name. 1-100 chars, Unicode letters / numbers / spaces / `@ . _ - ' +`; other characters silently dropped. |
 
@@ -12372,7 +12824,7 @@ Starts a browser-embedded realtime voice session with the agent. Returns two opa
 | `This agent belongs to a team. Switch to the team context to access it.` | Team agent called from a personal workspace or personal project key by a caller who is no longer a member of the agent's team. |
 | `This agent belongs to a different team.` | Team agent called from another team's workspace or project key by a caller who is no longer a member of the agent's team. |
 | `Agent is not running` | Useragent is not in `status: 4`. |
-| `util-web-channel not enabled` | Toggle the skill via `SkillsApply` or pick a preset that bundles it. |
+| `util-web-channel not enabled` | The Web Voice Channel Skill (`util-web-channel`) is off. Turn it on with `SkillsApply` together with `util-voice-receptionist` and `util-voice-call-prep` (sent alone it gets `101`), or deploy from the Voice Receptionist or Voice Sales Rep template. |
 | `Web voice from this origin needs an API key.` | Bearer auth with an Origin outside the allow-list. |
 | `Rate limit: max N web voice sessions per hour` | Operator burned through the per-hour cap. |
 
@@ -12450,7 +12902,7 @@ Returns the last N realtime voice sessions for a useragent, covering **both Twil
 |-------|------|-------------|
 | `messageguid` | string | The guid of the message that holds this call. Use it with `Message/Detail` for the full transcript. |
 | `agenttoken` | string | Useragent token. Same value across all rows for a given agent. |
-| `channel` | `"twilio"` \| `"web"` | Which voice surface served the call. |
+| `channel` | `"twilio"` \| `"web"` | Which voice channel served the call. |
 | `callsid` | string | Twilio Call SID for `channel: "twilio"`; the internal session id (`voice-call-*`) for `channel: "web"`. |
 | `callerInfo` | object | Twilio rows: `{ number, country }` (E.164 + ISO-2). Web rows: `{ page_url, display_identifier? }`, where `display_identifier` is only present when the embedding page validated a phone-style identifier; `page_url` is the page hosting the widget. |
 | `callerProfile` | string \| null | Free-text summary of the caller that the agent writes before the call. `null` until it is ready. |
@@ -12591,6 +13043,8 @@ A Take Control session:
 | `maxSeconds` | number | The longest the session can last: `1800` (30 minutes) to watch, `900` (15 minutes) in control. |
 | `idleSeconds` | number | Control only: control ends after this many seconds without a key or pointer event (`120`). |
 
+<a id="screenstart-errors"></a>
+
 ##### Common errors
 
 A refused start answers `result: false` with one entry in `errors`, and no ticket. Every answer comes with HTTP 200 except the one marked HTTP 403 and the two marked HTTP 429 below. 95, 96 and 97 are the agent access codes the UserAgent endpoints share, and this endpoint gives 95 and 96 a few sentences of its own; 94, 98, 99, 409, 429 and 503 are this endpoint's own. In the [Error Reference](/docs/error-reference), 96, 97, 98 and 99 mean other things.
@@ -12637,7 +13091,7 @@ A refused start answers `result: false` with one entry in `errors`, and no ticke
 
 ### Retired: Extra Credit Packs
 
-Extra credit packs are retired. An agent has no balance of its own: past its plan's included AI usage it uses the Wiro balance of its workspace, so funds go to that balance (see [Adding Funds](#adding-funds)). `extracreditpacks` on `Agent/Detail` and under `agent` on agent rows is always `[]`.
+Extra credit packs are retired. An agent has no balance of its own: past its plan's included AI usage it uses the Wiro balance of its workspace, so funds go to that balance (see [Adding Funds](#adding-funds)). `extracreditpacks` on `Agent/List` rows, `Agent/Detail` and under `agent` on agent rows is always `[]`.
 
 #### **POST** /UserAgent/CreateExtraCreditCheckout
 
@@ -12656,6 +13110,10 @@ Retired. The call charges nothing, changes nothing and answers:
 
 Detect it by `retired: true`, and add funds to the balance instead.
 
+### Plan Changes & Renewals
+
+Cancel, change or renew an agent's plan. Every charge is paid from the Wiro balance of the agent's workspace (see [Paying for Plans](#paying-for-plans)).
+
 #### **POST** /UserAgent/CancelSubscription
 
 Schedules the subscription to end at the current billing period's expiry (a **cancel-at-period-end** pattern). The agent keeps running on its plan until that moment. No refund is issued for the remaining days: the period was paid up front.
@@ -12673,16 +13131,16 @@ A plan that was paid by card is cancelled the same way, also one that is set to 
 ```json
 {
   "result": true,
-  "cancelsAt": 1717200000,
+  "cancelsAt": 1780358400,
   "errors": []
 }
 ```
 
-- `cancelsAt` is the Unix timestamp when the subscription will finish.
+- `cancelsAt` is the Unix timestamp when the plan ends: one day after `currentperiodend` for a plan paid from the balance, the period end for a plan paid by card.
 - Server-side, `subscription.pendingdowngrade` is flipped to `"cancel"` and `subscription.status` stays `"active"` until the period end. Subsequent `UserAgent/Detail` responses reflect this: `subscription.pendingdowngrade = "cancel"` and the usual `currentperiodend`.
-- A scheduled move to a lower plan is dropped: the agent's `nextplan` goes back to `null`.
+- A scheduled move to a lower plan stays: `nextplan` keeps it. When the plan ends, the agent shows that plan and its price (`tier`, `monthlypriceusd`, `nextplan: null`), which is what `RenewSubscription` then charges. Undoing the cancel with `RenewSubscription` keeps the move scheduled, and `UpgradeTier` with the agent's current plan drops it (`nextplan: null`). A plan paid by card is the exception: its cancel drops the move, and `nextplan` goes back to `null`.
 - To reverse the cancellation **before** the period ends, call `POST /UserAgent/RenewSubscription`. It clears the flag without charging the balance again, and a plan paid by card goes back to switching to the balance at the end of its period.
-- When the period actually ends, the daily cron marks the subscription `"expired"` and stops the agent (`status: 0`). At that point the user must call `POST /UserAgent/RenewSubscription` (or `CreateSubscriptionCheckout` for a fresh sub) to continue.
+- When the plan ends (at `cancelsAt`), Wiro marks the subscription `"expired"` and stops the agent (`status: 0`). At that point the user must call `POST /UserAgent/RenewSubscription` (or `CreateSubscriptionCheckout` for a fresh sub) to continue.
 
 **Common errors:**
 
@@ -12815,7 +13273,7 @@ Called while the subscription is still `"active"` with a pending cancel flag set
 
 ##### Response: renew
 
-Called after the subscription has expired (daily cron flipped it to `status: "expired"` and stopped the agent). The renewal rolls the existing expired subscription forward into a fresh 30-day `active` row instead of inserting a new one:
+Called after the subscription has expired (Wiro marked it `status: "expired"` when the plan ended and stopped the agent). The renewal rolls the existing expired subscription forward into a fresh 30-day `active` row instead of inserting a new one:
 
 ```json
 {
@@ -12824,12 +13282,13 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
   "plan": "agent",
   "tier": "starter",
   "amount": 5,
+  "chargedUsd": 5,
   "errors": []
 }
 ```
 
 - Renews the subscription in place: `status` becomes `"active"`, a new 30-day period starts now (`currentperiodend` moves to now + 30 days), and `pendingdowngrade` is cleared to `null`.
-- Debits `amount`, the plan's price, from the wallet (caller's personal wallet, or the agent's team wallet if the agent is team-scoped).
+- `amount` is the plan's price; `chargedUsd` is what the balance paid (a user or team discount lowers it), taken from the owner's wallet for a personal agent or the team's wallet for a team agent.
 - `tier` names the plan the renewal charged.
 - Starts the period's included AI usage again in full and stamps the new `creditperiod`.
 - If the agent was in `status: 0` (Stopped) or `5` (Error), it's auto-queued back to `2` (Queued). It starts again without an extra `Start` call. Statuses `1`/`2`/`3`/`4` are already in progress and settle on their own.
@@ -12839,11 +13298,13 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
 | Error | When |
 |-------|------|
 | `Subscription is already active` | Called on an active subscription with **no** pending cancel (nothing to do) |
+| `Subscription is already active. It renews from your balance when its period ends.` | Called on a plan paid by card that already switches to the balance at its period end (nothing to do) |
 | `No expired subscription found to renew` | No active sub and no expired sub: agent was never subscribed, or data is gone |
 | `Your balance is $3.10; this plan needs $30.00. Add funds to continue.` (the amounts; a team agent's starts `The team's balance is`) | The balance can't pay the renewal (code `97`, with `neededusd`). Nothing is charged |
 | `This plan now renews on the Max plan at $100.00 a month, not the $70.00 it showed. Nothing was charged. Renew again to pay the new price.` (the plan's name and prices) | The renewal costs more than the agent's `monthlypriceusd` showed. Nothing is charged, and the agent now shows the renewal's plan and price (`tier` and `monthlypriceusd`, with `nextplan` cleared). Show the new price, then call `RenewSubscription` again to pay it |
 | `A checkout for this agent is already being opened. Try again in a moment.` | Another subscription request for the same agent is in progress; nothing is charged |
-| `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | Another plan payment from the same wallet is still going through; nothing is charged |
+| `We couldn't confirm this agent's previous checkout. Please try again in a minute.` | Wiro couldn't confirm the agent's current plan or an earlier checkout before charging; nothing is charged |
+| `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | Another plan payment from the same wallet is still going through (code `104`); nothing is charged |
 | `The wallet was charged $X.XX, but the renewal did not finish. Please contact support and do not try again.` (code `110`) | The wallet paid and the renewal could not be saved. Never call `RenewSubscription` again for it: a retry charges again. The agent's plan and included AI usage stay as they were until support finishes the renewal; the payment is a `plan` row in its Transactions, and its activity log has an `AGENT_PLAN_NOT_SAVED` row for it (see [Plan payments that did not finish](/docs/agent-transactions#plan-not-saved)) |
 
 ##### Full subscription lifecycle (prepaid)
@@ -12864,8 +13325,8 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
               │ pendingdowngrade:      │
               │   "cancel"             │
               └───────────┬────────────┘
-                          │ currentperiodend reached
-                          │ (daily cron)
+                          │ cancelsAt reached
+                          │ (the plan ends)
                           ▼
               ┌────────────────────────┐
               │ status: "expired"      │
@@ -12888,10 +13349,10 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
 |-----------|--------|-------|
 | **Plan price** | `plans[].priceUsd` | $5, $30 or $100 a month, the same for every template and custom build, paid from the Wiro balance. The agent's own price is `monthlypriceusd`. |
 | **Included AI usage** | `plans[].includedUsageUsd` | $5, $30 or $100 of AI usage a month: the plan's own price. Every renewal includes it in full: the current plan's (`usage.renewalusd`), or the scheduled plan's when `nextplan` is set. `usage.includedusd` is what the current period includes, and usage it leaves unused doesn't carry over. |
-| **AI usage past the plan** | `usage.balanceusd` | Paid from the Wiro balance of the agent's workspace, at the same token rates. A new turn needs included usage left or a balance of at least $0.50. |
+| **AI usage past the plan** | `usage.balanceusd` | Paid from the Wiro balance of the agent's workspace, at the same token rates. A new turn needs an active plan, and included usage left or a balance of at least $0.50. |
 | **Disk** | `plans[].diskMb` | 250 MB, 500 MB or 1 GB for the agent's files: its workspace, generated media and temporary files. The agent's usage is `disk` on `UserAgent/Detail`. |
 | **Skills** | `Skills/List` | Every plan includes every skill. Turning one on or off costs nothing. |
-| **Per-turn token cost** | `tokenRates` (per-model) | Each chat / cron / voice-prep turn is priced by the tokens its model uses, with input, cache read, cache write and output priced separately. The same on every plan: a larger plan includes more AI usage. |
+| **Per-turn token cost** | `tokenRates` (per-model) | Each chat, Scheduled Task, voice-prep and voice post-call turn is priced by the tokens its model uses, with input, cache read, cache write and output priced separately. The same on every plan: a larger plan includes more AI usage. |
 | **Model runs** | The task's `totalcost` | Models the agent runs, such as images and video, are paid from the wallet of its Wiro project at each model's own price. |
 
 ### Payment Method
@@ -12902,7 +13363,7 @@ Agent plans are paid from your Wiro balance, in the dashboard, the API and MCP a
 
 AI usage is counted as the agent works, not at `Message/Send` time. Wiro prices the tokens of each call with the per-model `tokenRates` and takes the cost from the plan's included usage while it lasts, then from the balance. You don't send anything: billing is fully server-side. The agent's `usage` shows where it stands: `usedusd` and `leftusd` of this period's `includedusd`, `frombalanceusd` taken from the balance, and `balanceusd`, the balance it can still use. Per-turn token counts and cost also ride on each assistant message and arrive over the message WebSocket as an `agent_usage_report` frame (see [Agent Messaging](/docs/agent-messaging) and [Agent WebSocket](/docs/agent-websocket)).
 
-A turn that is running always finishes, so the balance can go a few cents below zero, as it can with model runs. A new turn needs included usage left or a balance of at least $0.50 (`usage.minbalanceusd`). When both are short, the agent pauses: `usage.paused` reads `true` with `pausedreason: "balance"`, and `POST /UserAgent/Message/Send` and `POST /UserAgent/Start` answer code `97` with a sentence for whoever pays for the agent and the agent's `usage` as `agentusage`, whose `resetsat` is the plan's renewal. Start still needs an active plan first: an agent without one gets `Subscription required…`, whatever its balance. Tell this refusal from a plan refusal by `agentusage`, where a plan payment the balance can't cover carries `neededusd`. Send's answer:
+A new turn needs an active plan, and included usage left or a balance of at least $0.50 (`usage.minbalanceusd`). When the included usage is used up and the balance is under $0.50, the agent pauses: `usage.paused` reads `true` with `pausedreason: "balance"`, and `POST /UserAgent/Message/Send` and `POST /UserAgent/Start` answer code `97` with a sentence for whoever pays for the agent and the agent's `usage` as `agentusage`, whose `resetsat` is the end of the plan's period. A turn that is already running stops at its next model call and ends with `[CREDITS_EXHAUSTED]` (see [Failed turns](/docs/agent-messaging#failed-turns)). The calls it made before that are still charged, so the balance can end a few cents lower, even below zero, as it can with model runs. Start still needs an active plan first: an agent without one gets `Subscription required…`, whatever its balance. Tell this refusal by `agentusage`: a plan payment the balance can't cover carries `neededusd` instead, and a plain team member's code `97` carries neither. Send's answer:
 
 ```json
 {
@@ -12916,7 +13377,7 @@ A turn that is running always finishes, so the balance can go a few cents below 
   "agentstatus": 4,
   "agentusage": {
     "period": "2026-05",
-    "resetsat": 1717200000,
+    "resetsat": 1780272000,
     "includedusd": 30,
     "usedusd": 30,
     "leftusd": 0,
@@ -12932,6 +13393,8 @@ A turn that is running always finishes, so the balance can go a few cents below 
 ```
 
 The date is left out when the plan's renewal can't be read, and for a team agent the sentence says `the team's balance`. In Telegram, Slack and Discord the agent tells people `This agent is paused for now. It runs again once its owner adds funds or its plan renews.`, with no amount. Once funds are added, the agent answers again.
+
+An agent runs only while its plan is active, whatever its balance. When its plan ends, the agent stops and its `usage` reads `paused: true` with `pausedreason: "plan"`, as does an agent that never had a plan. Adding funds doesn't start it: renew the plan with [`RenewSubscription`](#post-useragentrenewsubscription), or start a new one with [`CreateSubscriptionCheckout`](#post-useragentcreatesubscriptioncheckout) and `useprepaid: true`. Either call queues the agent to start. Until then, `Start` answers `Subscription required…`. A message sent before the agent has stopped gets code `97` from `Message/Send`, with `agentstatus`, `agentusage` and `<agent> has no active plan. Choose a plan to keep it running.`
 
 On each renewal the included usage starts again in full (`usedusd` back to `0`), and `usage.period` and `creditperiod` advance to the new `'YYYY-MM'` window. Funds added to the balance reset nothing: the agent just has more to use.
 
@@ -12955,23 +13418,30 @@ Agent-specific errors you may encounter:
 | A sentence that says what is wrong and what to write, such as `This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.` or `This schedule never comes up: February has no 30th. Pick a day February has, such as 28.` | `CustomSkillUpsert` with an `interval` the agent can't run on a scheduled task, or one whose date never comes. Nothing is saved. |
 | `<skillkey>:` followed by the same sentence | `Deploy` with a `customskills` entry whose `interval` the agent can't run, or whose date never comes. Nothing is created or charged. |
 | `A deploy takes up to 50 entries in customskills, and this one sent <n>. Send at most 50, then add the rest with /UserAgent/CustomSkillUpsert once the agent is deployed.` | `Deploy` with more than 50 `customskills` entries. Nothing is created or charged. |
-| `Agent setup is not complete. Fill in the agent's required settings before starting.` | Status is `6`: save the agent's missing required credentials with `CredentialUpsert` or `CredentialProjectBind`, then call `POST /UserAgent/Update` to move the agent to status `0`. Connectors never hold an agent at status `6`. |
-| `Subscription required — please subscribe to this agent before starting it.` | `Start` called on an agent with no active plan, most often after its plan ended. Call `RenewSubscription` (`useprepaid: true`) to continue. |
+| `Agent setup is not complete. Fill in the agent's required settings before starting.` | Status is `6`: the agent has no plan. Pay it with `CreateSubscriptionCheckout` (`useprepaid: true`), which queues it. Credentials and connectors never hold an agent at status `6`. |
+| `Subscription required — please subscribe to this agent before starting it.` | `Start` called on an agent with no active plan, whatever its balance. Renew a plan that ended with `RenewSubscription` (`{ guid }`). For an agent that never had a plan, `RenewSubscription` answers `No expired subscription found to renew`: start one with `CreateSubscriptionCheckout` (`useprepaid: true`). |
 | `Subscription already active for this useragent. Cancel or modify the existing subscription instead.` | `CreateSubscriptionCheckout` called when a sub already exists |
 | `Change the plan with UpgradeTier.` | `SkillsApply` with a `tier` other than the agent's current plan |
 | `tier must be starter, pro or max` | `Deploy` or `CreateSubscriptionCheckout` with a `tier` that names no plan. Nothing is created or charged. |
+| `Unknown skill: <name>.`, or for a name that starts with `int-`, `Unknown skill: <name>. Connectors are connected with UserAgent/ConnectorConnect, not turned on as skills.` | `Deploy` with a `skills` name that `Skills/List` doesn't list. Nothing is created or charged |
+| `Unknown credential: <key>. Connect a connector after the deploy with UserAgent/ConnectorConnect.` | `Deploy` with a `credentials` key that isn't a credential, such as a connector's slug. Nothing is created or charged |
+| `Unknown credential: <key>. Connectors are connected with UserAgent/ConnectorConnect.` | `CredentialUpsert` with a `credentialkey` that isn't a credential, such as a connector's slug. Nothing is saved |
+| `Unknown skill: <names>` (code `0`) | `SkillsApply` with a name that `Skills/List` doesn't list. Nothing is changed |
 | `targetTier must be starter, pro or max` | `UpgradeTier` with a `targetTier` outside the closed enum (typos, missing parameter name, etc.) |
 | `Already on the Pro plan.` (the plan's name) | `UpgradeTier` with the agent's current plan when no lower plan is scheduled: no-op |
 | `The Starter plan is smaller than this agent's Pro plan, so this is not an upgrade. Nothing was changed. A move to a smaller plan starts at the next renewal; to ask for it, send allowDowngrade: true.` (the plans' names) | `UpgradeTier` with a `targetTier` lower than the agent's plan and no `allowDowngrade: true`. Nothing is changed or charged |
 | `This agent is on the Starter plan now, so Pro is an upgrade. Nothing was changed. Reload the plan and ask again.` (the plans' names) | `UpgradeTier` with `allowDowngrade: true` and a `targetTier` higher than the agent's plan, such as after the plan changed in another tab or at a renewal. Nothing is changed or charged |
-| `No active plan. Use /UserAgent/CreateSubscriptionCheckout to start one on the plan you pick.` | `UpgradeTier` called without an active subscription |
+| `No active plan. Use /UserAgent/CreateSubscriptionCheckout with useprepaid: true to start one on the plan you pick.` | `UpgradeTier` called without an active subscription |
 | `This plan is set to end at the end of its period, so there is no renewal to change. Renew it first.` | `UpgradeTier` to a lower plan while the subscription is cancelled at period end. Undo the cancel with `RenewSubscription` first |
+| `The move to the Starter plan started with this billing period, and its payment moves the agent there, so it can no longer be undone. Nothing was changed. Once the agent shows the Starter plan, change the plan again.` (the plan's name) | `UpgradeTier` with the agent's current plan, on a plan paid by card whose scheduled lower plan already started with its new period. Nothing is changed |
+| `This plan is set to end when its period ends, so it cannot be changed. Renew it first: it then renews from your balance.` | `UpgradeTier` on a plan paid by card that is set to end. Undo the cancel with `RenewSubscription` first; nothing is charged |
+| `We couldn't read this plan's billing. Nothing was changed; please try again in a minute.` | `UpgradeTier` or `RenewSubscription` on a plan paid by card when its card billing can't be read; nothing is charged |
 | `Your balance is $3.10; this plan needs $100.00. Add funds to continue.` (the amounts; a team agent's starts `The team's balance is`) | `Deploy`, `CreateSubscriptionCheckout`, `UpgradeTier` or `RenewSubscription` when the balance can't pay the plan (code `97`, with `neededusd`). Nothing is created or charged |
-| `Wallet deduction failed: {error}` | `UpgradeTier`: wallet write itself failed (rare; transient backend error) |
+| `Wallet deduction failed: {error}` | `Deploy` or `CreateSubscriptionCheckout` with `useprepaid: true`, `RenewSubscription` or `UpgradeTier`: the wallet write itself failed (rare; transient backend error); nothing was charged |
 | `Another change to this agent's plan is going through. Nothing was changed; please try again in a minute.` | `UpgradeTier` (code `104`) while a skill change or another plan change of the same agent is going through |
 | `The agent's plan changed while this was asked for. Nothing was changed; please retry.` | `UpgradeTier` when the agent's plan ended or moved off the wallet after the call was made |
 | `Could not read the agent's plan. Nothing was changed; please retry.` | `UpgradeTier`: the agent's plan could not be read |
-| `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | `Deploy` or `CreateSubscriptionCheckout` with `useprepaid: true`, `RenewSubscription` or `UpgradeTier` (code `104` on `UpgradeTier`) while another plan payment from the same wallet is going through. A `Deploy` refused this way creates no agent |
+| `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | `Deploy` or `CreateSubscriptionCheckout` with `useprepaid: true`, `RenewSubscription` or `UpgradeTier` (code `104` on each of them) while another plan payment from the same wallet is going through. A `Deploy` refused this way creates no agent |
 | `The wallet was charged $X.XX, but the plan could not be saved. Please contact support and do not try again.`, the same with `the renewal did not finish` or `the plan change did not finish` (code `110`) | `Deploy` or `CreateSubscriptionCheckout` with `useprepaid: true`, `RenewSubscription` or `UpgradeTier`: the wallet paid and the change could not be saved. Never send the call again: a retry charges again. Match code `110`, not the sentence. The agent's plan and included AI usage stay as they were until support finishes the change (see [Plan payments that did not finish](/docs/agent-transactions#plan-not-saved)). A `Deploy` answered this way keeps the agent and returns `existingUserAgentGuid` |
 | `Agent plans are paid from your Wiro balance. Add funds, then choose the plan.` | `CreateSubscriptionCheckout` without `useprepaid: true`: card checkouts for agent plans are retired. The answer carries `retired: true`, and nothing is charged |
 | `Extra credit packs are retired. Your agent uses your Wiro balance after its plan's included usage. Add funds to your balance instead.` | `CreateExtraCreditCheckout`, which is retired. The answer carries `retired: true`, and nothing is charged |
@@ -12980,6 +13450,7 @@ Agent-specific errors you may encounter:
 | `User agent not found` (code `95`) | `Message/Send`, `Message/History`, `Message/Sessions`, `Message/DeleteSession`, `Message/RenameSession` or `Message/Delete` called for an agent that has been deleted |
 | The sentence for the agent's status: `Agent is stopped. Start it before sending messages.` (status `0`), `Agent is stopping. Please wait a moment and try again.` (status `1`, when the agent is shutting down to stay stopped), `Agent is restarting. Please wait a moment and try again.` (status `1`, when the agent is shutting down to start again, as in a [restart](#automatic-restart)), `Agent is starting up. Please wait a moment and try again.` (status `2` or `3`), `Agent is in error state. Restart it before sending messages.` (status `5`) or `Agent setup is incomplete. Complete the setup before sending messages.` (status `6`) | `Message/Send` while the agent isn't running (any status other than `4`), for every message Wiro doesn't answer itself as a setup reply (see [Replies Wiro handles itself](/docs/agent-messaging#handled-setup-replies)). Response includes `agentstatus` (the integer) so your client can branch on it. |
 | `My Instagram Bot used the $30.00 of AI usage its plan includes this month, and your balance is under $0.50. Add funds to keep it running, or it starts again when the plan renews on 1 June 2026.` (the agent's name, the amount and the renewal date, left out when it can't be read; for a team agent, `the team's balance`) | `Message/Send` or `Start` (code `97`) while the agent has used the AI usage its plan includes and the balance is under $0.50. The response includes `agentusage` (the agent's `usage`), and Send's also `agentstatus`, so your client can offer to add funds. |
+| `My Instagram Bot has no active plan. Choose a plan to keep it running.` (the agent's name) | `Message/Send` (code `97`) to an agent whose plan has ended, before it has stopped. The response includes `agentstatus` and `agentusage` with `pausedreason: "plan"`. Adding funds doesn't help: call `RenewSubscription`, or `CreateSubscriptionCheckout` with `useprepaid: true`. |
 | A spend limit refusal (code `93`), such as `This agent's monthly spend limit is reached ($20.35 of $20.00). It resets on December 1, 2026 at 00:00 UTC.` | `Message/Send` while the agent's own [spend limit](/docs/spend-limits) is used up or, once its included AI usage is used up, a limit of the wallet that covers it: the account's or team's, or the `agent` surface's. The response includes `agentstatus`. Paying from the balance with `Deploy`, `CreateSubscriptionCheckout`, `UpgradeTier` or `RenewSubscription` is refused the same way when the price would take spending over a limit of the wallet. Nothing runs and nothing is charged |
 | A Model Access refusal (code `92`), such as `This agent can't use openai/gpt-5-6-sol. Model Access rules decide which models can run.` | `Message/Send` with a `model` that a [Model Access](/docs/model-access) rule for the agent blocks: its own rule, the account's or team's rule, or the `agent` surface's rule. `UpdateSettings` with such a model override too. Nothing runs and nothing is charged |
 | `Message not found` | `Detail` / `Cancel` with invalid messageguid |
@@ -13119,7 +13590,7 @@ detail = requests.post(
     json={"slug": "instagram-manager"}
 ).json()
 agent = detail["agents"][0]
-print(f"Credentials needed: {list(agent['credentials'].keys())}")
+print(f"Connectors to connect: {agent['suggestedconnectors']}")  # e.g. ['instagram']
 
 # Deploy a new instance (prepaid wallet, Starter plan)
 deploy = requests.post(
@@ -13135,7 +13606,8 @@ deploy = requests.post(
 instance_guid = deploy["useragents"][0]["guid"]
 print(f"Deployed: {instance_guid}")
 
-# Connect a connector (see Agent Connectors)
+# Connect a Connector that takes a key, Serper here. Instagram connects by
+# signing in instead (see Agent Connectors)
 requests.post(
     "https://api.wiro.ai/v1/UserAgent/ConnectorConnect",
     headers=headers,
@@ -13235,6 +13707,7 @@ async function main() {
     { slug: 'instagram-manager' }
   );
   const agent = detail.data.agents[0];
+  console.log('Connectors to connect:', agent.suggestedconnectors); // e.g. ['instagram']
 
   // Deploy a new instance (prepaid wallet, Starter plan)
   const deploy = await axios.post(
@@ -13245,7 +13718,8 @@ async function main() {
   const instanceGuid = deploy.data.useragents[0].guid;
   console.log('Deployed:', instanceGuid);
 
-  // Connect a connector (see Agent Connectors)
+  // Connect a Connector that takes a key, Serper here. Instagram connects by
+  // signing in instead (see Agent Connectors)
   await axios.post(
     'https://api.wiro.ai/v1/UserAgent/ConnectorConnect',
     {
@@ -13502,7 +13976,7 @@ print(response.body);
 - [Agent WebSocket](/docs/agent-websocket): Real-time response streaming
 - [Agent Webhooks](/docs/agent-webhooks): Receive agent responses via HTTP callbacks
 - [Agent Transactions](/docs/agent-transactions): The agent's spending in dollars: AI usage, model runs, plan payments and funds added
-- [Agent Logs](/docs/agent-logs): Per-instance activity feed (tool calls, cron runs, message exchanges)
+- [Agent Logs](/docs/agent-logs): Per-instance activity feed (tool calls, Scheduled Task runs, message exchanges)
 - [Authentication](/docs/authentication): API key setup and authentication methods
 
 ---
@@ -13517,7 +13991,7 @@ Wiro's agent runtime supports two deploy paths:
 
 | Path | When to use | Endpoint |
 |------|-------------|----------|
-| **Template deploy** | The marketplace already has an agent that does what you need (Instagram Manager, Push Notifications, App Review Support, …). You inherit the template's default skill set + configuration. | `POST /UserAgent/Deploy` with `agentguid` |
+| **Template deploy** | The marketplace already has an agent that does what you need (Social Manager, Push Notification Manager, App Review Support, …). You inherit the template's default skill set + configuration. | `POST /UserAgent/Deploy` with `agentguid` |
 | **Custom build** | You want a unique combination: for example a research writer that searches the web with Serper, drafts posts on WordPress and reports to Telegram. No marketplace template fits. | `POST /UserAgent/Deploy` with `custom: true` |
 
 The two paths produce the **same useragent shape** at the end (same `customskills`, `scheduledskills`, `credentials`, `subscription`, `tokenRates`, etc.), and both connect the services they work with the same way, after Deploy, through [Agent Connectors](/docs/agent-connectors). The only differences are:
@@ -13534,7 +14008,7 @@ Both paths are sold on the same three plans, Starter at $5, Pro at $30 and Max a
 
 ## Step 1: Browse Available Skills
 
-Custom builds start from the **skill registry**, the catalogue of every Skill the platform supports: rule sets, playbooks and keyless tools such as weather and diagrams. Browse it with [`POST /Skills/List`](/docs/agent-skills#post-skillslist) and inspect details with [`POST /Skills/Detail`](/docs/agent-skills#post-skillsdetail). The outside services the agent works with are connectors, which you pick from the [connector catalog](#step-1c-pick-the-connectors) and connect after Deploy.
+Custom builds start from the **skill registry**, the catalogue of every Skill the platform supports: rule sets, playbooks, the voice channels and tools such as weather and diagrams. Browse it with [`POST /Skills/List`](/docs/agent-skills#post-skillslist) and inspect details with [`POST /Skills/Detail`](/docs/agent-skills#post-skillsdetail). The outside services the agent works with are connectors, which you pick from the [connector catalog](#step-1c-pick-the-connectors) and connect after Deploy.
 
 Both endpoints are **public, so no authentication is required.**
 
@@ -13551,11 +14025,12 @@ Pick the skill names you want to enable. Each skill descriptor tells you:
 - `category`: `util`, for every registry skill
 - `credential_key`: which credential the skill needs, or `null` (most skills need none)
 - `requires_credentials`: boolean, whether the user must supply a credential before the skill can run
-- `depends_on`: array of skill names that must also be enabled (Wiro auto-enables transitive deps)
+- `depends_on`: skills that must be on with it. Deploy's `skills` turns them on by itself; [`SkillsApply`](#step-4-refine-skills-after-deploy) refuses with code `101` and `deps[]` unless you send them in the same call
 - `conflicts_with`: array of skill names that cannot coexist with this one
+- `suggested_connectors`: the connectors the skill works with, by catalog slug, when it has any (for example `["brevo", "hubspot", "mailchimp", "sendgrid"]` on Newsletter Compose Rules (`util-newsletter-compose`)); pick from them in [Step 1c](#step-1c-pick-the-connectors) and connect them in [Step 3b](#step-3b-connect-the-connectors)
 - `pricing`: `billing_model: "tokens"`; its `monthly_price_weight_usd` and `monthly_credits_weight` are `0` on every skill, since every plan includes every skill
 
-> **Use [`POST /Skills/Capabilities`](/docs/agent-skills#post-skillscapabilities)** to discover the closed-set capability vocabulary (the high-level tasks skills can perform). Useful when you want to find every skill that can "post-content" or "send-email".
+> **Use [`POST /Skills/Capabilities`](/docs/agent-skills#post-skillscapabilities)** to discover the closed-set capability vocabulary (the high-level tasks skills can perform). Useful when you want to find every skill with a tag such as `social_publishing` or `email_publishing`.
 
 ## Step 1b: Discover Communication Channels
 
@@ -13749,16 +14224,25 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
         "voicePrepModel": "openai/gpt-5.4-mini",
         "voicePostcallModel": "openai/gpt-5.4"
       },
-      "skills": ["util-anti-ai-human-copy", "util-chat-markdown-reporting"],
-      "customskills": [],
+      "skills": [
+        { "name": "util-anti-ai-human-copy",      "enabled": true, "_edited": true, "_user_created": false },
+        { "name": "util-chat-markdown-reporting", "enabled": true, "_edited": true, "_user_created": false }
+      ],
+      "customskills": [
+        { "key": "cs-approval-policy", "description": "Approval policy: how the agent should gate publish/send/modify actions before executing them.", "value": "# Approval Policy\n\nThis skill controls whether the agent waits for operator approval before ...", "interval": null, "enabled": true, "requires_credentials": [], "requires_connectors": [], "_source": "skill-bundle", "_editable": true, "_edited": false, "_user_created": false },
+        { "key": "cs-my-custom-strategy", "description": "Defines how your agent should behave.", "value": "# My Custom Strategy\n\nDescribe how the agent should behave for your specific use case. ...", "interval": null, "enabled": true, "requires_credentials": [], "requires_connectors": [], "_source": "user-created", "_editable": true, "_edited": false, "_user_created": true }
+      ],
       "scheduledskills": [
         {
           "key": "cs-cron-weekly-research",
           "value": "Every Monday, research this week's topic with serper__web_search, write a 600-word article, save it as a WordPress draft with the WordPress connector's tools (wordpress__*), and post the draft link to Telegram.",
           "interval": "0 9 * * 1",
           "enabled": true,
+          "requires_credentials": [],
+          "requires_connectors": [],
           "_source": "user-created",
           "_editable": true,
+          "_edited": true,
           "_user_created": true
         }
       ],
@@ -13768,7 +14252,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
       "enabledChannels": ["telegram"],
       "teamsessionmode": "private",
       "credentials": {
-        "telegram": { "_connected": false, "optional": false, "extra": false, "bottoken": "••••••••", "allowedusers": ["123456789"] }
+        "telegram": { "_connected": true, "optional": true, "extra": false, "bottoken": "••••••••", "allowedusers": ["123456789"] }
       },
       "agent": {
         "custom": true,
@@ -13794,9 +14278,26 @@ Notes on the response:
 - `agentguid: null` confirms this is a custom build with no marketplace template.
 - `agent.custom: true` is the synthesized template placeholder. Same shape as a template's `agent` block but no `slug` / `cover` / `categories` (custom builds aren't in the marketplace).
 - `scheduledskills` already contains the cron from the Deploy body. Deploy stores each `customskills` key in its full form, as `CustomSkillUpsert` does: a bare slug with an `interval` becomes `cs-cron-<slug>`, one without becomes `cs-<slug>`, and a key that isn't a slug fails the deploy before anything is created or charged.
+- `skills` lists each enabled skill as an object (`name`, `enabled`, `_edited`, `_user_created`), the same shape as [`UserAgent/Detail`](/docs/agent-overview#post-useragentdetail). The skills you sent read `_edited: true`.
+- Every custom build starts with two custom skills in `customskills`: Approval Policy (`cs-approval-policy`), which you can edit or turn off but not rename or delete, and My Custom Strategy (`cs-my-custom-strategy`). When neither the Deploy body nor the skills you picked bring a scheduled task, `scheduledskills` also gets the sample My Scheduled Task (`cs-cron-my-scheduled-task`). It stays off until you write it and turn it on with `CustomSkillUpsert`.
 - `status: 2` means Deploy auto-queued the instance because `useprepaid: true` provisioned a subscription in the same call. Wiro starts the agent from the queue; you do **not** need to call `POST /UserAgent/Start` after a prepaid deploy.
 - Communication-channel credentials are validated independently from `skills`. Every channel group present in `credentials` must contain all of its `required_fields` or Deploy fails without leaving a partial agent behind.
+- A channel group in `credentials` always reads `optional: true`. Its `_connected` turns true once every one of its `required_fields` is filled, the same check as `configured` on its `communicationChannels` row.
+- `skills` takes Skills (`util-*`) only, and `credentials` takes the credentials the registry lists: channels, `wiro`, `twilio-voice` and settings. Anything else fails the Deploy before anything is created or charged, with `Unknown skill: <name>.` (for a retired `int-*` name it adds `Connectors are connected with UserAgent/ConnectorConnect, not turned on as skills.`) or `Unknown credential: <key>. Connect a connector after the deploy with UserAgent/ConnectorConnect.` Connect connectors in [Step 3b](#step-3b-connect-the-connectors).
 - The Telegram bot token you sent comes back as `"••••••••"`: like `UserAgent/Detail`, the response shows a saved secret only as the mask.
+
+When the balance can't pay the plan, Deploy is refused with code `97`, nothing is created or charged, and `neededusd` is the amount to add, never less than the $20 deposit minimum. Add at least that much on [wiro.ai/panel/billing](https://wiro.ai/panel/billing) and send the same Deploy again (see [Paying for Plans](/docs/agent-overview#paying-for-plans)):
+
+```json
+{
+  "result": false,
+  "useragents": [],
+  "errors": [
+    { "code": 97, "message": "Your balance is $3.10; this plan needs $30.00. Add funds to continue." }
+  ],
+  "neededusd": 26.9
+}
+```
 
 ## Step 3b: Connect the Connectors
 
@@ -13826,7 +14327,7 @@ Each answers `status: "connected"` and restarts the running agent, which then ha
 
 ## Step 4: Refine Skills After Deploy
 
-Toggle skills on/off after deploy with [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply). Even when you only want to flip a single skill, send it as a one-entry `skills` map. The endpoint triggers exactly one agent restart, applies the whole batch or none of it, and never charges: every plan includes every skill, so the price and the included AI usage stay the same. Template deploys accept the same call.
+Toggle skills on/off after deploy with [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply). Even when you only want to flip a single skill, send it as a one-entry `skills` map. Turning a Skill on needs its `depends_on` on too: add the ones that are off to the same map, since `SkillsApply` turns on only the names you send and refuses the change with code `101` and `deps[]` otherwise. The endpoint triggers exactly one agent restart, applies the whole batch or none of it, and never charges: every plan includes every skill, so the price and the included AI usage stay the same. Template deploys accept the same call.
 
 ### Single-skill enable
 
@@ -13922,7 +14423,7 @@ Each recipe is a Deploy body, followed by the connectors to connect once the age
 }
 ```
 
-Then connect `serper` with its API key.
+Then connect Serper (`serper`) with its API key.
 
 ### B. WordPress publisher with weekly research
 
@@ -13954,7 +14455,7 @@ Then connect `serper` with its API key.
 }
 ```
 
-Then connect `wordpress` with its site address, user name and application password.
+Then connect WordPress (`wordpress`) with its site address (`url`), user name (`user`) and application password (`apppassword`).
 
 ### C. Multi-channel social poster
 
@@ -13972,7 +14473,7 @@ Then connect `wordpress` with its site address, user name and application passwo
 }
 ```
 
-Then connect `twitter`, `instagram`, `linkedin` and `facebook-pages`. Each signs in with its vendor, with an app of your own: [`ConnectorConnect`](/docs/agent-connectors#connect-with-a-sign-in) answers an `authorizeUrl` for your customer to open. X posts as the account that signed in. LinkedIn takes the id of its Company Page in the required `organizationid` field, sent with the sign-in, and posts as that Page or as the member who signed in. The Instagram accounts and Facebook Pages to post to are picked afterwards with [`ConnectorSetAccounts`](/docs/agent-connectors#post-useragentconnectorsetaccounts): see [Account Pickers](/docs/agent-connectors#account-pickers).
+Then connect X (`twitter`), Instagram (`instagram`), LinkedIn (`linkedin`) and Facebook Pages (`facebook-pages`). Each signs in with its vendor through an app of your own: list `https://api.wiro.ai/v1/AgentConnector/OAuthCallback` as a redirect URI in each app first, since your `redirecturl` is only where Wiro sends the browser afterwards. [`ConnectorConnect`](/docs/agent-connectors#connect-with-a-sign-in) answers an `authorizeUrl` for your customer to open. X posts as the account that signed in. LinkedIn takes the id of its Company Page in the required `organizationid` field, sent with the sign-in, and posts as that Page or as the member who signed in. The Instagram accounts and Facebook Pages to post to are picked afterwards with [`ConnectorSetAccounts`](/docs/agent-connectors#post-useragentconnectorsetaccounts): see [Account Pickers](/docs/agent-connectors#account-pickers).
 
 ## Subscription & Billing for Custom Builds
 
@@ -14028,7 +14529,7 @@ Every Detail or History message row returns a top-level `timeline[]`. It is the 
 
 Each block has an opaque deterministic `blockid`, call/content ordering coordinates, `type` (`reasoning`, `answer`, `tool`, or `setup`), safe public text, tool state or a setup card, `phase` (`stream`, `end`, or `error`), its own monotonically increasing `version`, and timestamps. Reasoning text is a model-provided reasoning summary, never raw hidden chain-of-thought. Tool blocks expose only `toollabel`, `toolstatus`, `toolintegration`, and `toolaction`, never a tool ID, arguments, results, or other internal execution metadata. `toolintegration` and `toolaction` each hold a word from a [closed list](#tool-integration-and-action-values) or `null`. A `setup` block is a setup change the agent proposes; see [Setup From Chat](#setup-from-chat). When a turn ends with `agent_error` or `agent_cancel`, the server closes every block still at `stream` and sends each one as an `agent_timeline_delta`, usually just before that final event. After `agent_end`, open blocks normally close a few seconds later. A tool block that closed with `toolstatus` `requested` was cut off before it finished.
 
-Live WebSocket updates arrive as `agent_timeline_delta` events carrying one public block. Merge by `blockid`, replace that block only when its incoming `version` is strictly newer, then sort by `callindex`, `contentindex`, and `blockid`. `agent_subscribed.timeline` carries the persisted reconnect snapshot. `agent_output` remains provisional cumulative SSE output until the corresponding answer block catches up; after completion or reconnect, `Message/Detail` is authoritative.
+Live WebSocket updates arrive as `agent_timeline_delta` events carrying one public block. Merge by `blockid`, replace that block only when its incoming `version` is strictly newer, then sort by `callindex`, `contentindex`, and `blockid`. `agent_subscribed.timeline` carries the persisted reconnect snapshot. `agent_output` stays provisional cumulative output until the corresponding answer block catches up; after completion or reconnect, `Message/Detail` is authoritative.
 
 ## Message Lifecycle
 
@@ -14054,15 +14555,17 @@ When a turn ends with `agent_error` or `agent_cancel`, `response` and `debugoutp
 
 | Code | Status | What happened | What to do |
 |------|--------|---------------|------------|
-| `[SECURITY_BLOCKED]` | `agent_error` | The agent's security rules blocked the message. | Change the message and send it again. |
+| `[SECURITY_BLOCKED]` | `agent_error`, or `agent_end` when the block came back as the answer | The agent's security rules blocked the message. | Change the message and send it again. |
 | `[SAFETY_POLICY_BLOCKED]` | `agent_error` | The model's provider declined the request under its usage or safety policy. | Rephrase the request and send it again. |
 | `[TURN_INTERRUPTED]` | `agent_error` | The agent restarted while the turn was running. | Send the message again. |
 | `[SPEND_LIMIT_REACHED]` | `agent_error` | A [spend limit](/docs/spend-limits) that covers the agent is used up, so its model calls were refused: its own limit or, once its plan's included AI usage is used up, the account's or team's limit or the `agent` surface's limit. A turn that is already running stops at its next model call. | Wait for the limit to reset, or have someone who manages the workspace's spend limits raise it under [Controls > Spend Limits](https://wiro.ai/panel/controls/spend-limits): the account owner, or in a team a team admin or the organization owner. |
 | `[USAGE_CEILING_REACHED]` | `agent_error` | The agent reached its hourly or daily safety ceiling for AI model calls. | Wait until that hour or day is over. |
 | `[MODEL_NOT_ALLOWED]` | `agent_error` | A [Model Access](/docs/model-access) rule for the agent blocks the model it uses, so its model calls were refused: its own rule, the account's or team's rule, or the `agent` surface's rule. | Have someone who manages the workspace's Model Access rules allow the model under [Controls > Model Access](https://wiro.ai/panel/controls/model-access), or choose another model for the agent. |
-| `[CREDITS_EXHAUSTED]` | `agent_error` | The agent has used the AI usage its plan includes and its balance is under $0.50, so its model calls were refused. Every try fails until funds are added or the plan renews. | Add funds to the balance of the agent's workspace (see [Adding Funds](/docs/agent-overview#adding-funds)), or wait for the plan to renew. Don't send the message again before that. |
+| `[CREDITS_EXHAUSTED]` | `agent_error` | The agent has used the AI usage its plan includes and its balance is under $0.50, so its model calls were refused. A turn that is already running stops at its next model call. Every try fails until funds are added or the plan renews. | Add funds to the balance of the agent's workspace (see [Adding Funds](/docs/agent-overview#adding-funds)), or wait for the plan to renew. Don't send the message again before that. |
 | `[AGENT_UNAVAILABLE]` | `agent_error` | Any other failure. | Try again after a short wait. |
 | `[REQUEST_CANCELLED]` | `agent_cancel` | The turn was cancelled, while it ran or while it was still queued. | Nothing to do. |
+
+A turn the agent's security rules block can also end with `agent_end`, with `[SECURITY_BLOCKED] …` as its `response`, so match these codes on `response` whatever the status.
 
 The full texts:
 
@@ -14095,9 +14598,9 @@ Accepts either `application/json` (text-only) or `multipart/form-data` (text + f
 | `sessionkey` | string | No | Session identifier for conversation continuity. Defaults to `"default"`. |
 | `callbackurl` | string | No | Webhook URL: the system will POST the final response to this URL when the agent finishes. It must be a public `http(s)` address: a host that is, or resolves to, a private, loopback or link-local address gets no webhook. |
 | `model` | string | No | Canonical model slug to run **this turn** on (e.g. `"openai/gpt-5.6-sol"`), chosen from the agent's selectable set. Validated server-side: an unknown or non-selectable slug is rejected in `errors[]` and the turn is **not** sent. So is a model that a [Model Access](/docs/model-access) rule for the agent blocks (code `92`): its own rule, the account's or team's rule, or the `agent` surface's rule. Omit to use the agent's configured chat model. |
-| `attachment` / `attachments[]` | file | No | Multipart only: one or more file attachments that the agent can process. |
+| `attachment` / `attachments[]` | file | No | Multipart only: up to 8 files the agent can process. More are refused with `Too many files (max 8)`, and the message is not sent. |
 
-> **Per-turn model selection.** `model` selects the chat model for a single turn instead of the agent's configured default. Valid values are the agent's **selectable** slugs: the `tokenRates.models[]` entries where `selectable` is `true`, returned by `UserAgent/Detail` (see [Agent Overview](/docs/agent-overview)). The current set includes `openai/gpt-5.6-sol` (the platform chat default), `openai/gpt-5.6-terra`, `openai/gpt-5.6-luna`, `openai/gpt-5.5`, `openai/gpt-5.5-pro`, `openai/gpt-5.4`, `openai/gpt-5.4-mini`, `openai/gpt-5.2`, `openai/gpt-5.1`, `openai/gpt-5`, and `openai/gpt-5-mini`. Always read the live set from that field. The server applies the chosen model to that turn only.
+> **Per-turn model selection.** `model` selects the chat model for a single turn instead of the agent's configured default. Valid values are the agent's **selectable** slugs: the slugs in `tokenRates.models` whose `selectable` is `true`, returned by `UserAgent/Detail` (see [Agent Overview](/docs/agent-overview)). The set changes over time, so read it from that field each time instead of keeping a list. The server applies the chosen model to that turn only.
 
 ### Response
 
@@ -14113,7 +14616,7 @@ Accepts either `application/json` (text-only) or `multipart/form-data` (text + f
 
 > **A successful Send response means the message was accepted and queued, not that it will definitely reach the agent.** After this response the system queues the message for the agent. If that queueing step itself fails (for example, a queue outage), the message's `status` is set to `agent_error` server-side **after** the HTTP response was already sent with `result: true`. Always confirm the final state via `POST /UserAgent/Message/Detail` or the WebSocket stream; don't assume the message progresses to `agent_start` just because Send returned `result: true`.
 
-> **Reserved session keys.** The platform reserves a small set of `sessionkey` prefixes for system-managed threads: `wiro:api`, `voice-prep*`, `voice-call-*`, and `cs-cron-*`. Sending a user message into one of these keys is rejected with `Reserved sessionkey` (the same guard that protects `Message/DeleteSession`). Pick any other identifier for your own threads.
+> **Reserved session keys.** The platform keeps these `sessionkey`s for its own threads: `wiro:api` and keys that start with `wiro:api:`, keys that start with `voice-prep`, `voice-call-`, `cs-cron-` or `cron:`, and any key that contains `:cron:`. Send refuses them with `Reserved sessionkey`, `Message/History` returns an empty page for them, and `Message/DeleteSession` and `Message/RenameSession` answer `Session not found`. Pick any other identifier for your own threads.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -14142,12 +14645,15 @@ Accepts either `application/json` (text-only) or `multipart/form-data` (text + f
 
 #### Failure responses
 
-When `result: false`, the response shape is `{ result: false, errors: [{ code, message }], messageguid: null, agenttoken: null, status: null }`. Two branches add extra context:
+When `result: false`, the response shape is `{ result: false, errors: [{ code, message }], messageguid: null, agenttoken: null, status: null }`. Three branches add extra context:
 
 | Failure branch | Extra fields | Notes |
 |----------------|--------------|-------|
 | Agent not running (`status` ≠ 4) | `agentstatus: <int>` | Returned for every message Wiro doesn't answer itself as a setup reply (see [Replies Wiro handles itself](#handled-setup-replies)). Echoes the agent's current `status` so the caller can decide whether to wait, call `Start`, or surface "Setup Required" UI: `0` Stopped (call `Start`), `1` Stopping, `2` Queued and `3` Starting (wait and retry), `5` Error (call `Start` to retry), `6` Setup Required. With status `1`, the error reads `Agent is stopping. Please wait a moment and try again.` when the agent is shutting down to stay stopped, and `Agent is restarting. Please wait a moment and try again.` when it is shutting down to start again, as in a [restart](/docs/agent-overview#automatic-restart). See [UserAgent Statuses](/docs/agent-overview#useragent-statuses). |
-| AI usage and balance used up | `agentstatus`, `agentusage` | Code `97`: the agent has used the AI usage its plan includes and the balance is under $0.50. `agentusage` is the agent's [`usage`](/docs/agent-overview#usage-object) (`paused: true`, `pausedreason: "balance"`). The message speaks to whoever pays for the agent: surface an "Add funds" action. See [AI Usage and the Balance](/docs/agent-overview#ai-usage-and-the-balance). |
+| Spend limit used up | `agentstatus` | Code `93`: a [spend limit](/docs/spend-limits) that covers the agent is used up: its own limit or, once its plan's included AI usage is used up, the account's or team's limit or the `agent` surface's limit. The message names the limit and when it resets, such as `This agent's monthly spend limit is reached ($20.35 of $20.00). It resets on December 1, 2026 at 00:00 UTC.` It is checked before code `97`, and `agentstatus` is `4` here, so branch on the code. Nothing is queued or charged. When the limits can't be checked at that moment, this branch answers code `0` `Spend limits could not be checked. Try again in a moment.` instead: send the message again shortly. |
+| Agent paused (balance or plan) | `agentstatus`, `agentusage` | Code `97`. `agentusage` is the agent's [`usage`](/docs/agent-overview#usage-object) with `paused: true`, and its `pausedreason` says why. `"balance"`: the agent has used the AI usage its plan includes and the balance is under $0.50. The message speaks to whoever pays for the agent: surface an "Add funds" action. `"plan"`: the agent has no active plan, and the message reads `<Agent name> has no active plan. Choose a plan to keep it running.` Surface a "Choose a plan" action that renews the plan with [`RenewSubscription`](/docs/agent-overview#post-useragentrenewsubscription): adding funds doesn't run it. See [AI Usage and the Balance](/docs/agent-overview#ai-usage-and-the-balance). |
+
+A deleted agent answers code `95`, `User agent not found`, with no extra fields.
 
 ### Unknown or disabled commands
 
@@ -14274,13 +14780,13 @@ Retrieves the current status and content of a single message. You can query by e
 | `debugoutput` | `string` | Accumulated output text. Updated during streaming, contains the full response after completion. |
 | `timeline` | `array` | Ordered turn blocks. Always an array; `[]` means no public blocks were persisted. Merge live deltas by `blockid` and per-block `version`, then sort by call/content order. |
 | `status` | `string` | Current message status (see Message Lifecycle). |
-| `metadata` | `object` | Parsed JSON object (API returns it already decoded). Populated from the agent bridge on `agent_end`. Only `type` and a few keys are returned: on a finished turn (`type: "progressGenerate"`) `task`, `speed`, `speedType`, `elapsedTime`, `tokenCount` and `wordCount`; on a `model_change` marker row `fromModel` and `toModel`; on a `setup_result` row, a [reply Wiro handles itself](#handled-setup-replies), the answer's `next` when it left connectors to connect (as in `setupresult`), and `listed` and `listedfrom` when it was the [card listing](#setup-card-listing): the ids of the cards it showed and the `guid` of the message they are on; on other rows (`system`, `subagent`) usually `type` alone, and in History `systemcost: true` on a row whose cost came from a scheduled or background run. The answer text is in `response` and `timeline`, never in metadata. Empty object `{}` for `agent_error`, `agent_cancel`, or when the bridge hasn't finished yet. Message status lives in the top-level `status` field, so don't read it from `metadata.type`. |
+| `metadata` | `object` | Parsed JSON object (API returns it already decoded). Filled when the turn ends. Only `type` and a few keys are returned: on a finished turn (`type: "progressGenerate"`) `task`, `speed`, `speedType`, `elapsedTime`, `tokenCount` and `wordCount`; on a `model_change` marker row `fromModel` and `toModel`; on a `setup_result` row, a [reply Wiro handles itself](#handled-setup-replies), the answer's `next` when it left connectors to connect (as in `setupresult`), and `listed` and `listedfrom` when it was the [card listing](#setup-card-listing): the ids of the cards it showed and the `guid` of the message they are on; on other rows (`system`, `subagent`) usually `type` alone, and in History `systemcost: true` on a row whose cost came from a scheduled or background run. The answer text is in `response` and `timeline`, never in metadata. A turn that ended with a coded failure, such as `[SPEND_LIMIT_REACHED]` or `[CREDITS_EXHAUSTED]`, keeps `type: "progressGenerate"` and its metrics. Empty object `{}` for `agent_cancel`, for an `agent_error` that cut the turn off, such as `[TURN_INTERRUPTED]`, and while the turn is still running. Message status lives in the top-level `status` field, so don't read it from `metadata.type`: read a turn's outcome from `status` and `response`. |
 | `attachments` | `array` | Always present as an array: empty `[]` for text-only messages. When the message was sent via multipart with files, each entry is a resolved `{url, name, type, size}` object (no further file-lookup needed). Identical shape in `Message/History` rows. |
 | `deletestatus` | `number` | Internal flag. `0` for normal messages. |
 | `createdat` | `number` | Unix timestamp (epoch seconds) when the message was created. |
 | `startedat` | `number` | Unix timestamp (epoch seconds) when the agent started processing. |
 | `endedat` | `number` | Unix timestamp (epoch seconds) when processing completed. May be empty for `agent_cancel` (cancel only sets `status` and `updatedat`). |
-| `inputtokens` | `number\|null` | Uncached input (prompt) tokens billed at the model's input rate. Populated on the assistant turn once it completes; `null` on user-only, cron, legacy, and `model_change` marker rows. |
+| `inputtokens` | `number\|null` | Uncached input (prompt) tokens billed at the model's input rate. Populated on the assistant turn once it completes; `null` on user-only, Scheduled Task, legacy, and `model_change` marker rows. |
 | `outputtokens` | `number\|null` | Billed output (completion) tokens the model generated this turn. `null` on the same non-assistant / marker / legacy rows. |
 | `cachereadtokens` | `number\|null` | Tokens served from the model's prompt cache (billed at the cached-input rate). `0` when the model reported no cache hits; `null` on non-assistant rows. |
 | `cachewritetokens` | `number\|null` | Tokens written to the prompt cache this turn. `0` when none; `null` on non-assistant rows. |
@@ -14318,7 +14824,7 @@ Do not compare `version` across different blocks. Keep a map keyed by `blockid`,
 
 `toolintegration` and `toolaction` say which connector a tool step works in and what the step does, so your app can show "Working in Shopify" or "Taking a screenshot" instead of only the tool's name. Each holds a word from a closed list or `null`, never free text, a host, a URL, a path, or an argument.
 
-`toolintegration` is the `slug` of the connector the step works in, as [`POST /AgentConnector/List`](/docs/agent-connectors#post-agentconnectorlist) lists it, such as `shopify`, `google-ads` or `serper`, or `telegram` for the Telegram channel and `wiro` for Wiro's own tools. Name it in your app by the connector's `title`.
+`toolintegration` is the `slug` of the connector the step works in, as [`POST /AgentConnector/List`](/docs/agent-connectors#post-agentconnectorlist) lists it, such as `shopify`, `google-ads`, `serper` or `wiro` (Wiro AI Models). Channels such as Telegram are not connectors and get no word. Name it in your app by the connector's `title`, and treat a slug the catalog doesn't list like `null`. A step that calls a connector's tool has that tool's name as its `toollabel`, `<slug>__<tool>`, such as `shopify__list_products`.
 
 `toolaction` is one of these words:
 
@@ -14348,7 +14854,7 @@ Two tool blocks from a `timeline[]`:
     "contentindex": 1,
     "type": "tool",
     "text": null,
-    "toollabel": "exec",
+    "toollabel": "shopify__list_products",
     "toolstatus": "completed",
     "toolintegration": "shopify",
     "toolaction": null,
@@ -14536,7 +15042,7 @@ Each assistant row also carries the per-turn token-accounting columns, identical
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `inputtokens` | `number\|null` | Uncached input (prompt) tokens billed at the model's input rate. `null` on user-only, cron, legacy, and `model_change` marker rows. |
+| `inputtokens` | `number\|null` | Uncached input (prompt) tokens billed at the model's input rate. `null` on user-only, Scheduled Task, legacy, and `model_change` marker rows. |
 | `outputtokens` | `number\|null` | Billed output (completion) tokens the model generated. `null` on the same non-assistant / marker / legacy rows. |
 | `cachereadtokens` | `number\|null` | Tokens served from the model's prompt cache. `0` when none; `null` on non-assistant rows. |
 | `cachewritetokens` | `number\|null` | Tokens written to the prompt cache. `0` when none; `null` on non-assistant rows. |
@@ -14625,7 +15131,7 @@ Lists all conversation sessions for an agent. Returns each session's key, messag
 
 > **Named-but-empty sessions appear too.** A session created by [`RenameSession`](#post-useragentmessagerenamesession) before its first `Message/Send` surfaces here with `messagecount: 0`, `lastmessage: ""`, and the `name` you set, so a freshly created chat shows up in the list immediately.
 
-> **Reserved session keys.** The list leaves out the reserved session keys `wiro:api`, `voice-prep*`, `voice-call-*` and `cs-cron-*`. `Message/History` and `DeleteSession` reject them too.
+> **Reserved session keys.** The list leaves out the platform's own threads: `wiro:api` and keys that start with `voice-prep`, `voice-call-` or `cs-cron-`. Every key the platform keeps is listed under [Message/Send](#post-useragentmessagesend).
 
 > **Marker rows excluded.** `model_change` marker rows are not real turns. They're skipped when building this list, so they never surface as a session's `lastmessage`.
 
@@ -14641,7 +15147,7 @@ Deletes messages in the given session for the **calling user**. This action cann
 
 > **Scope of deletion:** Hard delete. The session's messages are removed permanently, not hidden. Only the caller's own messages in the session are purged. This holds in both private and collaborative team modes. Even when `teamsessionmode: "collaborative"` (e.g. Telegram group-shared sessions) means every member sees the same thread, each member's `DeleteSession` only wipes their own contributions. Compare with `Message/Delete` (per-message), which is a soft delete that hides messages instead of removing them.
 
-> **Reserved session keys.** `wiro:api`, `voice-prep*`, `voice-call-*` and `cs-cron-*` are reserved. Passing one of them as `sessionkey` returns `"Session not found"`, and `Sessions` never lists them.
+> **Reserved session keys.** Passing a key the platform keeps for its own threads (see [Message/Send](#post-useragentmessagesend)) as `sessionkey` returns `"Session not found"`.
 
 ### Response
 
@@ -14659,7 +15165,7 @@ Sets a human-readable display **name** on a session without touching its message
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | The agent instance GUID. |
-| `sessionkey` | string | Yes | The session to name. Reserved system keys (`wiro:api`, `voice-prep*`, `voice-call-*`, `cs-cron-*`) are rejected with `"Session not found"`, same as `DeleteSession`. |
+| `sessionkey` | string | Yes | The session to name. Keys the platform keeps for its own threads (see [Message/Send](#post-useragentmessagesend)) are rejected with `"Session not found"`, same as `DeleteSession`. |
 | `name` | string | Yes | The display name. The server strips control characters, collapses whitespace, trims, and caps the result at **40 characters**. An empty string after sanitization is rejected with `request-parameter-required`. |
 
 > **Doubles as "create a named session".** Calling `RenameSession` with a brand-new `sessionkey`, before any `Message/Send` on it, seeds a named-but-empty session that immediately appears in [`Message/Sessions`](#post-useragentmessagesessions) with `messagecount: 0` and `lastmessage: ""`. This is the canonical way to let a user open a fresh, titled chat before they type anything.
@@ -14753,14 +15259,14 @@ On success, the message status changes to `agent_cancel` in the database.
 
 > **Behavior depends on when the cancel hits:**
 >
-> - If the message was **already being processed** by the agent bridge (status `agent_start` or `agent_output`), the bridge's abort handler fires: subscribed WebSocket clients receive an `agent_cancel` event, `debugoutput` / `response` are set to `[REQUEST_CANCELLED] Request cancelled.`, and the `callbackurl` webhook (if set) is triggered with `status: "agent_cancel"`.
+> - If the turn had **already started** (status `agent_start` or `agent_output`), it is stopped: subscribed WebSocket clients receive an `agent_cancel` event, `debugoutput` / `response` are set to `[REQUEST_CANCELLED] Request cancelled.`, and the `callbackurl` webhook (if set) is triggered with `status: "agent_cancel"`.
 > - If the message was **still queued** (status `agent_queue`) when cancelled, no processing attempt had started: the row is marked `agent_cancel`, [Message/Detail](#post-useragentmessagedetail) and [Message/History](#post-useragentmessagehistory) return `[REQUEST_CANCELLED] Request cancelled.` for it, **no WebSocket `agent_cancel` event** is broadcast, and **no webhook** is triggered.
 >
 > When polling for the final state, check `status === "agent_cancel"`.
 
 ## Setup From Chat
 
-An agent can help the people who run it set it up in the chat: turn a skill on or off, connect a connector (with its key, its vendor's sign-in or, for the `wiro` connector, a Wiro project), disconnect one, create or change a scheduled task, create or change a custom skill, add to one or undo its last change, or change its time zone. The agent never changes its own setup and never sees a key. It proposes the change as a **setup card**: Wiro checks the card against the agent's current setup and stores it on the message that asked for it, where it shows as a `setup` block in that message's `timeline[]`. Nothing changes until an agent admin (the owner, or an admin of the agent's team) approves the card.
+An agent can help the people who run it set it up in the chat: turn a skill on or off, connect a connector (with its key, its vendor's sign-in or, for the Wiro AI Models connector (`wiro`), a Wiro project), disconnect one, create or change a scheduled task, create or change a custom skill, add to one or undo its last change, or change its time zone. The agent never changes its own setup and never sees a key. It proposes the change as a **setup card**: Wiro checks the card against the agent's current setup and stores it on the message that asked for it, where it shows as a `setup` block in that message's `timeline[]`. Nothing changes until an agent admin (the owner, or an admin of the agent's team) approves the card.
 
 Where cards can be proposed and approved is the agent's `chatsetup` setting. Set it with [`UpdateSettings`](/docs/agent-overview#post-useragentupdatesettings) or at [`Deploy`](/docs/agent-overview#post-useragentdeploy), and read it back as `chatSetup` on [`UserAgent/Detail`](/docs/agent-overview#post-useragentdetail):
 
@@ -14777,6 +15283,8 @@ Messages from Telegram, Slack or Discord never get or approve a card, whatever t
 > **Setup cards in your own chat.** To show the cards, their connect steps and restarts in your own product, follow [Agent Chat Integration](/docs/agent-chat-integration).
 
 > **Studio and the Workflow Agent.** Setup from chat is always off for them. Each one runs on one setup shared by everyone who uses it, so they never propose setup cards, and their connectors, skills and scheduled tasks are fixed. Asked to remember a rule or to do something on a schedule, they say so in one sentence and help with the request once, as a one-time task.
+
+<a id="setup-blocks"></a>
 
 ### The setup block
 
@@ -14824,7 +15332,7 @@ A pending `connect` card's block also has `next`, beside `setup`: one entry `{ c
 | `key` | `string` | `add`, `remove`, `schedule` and `skill` only. On `add` and `remove`: the name of one skill (`util-<name>`) as [`POST /Skills/List`](/docs/agent-skills#post-skillslist) lists it, up to 64 characters, for example `util-weather`; see [Adding and removing skills](#setup-add-remove-cards). On `schedule` and `skill`: the scheduled task's key (`cs-cron-<name>`) or the custom skill's key (`cs-<name>`). |
 | `title` | `string` | On `connect` and `disconnect`: the connector's title, written by Wiro, up to 120 characters. On `schedule` and `skill`: optional, one line, up to 80 characters. |
 | `authtype` | `string` | `connect` only, written by Wiro: the connector's `authtype` in the catalog, `fields`, `headers`, `none`, `oauth` or `provider-oauth`. |
-| `mode` | `string` | `connect` only, written by Wiro: `key` (the card takes the values in `fields`), `signin` (the card opens the vendor's sign-in) or `project` (the card picks a Wiro project for the `wiro` connector). `oauth` and `provider-oauth` connectors sign in, the `wiro` connector takes a project, and the others take a key. See [Connecting a connector](#setup-signin-cards). |
+| `mode` | `string` | `connect` only, written by Wiro: `key` (the card takes the values in `fields`), `signin` (the card opens the vendor's sign-in) or `project` (the card picks a Wiro project for the Wiro AI Models connector, `wiro`). `oauth` and `provider-oauth` connectors sign in, Wiro AI Models takes a project, and the others take a key. See [Connecting a connector](#setup-signin-cards). |
 | `fields` | `object[]` | `connect` only, written by Wiro: what the card's form asks for, at most 30, in the shape of `credentialfields` on [`AgentConnector/Detail`](/docs/agent-connectors#connect-card-fields) (`name`, `label`, Markdown `description`, `required`, `secret`, `format`, and `options`, `placeholder`, `pattern`, `maxlength`, `serveronly`, `mode` or `source` where they apply). A `key` card has the connector's Connect fields. A `project` card has one field with `source: "wiro_project"`: a project picker, never an input. A `signin` card has the fields its sign-in takes: for a connector that signs in with an app of your own, that app's keys (`serveronly: true`), never the fields of its key way. |
 | `wiroapp` | `boolean` | `connect` only, written by Wiro and only on a card from a Wiro web chat turn: `true` when the connector signs in there with Wiro's own app, so the card needs no app keys. Never on a card from a message sent with a project API key. |
 | `cron` | `string` | `schedule` only: always on `create`, optional on `update`. A 5-field cron in the agent's time zone. A task set up from chat runs at most once an hour. |
@@ -14843,6 +15351,8 @@ A pending `connect` card's block also has `next`, beside `setup`: one entry `{ c
 | `createdat` | `number` | Unix seconds when the agent proposed the change. |
 
 Fields that don't apply to a card's kind are absent. More kinds, actions and modes can be added later, so skip a card whose `kind` or `action` you don't know, and offer only Dismiss on a `connect` card whose `mode` you don't know.
+
+<a id="setup-skill-cards"></a>
 
 ### Changing a custom skill
 
@@ -14878,13 +15388,15 @@ End every post with three questions readers ask, each with a two-sentence answer
 
 Wiro applies a card that has `before` only while the skill still holds that text. When the skill's text no longer matches `before` as the card is applied, for example because someone edited the skill on the agent page after the card was made, nothing changes and the card fails with `This skill changed after the card was made. Ask the agent again.`
 
+<a id="setup-add-remove-cards"></a>
+
 ### Adding and removing skills
 
 An `add` card turns on one skill (`util-<name>`) that the agent doesn't have, and a `remove` card turns off one it has, as the agent page does. `key` holds its name as [`POST /Skills/List`](/docs/agent-skills#post-skillslist) lists it, one name per card. A change costs nothing: every plan includes every skill, so the plan's price and included AI usage stay the same. Cards work on agents deployed from a template and on custom builds, and once a card is applied, the agent restarts to load the change. Connectors are not turned on or off: a connected connector is on, and a [`disconnect` card](#setup-disconnect-cards) disconnects it.
 
 A change can turn on or off more than its `key`, so Wiro works out the rest and writes it on the card, and the person who approves sees the whole change. The agent never writes these fields: a proposal that sends them has them dropped.
 
-- **`with`**: on an `add`, the skills `key` depends on (`depends_on` in Skills/List) that aren't on yet, which are turned on with it. On a `remove`, the linked partners the agent page turns off together with it (removing `util-video-creator` also turns off `util-motion-effects`), and the supporting parts (`user_invocable: false`) that nothing left on still needs.
+- **`with`**: on an `add`, the skills `key` depends on (`depends_on` in Skills/List) that aren't on yet, which are turned on with it. On a `remove`, the linked partners the agent page turns off together with it (removing Video Creator (`util-video-creator`) also turns off Motion Effects (`util-motion-effects`)), and the supporting parts (`user_invocable: false`) that nothing left on still needs.
 - **`pauses`** and **`resumes`**: the scheduled tasks that stop running, or run again, because a skill they use goes off or comes back on. A paused task keeps its text and schedule.
 - **`needs`**: on an `add`, the connectors the change works with that aren't connected yet. Each gets a `connect` card, as below.
 
@@ -14916,9 +15428,11 @@ Wiro refuses an `add` or `remove` card with one plain sentence when:
 - it would change too much at once for a chat card: more than 12 skills in `with`, or more than 20 scheduled tasks in `pauses` or `resumes`. The sentence reads `<Title> changes too many connectors, skills or scheduled tasks at once for a chat card. Change it in the agent's settings.`;
 - two skills that can't be on together (`conflicts_with`) would both be on;
 - the `remove` would take away something that skills staying on need: remove those first, or keep it;
-- voice calls would be left without a channel: with `util-voice-receptionist` on, the Twilio Voice channel (`util-twilio-channel`) or the Web Voice channel (`util-web-channel`) must be on.
+- voice calls would be left without a channel: with Voice Receptionist Rules (`util-voice-receptionist`) on, Twilio Voice Channel (`util-twilio-channel`) or Web Voice Channel (`util-web-channel`) must be on.
 
 A card refused as the agent proposes it is never stored. A card refused as it is applied changes nothing and fails, with the sentence in `error`.
+
+<a id="setup-add-and-connect"></a>
 
 ### Adding and connecting in one step
 
@@ -14929,9 +15443,129 @@ An `add` card can finish its `connect` card's step itself, so both apply with on
 
 `setup` is the `add` card after the call, `summary` names both changes, such as `Google Play Promotional Content added. Google Play Console connected.`, and `paired` holds the `connect` card's outcome as `[{ setup, result, error }]`.
 
+An `add` card for Google Play Promotional Content (`util-googleplay-events`), applied with the values of its Google Play Console (`google-play`) `connect` card:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+    "cardid": "g7p2l4y9e1vd",
+    "action": "apply",
+    "values": { "serviceaccountjson": { "type": "service_account", "client_email": "play-agent@your-project.iam.gserviceaccount.com", "private_key": "YOUR_PRIVATE_KEY" } }
+  }'
+```
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "setup": {
+    "v": 1,
+    "id": "g7p2l4y9e1vd",
+    "kind": "add",
+    "key": "util-googleplay-events",
+    "needs": [{ "connector": "google-play", "title": "Google Play Console", "mode": "key" }],
+    "requestedby": "ada-uuid",
+    "createdat": 1743350406,
+    "status": "applied",
+    "actedat": 1743350460,
+    "actedby": "ada-uuid"
+  },
+  "restarting": true,
+  "summary": "Google Play Promotional Content added. Google Play Console connected.",
+  "paired": [
+    {
+      "setup": {
+        "v": 1,
+        "id": "c5k8w3n1r6tf",
+        "kind": "connect",
+        "connector": "google-play",
+        "title": "Google Play Console",
+        "authtype": "fields",
+        "mode": "key",
+        "fields": [
+          { "name": "serviceaccountjson", "label": "Service Account JSON", "description": "1. Go to [Google Cloud Console → IAM & Admin → Service Accounts](https://console.cloud.google.com/iam-admin/serviceaccounts) ...", "required": true, "secret": true, "format": "json" }
+        ],
+        "requestedby": "ada-uuid",
+        "createdat": 1743350406,
+        "status": "applied",
+        "actedat": 1743350460,
+        "actedby": "ada-uuid"
+      },
+      "result": true,
+      "error": null
+    }
+  ]
+}
+```
+
+`next` is absent: the pair connected the only connector the card needed. With `signin: true` the answer has the same shape. Store Review Response Rules (`util-store-review-response`), on an agent that already has App Store Connect and Google Play Console connected, needs only Google Business Profile, which signs in. Sent with `signin: true` before the browser is back from the sign-in, it applies nothing:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "messageguid": "e6f7a8b9-c0d1-2345-f678-90123456789a",
+    "cardid": "s2r6v9b4m8qa",
+    "action": "apply",
+    "signin": true
+  }'
+```
+
+```json
+{
+  "result": false,
+  "errors": [
+    { "code": 0, "message": "Google Business Profile is not connected yet. Finish the sign-in on the card first.", "time": 1743350460 }
+  ],
+  "setup": {
+    "v": 1,
+    "id": "s2r6v9b4m8qa",
+    "kind": "add",
+    "key": "util-store-review-response",
+    "needs": [{ "connector": "google-business", "title": "Google Business Profile", "mode": "signin" }],
+    "requestedby": "ada-uuid",
+    "createdat": 1743350406
+  },
+  "restarting": false,
+  "summary": "",
+  "errorcode": "not_connected",
+  "paired": [
+    {
+      "setup": {
+        "v": 1,
+        "id": "b3t7q1x5n9we",
+        "kind": "connect",
+        "connector": "google-business",
+        "title": "Google Business Profile",
+        "authtype": "provider-oauth",
+        "mode": "signin",
+        "fields": [
+          { "name": "clientid", "label": "OAuth Client ID", "description": "1. In [Google Cloud Console](https://console.cloud.google.com/), create a project (or pick one) ...", "required": true, "secret": false, "format": "text", "placeholder": "123-abc.apps.googleusercontent.com", "maxlength": 200, "serveronly": true, "mode": "oauth" },
+          { "name": "clientsecret", "label": "OAuth Client Secret", "description": "Google shows the **Client secret** only once ...", "required": true, "secret": true, "format": "password", "maxlength": 200, "serveronly": true, "mode": "oauth" }
+        ],
+        "requestedby": "ada-uuid",
+        "createdat": 1743350406
+      },
+      "result": false,
+      "error": "Google Business Profile is not connected yet. Finish the sign-in on the card first."
+    }
+  ]
+}
+```
+
+Once the browser is back, the same call answers `result: true`, `summary` `Store Review Response Rules added. Google Business Profile connected.` and `paired[0].result: true`.
+
 When the `add` card fails as it is applied, the `connect` card stays pending, and its `error` in `paired` reads `<Connector title> is not connected: <Title> was not added.` (with a key: nothing was saved) or `<Connector title> is connected, but <Title> was not added.` (with a sign-in: the connection stays). When the `add` card has no pending `connect` card to take the values, Wiro answers `This card takes no key. Apply it without one.`, and when more than one has, `This card brings more than one key. Apply it, then add each key on its own card.` With `signin: true`, the same cases answer `This card has no sign-in to finish. Apply it without one.` (`errorcode: "signin_no_pair"`) and `This card brings more than one sign-in. Apply it, then connect each on its own card.` (`errorcode: "signin_many"`). `values` and `signin` together answer `Send values or signin, not both.` In each case nothing changes and the cards stay pending.
 
 **In messages sent with a project API key.** When the only pending cards of the agent's latest reply are an `add` card and its `connect` card, and the key is all that is needed, the [card listing](#setup-card-listing) ends by offering the key as the reply, and once Wiro has listed the `add` card, the key pasted as the reply applies both cards at once. A key sent before Wiro has listed the `add` card saves nothing: the stored message reads `[key removed]` in its place, and Wiro answers with the listing.
+
+<a id="setup-signin-cards"></a>
 
 ### Connecting a connector
 
@@ -14939,7 +15573,7 @@ A `connect` card connects one connector of the catalog, with the checks and the 
 
 - **`mode: "key"`**: the connector's values. Apply the card with `values`, or paste the key as the reply when the card has one secret field. A card with no required field is applied by a `yes` too. A refused value saves nothing and leaves the card pending.
 - **`mode: "signin"`**: the vendor's sign-in. Applying the card with your `redirecturl`, and the keys of your own app in `values` for a connector that signs in with one, answers `authorizeUrl`. The card stays pending until the connector reads connected; the next apply of it, or any card of the same person's applied or dismissed in that chat, records it applied. A typed reply never starts a sign-in. A card from a message sent with a project API key signs in as the key's owner: the consent screen names your organization, or the app of your own whose keys you send. Only a card from a Wiro web chat turn can sign in with Wiro's own app, and it says so with `wiroapp: true`.
-- **`mode: "project"`**: a Wiro project, for the `wiro` connector. Apply the card with the id of one of your projects as `wiroprojectguid`, and no `values`: it becomes the agent's own Wiro project, as [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) binds it and with the same checks (see [The Wiro connector](/docs/agent-connectors#the-wiro-connector)). Without one, a request made with a project API key binds that key's own project, and the Wiro web chat keeps the agent's own project when it has one in its workspace; otherwise the card stays pending with `Pick a project on the card to connect <Title>.` A typed reply never applies it, and a key pasted as the reply never goes to it.
+- **`mode: "project"`**: a Wiro project, for the Wiro AI Models connector (`wiro`). Apply the card with the id of one of your projects as `wiroprojectguid`, and no `values`: it becomes the agent's own Wiro project, as [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) binds it and with the same checks (see [The Wiro connector](/docs/agent-connectors#the-wiro-connector)). Without one, a request made with a project API key binds that key's own project, and the Wiro web chat keeps the agent's own project when it has one in its workspace; otherwise the card stays pending with `Pick a project on the card to connect <Title>.` A typed reply never applies it, and a key pasted as the reply never goes to it.
 
 A `signin` card for HubSpot, which signs in with an app of your own:
 
@@ -14963,9 +15597,13 @@ A `signin` card for HubSpot, which signs in with an app of your own:
 
 The agent never sees a key, a token or an account list. A connector's account pickers are chosen after it connects, with [`ConnectorSetAccounts`](/docs/agent-connectors#post-useragentconnectorsetaccounts): no card picks accounts. The whole flow, every request and answer included, is in [Agent Chat Integration](/docs/agent-chat-integration#connecting-a-connector).
 
+<a id="setup-disconnect-cards"></a>
+
 ### Disconnecting a connector
 
-A `disconnect` card disconnects a connector, as [`ConnectorDisconnect`](/docs/agent-connectors#post-useragentconnectordisconnect) does: Wiro asks the vendor to revoke a sign-in where it can, and deletes the connection. It names the connector in `connector`, carries its `title`, and never holds a value. Once it is applied, the agent restarts without the connector's tools until it is connected again. Wiro takes a `disconnect` card only for a connector the agent has a connection for; when the connection is gone by the time the card is applied, the card fails with `<Title> is not connected.` Channels (Telegram, Slack or Discord) are refused, and they are changed outside the chat, with the credential endpoints or on the agent page. A `disconnect` card for the `wiro` connector removes the connector only: the agent keeps its Wiro project. A `yes` applies a `disconnect` card as it does any card that needs no values.
+A `disconnect` card disconnects a connector, as [`ConnectorDisconnect`](/docs/agent-connectors#post-useragentconnectordisconnect) does: Wiro asks the vendor to revoke a sign-in where it can, and deletes the connection. It names the connector in `connector`, carries its `title`, and never holds a value. Once it is applied, the agent restarts without the connector's tools until it is connected again. Wiro takes a `disconnect` card only for a connector the agent has a connection for; when the connection is gone by the time the card is applied, the card fails with `<Title> is not connected.` Channels (Telegram, Slack or Discord) are refused, and they are changed outside the chat, with the credential endpoints or on the agent page. A `disconnect` card for Wiro AI Models (`wiro`) removes the connector only: the agent keeps its Wiro project. A `yes` applies a `disconnect` card as it does any card that needs no values.
+
+<a id="approving-setup-cards"></a>
 
 ### Approving a setup card
 
@@ -14987,6 +15625,8 @@ A number works only for a card Wiro has listed: `yes 2` sent before the listing 
 
 Wiro applies the stored card, checked again against the agent's current setup, never anything written in the reply. A card is applied at most once. Whenever a card is applied, dismissed or fails, Wiro also marks `applied` the same person's pending `connect` cards in that chat from the last 7 days whose connectors now read connected: the one just connected, and any whose sign-in finished or that were connected elsewhere. `setup` and `setupresult` name only the card you acted on; History and Detail show the others. Only an agent admin can apply a card: a reply from anyone else changes nothing and gets `Only an agent admin can apply setup changes.` When a change needs a restart, the agent restarts to load it: continue the chat in about a minute. Replies Wiro handles itself don't have to wait for it; see [Replies Wiro handles itself](#handled-setup-replies). Cards that restart a starting or running agent: `add`, `remove`, `connect`, `disconnect` and `timezone` cards, a `schedule` or `skill` card that creates one, a `schedule` card that changes the `cron`, and `pause`, `resume`, `delete`, `disable` and `enable` cards. A card that changes only the text of a custom skill or scheduled task (`append`, `revert`, or an `update` that keeps the schedule) reaches a running agent without a restart, and `restarting` is `false`; if the agent can't take the new text, Wiro restarts it instead.
 
+<a id="setup-card-listing"></a>
+
 ### The card listing
 
 When a `yes` can't apply a card yet, Wiro answers it with the exact content of the pending cards and applies nothing. Each card has a number, its place on the agent's reply (1 to 3), a first line that says what it does, and the text it carries, each line starting with `> `. For one card, `response` reads:
@@ -15001,7 +15641,7 @@ Instructions:
 Reply "yes" to apply exactly this change, or "no" to turn it down.
 ```
 
-An `append` card's first line reads `Card 1: Add to custom skill <key>.`, followed by only the text it adds. A `revert` card's first line reads `Card 1: Undo the last change to custom skill <key>.`, followed by the text it restores. A `disconnect` card has one line: `Card 1: Disconnect <Connector> (what was saved to connect it is removed).`
+An `append` card's first line reads `Card 1: Add to custom skill <title>.`, followed by only the text it adds. A `revert` card's first line reads `Card 1: Undo the last change to custom skill <title>.`, followed by the text it restores. `<title>` is the skill's title, or its key when it has none. A `disconnect` card has one line: `Card 1: Disconnect <Connector> (what was saved to connect it is removed).`
 
 An `add` or `remove` card names what it changes by title, never by key. Its first line is `Card 1: Add <Title> (skill).` or `Card 1: Remove <Title> (skill).`, and only the lines that apply follow it: `Also turns on: <titles>.`, `Also turns off: <titles>.`, `Scheduled tasks that pause: <titles>.`, `Scheduled tasks that run again: <titles>.` and `Still to connect: <titles>.` A `connect` card that takes values, signs in or picks a project isn't listed: it waits for its values, its sign-in or its project. One that needs no values is listed as `Card 1: Connect <Connector>.` When a message sent with a project API key gets the listing while the only pending cards are an `add` card and its `connect` card, and the key is all that is needed, the listing's last line offers the key as the reply instead: `Reply with your <Connector title> key to add <Title> and connect it at once, "yes" to add it now and give the key later, or "no" to turn it down.` See [Adding and connecting in one step](#setup-add-and-connect).
 
@@ -15014,6 +15654,8 @@ While setup from chat is on for a message, Wiro keeps keys out of the agent's co
 - **A key as the reply.** When the agent's latest reply has one pending `connect` card and it is a `key` card with one secret field (never a `project` card), an agent admin can paste the key as the reply, a text message of up to 2,000 characters with no attachments. Wiro takes the reply as the key when it is in that connector's own key format, when the whole message is one key-like word, or when the key follows a word such as `key` or `token` (`my key is ...`). A sentence that only holds an id, a URL, an email address or a plain word is an ordinary message, and the card stays pending. Wiro saves the key to the connector, as the card would, and marks the card applied. The key never reaches the agent, and the stored message reads `[key saved to <Connector title>]` in its place. A key the connector refuses, or one for a connector that needs more than its key, saves nothing, and the answer says why. A key in another service's format is not saved; see [Wiro's answers](#setup-reply-lines). In a message sent with a project API key, when the only pending cards are that `connect` card and its `add` card, and the key is all that is needed, the key applies both cards once Wiro has listed the `add` card, and a key sent before that gets the listing. See [Adding and connecting in one step](#setup-add-and-connect).
 - **Keys in other messages.** Wiro removes clear keys: a key format Wiro knows for a provider or connector, and a key written after a word such as `key`, `token`, `secret` or `password`. The stored text and the text the agent gets hold `[key removed]` in their place, and Send returns `contentmasked: true` with that text in `content`. The agent can then propose a `connect` card. Other ids, such as Google Sheet and Drive ids, commit hashes and order numbers, reach the agent unchanged. While a `connect` card of the latest reply waits for its key, every key-like word in any other text message of up to 2,000 characters is removed without being saved.
 - From your own backend, connect a connector with [`POST /UserAgent/ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect), or save a channel's key with [`POST /UserAgent/CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert), instead of sending them in a message.
+
+<a id="handled-setup-replies"></a>
 
 ### Replies Wiro handles itself
 
@@ -15048,6 +15690,8 @@ When Wiro handles a message itself (a `yes` that applies a card or gets the [car
 The message is stored like any finished exchange: Message/Detail and Message/History return it with `status: "agent_end"`, `metadata.type: "setup_result"` and `model: null`. Its `metadata` also keeps `next` when the answer has one, the same as in `setupresult`, and, for a [card listing](#setup-card-listing), `listed` and `listedfrom`: the ids of the cards the listing showed and the `guid` of the message they are on. A chat you load again later can still show what is left to connect. When the Send has a `callbackurl`, Wiro posts the result to it right away with `status: "agent_end"`, as for a finished turn, and its `metadata` holds `type: "setup_result"`, `cards` (the ids of the cards it acted on) and, when there is one, the same `next` as `setupresult`; see [Agent Webhooks](/docs/agent-webhooks).
 
 A card applied while the agent is stopped doesn't start it: the agent loads the change the next time it starts, and `restarting` is `false`. While the agent isn't running, every message Wiro doesn't answer itself gets the [not-running refusal](#failure-responses) with `agentstatus`, a message with attachments or over 2,000 characters included.
+
+<a id="setup-reply-lines"></a>
 
 ### Wiro's answers
 
@@ -15087,7 +15731,7 @@ Applies or dismisses one setup card, starts a `signin` card's sign-in, or applie
 | `values` | object | No | `connect` cards, and `add` cards whose `needs` has one pending `key` card: `{ "<name>": value }` for the card's `fields`, as the connector's `credentialfields` on [`POST /AgentConnector/Detail`](/docs/agent-connectors#post-agentconnectordetail) list them. On a `key` card, its Connect fields; on a `signin` card, the fields its sign-in takes, such as your own app's keys. Wiro checks them as [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect) does: required fields, `format`, `pattern` and `maxlength` (see [Connect card fields](/docs/agent-connectors#connect-card-fields) for the limits), and a `json` field also takes an object. On an `add` card they are the values of its `key` card, and Wiro applies both cards in one step; see [Adding and connecting in one step](#setup-add-and-connect). Wiro saves them to the connector; they are never returned and never reach the agent. |
 | `signin` | boolean | No | `add` cards whose `needs` has one pending `signin` card: `true` once that card's sign-in connected the connector, to apply both cards in one step. Not together with `values`. |
 | `redirecturl` | string | No | `signin` cards: where the browser comes back after the sign-in, as on [`ConnectorConnect`](/docs/agent-connectors#the-redirect-url). Without one, the browser comes back to Wiro's own return page on wiro.ai. |
-| `wiroprojectguid` | string | No | `project` cards, the `wiro` connector's: the id of one of your projects, from [`POST /Project/List`](/docs/projects). It becomes the agent's own Wiro project, as [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) binds it. A request made with a project API key may leave it out, to bind that key's own project. |
+| `wiroprojectguid` | string | No | `project` cards, those of the Wiro AI Models connector (`wiro`): the id of one of your projects, from [`POST /Project/List`](/docs/projects). It becomes the agent's own Wiro project, as [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) binds it. A request made with a project API key may leave it out, to bind that key's own project. |
 
 **Permission**: applying needs an agent admin (the owner, or an admin of the agent's team). Any member who can see the chat can dismiss. The message must be one you can read with [Message/History](#post-useragentmessagehistory) (in private Chat Mode, your own messages), and the card must be pending: an applied or dismissed card is never applied again.
 
@@ -15326,7 +15970,7 @@ POST /UserAgent/Message/Detail { "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb" 
 
 ### 3. Webhook Callback
 
-Pass a `callbackurl` when sending the message. The system will POST the final result to your URL when the agent finishes (up to 3 retry attempts):
+Pass a `callbackurl` when sending the message. The system will POST the final result to your URL when the agent finishes (up to 3 tries in all, 2 seconds apart; any 2xx answer counts as delivered; see [Agent Webhooks](/docs/agent-webhooks)):
 
 ```json
 {
@@ -15818,7 +16462,7 @@ A single WebSocket connection can hold subscriptions to multiple agent sessions 
 WS connect              →  { "type": "connected", "version": "1.0" }
 { agent_info, token: A } →  { agent_subscribed ... token: A }
 { agent_info, token: B } →  { agent_subscribed ... token: B }
-{ agent_info, token: A } →  (no-op — already subscribed)
+{ agent_info, token: A } →  { agent_subscribed ... token: A }  (a fresh snapshot; still one subscription)
 ```
 
 After this, every server-side event for either token is forwarded to this connection. All events carry the `agenttoken` field, so your handler can route them back to the right UI surface.
@@ -15847,15 +16491,15 @@ Frames flow in two directions. `↓` = server → client, `↑` = client → ser
 | ↓ | `agent_end` | Terminal success event. Same payload shape as `agent_output` but contains the final complete text with total metrics. Emits at most once. |
 | ↓ | `agent_error` | Terminal failure event. `message` is a plain string: the turn's coded failure message, the same text `response` holds (see [Failed turns](/docs/agent-messaging#failed-turns)). Emits at most once. |
 | ↓ | `agent_cancel` | Terminal cancel event. Fires **only** when an already-active message is aborted mid-stream (via `Message/Cancel` or upstream abort). Cancels against a still-queued message do **not** broadcast this event, so check `Message/Detail` for those. Emits at most once. |
-| ↓ | `agent_usage_report` | Post-terminal usage/billing frame. Fires once, ~250-500 ms after a successful `agent_end`, on the same `agenttoken`. Carries the final token counts, `model` and `tokencost` for the message identified by `messageguid`. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns); follow those on the [run stream](#following-an-agents-background-runs). |
-| ↓ | `agent_wiroai_runtask` | Model-run discovery frame. Fires whenever the agent itself launches a Wiro model run during a turn (e.g. generating an image or video for a skill or through the `wiro` connector). Arrives on the `agenttoken` of the turn that launched the run, carrying the new task's `socketaccesstoken` so you can subscribe to that run's `task_*` lifecycle and collect its outputs. See [Model runs the agent triggers](#model-runs-the-agent-triggers). |
+| ↓ | `agent_usage_report` | Post-terminal usage/billing frame. Fires once, ~250-500 ms after a successful `agent_end`, on the same `agenttoken`. Carries the final token counts, `model` and `tokencost` for the message identified by `messageguid`. Not emitted for replayed usage callbacks or for runs with no chat message, such as Scheduled Task runs; follow those on the [run stream](#following-an-agents-background-runs). |
+| ↓ | `agent_wiroai_runtask` | Model-run discovery frame. Fires whenever the agent itself launches a Wiro model run during a turn (e.g. generating an image or video for a skill or through the Wiro AI Models connector, `wiro`). Arrives on the `agenttoken` of the turn that launched the run, carrying the new task's `socketaccesstoken` so you can subscribe to that run's `task_*` lifecycle and collect its outputs. See [Model runs the agent triggers](#model-runs-the-agent-triggers). |
 | ↑ | `agent_session_subscribe` | Follow a session with the `sessiontoken` from `Message/History`. See [Following a session](#following-a-session). |
 | ↓ | `agent_session_subscribed` | Session follow acknowledged. |
 | ↓ | `agent_message_inserted` | A message was added to a followed session between turns (a scheduled report, files sent after an answer, the result of background work). Carries the `sessiontoken` and the new row in `message`. |
 | ↑ | `agent_session_unsubscribe` | Stop following a session. No reply. |
 | ↑ | `agent_run_subscribe` | Follow an agent's background runs and model runs with the `runstreamtoken` from `POST /UserAgent/RunStreamToken`. See [Following an agent's background runs](#following-an-agents-background-runs). |
 | ↓ | `agent_run_subscribed` | Run stream follow acknowledged. Carries `expiresat` and the agent's open runs (`runs`) and model runs (`models`). |
-| ↓ | `agent_run_start` | A background run started: a Scheduled Task, a sub-agent, or another run with no chat message. Once per run. |
+| ↓ | `agent_run_start` | A background run started: a Scheduled Task, work the agent moved to the background, or another run with no chat message. Once per run. |
 | ↓ | `agent_run_block` | One step of an open background run changed. Carries one public block with `text: null`. |
 | ↓ | `agent_run_end` | A background run ended, with `ok`, `reason`, `durationms`, and `endedat`. Once per run. |
 | ↓ | `agent_run_model_start` | The agent started a Wiro model run, in a chat turn or a background run. Once per model run. |
@@ -15895,7 +16539,7 @@ The **control frames** (`connected`, `error`) use a different shape with no `age
 
 Run stream frames (`agent_run_*`) and their two errors carry `useragentguid` instead of an `agenttoken`; see [Following an agent's background runs](#following-an-agents-background-runs).
 
-The `agent_subscribed` frame is a snapshot rather than a `message` wrapper. For a known token it carries `status`, `debugoutput`, `messageguid`, and `timeline` at the top level. When the token is unknown, `status` is `"unknown"` and those row-backed fields are omitted.
+The `agent_subscribed` frame is a snapshot rather than a `message` wrapper. For a known token it carries `status`, `debugoutput`, `messageguid`, and `timeline` at the top level. When the token is unknown, `status` is `"unknown"`, `timeline` is `[]`, and `debugoutput` and `messageguid` are left out.
 
 ### agent_subscribed
 
@@ -15923,8 +16567,9 @@ Sent immediately after the server accepts your subscription. The `status` field 
 ```json
 {
   "type": "agent_subscribed",
-  "agenttoken": "wrongtoken123",
+  "agenttoken": "Xy7Lm2Vq9Tb4Np8Rk1Wc6Hz3Fd5Gs0",
   "status": "unknown",
+  "timeline": [],
   "result": true
 }
 ```
@@ -16019,10 +16664,53 @@ The complete public block shape is `blockid`, `callindex`, `contentindex`, `type
 
 When the agent proposes a setup change, a `setup` block arrives the same way. It sorts after the turn's other blocks, its `text` is `null` and it carries a `setup` object instead of tool fields; see [Setup From Chat](/docs/agent-messaging#setup-from-chat). A pending card's block has `version` 1. When the card is applied, dismissed or fails, the block comes again with `version` 2 and the new `status`; `Message/Detail` and `Message/History` always have the current state. A pending `connect` card's block also carries `next`, the connector it connects, as `[{ connector, title, mode }]`.
 
+A pending `connect` card as it arrives:
+
+```json
+{
+  "type": "agent_timeline_delta",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "message": {
+    "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+    "block": {
+      "blockid": "s:k3v9q2m8x1za",
+      "callindex": 1000000,
+      "contentindex": 0,
+      "type": "setup",
+      "text": null,
+      "setup": {
+        "v": 1,
+        "id": "k3v9q2m8x1za",
+        "kind": "connect",
+        "connector": "serper",
+        "title": "Serper",
+        "authtype": "fields",
+        "mode": "key",
+        "fields": [
+          { "name": "apikey", "label": "Serper API Key", "description": "Real Google web-search results as clean JSON, via [Serper.dev](https://serper.dev) ...", "required": true, "secret": true, "format": "password", "placeholder": "your Serper.dev API key" }
+        ],
+        "requestedby": "ada-uuid",
+        "createdat": 1743350406
+      },
+      "next": [{ "connector": "serper", "title": "Serper", "mode": "key" }],
+      "phase": "end",
+      "version": 1,
+      "startedat": 1743350406,
+      "updatedat": 1743350406
+    }
+  },
+  "result": true
+}
+```
+
+Once the card is acted on, the same `blockid` comes again with `"version": 2`, its `setup.status` (`applied`, `dismissed` or `failed`) and `setup.actedat`, and without `next`.
+
 Tool blocks carry two closed-list words:
 
-- `toolintegration` names the connector the step works in, as its `slug` from [`POST /AgentConnector/List`](/docs/agent-connectors#post-agentconnectorlist), such as `shopify`, `google-ads` or `serper`, or `telegram` for the Telegram channel and `wiro` for Wiro's own tools. Name it in your app by the connector's `title`.
+- `toolintegration` names the connector the step works in, as its `slug` from [`POST /AgentConnector/List`](/docs/agent-connectors#post-agentconnectorlist), such as `shopify`, `google-ads`, `serper` or `wiro` (Wiro AI Models). Channels such as Telegram are not connectors and get no word. Name it in your app by the connector's `title`.
 - `toolaction` names what the step does: `screenshot`, `open-page`, `read-page`, `click`, `type`, `press-key`, `wait`, `upload`, `download`, `read-file`, or `edit-media`.
+
+A step that calls a connector's tool is labelled with that tool's name, `<slug>__<tool>`, such as `shopify__list_orders` or `wiro__run_model`. The label is display text: read the connector from `toolintegration`.
 
 Each is `null` when no word fits, and a block never has both. The words come with the block's first update, and every later update of the block carries them. A later update can carry a different word if the step changed, so read them from the newest version of the block. A block whose step is rewritten and no longer fits a word keeps its last word. Treat a value you don't know like `null`; [Agent Messaging](/docs/agent-messaging#tool-integration-and-action-values) says what each word means.
 
@@ -16040,7 +16728,7 @@ A tool block update:
       "contentindex": 1,
       "type": "tool",
       "text": null,
-      "toollabel": "exec",
+      "toollabel": "shopify__list_orders",
       "toolstatus": "requested",
       "toolintegration": "shopify",
       "toolaction": null,
@@ -16112,7 +16800,7 @@ if (msg.type === 'agent_error') {
 
 ### agent_cancel
 
-Sent when the user cancels a message before the agent completes its response (only when the abort hits the bridge mid-flight, since queued-state cancels don't broadcast this event):
+Sent when the user cancels a message before the agent completes its response (only when the agent had already started on the message, since queued-state cancels don't broadcast this event):
 
 ```json
 {
@@ -16170,11 +16858,11 @@ Like `agent_output`, it is a live broadcast: it is **not** replayed to clients t
 It is **not** emitted for:
 
 - **Idempotent / replayed usage callbacks**: a turn is billed once, and a replayed usage callback does not re-broadcast the frame.
-- **Turns with no chat message**: e.g. cron- or hook-triggered turns that produce no assistant message row have no `messageguid` to key on, so no frame is sent. Follow those runs on the [run stream](#following-an-agents-background-runs) instead.
+- **Turns with no chat message**: e.g. Scheduled Task runs and other runs that produce no assistant message row have no `messageguid` to key on, so no frame is sent. Follow those runs on the [run stream](#following-an-agents-background-runs) instead.
 
 ### Model runs the agent triggers
 
-When the agent **itself** kicks off a Wiro model run during a turn (for example generating an image or a video for a skill, or through the `wiro` connector), the bridge emits an `agent_wiroai_runtask` discovery frame. It hands you the new model run's `socketaccesstoken` so you can subscribe to that run and stream its progress and final media outputs. This is how a chat product surfaces a "live activity feed" of the media the agent is producing.
+When the agent **itself** kicks off a Wiro model run during a turn (for example generating an image or a video for a skill, or through the Wiro AI Models connector, `wiro`), Wiro sends an `agent_wiroai_runtask` discovery frame. It hands you the new model run's `socketaccesstoken` so you can subscribe to that run and stream its progress and final media outputs. This is how a chat product surfaces a "live activity feed" of the media the agent is producing.
 
 ```json
 {
@@ -16268,7 +16956,7 @@ Each message added to that session afterwards arrives as an `agent_message_inser
 
 ### Following an agent's background runs
 
-Some of an agent's work never shows up as a chat turn: its Scheduled Tasks, the sub-agents it starts to work on something in the background, and other runs that have no chat message, such as a reply on a connected Telegram, Slack or Discord channel. The run stream lets you follow them live: when each run starts, each step it takes, and when it ends. It also reports every Wiro model run the agent starts, in chat turns too, from start to end.
+Some of an agent's work never shows up as a chat turn: its Scheduled Tasks, work it moves to the background, and other runs that have no chat message, such as a reply on a connected Telegram, Slack or Discord channel. The run stream lets you follow them live: when each run starts, each step it takes, and when it ends. It also reports every Wiro model run the agent starts, in chat turns too, from start to end.
 
 The stream carries labels only. Reasoning and answer text never appear on it (a block's `text` is always `null`), and a tool step shows only its label, its status and the two closed-list words a timeline tool block has.
 
@@ -16329,7 +17017,7 @@ The server answers with the runs and model runs that are open right now:
         "contentindex": 1,
         "type": "tool",
         "text": null,
-        "toollabel": "exec",
+        "toollabel": "shopify__list_orders",
         "toolstatus": "requested",
         "toolintegration": "shopify",
         "toolaction": null,
@@ -16401,7 +17089,7 @@ Each event carries `type`, `useragentguid`, `message`, and `result`. `result` is
 
 A model run can start before its run's `agent_run_start` reaches you, and in rare cases a block can too: treat either one as the run being open.
 
-A sub-agent started from a chat session:
+Background work started from a chat session:
 
 ```json
 {
@@ -16435,7 +17123,7 @@ A step of a Scheduled Task run finished:
       "contentindex": 1,
       "type": "tool",
       "text": null,
-      "toollabel": "exec",
+      "toollabel": "shopify__list_orders",
       "toolstatus": "completed",
       "toolintegration": "shopify",
       "toolaction": null,
@@ -16510,7 +17198,7 @@ A model run started in a chat turn, then its end:
 | `useragentguid` | string | The agent the frame belongs to, for example `"f8e7d6c5-b4a3-2190-fedc-ba0987654321"`. Route frames by it. |
 | `runref` | string \| null | Identifies one background run, for example `"q2Vt8kXw1bN0aZ3cR5sY7u"`: 22 letters, digits, `-` or `_`. Every frame of a run carries the same value. Always set on run events and in `runs`. On model events and in `models` it names the run that started the model run, and it is `null` when a chat turn started it. |
 | `modelref` | string | Identifies one model run, for example `"Hn4pW0sLx9Qe2Tm7Vb1Kd8"`: 22 letters, digits, `-` or `_`. It is not the model run's `taskid`: this stream never carries a `taskid` or a `socketaccesstoken`. |
-| `runkind` | string | What kind of run it is: `cron` (a Scheduled Task), `subagent` (a sub-agent working in the background), `announce` (a run that writes the result of background work back to its chat session), or `other` (any other run with no chat message, such as a reply on a connected channel). It can change while the run is open, for example from `other` to `cron`, but never back to `other`. Every event repeats it; the value on `agent_run_end` is final. Treat a value you don't know as `other`. |
+| `runkind` | string | What kind of run it is: `cron` (a Scheduled Task), `subagent` (work the agent moved to the background), `announce` (a run that writes the result of background work back to its chat session), or `other` (any other run with no chat message, such as a reply on a connected channel). It can change while the run is open, for example from `other` to `cron`, but never back to `other`. Every event repeats it; the value on `agent_run_end` is final. Treat a value you don't know as `other`. |
 | `root` | string | What the run belongs to: `chat` (a chat session, named in `sessionkey`), `cron` (a Scheduled Task), or `unknown` (not known yet). A later event can fill it in; once it is `chat` or `cron`, it never goes back to `unknown`. Model events don't carry it. Treat a value you don't know as `unknown`. |
 | `sessionkey` | string \| null | The key of the chat session the run works for: the `sessionkey` that `Message/Send`, `Message/Sessions` and `Message/History` use, for example `"default"`, not the session's display `name`. Up to 512 characters, and only ASCII letters and digits, `.`, `_`, `:`, `~`, `@`, `+` and `-`: a key with any other character, such as a space or `ü`, reads `null` here. A Scheduled Task run has `null` here, or its `cs-cron-` session key; `root` is `cron` either way. It is also `null` while the session isn't known yet. Once a run has a `sessionkey`, it doesn't go back to `null`. On model events it is the session key sent with the request that started the model run, or `null`. Whoever starts a session or a model run picks its key, so treat `sessionkey` as text from your users: escape it before you show it, and don't rely on it to tell who started a run. |
 | `startedat` | number | Unix seconds when the run or model run started, for example `1793491800`. When a run is first seen as it ends, `agent_run_start` and `agent_run_end` come together and `startedat` is worked out from the run's duration. |
@@ -17110,8 +17798,9 @@ channel.stream.listen((message) {
 ```json
 {
   "type": "agent_subscribed",
-  "agenttoken": "wrongtoken",
+  "agenttoken": "Xy7Lm2Vq9Tb4Np8Rk1Wc6Hz3Fd5Gs0",
   "status": "unknown",
+  "timeline": [],
   "result": true
 }
 ```
@@ -17242,7 +17931,7 @@ The post-terminal `agent_usage_report` also names `message.messageguid`, but it 
 ### Why `agenttoken` is the correlation key
 
 - `Message/Send` issues exactly one `agenttoken` per message and returns it alongside `messageguid` in the HTTP response.
-- The bridge stamps the same `agenttoken` on every event it emits for that message.
+- Every event for that message carries the same `agenttoken`.
 - Multiple connections can subscribe to the same `agenttoken` and each gets the full event stream, so `agenttoken` is also the fan-out key.
 - A single socket can hold subscriptions for many `agenttoken`s at once (see [Multi-session subscription](#multi-session-subscription)), and the per-event `agenttoken` lets your handler dispatch into the right UI element.
 
@@ -17320,7 +18009,7 @@ ws.onmessage = (event) => {
 
 ### Concurrency: multiple in-flight messages on one session
 
-Sending two messages back-to-back in the same `sessionkey` produces two independent `agenttoken`s. Both reach the bridge in queue order; both stream events independently. Your client must:
+Sending two messages back-to-back in the same `sessionkey` produces two independent `agenttoken`s. The agent takes them in queue order; both stream events independently. Your client must:
 
 - Subscribe to **both** `agenttoken`s (one `agent_info` frame each, and the server de-duplicates automatically).
 - Key all UI updates on `agenttoken`, not on `sessionkey` (which is shared) or timestamps (which can interleave).
@@ -17426,15 +18115,15 @@ An `agenttoken` is issued per message by `POST /UserAgent/Message/Send` and stay
 
 | Event | Effect on token |
 |---|---|
-| `Message/Send` | Token is minted, row is inserted with `status: "agent_queue"`, broadcast to all queue subscribers. |
+| `Message/Send` | Token is minted and the message is saved with `status: "agent_queue"`, which the `Message/Send` answer returns. No frame is sent; a subscribe at this point gets `agent_subscribed` with `status: "agent_queue"`. |
 | Agent starts working | Emits `agent_start` to every active subscriber. |
 | Timeline block changes | Emits one `agent_timeline_delta` update with `{ messageguid, block }`; the persisted row keeps the merged ordered timeline. |
 | Each SSE chunk | Emits `agent_output` to every active subscriber (with full accumulated `raw`). |
 | Stream finishes | Emits `agent_end` with the final `progressGenerate` payload, or `agent_error` with the public failure message when the turn failed; the message's `status` becomes terminal. |
-| Usage billed | ~250-500 ms after a successful `agent_end`, emits `agent_usage_report` with final token counts, `model` and `tokencost`. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns), which you follow on the [run stream](#following-an-agents-background-runs). |
-| Bridge exception | Emits `agent_error` with the public failure message; the message's `status` becomes `agent_error`, and `response` and `debugoutput` hold the same text. |
-| `Message/Cancel` during active stream | Bridge aborts, emits `agent_cancel`; the message's `status` becomes `agent_cancel`. |
-| `Message/Cancel` while queued | The message's `status` becomes `agent_cancel` immediately. **No WebSocket event is broadcast** (the bridge never started). Clients checking via the socket must consult `Message/Detail` for queued-state cancels. |
+| Usage billed | ~250-500 ms after a successful `agent_end`, emits `agent_usage_report` with final token counts, `model` and `tokencost`. Not emitted for replayed usage callbacks or for runs with no chat message, such as Scheduled Task runs, which you follow on the [run stream](#following-an-agents-background-runs). |
+| The turn fails | Emits `agent_error` with the public failure message; the message's `status` becomes `agent_error`, and `response` and `debugoutput` hold the same text. |
+| `Message/Cancel` during active stream | The agent stops and `agent_cancel` is sent; the message's `status` becomes `agent_cancel`. |
+| `Message/Cancel` while queued | The message's `status` becomes `agent_cancel` immediately. **No WebSocket event is broadcast** (the agent never started on it). Clients checking via the socket must consult `Message/Detail` for queued-state cancels. |
 
 **Multi-subscriber semantics**: multiple WebSocket connections can subscribe to the same `agenttoken` and all receive the same event stream in parallel. The server does not enforce a subscriber limit per token. This is how the Wiro Dashboard shows the same agent chat on multiple tabs for the same user: each tab opens its own socket and subscribes independently.
 
@@ -17448,11 +18137,13 @@ Receive agent response notifications via HTTP callbacks.
 
 ## How It Works
 
-When you send a message to an agent via `POST /UserAgent/Message/Send`, include a `callbackurl` parameter. Once the agent finishes processing on the bridge, Wiro sends a POST request to your URL with the result. Callbacks fire on `agent_end` (success), `agent_error` (failure during processing), and `agent_cancel` **only when the abort hits the bridge mid-flight**. Messages cancelled while still queued (status `agent_queue`, before the bridge picks them up) are marked `agent_cancel` in the database but **do not fire a webhook**, because there was no processing attempt to report on. See the "When the cancel webhook fires" note below for the full decision table.
+When you send a message to an agent via `POST /UserAgent/Message/Send`, include a `callbackurl` parameter. Once the agent's turn ends, Wiro sends a POST request to your URL with the result. Callbacks fire on `agent_end` (success), `agent_error` (failure during processing), and `agent_cancel` **only when a turn that had started is stopped**. Messages cancelled while still queued (status `agent_queue`, before the agent starts on them) are marked `agent_cancel` in the database but **do not fire a webhook**, because there was no processing attempt to report on. See the "When the cancel webhook fires" note below for the full decision table.
 
 This lets you build fully asynchronous workflows: fire a message and let your backend handle the response whenever it arrives, without polling or maintaining a WebSocket connection.
 
-A setup reply that Wiro handles itself, such as a `yes` that applies a setup card, runs no agent turn: Wiro posts its result to the `callbackurl` right away, with `status: "agent_end"`. Its `metadata` holds `type: "setup_result"`, `cards` (the ids of the cards it acted on) and, when the answer leaves connectors to connect, `next`: `[{ connector, title, mode, cardid?, messageguid? }]`, as in `setupresult`. See [Replies Wiro handles itself](/docs/agent-messaging#handled-setup-replies).
+A setup reply that Wiro handles itself, such as a `yes` that applies a setup card, runs no agent turn: Wiro posts its result to the `callbackurl` right away, with `status: "agent_end"`. Its `metadata` holds `type: "setup_result"`, `cards` (the ids of the cards it acted on) and `via` (`"api"` for a message sent with a project API key, `"web"` otherwise). It also holds `next` when the answer leaves connectors to connect (`[{ connector, title, mode, cardid?, messageguid? }]`, as in `setupresult`), `listed` and `listedfrom` for a [card listing](/docs/agent-messaging#setup-card-listing) (the ids of the cards it showed and the `guid` of the message they are on), and `teamguid` when the message was sent in a team's workspace. See [Replies Wiro handles itself](/docs/agent-messaging#handled-setup-replies).
+
+An unknown or disabled slash command that Wiro answers itself, such as `/status`, is posted the same way, right away and with `status: "agent_end"`. Its `metadata` holds `type: "setup_result"`, `cards: []`, `command` (the command's name, such as `"status"`), `via` and, in a team's workspace, `teamguid`. See [Unknown or disabled commands](/docs/agent-messaging#unknown-or-disabled-commands).
 
 > **Results that arrive later.** When the agent moves longer work to the background, its turn ends with a short line saying the result will follow, and that line is what your `callbackurl` receives (`status: "agent_end"`). The result is added to the session later as a separate message and doesn't call the `callbackurl`. Read it with [`Message/History`](/docs/agent-messaging#post-useragentmessagehistory), or follow the session on the [Agent WebSocket](/docs/agent-websocket#following-a-session).
 
@@ -17529,7 +18220,7 @@ When the agent finishes, Wiro sends a **POST** request to your `callbackurl` wit
 
 > The `response` and `debugoutput` fields hold `[REQUEST_CANCELLED] Request cancelled.`; use `status === "agent_cancel"` as the signal.
 
-> **When the cancel webhook fires:** `agent_cancel` is delivered **only when the agent bridge catches an `AbortError`** during active processing, i.e. the message had already started on the agent side and was aborted mid-flight (via `POST /UserAgent/Message/Cancel` or an upstream timeout). For messages cancelled **before** they reach the bridge (still queued, or an instant `Message/Cancel` that beats dispatching), the message is marked `agent_cancel` in the database and returned as such in `POST /UserAgent/Message/Detail`, but **no webhook is fired**, because there was no processing attempt to report on. Use `POST /UserAgent/Message/Detail` (checking `status === "agent_cancel"`) as the canonical source of truth for cancellation; WebSocket subscribers receive the `agent_cancel` event only on active-processing aborts (same condition as the webhook). Treat the webhook as a best-effort "processing was interrupted" signal.
+> **When the cancel webhook fires:** `agent_cancel` is delivered **only when the turn had already started and was stopped while it ran** (by `POST /UserAgent/Message/Cancel` or a timeout). For messages cancelled **before** the agent starts on them (still queued, or an instant `Message/Cancel` that beats dispatching), the message is marked `agent_cancel` in the database and returned as such in `POST /UserAgent/Message/Detail`, but **no webhook is fired**, because there was no processing attempt to report on. Use `POST /UserAgent/Message/Detail` (checking `status === "agent_cancel"`) as the canonical source of truth for cancellation; WebSocket subscribers receive the `agent_cancel` event only on active-processing aborts (same condition as the webhook). Treat the webhook as a best-effort "processing was interrupted" signal.
 
 ### Field Reference
 
@@ -17540,7 +18231,7 @@ When the agent finishes, Wiro sends a **POST** request to your `callbackurl` wit
 | `content` | string | The original user message you sent. |
 | `response` | string | The agent's full response text on success. For errors, contains the error message. For cancellation, contains the abort reason. |
 | `debugoutput` | string | Same as `response`: the full accumulated output text. Included for consistency with the polling API. |
-| `metadata` | object | Structured answer data, performance metrics, and raw text. Timeline blocks are not embedded in webhooks. Empty object (`{}`) for error and cancel statuses. |
+| `metadata` | object | Structured answer data, performance metrics, and raw text. Timeline blocks are not embedded in webhooks. Empty object (`{}`) for `agent_cancel` and for an `agent_error` that cut the turn off; see [The `metadata` Object](#the-metadata-object). |
 | `endedat` | number | Unix timestamp (UTC seconds) when processing finished. |
 
 ### The `metadata` Object
@@ -17549,28 +18240,28 @@ On successful completion (`agent_end`), the `metadata` object contains the struc
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `type` | string | Always `"progressGenerate"`. |
+| `type` | string | `"progressGenerate"` for an agent turn. A reply Wiro handles itself has `"setup_result"` instead, with the keys described under [How It Works](#how-it-works). |
 | `task` | string | Always `"Generate"`. |
 | `raw` | string | The complete response text. |
 | `answer` | array | Array of response segments: the content to show the user. |
 | `speed` | string | Final generation speed (e.g. `"14.2"`). |
 | `speedType` | string | Speed unit: `"words/s"`. |
 | `elapsedTime` | string | Total generation time (e.g. `"8.1s"`). |
-| `tokenCount` | number | Number of answer chunks received by the bridge. Use the message's billing columns for authoritative model tokens. |
+| `tokenCount` | number | Number of answer chunks streamed for the turn. Use the message's billing columns for authoritative model tokens. |
 | `wordCount` | number | Total words in the response. |
 
-For `agent_error` and `agent_cancel`, `metadata` is an empty object `{}`. Always check `status` before accessing metadata fields.
+For `agent_cancel`, and for an `agent_error` that cut the turn off, such as `[TURN_INTERRUPTED]` or `[AGENT_UNAVAILABLE]` after an outage, `metadata` is an empty object `{}`. A turn that ended with a coded failure, such as `[SPEND_LIMIT_REACHED]`, `[CREDITS_EXHAUSTED]` or `[MODEL_NOT_ALLOWED]`, posts the usual `progressGenerate` metadata, and its `raw` and `answer` hold the same coded message as `response`. Read the outcome from `status` and `response`, never from `metadata`.
 
 After receiving the webhook, call `POST /UserAgent/Message/Detail` with `messageguid` whenever you need the authoritative top-level `timeline[]`. It preserves the ordered reasoning, answer, and safe tool-label/status blocks for the completed turn.
 
-> **Note:** For `agent_error` and `agent_cancel`, the webhook's `response` and `debugoutput` hold the same coded failure message as `POST /UserAgent/Message/Detail`; see [Failed turns](/docs/agent-messaging#failed-turns). The underlying error is never sent.
+> **Note:** For `agent_error` and `agent_cancel`, the webhook's `response` and `debugoutput` hold the same coded failure message as `POST /UserAgent/Message/Detail`; see [Failed turns](/docs/agent-messaging#failed-turns). The underlying error is never sent. A turn the agent's security rules block can also come with `agent_end` and `[SECURITY_BLOCKED] …` in `response`.
 
 ## Status Values
 
 | Status | Description | `response` contains | `metadata` contains |
 |--------|-------------|---------------------|---------------------|
 | `agent_end` | Agent completed successfully | Full response text | Structured answer and metrics |
-| `agent_error` | The turn failed | The public failure message; see [Failed turns](/docs/agent-messaging#failed-turns) | Empty object `{}` |
+| `agent_error` | The turn failed | The public failure message; see [Failed turns](/docs/agent-messaging#failed-turns) | Empty object `{}`, or the usual metrics when the turn ended with a coded failure such as `[SPEND_LIMIT_REACHED]` |
 | `agent_cancel` | Message was cancelled before completion | `[REQUEST_CANCELLED] Request cancelled.` | Empty object `{}` |
 
 ## Retry Policy
@@ -17579,8 +18270,8 @@ Wiro attempts to deliver each webhook up to **3 times**:
 
 - First attempt is immediate when the agent finishes
 - 2-second delay between retries
-- Your endpoint must return **HTTP 200** to acknowledge receipt
-- Any non-200 response triggers a retry
+- Any **2xx** answer counts as delivered
+- Any other answer, a redirect (3xx) included, or no answer, is tried again
 - After 3 failed attempts, the webhook is abandoned and the failure is logged server-side
 
 The message result is always persisted in the database regardless of webhook delivery. You can retrieve it at any time via `POST /UserAgent/Message/Detail`.
@@ -17591,7 +18282,7 @@ The message result is always persisted in the database regardless of webhook del
 - Always use **HTTPS** endpoints in production
 - Use a public address. Wiro doesn't call a `callbackurl` whose host is, or resolves to, a private, loopback or link-local address; that message gets no webhook, and its result stays readable with `Message/Detail`
 - Validate the payload structure before processing
-- Consider returning 200 immediately and processing the payload asynchronously to avoid timeouts
+- Consider answering with a 2xx at once and processing the payload asynchronously to avoid timeouts
 
 ## Code Examples
 
@@ -17707,10 +18398,11 @@ Connect a Wiro agent to the services it works with: browse the connector catalog
 
 ## Overview
 
-A connector gives an agent the tools of one outside service: Google search through Serper, a Shopify store, Google Ads, HubSpot, a Facebook Page. Each connector is one row of Wiro's connector catalog, named by its `slug`, such as `serper`, `shopify` or `facebook-pages`. You connect a connector to one agent at a time, always with your customer's own credentials, in one of two ways:
+A connector gives an agent the tools of one outside service: Google search through Serper, a Shopify store, Google Ads, HubSpot, a Facebook Page. Each connector is one row of Wiro's connector catalog, named by its `slug`, such as `serper`, `shopify` or `facebook-pages`. You connect a connector to one agent at a time, in one of three ways. The first two always take your customer's own credentials:
 
 - **Fields.** The values the vendor issues, such as an API key, an app password or a store address, sent once with `ConnectorConnect`. Wiro stores them encrypted. Where the connector has a check, Wiro first makes one read call to the vendor with them and refuses values the vendor refuses.
-- **Sign-in.** The vendor's own consent screen in a browser. `ConnectorConnect` answers with an `authorizeUrl`; your customer opens it, agrees, and the vendor sends the browser back through Wiro to your page. Vendors whose sign-in needs an app of your own (the Google and Meta families, LinkedIn, TikTok, X, Reddit, Pinterest, Tumblr, Threads, HubSpot, Mailchimp, Shopify) take that app's client id and secret with the connect.
+- **Sign-in.** The vendor's own consent screen in a browser. `ConnectorConnect` answers with an `authorizeUrl`; your customer opens it, agrees, and the vendor sends the browser back through Wiro to your page. Vendors whose sign-in needs an app of your own (Blogger, Gmail, Google Ads, Google Analytics 4, Google Business Profile, Google Merchant Center, Google Search Console, YouTube, Facebook Pages, Instagram, Meta Ads, Threads, LinkedIn, TikTok, X, Reddit, Pinterest, Tumblr, HubSpot, Mailchimp and Shopify) take that app's client id and secret with the connect. Google Calendar, Google Drive and Google Play Console don't sign in: they take a service account's JSON as a field.
+- **A Wiro project.** Wiro AI Models (`wiro`), Wiro's own model and task tools, takes one of your Wiro projects instead of values: see [Wiro AI Models](#the-wiro-connector).
 
 Once a connector is connected, the agent restarts and has the connector's tools, named `<slug>__<tool>`. Values and tokens are never sent back in an answer and never reach the agent's chat.
 
@@ -17763,7 +18455,7 @@ Lists every available connector, in display order (`sortorder`, then title), at 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `search` | string | No | Matches the slug, title or description, ignoring case. At most 100 characters. |
-| `category` | string | No | One category, such as `social`, `ads`, `commerce`, `analytics`, `crm`, `content`, `email` or `data`. |
+| `category` | string | No | One category: `ads`, `ai`, `analytics`, `commerce`, `content`, `crm`, `data`, `email`, `marketing`, `messaging`, `productivity`, `social` or `stores`. |
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/AgentConnector/List" \
@@ -17820,13 +18512,16 @@ curl -X POST "https://api.wiro.ai/v1/AgentConnector/List" \
         }
       ],
       "accountpickers": [
-        { "key": "pages", "label": "Facebook Pages", "description": "", "multiple": true }
+        { "key": "pages", "label": "Facebook Pages", "description": "The Pages the agent may post to, comment on and read insights of.", "multiple": true }
       ],
-      "scopes": ["pages_show_list", "pages_manage_posts", "pages_read_engagement"],
+      "scopes": [
+        "pages_show_list", "pages_manage_posts", "publish_video", "pages_manage_engagement", "pages_read_engagement",
+        "pages_read_user_content", "pages_manage_metadata", "pages_messaging", "read_insights"
+      ],
       "modes": ["oauth", "key"],
       "wiroapp": false,
       "tools": [
-        { "name": "list_pages", "title": "List Pages", "description": "Lists the Facebook Pages this connection can reach.", "readonly": true, "destructive": false }
+        { "name": "list_pages", "title": "List Facebook Pages", "description": "Lists the Facebook Pages this connection can use ...", "readonly": true, "destructive": false }
       ],
       "docs": {
         "overview": "Publish posts, photos and videos to your Facebook Pages and read their engagement.",
@@ -17839,7 +18534,7 @@ curl -X POST "https://api.wiro.ai/v1/AgentConnector/List" \
 }
 ```
 
-The example is shortened: real help texts are longer, and `tools` lists every tool.
+The example is shortened: real help texts and tool descriptions are longer, and `tools` lists every tool.
 
 | Field | Description |
 |-------|-------------|
@@ -17854,7 +18549,7 @@ The example is shortened: real help texts are longer, and `tools` lists every to
 | `scopes` | The OAuth scopes the sign-in asks for (`oauth` and `provider-oauth` rows). |
 | `modes` | `provider-oauth` rows only: `["oauth"]` (sign-in only) or `["oauth", "key"]` (a sign-in, or a key or token instead). Empty for other rows. |
 | `wiroapp` | `true` when the vendor can also be signed in with Wiro's own app, which only Wiro's own panel uses. With your API key you always send your own app's keys. |
-| `tools` | The tools the agent gets, each `{ name, title, description, readonly, destructive }`. `name` is the tool's name before the slug prefix. A connector whose server lists its tools only after a sign-in can show none until its first connection. |
+| `tools` | The tools the agent gets, each `{ name, title, description, readonly, destructive }`. `name` is the tool's name before the slug prefix. A connector on a vendor's own MCP server (TikTok Ads, DataForSEO, lemlist, GitBook and HackMD) lists no tools until an agent first connects it, by sign-in or key: its `tools` is `[]` until then. |
 | `docs` | Optional public page copy: `{ overview, setup, revoke, limits }` (`setup` is a list of steps), or `null`. |
 | `sortorder`, `updatedat` | Display order and the row's last change (Unix seconds). |
 
@@ -17920,6 +18615,8 @@ curl -X POST "https://api.wiro.ai/v1/AgentConnector/Detail" \
 }
 ```
 
+The example is shortened: the help text and the tool's description are longer, `tools` lists all 13 Serper tools, and `docs` also has `revoke`.
+
 A slug that is not in the catalog, or a connector that is no longer offered, answers `result: false` with `Connector not found.`
 
 ### Connect card fields
@@ -17937,19 +18634,20 @@ Build your Connect form from `credentialfields`, in their order:
 | `options` | `select` only: `[{ value, label }]`. Send the `value`. |
 | `placeholder`, `pattern`, `maxlength` | Optional input hints. Wiro checks `pattern` (a regular expression) and `maxlength` too. A value is at most 65,536 characters. A `headers` connector's values are at most 4,096 characters each, on one line. |
 | `serveronly` | `true` for your own OAuth app's keys (client id and secret): Wiro uses them for the sign-in and its token refreshes only, and they never reach the agent. |
-| `mode` | `provider-oauth` rows only: `oauth` (a key of your own app, sent with a sign-in) or `key` (the key way in, such as a Meta System User token). A field without `mode` belongs to both ways. Show the two ways as two choices on the card. |
-| `source` | `wiro_project` on the Wiro connector's project field: show a picker of your Wiro projects instead of an input. See [The Wiro connector](#the-wiro-connector). |
+| `mode` | `provider-oauth` rows only: `oauth` (a field of the sign-in way: your own app's keys, or another value the sign-in needs, such as Reddit's Developer Profile Username) or `key` (the key way in, such as a Meta System User token). A field without `mode` belongs to both ways. Show the two ways as two choices on the card. |
+| `source` | `wiro_project` on the project field of Wiro AI Models (`wiro`): show a picker of your Wiro projects instead of an input, and send the chosen project's id as `wiroprojectguid`, never in `values`. See [Wiro AI Models](#the-wiro-connector). |
 
 ## Connecting
 
-All three ways go through one call, `POST /UserAgent/ConnectorConnect`. The connector's `authtype` and `modes` from the catalog tell you which body to send.
+Every way goes through one call, `POST /UserAgent/ConnectorConnect`. The connector's `authtype` and `modes` from the catalog tell you which body to send.
 
 | `authtype` | Send | Answer |
 |------------|------|--------|
-| `fields`, `headers` | `values` | `connected` |
+| `fields`, `headers` | `values` for its `credentialfields` (never a `wiro_project` field) | `connected` |
+| `headers` with a `source: "wiro_project"` field (Wiro AI Models, `wiro`) | `wiroprojectguid`, the id of one of your projects (a request made with a project API key may leave it out: see [Wiro AI Models](#the-wiro-connector)) | `connected` |
 | `none` | nothing but `useragentguid` and `slug` | `connected` |
 | `provider-oauth` with `mode: "key"` | `values` of the `key` way | `connected` |
-| `provider-oauth` (`mode` `oauth`, the default) | your app's keys in `values`, and `redirecturl` | `pending` and `authorizeUrl` |
+| `provider-oauth` (`mode` `oauth`, the default) | the sign-in's fields in `values` (no `mode` or `mode: "oauth"`: your app's keys and any other, such as Shopify's Shop Domain or LinkedIn's Organization ID), and `redirecturl` | `pending` and `authorizeUrl` |
 | `oauth` | `redirecturl` | `pending` and `authorizeUrl` |
 
 ### **POST** /UserAgent/ConnectorConnect
@@ -17962,7 +18660,7 @@ All three ways go through one call, `POST /UserAgent/ConnectorConnect`. The conn
 | `mode` | string | No | `provider-oauth` rows only: `oauth` (the default, a sign-in) or `key` (the key way in, when `modes` includes `key`). |
 | `redirecturl` | string | No | Sign-ins only: where the browser returns. See [The redirect URL](#the-redirect-url). |
 | `accounts` | object | No | A first account selection for a connector with [account pickers](#account-pickers), `{ <picker key>: [ids] }`, such as `{ "pages": ["123"] }`. Only its shape is checked here; [ConnectorSetAccounts](#post-useragentconnectorsetaccounts) checks every id with the vendor once the connector is connected. |
-| `wiroprojectguid` | string | No | The Wiro connector only: the id of one of your projects, from [`POST /Project/List`](/docs/projects). It becomes the agent's own Wiro project, as [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) binds it. See [The Wiro connector](#the-wiro-connector). A connector whose tools run inside the agent refuses it; one on a vendor's own MCP server ignores it. |
+| `wiroprojectguid` | string | No | Wiro AI Models (`wiro`) only: the id of one of your projects, from [`POST /Project/List`](/docs/projects). It becomes the agent's own Wiro project, as [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) binds it. See [Wiro AI Models](#the-wiro-connector). A connector whose tools run inside the agent refuses it; one on a vendor's own MCP server ignores it. |
 
 ### Connect with fields
 
@@ -18033,7 +18731,59 @@ Show that sentence next to the form: it names the vendor only.
 
 **Changing a value later.** Send only the fields that change: the others keep their saved values. To replace a key, send the new one; to remove an optional value, send `""`.
 
-A `headers` connector (one of the vendors' own MCP servers that takes an API key, such as Lemlist or DataForSEO) connects the same way: its `credentialfields` are the values it takes, each named by its `name`, such as `apikey`. Its values are at most 4,096 characters each, on one line, and its refusals name the value by that `name` (`apikey is required.`). It has no credential check: the vendor's server answers the agent's first call.
+A `headers` connector (a vendor's own MCP server that takes a key or login: lemlist (`apikey`), DataForSEO (`login`, `password`), GitBook and HackMD (`token`)) connects the same way: its `credentialfields` are the values it takes, each named by its `name`. Their labels are made from those names (`Apikey`, `Login`, `Password`, `Token`), and a secret value has `format: "password"`. Its values are at most 4,096 characters each, on one line, and its refusals name the value by that `name` (`apikey is required.`). It has no credential check: the vendor's server answers the agent's first call. DataForSEO's fields on [Detail](#post-agentconnectordetail):
+
+```json
+"credentialfields": [
+  { "name": "login", "label": "Login", "description": "Keyword, search and app store data from your own [DataForSEO](https://dataforseo.com) account. 1. Sign in to [DataForSEO](https://app.dataforseo.com) and open **API Access** ...", "required": true, "secret": true, "format": "password" },
+  { "name": "password", "label": "Password", "description": "The **API password** is not the password you sign in with: DataForSEO generates a separate one for the API. ...", "required": true, "secret": true, "format": "password" }
+]
+```
+
+Send both in `values`:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "slug": "dataforseo",
+    "values": { "login": "YOUR_DATAFORSEO_API_LOGIN", "password": "YOUR_DATAFORSEO_API_PASSWORD" }
+  }'
+```
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "status": "connected",
+  "applied": 1,
+  "restart": "scheduled",
+  "useragentconnectors": [
+    {
+      "slug": "dataforseo",
+      "title": "DataForSEO",
+      "iconurl": "https://wiro.ai/images/icons/skills/dataforseo.svg",
+      "category": "data",
+      "authtype": "headers",
+      "transport": "streamable-http",
+      "authmode": null,
+      "catalogstatus": "active",
+      "status": "connected",
+      "connectedat": 1795390000,
+      "updatedat": 1795390000,
+      "tokenexpiresat": null,
+      "refreshtokenexpiresat": null,
+      "scope": null,
+      "accounts": {},
+      "wiroprojectid": null,
+      "savedvariables": ["login", "password"],
+      "lasterror": null
+    }
+  ]
+}
+```
 
 ### Connect with a key instead of a sign-in
 
@@ -18243,7 +18993,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorList" \
       "updatedat": 1795390460,
       "tokenexpiresat": 1800574400,
       "refreshtokenexpiresat": null,
-      "scope": "pages_show_list,pages_manage_posts,pages_read_engagement",
+      "scope": "pages_show_list pages_manage_posts publish_video pages_manage_engagement pages_read_engagement pages_read_user_content pages_manage_metadata pages_messaging read_insights",
       "accounts": { "pages": ["123456789012345"] },
       "wiroprojectid": null,
       "savedvariables": ["appid", "appsecret"],
@@ -18260,25 +19010,25 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorList" \
 | `catalogstatus` | `active` while the connector is offered. `hidden` or `retired` when it left the catalog: the agent no longer gets its tools, and only a disconnect is left. |
 | `status` | See the table below. |
 | `connectedat`, `updatedat` | When the connection last connected, and its last change (Unix seconds). |
-| `tokenexpiresat`, `refreshtokenexpiresat` | Sign-in connections: when the access token and the refresh token expire, or `null`. Wiro refreshes the access token on its own. |
-| `scope` | The scopes the vendor granted, as it sent them. For a sign-in on a vendor's own MCP server whose token answer names none, the scopes Wiro asked for. |
+| `tokenexpiresat`, `refreshtokenexpiresat` | Sign-in connections: when the access token and the refresh token expire, or `null`. Wiro refreshes the access token on its own, except on a Facebook Pages or Meta Ads sign-in: Meta's token lasts about 60 days and cannot be refreshed, so when it runs out, the connector's next use (or an account listing) sets the connection to `reauth` with `lasterror: "token_not_refreshable"`, and your customer signs in again. A System User token (`mode: "key"`) set never to expire avoids this. |
+| `scope` | The scopes the vendor granted, as it sent them. When the vendor's token answer names none, as Facebook's does, the scopes Wiro asked for, separated by spaces. |
 | `accounts` | The account selection, `{ <picker key>: [ids] }`. |
-| `wiroprojectid` | The Wiro connector only: the agent's own Wiro project, the one the connector acts with, as a string, or `null` when the agent has none. See [The Wiro connector](#the-wiro-connector). |
+| `wiroprojectid` | Wiro AI Models (`wiro`) only: the agent's own Wiro project, the one the connector acts with, as a string, or `null` when the agent has none. See [Wiro AI Models](#the-wiro-connector). |
 | `savedvariables` | The names of the values saved for this connection, sorted. Use them to mark fields as saved; their values are never shown. |
 | `lasterror` | A short code for the last failure, such as `authorization_denied`, or `null`. Never a secret. |
 
 | `status` | Meaning | What to show |
 |----------|---------|--------------|
 | `connected` | The agent has the connector's tools. | Connected, with Disconnect and, when it has pickers, the account choice. |
-| `pending` | A sign-in was started and has not come back yet, or a connection that [moved over](#coming-from-credential-connectors) misses a required value. | Waiting for the sign-in, with a way to start it again; or the form, to send the missing value with ConnectorConnect. |
-| `reauth` | The sign-in expired or was revoked at the vendor: refreshing it failed (`lasterror` is a code), or the vendor's own MCP server refused it with HTTP 401 or 403 as Wiro listed the connection's accounts (`lasterror: "unauthorized"`; `"no_access_token"` when the connection held no token to send). Or the connector's way in changed (`lasterror: "auth_changed"`). Until the agent's next restart, the connector's tools answer that it must be connected again; after it, the agent no longer has them. | Reconnect: start a new sign-in with ConnectorConnect. |
+| `pending` | A sign-in was started and has not come back yet, or the connection misses a required value. | Waiting for the sign-in, with a way to start it again; or the form, to send the missing value with ConnectorConnect. |
+| `reauth` | The sign-in expired or was revoked at the vendor: refreshing it failed (`lasterror` is a code: `token_not_refreshable` when a Facebook Pages or Meta Ads sign-in's 60-day token ran out), or the vendor's own MCP server refused it with HTTP 401 or 403 as Wiro listed the connection's accounts (`lasterror: "unauthorized"`; `"no_access_token"` when the connection held no token to send). Or the connection holds a way in the connector no longer takes (`lasterror: "auth_changed"`): a Gmail app password, or a sign-in with Wiro's own app on a connector whose `wiroapp` is `false`; sign in again with an OAuth app of your own. Until the agent's next restart, the connector's tools answer that it must be connected again; after it, the agent no longer has them. | Reconnect: start a new sign-in with ConnectorConnect. |
 | `error` | The last sign-in failed (`lasterror` says how). | Connect again. |
 
 A connector that was never connected, or was disconnected, has no row.
 
 ## Account Pickers
 
-Some connectors act on accounts inside the vendor: Facebook Pages, Meta ad accounts, Google Ads customers, TikTok Ads advertisers, a GA4 property, Search Console sites, Business Profile locations, YouTube channels, apps in App Store Connect and Google Play. Their catalog row lists `accountpickers`. After the connection is `connected`, list the candidates, let your customer choose, and save the choice. The connector's tools refuse any account outside the selection, and until something is picked they have no account to act on.
+Some connectors act on accounts inside the vendor: Adjust (apps), App Store Connect (apps), Blogger (blogs), Facebook Pages (Pages), Google Ads (accounts), Google Analytics 4 (properties), Google Business Profile (accounts and locations), Google Drive (folders), Google Merchant Center (accounts), Google Play Console (apps), Google Search Console (properties), Instagram (accounts), Meta Ads (ad accounts, and the Facebook Pages its ads use), Roasit (apps), TikTok Ads (advertisers), Tumblr (blogs) and YouTube (channels). Their catalog row lists `accountpickers`: build the pickers from that field, not from this list. After the connection is `connected`, list the candidates, let your customer choose, and save the choice. The connector's tools refuse any account outside the selection, and until something is picked they have no account to act on.
 
 Connectors of both kinds can have account pickers. Wiro lists the candidates with one of the connector's read tools and the connection's own credentials. For a connector whose tools run on the vendor's own MCP server, such as TikTok Ads, Wiro calls that tool on the vendor's server with the connection's sign-in: see [TikTok Ads: sign in, then pick advertisers](#tiktok-ads-sign-in-then-pick-advertisers). A connector with no pickers has an empty `accountpickers`.
 
@@ -18311,7 +19061,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorAccounts" \
     {
       "key": "pages",
       "label": "Facebook Pages",
-      "description": "",
+      "description": "The Pages the agent may post to, comment on and read insights of.",
       "multiple": true,
       "candidates": [
         { "id": "123456789012345", "name": "Acme Coffee" },
@@ -18378,7 +19128,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetAccounts" \
       "updatedat": 1795390520,
       "tokenexpiresat": 1800574400,
       "refreshtokenexpiresat": null,
-      "scope": "pages_show_list,pages_manage_posts,pages_read_engagement",
+      "scope": "pages_show_list pages_manage_posts publish_video pages_manage_engagement pages_read_engagement pages_read_user_content pages_manage_metadata pages_messaging read_insights",
       "accounts": { "pages": ["123456789012345", "234567890123456"] },
       "wiroprojectid": null,
       "savedvariables": ["appid", "appsecret"],
@@ -18493,8 +19243,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetAccounts" \
 
 Once the agent restarts, its TikTok Ads tools work with the saved advertisers only: a call that names any other advertiser is refused before it leaves the agent.
 
+- Campaigns, ad groups, campaign copies, and Smart+ campaigns, ad groups and ads that the agent creates start paused: turn them on with the status update tools or in TikTok Ads Manager.
+- A call that names a Business Center (`bc_id`) is refused before it leaves the agent: the connector picks advertisers only.
+- Business Center, billing and payment, TikTok One, Creator Marketplace and Reach & Frequency buying tools are not offered.
 - When TikTok's server no longer accepts the connection's sign-in (HTTP 401 or 403), `ConnectorAccounts` and `ConnectorSetAccounts` answer `The sign-in for this connector expired or was revoked, so it has to be connected again. Ask the agent's operator to reconnect it.` Start a new sign-in with [ConnectorConnect](#connect-with-a-sign-in), then list the advertisers again.
-- A TikTok Ads connection that [moved over](#coming-from-credential-connectors) keeps its advertiser in `accounts.advertisers`.
 
 ## Disconnecting
 
@@ -18551,9 +19303,11 @@ When the agent is back up, every `connected` connection whose connector is still
 - A scheduled task of an agent template that works with a connector stays off until that connector is connected.
 - A disconnected connector's tools are gone after the restart. A `reauth` connection's tools answer that it must be connected again, in words your customer can read (they name no Wiro place or link), until the agent's next restart; after it, the agent no longer has them.
 
-## The Wiro Connector
+## Wiro AI Models
 
-The `wiro` connector gives the agent Wiro's own model and task tools, named `wiro__<tool>`, from the [Wiro MCP server](/docs/wiro-mcp-server). Its calls are the agent's own: they always act with the agent's own Wiro project key, the key the agent runs every Wiro model with (see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)). So:
+<a id="the-wiro-connector"></a>
+
+Wiro AI Models (`wiro`) gives the agent Wiro's own model and task tools, named `wiro__<tool>`, from the [Wiro MCP server](/docs/wiro-mcp-server). Its calls are the agent's own: they always act with the agent's own Wiro project key, the key the agent runs every Wiro model with (see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)). So:
 
 - The models they run are billed to the wallet of the workspace that owns that project, at each model's usual price.
 - Wiro counts them as the agent's own runs: the agent's own [spend limit](/docs/spend-limits) and [Model Access](/docs/model-access) rule apply to them (the `agent` scope, on the `agent` surface), as to every model the agent runs.
@@ -18586,7 +19340,7 @@ The list can't be widened. Whatever the connector's catalog row says, Wiro gives
 
 ### Connecting it
 
-Its `credentialfields` have one field with `source: "wiro_project"`: show a picker of your projects ([`POST /Project/List`](/docs/projects)) instead of an input, and send the chosen project's id as `wiroprojectguid`. Connecting binds that project to the agent as its own Wiro project, exactly as [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) does: the same checks, the project's key saved as the agent's `wiro` credential, and a `Connector setting saved: wiro.apikey` row in the agent's [activity log](/docs/agent-logs#who-did-what-rows) when the project changed. The connector and every other Wiro call of the agent always use the same project.
+Its `credentialfields` have one field with `source: "wiro_project"`: show a picker of your projects ([`POST /Project/List`](/docs/projects)) instead of an input, and send the chosen project's id as `wiroprojectguid`. Connecting binds that project to the agent as its own Wiro project, exactly as [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) does: the same checks, the project's key saved as the agent's `wiro` credential, and a `Setting saved: wiro.apikey` row (`AGENT_CREDENTIAL_SAVED`) in the agent's [activity log](/docs/agent-logs#who-did-what-rows) when the project changed. The connector and every other Wiro call of the agent always use the same project.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
@@ -18636,17 +19390,18 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
 - A request made with a project API key may leave `wiroprojectguid` out: that key's own project is bound. A request without either keeps the agent's own project while it is in the agent's workspace, and is refused with `wiroprojectguid is required` when the agent has none there.
 - The project must be one you created, or any project of a team you are an admin of, and in the agent's workspace: a personal agent takes one of its owner's personal projects, a team agent one of its team's projects. The request must come from the agent's workspace too.
 - The connector follows the agent's project: a project bound later with `CredentialProjectBind` or another `ConnectorConnect` is the one its tools use after the restart. [ConnectorList](#post-useragentconnectorlist) shows the agent's current project as `wiroprojectid`, a string.
-- An agent left with no Wiro project keeps the connection, but gets no `wiro` tools until a project is bound again, and `wiroprojectid` reads `null`.
+- An agent left with no Wiro project keeps the connection, but gets no `wiro__*` tools until a project is bound again, and `wiroprojectid` reads `null`.
+- Disconnecting it ([ConnectorDisconnect](#post-useragentconnectordisconnect), or a `disconnect` card) removes only the connection. The agent keeps its Wiro project, and the models its Skills run keep using it; only its `wiro__*` tools go after the restart.
 - The agent's [Wiro API path list](/docs/agent-overview#post-useragentupdatesettings) (`wiroapiallowedpaths`) limits the Wiro API calls its skills make with the agent's own Wiro project; it doesn't apply to this connector's tools, which the list above fixes.
 - In chat, the agent proposes a `project` card for it, which binds the project the same way: see [Project: Wiro AI Models](/docs/agent-chat-integration#project-wiro-ai-models).
 
 ### Moving the agent to another workspace
 
-When the agent moves to a workspace its Wiro project isn't in, with [`Team/TransferAgent`](/docs/organizations-managing-teams#transferring-agents) or because its team or organization was deleted, Wiro disconnects the project from the agent and deletes the agent's `wiro` connection, before the agent restarts.
+When the agent moves to a workspace its Wiro project isn't in, with [`Team/TransferAgent`](/docs/organizations-managing-teams#transferring-agents) or because its team or organization was deleted, Wiro disconnects the project from the agent and deletes the agent's Wiro AI Models connection, before the agent restarts.
 
 The same happens without a move when the team that owns the agent's Wiro project, or that team's organization, is deleted. The team's projects then go to their creators' personal workspaces, so an agent of another workspace that ran with one of them is disconnected from it and restarted too. Only a personal agent of the project's creator keeps it.
 
-Either way, the agent's activity log shows both: `Disconnected: wiro` (`AGENT_CREDENTIAL_REMOVED`) and `Connector disconnected: wiro` (`CONNECTOR_DISCONNECTED`, with `summary.reason` `"workspace"`). To give the agent a project again, connect the connector with a project of the agent's workspace: that binds the project to the agent too.
+Either way, the agent's activity log shows both: `Disconnected: wiro` (`AGENT_CREDENTIAL_REMOVED`) and `Connector disconnected: wiro` (`CONNECTOR_DISCONNECTED`, with `summary.reason` `"workspace"`). To give the agent a project again, connect Wiro AI Models with a project of the agent's workspace: that binds the project to the agent too.
 
 ## Errors
 
@@ -18675,48 +19430,34 @@ Refusals come as `result: false` with one sentence per problem in `errors`. Show
 | `ConnectorConnect` | `This connector's OAuth client is not set up yet.` | An `oauth` connector whose sign-in isn't ready on Wiro's side yet. |
 | `ConnectorConnect` | `The connector's sign-in server did not register a client. Try again later.` | The vendor's sign-in server refused to register a client for the sign-in. |
 | `ConnectorConnect` | `This connector takes no Wiro project.` | `wiroprojectguid` on a connector whose tools run inside the agent. A connector on a vendor's own MCP server without a project field ignores it. |
-| `ConnectorConnect` | `<name> comes from the agent's Wiro project: send wiroprojectguid, not a value.` | A value sent for the Wiro connector's project field. |
-| `ConnectorConnect` | `wiroprojectguid is required: send the id of one of your projects from Project/List. A request made with a project API key may leave it out, to use that key's own project.` | The Wiro connector with no project, from a request without a project API key, for an agent with no project of its workspace to keep. |
+| `ConnectorConnect` | `<name> comes from the agent's Wiro project: send wiroprojectguid, not a value.` | A value sent for the project field of Wiro AI Models. |
+| `ConnectorConnect` | `wiroprojectguid is required: send the id of one of your projects from Project/List. A request made with a project API key may leave it out, to use that key's own project.` | Wiro AI Models with no project, from a request without a project API key, for an agent with no project of its workspace to keep. |
 | `ConnectorConnect` | `wiroprojectguid must be a project's id from Project/List.` | A `wiroprojectguid` that isn't a project id. |
 | `ConnectorConnect` | `Project not found. Send the id of one of your projects from Project/List: one you created, or any project of a team you are an admin of.` | A project you can't use. |
 | `ConnectorConnect` | `This is a personal agent: use one of its owner's personal projects.`, `This is a team agent: use one of its team's projects.` | A project outside the agent's workspace. |
-| `ConnectorConnect` | `This agent belongs to a team. Switch to the team context to access it.`, `This agent is in your personal workspace. Switch to personal context to access it.`, `This agent belongs to a different team.` | The Wiro connector, from a request outside the agent's workspace. |
+| `ConnectorConnect` | `This agent belongs to a team. Switch to the team context to access it.`, `This agent is in your personal workspace. Switch to personal context to access it.`, `This agent belongs to a different team.` | Wiro AI Models, from a request outside the agent's workspace. |
 | `ConnectorConnect` | `This project's API key no longer works: the account that created it is not active, so the agent's model runs would fail. Bind another project.`, `This project's API key no longer works: the person who created it is no longer in the team, so the agent's model runs would fail. Bind another project of the team.` | The account that created the project is not active, or has left the team. |
 | `ConnectorConnect` | `This project has no API key the connector can use.` | The project's key can't be used. |
 | `ConnectorConnect`, `ConnectorSetAccounts` | `accounts must be an object of lists of account ids.`, `accounts has too many keys.`, `Each account id is text of at most 200 characters.` | The shape of `accounts`: at most 10 keys and 500 ids per key. |
 | any | `Something went wrong. Try again.` | A temporary failure: nothing was changed. |
 
-The account picker refusals are under [ConnectorSetAccounts](#post-useragentconnectorsetaccounts), the callback codes under [The callback and your redirect URL](#the-callback-and-your-redirect-url).
+The account picker refusals are under [ConnectorSetAccounts](#post-useragentconnectorsetaccounts), the callback codes under [The callback and your redirect URL](#the-callback-and-your-redirect-url), and what Deploy, `SkillsApply` and `CredentialUpsert` answer for a connector under [Connectors, Skills and Credentials](#connectors-skills-and-credentials).
 
-## Coming From Credential Connectors
+## Connectors, Skills and Credentials
 
-Connectors used to be skills that read credentials. If your code still uses those calls or names, this is where each one went. Each connector's `slug` is the credential key it had before (`serper`, `shopify`, `google-ads`, `facebook-pages`, ...).
+A connector is on while it is connected: it is never a Skill to turn on or a credential to save. The calls that take Skills or credentials refuse a connector before anything is saved, created or charged:
 
-| Before | Now |
-|--------|-----|
-| A connector's skill (`int-<name>`) turned on with `SkillsApply` or Deploy's `skills` | Nothing to turn on: a connected connector is on. `skills` and `SkillsApply` take Skills (`util-*`) only. |
-| `int-twilio-channel`, the Twilio Voice channel | `util-twilio-channel`, a Skill: turn it on with `SkillsApply` or Deploy's `skills`. See [Twilio Voice Channel](/docs/integration-twiliovoice-skills). |
-| `int-googleplay-events`, Google Play promotional content | `util-googleplay-events`, a Skill that prepares the content for you to publish in Play Console. It works with the `google-play` connector: its `docs_url` is that connector's page, [https://wiro.ai/connectors/google-play](https://wiro.ai/connectors/google-play). |
-| `int-wiro-aimodels`, Wiro AI Models | The `wiro` connector: see [The Wiro connector](#the-wiro-connector). An agent that had it on and had a Wiro project was connected to it. |
-| `POST /Credentials/List`, `POST /Credentials/Detail` for a connector | [`POST /AgentConnector/List`](#post-agentconnectorlist), [`POST /AgentConnector/Detail`](#post-agentconnectordetail) |
-| `POST /UserAgent/CredentialUpsert` with a connector's `credentialkey` | [`POST /UserAgent/ConnectorConnect`](#connect-with-fields) with `values` |
-| `POST /UserAgentOAuth/OAuthConnect` | [`POST /UserAgent/ConnectorConnect`](#connect-with-a-sign-in) |
-| `POST /UserAgentOAuth/OAuthStatus` | [`POST /UserAgent/ConnectorList`](#post-useragentconnectorlist) |
-| `POST /UserAgentOAuth/DiscoverPickerItems` | [`POST /UserAgent/ConnectorAccounts`](#post-useragentconnectoraccounts) |
-| `POST /UserAgentOAuth/SetPickerAccounts` | [`POST /UserAgent/ConnectorSetAccounts`](#post-useragentconnectorsetaccounts) |
-| `POST /UserAgentOAuth/OAuthDisconnect` | [`POST /UserAgent/ConnectorDisconnect`](#post-useragentconnectordisconnect) |
-| A redirect URI per vendor (`/UserAgentOAuth/<Vendor>Callback`) | One for every vendor: `https://api.wiro.ai/v1/AgentConnector/OAuthCallback`. Add it to each of your OAuth apps. |
-| `<vendor>_connected=true` and `<vendor>_error=<code>` on your redirect URL | `connector_connected=true` and `connector_error=<code>` |
+| Call | Refused | Answer |
+|------|---------|--------|
+| `POST /UserAgent/Deploy` | A connector's slug as a key of `credentials` | `Unknown credential: <key>. Connect a connector after the deploy with UserAgent/ConnectorConnect.` |
+| `POST /UserAgent/Deploy` | A `skills` name that isn't a Skill | `Unknown skill: <name>.`, or for a name that starts with `int-`, `Unknown skill: <name>. Connectors are connected with UserAgent/ConnectorConnect, not turned on as skills.` |
+| `POST /UserAgent/SkillsApply` | A `skills` name that isn't a Skill | `Unknown skill: <name>` |
+| `POST /UserAgent/CredentialUpsert` | A row whose `credentialkey` is a connector's slug: the whole request, its other rows included | `Unknown credential: <key>. Connectors are connected with UserAgent/ConnectorConnect.` |
+| `POST /Credentials/Detail` | A connector's slug as `key` | `Credential not found: <key>` (code `404`): read it with [`AgentConnector/Detail`](#post-agentconnectordetail). |
 
-**Connections you already had.** Each agent's connector credentials moved over as connections, so a connector that was set up stays connected:
-
-- Values kept their field names, a sign-in kept its tokens and the app it signed in with, and the accounts its pickers had chosen are now in `accounts`.
-- A connection that misses a required value reads `pending`: send the value with [ConnectorConnect](#post-useragentconnectorconnect).
-- Gmail moved from an app password to a Google sign-in with an OAuth app of your own, so its connections read `reauth` with `lasterror: "auth_changed"` and give the agent no tools: create the app, as its field help says, and [sign in](#connect-with-a-sign-in) again.
-- A connection that signed in with Wiro's own app signs in again with an app of your own once it reads `reauth`. Only HubSpot, Mailchimp and X still sign in with Wiro's app, and only from Wiro's own panel.
-- Every OAuth app of your own must list the new redirect URI, `https://api.wiro.ai/v1/AgentConnector/OAuthCallback`. Tokens it issued before keep refreshing without it, but a new sign-in needs it.
-
-Channels (Telegram, Slack, Discord, Twilio Voice) are not connectors: they keep their credentials, see [Agent Credentials](/docs/agent-credentials).
+- Deploy's `skills` and `SkillsApply` take Skills (`util-*`) only. The Twilio Voice phone line is the Twilio Voice Channel (`util-twilio-channel`) Skill, with its account in the `twilio-voice` credential: see [Twilio Voice Channel](/docs/integration-twiliovoice-skills).
+- Channels (Telegram, Slack, Discord, Twilio Voice) are not connectors: they keep their credentials. See [Agent Credentials](/docs/agent-credentials).
+- Every OAuth app of your own lists one redirect URI, the same for every vendor: `https://api.wiro.ai/v1/AgentConnector/OAuthCallback`.
 
 ## Code Examples
 
@@ -19057,11 +19798,11 @@ A credential is a set of values an agent keeps for something it is, rather than 
 | Telegram, Slack, Discord | `telegram`, `slack`, `discord` | The agent's own external chat channels. See [Communication Channels](#communication-channels). |
 | Twilio Voice | `twilio-voice` | The phone line the agent answers. See [Twilio Voice Channel](/docs/integration-twiliovoice-skills). |
 | Wiro project | `wiro` | The project whose wallet pays for the Wiro model runs the agent makes, such as video and voice. See [The agent's Wiro project](#the-agents-wiro-project). |
-| Settings | `var-support-email`, `var-website`, `var-newsletter-test-email` | Values the agent's skills read: the support email it gives customers, its website addresses, and the inbox that gets a test copy of each newsletter before it goes out. |
+| Settings | `var-support-email`, `var-website`, `var-newsletter-test-email` | Values the agent's skills read: the support email it gives customers (field `value`), its website addresses (field `urls`: a list of `{ websitename, url }` entries, both required) and the inbox that gets a test copy of each newsletter before it goes out (field `value`). Save them with `CredentialUpsert`, as in [Setting Credentials](#setting-credentials). |
 
-The services an agent works with (Google Ads, Shopify, HubSpot, Serper and the rest) are **connectors**, not credentials: browse, connect and disconnect them with the calls on [Agent Connectors](/docs/agent-connectors). `CredentialUpsert` doesn't take a connector's values.
+The services an agent works with (Google Ads, Shopify, HubSpot, Serper and the rest) are **connectors**, not credentials: browse, connect and disconnect them with the calls on [Agent Connectors](/docs/agent-connectors). `CredentialUpsert` doesn't take a connector's values: a row whose `credentialkey` is a connector's slug refuses the whole request before anything is saved, its other rows included, with `{ "result": false, "errors": [{ "code": 0, "message": "Unknown credential: shopify. Connectors are connected with UserAgent/ConnectorConnect." }] }`.
 
-> **Not from the agent's chat.** [Setup cards](/docs/agent-messaging#setup-from-chat) connect connectors of the catalog only: no card saves a channel, Twilio Voice or a setting. Save them with `CredentialUpsert`; in chat, the agent asks an agent admin to make the change in the agent's settings. The one card that sets a credential is the `wiro` connector's `project` card: it binds the agent's Wiro project, as `CredentialProjectBind` does.
+> **Not from the agent's chat.** [Setup cards](/docs/agent-messaging#setup-from-chat) connect connectors of the catalog only: no card saves a channel, Twilio Voice or a setting. Save them with `CredentialUpsert`; in chat, the agent asks an agent admin to make the change in the agent's settings. The one card that sets a credential is the `project` card of Wiro AI Models (`wiro`): it binds the agent's Wiro project, as `CredentialProjectBind` does.
 
 **Read & write paths at a glance:**
 
@@ -19226,7 +19967,7 @@ The example shows one entry, shortened. Keys this table doesn't list are for Wir
 |-------|------|-------------|
 | `key` | `string` | Canonical credential key. Use this in `CredentialUpsert.fields[].credentialkey`. |
 | `title` | `string` | Display label for the credential's card. |
-| `icon` | `string` | Path or URL to the icon (relative paths absolutized server-side). |
+| `icon` | `string` | The icon as the registry holds it: a path on `https://wiro.ai`, such as `/images/icons/skills/telegram.svg` (put `https://wiro.ai` in front of it), or, for a setting, a Lineicons class name, such as `lni lni-envelope-1`. |
 | `brand_color` / `brand_text_color` / `brand_logo_filter` | `string\|null` | Colours and CSS filter for rendering the icon, the same shape as on skill registry entries. |
 | `docs_url` | `string\|null` | Slug of the page about it on this docs site, when it has one. Frontends prefix it with `/docs/`. |
 | `credential_mode` | `string` | `"api_key"` for values typed in (the channels, Twilio Voice, the Wiro project) or `"static"` for settings. |
@@ -19238,18 +19979,19 @@ The example shows one entry, shortened. Keys this table doesn't list are for Wir
 | Sub-field | Type | Description |
 |-----------|------|-------------|
 | `key` | `string` | Field name (the `fieldname` you send to `CredentialUpsert`). |
-| `type` | `string` | Input type: `"text"`, `"password"`, `"email"`, `"number"`, `"textarea"`, `"select"`, `"boolean"`, `"string-array"`, `"object-array"`, `"fileinput"` (a public file, written with `CredentialFileUpload`), or `"custom"` (such as the Wiro project picker). |
+| `type` | `string` | Input type: `"text"`, `"password"`, `"email"`, `"url"`, `"number"`, `"textarea"`, `"select"`, `"boolean"`, `"string-array"`, `"object-array"`, `"fileinput"` (a public file, written with `CredentialFileUpload`), `"custom:wiro-project-picker"` (the Wiro project: bind it with `CredentialProjectBind`) or `"custom:urls-list"` (a list of objects, written like `"object-array"`; its entry fields are in `custom_component_config.per_url_schema`). |
 | `label` | `string` | Display label for the form input. |
 | `required` | `boolean` | Whether the field must be filled before the credential counts as set up. |
 | `placeholder` | `string?` | Placeholder text for the input. |
 | `pattern` | `string?` | Regex the value must satisfy. |
 | `maxlength` / `minlength` | `number?` | Length constraints. |
-| `options` | `array?` | For `type: "select"`, `[{ label, value }]` choices. |
+| `options` | `array?` | For `type: "select"`, `[{ value, text }]` choices: show `text`, send `value` as the `fieldvalue`. |
 | `default` | `string?` | Default value applied when the user hasn't set anything yet. |
 | `help` | `string?` | HTML help text rendered under the input. |
 | `show_toggle` | `boolean?` | For `type: "password"`, render a "show / hide" toggle. |
-| `encrypted` | `boolean?` | `true` for a secret: it is stored encrypted and read back as the mask. |
+| `encrypted` | `boolean?` | `true` when the value is stored encrypted. Only a `password` field comes back as the mask, `"••••••••"`: an encrypted field of another type, such as Twilio Voice's `accountsid` or the Wiro project's `apikey`, comes back as saved. In [`CredentialFieldHistory`](#auditing-credential-changes-credentialfieldhistory), an encrypted field's earlier values read `"[REDACTED]"`. |
 | `item_schema` / `item_type` | `object?` | For array-of-object fields: describes the per-entry shape (e.g. Telegram `groups[].{chatid, allowedusers}`). |
+| `custom_component_config` | `object?` | On a `"custom:urls-list"` field: `per_url_schema` holds the field objects of one entry (`websitename`, `url`). Its other keys are for Wiro's own panel. |
 
 **`fieldstatus`**. Not part of the registry schema: the server stamps it onto each stored field when it is written. Values you save are `user` and come back in responses (a secret as the mask). `platform` fields are Wiro's own: you can't write them, and they never come back.
 
@@ -19310,7 +20052,7 @@ The response names the project and says what happened to the agent: `{ "result":
 
 > **Don't confuse `credentials.wiro.apikey` with your operator-level Wiro API key.** `credentials.wiro.apikey` is the project key the agent uses to run Wiro models. The `x-api-key` header you send to Wiro endpoints from your own backend is your operator key, which authenticates your request (see [Authentication](/docs/authentication)). They are the same key only when you bind the project of the key you call with.
 
-The [Wiro connector](/docs/agent-connectors#the-wiro-connector), which gives the agent Wiro's own model and task tools, always acts with this project, as the agent's own calls. Connecting it binds the project you pick, as `CredentialProjectBind` does, and moving the agent to a workspace the project isn't in disconnects both the project and the connector.
+The [Wiro AI Models (`wiro`)](/docs/agent-connectors#the-wiro-connector) connector, which gives the agent Wiro's own model and task tools, always acts with this project, as the agent's own calls. Connecting it binds the project you pick, as `CredentialProjectBind` does; disconnecting it leaves the project bound, so the agent's Skills keep running models with it. Moving the agent to a workspace the project isn't in disconnects both the project and the connector.
 
 ## Platform-Managed Credentials
 
@@ -19323,7 +20065,7 @@ Some credential fields are **managed by Wiro**. You don't provide them, and they
 
 ## Auditing Credential Changes: `CredentialFieldHistory`
 
-Every credential field write is appended to a versioned history. Use `POST /UserAgent/CredentialFieldHistory` to read it, the same idea as `CustomSkillHistory` for skills.
+Each time a save replaces a field's saved value, the earlier value is kept in a versioned history, with `operation: "update"`. A first save adds no entry, and neither does a list of entries sent whole (Telegram `groups`, Slack `channels`, Discord `guilds`, Website `urls`); a change to one entry's field, sent with `parentfield` and `ordinal`, is kept like any other. Use `POST /UserAgent/CredentialFieldHistory` to read it, the same idea as `CustomSkillHistory` for skills.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialFieldHistory" \
@@ -19351,7 +20093,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialFieldHistory" \
       "fieldstatus": "user",
       "parentfield": null,
       "ordinal": 0,
-      "operation": "upsert",
+      "operation": "update",
       "changedby": "ada-uuid",
       "changedby_user": {
         "uuid": "ada-uuid",
@@ -19377,7 +20119,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialFieldHistory" \
 | `startdate` | number | No | UTC epoch seconds: return entries on/after this time |
 | `enddate` | number | No | UTC epoch seconds: return entries on/before this time |
 
-> **Secrets stay out of the history's answers.** A saved secret such as a bot token or an auth token comes back as `"••••••••"`, in `POST /UserAgent/Detail` as in the history. `CredentialFieldHistory` only shows the audit trail.
+> **Secrets stay out of the history's answers.** A saved secret, such as a bot token or an auth token, reads `"••••••••"` in `POST /UserAgent/Detail`, and its earlier values read `"[REDACTED]"` in the history, as do those of every field the registry marks `encrypted`, such as Twilio Voice's `accountsid`. `CredentialFieldHistory` only shows the audit trail.
 
 ## Setting Credentials
 
@@ -19402,15 +20144,35 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 
 Response: `{ "result": true, "applied": 2, "errors": [] }`. `applied` is the count of fields saved without an error (a field sent with its current value still counts; a secret sent back as the mask isn't counted, see below). All fields are validated before any is written: if one fails validation (for example a reserved fieldname prefixed with `_`), the whole request is rejected and nothing is saved; `result` is `false` and `errors` lists every invalid field. If a save fails after validation has passed, the other fields are still saved and each failed field is listed in `errors` with `result: false`. A starting or running agent restarts to apply the new values when the call changes a saved value.
 
+Settings are saved the same way. Each email setting has one field, `value`. The Website setting's `urls` is a list of `{ websitename, url }` entries, both required, and the list you send replaces the saved one:
+
+```json
+{
+  "useragentguid": "your-useragent-guid",
+  "fields": [
+    { "credentialkey": "var-support-email", "fieldname": "value", "fieldvalue": "support@example.com" },
+    { "credentialkey": "var-newsletter-test-email", "fieldname": "value", "fieldvalue": "newsletter-test@example.com" },
+    { "credentialkey": "var-website", "fieldname": "urls", "fieldvalue": [{ "websitename": "Main site", "url": "https://example.com" }] }
+  ]
+}
+```
+
+Response: `{ "result": true, "applied": 3, "errors": [] }`. Each of these is refused, and nothing is saved:
+
+- an entry without a name or a URL: `Website Name in Websites #1 is required` (or `URL in Websites #1 is required`);
+- any other key in an entry: `Websites #1 contains an unknown field: <key>`;
+- a `urls` value that isn't a JSON array, such as one URL as text: `Websites must be an array`.
+
 ### Field-level write rules
 
 - **`fieldstatus` is assigned by the server.** Any `fieldstatus` you send is ignored: a field that already exists keeps its stored status, and a new field gets the status its registry schema implies.
 - **Wiro-managed fields are rejected.** You can't write a field whose status is `platform`: it fails with `<Field label> is managed by the platform` (a field with no schema label is named `<credentialkey>.<fieldname>` instead). As with any invalid field, the whole request is rejected and nothing is saved.
 - **Reserved fieldnames are rejected.** Any `fieldname` starting with `_` (e.g. `_isoptional`, `_isextra`) is a sentinel used by the template itself and cannot be set by API callers.
+- **A connector's slug is refused.** A connector is connected with [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect), never saved here: a row whose `credentialkey` is a connector's slug fails with `Unknown credential: <key>. Connectors are connected with UserAgent/ConnectorConnect.`, and nothing in the request is saved.
 - **A secret sent back as the mask keeps its saved value.** `UserAgent/Detail` shows a saved secret (a `password` field) as `"••••••••"`. A row whose `fieldvalue` is that mask, with or without spaces around it, keeps what is saved: it isn't written, isn't counted in `applied` and restarts nothing. So a card sent back as Detail showed it changes only the fields you edited. To change a secret, send its new value. The mask with other text beside it is refused, with `<Field label> holds "••••••••", which stands for a saved value. Clear it and enter the full value`.
 - **Whitespace around a value is trimmed.** Text, password, email, URL and number values, and each entry of a list of strings, are saved without the spaces, tabs or line breaks around them and are validated after trimming, so a token pasted with a trailing newline is accepted. Spaces inside a value are kept, and multi-line text, selections, booleans, files and nested rows are saved as sent. The same applies to inline Deploy credentials.
 - Credential groups other than the channels must be declared by the agent template. Communication-channel credentials are the exception: every useragent may create the channel groups published in `POST /Skills/List` → `channels[]`, using `CredentialUpsert` or inline Deploy credentials.
-- **Lists** (Telegram `groups[]`, Slack `channels[]`, Discord `guilds[]`, Twilio `phonenumbers[]`) are sent as JSON arrays. An array `fieldvalue` (with no `parentfield`) replaces the whole stored list, so send the complete desired list. Per-row writes (a sub-field sent with `parentfield`, the list field's key, and `ordinal`, the array index) change only that entry; indices you don't send are kept. To clear an optional list, send `[]` as that field's `fieldvalue` with no `parentfield`.
+- **Lists** (Telegram `groups[]`, Slack `channels[]`, Discord `guilds[]`, Twilio `phonenumbers[]`, Website `urls[]`) are sent as JSON arrays. An array `fieldvalue` (with no `parentfield`) replaces the whole stored list, so send the complete desired list. Per-row writes (a sub-field sent with `parentfield`, the list field's key, and `ordinal`, the array index) change only that entry; indices you don't send are kept. To clear an optional list, send `[]` as that field's `fieldvalue` with no `parentfield`.
 - Use `POST /UserAgent/Detail` to inspect which fields each credential exposes, and the `_connected` / `optional` / `extra` flags that describe its readiness state.
 
 ### Prepaid deploy: inline setup supported (with limitations)
@@ -19426,6 +20188,11 @@ If you call `POST /UserAgent/Deploy` with `useprepaid: true`, you may pass `cred
 - Deploy never saves a `platform` field sent in `credentials`. In a communication-channel group (Telegram, Slack, Discord), such a field fails Deploy before the agent is created. In any other group, the field is dropped and Deploy continues.
 - A secret sent as the mask, `"••••••••"`, isn't saved: a new agent has no saved value for it to keep. In a communication-channel group (Telegram, Slack, Discord), the mask is refused with `<Field label> holds "••••••••", which stands for a saved value. Clear it and enter the full value`, and Deploy fails before the agent is created. `UserAgent/Detail` never returns a saved secret, so to copy one agent's setup to another, send each secret's value.
 - If `credentials` includes a communication-channel group, all of that channel's `required_fields` must be present. A missing or invalid activation credential fails Deploy instead of creating a partially configured channel.
+- A connector's slug as a key of `credentials` fails Deploy before anything is created or charged, with `Unknown credential: <key>. Connect a connector after the deploy with UserAgent/ConnectorConnect.`
+
+**Deploy body `skills` rules:**
+
+- Skills (`util-*`) only. A name that isn't a Skill fails Deploy before anything is created or charged, with `Unknown skill: <name>.`; a name that starts with `int-` gets `Unknown skill: <name>. Connectors are connected with UserAgent/ConnectorConnect, not turned on as skills.`
 
 **Deploy body `customskills` semantics:**
 
@@ -19464,6 +20231,108 @@ If you're building a product on top of Wiro agents for your own customers:
 
 When the agent proposes a change in a chat, apply it with the same calls and record it on its setup card with `SetupCardApply`: see [Agent Chat Integration](/docs/agent-chat-integration).
 
+## Code Examples
+
+### Channels (curl)
+
+```bash
+# Connect Telegram: every required field in one call turns the channel on
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "telegram", "fieldname": "bottoken",     "fieldvalue": "123456:ABC-DEF1234ghIkl" },
+      { "credentialkey": "telegram", "fieldname": "allowedusers", "fieldvalue": ["123456789"] }
+    ]
+  }'
+
+# Set the agent's support email (a setting its skills read)
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "var-support-email", "fieldname": "value", "fieldvalue": "support@example.com" }
+    ]
+  }'
+
+# Read a credential's history
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialFieldHistory" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "useragentguid": "your-useragent-guid", "credentialkey": "telegram" }'
+```
+
+### Wiro project (curl)
+
+```bash
+# Bind the Wiro project the agent runs models with (projectid from POST /Project/List)
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialProjectBind" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "useragentguid": "your-useragent-guid", "projectid": "4821" }'
+
+# Connectors (Shopify, Google Ads, Serper, ...) are not credentials:
+# connect them with POST /UserAgent/ConnectorConnect (see Agent Connectors).
+```
+
+### Python
+
+```python
+import requests
+
+API = "https://api.wiro.ai/v1"
+headers = {"x-api-key": "YOUR_API_KEY", "Content-Type": "application/json"}
+guid = "your-useragent-guid"
+
+# Telegram: every required field in one call turns the channel on
+res = requests.post(f"{API}/UserAgent/CredentialUpsert", headers=headers, json={
+    "useragentguid": guid,
+    "fields": [
+        {"credentialkey": "telegram", "fieldname": "bottoken", "fieldvalue": "123456:ABC-DEF1234ghIkl"},
+        {"credentialkey": "telegram", "fieldname": "allowedusers", "fieldvalue": ["123456789"]},
+    ],
+}).json()
+print(res["result"], res.get("applied"), res["errors"])
+
+# The Wiro project the agent runs models with
+bind = requests.post(f"{API}/UserAgent/CredentialProjectBind", headers=headers,
+                     json={"useragentguid": guid, "projectid": "4821"}).json()
+print(bind.get("project"), bind.get("restart"))
+
+# Which channels are on now
+detail = requests.post(f"{API}/UserAgent/Detail", headers=headers, json={"guid": guid}).json()
+print(detail["useragents"][0].get("enabledChannels"))
+```
+
+### Node.js
+
+```javascript
+const API = 'https://api.wiro.ai/v1';
+const headers = { 'x-api-key': 'YOUR_API_KEY', 'Content-Type': 'application/json' };
+const guid = 'your-useragent-guid';
+
+const post = (path, body) =>
+  fetch(`${API}${path}`, { method: 'POST', headers, body: JSON.stringify(body) }).then((r) => r.json());
+
+// Telegram: every required field in one call turns the channel on
+const saved = await post('/UserAgent/CredentialUpsert', {
+  useragentguid: guid,
+  fields: [
+    { credentialkey: 'telegram', fieldname: 'bottoken', fieldvalue: '123456:ABC-DEF1234ghIkl' },
+    { credentialkey: 'telegram', fieldname: 'allowedusers', fieldvalue: ['123456789'] },
+  ],
+});
+console.log(saved.result, saved.applied, saved.errors);
+
+// The Wiro project the agent runs models with
+const bind = await post('/UserAgent/CredentialProjectBind', { useragentguid: guid, projectid: '4821' });
+console.log(bind.project, bind.restart);
+```
+
 ---
 
 # Agent Chat Integration
@@ -19488,7 +20357,7 @@ Wiro's answers in a chat sent with a project API key name no site, page or link.
 
 A few fields are for your backend, not for your users: every message row and every card names your API key's owner as the person who sent, asked or applied (see [API key](#api-key)), and the tokens and ids are your own references. Show your users your own names and words.
 
-Connector titles name their vendors, such as Google Analytics 4 or WordPress. Two things carry Wiro's name: the agent's Wiro project (the credential `wiro`, which pays for the models its skills run, such as Video Creator's or a voice channel's) and the `wiro` connector, which gives the agent Wiro's own tools. That name comes wherever the API names them, in the card listing and in `summary` too. An agent that runs models can also write their public links in an answer, such as a model's page on wiro.ai or an output file on cdn1.wiro.ai. Your product may show its own label for them, as for any title the API gives.
+Connector titles name their vendors, such as Google Analytics 4 or WordPress. Two things carry Wiro's name: the agent's Wiro project (the credential `wiro`, which pays for the models its skills run, such as Video Creator's or a voice channel's) and the Wiro AI Models (`wiro`) connector, which gives the agent Wiro's own tools. That name comes wherever the API names them, in the card listing and in `summary` too. An agent that runs models can also write their public links in an answer, such as a model's page on wiro.ai or an output file on cdn1.wiro.ai. Your product may show its own label for them, as for any title the API gives.
 
 A connector that signs in connects from its card too: `SetupCardApply` on its `connect` card answers the vendor's sign-in address, `authorizeUrl`, and the browser comes back to your `redirecturl` through one callback on the API host. A sign-in started with your API key always runs as your product: the consent screen names your organization, or the app of your own whose keys you send, never Wiro's own app. Send your own `redirecturl` with every sign-in: without one, the browser comes back to Wiro's return page on wiro.ai. The same connectors also connect on your own settings screens with the [Agent Connectors](/docs/agent-connectors) calls.
 
@@ -19533,6 +20402,19 @@ Deploy one agent per customer of yours with [`POST /UserAgent/Deploy`](/docs/age
   "chatsetup": "all"
 }
 ```
+
+`useprepaid: true` pays the plan from the balance of your key's workspace: Starter $5, Pro $30 or Max $100 a month, each including its own price in AI usage, and every renewal is paid from that balance too. When the balance is short, Deploy creates nothing, charges nothing and answers code `97` with `neededusd`, the amount to add: add funds (see [Adding Funds](/docs/agent-overview#adding-funds)) and send the same Deploy again.
+
+```json
+{
+  "result": false,
+  "useragents": [],
+  "errors": [{ "code": 97, "message": "Your balance is $3.10; this plan needs $30.00. Add funds to continue.", "time": 1794654000 }],
+  "neededusd": 26.9
+}
+```
+
+Code `110`, `The wallet was charged $30.00, but the plan could not be saved. Please contact support and do not try again.`, means the balance paid and the plan was not saved: never send the Deploy again, since a retry charges again (see [Paying for Plans](/docs/agent-overview#paying-for-plans) and [Deploy](/docs/agent-overview#post-useragentdeploy)).
 
 ### Allow setup cards in API chats
 
@@ -19620,11 +20502,40 @@ When the agent has used the AI usage its plan includes and the balance is under 
   "agenttoken": null,
   "status": null,
   "agentstatus": 4,
-  "agentusage": { "period": "2026-11", "resetsat": 1796083200, "includedusd": 30, "usedusd": 30, "leftusd": 0, "renewalusd": 30, "frombalanceusd": 12.85, "balanceusd": 0.31, "wallet": "personal", "minbalanceusd": 0.5, "paused": true, "pausedreason": "balance" }
+  "agentusage": { "period": "2026-11", "resetsat": 1796083200, "includedusd": 30, "usedusd": 30, "leftusd": 0, "renewalusd": 30, "frombalanceusd": 0, "balanceusd": 0.31, "wallet": "personal", "minbalanceusd": 0.5, "paused": true, "pausedreason": "balance" }
 }
 ```
 
-That sentence speaks to whoever pays for the agent, which is you; it leaves out the date when the plan's renewal can't be read. Detect the refusal by `agentusage`, show your users your own words, and add funds to the balance of the agent's workspace (see [Adding Funds](/docs/agent-overview#adding-funds)), or move the agent to a larger plan with [`UpgradeTier`](/docs/agent-overview#post-useragentupgradetier). The agent answers again as soon as the balance is back at $0.50 or more. Your users in Telegram, Slack and Discord read `This agent is paused for now. It runs again once its owner adds funds or its plan renews.` instead, with no amount. Setup replies that Wiro answers itself still work while the agent is paused: see [Replies the API answers itself](#replies-the-api-answers-itself).
+That sentence speaks to whoever pays for the agent, which is you; it leaves out the date when the plan's renewal can't be read. Detect the refusal by `agentusage` with `pausedreason: "balance"`, show your users your own words, and add funds to the balance of the agent's workspace (see [Adding Funds](/docs/agent-overview#adding-funds)). While its plan is live, the agent answers again as soon as the balance is back at $0.50 or more. A larger plan, with [`UpgradeTier`](/docs/agent-overview#post-useragentupgradetier), gives the agent more AI usage at once but is paid from the same balance, so add funds first: while the balance is short, UpgradeTier answers code `97` with `neededusd`. On this refusal `frombalanceusd` is always `0`: read what the balance paid this period from `usage` on [`UserAgent/Detail`](/docs/agent-overview#post-useragentdetail). Your users in Telegram, Slack and Discord read `This agent's plan usage and its owner's balance are used up.` when they write while it is paused, or `This agent is paused for now. It runs again once its owner adds funds or its plan renews.` when a reply is cut off, with no amount. Setup replies that Wiro answers itself still work while the agent is paused: see [Replies the API answers itself](#replies-the-api-answers-itself).
+
+An agent runs only with a live plan. When its plan ends, cancelled or with a renewal the balance couldn't pay, the agent stops whatever the balance holds, and adding funds doesn't start it again. Send then answers `Agent is stopped. Start it before sending messages.` with `agentstatus: 0`, and [`Start`](/docs/agent-overview#post-useragentstart) answers `Subscription required — please subscribe to this agent before starting it.` (code `0`). Renew the plan with [`RenewSubscription`](/docs/agent-overview#post-useragentrenewsubscription), or start a new one with [`CreateSubscriptionCheckout`](/docs/agent-overview#post-useragentcreatesubscriptioncheckout) and `useprepaid: true`: both are paid from the balance, and either one queues the agent to start by itself. A Send that reaches the agent before it has stopped answers code `97` with `agentusage.pausedreason: "plan"` and `<agent> has no active plan. Choose a plan to keep it running.`, and your users in Telegram, Slack and Discord read `This agent has no active plan, so it paused.`: offer a plan there, not funds.
+
+When a [spend limit](/docs/spend-limits) that covers the agent is used up, Send answers `result: false` with code `93` and `agentstatus`. The limit is the agent's own or, once its plan's included AI usage is used up, the account's or team's limit or the `agent` surface's limit:
+
+```json
+{
+  "result": false,
+  "errors": [{ "code": 93, "message": "This agent's monthly spend limit is reached ($20.35 of $20.00). It resets on December 1, 2026 at 00:00 UTC.", "time": 1794654900 }],
+  "messageguid": null,
+  "agenttoken": null,
+  "status": null,
+  "agentstatus": 4
+}
+```
+
+When a [Model Access](/docs/model-access) rule for the agent blocks the `model` you send for the turn (its own rule, the account's or team's rule, or the `agent` surface's rule), Send answers `result: false` with code `92`:
+
+```json
+{
+  "result": false,
+  "errors": [{ "code": 92, "message": "This agent can't use openai/gpt-5-6-sol. Model Access rules decide which models can run.", "time": 1794654900 }],
+  "messageguid": null,
+  "agenttoken": null,
+  "status": null
+}
+```
+
+In both cases nothing runs and nothing is charged. Show the sentence as it is, or your own words, and branch on the code.
 
 ### Follow the turn
 
@@ -19683,9 +20594,9 @@ A turn that fails ends with `status: "agent_error"`, and a cancelled one with `"
 | `[SECURITY_BLOCKED]` | `agent_error` | The agent's security rules blocked the message: ask the person to change it. |
 | `[SAFETY_POLICY_BLOCKED]` | `agent_error` | The model's provider declined the request: ask the person to rephrase it. |
 | `[TURN_INTERRUPTED]` | `agent_error` | A restart cut the turn short: offer to send it again. |
-| `[SPEND_LIMIT_REACHED]` | `agent_error` | The agent's spend limit is used up: show the sentence as it is. |
+| `[SPEND_LIMIT_REACHED]` | `agent_error` | A spend limit that covers the agent is used up: its own or, once its plan's included AI usage is used up, the account's or team's or the `agent` surface's. Show the sentence as it is. |
 | `[USAGE_CEILING_REACHED]` | `agent_error` | The agent reached its hourly or daily safety ceiling for AI model calls: say it runs again when that hour or day is over. |
-| `[MODEL_NOT_ALLOWED]` | `agent_error` | The agent's Model Access rule blocks the model it uses: show the sentence as it is. |
+| `[MODEL_NOT_ALLOWED]` | `agent_error` | A Model Access rule for the agent blocks the model it uses (its own, the account's or team's, or the `agent` surface's): show the sentence as it is. |
 | `[CREDITS_EXHAUSTED]` | `agent_error` | The agent has used the AI usage its plan includes and the balance is under $0.50: say it runs again once funds are added or its plan renews, and don't offer to try again before that. |
 | `[AGENT_UNAVAILABLE]` | `agent_error` | Anything else, a message that couldn't be queued included: offer to try again shortly. |
 | `[REQUEST_CANCELLED]` | `agent_cancel` | The turn was cancelled. |
@@ -19716,7 +20627,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/History" \
       {
         "guid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
         "content": "Can you report our website traffic every Monday?",
-        "response": "I can do that once Google Analytics 4 is connected. Sign in to it with the card below, then I will set up the weekly report.",
+        "response": "I can send a traffic report every Monday at 09:00 with last week's sessions, users and top pages. Reply yes to set it up.",
         "status": "agent_end"
       }
     ],
@@ -19736,7 +20647,7 @@ The row is shortened here; a whole one has the fields of a [`Message/Detail`](/d
 | A message added between turns | `content` is empty, the text is in `response`, `metadata.type` is `"subagent"` or `"system"` | The agent's message with no message of the person's above it: a scheduled task's report, files sent after an answer, or, for `"subagent"`, the result of work the agent finished in the background. |
 | A model switch | `status` is `"agent_done"`, `metadata.type` is `"model_change"` | A thin separator, or nothing. It comes only when you pick a per-turn `model`. |
 
-A message added between turns has no turn of its own: nothing streams on an `agenttoken` for it and no webhook is called. A scheduled task's report goes to the session the agent's latest message is in, so on an agent that several of your users share it can reach any of their chats. To get it live, follow the session with the `sessiontoken` above: send `{ "type": "agent_session_subscribe", "sessiontoken": "Lp4vQ8sWn2KxT7cRb1YhZ6mDg9FjA3uEo5iNk0wXyHt" }` on the socket, and each new row arrives as an `agent_message_inserted` frame. Follows end with the connection, so after a reconnect subscribe again and read History once. See [Following a session](/docs/agent-websocket#following-a-session). The weekly report of the GA4 example below reaches your chat this way.
+A message added between turns has no turn of its own: nothing streams on an `agenttoken` for it and no webhook is called. A scheduled task's report goes to the session the agent's latest message is in, so on an agent that several of your users share it can reach any of their chats. To get it live, follow the session with the `sessiontoken` above: send `{ "type": "agent_session_subscribe", "sessiontoken": "Lp4vQ8sWn2KxT7cRb1YhZ6mDg9FjA3uEo5iNk0wXyHt" }` on the socket, and each new row arrives as an `agent_message_inserted` frame. Follows end with the connection, so after a reconnect subscribe again and read History once. See [Following a session](/docs/agent-websocket#following-a-session). The reports of the scheduled task Weekly traffic report, from the card above, reach your chat this way.
 
 To list a customer's conversations, call [`POST /UserAgent/Message/Sessions`](/docs/agent-messaging#post-useragentmessagesessions) with the `useragentguid`: it answers each session's `sessionkey`, `messagecount`, `updatedat`, `lastmessage` and, once named with `RenameSession`, `name`. It lists every session of the agent that your key's owner can read, so on an agent that several of your users share, show each person only the sessions your own records give them.
 
@@ -19820,7 +20731,7 @@ A setup block has the usual block fields, `type: "setup"`, `text: null` and a `s
       {
         "name": "apikey",
         "label": "Serper API Key",
-        "description": "1. Sign up at [serper.dev](https://serper.dev). No credit card; new accounts get **2,500 free searches**.\n2. Open the dashboard and copy your **API key** from the **API Key** section.\n3. Paste it here.",
+        "description": "Real Google web-search results as clean JSON, via [Serper.dev](https://serper.dev). Google's own Custom Search JSON API is being retired (shuts down 2027-01-01), so this connector uses Serper, which returns the same Google results with none of the Google Cloud setup.\n\n1. Sign up at [serper.dev](https://serper.dev). No credit card; new accounts get **2,500 free searches**.\n2. Open the dashboard and copy your **API key** from the **API Key** section.\n3. Paste it here. There is no Google Cloud project, no `cx`, and no key restriction to configure.\n\nAfter the free tier Serper is about $1 per 1,000 searches (cheaper at scale). Asking for more than 10 results per query counts as 2 searches.",
         "required": true,
         "secret": true,
         "format": "password",
@@ -19864,8 +20775,8 @@ A setup block has the usual block fields, `type: "setup"`, `text: null` and a `s
 | `connector` | `connect`, `disconnect` | The connector's slug as [`POST /AgentConnector/List`](/docs/agent-connectors#post-agentconnectorlist) lists it, such as `serper` or `hubspot`. A card names only connectors of the catalog: never a channel or a credential, and never a key's value. |
 | `title` | `connect`, `disconnect`, `schedule`, `skill` | `connect` and `disconnect`: the connector's title, written by Wiro, up to 120 characters. `schedule` and `skill`: optional, one line, up to 80 characters. |
 | `authtype` | `connect` | Written by Wiro: the connector's `authtype` in the catalog, `fields`, `headers`, `none`, `oauth` or `provider-oauth`. |
-| `mode` | `connect` | Written by Wiro: how the card connects, `key` (the values its `fields` ask for), `signin` (the vendor's sign-in) or `project` (a Wiro project for the `wiro` connector). See [Modes](#modes). |
-| `fields` | `connect` | Written by Wiro: what the card's form asks for, at most 30, in the shape of `credentialfields` on [`AgentConnector/Detail`](/docs/agent-connectors#connect-card-fields): `name`, `label`, `description` (Markdown), `required`, `secret`, `format`, and `options`, `placeholder`, `pattern`, `maxlength`, `serveronly`, `mode` or `source` where they apply. On a `key` card, the connector's Connect fields. On a `project` card, one field with `source: "wiro_project"`: a project picker, never an input. On a `signin` card, the fields its sign-in takes: for a connector that signs in with an app of your own, that app's keys (`serveronly: true`). The fields of a connector's key way are never on a `signin` card. Empty when there is nothing to enter. |
+| `mode` | `connect` | Written by Wiro: how the card connects, `key` (the values its `fields` ask for), `signin` (the vendor's sign-in) or `project`, a Wiro project picked for Wiro AI Models (`wiro`). See [Modes](#modes). |
+| `fields` | `connect` | Written by Wiro: what the card's form asks for, at most 30, in the shape of `credentialfields` on [`AgentConnector/Detail`](/docs/agent-connectors#connect-card-fields): `name`, `label`, `description` (Markdown), `required`, `secret`, `format`, and `options`, `placeholder`, `pattern`, `maxlength`, `serveronly`, `mode` or `source` where they apply. On a `key` card, the connector's Connect fields. On a `project` card, one field with `source: "wiro_project"`: a project picker, never an input. On a `signin` card, the fields its sign-in takes: for a connector that signs in with an app of your own, that app's keys (`serveronly: true`), and any other field the sign-in needs, such as Shopify's Shop Domain. The fields of a connector's key way are never on a `signin` card. Empty when there is nothing to enter. |
 | `wiroapp` | `connect` | Written by Wiro, only on a card from a Wiro web chat turn: `true` when its connector signs in there with Wiro's own app. Never on a card from a chat sent with your API key, whose sign-in always takes your own app's keys. |
 | `cron` | `schedule` | Five fields, in the agent's time zone. Always on `create`, optional on `update`. A task set up from chat runs at most once an hour. |
 | `instructions` | `schedule`, `skill` | `create` and `update`: the full text. `append`: only the text to add. `revert`: the text it restores. Up to 20,000 characters on what the agent writes. |
@@ -19885,7 +20796,7 @@ A `connect` card carries everything its form needs, so you can draw it without a
 
 ### Every kind
 
-`add` turns on a skill. This one turns on Video Creator and the skills that come with it:
+`add` turns on a skill. This one turns on Video Creator and the skills that come with it, on an agent that has Wiro AI Models connected:
 
 ```json
 {
@@ -19900,6 +20811,39 @@ A `connect` card carries everything its form needs, so you can draw it without a
 ```
 
 When `needs` names connectors, Wiro stores a `connect` card for each of them on the same message, right after the `add` card, whatever its `mode`, while the message has room for it (three cards at most) and has no pending `connect` card for it yet. Show them together: see [Buttons](#buttons).
+
+Google Play Promotional Content needs Google Play Console. On an agent that doesn't have it connected, the `add` card is the message's first setup block, and the `connect` card Wiro stores right after it is the second, whose block's `next` is `[{ "connector": "google-play", "title": "Google Play Console", "mode": "key" }]`:
+
+```json
+{
+  "v": 1,
+  "id": "g7p2k5m9w4ta",
+  "kind": "add",
+  "key": "util-googleplay-events",
+  "needs": [{ "connector": "google-play", "title": "Google Play Console", "mode": "key" }],
+  "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
+  "createdat": 1794656000
+}
+```
+
+```json
+{
+  "v": 1,
+  "id": "c2v8n4q6x1pd",
+  "kind": "connect",
+  "connector": "google-play",
+  "title": "Google Play Console",
+  "authtype": "fields",
+  "mode": "key",
+  "fields": [
+    { "name": "serviceaccountjson", "label": "Service Account JSON", "description": "1. Go to [Google Cloud Console → IAM & Admin → Service Accounts](https://console.cloud.google.com/iam-admin/serviceaccounts) ...", "required": true, "secret": true, "format": "json" }
+  ],
+  "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
+  "createdat": 1794656000
+}
+```
+
+Both apply in one step: see [Add and Connect](#add-and-connect).
 
 `remove` turns one off:
 
@@ -19926,14 +20870,14 @@ When `needs` names connectors, Wiro stores a `connect` card for each of them on 
   "authtype": "fields",
   "mode": "key",
   "fields": [
-    { "name": "apikey", "label": "Serper API Key", "description": "1. Sign up at [serper.dev](https://serper.dev) ...", "required": true, "secret": true, "format": "password", "placeholder": "your Serper.dev API key" }
+    { "name": "apikey", "label": "Serper API Key", "description": "Real Google web-search results as clean JSON, via [Serper.dev](https://serper.dev) ...", "required": true, "secret": true, "format": "password", "placeholder": "your Serper.dev API key" }
   ],
   "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
   "createdat": 1794654811
 }
 ```
 
-A connector that signs in gets a `signin` card: see [Sign-in: HubSpot](#sign-in-hubspot). The `wiro` connector gets a `project` card: see [Project: Wiro AI Models](#project-wiro-ai-models).
+A connector that signs in gets a `signin` card: see [Sign-in: HubSpot](#sign-in-hubspot). Wiro AI Models (`wiro`) gets a `project` card: see [Project: Wiro AI Models](#project-wiro-ai-models).
 
 `disconnect` disconnects a connector the agent has a connection for, and carries its `title`:
 
@@ -20038,8 +20982,8 @@ Whenever a card is applied, dismissed or fails, Wiro also marks applied the same
 |------|-----------|------|---------|
 | `add` | "Add `<title>`", the `title` of `key` in `Skills/List` | `with` as "Also turns on", `pauses` and `resumes`, and each entry of `needs` with its `connect` card | Apply, Dismiss, and the buttons of its `connect` cards; see [Buttons](#buttons) |
 | `remove` | "Remove `<title>`" | `with` as "Also turns off", `pauses` and `resumes` | Apply, Dismiss |
-| `connect` | "Connect `<title>`" | By `mode`: for `key`, a form from `fields`; for `signin`, the `serveronly` fields when the card has them, such as your own app's keys; for `project`, a picker of your projects | Save for `key` (Connect when no field is required), Sign in for `signin`, Connect for `project`, and Dismiss |
-| `disconnect` | "Disconnect `<title>`" | Say that the connection is removed and the agent loses the connector's tools until it is connected again | Disconnect, Dismiss |
+| `connect` | "Connect `<title>`" | By `mode`: for `key`, a form from `fields`; for `signin`, a form from `fields` when the card has any: your own app's keys (`serveronly: true`) and any other field the sign-in needs, such as LinkedIn's Organization ID or Shopify's Shop Domain; for `project`, a picker of your projects | Save for `key` (Connect when no field is required), Sign in for `signin`, Connect for `project`, and Dismiss |
+| `disconnect` | "Disconnect `<title>`" | Say that the connection is removed and the agent loses the connector's tools until it is connected again. For Wiro AI Models (`wiro`), also say that the agent keeps its Wiro project, which the models of its skills still use: only its `wiro__*` tools go | Disconnect, Dismiss |
 | `schedule` | "Create", "Change", "Pause", "Resume" or "Delete" scheduled task `<title or key>` | The schedule in words, in the agent's time zone, and `instructions` | Apply, Dismiss |
 | `skill` | "Create", "Change", "Add to", "Undo the last change to", "Turn off" or "Turn on" custom skill `<title or key>` | `instructions`; for `update`, `append` and `revert`, `before` next to the text after the change | Apply, Dismiss |
 | `timezone` | "Set the time zone to `<timezone>`" | The current zone, `timezone` on `UserAgent/Detail` (`null` means UTC) | Apply, Dismiss |
@@ -20065,11 +21009,11 @@ Show `note`, when there is one, under the title.
 - **Apply**: `SetupCardApply` with `action: "apply"`.
 - **Dismiss**: `SetupCardApply` with `action: "dismiss"`. A `connect` card connects its connector on its own, so dismissing an `add` card leaves its `connect` cards pending: dismiss them too when the person turns the whole change down.
 - **A `key` card**: show its `fields` and **Save**: `SetupCardApply` with the values in `values`. A card whose fields hold no required field connects with **Connect** and no `values`.
-- **A `signin` card**: show its `serveronly` fields when it has them, and **Sign in**: `SetupCardApply` with those keys in `values` and your `redirecturl`. Open the answer's `authorizeUrl`. Once the browser is back on your `redirecturl` with `connector_connected=true`, call `SetupCardApply` on the card again, with no `values`: it records the card applied. See [Sign-in: HubSpot](#sign-in-hubspot).
+- **A `signin` card**: show every field in its `fields` (your own app's keys are the `serveronly: true` ones; some sign-ins need more, such as LinkedIn's Organization ID, Reddit's Developer Profile Username or Shopify's Shop Domain), and **Sign in**: `SetupCardApply` with their values in `values` and your `redirecturl`. Open the answer's `authorizeUrl`. Once the browser is back on your `redirecturl` with `connector_connected=true`, call `SetupCardApply` on the card again, with no `values`: it records the card applied. It records the card only while the connector reads connected: if it doesn't yet, the same call starts a new sign-in and answers a new `authorizeUrl`, with the card still pending. After `connector_error=<code>`, show that code's sentence and offer **Sign in** again instead. See [Sign-in: HubSpot](#sign-in-hubspot).
 - **A `project` card**: show a picker of your projects and **Connect**: `SetupCardApply` with the chosen project's id as `wiroprojectguid`, and no `values`. See [Project: Wiro AI Models](#project-wiro-ai-models).
 - **An `add` card with its `connect` cards**: the `connect` cards on the same message whose `connector` is in the `add` card's `needs` belong to it. Show them inside the `add` card.
-- **Add and connect, with a key**: when the `add` card has one `key` card, show its fields and **Add and connect**: `SetupCardApply` on the `add` card with the values in `values`. Both cards apply in one step, with one restart.
-- **Add and connect, with a sign-in**: when the `add` card has one `signin` card, run **Sign in** on that `connect` card first, as above. Once the browser is back, **Add**: `SetupCardApply` on the `add` card with `signin: true` applies both cards, once the connector reads connected.
+- **Add and connect, with a key**: when the `add` card has one `key` card, show its fields and **Add and connect**: `SetupCardApply` on the `add` card with the values in `values`. Both cards apply in one step, with one restart. See [Add and Connect](#add-and-connect).
+- **Add and connect, with a sign-in**: when the `add` card has one `signin` card, run **Sign in** on that `connect` card first, as above. Once the browser is back, **Add**: `SetupCardApply` on the `add` card with `signin: true` applies both cards, once the connector reads connected. See [Add and Connect](#add-and-connect).
 - **Add, then pick a project**: a `project` card takes its own step. Offer **Add** on the `add` card, and **Connect** on the `project` card, in either order.
 - **Several `connect` cards**: offer **Add** alone, then each `connect` card's own button.
 - **Add now, connect later**: `SetupCardApply` on the `add` card alone, whose answer's `next` names the `connect` cards to finish later.
@@ -20089,7 +21033,7 @@ Show `note`, when there is one, under the title.
 | `values` | object | No | `{ "<name>": value }` for the card's `fields`. On a `key` card: the connector's Connect fields. On a `signin` card: the fields its sign-in takes, such as your own app's keys. A `project` card takes none: send `wiroprojectguid`. Wiro checks them as [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect) does: required fields, `format`, `pattern` and `maxlength` (see [Connect card fields](/docs/agent-connectors#connect-card-fields) for the limits), and a `json` field also takes an object. A field left out keeps a value saved before. On an `add` card whose `needs` has one pending `key` card: that card's values, and Wiro applies both cards in one step. Never returned and never shown to the agent. |
 | `signin` | boolean | No | `true` on an `add` card whose `needs` has one pending `signin` card, once that card's sign-in has connected the connector: Wiro applies both cards in one step. Not together with `values`. |
 | `redirecturl` | string | No | A `signin` card: where the browser comes back after the sign-in, with the rules of [The redirect URL](/docs/agent-connectors#the-redirect-url). Send a page on your own site: without one, the browser comes back to Wiro's return page on wiro.ai. |
-| `wiroprojectguid` | string | No | A `project` card, the `wiro` connector's: the id of one of your projects, from [`POST /Project/List`](/docs/projects). It becomes the agent's own Wiro project, as [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) binds it. Left out, a call made with your project API key binds that key's own project. |
+| `wiroprojectguid` | string | No | A `project` card, the one of Wiro AI Models (`wiro`): the id of one of your projects, from [`POST /Project/List`](/docs/projects). It becomes the agent's own Wiro project, as [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) binds it. Left out, a call made with your project API key binds that key's own project. |
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
@@ -20141,7 +21085,50 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
 | `errorcode` | Only on some refusals of an `add` card sent with `signin: true`: `not_connected` (the connector doesn't read connected yet), `signin_no_pair` (no pending `signin` card on the message for it) or `signin_many` (more than one). |
 | `next` | Only when something is left to connect: `[{ connector, title, mode, cardid?, messageguid? }]`. An applied `add` card lists the connectors it needs that still aren't connected, and a `connect` card left pending (a refused key or project, or a sign-in just started) lists its own connector and card. See [Your Own Connect Button](#your-own-connect-button). |
 
-Dismissing answers the card with `status: "dismissed"`, `restarting: false` and an empty `summary`.
+Dismissing answers the card with `status: "dismissed"`, `restarting: false` and an empty `summary`. Dismissing the `timezone` card `z4x8c1v6b3nm` (`"action": "dismiss"`) answers:
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "setup": {
+    "v": 1,
+    "id": "z4x8c1v6b3nm",
+    "kind": "timezone",
+    "timezone": "Europe/Istanbul",
+    "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
+    "createdat": 1794654811,
+    "status": "dismissed",
+    "actedat": 1794654870,
+    "actedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
+  },
+  "restarting": false,
+  "summary": ""
+}
+```
+
+Applying the `disconnect` card `b7k1m4t9w2zs` on a running agent answers:
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "setup": {
+    "v": 1,
+    "id": "b7k1m4t9w2zs",
+    "kind": "disconnect",
+    "connector": "serper",
+    "title": "Serper",
+    "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
+    "createdat": 1794654811,
+    "status": "applied",
+    "actedat": 1794654870,
+    "actedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
+  },
+  "restarting": true,
+  "summary": "Serper disconnected"
+}
+```
 
 Everyone subscribed to the turn's `agenttoken` gets the card's new block as an `agent_timeline_delta`, and so does a `connect` card applied with an `add` card. Update your copy from the answer's `setup` right away, and from the block when it arrives.
 
@@ -20166,10 +21153,10 @@ A `connect` card connects its connector through `SetupCardApply`, with the check
 | `mode` | How it connects | Your UI | Calls |
 |--------|-----------------|---------|-------|
 | `key` | The values the vendor issues, such as an API key, typed by the person. A card with no required field connects with none. | A form from `setup.fields`, with masked inputs for `secret` fields | `SetupCardApply` with `values`: the connector connects and the card is applied |
-| `signin` | The vendor's consent screen, in the browser | The `serveronly` fields when the card has them (your own app's keys), and a Sign in button | `SetupCardApply` with your `redirecturl`, and the app's keys in `values`, answers `authorizeUrl`. Once the browser is back on your page, `SetupCardApply` again records the card applied |
-| `project` | One of your Wiro projects, picked for the `wiro` connector. It becomes the agent's own Wiro project. | A picker of your projects ([`POST /Project/List`](/docs/projects)) for its one `source: "wiro_project"` field, and a Connect button | `SetupCardApply` with the project's id as `wiroprojectguid` and no `values`: the project is bound, the connector connects and the card is applied |
+| `signin` | The vendor's consent screen, in the browser | A form from `setup.fields` when the card has any (your own app's keys and any other field the sign-in needs), and a Sign in button | `SetupCardApply` with your `redirecturl`, and the card's field values in `values`, answers `authorizeUrl`. Once the browser is back on your page, `SetupCardApply` again records the card applied |
+| `project` | One of your Wiro projects, picked for Wiro AI Models (`wiro`). It becomes the agent's own Wiro project. | A picker of your projects ([`POST /Project/List`](/docs/projects)) for its one `source: "wiro_project"` field, and a Connect button | `SetupCardApply` with the project's id as `wiroprojectguid` and no `values`: the project is bound, the connector connects and the card is applied |
 
-A card's `mode` follows its connector in the catalog: `oauth` and `provider-oauth` connectors sign in, the `wiro` connector, whose one field is a Wiro project, gets a `project` card, and the other `fields`, `headers` and `none` connectors take a key. More modes can be added: show a card whose `mode` you don't know with Dismiss only, and connect its connector from your settings screen.
+A card's `mode` follows its connector in the catalog: `oauth` and `provider-oauth` connectors sign in, Wiro AI Models (`wiro`), whose one field is a Wiro project, gets a `project` card, and the other `fields`, `headers` and `none` connectors take a key. More modes can be added: show a card whose `mode` you don't know with Dismiss only, and connect its connector from your settings screen.
 
 ### Key: Serper
 
@@ -20201,7 +21188,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
     "authtype": "fields",
     "mode": "key",
     "fields": [
-      { "name": "apikey", "label": "Serper API Key", "description": "1. Sign up at [serper.dev](https://serper.dev) ...", "required": true, "secret": true, "format": "password", "placeholder": "your Serper.dev API key" }
+      { "name": "apikey", "label": "Serper API Key", "description": "Real Google web-search results as clean JSON, via [Serper.dev](https://serper.dev) ...", "required": true, "secret": true, "format": "password", "placeholder": "your Serper.dev API key" }
     ],
     "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
     "createdat": 1794654811,
@@ -20214,11 +21201,35 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
 }
 ```
 
-A value Wiro refuses (a required field missing, a format that doesn't fit, or a key the vendor refused) saves nothing: the answer is `result: false` with the sentence, and the card stays pending for the person to try again.
+A value Wiro refuses (a required field missing, a format that doesn't fit, or a key the vendor refused) saves nothing: the answer is `result: false` with the sentence, and the card stays pending for the person to try again. Sent with an empty `apikey`, the card stays pending, and `next` names it:
+
+```json
+{
+  "result": false,
+  "errors": [{ "code": 0, "message": "Serper API Key is required.", "time": 1794654900 }],
+  "setup": {
+    "v": 1,
+    "id": "h6w3k9p2m5tc",
+    "kind": "connect",
+    "connector": "serper",
+    "title": "Serper",
+    "authtype": "fields",
+    "mode": "key",
+    "fields": [
+      { "name": "apikey", "label": "Serper API Key", "description": "Real Google web-search results as clean JSON, via [Serper.dev](https://serper.dev) ...", "required": true, "secret": true, "format": "password", "placeholder": "your Serper.dev API key" }
+    ],
+    "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
+    "createdat": 1794654811
+  },
+  "restarting": false,
+  "summary": "",
+  "next": [{ "connector": "serper", "title": "Serper", "mode": "key", "cardid": "h6w3k9p2m5tc", "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234" }]
+}
+```
 
 ### Project: Wiro AI Models
 
-The `wiro` connector gets a `project` card. Its one field has `source: "wiro_project"`: show a picker of your projects ([`POST /Project/List`](/docs/projects)) instead of an input, and never a box to type a key in:
+Wiro AI Models (`wiro`) gets a `project` card. Its one field has `source: "wiro_project"`: show a picker of your projects ([`POST /Project/List`](/docs/projects)) instead of an input, and never a box to type a key in:
 
 ```json
 {
@@ -20373,7 +21384,7 @@ The answer gives the vendor's sign-in address. The card stays pending, and `next
 
 **3. The browser comes back.** HubSpot sends the browser to the API's callback, which stores the tokens, marks the connection `connected`, restarts the agent and sends the browser on to your `redirecturl` with `connector_connected=true`, or with `connector_error=<code>` when the sign-in didn't finish (see [The callback and your redirect URL](/docs/agent-connectors#the-callback-and-your-redirect-url)).
 
-**4. Record the card.** Call `SetupCardApply` on the card again, with no `values`:
+**4. Record the card.** Once the browser is back with `connector_connected=true`, call `SetupCardApply` on the card again, with no `values`. Make this call only then: while the connector doesn't read connected, after `connector_error=<code>` or a closed window, it starts a new sign-in instead and answers a new `authorizeUrl`. It answers the card applied:
 
 ```json
 {
@@ -20405,12 +21416,249 @@ The answer gives the vendor's sign-in address. The card stays pending, and `next
 The agent already restarted when the sign-in came back, so `restarting` is `false`. Without this call, the card is recorded applied the next time a card of the same person's is applied or dismissed in that chat; until then it still shows its Sign in.
 
 - A card from a chat sent with your API key never carries `wiroapp: true`: its sign-in always uses your own app, and HubSpot's consent screen shows that app. Send the app's keys with the first sign-in; a later sign-in of the same connection may leave them out and use the saved ones. Without them, the answer is `Client ID is required. Client Secret is required.` and the card stays pending.
-- An `oauth` connector, a vendor's own MCP server with its own sign-in such as TikTok Ads, has no fields on its card: send `redirecturl` only. Its consent screen names your organization.
-- A connector with account pickers, such as Facebook Pages, lists its candidates once it is connected. Let the person choose them on your settings screen with [`ConnectorAccounts`](/docs/agent-connectors#post-useragentconnectoraccounts) and [`ConnectorSetAccounts`](/docs/agent-connectors#post-useragentconnectorsetaccounts): no card picks accounts.
+- An `oauth` connector, a vendor's own MCP server with its own sign-in such as TikTok Ads, has no fields on its card: send `redirecturl` only. Its consent screen names your organization. Its card and answers are in [Add and Connect](#add-and-connect).
+- A connector with account pickers, such as Facebook Pages, lists its candidates once it is connected, and acts on no account until a selection is saved. After its card is applied, read `accountpickers` on [`AgentConnector/Detail`](/docs/agent-connectors#post-agentconnectordetail): when `accounts` on [`ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist) holds nothing for a picker, let the person choose on your settings screen with [`ConnectorAccounts`](/docs/agent-connectors#post-useragentconnectoraccounts) and [`ConnectorSetAccounts`](/docs/agent-connectors#post-useragentconnectorsetaccounts): no card picks accounts.
+- A connection can later need a new sign-in: `ConnectorList` reads `reauth` when the sign-in expired or was revoked, and until the agent's next restart the connector's tools answer `The sign-in for this connector expired or was revoked, so it has to be connected again. Ask the agent's operator to reconnect it.` ConnectorAccounts refuses it with code `"reauth"` and the same sentence. Offer Reconnect. The agent may propose a new `connect` card for it, which signs in again like any `signin` card and reuses the saved app keys when `values` leaves them out, or you start a new sign-in with ConnectorConnect on your settings screen.
+
+### Add and Connect
+
+An `add` card can apply together with one of its `connect` cards in one call: its one pending `key` card, with that card's values in `values`, or its one pending `signin` card, with `signin: true` once that card's sign-in has connected the connector. A `project` card always takes its own step. [Buttons](#buttons) says which buttons to show.
+
+**With a key.** Send the `add` card with the `connect` card's values. For Google Play Promotional Content and its Google Play Console card, from [Every kind](#every-kind), the one field is JSON, and a `json` field also takes an object:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "messageguid": "d8e9f0a1-b2c3-4567-d890-123456789abc",
+    "cardid": "g7p2k5m9w4ta",
+    "action": "apply",
+    "values": { "serviceaccountjson": { "type": "service_account", "client_email": "play-agent@acme-apps.iam.gserviceaccount.com", "private_key": "..." } }
+  }'
+```
+
+Both cards apply, with one restart, and `paired` is the `connect` card after the call:
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "setup": {
+    "v": 1,
+    "id": "g7p2k5m9w4ta",
+    "kind": "add",
+    "key": "util-googleplay-events",
+    "needs": [{ "connector": "google-play", "title": "Google Play Console", "mode": "key" }],
+    "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
+    "createdat": 1794656000,
+    "status": "applied",
+    "actedat": 1794656090,
+    "actedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
+  },
+  "restarting": true,
+  "summary": "Google Play Promotional Content added. Google Play Console connected.",
+  "paired": [
+    {
+      "setup": {
+        "v": 1,
+        "id": "c2v8n4q6x1pd",
+        "kind": "connect",
+        "connector": "google-play",
+        "title": "Google Play Console",
+        "authtype": "fields",
+        "mode": "key",
+        "fields": [
+          { "name": "serviceaccountjson", "label": "Service Account JSON", "description": "1. Go to [Google Cloud Console → IAM & Admin → Service Accounts](https://console.cloud.google.com/iam-admin/serviceaccounts) ...", "required": true, "secret": true, "format": "json" }
+        ],
+        "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
+        "createdat": 1794656000,
+        "status": "applied",
+        "actedat": 1794656090,
+        "actedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
+      },
+      "result": true,
+      "error": null
+    }
+  ]
+}
+```
+
+A value that fails the field's checks, such as a required field left out, applies neither card: the answer is `result: false` with the sentence, both cards stay pending, and `paired` holds the `connect` card with the same sentence in `error`. A key the vendor refuses once the skill is added leaves the `add` card applied (`result: true`, `summary` names only the skill) and the `connect` card pending: `paired[0]` has `result: false` and the vendor's sentence in `error`, and `next` names the `connect` card for the person to try again.
+
+**With a sign-in.** On an agent that has Google Ads and Meta Ads connected, Ads Manager Common Rules needs only TikTok Ads. TikTok Ads signs in on the vendor's own MCP server (`authtype: "oauth"`), so its card has no fields:
+
+```json
+{
+  "v": 1,
+  "id": "a3d6s9m2k7qe",
+  "kind": "add",
+  "key": "util-ads-manager-common",
+  "needs": [{ "connector": "tiktok-ads", "title": "TikTok Ads", "mode": "signin" }],
+  "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
+  "createdat": 1794657000
+}
+```
+
+```json
+{
+  "v": 1,
+  "id": "t5k8a1d4s7wn",
+  "kind": "connect",
+  "connector": "tiktok-ads",
+  "title": "TikTok Ads",
+  "authtype": "oauth",
+  "mode": "signin",
+  "fields": [],
+  "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
+  "createdat": 1794657000
+}
+```
+
+**1. Sign in on the `connect` card**, with your `redirecturl` only:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "messageguid": "e1f2a3b4-c5d6-7890-e123-4567890abcde",
+    "cardid": "t5k8a1d4s7wn",
+    "action": "apply",
+    "redirecturl": "https://app.example.com/agents/42/chat?card=t5k8a1d4s7wn"
+  }'
+```
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "setup": {
+    "v": 1,
+    "id": "t5k8a1d4s7wn",
+    "kind": "connect",
+    "connector": "tiktok-ads",
+    "title": "TikTok Ads",
+    "authtype": "oauth",
+    "mode": "signin",
+    "fields": [],
+    "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
+    "createdat": 1794657000
+  },
+  "restarting": false,
+  "summary": "",
+  "authorizeUrl": "https://business-api.tiktok.com/portal/mcp-tt4b-authorize?response_type=code&client_id=...&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FAgentConnector%2FOAuthCallback&state=...&code_challenge=...&code_challenge_method=S256&resource=...&scope=mcp%3Att4b",
+  "next": [{ "connector": "tiktok-ads", "title": "TikTok Ads", "mode": "signin", "cardid": "t5k8a1d4s7wn", "messageguid": "e1f2a3b4-c5d6-7890-e123-4567890abcde" }]
+}
+```
+
+**2. Open `authorizeUrl`.** The browser signs in on TikTok's page and comes back to your `redirecturl` with `connector_connected=true`, and the agent restarts with TikTok Ads' tools.
+
+**3. Add.** Send the `add` card with `signin: true`:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "messageguid": "e1f2a3b4-c5d6-7890-e123-4567890abcde",
+    "cardid": "a3d6s9m2k7qe",
+    "action": "apply",
+    "signin": true
+  }'
+```
+
+Both cards are recorded applied:
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "setup": {
+    "v": 1,
+    "id": "a3d6s9m2k7qe",
+    "kind": "add",
+    "key": "util-ads-manager-common",
+    "needs": [{ "connector": "tiktok-ads", "title": "TikTok Ads", "mode": "signin" }],
+    "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
+    "createdat": 1794657000,
+    "status": "applied",
+    "actedat": 1794657180,
+    "actedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
+  },
+  "restarting": true,
+  "summary": "Ads Manager Common Rules added. TikTok Ads connected.",
+  "paired": [
+    {
+      "setup": {
+        "v": 1,
+        "id": "t5k8a1d4s7wn",
+        "kind": "connect",
+        "connector": "tiktok-ads",
+        "title": "TikTok Ads",
+        "authtype": "oauth",
+        "mode": "signin",
+        "fields": [],
+        "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
+        "createdat": 1794657000,
+        "status": "applied",
+        "actedat": 1794657180,
+        "actedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
+      },
+      "result": true,
+      "error": null
+    }
+  ]
+}
+```
+
+Sent before the sign-in came back, it applies nothing, and `errorcode` says why:
+
+```json
+{
+  "result": false,
+  "errors": [{ "code": 0, "message": "TikTok Ads is not connected yet. Finish the sign-in on the card first.", "time": 1794657100 }],
+  "setup": {
+    "v": 1,
+    "id": "a3d6s9m2k7qe",
+    "kind": "add",
+    "key": "util-ads-manager-common",
+    "needs": [{ "connector": "tiktok-ads", "title": "TikTok Ads", "mode": "signin" }],
+    "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
+    "createdat": 1794657000
+  },
+  "restarting": false,
+  "summary": "",
+  "errorcode": "not_connected",
+  "paired": [
+    {
+      "setup": {
+        "v": 1,
+        "id": "t5k8a1d4s7wn",
+        "kind": "connect",
+        "connector": "tiktok-ads",
+        "title": "TikTok Ads",
+        "authtype": "oauth",
+        "mode": "signin",
+        "fields": [],
+        "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
+        "createdat": 1794657000
+      },
+      "result": false,
+      "error": "TikTok Ads is not connected yet. Finish the sign-in on the card first."
+    }
+  ]
+}
+```
+
+TikTok Ads acts on the advertisers picked for it: list and save them next, as in [TikTok Ads: sign in, then pick advertisers](/docs/agent-connectors#tiktok-ads-sign-in-then-pick-advertisers).
 
 ### Connecting on your settings screen
 
-Every connector also connects without a card, on your own settings screens, with the Agent Connectors calls: [fields](/docs/agent-connectors#connect-with-fields), a [key instead of a sign-in](/docs/agent-connectors#connect-with-a-key-instead-of-a-sign-in), or the vendor's [sign-in](/docs/agent-connectors#connect-with-a-sign-in) with a `redirecturl` on your own site, then its [account pickers](/docs/agent-connectors#account-pickers). Each answers `restart` (or `connector_connected=true` on your page after a sign-in): see [Showing a restart](#showing-a-restart). A pending `connect` card for a connector connected there is recorded applied when you apply it, with no values, or the next time a card of the same person's in that chat is applied or dismissed. A channel is saved with [`CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert): no card saves it. The agent's Wiro project is bound with [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind), or by the `wiro` connector's `project` card, which binds it the same way.
+Every connector also connects without a card, on your own settings screens, with the Agent Connectors calls: [fields](/docs/agent-connectors#connect-with-fields), a [key instead of a sign-in](/docs/agent-connectors#connect-with-a-key-instead-of-a-sign-in), or the vendor's [sign-in](/docs/agent-connectors#connect-with-a-sign-in) with a `redirecturl` on your own site, then its [account pickers](/docs/agent-connectors#account-pickers). Each answers `restart` (or `connector_connected=true` on your page after a sign-in): see [Showing a restart](#showing-a-restart). A pending `connect` card for a connector connected there is recorded applied when you apply it, with no values, or the next time a card of the same person's in that chat is applied or dismissed. A channel is saved with [`CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert): no card saves it. The agent's Wiro project is bound with [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind), or by the `project` card of Wiro AI Models (`wiro`), which binds it the same way.
 
 ## Your Own Connect Button
 
@@ -20451,13 +21699,14 @@ async function connectFromNext(entry, useragentguid, own) {
     return setupCardApply({ useragentguid, messageguid, cardid, action: "apply", values });
   }
   if (entry.mode === "signin") {
-    const values = await askForAppKeys(entry.connector); // the card's serveronly fields, when it has any
+    const values = await askForFields(entry.connector); // every field of the card, or Detail's credentialfields with mode "oauth" or none
     const redirecturl = returnPageFor(entry.connector);  // a page on your own site
     const started = cardid
       ? await setupCardApply({ useragentguid, messageguid, cardid, action: "apply", values, redirecturl })
       : await connectorConnect({ useragentguid, slug: entry.connector, values, redirecturl });
     if (!started.result || !started.authorizeUrl) return started; // a refusal, or already connected
-    await openAndWaitForReturn(started.authorizeUrl); // connector_connected=true on your redirecturl
+    const back = await openAndWaitForReturn(started.authorizeUrl); // the query your redirecturl received
+    if (back.connector_connected !== "true") return back; // connector_error=<code>: show it, offer Sign in again
     if (cardid) return setupCardApply({ useragentguid, messageguid, cardid, action: "apply" }); // records the card
     return started;
   }
@@ -20491,7 +21740,7 @@ Every refusal comes as `result: false` with one plain sentence in `errors[0].mes
 | `Wait until the agent finishes this reply, then apply it.` | Enable Apply once the reply ends. |
 | `This setup card was not found.` | Wrong `messageguid` or `cardid`, or a message the key's owner can't see. |
 | `This card was already applied.`, `This card was already dismissed.`, `This card was already failed.` | Show the card from `setup` in its state. |
-| `This card is being applied. Try again in a moment.`, `The card could not be applied right now. Try again in a moment.` | Someone is acting on this card, or on the agent's setup, right now. Let the person try again after a few seconds. |
+| `This card is being applied. Try again in a moment.`, `The card could not be applied right now. Try again in a moment.`, `Another change to this agent's connectors or skills is being applied. Try again in a moment.` | Someone is acting on this card, or on the agent's setup, right now (an `add` or `remove` card waits for another skill change; the card stays pending). Let the person try again after a few seconds. |
 | `This card takes no key. Apply it without one.`, `This card brings more than one key. Apply it, then add each key on its own card.` | `values` on an `add` card that can't take them. |
 | `This card has no sign-in to finish. Apply it without one.` (`errorcode` `signin_no_pair`), `This card brings more than one sign-in. Apply it, then connect each on its own card.` (`signin_many`) | `signin: true` on an `add` card that can't take it. |
 | `<Title> is not connected yet. Finish the sign-in on the card first.` (`errorcode` `not_connected`) | `signin: true` before the sign-in came back. Nothing was applied. |
@@ -20533,7 +21782,7 @@ Read the agent's `status` with [`POST /UserAgent/Detail`](/docs/agent-overview#p
 | `3` Starting | It is starting. |
 | `4` Running | Ready for messages again. |
 
-A restart takes about a minute. If the poll reads `0` (stopped), `5` (error) or `6` (setup required) instead, the agent won't start by itself: stop polling and say so. `0` and `5` start again with [`POST /UserAgent/Start`](/docs/agent-overview#post-useragentstart), and `6` needs its missing required credential first (a connector never holds an agent at `6`); see [UserAgent Statuses](/docs/agent-overview#useragent-statuses).
+A restart takes about a minute. If the poll reads `0` (stopped), `5` (error) or `6` (setup required) instead, the agent won't start by itself: stop polling and say so. `0` and `5` start again with [`POST /UserAgent/Start`](/docs/agent-overview#post-useragentstart), unless the agent's plan has ended: Start then answers `Subscription required — please subscribe to this agent before starting it.`, and renewing the plan starts the agent (see [Send a message](#send-a-message)). `6` needs its missing required credential first (a connector never holds an agent at `6`); see [UserAgent Statuses](/docs/agent-overview#useragent-statuses).
 
 ### Showing a restart
 
@@ -21589,12 +22838,12 @@ Each row also carries `user`, your key owner's account, left out here. The rows 
 - Each conversation has its own `sessionkey`, and you check that every `messageguid` a person acts on is in their session.
 - Message rows and cards name your key's owner: your UI shows your own names for the sender.
 - Messages go out with `Message/Send`; replies are followed on the WebSocket or with `Message/Detail`, and loaded with `Message/History`; rows added between turns arrive on the session's `sessiontoken`.
-- Failed turns are told apart by their bracketed code, and the refusal of an agent paused for its balance by `agentusage`.
+- Failed turns are told apart by their bracketed code. Send's refusals are told apart by `agentstatus`, by `agentusage` and its `pausedreason` (`"balance"` or `"plan"`), and by codes `93` (spend limit) and `92` (Model Access).
 - Timeline blocks are merged by `blockid` and newer `version`, sorted by `callindex`, `contentindex`, `blockid`, and drawn by `type`; unknown types and kinds are skipped.
 - Replies Wiro answers itself (`agenttoken: null`, `status: "agent_end"`) show `response` as plain text.
 - Setup cards show the right title, body and buttons for their kind and state, `add` cards together with their `connect` cards.
 - Apply waits for the reply to finish; Apply and Dismiss call `SetupCardApply`, and the card updates from the answer's `setup` (which can be `null`) and from later `version` 2 blocks.
-- Each connect mode has its flow: `key` (the card's `fields` as `values`), `signin` (`SetupCardApply` with your `redirecturl` and your app's keys, the browser sign-in, then `SetupCardApply` again to record the card) and `project` (your project picker, then `SetupCardApply` with `wiroprojectguid`); any connector also connects on your settings screens with the [Agent Connectors](/docs/agent-connectors) calls, account pickers included.
+- Each connect mode has its flow: `key` (the card's `fields` as `values`), `signin` (`SetupCardApply` with your `redirecturl` and the card's `fields` as `values`, your app's keys among them, the browser sign-in, then `SetupCardApply` again to record the card, only after `connector_connected=true`) and `project` (your project picker, then `SetupCardApply` with `wiroprojectguid`); any connector also connects on your settings screens with the [Agent Connectors](/docs/agent-connectors) calls, account pickers included.
 - `next` from blocks, `SetupCardApply` answers, `setupresult` and webhooks turns into your own Connect buttons.
 - Every `result: false` shows its sentence or your own words; code branches on codes and statuses, never on sentences.
 - Every restart signal (`restarting`, `restart`, `connector_connected=true`, and the saves that answer none) shows a restarting line until `UserAgent/Detail` reads `status: 4`, and the poll stops at `0`, `5` or `6`; Send refusals during a restart are shown as they are.
@@ -21641,7 +22890,7 @@ Configure agent behavior with editable preferences, scheduled automation tasks, 
 | Preview a skill set or a plan change without saving it | [`POST /UserAgent/PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) |
 | Connect a service the agent works with (Shopify, Google Ads, Serper, ...) | [Agent Connectors](/docs/agent-connectors) |
 
-> Read responses from `POST /UserAgent/Detail` expose the composed `customskills[]` array (preference skills + non-cron user-created skills), the `scheduledskills[]` array (scheduled tasks), and the `skills[]` array as top-level fields on the useragent object. `skills[]` is an **object array**: each entry is `{ name, enabled, _edited?, _user_created? }` (e.g. `[{ "name": "util-weather", "enabled": true }, { "name": "util-diagram", "enabled": true }]`).
+> Read responses from `POST /UserAgent/Detail` expose the composed `customskills[]` array (preference skills + non-cron user-created skills), the `scheduledskills[]` array (scheduled tasks), and the `skills[]` array as top-level fields on the useragent object. `skills[]` is an **object array**: it holds only the Skills that are on, each `{ name, enabled: true, _edited, _user_created }` (e.g. `[{ "name": "util-diagram", "enabled": true, "_edited": false, "_user_created": false }, { "name": "util-weather", "enabled": true, "_edited": true, "_user_created": false }]`).
 
 ## Skill Registry vs Custom Skills
 
@@ -21649,7 +22898,7 @@ Two concepts share the word "skill" in the agent system, and connectors give the
 
 | Concept | What it is | Where it lives | API surface |
 |---------|------------|----------------|-------------|
-| **Registry skills** | Platform-shipped Skills (`util-*`): rule sets, playbooks and tools that need no outside account, such as `util-weather`, `util-diagram` and `util-video-creator`. Wiro defines them, and every plan includes them. | Wiro's skill registry. | `POST /Skills/List` / `POST /Skills/Detail` (read), `POST /UserAgent/SkillsApply` (toggle on/off per useragent). |
+| **Registry skills** | Platform-shipped Skills (`util-*`): rule sets, playbooks, the voice channels and tools, such as Weather (`util-weather`), Diagrams (`util-diagram`) and Video Creator (`util-video-creator`). Wiro defines them, and every plan includes them. | Wiro's skill registry. | `POST /Skills/List` / `POST /Skills/Detail` (read), `POST /UserAgent/SkillsApply` (toggle on/off per useragent). |
 | **Custom skills** | User-editable preference text (`cs-content-tone`) or scheduled tasks (`cs-cron-blog-scanner`) that live ON a useragent. They can use the tools of the agent's connectors (e.g. a scheduled task drafts posts with `wordpress__*`) but are scoped to one instance. | Per useragent on the Wiro platform. | `POST /UserAgent/CustomSkillUpsert` / `POST /UserAgent/CustomSkillRename` / `POST /UserAgent/CustomSkillDelete` / `POST /UserAgent/CustomSkillHistory` / `POST /UserAgent/CustomSkillRevert`. |
 | **Connectors** | The outside services an agent works with (Shopify, Google Ads, HubSpot, Serper, ...), connected with your customer's own credentials. Each gives the agent tools named `<slug>__<tool>`. | Per useragent. | [Agent Connectors](/docs/agent-connectors) |
 
@@ -21665,7 +22914,7 @@ Lists all skills in the registry.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `category` | string | No | Filter by category. Every registry skill is `"util"`: rule sets, playbooks, and keyless tools such as weather and diagrams. |
+| `category` | string | No | Filter by category. Every registry skill is `"util"`: rule sets, playbooks, the voice channels and tools such as weather and diagrams. |
 | `capability` | string | No | Filter by capability key (see [`POST /Skills/Capabilities`](#post-skillscapabilities) for the closed-set vocabulary). |
 | `user_invocable` | boolean | No | When `true`, only return skills end users can call directly through chat (filters out plumbing skills wired by the runtime). |
 | `requires_credentials` | boolean | No | Filter by whether the skill requires a credential. |
@@ -21731,22 +22980,23 @@ Lists all skills in the registry.
 | Field | Type | Description |
 |-------|------|-------------|
 | `name` | `string` | Canonical skill key, **including the registry prefix** `util-`. Use this exact value in `SkillsApply` and `Deploy.body.skills`. |
-| `category` | `string` | `"util"`: rule sets, playbooks, and keyless tools such as weather and diagrams. |
+| `category` | `string` | `"util"`: rule sets, playbooks, the voice channels and tools such as weather and diagrams. |
 | `version` | `string` | Semver for the registry entry. Bumped when the skill's tool surface changes. |
 | `title` | `string` | Display name shown on chips / filters / cards. |
 | `description` | `string` | One-line summary used on marketing surfaces. |
-| `icon` | `string` | A LineIcons class name, such as `lni lni-cloud-sun`, or a path or URL to an icon (relative paths are absolutized to `https://wiro.ai/...` on the wire). |
+| `icon` | `string` | A LineIcons class name, such as `lni lni-cloud-sun`, or a path on wiro.ai, such as `/images/icons/skills/twilio.svg`: prefix a path with `https://wiro.ai`. |
 | `brand_color` | `string\|null` | Brand background colour (hex) for chips and cards. |
 | `brand_text_color` | `string\|null` | Foreground colour to render on top of `brand_color`. |
 | `brand_logo_filter` | `string\|null` | CSS `filter` value applied to monochrome SVG icons (e.g. `"brightness(0) invert(1)"`) so the same source SVG renders correctly on light and dark brand colours. |
-| `docs_url` | `string\|null` | The page about the skill, when it has one: a slug or path on this docs site, which frontends prefix with `/docs/`, such as `integration-twiliovoice-skills` for `util-twilio-channel`, or a full `https` address, used as it is, such as `https://wiro.ai/connectors/google-play` for `util-googleplay-events`, whose page is its connector's. Empty when there is none. |
+| `docs_url` | `string\|null` | The page about the skill, when it has one: a slug or path on this docs site, which frontends prefix with `/docs/`, such as `integration-twiliovoice-skills` for Twilio Voice Channel (`util-twilio-channel`), or a full `https` address, used as it is, such as `https://wiro.ai/connectors/google-play` for Google Play Promotional Content (`util-googleplay-events`), whose page is its connector's. Empty when there is none. |
 | `requires_credentials` | `boolean` | `true` when the skill needs a credential the operator must supply (effectively `true` whenever `credential_key` names a credential you supply). |
 | `credential_key` | `string\|null` | The credential this skill needs, when it needs one (see [Agent Credentials](/docs/agent-credentials)); [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail) shows its schema. `null` for skills that need none. |
 | `additional_credential_keys` | `array<string>` | **Optional: only present when the skill reads further credentials,** such as `["var-support-email"]` for the support-email setting; most skills omit this field entirely. |
 | `capabilities` | `array<string>` | High-level snake_case capability tags from the closed vocabulary returned by [`POST /Skills/Capabilities`](#post-skillscapabilities). Drives the "Find skills that can: ___" picker. |
-| `depends_on` | `array<string>` | Other skill names that must be enabled. Wiro auto-enables transitive deps when you toggle the parent skill on. |
+| `suggested_connectors` | `array<string>` | **Optional: only present when set.** The connectors the skill works with, by catalog slug, such as `["google-ads", "meta-ads", "tiktok-ads"]` on Ads Manager Common Rules (`util-ads-manager-common`). Nothing connects by itself: connect the ones you want with [`POST /UserAgent/ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect). An `add` setup card names up to 3 of them that aren't connected yet in its `needs` (see [Setup From Chat](/docs/agent-messaging#setup-from-chat)). |
+| `depends_on` | `array<string>` | Other skill names that must be on while this one is. Deploy's `skills` and an `add` setup card turn them on with it. `SkillsApply` turns on only the names you send and refuses, with code `101` and `deps[]`, a change that leaves one of them off, so send them in the same call. |
 | `conflicts_with` | `array<string>` | Mutually-exclusive skill names. `SkillsApply` rejects toggle batches that would enable two conflicting skills. |
-| `user_invocable` | `boolean` | `true` when end users can call the skill via chat. `false` marks supporting parts that come with another skill, such as `util-video-shots` and `util-video-docs`, which come with `util-video-creator`. |
+| `user_invocable` | `boolean` | `true` when end users can call the skill via chat. `false` marks supporting parts that come with another skill, such as Video Story & Shots (`util-video-shots`) and Document Videos (`util-video-docs`), which come with Video Creator (`util-video-creator`). |
 | `deprecated` | `boolean` | `true` for skills slated for removal, and `replacement` (if any) names the migration target. |
 | `replacement` | `string\|null` | When `deprecated: true`, the registry-recommended successor skill name. |
 | `pricing` | `object` | `{ monthly_price_weight_usd, monthly_credits_weight, billing_model }`. Every plan includes every skill, so both weights are `0` (see below). |
@@ -21758,7 +23008,7 @@ Skill filters do not remove channel rows. Each channel includes its stable
 to render channel setup. Save the matching credential group through
 [`UserAgent/CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert);
 the channel activates automatically when every `required_fields` value is
-complete. Channels are not skills and do not affect pricing.
+complete. These channels (Telegram, Slack, Discord) are not Skills and do not affect pricing.
 
 **`pricing` object:**
 
@@ -21838,52 +23088,26 @@ Returns the closed-set vocabulary of high-level capability tags. Use this to bui
   "result": true,
   "errors": [],
   "capabilities": [
-    { "name": "direct_reporting",         "description": "Generates direct reports on request" },
-    { "name": "attribution_cross_check",  "description": "Cross-check platform conversions vs GA4 paid traffic" },
-    { "name": "cross_check",              "description": "Cross-system data validation" },
-    { "name": "campaign_management",      "description": "Create/pause/modify ad campaigns" },
-    { "name": "campaign_reporting",       "description": "Campaign performance reports" },
     { "name": "approval_flow",            "description": "Approval commands for actions that wait for your approval" },
     { "name": "recommendation_ledger",    "description": "Recommendation queue/log management" },
-    { "name": "recommendation_execution", "description": "Execute approved recommendations" },
-    { "name": "content_generation",       "description": "Generate content (text, media)" },
-    { "name": "creative_generation",      "description": "Generate ad creatives" },
-    { "name": "image_generation",         "description": "Generate images" },
     { "name": "video_generation",         "description": "Generate videos" },
     { "name": "motion_graphics",          "description": "Compose and render motion graphics (HTML/CSS/GSAP animations, sound effects, transitions) to video" },
-    { "name": "audio_generation",         "description": "Generate audio / voice clips (TTS, music, SFX)" },
-    { "name": "realtime_conversation",    "description": "Bidirectional realtime audio/text conversation (Wiro realtime, OpenAI realtime)" },
-    { "name": "vision",                   "description": "Vision LLM analysis of images (caption, describe, OCR, visual QA)" },
     { "name": "human_copywriting",        "description": "Enforce anti-AI human copy rules" },
     { "name": "anti_ai_tone",             "description": "Reject AI-generated tone patterns" },
-    { "name": "memory_management",        "description": "Keep the agent's memory files tidy (size limits, trimming, removing duplicates)" },
     { "name": "markdown_reporting",       "description": "Structured markdown reports (tables, code blocks, splits)" },
     { "name": "store_review_response",    "description": "Craft App Store / Google Play review responses" },
     { "name": "outreach_compliance",      "description": "Outreach PII/opt-out/consent rules (GDPR, CAN-SPAM)" },
-    { "name": "web_publishing",           "description": "Publish web content (WordPress, etc.)" },
     { "name": "email_publishing",         "description": "Send emails / newsletters" },
     { "name": "social_publishing",        "description": "Post to social platforms (Twitter, IG, FB, LI, TikTok)" },
-    { "name": "push_notification",        "description": "Send push notifications (FCM)" },
-    { "name": "lead_enrichment",          "description": "Enrich prospect data (Apollo, HubSpot)" },
-    { "name": "sequence_automation",      "description": "Run outreach sequences (Lemlist, Apollo)" },
     { "name": "multi_platform_detection", "description": "Auto-detect available platforms" },
-    { "name": "holiday_discovery",        "description": "Discover global holidays (Calendarific)" },
-    { "name": "product_feed_management",  "description": "Manage product feeds (Merchant Center)" },
-    { "name": "commerce_management",      "description": "Manage storefront catalogs, inventory, orders, customers, discounts, and fulfillment workflows" },
-    { "name": "review_monitoring",        "description": "Monitor store reviews (App Store, Google Play)" },
-    { "name": "app_metadata",             "description": "Fetch app store metadata (description, pricing, features)" },
     { "name": "event_management",         "description": "Manage app events (App Store in-app events)" },
-    { "name": "file_asset_management",    "description": "Manage asset files from cloud storage (Drive)" },
     { "name": "voice_call_handling",      "description": "Receive and handle inbound voice calls via Twilio or web browser" },
     { "name": "caller_identification",    "description": "Match caller phone number against CRM records (HubSpot, Apollo)" },
     { "name": "live_transcript",          "description": "Stream real-time call transcripts to your chat" },
     { "name": "voice_persona",            "description": "Configure AI voice persona (alloy/echo/etc) for phone interactions" },
     { "name": "phone_inbound",            "description": "Accept inbound PSTN phone calls (Twilio)" },
     { "name": "browser_voice",            "description": "Accept inbound voice calls from website browser (Web Audio API)" },
-    { "name": "appointment_management",   "description": "Manage calendar appointments (find slots, create events)" },
-    { "name": "calendar_lookup",          "description": "Read calendar/availability data (Google Calendar)" },
     { "name": "realtime_session_prep",    "description": "Gets a call ready before realtime audio starts: reads your own skills, starts the realtime model and connects the call" },
-    { "name": "web_search",               "description": "Search the public web (Google Programmable Search / Custom Search JSON API)" },
     { "name": "weather_lookup",           "description": "Current weather and forecasts for any place (MET Norway, OpenStreetMap geocoding)" },
     { "name": "diagram_rendering",        "description": "Render diagrams (Mermaid flowcharts, sequence, state and ER diagrams, mind maps, timelines; agent-drawn SVG) to PNG with an SVG copy" }
   ]
@@ -21913,6 +23137,8 @@ Once you've deployed a useragent, its current custom skills live under `customsk
       "value": "## Brand Voice\nTone: friendly, casual, never salesy.\nTarget Audience: indie devs and side-project builders.\n\n## Hashtag Strategy\nMax 3 per post. Always include #BuildInPublic and #Indie.\n\n## Platform Rules\n- Instagram: square images only, carousels for tutorials.\n- Twitter: thread format for posts longer than 200 chars.",
       "enabled": true,
       "interval": null,
+      "requires_credentials": [],
+      "requires_connectors": [],
       "_source": "preset-strategy",
       "_editable": true,
       "_edited": true
@@ -21925,6 +23151,8 @@ Once you've deployed a useragent, its current custom skills live under `customsk
       "value": "Scan the configured RSS / sitemap sources, dedupe against last 14 days, and queue up to 3 fresh items into the post pipeline.",
       "enabled": true,
       "interval": "0 */4 * * *",
+      "requires_credentials": [],
+      "requires_connectors": ["facebook-pages", "instagram", "linkedin", "tiktok", "twitter"],
       "_source": "skill-bundle",
       "_editable": true,
       "_edited": false
@@ -21935,6 +23163,8 @@ Once you've deployed a useragent, its current custom skills live under `customsk
       "value": "Every Monday at 09:00 UTC, summarize last week's published posts (titles + engagement) and post the recap to Telegram.",
       "enabled": true,
       "interval": "0 9 * * 1",
+      "requires_credentials": [],
+      "requires_connectors": [],
       "_source": "user-created",
       "_editable": true,
       "_edited": false,
@@ -21942,9 +23172,8 @@ Once you've deployed a useragent, its current custom skills live under `customsk
     }
   ],
   "skills": [
-    { "name": "util-social-posting-common", "enabled": true },
-    { "name": "util-weather", "enabled": false },
-    { "name": "util-chat-markdown-reporting", "enabled": true }
+    { "name": "util-chat-markdown-reporting", "enabled": true, "_edited": false, "_user_created": false },
+    { "name": "util-social-posting-common", "enabled": true, "_edited": false, "_user_created": false }
   ]
 }
 ```
@@ -21954,20 +23183,22 @@ Once you've deployed a useragent, its current custom skills live under `customsk
 | Field | Type | Description |
 |-------|------|-------------|
 | `key` | string | Canonical key. **Always carries the `cs-` runtime prefix.** Strategies are `cs-<slug>`; crons are `cs-cron-<slug>`. The server normalises bare slugs you send to `CustomSkillUpsert`: `"content-tone"` becomes `cs-content-tone`, `"weekly-health-check"` with `interval: "0 9 * * 1"` becomes `cs-cron-weekly-health-check`. |
-| `value` | string | Skill instructions / cron prompt body. Populated only for editable preference skills and user-created entries; bundled crons have it empty. |
+| `value` | string | The text of the preference or task: the one you wrote, or else the template's. |
 | `description` | string | Human-readable description. **Writable only on user-created rows.** Sending a *different* `description` for a preset strategy or a skill-bundled cron is rejected with `customskill-preset-description-not-editable`; sending the current one back unchanged is ignored. |
 | `enabled` | boolean | Whether the skill is active. **Writable for both strategies (`cs-*`) and crons (`cs-cron-*`)**. A disabled strategy is suppressed end-to-end (kept in the merged `customskills[]` so it still appears in the list, but the agent never loads it). |
 | `interval` | string \| null | Cron expression for scheduled execution, or `null` for preference skills. Writable on scheduled tasks; ignored on preferences. |
-| `_source` | string | `preset-strategy` (editable preference), `skill-bundle` (a scheduled task that comes with the agent template), or `user-created` (cron added via `CustomSkillUpsert`). |
-| `_editable` | boolean | Convenience flag: `true` for preset strategies and user-created rows (you can write `value`), `false` for template scheduled tasks (you can only write `enabled` / `interval`). |
-| `_user_created` | boolean | Present (and `true`) only on `_source: "user-created"` rows. Omitted on preset strategies and skill-bundled crons. |
+| `requires_connectors` | string[] | Scheduled tasks only (`[]` on preferences): the connectors the task works with, by catalog slug. The task runs only while at least one of them is connected, that is, its row on [`POST /UserAgent/ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist) has `status: "connected"` and `catalogstatus: "active"`; until then the agent skips every run. This gate never changes `enabled`: a task waiting for a connector can still read `enabled: true`. `[]` means no connector gate; a task you add with `CustomSkillUpsert` has `[]`. |
+| `requires_credentials` | string[] | The channels and settings the task needs, by credential key, such as `telegram`: one of them set up is enough. Saving or clearing one of them turns the task on or off. Usually `[]`. |
+| `_source` | string | `preset-strategy` (editable preference), `skill-bundle` (a scheduled task that comes with the agent template; on a custom build, any row the agent came with, such as Approval Policy), or `user-created` (a row added via `CustomSkillUpsert`). |
+| `_editable` | boolean | `true` for preferences, your own rows and the scheduled tasks the template marks editable, `false` for its other scheduled tasks. On a template agent, every scheduled task that came with the template runs the template's text, whatever `value` you write; a custom build runs the text you write. |
+| `_user_created` | boolean | `true` on rows you created (`_source: "user-created"`). A template's own rows leave it out; on a custom build, the rows the agent came with read `false`. |
 
 ### Understanding `_source`
 
 Agent responses merge three sources into a single set of custom-skill rows:
 
 1. **Preset strategies** (`_source: "preset-strategy"`): preferences defined by the agent preset (e.g. `cs-content-tone`, `cs-ad-strategy`). You can write `value`.
-2. **Bundled crons** (`_source: "skill-bundle"`): scheduled tasks that come with the agent template, such as a daily performance report. A task that works with a connector stays off until that connector is connected. You can write `interval` and `enabled`, but **not** `value` (the template owns the task's instruction text).
+2. **Bundled crons** (`_source: "skill-bundle"`): scheduled tasks that come with the agent template, such as a daily performance report. A task that works with connectors runs only while one of them is connected, and that never changes its `enabled`. You can write `interval` and `enabled`. A `value` you write is saved, but on a template agent the task keeps running the template's instruction text. On a custom build, the rows the agent came with, such as the tasks its Skills bring, read `skill-bundle` too and run the text you write.
 3. **User-created rows** (`_source: "user-created"`): entries added via `POST /UserAgent/CustomSkillUpsert`. You can write all fields. Crons are flagged via `interval` (or an explicit `cs-cron-` prefix), not `usercreated`.
 
 ## Updating Preference Skills
@@ -22006,9 +23237,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
 
 ## Managing Scheduled Tasks
 
-Scheduled tasks run on a cron schedule: bundled ones (`_source: "skill-bundle"`) come with the agent template, and one that works with connectors stays off until one of them is connected. User-created ones (`_source: "user-created"`) are added at any time.
+Scheduled tasks run on a cron schedule: bundled ones (`_source: "skill-bundle"`) come with the agent template, and a new agent starts with them turned on (`enabled: true`); one that works with connectors runs only while one of them is connected. User-created ones (`_source: "user-created"`) are added at any time.
 
-> **For bundled crons, only `enabled` and `interval` are writable.** The task body (`value`) comes from the agent template and is restored whenever the agent restarts. To change **what** a bundled scheduled task does, edit the paired preference skill (e.g. `content-tone` is read by `cs-cron-social-content-scanner` at runtime). For user-created crons, all three (`value`, `interval`, `enabled`) are writable.
+> **On a template agent, bundled crons run the template's text.** Write `enabled` and `interval`: a `value` you send is saved and shown on `UserAgent/Detail`, but the agent keeps running the task body (`value`) the template has. To change **what** a bundled scheduled task does, edit the paired preference skill (e.g. `content-tone` is read by `cs-cron-social-content-scanner` at runtime). For user-created crons, and for every cron of a custom build, all three (`value`, `interval`, `enabled`) take effect.
 
 ### Example: Change a bundled cron's frequency
 
@@ -22067,7 +23298,15 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillDelete" \
   }'
 ```
 
-Preset-owned crons cannot be deleted: the call returns `This skill belongs to the agent preset and cannot be deleted. Use enabled=false to disable it instead.` with `suggestion: "disable-via-upsert"`. Disable them via `CustomSkillUpsert` + `enabled: false`.
+A task or preference the agent came with, from its template or, on a custom build, from a Skill or from Wiro (such as Approval Policy), can't be deleted: the call answers `customskill-registry-not-deletable` (`customskill-preset-not-deletable` for one you created whose key the template also has) with `suggestion: "disable-via-upsert"`, and nothing changes. Disable it via `CustomSkillUpsert` + `enabled: false` instead.
+
+```json
+{
+  "result": false,
+  "errors": [{ "code": 0, "message": "customskill-registry-not-deletable" }],
+  "suggestion": "disable-via-upsert"
+}
+```
 
 ### Example: Rename a user-created custom skill
 
@@ -22101,7 +23340,7 @@ Successful responses include the canonical `newskillkey` the server ended up wri
 
 ## Version History: Audit and Revert
 
-Every write through `CustomSkillUpsert` appends a row to the version history. Read it via `POST /UserAgent/CustomSkillHistory`; revert to any version (or to the preset default) via `POST /UserAgent/CustomSkillRevert`.
+Each change saved with `CustomSkillUpsert`, each rename and each revert adds a row to the version history. Creating a skill and a save that changes nothing add none, and `CustomSkillDelete` deletes a skill's history with it. Each entry's `operation` says what wrote it: `clone-deploy` (the copy Deploy made of a template's or a Skill's row), `update-user` (a save), `rename`, `reset-to-preset` or `revert-to-history`, or `update-cascade`, `insert-cascade` and `delete-cascade` for a template update Wiro applied. Read it via `POST /UserAgent/CustomSkillHistory`; revert to any version (or to the preset default) via `POST /UserAgent/CustomSkillRevert`.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillHistory" \
@@ -22128,7 +23367,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillHistory" \
       "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
       "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
       "skillkey": "cs-content-tone",
-      "operation": "upsert",
+      "operation": "update-user",
       "value": "## Brand Voice\nTone: professional...",
       "intervalexpr": null,
       "enabled": true,
@@ -22156,7 +23395,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillHistory" \
       "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
       "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
       "skillkey": "cs-content-tone",
-      "operation": "upsert",
+      "operation": "update-user",
       "value": "## Brand Voice\nTone: friendly...",
       "intervalexpr": null,
       "enabled": true,
@@ -22217,7 +23456,7 @@ The response carries the post-revert state (`current_value`, `current_interval`,
 
 ## Turning Skills On and Off
 
-The top-level `skills[]` array on `UserAgent/Detail` lists every Skill on the instance as an **object array**: `[{ name, enabled, _edited?, _user_created? }, ...]`. `enabled: false` entries are still returned (so a UI can show disabled rows); filter on `enabled: true` to get only the active set. Example: `[{ "name": "util-weather", "enabled": true }, { "name": "util-diagram", "enabled": false }]`. To enable or disable several skills in one shot, use **`POST /UserAgent/SkillsApply`**. Even when you only want to flip a single skill, send it as a one-entry `skills` map. Connectors are not in this list: a connected connector is on (see [Agent Connectors](/docs/agent-connectors)). The endpoint:
+The top-level `skills[]` array on `UserAgent/Detail` lists the Skills that are on, as an **object array** sorted by name: `[{ name, enabled: true, _edited, _user_created }, ...]`. A Skill that is off is not in it, so `enabled` is always `true`; the full catalog of Skills is on [`POST /Skills/List`](#post-skillslist). `_edited` is `true` for a Skill you turned on yourself rather than one the template or a dependency brought, and `_user_created` is `true` for a name neither the template nor the registry has. Example: `[{ "name": "util-diagram", "enabled": true, "_edited": false, "_user_created": false }, { "name": "util-weather", "enabled": true, "_edited": true, "_user_created": false }]`. To enable or disable several skills in one shot, use **`POST /UserAgent/SkillsApply`**. Even when you only want to flip a single skill, send it as a one-entry `skills` map. Connectors are not in this list: a connected connector is on (see [Agent Connectors](/docs/agent-connectors)). The endpoint:
 
 1. Triggers exactly **one agent restart** after the new skill set lands.
 2. Uses **idempotency**: concurrent calls or client retries can't apply the change twice.
@@ -22257,15 +23496,15 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   }'
 ```
 
-`idempotencyKey` is required: use a UUID per "user clicks Save" event. The full response shape and error-code table live on [`SkillsApply`](/docs/agent-overview#post-useragentskillsapply).
+`idempotencyKey` is required: use a UUID per "user clicks Save" event. A Skill whose `depends_on` would stay off is refused with code `101` and `deps[]`, and nothing changes: send its dependencies in the same call. The full response shape and error-code table live on [`SkillsApply`](/docs/agent-overview#post-useragentskillsapply).
 
 > **Template deploys too.** `SkillsApply` works on agents deployed from a marketplace template as well as on custom builds. On a template agent, a skill you change overrides the template for that skill only; later template updates still reach every skill you never changed.
 
-> **Scheduled tasks follow their connectors.** A template's scheduled task that works with a connector, such as a daily Google Ads report, stays off while that connector isn't connected, and turns on when it is. You don't need to touch it on its own.
+> **Scheduled tasks wait for their connectors.** A template's scheduled task that works with a connector, such as a daily Google Ads report, runs only while that connector is connected. Connecting or disconnecting a connector never changes the task's `enabled`: a new agent starts with its template's tasks turned on, and a task that is off stays off until you turn it on with `CustomSkillUpsert` (`enabled: true`).
 
 ## Preview a Skill Change
 
-Before you commit `SkillsApply` (or the user clicks Save in your UI), call `POST /UserAgent/PricingPreview` to see the skill set the change would leave, with its `depends_on` resolved. No state is mutated, and the price and included AI usage stay the plan's: its `planChange` shows no charge. See [`PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) for the full response shape.
+Before you commit `SkillsApply` (or the user clicks Save in your UI), call `POST /UserAgent/PricingPreview` to see the skill set the change would leave, with its `depends_on` resolved. No state is mutated, and the price and included AI usage stay the plan's: its `planChange` shows no charge. Its `enabledSkills` includes the `depends_on` skills, but `SkillsApply` does not add them: send every name `enabledSkills` adds in the same `SkillsApply` call. See [`PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) for the full response shape.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
@@ -22326,7 +23565,7 @@ Response excerpt (top-level `customskills` and `scheduledskills`):
   "scheduledskills": [
     {
       "key": "cs-cron-push-scanner",
-      "value": "",
+      "value": "Scan for upcoming holidays and craft push notification suggestions.\n\n0. Read the cs-push-preferences skill first...",
       "description": "Scan holidays and craft push notification suggestions",
       "enabled": true,
       "interval": "0 9 * * *",
@@ -22335,7 +23574,7 @@ Response excerpt (top-level `customskills` and `scheduledskills`):
     },
     {
       "key": "cs-cron-push-dispatcher",
-      "value": "",
+      "value": "Send queued push notifications that are due.\n\n0. Read the cs-push-preferences skill first...",
       "description": "Send queued push notifications on schedule",
       "enabled": true,
       "interval": "0 * * * *",
@@ -22384,23 +23623,26 @@ All three requests succeed independently. The agent restarts once: the server co
 
 > **Connectors:** the services these agents work with (Google Ads, Meta Ads, WordPress, Brevo and the rest) are connectors, each connected with your own credentials. See [Agent Connectors](/docs/agent-connectors), and each connector's page at `https://wiro.ai/connectors/{slug}`.
 
-> **Discovery is canonical.** Skill keys evolve as agent templates are updated. To see the exact keys for a specific agent instance, always fetch `POST /UserAgent/Detail` first. The top-level `customskills` / `scheduledskills` arrays are the source of truth. The tables below reflect current intended keys; `CustomSkillUpsert` silently accepts keys that exist on the instance and returns `skill-not-found` for unknown keys without altering other state.
+> **Discovery is canonical.** Skill keys evolve as agent templates are updated. To see the exact keys for a specific agent instance, always fetch `POST /UserAgent/Detail` first. The top-level `customskills` / `scheduledskills` arrays are the source of truth. The tables below reflect current intended keys; `CustomSkillUpsert` with a key the agent doesn't have creates a user-created row: a scheduled task when you send `interval` (or a `cs-cron-` key), else a preference.
 
 ### Preferences (Editable Instructions)
 
 | Agent | Skill Key | What It Controls |
 |-------|-----------|-----------------|
+| Every template except Voice Receptionist | `approval-policy` | What waits for your approval before the agent acts, and the words that approve it |
 | Social Manager | `content-tone` | Brand voice, hashtags, posting style |
 | Blog Content Editor | `content-strategy` | Writing style, topics, research rules |
 | App Review Support | `review-preferences` | Response tone, support channels |
+| Google Review Manager | `review-preferences` | Reply tone, length by rating, contact line, sign-off and house rules |
 | App Event Manager | `event-preferences` | Event regions, holiday priorities |
-| Push Notification | `push-preferences` | Push tone, language, targeting |
+| Push Notification Manager | `push-preferences` | Push tone, language, targeting |
 | Newsletter Manager | `newsletter-strategy` | Topics, tone, audience, frequency |
 | Lead Generation Manager | `lead-strategy` | ICP definition, outreach tone |
-| Google Ads Manager | `ad-strategy` | Target audience, budget goals |
-| Meta Ads Manager | `ad-strategy` | Target audience, creative preferences |
-| TikTok Ads Manager | `ad-strategy`, `tiktok-ads-strategy` | Target audience, budget goals; TikTok tracking gates, kill thresholds, placement, Spark Ads and Smart+ rules |
+| Google Ads Manager | `ad-strategy`, `google-ads-strategy`, `audience-strategy`, `attribution-strategy`, `shopping-strategy`, `video-strategy`, `learning-phase-rules`, `adjust-strategy`, `roasit-strategy` | Target audience, budget goals; Google Ads tracking gates, kill thresholds and bidding defaults; Customer Match and remarketing audiences; attribution and conversion goals; Shopping feeds and campaigns; YouTube video campaigns; learning-phase limits; Adjust and Roasit ROAS reporting |
+| Meta Ads Manager | `ad-strategy`, `meta-ads-strategy`, `adjust-strategy`, `roasit-strategy` | Target audience, creative preferences; Meta tracking gates, attribution window, kill thresholds and placements; Adjust and Roasit ROAS reporting |
+| TikTok Ads Manager | `ad-strategy`, `tiktok-ads-strategy`, `adjust-strategy`, `roasit-strategy` | Target audience, budget goals; TikTok tracking gates, kill thresholds, placement, Spark Ads and Smart+ rules; Adjust and Roasit ROAS reporting |
 | Video Creator | `video-preferences`, `saved-logins` | Default format, length, voice, look, music, captions and ending card; test accounts for the screens behind a login |
+| Voice Receptionist | `voice-config` | Working hours, caller classification, pricing and escalation rules |
 
 ### Scheduled Tasks
 
@@ -22408,45 +23650,45 @@ All three requests succeed independently. The agent restarts once: the server co
 
 | Agent | Skill Key | Cron | What It Does |
 |-------|-----------|------|--------------|
-| Social Manager | `cs-cron-social-content-scanner` | `0 */4 * * *` | Content discovery and draft posts with rotating strategies (reads `content-tone`; disabled by default) |
-| Social Manager | `cs-cron-social-drive-scanner` | `0 10 * * *` | Scans Google Drive for new post assets and prepares posts (disabled by default) |
+| Social Manager | `cs-cron-social-content-scanner` | `0 */4 * * *` | Content discovery and draft posts with rotating strategies (reads `content-tone`) |
+| Social Manager | `cs-cron-social-drive-scanner` | `0 10 * * *` | Scans Google Drive for new post assets and prepares posts |
 | Blog Content Editor | `cs-cron-blog-scanner` | `0 9 * * *` | Topic discovery and article drafting (reads `content-strategy`) |
-| Blog Content Editor | `cs-cron-blog-gmail-checker` | `*/30 * * * *` | Checks the inbox for topic requests and writing instructions (disabled by default) |
-| App Review Support | `cs-cron-review-scanner` | `0 */2 * * *` | Scans App Store and Google Play for new reviews and prepares replies (reads `review-preferences`; disabled by default) |
-| App Event Manager | `cs-cron-app-event-scanner` | `0 9 * * 1` | Scans global holidays and suggests App Store in-app events (reads `event-preferences`; disabled by default) |
+| Blog Content Editor | `cs-cron-blog-gmail-checker` | `*/30 * * * *` | Checks the inbox for topic requests and writing instructions |
+| App Review Support | `cs-cron-review-scanner` | `0 */2 * * *` | Scans App Store and Google Play for new reviews and prepares replies (reads `review-preferences`) |
+| App Event Manager | `cs-cron-app-event-scanner` | `0 9 * * 1` | Scans global holidays and suggests App Store in-app events (reads `event-preferences`) |
 | Push Notification Manager | `cs-cron-push-scanner` | `0 9 * * *` | Scans holidays and prepares push notification suggestions (reads `push-preferences`) |
 | Push Notification Manager | `cs-cron-push-dispatcher` | `0 * * * *` | Sends queued push notifications on schedule |
-| Newsletter Manager | `cs-cron-newsletter-sender` | `0 9 * * 1` | Newsletter drafting and sending (reads `newsletter-strategy`; disabled by default) |
-| Newsletter Manager | `cs-cron-newsletter-subscriber-scanner` | `0 10 * * *` | Daily subscriber list health check and bounce monitoring (disabled by default) |
-| Lead Generation Manager | `cs-cron-lead-prospect-scanner` | `0 10 * * 1` | Weekly prospect search, enrichment and scoring (reads `lead-strategy`; disabled by default) |
-| Lead Generation Manager | `cs-cron-lead-outreach-reporter` | `0 9 * * *` | Daily outreach performance report (disabled by default) |
-| Lead Generation Manager | `cs-cron-lead-reply-handler` | `0 */4 * * *` | Checks new replies, analyzes sentiment and proposes responses (disabled by default) |
+| Newsletter Manager | `cs-cron-newsletter-sender` | `0 9 * * 1` | Newsletter drafting and sending (reads `newsletter-strategy`) |
+| Newsletter Manager | `cs-cron-newsletter-subscriber-scanner` | `0 10 * * *` | Daily subscriber list health check and bounce monitoring |
+| Lead Generation Manager | `cs-cron-lead-prospect-scanner` | `0 10 * * 1` | Weekly prospect search, enrichment and scoring (reads `lead-strategy`) |
+| Lead Generation Manager | `cs-cron-lead-outreach-reporter` | `0 9 * * *` | Daily outreach performance report |
+| Lead Generation Manager | `cs-cron-lead-reply-handler` | `0 */4 * * *` | Checks new replies, analyzes sentiment and proposes responses |
 | Google Ads Manager | `cs-cron-googleads-performance-reporter` | `0 9 * * *` | Daily performance report with recommendations (reads `ad-strategy`) |
 | Google Ads Manager | `cs-cron-googleads-recommendations-fetcher` | `0 8 * * *` | Daily Google Ads recommendations: safe items become low-risk suggestions, risky ones wait for your approval |
 | Google Ads Manager | `cs-cron-googleads-competitor-scanner` | `0 10 * * 1` | Weekly competitor analysis, keyword opportunities and account health audit |
 | Google Ads Manager | `cs-cron-googleads-holiday-planner` | `0 10 * * 3` | Upcoming holidays and seasonal campaign suggestions |
-| Google Ads Manager | `cs-cron-googleads-audience-refresher` | `0 7 * * *` | Daily Customer Match refresh from a connected CRM (HubSpot, Apollo, Lemlist) or a Google Drive CSV (disabled by default) |
-| Google Ads Manager | `cs-cron-googleads-drive-scanner` | `0 10 * * *` | Scans Google Drive for new creative folders and proposes campaigns (disabled by default) |
-| Google Ads Manager | `cs-cron-merchant-center-scanner` | `30 8 * * *` | Daily Merchant Center product feed health check (runs only when Merchant Center is connected; disabled by default) |
-| Google Ads Manager | `cs-cron-ga4-attribution-auditor` | `0 11 * * 1` | Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default) |
-| Google Ads Manager | `cs-cron-adjust-creative-roas-reporter` | `0 10 * * *` | Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default) |
-| Google Ads Manager | `cs-cron-roasit-creative-roas-reporter` | `30 10 * * *` | Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default) |
+| Google Ads Manager | `cs-cron-googleads-audience-refresher` | `0 7 * * *` | Daily Customer Match refresh from a connected CRM (HubSpot, Apollo, lemlist) or a Google Drive CSV |
+| Google Ads Manager | `cs-cron-googleads-drive-scanner` | `0 10 * * *` | Scans Google Drive for new creative folders and proposes campaigns |
+| Google Ads Manager | `cs-cron-merchant-center-scanner` | `30 8 * * *` | Daily Merchant Center product feed health check (runs only when Merchant Center is connected) |
+| Google Ads Manager | `cs-cron-ga4-attribution-auditor` | `0 11 * * 1` | Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected) |
+| Google Ads Manager | `cs-cron-adjust-creative-roas-reporter` | `0 10 * * *` | Daily Adjust creative-level ROAS report with scale/pause recommendations |
+| Google Ads Manager | `cs-cron-roasit-creative-roas-reporter` | `30 10 * * *` | Daily Roasit creative-level ROAS report with scale/pause recommendations |
 | Google Ads Manager | `cs-cron-ads-recommendation-cleanup` | `0 0 * * *` | Nightly cleanup of expired recommendations |
 | Meta Ads Manager | `cs-cron-metaads-performance-reporter` | `0 9 * * *` | Daily performance report with creative health, audience analysis and recommendations (reads `ad-strategy`) |
 | Meta Ads Manager | `cs-cron-metaads-audience-scanner` | `0 10 * * 1` | Weekly audience, creative health and account health audit |
 | Meta Ads Manager | `cs-cron-metaads-holiday-planner` | `0 10 * * 3` | Upcoming holidays and seasonal campaign suggestions |
 | Meta Ads Manager | `cs-cron-metaads-drive-scanner` | `0 10 * * *` | Scans Google Drive for new creative folders and proposes campaigns |
-| Meta Ads Manager | `cs-cron-ga4-attribution-auditor` | `0 11 * * 1` | Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default) |
-| Meta Ads Manager | `cs-cron-adjust-creative-roas-reporter` | `0 10 * * *` | Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default) |
-| Meta Ads Manager | `cs-cron-roasit-creative-roas-reporter` | `30 10 * * *` | Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default) |
+| Meta Ads Manager | `cs-cron-ga4-attribution-auditor` | `0 11 * * 1` | Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected) |
+| Meta Ads Manager | `cs-cron-adjust-creative-roas-reporter` | `0 10 * * *` | Daily Adjust creative-level ROAS report with scale/pause recommendations |
+| Meta Ads Manager | `cs-cron-roasit-creative-roas-reporter` | `30 10 * * *` | Daily Roasit creative-level ROAS report with scale/pause recommendations |
 | Meta Ads Manager | `cs-cron-ads-recommendation-cleanup` | `0 0 * * *` | Nightly cleanup of expired recommendations |
-| TikTok Ads Manager | `cs-cron-tiktokads-performance-reporter` | `0 9 * * *` | Performance reporting per advertiser, plus the 30-day reconnect reminder (reads `ad-strategy`) |
+| TikTok Ads Manager | `cs-cron-tiktokads-performance-reporter` | `0 9 * * *` | Performance reporting per advertiser (reads `ad-strategy`); when the TikTok sign-in has expired it stops and says TikTok Ads needs reconnecting |
 | TikTok Ads Manager | `cs-cron-tiktokads-audience-scanner` | `0 10 * * 1` | Weekly audience, creative health and account health audit |
 | TikTok Ads Manager | `cs-cron-tiktokads-holiday-planner` | `0 10 * * 3` | Upcoming holidays and seasonal campaign suggestions |
 | TikTok Ads Manager | `cs-cron-tiktokads-drive-scanner` | `0 10 * * *` | Scans Google Drive for new creative folders and proposes TikTok Ads campaigns (does nothing until Google Drive is connected) |
-| TikTok Ads Manager | `cs-cron-ga4-attribution-auditor` | `0 11 * * 1` | Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default) |
-| TikTok Ads Manager | `cs-cron-adjust-creative-roas-reporter` | `0 10 * * *` | Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default) |
-| TikTok Ads Manager | `cs-cron-roasit-creative-roas-reporter` | `30 10 * * *` | Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default) |
+| TikTok Ads Manager | `cs-cron-ga4-attribution-auditor` | `0 11 * * 1` | Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected) |
+| TikTok Ads Manager | `cs-cron-adjust-creative-roas-reporter` | `0 10 * * *` | Daily Adjust creative-level ROAS report with scale/pause recommendations |
+| TikTok Ads Manager | `cs-cron-roasit-creative-roas-reporter` | `30 10 * * *` | Daily Roasit creative-level ROAS report with scale/pause recommendations |
 | TikTok Ads Manager | `cs-cron-ads-recommendation-cleanup` | `0 0 * * *` | Nightly cleanup of expired recommendations |
 | Google Review Manager | `cs-cron-google-review-scanner` | `0 */2 * * *` | Scans Google Business Profile locations for new reviews and prepares replies |
 
@@ -22456,7 +23698,7 @@ Each scheduled task reads its paired preference skill at runtime. The mechanism:
 
 1. `POST /UserAgent/CustomSkillUpsert` writes your preference `value` for key `content-tone` (stored as `cs-content-tone`).
 2. When the agent starts, each `customskills` / `scheduledskills` row becomes a skill named by its key: a preference skill with key `cs-content-tone` becomes the skill `cs-content-tone`, and a scheduled task with key `cs-cron-social-content-scanner` becomes `cs-cron-social-content-scanner`.
-3. The scheduled task's `value` (shipped with the agent template, not user-editable) references its paired preference by its skill name, `cs-<preference-key>`, for example: `0. Read the cs-content-tone skill first and follow all its rules. 1. ...`
+3. The scheduled task's `value` (on a template agent, always the template's text) references its paired preference by its skill name, `cs-<preference-key>`, for example: `0. Read the cs-content-tone skill first and follow all its rules. 1. ...`
 4. At each cron tick, the agent LLM reads `cs-content-tone`, applies your instructions, then executes the scan/report/dispatch workflow.
 
 > **Slug normalization:** the `<slug>` in `cs-<slug>` / `cs-cron-<slug>` is the raw key lowercased with any run of non-alphanumeric characters replaced by a single `-` (leading/trailing dashes trimmed). Template keys already follow this shape so the slug matches 1:1.
@@ -22467,23 +23709,23 @@ This means **your editable preference becomes the single place to customize agen
 
 A connected connector gives the agent its tools, named `<slug>__<tool>`, such as `serper__web_search` or `bluesky__create_post`. A template's scheduled tasks call them by these names, and your own custom skills can too: tell the agent which tools to use and when, for example "Research the topic with `serper__web_search` before you write." See [What the Agent Gets](/docs/agent-connectors#what-the-agent-gets).
 
-A template's scheduled task that needs a connector stays off until that connector is connected, so connect the ones a template works with after you deploy it, with [`POST /UserAgent/ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect). The template's `suggestedconnectors` on [`POST /Agent/Detail`](/docs/agent-overview#post-agentdetail) lists them by slug; nothing connects by itself.
+A template's scheduled task that needs a connector runs only while that connector is connected, so connect the ones a template works with after you deploy it, with [`POST /UserAgent/ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect). The template's `suggestedconnectors` on [`POST /Agent/Detail`](/docs/agent-overview#post-agentdetail) lists them by slug; nothing connects by itself.
 
 Agents can optionally forward operator notifications to a Telegram bot via the `telegram` credential (see [Telegram Channel](/docs/integration-telegram-skills)). This is never required; every agent remains fully usable over web chat and the [Messaging API](/docs/agent-messaging) without a bot configured.
 
-### Utility Skills
+### Built-in Skills
 
-`util-*` skills need no outside account. Most are rule sets that come with an agent template. These three can be added to any agent with [`SkillsApply`](#turning-skills-on-and-off), on any plan and at no charge:
+Skills (`util-*`) need no outside account, except the Twilio Voice Channel (`util-twilio-channel`), which takes your Twilio account. Most are rule sets that come with an agent template. These three can be added to any agent with [`SkillsApply`](#turning-skills-on-and-off), on any plan and at no charge:
 
 | Skill | What it adds |
 |-------|--------------|
-| `util-weather` | Current weather and a 9-day forecast for any place: temperature, rain, wind and UV from MET Norway's open forecast data, with the place found on OpenStreetMap. |
-| `util-diagram` | Flowcharts, architecture and sequence diagrams, state machines, data models, mind maps, timelines, Gantt plans and concept drawings as PNG images with an editable SVG copy, checked for overlapping or cut-off text. |
-| `util-video-creator` | The Video Creator's playbook: finished videos with voice-over, music and captions from a website or web app (behind a login too), an app-store listing, a document, an article or product photos; 16:9 or 9:16, up to 3 minutes. It brings `util-video-shots`, `util-video-docs` and `util-motion-effects` with it, and runs the video's models with the agent's Wiro project, which pays for them (see [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent)). `util-motion-effects` and `util-video-creator` always come together, whichever one you turn on. |
+| Weather (`util-weather`) | Current weather and a 9-day forecast for any place: temperature, rain, wind and UV from MET Norway's open forecast data, with the place found on OpenStreetMap. |
+| Diagrams (`util-diagram`) | Flowcharts, architecture and sequence diagrams, state machines, data models, mind maps, timelines, Gantt plans and concept drawings as PNG images with an editable SVG copy, checked for overlapping or cut-off text. |
+| Video Creator (`util-video-creator`) | The Video Creator's playbook: finished videos with voice-over, music and captions from a website or web app (behind a login too), an app-store listing, a document, an article or product photos; 16:9 or 9:16, up to 3 minutes. It needs Video Story & Shots (`util-video-shots`), Document Videos (`util-video-docs`) and Motion Effects (`util-motion-effects`), and runs the video's models with the agent's Wiro project, which pays for them (see [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent)). Motion Effects needs Video Creator too, so the four are on together: with `SkillsApply` send all four in one call, `{ "util-video-creator": true, "util-video-shots": true, "util-video-docs": true, "util-motion-effects": true }`. Deploy's `skills` and an `add` setup card turn the rest on by themselves. |
 
-The voice channels are Skills too: `util-twilio-channel` answers phone calls through Twilio Voice and saves its account in the `twilio-voice` credential (see [Twilio Voice Channel](/docs/integration-twiliovoice-skills)), and `util-web-channel` takes calls in the browser (see [Web Voice Channel](/docs/integration-webvoice-skills)). Each brings `util-voice-receptionist` and `util-voice-call-prep` with it. Turn them on with [`SkillsApply`](#turning-skills-on-and-off) or Deploy's `skills`.
+The voice channels are Skills too: Twilio Voice Channel (`util-twilio-channel`) answers phone calls through Twilio Voice and saves its account in the `twilio-voice` credential (see [Twilio Voice Channel](/docs/integration-twiliovoice-skills)), and Web Voice Channel (`util-web-channel`) takes calls in the browser (see [Web Voice Channel](/docs/integration-webvoice-skills)). Each needs Voice Receptionist Rules (`util-voice-receptionist`) and Voice Call Prep Rules (`util-voice-call-prep`). With [`SkillsApply`](#turning-skills-on-and-off) send them in the same call, for example `{ "util-twilio-channel": true, "util-voice-receptionist": true, "util-voice-call-prep": true }`: sent alone while the two are off, a channel is refused with code `101` and `deps[]`. Deploy's `skills` turns them on by itself.
 
-`POST /Skills/List` with `{ "category": "util" }` returns every utility skill.
+`POST /Skills/List` with `{ "category": "util" }` returns every Skill.
 
 > **Restart behavior:** On a starting or running agent (status 3 or 4), `SkillsApply`, `CustomSkillRename`, `CustomSkillDelete` and `CustomSkillRevert` restart it so the new skill configuration is picked up, as credential updates do. `CustomSkillUpsert` restarts it for a new skill or task, a new `interval` or an `enabled` change. A change to the text or description of an existing one reaches the running agent without a restart, except for `cs-approval-policy`. See [Automatic Restart](/docs/agent-overview#automatic-restart).
 
@@ -22491,8 +23733,8 @@ The voice channels are Skills too: `util-twilio-channel` answers phone calls thr
 
 An agent runs Wiro's own AI models (image, video, audio and LLM generation, cover images, model discovery) two ways:
 
-- **With its Wiro project.** Skills such as `util-video-creator` and the voice skills run their models with the agent's Wiro project, the `wiro` credential. Pick or create a project at [wiro.ai/panel/project](https://wiro.ai/panel/project) and connect it in the agent's settings, or through the API with `POST /UserAgent/CredentialProjectBind`. Each run is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project). See [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project).
-- **With the Wiro connector.** The `wiro` connector gives the agent Wiro's own model and task tools (`wiro__*`), the ones its `tools` on [`AgentConnector/Detail`](/docs/agent-connectors#post-agentconnectordetail) list, such as running any model. They act with the agent's own Wiro project, the same one: connecting the connector binds the project you pick to the agent, as `CredentialProjectBind` does. Their runs are the agent's own, billed to that project's wallet under the agent's spend limit and Model Access rule. See [The Wiro connector](/docs/agent-connectors#the-wiro-connector).
+- **With its Wiro project.** Skills such as Video Creator (`util-video-creator`) and the voice skills run their models with the agent's Wiro project, the `wiro` credential. Pick or create a project at [wiro.ai/panel/project](https://wiro.ai/panel/project) and connect it in the agent's settings, or through the API with `POST /UserAgent/CredentialProjectBind`. Each run is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project). See [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project).
+- **With Wiro AI Models (`wiro`).** The Wiro AI Models connector gives the agent Wiro's own model and task tools (`wiro__*`), the ones its `tools` on [`AgentConnector/Detail`](/docs/agent-connectors#post-agentconnectordetail) list, such as running any model. They act with the agent's own Wiro project, the same one: connecting the connector binds the project you pick to the agent, as `CredentialProjectBind` does. Their runs are the agent's own, billed to that project's wallet under the agent's spend limit and Model Access rule. See [The Wiro connector](/docs/agent-connectors#the-wiro-connector).
 
 The agent starts without a Wiro project. Where the template marks the project required (`optional: false`), `UserAgent/Detail` reads `setuprequired: true` until it is connected.
 
@@ -22516,19 +23758,19 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialProjectBind" \
 
 | Operation | Endpoint | Allowed on preset strategy (`_source: preset-strategy`) | Allowed on skill-bundled cron (`_source: skill-bundle`) | Allowed on user-created cron (`_source: user-created`) |
 |---|---|---|---|---|
-| Write `value` | `CustomSkillUpsert` | Yes | **No: silently dropped** (skill owns the cron body) | Yes |
+| Write `value` | `CustomSkillUpsert` | Yes | Saved and shown, but a template agent runs the template's text (a custom build runs yours) | Yes |
 | Write `interval` | `CustomSkillUpsert` | **No: silently dropped** (strategies aren't scheduled) | Yes | Yes |
 | Write `enabled` | `CustomSkillUpsert` | Yes (disabling suppresses the strategy end-to-end) | Yes | Yes |
 | Write `description` | `CustomSkillUpsert` | **No: a changed text is rejected** with `customskill-preset-description-not-editable` (the current text is ignored) | **No: a changed text is rejected** with `customskill-preset-description-not-editable` (the current text is ignored) | Yes |
 | Create | `CustomSkillUpsert` with a new key | n/a | n/a | Yes |
 | Rename key (+ optional description) | `CustomSkillRename` | **No: preset-forbidden** | **No: preset-forbidden** | Yes (flavour preserved; `cs-cron-*` ↔ `cs-*` rejected) |
 | Delete | `CustomSkillDelete` | **Rejected with `suggestion: "disable-via-upsert"`** | **Rejected with `suggestion: "disable-via-upsert"`** | Yes (hard delete: live row + full history purged) |
-| Read history | `CustomSkillHistory` | Yes | Yes (only `enabled` / `interval` writes show up) | Yes (post-rename, the chain is migrated under the new key; a `rename` event marks the transition) |
+| Read history | `CustomSkillHistory` | Yes | Yes | Yes (post-rename, the chain is migrated under the new key; a `rename` event marks the transition) |
 | Revert to preset | `CustomSkillRevert` (`source: "preset"`) | Yes | Yes (resets `interval` / `enabled` to preset defaults) | Yes (deletes the row if no preset baseline exists) |
 | Revert to a version | `CustomSkillRevert` (`source: "history"`) | Yes | Yes | Yes |
 
 - Send only the fields you want to change. Omitted fields keep their current values.
-- Unknown skill keys return `skill-not-found` in the `errors[]` without altering other state.
+- A key the agent doesn't have creates a user-created row: a scheduled task when you send `interval` (or a `cs-cron-` key), else a preference.
 - To clear a cron schedule, call `CustomSkillUpsert` with `enabled: false`. Setting `interval: ""` or `null` also clears it.
 - A schedule must be one the agent can run, written as five fields, `minute hour day month weekday`, such as `0 9 * * 1-5`. A schedule the agent can't run, or one whose date never comes, such as 30 February, is refused and nothing is saved. The error says what is wrong and what to write, for example `This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.`
 - Skill toggles (top-level `skills[]`) are a separate endpoint (see [Turning Skills On and Off](#turning-skills-on-and-off) and [`SkillsApply`](/docs/agent-overview#post-useragentskillsapply)).
@@ -22555,7 +23797,9 @@ What an agent cost, in dollars: its AI usage, the models it ran, its plan paymen
 
 ## Overview
 
-Every charge an agent makes is a row of the wallet transactions of its workspace, the same ledger as your model runs. `POST /UserAgent/TransactionList` lists the rows of one agent, newest first, with a summary of the current month. It powers the agent's **Transactions** view in the Wiro dashboard.
+<a id="tx-overview"></a>
+
+Every charge an agent makes is a row of the wallet transactions of its workspace, the same ledger as your model runs. `POST /UserAgent/TransactionList` lists the rows of one agent, newest first, with a summary of the current month. It powers the agent's **Transactions** view in the Wiro dashboard. It reads the wallet that pays for the agent now: the team wallet for a team agent, else its owner's. After the agent moves to another workspace, the rows the earlier wallet holds are listed only in that wallet's [`Wallet/TransactionList`](/docs/organizations-api-access#billing-flow).
 
 | `kind` | What the row is |
 |--------|-----------------|
@@ -22609,7 +23853,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
     "includedusd": 30,
     "usage": {
       "period": "2026-11",
-      "resetsat": 1797724800,
+      "resetsat": null,
       "includedusd": 30,
       "usedusd": 12.4,
       "leftusd": 17.6,
@@ -22695,14 +23939,16 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `month` | `string` | The month the figures cover, `'YYYY-MM'`. |
-| `planusd` | `number` | Plan payments for the agent. |
-| `aiusageplanusd` | `number` | AI usage the plan's included usage covered. |
-| `aiusagebalanceusd` | `number` | AI usage paid from the balance. |
-| `modelrunsusd` | `number` | Models the agent ran. |
-| `fundsaddedusd` | `number` | Funds added from the agent's page. |
-| `includedusd` | `number` | The AI usage the plan includes this period. |
-| `usage` | `object` | The agent's `usage`, as on [`UserAgent/Detail`](/docs/agent-overview#usage-object). |
+| `month` | `string\|null` | The month the figures cover, `'YYYY-MM'`. |
+| `planusd` | `number\|null` | Plan payments for the agent. |
+| `aiusageplanusd` | `number\|null` | AI usage the plan's included usage covered. |
+| `aiusagebalanceusd` | `number\|null` | AI usage paid from the balance. |
+| `modelrunsusd` | `number\|null` | Models the agent ran. |
+| `fundsaddedusd` | `number\|null` | Funds added for the agent: from its page, and what was left of a pack moved to the balance, less any refund taken back from it. |
+| `includedusd` | `number\|null` | The AI usage the plan includes this period. |
+| `usage` | `object\|null` | The agent's `usage`, as on [`UserAgent/Detail`](/docs/agent-overview#usage-object), except `resetsat`, which is `null` here: read it from `UserAgent/Detail`. |
+
+A field is `null` when its part of the summary could not be read: ask again, and never read it as zero.
 
 The summary also still carries the credit counts it had before dollar billing (`monthlycredits`, `renewalcredits`, `extracredits`, `usedcredits`, `remainingcredits`, `extrapacks`, `byModel` and the period fields), and the answer still carries the old `transactions` list and its `total`. They are deprecated and will be removed: read `rows`, `rowstotal` and the fields above.
 
@@ -22715,17 +23961,19 @@ The summary also still carries the credit counts it had before dollar billing (`
 | `kind` | `string` | `"ai-usage"`, `"model-run"`, `"plan"`, `"funds"` or `"other"` (see the [Overview](#tx-overview)). |
 | `title` | `string` | A short line that says what the row is, such as `AI Usage`, `Model Run` or the plan payment's line. Show it as it is: its wording can change. |
 | `description` | `string\|null` | The ledger's own line for the row, when it has one, such as `AI usage: Sales Desk (openai/gpt-5.6-terra, 54,969 tokens)`. |
-| `model` | `string\|null` | `ai-usage` rows: the model that served the calls. `model-run` rows: the model that ran, by its `owner/slug`. `null` otherwise. |
+| `model` | `string\|null` | `ai-usage` rows: the model of the costliest call the row covers; `tokens` and `costs` add up all its calls, whatever their model. `model-run` rows: the model that ran, by its `owner/slug`. `null` otherwise. |
 | `tokens` | `object\|null` | `ai-usage` rows: `{ input, cacheRead, cacheWrite, output }` token counts, where `input` is uncached input. `null` otherwise. |
 | `costs` | `object\|null` | `ai-usage` rows: what each kind of token cost, in USD, exact to 7 decimals: `{ input, cacheRead, cacheWrite, output }`. `null` on other rows and on legacy rows. |
-| `amountusd` | `number` | The row's amount in USD, in whole cents. On an `ai-usage` row the exact `costs` can leave a fraction of a cent: it carries to the agent's next row, so `amountusd` can differ from their sum by less than a cent. |
+| `amountusd` | `number` | The row's amount in USD, in whole cents. When Wiro measures the agent's model calls itself, the exact `costs` can leave a fraction of a cent that carries to the agent's next row, so `amountusd` can differ from their sum by less than a cent. Otherwise each turn is billed on its own at its exact cost rounded up to the next cent, so a turn's `amountusd` can be less than a cent above the sum of its `costs`. |
 | `paidfrom` | `string\|null` | How the row was paid: `"plan"` (the plan's included usage), `"balance"` (the Wiro balance), `"coupon"` (coupon credit in the balance) or `"card"` (a card payment, such as a plan renewal from before plans moved to the balance, or funds added by card). |
-| `direction` | `string` | `"out"` for spending, `"in"` for funds added and other credits. |
+| `direction` | `string` | `"out"` for spending, `"in"` for funds added and other credits (for legacy `plan` rows and refunds, see below). |
 | `surface` | `string\|null` | The surface the row was charged on, such as `"agent"`. `null` on older rows. |
 | `taskid` | `string\|null` | `model-run` rows: the task of the run (see [Tasks](/docs/tasks)). `null` otherwise. |
 | `legacy` | `boolean` | `true` on rows from before dollar billing, converted to dollars. |
 
-> **Pagination.** `rowstotal` is the number of rows the `kind` lists, so you can render a precise paginator. Default page size is 50, max is 500. Use `start` to skip rows.
+A legacy `plan` row keeps the old record's sign and line: its `direction` is `"in"`, its `amountusd` is the AI usage the payment granted, not what was paid, and its `title` is the old record's line, such as `Subscription renewal`, which may not name the plan. A refund taken back from what was left of a pack moved to the balance is a `funds` row titled `Funds Added` with `direction: "in"`, though it took that amount out of the balance; its `description` starts with `Refund:`.
+
+> **Pagination.** With `kind: "all"`, `rowstotal` counts every row, so you can render a precise paginator. With another `kind`, rows from before dollar billing are searched only among the newest `start` + `limit` older records, so `rowstotal` and the pages can leave older ones out: for a full history, page with `kind: "all"` and filter by `kind` yourself. Default page size is 50, max is 500. Use `start` to skip rows.
 
 ## Reading the List: Patterns
 
@@ -22768,7 +24016,7 @@ console.log(totals);
 
 ### Reconcile a plan change
 
-Every plan payment is a `plan` row: the deploy, a move to a higher plan (the prorated difference) and each renewal, with the plan's name in its `title`. A move to a lower plan charges nothing when it is asked for: the renewal that starts it is a `plan` row at the lower price. Use these rows to render a plan history in your UI.
+Every plan payment is a `plan` row: the deploy, a move to a higher plan (the prorated difference) and each renewal, with the plan's name in its `title` (for legacy rows, see the note under Row fields). A move to a lower plan charges nothing when it is asked for: the renewal that starts it is a `plan` row at the lower price. Use these rows to render a plan history in your UI. For an agent from before dollar billing, page with `kind: "all"` and keep the `plan` rows, as the Pagination note says.
 
 ### Rows that cover several model calls
 
@@ -22800,11 +24048,12 @@ The payment is a `plan` row like any other, with what the balance paid as `amoun
 
 | Error | When |
 |-------|------|
-| `useragentguid is required` | `TransactionList` without `useragentguid` |
-| `useragent-access-denied` | Caller is neither the owner nor on the agent's team |
-| `useragent-team-admin-required` | Caller is a member of the agent's team but not a team admin (code `97`) |
-| `Invalid credentials` | API key is missing or doesn't resolve to a valid Wiro user |
-| `transactions-list-failed` | `TransactionList` server-side error (DB): surfaced loudly so it's distinguishable from an empty list |
+| `Request parameter [useragentguid] required` (code `0`) | `TransactionList` without `useragentguid` |
+| `User agent not found` (code `95`) | No agent has this guid, or the agent was deleted |
+| `You don't have access to this user agent` (code `96`) | Caller is neither the owner nor on the agent's team |
+| `Only a team admin can perform this action on a team-owned agent.` (code `97`) | Caller is a member of the agent's team but not a team admin |
+| HTTP `401` (see [Authentication Errors](/docs/error-reference)) | API key is missing or invalid |
+| Any other message (code `0`) | A server-side read failed. Retry: a failed read is never answered as an empty list |
 
 ## Code Examples
 
@@ -22902,7 +24151,7 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
 
 ## What's Next
 
-- [Agent Logs](/docs/agent-logs): Activity feed (tool calls, cron runs, message exchanges) for the same useragent
+- [Agent Logs](/docs/agent-logs): Activity feed (tool calls, Scheduled Task runs, message exchanges) for the same agent
 - [Agent Overview](/docs/agent-overview): Full agent endpoint catalog, including plans, AI usage and the balance
 - [Agent Builder](/docs/agent-builder): Build a custom agent and watch its usage come in as it runs
 
@@ -22910,17 +24159,17 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
 
 # Agent Logs
 
-Per-instance activity feed (tool calls, scheduled cron runs, message exchanges, and turn boundaries) for any deployed agent.
+Per-instance activity feed (tool calls, Scheduled Task runs, message exchanges, and turn boundaries) for any deployed agent.
 
 ## Overview
 
 Every Wiro agent appends one structured `ActivityEvent` JSON line per tool call, LLM turn boundary, scheduled task run and billed turn, plus each message that arrives on a connected Telegram, Slack or Discord channel. Secrets (matched by field name and by high-entropy value), internal tool-call IDs and API credentials are redacted before an event is written, so what shows up in `Logs` is safe to show end users.
 
-A daily JSONL file is written for each calendar day; files older than 7 days are gzipped, files older than 180 days are deleted by the agent's daily maintenance cron.
+A daily JSONL file is written for each calendar day; files older than 7 days are gzipped, files older than 180 days are deleted by the agent's daily maintenance.
 
 The feed also lists what people and API keys did to the agent: starts and stops, renames, skill, connector and billing changes, connections, Screen views and Take Control sessions, browser resets, and deleted log days, each with who did it. These [who-did-what rows](#who-did-what-rows) don't depend on the agent running.
 
-The endpoints below are **owner-or-team-admin** scoped. Plain members of the agent's team receive `useragent-team-admin-required` (code `97`); outside callers receive `useragent-access-denied`.
+The endpoints below are **owner-or-team-admin** scoped. Plain members of the agent's team get code `97` (`Only a team admin can perform this action on a team-owned agent.`); outside callers get code `96` (`You don't have access to this user agent`).
 
 | Endpoint | Purpose |
 |----------|---------|
@@ -22941,12 +24190,8 @@ Every event is a JSON object with this base shape:
   "ts": "2026-05-03T14:00:10.234Z",
   "kind": "tool_completed",
   "tool": "web_fetch",
-  "title": "Fetched https://blog.example.com/weekly-roundup-12",
-  "summary": {
-    "url": "https://blog.example.com/weekly-roundup-12",
-    "status": 200,
-    "bytes": 18432
-  },
+  "title": "Fetched URL: blog.example.com",
+  "summary": { "host": "blog.example.com" },
   "durationMs": 1840,
   "ok": true,
   "userUuid": "ada-uuid",
@@ -22965,26 +24210,26 @@ Every event is a JSON object with this base shape:
 | Field | Type | Description |
 |-------|------|-------------|
 | `ts` | `string` | ISO-8601 UTC datetime when the event was recorded (e.g. `"2026-05-03T14:00:10.234Z"`). Parse with `Date.parse(ts)` for arithmetic. |
-| `kind` | `string` | Fine-grained event class. One of: `"turn_started"`, `"turn_ended"` (an LLM turn boundary); `"tool_started"`, `"tool_completed"` (one pair per tool call); `"tool_blocked"` (a tool call the agent's safety rules refused); `"cron_finished"` (a scheduled task finished); `"user_message"` (a message received on a connected Telegram, Slack or Discord channel, not web chat); `"token_usage"` (a billed turn's token usage: chat / cron / voice post-call); `"token_usage_idempotent"` (a replayed usage report, already billed, informational only); `"media_relay"` (files from a reply were delivered); `"background_reply"` (a result that finished in the background was delivered to the chat). Rows about what was done to the agent have [`AGENT_*` kinds](#who-did-what-rows), and two note rows, `"runtime_log_unavailable"` and `"runtime_log_deleted"`, say what part of a day is missing. Show any kind you don't recognize by its `title`. |
+| `kind` | `string` | Fine-grained event class. One of: `"turn_started"`, `"turn_ended"` (an LLM turn boundary); `"tool_started"`, `"tool_completed"` (one pair per tool call); `"tool_blocked"` (a tool call the agent's safety rules refused); `"cron_finished"` (a scheduled task finished); `"user_message"` (a message received on a connected Telegram, Slack or Discord channel, not web chat); `"token_usage"` (a billed turn's token usage: chat / Scheduled Task / voice post-call); `"token_usage_idempotent"` (a replayed usage report, already billed, informational only); `"media_relay"` (files from a reply were delivered); `"background_reply"` (a result that finished in the background was delivered to the chat). Rows about what was done to the agent have [`AGENT_*` and `CONNECTOR_*` kinds](#who-did-what-rows), and two note rows, `"runtime_log_unavailable"` and `"runtime_log_deleted"`, say what part of a day is missing. Show any kind you don't recognize by its `title`. |
 | `tool` | `string?` | Present on `tool_started` / `tool_completed` / `tool_blocked`. The name of the tool the agent used. |
-| `toolintegration` | `string?` | On `tool_started` and `tool_completed` when the step works in a connector: the connector's `slug`, for example `"wordpress"`, or a channel's key, such as `"telegram"`. Same closed list as on [timeline tool blocks](/docs/agent-messaging#tool-integration-and-action-values). |
+| `toolintegration` | `string?` | On `tool_started` and `tool_completed` when the step works in a connector: the connector's `slug` from `POST /AgentConnector/List`, for example `"wordpress"`, or `"wiro"` for Wiro AI Models. Same closed list as on [timeline tool blocks](/docs/agent-messaging#tool-integration-and-action-values). |
 | `toolaction` | `string?` | On `tool_started` and `tool_completed` when a word fits the step: what it does, for example `"click"`. Same closed list as on [timeline tool blocks](/docs/agent-messaging#tool-integration-and-action-values). Never set together with `toolintegration`. |
-| `title` | `string` | Human-readable one-line description of what happened (e.g. `"Posted carousel: \"Brand voice teaser\""`, `"Fetched https://…"`, `"Token Usage"`). Always present. |
+| `title` | `string` | Human-readable one-line description of what happened (e.g. `"Fetched URL: blog.example.com"`, `"wordpress__create_post"`, `"Token Usage"`). Always present. |
 | `summary` | `object?` | Structured event-specific payload. Opaque on the wire, so render it as JSON when expanding the row. Secret values (`apikey`, `apppassword`, `clientsecret`, `bearer`, `token`, …) are masked before the event is written. Common keys: `file`, `method`, `host`, `path`, `preview`, `messageCount`, `jobId`, `status`, `reason`. |
 | `durationMs` | `number?` | Wall-clock duration in milliseconds. Populated on `tool_completed`, `turn_ended`, `cron_finished` and `token_usage` events. |
-| `ok` | `boolean?` | `true` for a successful completion, `false` for a failure. Populated on `tool_completed`, `turn_ended` and `cron_finished` events, and always `false` on `tool_blocked`. Pair with `error` for failure rows. It is always `true` on `AGENT_*` rows. A `turn_ended` for a turn the caller cancelled has no `ok`, and its title reads `Agent turn cancelled`. A `cron_finished` for a Scheduled Task run that the agent's spend limit or Model Access rule paused has no `ok` either, and its title starts with `Paused by a spend limit:` or `Paused by a Model Access rule:`. |
-| `error` | `string?` | One-line failure message (when `ok: false`). |
+| `ok` | `boolean?` | `true` for a successful completion, `false` for a failure. Populated on `tool_completed`, `turn_ended` and `cron_finished` events, and always `false` on `tool_blocked`. Pair with `error` for failure rows. It is always `true` on `AGENT_*` and `CONNECTOR_*` rows. A `turn_ended` for a turn the caller cancelled has no `ok`, and its title reads `Agent turn cancelled`. A `cron_finished` for a Scheduled Task run that the agent's spend limit or Model Access rule paused has no `ok` either, and its title starts with `Paused by a spend limit:` or `Paused by a Model Access rule:`. |
+| `error` | `string?` | On a failure row (`ok: false`): always the fixed sentence `Agent is temporarily unavailable. Please try again shortly.`, whatever failed. The failure's own reason never reaches the log. |
 | `cost` | `object?` | Legacy per-action charge, `{ credits, skill, action }`. Only events recorded before agents switched to per-turn token billing can carry it; current events never do. See the `token_usage` event for what a turn cost. |
-| `userUuid` | `string?` | UUID of the actor who triggered the event. `"system"` for cron / internal events. May be missing on older rows, in which case the server falls back to the agent owner. |
-| `user` | `object\|null` | Resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. `null` when `userUuid` is `"system"` (automation / cron) or when the user record was deleted. |
+| `userUuid` | `string?` | UUID of the actor who triggered the event. `"system"` for Scheduled Task runs and other automatic events. May be missing on older rows, in which case the server falls back to the agent owner. |
+| `user` | `object\|null` | Resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. `null` when `userUuid` is `"system"` (automation, Scheduled Tasks) or when the user record was deleted. |
 
-> **What is `summary` for?** Tool events carry a short summary of the call: for example the file path for file tools, the program for `exec`, or the method, host and path for web requests. Turn events carry a short `preview` (plus `messageCount` on `turn_ended`); `cron_finished` carries `{ jobId, status }`, plus `reason` (`spend_limit` or `model_access`) when `status` is `paused`; `user_message` carries `{ preview }`; `tool_blocked` carries the `reason`. Treat the object as opaque and render-on-expand, since its shape depends on the tool and may change without a docs revision.
+> **What is `summary` for?** Tool events carry a short summary of the call: for example the file path for file tools, the program for `exec`, or the method, host and path for web requests. Turn events carry a short `preview` (plus `messageCount` on `turn_ended`); `cron_finished` carries `{ jobId, status }`, plus `reason` (`spend_limit` or `model_access`) when `status` is `paused`; `user_message` carries `{ preview }`; `tool_blocked` carries the `reason`. A connector's tool is named `<slug>__<tool>`, such as `wordpress__create_post`: its `tool` and `title` are that name, `toolintegration` is the connector's `slug`, and `summary` is `{}`, because a connector call's arguments and results never reach the log. A Reddit (`reddit`) call is titled `Reddit API operation`, and its `summary` is `{ "service": "reddit", "retentionRedacted": true }`. Treat the object as opaque and render-on-expand, since its shape depends on the tool and may change without a docs revision.
 
 To tell what a tool call is doing, read `toolintegration` and `toolaction` instead of parsing `title` or `summary`. Both are missing when no word fits the step, and `tool_blocked` events don't carry them.
 
 ### Token-usage events
 
-A `token_usage` event records the tokens and the AI usage of one billed turn: a chat reply, a cron run, or a voice post-call. A `token_usage_idempotent` event carries the **same shape** for a replayed usage callback that was already billed (informational; it does not deduct again). On top of the base `ActivityEvent` fields, these events add:
+A `token_usage` event records the tokens and the AI usage of one billed turn: a chat reply, a Scheduled Task run, or a voice post-call. A `token_usage_idempotent` event carries the **same shape** for a replayed usage callback that was already billed (informational; it does not deduct again). On top of the base `ActivityEvent` fields, these events add:
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -23012,11 +24257,11 @@ A `token_usage` event records the tokens and the AI usage of one billed turn: a 
 
 > **Nested vs flat token fields.** The activity-log `token_usage` event nests its counts in **camelCase** under `tokens.{input, output, cacheRead, cacheWrite, total}`. `input` is uncached input and `total` is the exact sum of all four components. This is distinct from the **flat, lowercase** columns on message rows (`inputtokens`, `outputtokens`, `cachereadtokens`, …). Same underlying data, different shape.
 
-> **AI usage vs. model runs.** An agent's own AI usage is counted once per LLM turn: each `token_usage` event is one billed turn, and its `tokencost` is in cents (`tokencost / 100` is the amount in USD). It comes from the plan's included usage first, then from the Wiro balance. A Wiro model the agent runs, for example for its video skill or through the `wiro` connector, is billed separately: Wiro charges it to the wallet of the workspace that owns the agent's Wiro API key at the model's usual price, passed through unchanged. That run shows up as an ordinary `tool_completed` event with no cost figure; its cost is the task's `totalcost` (see [Billing & Cost](/docs/tasks#task-billing)), and it is a `model-run` row in the agent's [Transactions](/docs/agent-transactions).
+> **AI usage vs. model runs.** An agent's own AI usage is counted once per LLM turn: each `token_usage` event is one billed turn, and its `tokencost` is in cents (`tokencost / 100` is the amount in USD). It comes from the plan's included usage first, then from the Wiro balance. A Wiro model the agent runs, for example for its video skill or through the Wiro AI Models connector (`wiro`), is billed separately: Wiro charges it to the wallet of the workspace that owns the agent's Wiro API key at the model's usual price, passed through unchanged. That run shows up as an ordinary `tool_completed` event with no cost figure; its cost is the task's `totalcost` (see [Billing & Cost](/docs/tasks#task-billing)), and it is a `model-run` row in the agent's [Transactions](/docs/agent-transactions).
 
 ### Who-did-what rows
 
-`Logs` and `LogsFile` also return what people and API keys did **to** the agent, and `LogsList` lists the days that have such rows. These rows sit in the same `events` list, in time order, with an `AGENT_*` value in `kind`. They come on top of the kinds above, which keep their meaning.
+`Logs` and `LogsFile` also return what people and API keys did **to** the agent, and `LogsList` lists the days that have such rows. These rows sit in the same `events` list, in time order, with an `AGENT_*` or `CONNECTOR_*` value in `kind`. They come on top of the kinds above, which keep their meaning.
 
 ```json
 {
@@ -23049,12 +24294,14 @@ A `token_usage` event records the tokens and the AI usage of one billed turn: a 
 | `AGENT_TRANSFERRED` | `Agent moved to a team workspace`, `Agent moved to the personal workspace`; the system's rows when the agent's team or organization is deleted read `Agent moved to the personal workspace: its team was deleted` and `Agent moved to the personal workspace: its organization was deleted` |
 | `AGENT_INSTRUCTION_ADDED`, `AGENT_INSTRUCTION_UPDATED`, `AGENT_INSTRUCTION_RENAMED`, `AGENT_INSTRUCTION_DELETED`, `AGENT_INSTRUCTION_REVERTED` | `Custom skill added: cs-brand-voice`, `Scheduled task updated: cs-cron-blog-scanner (text, schedule 0 9 * * 1)`, `Custom skill renamed: cs-brand-voice to cs-house-style`, `Scheduled task deleted: cs-cron-blog-scanner`, `Custom skill reverted to its preset: cs-brand-voice` |
 | `AGENT_SKILLS_UPDATED` | `Skills updated: util-web-channel off` |
-| `AGENT_CREDENTIAL_SAVED` | `Connector setting saved: wiro.apikey` |
+| `AGENT_CREDENTIAL_SAVED` | `Setting saved: wiro.apikey` (a channel, the agent's Wiro project or another setting of the agent; several fields read `Settings saved: …`; connecting a connector writes `CONNECTOR_CONNECTED`) |
+| `AGENT_CREDENTIAL_REVEALED` | `Setting revealed: telegram.bottoken` (someone showed a saved key in full in the Wiro panel; the row never holds the key) |
 | `AGENT_CREDENTIAL_REMOVED` | `Disconnected: wiro` (the agent's Wiro project was disconnected because the agent moved to a workspace the project isn't in, or because the project's team or organization was deleted) |
 | `CONNECTOR_CONNECTED`, `CONNECTOR_DISCONNECTED` | `Connector connected: serper`, `Connector disconnected: serper` (see [Agent Connectors](/docs/agent-connectors)). When the agent moves to a workspace its Wiro project isn't in, or its Wiro project's team or organization is deleted, Wiro writes `Connector disconnected: wiro` with `summary.reason` `"workspace"` next to the `AGENT_CREDENTIAL_REMOVED` row (see [Moving the agent to another workspace](/docs/agent-connectors#moving-the-agent-to-another-workspace)) |
 | `CONNECTOR_ACCOUNTS_SET` | `Connector accounts set: facebook-pages` |
 | `CONNECTOR_REAUTH` | `Connector needs to be connected again: facebook-pages` (written by Wiro when a sign-in expired or was revoked) |
 | `AGENT_PLAN_STARTED`, `AGENT_PLAN_RENEWED`, `AGENT_PLAN_CANCELLED`, `AGENT_PLAN_RESUMED` | `Starter plan started: $5.00 charged`, `Starter plan renewed: $5.00 charged`, `Plan cancelled, ends 2026-06-01`, `Plan cancellation undone` |
+| `AGENT_PLAN_ENDED` | `Starter plan ended: the wallet could not pay the renewal`, `Pro plan ended: it was set to cancel` (written by Wiro; the agent stops when its plan ends) |
 | `AGENT_PLAN_NOT_SAVED` | `Pro plan renewal did not finish: $24.00 charged`, `Max plan start did not finish: $100.00 charged` (the wallet paid and the plan could not be saved; see [Plan payments that did not finish](/docs/agent-transactions#plan-not-saved)) |
 | `AGENT_TIER_UPGRADED` | `Plan upgraded from Starter to Pro; $12.50 charged` |
 | `AGENT_PLAN_CHANGE_SCHEDULED`, `AGENT_PLAN_CHANGE_CANCELLED` | `Plan change scheduled: Pro to Starter on 2026-06-01`, `Scheduled plan change cancelled: stays on Pro` |
@@ -23123,16 +24370,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Logs" \
     {
       "ts": "2026-05-03T14:02:54.902Z",
       "kind": "tool_completed",
-      "tool": "exec",
+      "tool": "wiro__run_model",
       "toolintegration": "wiro",
-      "title": "POST api.wiro.ai/v1/Run/google/nano-banana",
-      "summary": {
-        "method": "POST",
-        "host": "api.wiro.ai",
-        "path": "/v1/Run/google/nano-banana",
-        "headers": ["Content-Type: application/json", "x-api-key: ***"],
-        "body": { "prompt": "A paper boat on a calm lake at sunrise" }
-      },
+      "title": "wiro__run_model",
+      "summary": {},
       "durationMs": 640,
       "ok": true,
       "userUuid": "system",
@@ -23141,13 +24382,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Logs" \
     {
       "ts": "2026-05-03T14:00:10.305Z",
       "kind": "tool_completed",
-      "tool": "exec",
-      "title": "Posted: \"Weekly Roundup\"",
-      "summary": {
-        "title": "Weekly Roundup",
-        "url": "https://blog.example.com/weekly-roundup-12",
-        "categories": ["AI", "Tutorial"]
-      },
+      "tool": "wordpress__create_post",
+      "toolintegration": "wordpress",
+      "title": "wordpress__create_post",
+      "summary": {},
       "durationMs": 1840,
       "ok": true,
       "userUuid": "system",
@@ -23191,7 +24429,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Logs" \
 > **About the `user` field.** Every event is decorated with the resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`.
 >
 > - An event with a user's `userUuid` carries that user's profile, or `null` when the user record was deleted.
-> - An event triggered by **automation** has `userUuid: "system"` and `user: null`. That covers cron runs, the token usage of scheduled turns, and similar non-interactive writes (the system rows above).
+> - An event triggered by **automation** has `userUuid: "system"` and `user: null`. That covers Scheduled Task runs, the token usage of scheduled turns, and similar non-interactive writes (the system rows above).
 > - An event without a `userUuid` (an incoming channel message, or a row older than user attribution) carries the agent owner's profile, so the row never shows an empty placeholder.
 
 | Field | Type | Description |
@@ -23229,7 +24467,7 @@ With a `lines` cap, older who-did-what rows of the day can take the place of the
     {
       "ts": "2026-05-03T09:12:44.000Z",
       "kind": "AGENT_CREDENTIAL_SAVED",
-      "title": "Connector setting saved: wiro.apikey",
+      "title": "Setting saved: wiro.apikey",
       "ok": true,
       "summary": { "fields": ["wiro.apikey"] },
       "userUuid": "ada-uuid",
@@ -23505,18 +24743,19 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/LogsDelete" \
 
 ## Errors
 
-| Error | When |
-|-------|------|
-| `useragentguid is required` | Missing required parameter |
-| `date is required` | `LogsFile` / `LogsDelete` without `date` |
-| `useragent-access-denied` | Caller is neither the owner nor on the agent's team |
-| `useragent-team-admin-required` | Caller is a member of the agent's team but not a team admin (code `97`) |
-| `Agent is not assigned to a worker. It may not be running.` | The agent isn't running on a host (never started, stopped or being moved). Start it and retry |
-| `Worker not found` | The agent's host is not available right now. Retry later |
-| `Agent is temporarily unavailable. Please try again shortly.` | The agent's host did not answer (offline, network blip). Retry |
-| `runstream-unavailable` | `RunStreamToken` only: following runs live is not available right now. Try again later |
+| Error | Code | When |
+|-------|------|------|
+| `useragentguid is required` | 0 | Missing required parameter |
+| `date is required` | 0 | `LogsFile` / `LogsDelete` without `date` |
+| `User agent not found` | 95 | Unknown guid, or the agent has been deleted |
+| `You don't have access to this user agent` | 96 | The caller is neither the agent's owner nor on its team |
+| `Only a team admin can perform this action on a team-owned agent.` | 97 | The caller is a plain member of the agent's team |
+| `Agent is not assigned to a worker. It may not be running.` | 0 | The agent isn't running on a host (never started, stopped or being moved). Start it and retry |
+| `Worker not found` | 0 | The agent's host is not available right now. Retry later |
+| `Agent is temporarily unavailable. Please try again shortly.` | 0 | The agent's host did not answer (offline, network blip). Retry |
+| `runstream-unavailable` | 0 | `RunStreamToken` only: following runs live is not available right now. Try again later |
 
-`Logs`, `LogsFile` and `LogsList` answer with the last three errors only when there are no who-did-what rows to show. `LogsDelete` needs the agent on a host every time. `RunStreamToken` needs no host: a stopped agent gets a token too.
+`Logs`, `LogsFile` and `LogsList` answer with the three errors about the agent's host only when there are no who-did-what rows to show. `LogsDelete` needs the agent on a host every time. `RunStreamToken` needs no host: a stopped agent gets a token too.
 
 ## Retention & Rotation
 
@@ -23524,7 +24763,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/LogsDelete" \
 |--------|--------------|
 | Day 0-6 | File is plain JSONL (`YYYY-MM-DD.jsonl`). Live tail + LogsFile read it directly. |
 | Day 7-180 | File is gzipped (`YYYY-MM-DD.jsonl.gz`). Reads are transparently decompressed; size in `LogsList` reports the on-disk compressed bytes. |
-| Day 181+ | File is deleted by the agent's daily maintenance cron. `LogsList` no longer surfaces the date. |
+| Day 181+ | File is deleted by the agent's daily maintenance. `LogsList` no longer surfaces the date. |
 
 Who-did-what rows are kept for the same 180 days.
 
@@ -23575,11 +24814,11 @@ Most agents interact with external services: posting to social media, managing a
 
 | Your Product | Agent Type | Why Per-Customer |
 |-------------|-----------|-----------------|
-| Digital marketing agency dashboard | [Social Manager](https://wiro.ai/agents/social-manager) | Each client connects their own Twitter, Instagram, Facebook, TikTok, LinkedIn |
+| Digital marketing agency dashboard | [Social Manager](https://wiro.ai/agents/social-manager) | Each client connects their own X, Instagram, Facebook Pages, TikTok and LinkedIn |
 | Mobile app company | [App Review Support](https://wiro.ai/agents/app-review-support) | Each app has its own App Store / Google Play credentials |
 | E-commerce platform | [Google Ads Manager](https://wiro.ai/agents/google-ads-manager) + [Meta Ads Manager](https://wiro.ai/agents/meta-ads-manager) | Each advertiser connects their own ad accounts |
 | Marketing SaaS | [Newsletter Manager](https://wiro.ai/agents/newsletter-manager) | Each customer connects their own Brevo/SendGrid/Mailchimp |
-| Sales platform | [Lead Generation Manager](https://wiro.ai/agents/lead-gen-manager) | Each sales team connects their own Apollo/Lemlist |
+| Sales platform | [Lead Generation Manager](https://wiro.ai/agents/lead-gen-manager) | Each sales team connects their own Apollo/lemlist |
 | Content agency tool | [Blog Content Editor](https://wiro.ai/agents/blog-content-editor) | Each client connects their own WordPress site |
 | App publisher platform | [App Event Manager](https://wiro.ai/agents/app-event-manager) | Each app has its own App Store credentials |
 | Mobile app publisher | [Push Notification Manager](https://wiro.ai/agents/push-notification-manager) | Each app has its own Firebase service account |
@@ -23712,8 +24951,8 @@ A richer variant of white-label chat: besides replying with text, the agent **ge
 
 **Shape:**
 
-- One deployed agent whose Wiro project is set to your project (see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project). The agent runs models with that project's key from its skills, or with the tools of the `wiro` connector (see [The Wiro connector](/docs/agent-connectors#the-wiro-connector)).
-- One `sessionkey` per end user (Pattern 2 above): the same agent instance serves everyone, and each user's chat history is isolated by session. The agent's model runs are not: with the `wiro` connector, each user can reach the runs the agent made for the others (see [The Wiro connector](/docs/agent-connectors#the-wiro-connector)).
+- One deployed agent whose Wiro project is set to your project (see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project). The agent runs models with that project's key from its skills, or with the tools of the Wiro AI Models connector, `wiro` (see [The Wiro connector](/docs/agent-connectors#the-wiro-connector)).
+- One `sessionkey` per end user (Pattern 2 above): the same agent instance serves everyone, and each user's chat history is isolated by session. The agent's model runs are not: with Wiro AI Models (`wiro`), each user can reach the runs the agent made for the others (see [The Wiro connector](/docs/agent-connectors#the-wiro-connector)).
 - A single WebSocket connection carries three things at once: the streaming chat reply, the per-turn token-usage report, and discovery of any model runs the agent launches.
 
 **End-to-end sequence an integrator replicates:**
@@ -23761,19 +25000,23 @@ Each agent is an independent instance with its own credentials. Your backend pas
 
 Wiro provides pre-built agent templates you can deploy immediately. Each agent specializes in a specific domain and comes with the relevant skills. It suggests the connectors it works with (`suggestedconnectors` on [`Agent/Detail`](/docs/agent-overview#post-agentdetail)), and you connect them after you deploy it.
 
-| Agent | What It Does | Connectors |
+| Agent | What It Does | Connectors It Suggests |
 |-------|-------------|-------------|
-| **[Social Manager](https://wiro.ai/agents/social-manager)** | Create, schedule, and publish social media content | Twitter/X, TikTok, LinkedIn (OAuth); Instagram and Facebook Pages (System User recommended or own OAuth) |
-| **[Blog Content Editor](https://wiro.ai/agents/blog-content-editor)** | Write and publish blog posts (WordPress draft + publish workflow) | WordPress (App Password), Gmail (optional, for inbox requests) |
-| **[Google Ads Manager](https://wiro.ai/agents/google-ads-manager)** | Create and optimize Google Ads campaigns, daily performance reports | Google Ads (OAuth), Calendarific (API key), Google Drive (optional, Service Account) |
-| **[Meta Ads Manager](https://wiro.ai/agents/meta-ads-manager)** | Manage Facebook and Instagram ad campaigns, audience analysis | Meta Ads (System User recommended or own OAuth), Calendarific (API key), Google Drive (optional, Service Account) |
-| **[Newsletter Manager](https://wiro.ai/agents/newsletter-manager)** | Design and send email newsletters to subscriber lists | Brevo, SendGrid, Mailchimp, HubSpot (any one, API key or OAuth) |
-| **[Lead Generation Manager](https://wiro.ai/agents/lead-gen-manager)** | Find and enrich leads, run multi-channel outreach, analyze replies | Apollo (API key), Lemlist (API key), HubSpot (optional, for CRM sync) |
-| **[App Review Support](https://wiro.ai/agents/app-review-support)** | Monitor app store reviews, draft responses in operator's tone | App Store Connect (private key JWT), Google Play (service account) |
-| **[App Event Manager](https://wiro.ai/agents/app-event-manager)** | Scan global holidays, suggest and create App Store + Google Play in-app events | App Store Connect (JWT), Google Play (service account), Calendarific (API key) |
-| **[Push Notification Manager](https://wiro.ai/agents/push-notification-manager)** | Craft locale- and timezone-aware push notifications, queue dispatch | Firebase (service account JSON per app), Calendarific (API key) |
-| **[Voice Receptionist](https://wiro.ai/agents/voice-receptionist)** | Answer phone calls 24/7 with a real-time AI receptionist: recognises callers from CRM, books from your calendar, drafts CRM notes + follow-up emails, streams a live transcript to chat | Twilio Voice (Account SID, Auth Token, phone number) for inbound phone; HubSpot (optional, caller recognition); Google Calendar (optional, slot lookup); Google Drive (optional); Brevo or HubSpot (any one, optional, follow-up email drafts); Telegram bot (optional, operator approvals) |
-| **[Video Creator](https://wiro.ai/agents/video-creator)** | Turn a website, web app, store listing, document or product photos into a share-ready video with real screens, voice-over, music and captions | Wiro project (the video's model runs are billed to its wallet); the [YouTube](https://wiro.ai/connectors/youtube) and [Instagram](https://wiro.ai/connectors/instagram) connectors (optional, to publish finished videos); Telegram bot (optional) |
+| **[Social Manager](https://wiro.ai/agents/social-manager)** | Create, schedule, and publish social media content | X, Instagram, Facebook Pages, LinkedIn, TikTok, Google Drive, Serper, Calendarific, Wiro AI Models |
+| **[Blog Content Editor](https://wiro.ai/agents/blog-content-editor)** | Write and publish blog posts (WordPress draft + publish workflow) | WordPress, Gmail, Serper, Calendarific, Wiro AI Models |
+| **[Google Ads Manager](https://wiro.ai/agents/google-ads-manager)** | Create and optimize Google Ads campaigns, daily performance reports | Google Ads, Google Merchant Center, Google Analytics 4, YouTube, Google Drive, Adjust, Roasit, Calendarific, Wiro AI Models |
+| **[Meta Ads Manager](https://wiro.ai/agents/meta-ads-manager)** | Manage Facebook and Instagram ad campaigns, audience analysis | Meta Ads, Google Analytics 4, Google Drive, Adjust, Roasit, Calendarific, Wiro AI Models |
+| **[TikTok Ads Manager](https://wiro.ai/agents/tiktok-ads-manager)** | Manage TikTok ad campaigns per advertiser, with daily performance and audience reports | TikTok Ads, Google Analytics 4, Google Drive, Adjust, Roasit, Calendarific, Wiro AI Models |
+| **[Newsletter Manager](https://wiro.ai/agents/newsletter-manager)** | Design and send email newsletters to subscriber lists | Brevo, SendGrid, Mailchimp, HubSpot, Serper, Calendarific, Wiro AI Models |
+| **[Lead Generation Manager](https://wiro.ai/agents/lead-gen-manager)** | Find and enrich leads, run multi-channel outreach, analyze replies | Apollo, lemlist, HubSpot, Calendarific |
+| **[App Review Support](https://wiro.ai/agents/app-review-support)** | Monitor app store reviews, draft responses in operator's tone | App Store Connect, Google Play Console |
+| **[Google Review Manager](https://wiro.ai/agents/google-review-manager)** | Watch Google Business Profile reviews and prepare replies in each customer's language | Google Business Profile |
+| **[App Event Manager](https://wiro.ai/agents/app-event-manager)** | Scan global holidays, suggest and create App Store in-app events, and prepare Google Play promotional content for you to publish in Play Console | App Store Connect, Google Play Console, Calendarific, Wiro AI Models |
+| **[Push Notification Manager](https://wiro.ai/agents/push-notification-manager)** | Craft locale- and timezone-aware push notifications, queue dispatch | Firebase Cloud Messaging, Calendarific, Wiro AI Models |
+| **[Voice Receptionist](https://wiro.ai/agents/voice-receptionist)** | Answer phone calls 24/7 with a real-time AI receptionist: recognises callers from CRM, books from your calendar, drafts CRM notes + follow-up emails, streams a live transcript to chat | HubSpot, Google Calendar, Google Drive, Brevo, Wiro AI Models |
+| **[Video Creator](https://wiro.ai/agents/video-creator)** | Turn a website, web app, store listing, document or product photos into a share-ready video with real screens, voice-over, music and captions | Wiro AI Models (the video's model runs are billed to its project's wallet); it also publishes finished videos through the [YouTube](https://wiro.ai/connectors/youtube) or [Instagram](https://wiro.ai/connectors/instagram) connector when one is connected |
+
+Channels are not connectors: the Voice Receptionist answers calls with its Twilio Voice Channel and Web Voice Channel Skills (the phone line uses your Twilio account, saved in the Twilio Voice (`twilio-voice`) credential), and any agent can add a Telegram, Slack or Discord channel. See [Agent Credentials](/docs/agent-credentials).
 
 > The list above matches the agent templates currently deployed in production. The exact set evolves over time as new templates ship, so fetch `POST /Agent/List` for the live catalog. Each agent's full marketing page lives at `https://wiro.ai/agents/{slug}` (linked in the first column).
 
@@ -23808,7 +25051,10 @@ deploy = requests.post(
 )
 useragent_guid = deploy.json()["useragents"][0]["guid"]
 
-# Connect X with your own X app (see Agent Connectors)
+# Connect X with your own X app (see Agent Connectors). Register
+# https://api.wiro.ai/v1/AgentConnector/OAuthCallback as a redirect URI in that
+# app first; redirecturl is where Wiro sends your user back, with
+# connector_connected=true or connector_error=<code>.
 connect = requests.post(
     "https://api.wiro.ai/v1/UserAgent/ConnectorConnect",
     headers=headers,
@@ -24339,6 +25585,8 @@ Spend limits are not a team setting: they work the same way for a personal accou
 
 What the team has spent this month or today, by member, API key, surface and agent, comes from [`/SpendLimit/Usage`](/docs/spend-limits#spend-limit-usage). For other breakdowns, `/Project/UsageSummary` gives usage per project and `/Task/Stat` gives time-series task execution data. Both filter by the active workspace.
 
+`/Project/UsageSummary` counts only charges made with one of the workspace's projects, so an agent's plan payments and AI usage are not in it. `/Wallet/TransactionList` lists all of the wallet's rows, agents' charges included; AI usage an agent's plan covered is listed there as a `USAGE (AGENT PLAN)` row that took nothing from the balance (see [Wallet Billing Flow](/docs/organizations-api-access#billing-flow)). `/Project/UsageSummary` and `/Wallet/TransactionList` take an optional `surface` (`web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, `studio`, `workflow-agent` or `workflow`; see [Surfaces](/docs/tasks#task-surfaces)) to show only what one surface charged. `/Wallet/TransactionList` also takes `useragentguid` to list one agent's rows. Any other `surface` is refused with `surface must be one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow.` Rows from before surfaces were recorded have no surface, so a `surface` filter leaves them out.
+
 ## Model Access
 
 Model Access is not a team setting: it works the same way for a personal account's wallet and for a team's wallet. In a team, the organization owner and team admins can allow or block single models and whole categories, such as video generation, for the whole team, one member, one API key, a surface such as the LLM gateway, or one agent, under [Controls > Model Access](https://wiro.ai/panel/controls/model-access) in the dashboard or with the `/ModelAccess` endpoints, signed in or with the API key of a project they created. Other members can see the team's rules but can't change them. A model a rule blocks is refused with error code `92`. See [Model Access](/docs/model-access).
@@ -24513,7 +25761,7 @@ Wiro enforces strict context isolation for agent operations. When you interact w
 | Team A | Personal | **Blocked** |
 | Team A | Team B | **Blocked** |
 
-A matching context is required, but it is not always enough. Any active team member can message a team agent and use its conversation endpoints. Subscription and billing actions (`CreateSubscriptionCheckout`, `RenewSubscription`, `CancelSubscription`, `UpgradeTier`) are limited to the member who deployed the agent, team admins and the organization owner. A team agent's plan is paid from the team wallet (`useprepaid: true`), which also pays its AI usage once the plan's included usage is used up. `SkillsApply`, `SkillToggle` and `CredentialProjectBind` are limited to the member who deployed the agent and team admins. Other members get code `97`: "Only a team admin can perform this action on a team-owned agent." With an API key, these checks apply to the user who created the key's project.
+A matching context is required, but it is not always enough. Any active team member can message a team agent and use its conversation endpoints. Subscription and billing actions (`CreateSubscriptionCheckout`, `RenewSubscription`, `CancelSubscription`, `UpgradeTier`) are limited to the member who deployed the agent, team admins and the organization owner; a plan that was paid by card before agent plans moved to the balance can be cancelled only by a team admin or the organization owner. Every agent plan is paid from the balance of the agent's workspace (`Deploy` and `CreateSubscriptionCheckout` need `useprepaid: true`), a team agent's from the team wallet, which also pays its AI usage once the plan's included usage is used up. When the team's balance can't pay a plan, `Deploy`, `CreateSubscriptionCheckout`, `UpgradeTier` and `RenewSubscription` answer code `97` with `The team's balance is $x; this plan needs $y. Add funds to continue.` and `neededusd`, and charge nothing: tell this refusal from the team admin refusal below by `neededusd`. `SkillsApply`, `SkillToggle` and `CredentialProjectBind` are limited to the member who deployed the agent and team admins. Other members get code `97`: "Only a team admin can perform this action on a team-owned agent." With an API key, these checks apply to the user who created the key's project.
 
 ### Protected Endpoints
 
@@ -24639,7 +25887,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
 
 ### Wallet Billing Flow
 
-Runs made with a team project's key are charged to the team wallet and appear in the team's `Wallet/TransactionList`; personal project keys charge your personal wallet.
+Runs made with a team project's key are charged to the team wallet and appear in the team's `Wallet/TransactionList`; personal project keys charge your personal wallet. Call it with `{ "uuid": "me", "type": "all", "start": 0, "limit": 100 }` (`limit` up to 400); another `type`, such as `"payment"`, lists only the rows whose type contains it. The list also holds your agents' rows (their plan payments, AI usage and model runs, and funds added from an agent's page), each with the agent's `useragentguid`. A charge carries the `surface` that made it, and an agent's AI usage row carries `usage`: the model, the number of calls, and the `tokens` and `costs` (in USD) of each kind of token. A batch paid more than one way gives a row for each way, each with the whole batch's `usage`. AI usage an agent's plan covered is a `USAGE (AGENT PLAN)` row: it is listed for the record but took nothing from the balance, so leave it out when you add up spending (`type: "payment"` lists only the rows that took money from the balance). To narrow the list, pass `useragentguid` or `surface` (`web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, `studio`, `workflow-agent` or `workflow`; any other value answers `surface must be one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow.`). Older rows carry neither field. For one agent's rows in dollars with a monthly summary, use [`UserAgent/TransactionList`](/docs/agent-transactions).
 
 ## Best Practices
 
@@ -24817,7 +26065,7 @@ Connect inbound phone calls (PSTN) to a Wiro agent. Used by the [Voice Reception
 
 ## Overview
 
-Turn on the Twilio Voice channel, the `util-twilio-channel` skill, on a useragent and Wiro turns on the voice rules it needs (`util-voice-receptionist` + `util-voice-call-prep`), so you don't need to enable them separately. On an agent that doesn't have it yet, turn it on with [`SkillsApply`](/docs/agent-overview#post-useragentskillsapply), or name it in Deploy's `skills`:
+Turn on the Twilio Voice Channel (`util-twilio-channel`) together with the voice rules it needs: Voice Receptionist Rules (`util-voice-receptionist`) and Voice Call Prep Rules (`util-voice-call-prep`). Deploy's `skills` turns those rules on by itself. [`SkillsApply`](/docs/agent-overview#post-useragentskillsapply) turns on only the skills you send and refuses one whose `depends_on` would stay off (code `101`, with `deps[]`), so send all three in one call:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
@@ -24826,11 +26074,26 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   -d '{
     "useragentguid": "your-useragent-guid",
     "idempotencyKey": "550e8400-e29b-41d4-a716-446655440002",
-    "skills": { "util-twilio-channel": true }
+    "skills": { "util-twilio-channel": true, "util-voice-receptionist": true, "util-voice-call-prep": true }
   }'
 ```
 
-**Skill:** `util-twilio-channel`, the phone channel. Its `docs_url` in [`Skills/List`](/docs/agent-skills#post-skillslist) is this page, `integration-twiliovoice-skills`.
+Sent alone while the two rules are off, the channel is refused and nothing changes:
+
+```json
+{
+  "result": false,
+  "errors": [
+    { "code": 101, "message": "Cannot apply: some skills require other skills to be enabled." }
+  ],
+  "deps": [
+    { "skill": "util-twilio-channel", "requires": "util-voice-receptionist" },
+    { "skill": "util-twilio-channel", "requires": "util-voice-call-prep" }
+  ]
+}
+```
+
+**Skill:** Twilio Voice Channel (`util-twilio-channel`), the phone channel. Its `docs_url` in [`Skills/List`](/docs/agent-skills#post-skillslist) is this page, `integration-twiliovoice-skills`.
 
 **Credential:** `twilio-voice`, the Account SID, Auth Token and phone numbers below.
 
@@ -24856,7 +26119,7 @@ You don't touch the Twilio Console's webhook fields manually. When you save this
 ## Prerequisites
 
 - **A Wiro API key** (see [Authentication](/docs/authentication)).
-- **A deployed agent** (Voice Receptionist preset or any custom agent with `util-twilio-channel` on), see [Agent Overview](/docs/agent-overview).
+- **A deployed agent** (Voice Receptionist preset or any custom agent with Twilio Voice Channel (`util-twilio-channel`) on), see [Agent Overview](/docs/agent-overview).
 - **A Twilio account** with at least one purchased phone number.
 
 ## Setup
@@ -24976,7 +26239,7 @@ Pair this channel with connectors that give the agent what the call needs (see [
 - [HubSpot](https://wiro.ai/connectors/hubspot) (`hubspot`): match the caller's phone number against CRM contacts and log call outcomes.
 - [Brevo](https://wiro.ai/connectors/brevo) (`brevo`), [SendGrid](https://wiro.ai/connectors/sendgrid) (`sendgrid`) or [Mailchimp](https://wiro.ai/connectors/mailchimp) (`mailchimp`): draft post-call confirmation or follow-up emails.
 
-The Voice Receptionist template comes with this channel and the voice rules, and suggests the Brevo and HubSpot connectors. See [Agent Use Cases](/docs/agent-use-cases) for the full template.
+The Voice Receptionist template comes with this channel, the Web Voice Channel and the voice rules, and suggests HubSpot, Google Calendar, Google Drive, Brevo and Wiro AI Models (its `suggestedconnectors` on `Agent/Detail`). See [Agent Use Cases](/docs/agent-use-cases) for the full template.
 
 ## Troubleshooting
 
@@ -24992,7 +26255,7 @@ The Voice Receptionist template comes with this channel and the voice rules, and
 
 ## Call History
 
-Retrieve the last N realtime voice sessions for a useragent, regardless of which channel they came in on.
+Retrieve the realtime voice sessions among the agent's latest messages, whichever channel they came in on.
 
 ### POST /UserAgent/TwilioCallHistory/List
 
@@ -25011,7 +26274,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TwilioCallHistory/List" \
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Useragent instance guid. Owner / team-member access only. |
-| `limit` | number | No | Max sessions to return. Default `50`, hard-capped at `200`. Sorted newest-first by message id. |
+| `limit` | number | No | How many of the agent's latest messages to read (every kind, not only calls). Default `50`, at most `200`. The voice sessions among them come back newest first, so the list can be shorter than `limit`, or empty while older calls exist. |
 
 Response:
 
@@ -25022,11 +26285,9 @@ Response:
   "data": [
     {
       "messageguid": "5d6e7f80-9a1b-4c2d-8e3f-4a5b6c7d8e01",
-      "agenttoken": "8a5b9e2f-4d3c-4a01-9c2e-1b6d4e7a9c5d",
+      "correlationId": "voice_Q7mN2xR8kLp4WzT1vYc6HdBs",
       "channel": "twilio",
-      "callsid": "CAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
       "callerInfo": { "number": "+15551234567", "country": "US" },
-      "callerProfile": "Returning caller, last asked about pricing.",
       "status": "realtime_session",
       "endReason": "wiro_completed",
       "durationSeconds": 137,
@@ -25036,11 +26297,9 @@ Response:
     },
     {
       "messageguid": "0f2a1c3d-9e8b-4c5a-bf42-3a7b6e1d0c8f",
-      "agenttoken": "1e7d3b9a-5c2f-4d6b-8e0a-2f4c7b5d9e1a",
+      "correlationId": "voice_3fK9xQ2LmVb7TzR1pWc8NdYa",
       "channel": "web",
-      "callsid": "voice-call-9d2d4b6e3f6b4c1a8a7e1f5a0b2c3d4e",
       "callerInfo": { "page_url": "https://example.com/contact", "display_identifier": "+15551234567" },
-      "callerProfile": null,
       "status": "realtime_session",
       "endReason": "browser_disconnect",
       "durationSeconds": 42,
@@ -25055,11 +26314,9 @@ Response:
 | Field | Type | Description |
 |-------|------|-------------|
 | `messageguid` | string | The guid of the message that records this session. Use it with `POST /UserAgent/Message/Detail` to fetch the full transcript metadata. |
-| `agenttoken` | string | The per-message agent token. Use it on `Message/Detail` / `Message/Cancel` like any other agent message. |
-| `channel` | `"twilio" \| "web"` | Source channel. Determines the `callerInfo` shape and whether `callsid` is a Twilio Call SID or a Web session id. |
-| `callsid` | string \| null | Twilio Call SID (`channel: "twilio"`) or internal `voice-call-<id>` session id (`channel: "web"`). |
+| `correlationId` | string \| null | The session's public id. For a web call it is the `correlationId` that `WebStart` returned; phone calls get one too. `null` when the session has none. |
+| `channel` | `"twilio" \| "web"` | Source channel. Determines the `callerInfo` shape. |
 | `callerInfo` | object | Channel-specific. Twilio: `{ number, country }` (E.164 phone + ISO-2 country). Web: `{ page_url, display_identifier? }`, where `display_identifier` is omitted unless the embedding page validated an identifier (`session_metadata.display_identifier` whose whole-string match passes the allowlist). |
-| `callerProfile` | string \| null | Free-text summary of the caller that the agent writes before the call. `null` until it is ready, and on rejected calls. |
 | `status` | string | Mirrors the message's `metadata.type` verbatim. Values: `realtime_session_incoming` (call accepted, prep running), `realtime_session_active` (audio bridge live), `realtime_session_rejected` (rejected before audio, e.g. concurrent-limit), or **`realtime_session`** (no suffix: final/completed). The bare `realtime_session` is the only value that means "ended cleanly". It is **not** the string `"completed"`. |
 | `endReason` | string \| null | Set on completed (`realtime_session`) rows only. One of: `wiro_completed` (graceful end), `wiro_cancelled`, `wiro_disconnect`, `wiro_error`, `max_duration` (the call reached its maximum length, `maxcallseconds` on Twilio), `spend_limit` (a [spend limit](/docs/spend-limits) was reached during the call), `balance` (the balance of the wallet that pays for the call ran out), `browser_disconnect` (Web only), `twilio_disconnect` (Twilio only). Rejected rows leave `endReason: null` and instead carry `metadata.reason` (`concurrent_limit`, `agent_prep_timeout`, `realtime_ws_open_failed`, `realtime_stream_timeout`). Fetch it via `Message/Detail`. |
 | `durationSeconds` | number \| null | Wall-clock duration. `null` while in-progress. |
@@ -25081,20 +26338,19 @@ Response:
 
 # Web Voice Channel
 
-Embed a real-time voice conversation with a Wiro agent into your own browser app. Used by the [Voice Receptionist](https://wiro.ai/agents/voice-receptionist) and [Voice Sales Rep](https://wiro.ai/agents/voice-sales-rep) preset agents, and by any custom agent that needs an "Open mic" button on a website.
+Embed a real-time voice conversation with a Wiro agent into your own browser app. Used by the [Voice Receptionist](https://wiro.ai/agents/voice-receptionist) agent, and by any custom agent that needs an "Open mic" button on a website.
 
 ## Overview
 
-Toggle `util-web-channel` on a useragent and a single REST call (`POST /UserAgent/Realtime/WebStart`) returns everything the browser needs to open an authenticated WebSocket and stream microphone audio straight to the agent. The same agent can also pick up phone calls via [Twilio Voice](/docs/integration-twiliovoice-skills): the two channels share the same realtime runtime and end up in the same [Call History](/docs/integration-twiliovoice-skills#call-history).
+Turn on Web Voice Channel (`util-web-channel`) on a useragent and a single REST call (`POST /UserAgent/Realtime/WebStart`) returns everything the browser needs to open an authenticated WebSocket and stream microphone audio straight to the agent. The same agent can also pick up phone calls via [Twilio Voice](/docs/integration-twiliovoice-skills): the two channels share the same realtime runtime and end up in the same [Call History](/docs/integration-twiliovoice-skills#call-history).
 
 **Skill that powers this channel:**
 
-- `util-web-channel`: browser voice channel. Bundled on the Voice Receptionist and Voice Sales Rep presets; toggle it on for any other agent via `POST /UserAgent/SkillsApply`.
+- Web Voice Channel (`util-web-channel`): browser voice channel. Bundled on the Voice Receptionist template. On any other agent, turn it on in one `POST /UserAgent/SkillsApply` call together with the two Skills it depends on, Voice Receptionist Rules (`util-voice-receptionist`) and Voice Call Prep Rules (`util-voice-call-prep`): `"skills": { "util-web-channel": true, "util-voice-receptionist": true, "util-voice-call-prep": true }`. Sent alone while those are off, the channel is refused with code `101` and a `deps[]` list, and nothing changes. Deploy's `skills` turns them on with the channel.
 
 **Agents that typically enable this channel:**
 
 - [Voice Receptionist](https://wiro.ai/agents/voice-receptionist): phone + browser receptionist.
-- [Voice Sales Rep](https://wiro.ai/agents/voice-sales-rep): outbound sales rep with an "Open mic" CTA.
 - Custom agents that need a voice button on a website or web app.
 
 **Web channel or Twilio channel**? Pick by where the caller comes from:
@@ -25116,7 +26372,7 @@ Toggle `util-web-channel` on a useragent and a single REST call (`POST /UserAgen
 ## Prerequisites
 
 - **A Wiro API key** (see [Authentication](/docs/authentication)).
-- **A deployed agent** in `status: 4` (Running), see [Agent Overview](/docs/agent-overview). Voice Receptionist / Voice Sales Rep presets work out of the box; for custom agents, enable `util-web-channel` via `POST /UserAgent/SkillsApply`.
+- **A deployed agent** in `status: 4` (Running), see [Agent Overview](/docs/agent-overview). The Voice Receptionist template works out of the box; for other agents, turn on Web Voice Channel (`util-web-channel`) together with Voice Receptionist Rules (`util-voice-receptionist`) and Voice Call Prep Rules (`util-voice-call-prep`) in one `POST /UserAgent/SkillsApply` call (see [Overview](#overview)).
 - **A browser that can capture microphone audio** at 24 kHz mono PCM (every evergreen browser via `getUserMedia` + Web Audio).
 
 ## Setup
@@ -25140,7 +26396,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Realtime/WebStart" \
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Useragent instance guid. Must be an agent you deployed (for a team agent, call with that team's project key or workspace, or remain an active member of the team), must be in `status: 4` (Running), and must have `util-web-channel` enabled. |
+| `useragentguid` | string | Yes | Useragent instance guid. Must be an agent you deployed (for a team agent, call with that team's project key or workspace, or remain an active member of the team), must be in `status: 4` (Running), and must have Web Voice Channel (`util-web-channel`) on. |
 | `session_metadata` | object | No | Optional caller context surfaced to the agent + later to [Call History](/docs/integration-twiliovoice-skills#call-history). |
 | `session_metadata.page_url` | string | No | The page URL the caller opened the mic from. Up to 2048 chars. Echoed back as `callerInfo.page_url`. |
 | `session_metadata.display_identifier` | string | No | Operator-supplied display name (e.g. logged-in customer name, account name). 1-100 chars matching `^[\p{L}\p{N} @._\-'+]+$` (Unicode letters / numbers / spaces / `@ . _ - ' +`). The check is **whole-string**: any character outside the allowlist (newlines, tabs, ampersands, backticks, `$`, etc.) silently rejects the entire field (`callerInfo.display_identifier` ends up `null`). Pre-sanitize on your side if you accept arbitrary input. |
@@ -25174,7 +26430,7 @@ Response:
 
 Open a WebSocket to the returned `wsUrl` and send the `session_start` JSON frame **within 10 seconds**. After that, frame microphone audio as 24 kHz mono PCM int16 with a `<correlationId>|` text prefix. **Server-sent binary audio frames use the same prefix shape, so you must strip it before feeding the bytes to Web Audio.**
 
-The example below boots a working voice call end-to-end: it acquires the mic, mounts an `AudioWorklet` that emits 24 kHz Int16 PCM, opens the WebSocket, presents the token, handles every server frame the bridge actually sends, and plays the agent's audio back through `AudioContext`. Drop it into a page paired with the worklet at `audio-processor.js` shown below.
+The example below boots a working voice call end-to-end: it acquires the mic, mounts an `AudioWorklet` that emits 24 kHz Int16 PCM, opens the WebSocket, presents the token, handles every frame the server sends, and plays the agent's audio back through `AudioContext`. Drop it into a page paired with the worklet at `audio-processor.js` shown below.
 
 ```javascript
 // ===== voice-client.js: runs in the browser =====
@@ -25280,8 +26536,8 @@ async function startMicCapture() {
 
 // 4. UI hooks
 function muteMic(on) {
-  // Mute is purely client-side: toggle the mic track. The bridge has no
-  // server-side mute handler.
+  // Mute is purely client-side: toggle the mic track. The server has no
+  // mute frame.
   micStream?.getAudioTracks().forEach((t) => (t.enabled = !on));
 }
 function bargeIn() { ws.send(JSON.stringify({ type: "interrupt" })); }
@@ -25351,7 +26607,7 @@ Response:
 
 ## WebSocket Protocol
 
-The browser bridge lives at `wss://<env>/v1/AgentRealtime/Web`.
+Open the `wsUrl` that WebStart returns (`wss://socket.wiro.ai/v1/AgentRealtime/Web`).
 
 ### First message (text frame)
 
@@ -25368,33 +26624,33 @@ Must arrive within 10 seconds of the WebSocket `open` event. Late or malformed �
 | Audio | PCM int16, 24 kHz, mono. |
 | Frame | `<correlationId>\|<binary-pcm>`: UTF-8 text prefix (the `correlationId` returned by `WebStart`) + `\|` (0x7C) separator + raw PCM bytes. Same shape as the [Realtime Voice Conversation](/docs/realtime-voice-conversation#realtime-audio-format) channel. **Both directions** use this prefix: when you receive a binary frame from the server you must locate the first `0x7C` byte and slice everything after it as `Int16Array`. |
 
-The bridge transcodes server-side if a downstream model needs a different sample rate, so you always send 24 kHz from the browser.
+The server transcodes if a downstream model needs a different sample rate, so you always send 24 kHz from the browser.
 
 ### Browser → server control frames (text)
 
 | Body | Effect |
 |------|--------|
-| `{ "type": "interrupt" }` | Cuts the agent mid-sentence (barge-in). Use this when the user starts speaking again before the agent finishes. The bridge confirms with a `clear` frame back. |
-| `{ "type": "end" }` | Graceful disconnect: the bridge flushes its buffers, emits a final transcript + `session_end` frame, then closes. |
+| `{ "type": "interrupt" }` | Cuts the agent mid-sentence (barge-in). Use this when the user starts speaking again before the agent finishes. The server confirms with a `clear` frame back. |
+| `{ "type": "end" }` | Graceful disconnect: the server flushes its buffers, emits a final transcript + `session_end` frame, then closes. |
 
-> **Mute is client-side, not a server frame.** The bridge has no `mute` handler, so toggle the mic `MediaStreamTrack.enabled = false` (or stop posting audio frames from your worklet) instead. Sending `{type:"mute"}` is silently ignored.
+> **Mute is client-side, not a server frame.** The server has no `mute` frame, so toggle the mic `MediaStreamTrack.enabled = false` (or stop posting audio frames from your worklet) instead. Sending `{type:"mute"}` is silently ignored.
 
 ### Server → browser frames
 
 | Body / type | Notes |
 |-------------|-------|
-| `{ "type": "connecting" }` | Sent right after the bridge accepts your `session_start`. Handshake is in progress; the realtime model is being warmed up. UI can show a "connecting" state. |
+| `{ "type": "connecting" }` | Sent right after the server accepts your `session_start`. Handshake is in progress; the realtime model is being warmed up. UI can show a "connecting" state. |
 | `{ "type": "ready" }` | Agent prep + model session are live; start the mic-capture pipeline and send audio frames from this point on. |
 | `{ "type": "transcript", "role": "user"\|"ai", "text": "…", "ts": <epoch-ms> }` | Live transcript pair, same content that goes into the operator panel chat. **Note the field name is `text` (not `content`) and the agent role is `"ai"` (not `"agent"`).** `ts` is server time in ms since epoch. |
-| `{ "type": "clear" }` | Barge-in confirmation: the bridge has discarded the agent utterance still in flight. Drop every `AudioBufferSourceNode` you've already scheduled and stop appending new audio until you see `resume`. |
+| `{ "type": "clear" }` | Barge-in confirmation: the server has discarded the agent utterance still in flight. Drop every `AudioBufferSourceNode` you've already scheduled and stop appending new audio until you see `resume`. |
 | `{ "type": "resume" }` | A new agent utterance is starting after a `clear`. Resume normal binary-frame playback. |
 | Binary frame | Agent audio chunk: `<correlationId>\|<int16-pcm-24khz-mono>`. Strip the prefix and feed the PCM tail to Web Audio. |
-| `{ "type": "session_end", "reason": "...", "message"?: "..." }` | Terminal frame, immediately followed by a clean `ws.close(1000, …)`. **All errors and graceful ends arrive here**. There is no separate `error` frame. `reason` is `rejected` (the call could not start or was turned away), `spend_limit` (a [spend limit](/docs/spend-limits) was reached during the call), `balance` (the balance ran out during the call) or `ended` (any other end; [Call History](/docs/integration-twiliovoice-skills#call-history) has the detail in `endReason`). `message`, when present, is a short sentence you can show. With `spend_limit` and `balance` the bridge lets the reply that is playing finish first and sends no `message`, so show your own text. |
+| `{ "type": "session_end", "reason": "...", "message"?: "..." }` | Terminal frame, immediately followed by a clean `ws.close(1000, …)`. **All errors and graceful ends arrive here**. There is no separate `error` frame. `reason` is `rejected` (the call could not start or was turned away), `spend_limit` (a [spend limit](/docs/spend-limits) was reached during the call), `balance` (the balance ran out during the call) or `ended` (any other end; [Call History](/docs/integration-twiliovoice-skills#call-history) has the detail in `endReason`). `message`, when present, is a short sentence you can show. With `spend_limit` and `balance` the server lets the reply that is playing finish first and sends no `message`, so show your own text. |
 
 ### Session lifetime
 
 - The `sessionToken` handle is valid for **300 seconds** from issue (until `expiresAt`) and works once, so the browser must send `session_start` before then. To connect again, call `WebStart` for fresh handles, since there's no in-band refresh.
-- Once the bridge accepts your `session_start` frame, the 5-minute release timer no longer applies to the call. Live call audio is billed to the agent's Wiro project; the time before the browser connects carries no audio charge.
+- Once the server accepts your `session_start` frame, the 5-minute release timer no longer applies to the call. Live call audio is billed to the agent's Wiro project; the time before the browser connects carries no audio charge.
 
 ## Rate Limits
 
@@ -25412,7 +26668,7 @@ The bridge transcodes server-side if a downstream model needs a different sample
 | 200  | none       | `This agent belongs to a team. Switch to the team context to access it.` | Team agent called from a personal workspace or personal project key by a caller who is no longer a member of the agent's team. |
 | 200  | none       | `This agent belongs to a different team.` | Team agent called from another team's workspace or project key by a caller who is no longer a member of the agent's team. |
 | 200  | none       | `Agent is not running`   | Useragent is not in `status: 4`. Start it via `POST /UserAgent/Start` first. |
-| 200  | none       | `util-web-channel not enabled` | Toggle `util-web-channel` via `POST /UserAgent/SkillsApply` (custom agents) or pick a preset that bundles it (Voice Receptionist / Voice Sales Rep). |
+| 200  | none       | `util-web-channel not enabled` | Turn on Web Voice Channel (`util-web-channel`) with Voice Receptionist Rules (`util-voice-receptionist`) and Voice Call Prep Rules (`util-voice-call-prep`) in one `POST /UserAgent/SkillsApply` call, or pick the Voice Receptionist template, which bundles it. |
 | 403  | none       | `Web voice from this origin needs an API key.` | Bearer auth call with an Origin outside the Wiro allow-list. Either switch to API-key auth or call from an allow-listed origin. |
 | 429  | none       | `Rate limit: max N web voice sessions per hour` | Operator burned through the per-hour cap. Wait for the fixed-window expiry. |
 | 500  | none       | `internal error`         | Unexpected backend failure: check `POST /UserAgent/Logs` for context. |
@@ -25426,5 +26682,5 @@ The bridge transcodes server-side if a downstream model needs a different sample
 - [Twilio Voice](/docs/integration-twiliovoice-skills): pair the same agent with a real phone number for inbound PSTN calls. Both channels surface in the same [Call History](/docs/integration-twiliovoice-skills#call-history) feed.
 - [Realtime Voice Conversation](/docs/realtime-voice-conversation): the underlying model-level realtime protocol (used by `wiro.ai/models/openai/gpt-realtime-mini`, etc.). Web Channel is the agent-aware wrapper around it.
 - [Agent Overview](/docs/agent-overview): useragent statuses, plans, AI usage and the balance, and the rest of the agent surface.
-- [Agent Skills](/docs/agent-skills): toggling `util-web-channel` on any agent.
+- [Agent Skills](/docs/agent-skills): turning on Web Voice Channel (`util-web-channel`) on any agent.
 - [Agent Use Cases: Voice Receptionist](/docs/agent-use-cases), the preset that ships Web + Twilio channels on by default.
