@@ -23509,7 +23509,7 @@ A richer variant of white-label chat: besides replying with text, the agent **ge
 **Shape:**
 
 - One deployed agent whose Wiro project is set to your project (see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project). The agent runs models with that project's key from its skills, or with the tools of the `wiro` connector (see [The Wiro connector](/docs/agent-connectors#the-wiro-connector)).
-- One `sessionkey` per end user (Pattern 2 above): the same agent instance serves everyone; each user's chat and media history is isolated by session.
+- One `sessionkey` per end user (Pattern 2 above): the same agent instance serves everyone, and each user's chat history is isolated by session. The agent's model runs are not: with the `wiro` connector, each user can reach the runs the agent made for the others (see [The Wiro connector](/docs/agent-connectors#the-wiro-connector)).
 - A single WebSocket connection carries three things at once: the streaming chat reply, the per-turn token-usage report, and discovery of any model runs the agent launches.
 
 **End-to-end sequence an integrator replicates:**
@@ -23522,7 +23522,7 @@ A richer variant of white-label chat: besides replying with text, the agent **ge
 6. **Collect generated media**: when the agent runs a model, an `agent_wiroai_runtask` frame arrives on the same `agenttoken` with a `socketaccesstoken`. Subscribe to it with `{ "type": "task_info", "tasktoken": "<socketaccesstoken>" }` and stream `task_queue → task_start → task_output → task_postprocess_end`; the final frame carries the output media URLs. See [Agent WebSocket → Model runs the agent triggers](/docs/agent-websocket#model-runs-the-agent-triggers).
 7. **Manage sessions**: list with `Message/Sessions`, rename with `Message/RenameSession`, clear/forget with `Message/DeleteSession` (`rotate: true` to wipe the agent's memory of the thread).
 
-Either deployment shape works: run **one** media agent and separate users by `sessionkey`, or deploy **separate** agents per workspace/customer. Both use the exact same socket and messaging surface.
+Either deployment shape works: run **one** media agent and separate users by `sessionkey`, or deploy **separate** agents per workspace/customer. Both use the exact same socket and messaging surface. Share one media agent only among users who may see each other's media; otherwise deploy one agent per customer.
 
 ### Scheduled Automation
 

@@ -37905,7 +37905,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
                     <p><strong>Shape:</strong></p>
                     <ul>
                       <li>One deployed agent whose Wiro project is set to your project (see <a href="/docs/agent-credentials#the-agents-wiro-project">The agent's Wiro project</a>). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project). The agent runs models with that project's key from its skills, or with the tools of the <code>wiro</code> connector (see <a href="/docs/agent-connectors#the-wiro-connector">The Wiro connector</a>).</li>
-                      <li>One <code>sessionkey</code> per end user (Pattern 2 above): the same agent instance serves everyone; each user's chat and media history is isolated by session.</li>
+                      <li>One <code>sessionkey</code> per end user (Pattern 2 above): the same agent instance serves everyone, and each user's chat history is isolated by session. The agent's model runs are not: with the <code>wiro</code> connector, each user can reach the runs the agent made for the others (see <a href="/docs/agent-connectors#the-wiro-connector">The Wiro connector</a>).</li>
                       <li>A single WebSocket connection carries three things at once: the streaming chat reply, the per-turn token-usage report, and discovery of any model runs the agent launches.</li>
                     </ul>
                     <p><strong>End-to-end sequence an integrator replicates:</strong></p>
@@ -37918,7 +37918,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
                       <li><strong>Collect generated media</strong>: when the agent runs a model, an <code>agent_wiroai_runtask</code> frame arrives on the same <code>agenttoken</code> with a <code>socketaccesstoken</code>. Subscribe to it with <code>{ "type": "task_info", "tasktoken": "&lt;socketaccesstoken&gt;" }</code> and stream <code>task_queue → task_start → task_output → task_postprocess_end</code>; the final frame carries the output media URLs. See <a href="/docs/agent-websocket#model-runs-the-agent-triggers">Agent WebSocket → Model runs the agent triggers</a>.</li>
                       <li><strong>Manage sessions</strong>: list with <code>Message/Sessions</code>, rename with <code>Message/RenameSession</code>, clear/forget with <code>Message/DeleteSession</code> (<code>rotate: true</code> to wipe the agent's memory of the thread).</li>
                     </ol>
-                    <p>Either deployment shape works: run <strong>one</strong> media agent and separate users by <code>sessionkey</code>, or deploy <strong>separate</strong> agents per workspace/customer. Both use the exact same socket and messaging surface.</p>
+                    <p>Either deployment shape works: run <strong>one</strong> media agent and separate users by <code>sessionkey</code>, or deploy <strong>separate</strong> agents per workspace/customer. Both use the exact same socket and messaging surface. Share one media agent only among users who may see each other's media; otherwise deploy one agent per customer.</p>
 
                     <h3>Webhook-Driven Pipelines</h3>
                     <p>For backend-to-backend integrations where you don't need real-time streaming.</p>
