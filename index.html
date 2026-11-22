@@ -7172,7 +7172,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                             <tr>
                               <td><code>agent</code></td>
                               <td>agents</td>
-                              <td>Your deployed agents' own runs</td>
+                              <td>Your deployed agents: their plan payments, the AI usage their balance pays and the models they run</td>
                             </tr>
                           </tbody>
                         </table>
@@ -7199,7 +7199,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                     </ul>
                     <p>When the price of the work is known before it starts, as for fixed-price models, workflow runs and agent plans, the work is refused if spending so far, plus what work in progress holds, plus that price would go over the limit. Otherwise it is refused once the limit has no room left.</p>
                     <p>Work that is already running finishes and is charged, with two exceptions. A realtime session ends after the turn that uses up a limit, the same way it ends when the balance runs out: its WebSocket clients get a <code>task_session_stopped</code> event with <code>reason</code> <code>spend_limit</code>, code <code>93</code> and the refusal <code>/Run</code> would give (see <a href="/docs/realtime-voice-conversation#realtime-end-session">Realtime Voice</a>). An agent's voice call is a realtime session too and ends the same way: a web voice call then gets <code>session_end</code> with <code>reason</code> <code>spend_limit</code> (see <a href="/docs/integration-webvoice-skills#websocket-protocol">Web Voice</a>), and a caller on the phone hears a short notice before the call ends. An agent pauses at its next model call when a limit that covers it is used up, even in the middle of a reply (see below).</p>
-                    <p>Automatic monthly renewals of running agents are never refused by a limit. They count toward the account's limit and, in a team, toward the limit of the member who started the plan, never toward a surface, API key or agent limit.</p>
+                    <p>Every agent plan payment, a deploy, a move to a higher plan or a renewal, counts toward the account's or the team's limit and the limit of the <code>agent</code> surface, whichever way it was made, and in a team toward the limit of the member who bought the plan. A payment made with an API key also counts toward that key's limit. A plan payment never counts toward the agent's own limit. Automatic monthly renewals of running agents count the same way, with no API key, and are never refused by a limit.</p>
 
                     <h3 id="work-in-progress">Work in Progress</h3>
                     <p>A run that starts holds its expected price against every limit that covers it, until it is charged or ends. The next check counts what is held, so runs started at the same time can pass a limit by one run at most. A run whose price is not known before it starts goes ahead while the limit has room. Refusal messages show what is held, and so does <code>heldusd</code> on the limits of <code>/SpendLimit/List</code> and in <code>/SpendLimit/Usage</code>.</p>
@@ -7898,7 +7898,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                         </table>
                       </div>
                     </div>
-                    <p>An agent plan's automatic renewal counts in <code>totalusd</code> and, in a team, in the row of the member who started the plan, but in no row of <code>usage.surfaces</code>, <code>usage.projects</code> or <code>usage.agents</code>, so those rows can add up to less than <code>totalusd</code>. An agent's row counts what its own limit counts, so it also holds the AI usage its plan covered, which is not in <code>totalusd</code>: the plan payment already is.</p>
+                    <p>An agent plan's automatic renewal counts in <code>totalusd</code>, in the <code>agent</code> row of <code>usage.surfaces</code> and, in a team, in the row of the member who bought the plan, but in no row of <code>usage.projects</code> or <code>usage.agents</code>, so those rows can add up to less than <code>totalusd</code>. An agent's row counts what its own limit counts, so it also holds the AI usage its plan covered, which is not in <code>totalusd</code>: the plan payment already is.</p>
                     <p>For other breakdowns, <code>/Project/UsageSummary</code> gives usage per project and <code>/Task/Stat</code> gives time-series task execution data. Both filter by the active workspace.</p>
                   </section>
                 </article>

@@ -29,7 +29,7 @@ Each limit caps one scope of the wallet's spending:
 | `mcp` | MCP | The hosted [Wiro MCP server](/docs/wiro-mcp-server) at `mcp.wiro.ai` |
 | `llm-gateway` | the LLM gateway | The OpenAI and Anthropic compatible [LLM gateway](/docs/completions-api) at `llm.wiro.ai` |
 | `extension` | the browser extensions | Only the Wiro browser extensions |
-| `agent` | agents | Your deployed agents' own runs |
+| `agent` | agents | Your deployed agents: their plan payments, the AI usage their balance pays and the models they run |
 
 Studio and Workflow Agent messages count on the surface they were sent from. Refusal messages and `/SpendLimit/Usage` name a surface by its label.
 
@@ -60,7 +60,7 @@ When the price of the work is known before it starts, as for fixed-price models,
 
 Work that is already running finishes and is charged, with two exceptions. A realtime session ends after the turn that uses up a limit, the same way it ends when the balance runs out: its WebSocket clients get a `task_session_stopped` event with `reason` `spend_limit`, code `93` and the refusal `/Run` would give (see [Realtime Voice](/docs/realtime-voice-conversation#realtime-end-session)). An agent's voice call is a realtime session too and ends the same way: a web voice call then gets `session_end` with `reason` `spend_limit` (see [Web Voice](/docs/integration-webvoice-skills#websocket-protocol)), and a caller on the phone hears a short notice before the call ends. An agent pauses at its next model call when a limit that covers it is used up, even in the middle of a reply (see below).
 
-Automatic monthly renewals of running agents are never refused by a limit. They count toward the account's limit and, in a team, toward the limit of the member who started the plan, never toward a surface, API key or agent limit.
+Every agent plan payment, a deploy, a move to a higher plan or a renewal, counts toward the account's or the team's limit and the limit of the `agent` surface, whichever way it was made, and in a team toward the limit of the member who bought the plan. A payment made with an API key also counts toward that key's limit. A plan payment never counts toward the agent's own limit. Automatic monthly renewals of running agents count the same way, with no API key, and are never refused by a limit.
 
 ### Work in Progress
 
@@ -452,6 +452,6 @@ Returns what the call's workspace has spent this month or today, in total and by
 | `usage.agents` | Spending per deployed agent, with the agent's title as `label` |
 | `heldusd` in a row of `usage.surfaces`, `usage.members`, `usage.projects` or `usage.agents` | What work in progress holds for that row, present only when it holds something. A member, API key or agent whose only spending so far is held work is listed with `spentusd` `0` |
 
-An agent plan's automatic renewal counts in `totalusd` and, in a team, in the row of the member who started the plan, but in no row of `usage.surfaces`, `usage.projects` or `usage.agents`, so those rows can add up to less than `totalusd`. An agent's row counts what its own limit counts, so it also holds the AI usage its plan covered, which is not in `totalusd`: the plan payment already is.
+An agent plan's automatic renewal counts in `totalusd`, in the `agent` row of `usage.surfaces` and, in a team, in the row of the member who bought the plan, but in no row of `usage.projects` or `usage.agents`, so those rows can add up to less than `totalusd`. An agent's row counts what its own limit counts, so it also holds the AI usage its plan covered, which is not in `totalusd`: the plan payment already is.
 
 For other breakdowns, `/Project/UsageSummary` gives usage per project and `/Task/Stat` gives time-series task execution data. Both filter by the active workspace.
