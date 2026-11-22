@@ -15651,7 +15651,7 @@ import type {
 <li><strong>A lower plan starts at the next renewal.</strong> Ask for it with <code>allowDowngrade: true</code>: without it, a lower plan is refused and nothing changes. Nothing is charged or refunded. The agent keeps its current plan, price and included AI usage until the period ends, and its <code>nextplan</code> field names the plan it will renew on.</li>
 <li><strong>Asking for the agent's current plan</strong> cancels a scheduled move to a lower plan.</li>
 </ul>
-<p>Moving to a higher plan while a lower one is scheduled cancels the scheduled move first, and cancelling the subscription clears it too.</p>
+<p>Moving to a higher plan while a lower one is scheduled cancels the scheduled move first. Cancelling the plan keeps a scheduled move (see <a href="#post-useragentcancelsubscription"><code>CancelSubscription</code></a>).</p>
 <h3 id="paying-for-plans">Paying for Plans</h3>
 <p>Agent plans are paid from the Wiro balance of the agent's workspace: your personal balance for a personal agent, the team's balance for a team agent. A new plan, a move to a higher plan, every renewal and a plan started again after it ended are all charged there, in the dashboard, the API and MCP alike. An agent plan has no card subscription: a card only adds funds to the balance (see <a href="#adding-funds">Adding Funds</a>).</p>
 <p>When the balance can't pay a plan's price, <code>Deploy</code>, <code>CreateSubscriptionCheckout</code>, <code>UpgradeTier</code> and <code>RenewSubscription</code> are refused with code <code>97</code>, and nothing is created or charged. The message says what the balance holds and what the plan needs (a team agent's starts <code>The team's balance is</code>), and <code>neededusd</code> is the amount to add, in USD, rounded up to the cent and never less than $20, the smallest deposit:</p>
@@ -15664,6 +15664,7 @@ import type {
 }
 </code></pre>
 <p>Add at least <code>neededusd</code> to the balance, then send the same call again.</p>
+<p>Every plan payment also counts on <a href="/docs/spend-limits">Spend Limits</a>: the account's or team's limit and the <code>agent</code> surface's, automatic renewals included. When a new plan, a move to a higher plan or a renewal you ask for would take spending over one of them, <code>Deploy</code>, <code>CreateSubscriptionCheckout</code>, <code>UpgradeTier</code> and <code>RenewSubscription</code> are refused with code <code>93</code> and the limit's message, and nothing is created or charged. An automatic renewal is counted, never refused.</p>
 <p>A plan that was paid by card before agent plans moved to the balance keeps its current period as paid. At the end of that period it renews from the balance like every other plan, or ends when the balance can't pay the renewal. Until then its <code>subscription</code> reads <code>provider: "stripe"</code> with <code>nextprovider: "prepaid"</code>, and a move to a higher plan is paid from the balance. The switch itself charges and refunds nothing. Such a plan can also be cancelled with <a href="#post-useragentcancelsubscription"><code>CancelSubscription</code></a>: it then ends at the end of its period instead of switching.</p>
 <h3 id="adding-funds">Adding Funds</h3>
 <p>An agent has no balance of its own: past its plan's included usage it uses the Wiro balance of its workspace, which also pays its plan. Add funds to that balance as a normal wallet deposit in the Wiro dashboard, under <strong>Credit Balance</strong> (<a href="https://wiro.ai/panel/wallet/deposit/credit-card">add funds</a>), with the agent's workspace selected. A team's balance is funded the same way (see <a href="/docs/organizations-billing">Team Billing</a>). Funds added from an agent's page in the dashboard land in the same balance and are also listed in that agent's <a href="/docs/agent-transactions">Transactions</a>. Automatic Payment tops the balance up when it runs low, agent usage included.</p>
@@ -16959,7 +16960,7 @@ for the channel contract.</p>
       &quot;creditsyncat&quot;: 1714694410,
       &quot;usage&quot;: {
         &quot;period&quot;: &quot;2026-05&quot;,
-        &quot;resetsat&quot;: 1717200000,
+        &quot;resetsat&quot;: 1780272000,
         &quot;includedusd&quot;: 30,
         &quot;usedusd&quot;: 12.4,
         &quot;leftusd&quot;: 17.6,
@@ -16989,8 +16990,8 @@ for the channel contract.</p>
         &quot;status&quot;: &quot;active&quot;,
         &quot;amount&quot;: 30,
         &quot;currency&quot;: &quot;usd&quot;,
-        &quot;currentperiodend&quot;: 1717200000,
-        &quot;renewaldate&quot;: &quot;2026-06-01T00:00:00.000Z&quot;,
+        &quot;currentperiodend&quot;: 1780272000,
+        &quot;renewaldate&quot;: &quot;2026-06-02T00:00:00.000Z&quot;,
         &quot;daysremaining&quot;: 62,
         &quot;pendingdowngrade&quot;: null,
         &quot;provider&quot;: &quot;prepaid&quot;
@@ -17276,7 +17277,7 @@ for the channel contract.</p>
       &quot;creditsyncat&quot;: 1714694410,
       &quot;usage&quot;: {
         &quot;period&quot;: &quot;2026-05&quot;,
-        &quot;resetsat&quot;: 1717200000,
+        &quot;resetsat&quot;: 1780272000,
         &quot;includedusd&quot;: 30,
         &quot;usedusd&quot;: 12.4,
         &quot;leftusd&quot;: 17.6,
@@ -17326,8 +17327,8 @@ for the channel contract.</p>
         &quot;status&quot;: &quot;active&quot;,
         &quot;amount&quot;: 30,
         &quot;currency&quot;: &quot;usd&quot;,
-        &quot;currentperiodend&quot;: 1717200000,
-        &quot;renewaldate&quot;: &quot;2026-06-01T00:00:00.000Z&quot;,
+        &quot;currentperiodend&quot;: 1780272000,
+        &quot;renewaldate&quot;: &quot;2026-06-02T00:00:00.000Z&quot;,
         &quot;daysremaining&quot;: 28,
         &quot;pendingdowngrade&quot;: null,
         &quot;provider&quot;: &quot;prepaid&quot;
@@ -17644,7 +17645,7 @@ for the channel contract.</p>
 <tr>
 <td><code>subscription</code></td>
 <td><code>object|null</code></td>
-<td>Active subscription info (see "Subscription object" below), or <code>null</code> when the agent has no active subscription. It reads <code>plan: "agent"</code> and, since plans are paid from the Wiro balance, <code>provider: "prepaid"</code> (see <a href="#paying-for-plans">Paying for Plans</a> for a plan that was paid by card).</td>
+<td>The agent's subscription (see "Subscription object" below): its active one, else its newest, so a plan that ended reads <code>status: "expired"</code>. <code>null</code> when the agent has never had a plan. It reads <code>plan: "agent"</code> and, since plans are paid from the Wiro balance, <code>provider: "prepaid"</code> (see <a href="#paying-for-plans">Paying for Plans</a> for a plan that was paid by card).</td>
 </tr>
 <tr>
 <td><code>agent</code></td>
@@ -17743,7 +17744,7 @@ for the channel contract.</p>
 <tr>
 <td><code>resetsat</code></td>
 <td><code>number|null</code></td>
-<td>Unix seconds when the plan renews and its included AI usage starts again. <code>null</code> when the plan's renewal can't be read.</td>
+<td>Unix seconds when the plan's period ends (<code>subscription.currentperiodend</code>). The renewal that starts the included AI usage again runs up to a day later. On Detail, MyAgents and PinnedAgents, a plan that ended shows the ended period's end. <code>null</code> when there is no period to show or it can't be read.</td>
 </tr>
 <tr>
 <td><code>includedusd</code></td>
@@ -17891,12 +17892,12 @@ for the channel contract.</p>
 <tr>
 <td><code>renewaldate</code></td>
 <td><code>string|null</code></td>
-<td>ISO-8601 string of the same period-end timestamp (convenience for display).</td>
+<td>ISO-8601 time the plan next renews, or ends when it is cancelled: one day after <code>currentperiodend</code> for a plan paid from the balance, the period end for a plan paid by card. <code>null</code> unless the subscription is active.</td>
 </tr>
 <tr>
 <td><code>daysremaining</code></td>
 <td><code>number</code></td>
-<td>Days until <code>currentperiodend</code>.</td>
+<td>Days until <code>renewaldate</code>, rounded up; <code>0</code> unless the subscription is active.</td>
 </tr>
 <tr>
 <td><code>pendingdowngrade</code></td>
@@ -20141,8 +20142,12 @@ channel-enable endpoint or persisted switch.</p>
 <td>Another subscription request for the same agent is in progress</td>
 </tr>
 <tr>
+<td><code>We couldn't confirm this agent's previous checkout. Please try again in a minute.</code></td>
+<td>Wiro couldn't confirm the agent's current plan or an earlier checkout before charging; nothing is charged. Send the call again in a minute</td>
+</tr>
+<tr>
 <td><code>Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.</code></td>
-<td>Another plan payment from the same wallet is still going through</td>
+<td>Another plan payment from the same wallet is still going through (code <code>104</code>)</td>
 </tr>
 <tr>
 <td><code>The wallet was charged $X.XX, but the plan could not be saved. Please contact support and do not try again.</code> (code <code>110</code>)</td>
@@ -20253,11 +20258,11 @@ channel-enable endpoint or persisted switch.</p>
 <p><strong>Headers:</strong> No extra header is needed. The caller must be the row owner or a team admin (plain team members are rejected with code <code>97</code>).</p>
 <h5 id="guards-run-in-this-order">Guards (run in this order)</h5>
 <ol>
-<li><strong>Access</strong>: owner of the row or a team admin of the UA's team. Members get <code>useragent-team-admin-required</code> (code <code>97</code>); strangers get <code>useragent-access-denied</code> (code <code>96</code>); unknown / already-deleted rows get <code>useragent-not-found</code> (code <code>95</code>).</li>
-<li><strong>Status</strong>: must be in a clean terminal state: <code>0</code> (Stopped), <code>5</code> (Error), or <code>6</code> (Setup Required); <code>5</code> passes only once the agent no longer holds its runtime. Anything in flight (<code>1</code> Stopping, <code>2</code> Queued, <code>3</code> Starting, <code>4</code> Running) is rejected with <code>useragent-delete-running</code>, and so is an errored agent that still holds its runtime. Stop the agent first and wait for status <code>0</code>.</li>
-<li><strong>Active subscription</strong>: a subscription with <code>status: "active"</code> blocks delete (<code>useragent-delete-sub-active</code>). <code>CancelSubscription</code> doesn't lift this right away: the subscription stays <code>active</code> until its period ends (<code>cancelsAt</code>) and is then marked expired. An expired, cancelled or refunded subscription, or none at all, passes.</li>
+<li><strong>Access</strong>: owner of the row or a team admin of the UA's team. Members get <code>Only a team admin can perform this action on a team-owned agent.</code> (code <code>97</code>); strangers get <code>You don't have access to this user agent</code> (code <code>96</code>); unknown / already-deleted rows get <code>User agent not found</code> (code <code>95</code>).</li>
+<li><strong>Status</strong>: must be in a clean terminal state: <code>0</code> (Stopped), <code>5</code> (Error), or <code>6</code> (Setup Required); <code>5</code> passes only once the agent no longer holds its runtime. Anything in flight (<code>1</code> Stopping, <code>2</code> Queued, <code>3</code> Starting, <code>4</code> Running) is rejected with <code>Stop the agent before deleting it.</code> (code <code>0</code>), and so is an errored agent that still holds its runtime. Stop the agent first and wait for status <code>0</code>.</li>
+<li><strong>Active subscription</strong>: a subscription with <code>status: "active"</code> blocks delete with <code>Cancel the agent's subscription before deleting it.</code> (code <code>0</code>) until <code>CancelSubscription</code> has set it to end (<code>pendingdowngrade: "cancel"</code>). After that the agent can be deleted right away: the rest of the paid period is forfeited, nothing is refunded, and the plan ends at <code>cancelsAt</code> without renewing. A plan paid by card before agent plans moved to the balance (<code>provider: "stripe"</code>) still blocks after <code>CancelSubscription</code> until its period ends (<code>cancelsAt</code>) and it is marked expired. An expired, cancelled or refunded subscription, or none at all, passes.</li>
 </ol>
-<p>Delete is safe to repeat: calling it again on an agent that's already deleted returns <code>useragent-not-found</code> (code <code>95</code>, as in guard 1), so treat that code on a retry as already deleted. The stored <code>deletedat</code> never changes.</p>
+<p>Delete is safe to repeat: calling it again on an agent that's already deleted returns <code>User agent not found</code> (code <code>95</code>, as in guard 1), so treat that code on a retry as already deleted. The stored <code>deletedat</code> never changes.</p>
 <h5 id="response_19">Response</h5>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
@@ -20280,24 +20285,24 @@ channel-enable endpoint or persisted switch.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>useragent-not-found</code> (95)</td>
+<td><code>User agent not found</code> (95)</td>
 <td>Unknown guid, or the row is already soft-deleted</td>
 </tr>
 <tr>
-<td><code>useragent-access-denied</code> (96)</td>
+<td><code>You don't have access to this user agent</code> (96)</td>
 <td>Caller is not the owner and not a member of the UA's team</td>
 </tr>
 <tr>
-<td><code>useragent-team-admin-required</code> (97)</td>
+<td><code>Only a team admin can perform this action on a team-owned agent.</code> (97)</td>
 <td>Caller is a team member but not a team admin on the UA's team</td>
 </tr>
 <tr>
-<td><code>useragent-delete-running</code></td>
+<td><code>Stop the agent before deleting it.</code> (0)</td>
 <td>Status is <code>1</code> / <code>2</code> / <code>3</code> / <code>4</code>, or <code>5</code> while the agent still holds its runtime. Call <code>Stop</code> first and retry once status reaches <code>0</code></td>
 </tr>
 <tr>
-<td><code>useragent-delete-sub-active</code></td>
-<td>An active subscription is still attached. After <code>CancelSubscription</code> it stays active until the period ends (<code>cancelsAt</code>); retry once it has expired</td>
+<td><code>Cancel the agent's subscription before deleting it.</code> (0)</td>
+<td>An active subscription that <code>CancelSubscription</code> hasn't set to end. Call <code>CancelSubscription</code>, then <code>Delete</code> again. A plan paid by card before plans moved to the balance blocks until its period ends (<code>cancelsAt</code>); retry once it has expired</td>
 </tr>
 </tbody>
 </table>
@@ -20872,7 +20877,7 @@ channel-enable endpoint or persisted switch.</p>
       &quot;creditsyncat&quot;: 1714694410,
       &quot;usage&quot;: {
         &quot;period&quot;: &quot;2026-05&quot;,
-        &quot;resetsat&quot;: 1717200000,
+        &quot;resetsat&quot;: 1780272000,
         &quot;includedusd&quot;: 30,
         &quot;usedusd&quot;: 12.4,
         &quot;leftusd&quot;: 17.6,
@@ -20902,8 +20907,8 @@ channel-enable endpoint or persisted switch.</p>
         &quot;status&quot;: &quot;active&quot;,
         &quot;amount&quot;: 30,
         &quot;currency&quot;: &quot;usd&quot;,
-        &quot;currentperiodend&quot;: 1717200000,
-        &quot;renewaldate&quot;: &quot;2026-06-01T00:00:00.000Z&quot;,
+        &quot;currentperiodend&quot;: 1780272000,
+        &quot;renewaldate&quot;: &quot;2026-06-02T00:00:00.000Z&quot;,
         &quot;daysremaining&quot;: 28,
         &quot;pendingdowngrade&quot;: null,
         &quot;provider&quot;: &quot;prepaid&quot;
@@ -21686,6 +21691,8 @@ channel-enable endpoint or persisted switch.</p>
 }
 </code></pre>
 <p>Detect it by <code>retired: true</code>, and add funds to the balance instead.</p>
+<h3 id="plan-changes-renewals">Plan Changes &amp; Renewals</h3>
+<p>Cancel, change or renew an agent's plan. Every charge is paid from the Wiro balance of the agent's workspace (see <a href="#paying-for-plans">Paying for Plans</a>).</p>
 <h4 id="post-useragentcancelsubscription"><strong>POST</strong> /UserAgent/CancelSubscription</h4>
 <p>Schedules the subscription to end at the current billing period's expiry (a <strong>cancel-at-period-end</strong> pattern). The agent keeps running on its plan until that moment. No refund is issued for the remaining days: the period was paid up front.</p>
 <p>A plan that was paid by card is cancelled the same way, also one that is set to switch to the balance at the end of its period: the switch is dropped, and the plan ends at the end of its period with <code>pendingdowngrade: "cancel"</code>. Nothing is charged or refunded. On a team agent, only a team admin or the organization owner can cancel such a plan.</p>
@@ -21715,16 +21722,16 @@ channel-enable endpoint or persisted switch.</p>
 <h5 id="response_31">Response</h5>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
-  &quot;cancelsAt&quot;: 1717200000,
+  &quot;cancelsAt&quot;: 1780358400,
   &quot;errors&quot;: []
 }
 </code></pre>
 <ul>
-<li><code>cancelsAt</code> is the Unix timestamp when the subscription will finish.</li>
+<li><code>cancelsAt</code> is the Unix timestamp when the plan ends: one day after <code>currentperiodend</code> for a plan paid from the balance, the period end for a plan paid by card.</li>
 <li>Server-side, <code>subscription.pendingdowngrade</code> is flipped to <code>"cancel"</code> and <code>subscription.status</code> stays <code>"active"</code> until the period end. Subsequent <code>UserAgent/Detail</code> responses reflect this: <code>subscription.pendingdowngrade = "cancel"</code> and the usual <code>currentperiodend</code>.</li>
-<li>A scheduled move to a lower plan is dropped: the agent's <code>nextplan</code> goes back to <code>null</code>.</li>
+<li>A scheduled move to a lower plan stays: <code>nextplan</code> keeps it. When the plan ends, the agent shows that plan and its price (<code>tier</code>, <code>monthlypriceusd</code>, <code>nextplan: null</code>), which is what <code>RenewSubscription</code> then charges. Undoing the cancel with <code>RenewSubscription</code> keeps the move scheduled, and <code>UpgradeTier</code> with the agent's current plan drops it (<code>nextplan: null</code>). A plan paid by card is the exception: its cancel drops the move, and <code>nextplan</code> goes back to <code>null</code>.</li>
 <li>To reverse the cancellation <strong>before</strong> the period ends, call <code>POST /UserAgent/RenewSubscription</code>. It clears the flag without charging the balance again, and a plan paid by card goes back to switching to the balance at the end of its period.</li>
-<li>When the period actually ends, the daily cron marks the subscription <code>"expired"</code> and stops the agent (<code>status: 0</code>). At that point the user must call <code>POST /UserAgent/RenewSubscription</code> (or <code>CreateSubscriptionCheckout</code> for a fresh sub) to continue.</li>
+<li>When the plan ends (at <code>cancelsAt</code>), Wiro marks the subscription <code>"expired"</code> and stops the agent (<code>status: 0</code>). At that point the user must call <code>POST /UserAgent/RenewSubscription</code> (or <code>CreateSubscriptionCheckout</code> for a fresh sub) to continue.</li>
 </ul>
 <p><strong>Common errors:</strong></p>
 <div class="docs-param-table">
@@ -21954,19 +21961,20 @@ channel-enable endpoint or persisted switch.</p>
 <li>Agent status is unchanged (still running / stopped / whatever it was).</li>
 </ul>
 <h5 id="response-renew">Response: renew</h5>
-<p>Called after the subscription has expired (daily cron flipped it to <code>status: "expired"</code> and stopped the agent). The renewal rolls the existing expired subscription forward into a fresh 30-day <code>active</code> row instead of inserting a new one:</p>
+<p>Called after the subscription has expired (Wiro marked it <code>status: "expired"</code> when the plan ended and stopped the agent). The renewal rolls the existing expired subscription forward into a fresh 30-day <code>active</code> row instead of inserting a new one:</p>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
   &quot;action&quot;: &quot;renewed&quot;,
   &quot;plan&quot;: &quot;agent&quot;,
   &quot;tier&quot;: &quot;starter&quot;,
   &quot;amount&quot;: 5,
+  &quot;chargedUsd&quot;: 5,
   &quot;errors&quot;: []
 }
 </code></pre>
 <ul>
 <li>Renews the subscription in place: <code>status</code> becomes <code>"active"</code>, a new 30-day period starts now (<code>currentperiodend</code> moves to now + 30 days), and <code>pendingdowngrade</code> is cleared to <code>null</code>.</li>
-<li>Debits <code>amount</code>, the plan's price, from the wallet (caller's personal wallet, or the agent's team wallet if the agent is team-scoped).</li>
+<li><code>amount</code> is the plan's price; <code>chargedUsd</code> is what the balance paid (a user or team discount lowers it), taken from the owner's wallet for a personal agent or the team's wallet for a team agent.</li>
 <li><code>tier</code> names the plan the renewal charged.</li>
 <li>Starts the period's included AI usage again in full and stamps the new <code>creditperiod</code>.</li>
 <li>If the agent was in <code>status: 0</code> (Stopped) or <code>5</code> (Error), it's auto-queued back to <code>2</code> (Queued). It starts again without an extra <code>Start</code> call. Statuses <code>1</code>/<code>2</code>/<code>3</code>/<code>4</code> are already in progress and settle on their own.</li>
@@ -21987,6 +21995,10 @@ channel-enable endpoint or persisted switch.</p>
 <td>Called on an active subscription with <strong>no</strong> pending cancel (nothing to do)</td>
 </tr>
 <tr>
+<td><code>Subscription is already active. It renews from your balance when its period ends.</code></td>
+<td>Called on a plan paid by card that already switches to the balance at its period end (nothing to do)</td>
+</tr>
+<tr>
 <td><code>No expired subscription found to renew</code></td>
 <td>No active sub and no expired sub: agent was never subscribed, or data is gone</td>
 </tr>
@@ -22003,8 +22015,12 @@ channel-enable endpoint or persisted switch.</p>
 <td>Another subscription request for the same agent is in progress; nothing is charged</td>
 </tr>
 <tr>
+<td><code>We couldn't confirm this agent's previous checkout. Please try again in a minute.</code></td>
+<td>Wiro couldn't confirm the agent's current plan or an earlier checkout before charging; nothing is charged</td>
+</tr>
+<tr>
 <td><code>Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.</code></td>
-<td>Another plan payment from the same wallet is still going through; nothing is charged</td>
+<td>Another plan payment from the same wallet is still going through (code <code>104</code>); nothing is charged</td>
 </tr>
 <tr>
 <td><code>The wallet was charged $X.XX, but the renewal did not finish. Please contact support and do not try again.</code> (code <code>110</code>)</td>
@@ -22030,8 +22046,8 @@ channel-enable endpoint or persisted switch.</p>
               │ pendingdowngrade:      │
               │   &quot;cancel&quot;             │
               └───────────┬────────────┘
-                          │ currentperiodend reached
-                          │ (daily cron)
+                          │ cancelsAt reached
+                          │ (the plan ends)
                           ▼
               ┌────────────────────────┐
               │ status: &quot;expired&quot;      │
@@ -22114,7 +22130,7 @@ channel-enable endpoint or persisted switch.</p>
   &quot;agentstatus&quot;: 4,
   &quot;agentusage&quot;: {
     &quot;period&quot;: &quot;2026-05&quot;,
-    &quot;resetsat&quot;: 1717200000,
+    &quot;resetsat&quot;: 1780272000,
     &quot;includedusd&quot;: 30,
     &quot;usedusd&quot;: 30,
     &quot;leftusd&quot;: 0,
@@ -22245,7 +22261,7 @@ channel-enable endpoint or persisted switch.</p>
 <td><code>UpgradeTier</code> with <code>allowDowngrade: true</code> and a <code>targetTier</code> higher than the agent's plan, such as after the plan changed in another tab or at a renewal. Nothing is changed or charged</td>
 </tr>
 <tr>
-<td><code>No active plan. Use /UserAgent/CreateSubscriptionCheckout to start one on the plan you pick.</code></td>
+<td><code>No active plan. Use /UserAgent/CreateSubscriptionCheckout with useprepaid: true to start one on the plan you pick.</code></td>
 <td><code>UpgradeTier</code> called without an active subscription</td>
 </tr>
 <tr>
@@ -22253,12 +22269,24 @@ channel-enable endpoint or persisted switch.</p>
 <td><code>UpgradeTier</code> to a lower plan while the subscription is cancelled at period end. Undo the cancel with <code>RenewSubscription</code> first</td>
 </tr>
 <tr>
+<td><code>The move to the Starter plan started with this billing period, and its payment moves the agent there, so it can no longer be undone. Nothing was changed. Once the agent shows the Starter plan, change the plan again.</code> (the plan's name)</td>
+<td><code>UpgradeTier</code> with the agent's current plan, on a plan paid by card whose scheduled lower plan already started with its new period. Nothing is changed</td>
+</tr>
+<tr>
+<td><code>This plan is set to end when its period ends, so it cannot be changed. Renew it first: it then renews from your balance.</code></td>
+<td><code>UpgradeTier</code> on a plan paid by card that is set to end. Undo the cancel with <code>RenewSubscription</code> first; nothing is charged</td>
+</tr>
+<tr>
+<td><code>We couldn't read this plan's billing. Nothing was changed; please try again in a minute.</code></td>
+<td><code>UpgradeTier</code> or <code>RenewSubscription</code> on a plan paid by card when its card billing can't be read; nothing is charged</td>
+</tr>
+<tr>
 <td><code>Your balance is $3.10; this plan needs $100.00. Add funds to continue.</code> (the amounts; a team agent's starts <code>The team's balance is</code>)</td>
 <td><code>Deploy</code>, <code>CreateSubscriptionCheckout</code>, <code>UpgradeTier</code> or <code>RenewSubscription</code> when the balance can't pay the plan (code <code>97</code>, with <code>neededusd</code>). Nothing is created or charged</td>
 </tr>
 <tr>
 <td><code>Wallet deduction failed: {error}</code></td>
-<td><code>UpgradeTier</code>: wallet write itself failed (rare; transient backend error)</td>
+<td><code>Deploy</code> or <code>CreateSubscriptionCheckout</code> with <code>useprepaid: true</code>, <code>RenewSubscription</code> or <code>UpgradeTier</code>: the wallet write itself failed (rare; transient backend error); nothing was charged</td>
 </tr>
 <tr>
 <td><code>Another change to this agent's plan is going through. Nothing was changed; please try again in a minute.</code></td>
@@ -22274,7 +22302,7 @@ channel-enable endpoint or persisted switch.</p>
 </tr>
 <tr>
 <td><code>Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.</code></td>
-<td><code>Deploy</code> or <code>CreateSubscriptionCheckout</code> with <code>useprepaid: true</code>, <code>RenewSubscription</code> or <code>UpgradeTier</code> (code <code>104</code> on <code>UpgradeTier</code>) while another plan payment from the same wallet is going through. A <code>Deploy</code> refused this way creates no agent</td>
+<td><code>Deploy</code> or <code>CreateSubscriptionCheckout</code> with <code>useprepaid: true</code>, <code>RenewSubscription</code> or <code>UpgradeTier</code> (code <code>104</code> on each of them) while another plan payment from the same wallet is going through. A <code>Deploy</code> refused this way creates no agent</td>
 </tr>
 <tr>
 <td><code>The wallet was charged $X.XX, but the plan could not be saved. Please contact support and do not try again.</code>, the same with <code>the renewal did not finish</code> or <code>the plan change did not finish</code> (code <code>110</code>)</td>

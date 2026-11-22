@@ -109,7 +109,7 @@ When the agent's files reach the plan's size, the disk is full: the agent can't 
 - **A lower plan starts at the next renewal.** Ask for it with `allowDowngrade: true`: without it, a lower plan is refused and nothing changes. Nothing is charged or refunded. The agent keeps its current plan, price and included AI usage until the period ends, and its `nextplan` field names the plan it will renew on.
 - **Asking for the agent's current plan** cancels a scheduled move to a lower plan.
 
-Moving to a higher plan while a lower one is scheduled cancels the scheduled move first, and cancelling the subscription clears it too.
+Moving to a higher plan while a lower one is scheduled cancels the scheduled move first. Cancelling the plan keeps a scheduled move (see [`CancelSubscription`](#post-useragentcancelsubscription)).
 
 ### Paying for Plans
 
@@ -128,6 +128,8 @@ When the balance can't pay a plan's price, `Deploy`, `CreateSubscriptionCheckout
 ```
 
 Add at least `neededusd` to the balance, then send the same call again.
+
+Every plan payment also counts on [Spend Limits](/docs/spend-limits): the account's or team's limit and the `agent` surface's, automatic renewals included. When a new plan, a move to a higher plan or a renewal you ask for would take spending over one of them, `Deploy`, `CreateSubscriptionCheckout`, `UpgradeTier` and `RenewSubscription` are refused with code `93` and the limit's message, and nothing is created or charged. An automatic renewal is counted, never refused.
 
 A plan that was paid by card before agent plans moved to the balance keeps its current period as paid. At the end of that period it renews from the balance like every other plan, or ends when the balance can't pay the renewal. Until then its `subscription` reads `provider: "stripe"` with `nextprovider: "prepaid"`, and a move to a higher plan is paid from the balance. The switch itself charges and refunds nothing. Such a plan can also be cancelled with [`CancelSubscription`](#post-useragentcancelsubscription): it then ends at the end of its period instead of switching.
 
@@ -889,7 +891,7 @@ Lists all agent instances deployed under your account.
       "creditsyncat": 1714694410,
       "usage": {
         "period": "2026-05",
-        "resetsat": 1717200000,
+        "resetsat": 1780272000,
         "includedusd": 30,
         "usedusd": 12.4,
         "leftusd": 17.6,
@@ -919,8 +921,8 @@ Lists all agent instances deployed under your account.
         "status": "active",
         "amount": 30,
         "currency": "usd",
-        "currentperiodend": 1717200000,
-        "renewaldate": "2026-06-01T00:00:00.000Z",
+        "currentperiodend": 1780272000,
+        "renewaldate": "2026-06-02T00:00:00.000Z",
         "daysremaining": 62,
         "pendingdowngrade": null,
         "provider": "prepaid"
@@ -1193,7 +1195,7 @@ Retrieves full details for a single deployed agent instance, including subscript
       "creditsyncat": 1714694410,
       "usage": {
         "period": "2026-05",
-        "resetsat": 1717200000,
+        "resetsat": 1780272000,
         "includedusd": 30,
         "usedusd": 12.4,
         "leftusd": 17.6,
@@ -1243,8 +1245,8 @@ Retrieves full details for a single deployed agent instance, including subscript
         "status": "active",
         "amount": 30,
         "currency": "usd",
-        "currentperiodend": 1717200000,
-        "renewaldate": "2026-06-01T00:00:00.000Z",
+        "currentperiodend": 1780272000,
+        "renewaldate": "2026-06-02T00:00:00.000Z",
         "daysremaining": 28,
         "pendingdowngrade": null,
         "provider": "prepaid"
@@ -1359,7 +1361,7 @@ To show a task as waiting, read `_skill_off` and `_off_skills` for the skills to
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `subscription` | `object\|null` | Active subscription info (see "Subscription object" below), or `null` when the agent has no active subscription. It reads `plan: "agent"` and, since plans are paid from the Wiro balance, `provider: "prepaid"` (see [Paying for Plans](#paying-for-plans) for a plan that was paid by card). |
+| `subscription` | `object\|null` | The agent's subscription (see "Subscription object" below): its active one, else its newest, so a plan that ended reads `status: "expired"`. `null` when the agent has never had a plan. It reads `plan: "agent"` and, since plans are paid from the Wiro balance, `provider: "prepaid"` (see [Paying for Plans](#paying-for-plans) for a plan that was paid by card). |
 | `agent` | `object` | Parent template summary: `{ guid, title, slug, headline, description, cover, icon, categories, tiers, plans }`. For custom builds (`agent.custom: true`) it's a synthesized placeholder instead: `{ custom: true, slug, cover: null, icon: null, tiers, plans }`, with no `guid`, `title`, `headline`, `description` or `categories`. Read the agent's title and cover from the useragent itself. |
 
 ##### Credential object shape
@@ -1386,7 +1388,7 @@ Every provider entry under `credentials.<key>` carries:
 | Sub-field | Type | Description |
 |-----------|------|-------------|
 | `period` | `string` | `'YYYY-MM'` tag of the current billing period. |
-| `resetsat` | `number\|null` | Unix seconds when the plan renews and its included AI usage starts again. `null` when the plan's renewal can't be read. |
+| `resetsat` | `number\|null` | Unix seconds when the plan's period ends (`subscription.currentperiodend`). The renewal that starts the included AI usage again runs up to a day later. On Detail, MyAgents and PinnedAgents, a plan that ended shows the ended period's end. `null` when there is no period to show or it can't be read. |
 | `includedusd` | `number` | The AI usage this period includes. After a move to a higher plan inside the period, the higher plan counts only for the time left, so it reads between the two plans' amounts until the next renewal. |
 | `usedusd` | `number` | The included AI usage used this period. |
 | `leftusd` | `number` | The included AI usage left this period. |
@@ -1421,8 +1423,8 @@ Every provider entry under `credentials.<key>` carries:
 | `amount` | `number` | The monthly USD price actually being charged. Mirrors `useragent.monthlypriceusd`. |
 | `currency` | `string` | Always `"usd"`. |
 | `currentperiodend` | `number\|null` | Unix seconds when the current billing period ends. |
-| `renewaldate` | `string\|null` | ISO-8601 string of the same period-end timestamp (convenience for display). |
-| `daysremaining` | `number` | Days until `currentperiodend`. |
+| `renewaldate` | `string\|null` | ISO-8601 time the plan next renews, or ends when it is cancelled: one day after `currentperiodend` for a plan paid from the balance, the period end for a plan paid by card. `null` unless the subscription is active. |
+| `daysremaining` | `number` | Days until `renewaldate`, rounded up; `0` unless the subscription is active. |
 | `pendingdowngrade` | `string\|null` | `"cancel"` after `CancelSubscription`; `null` for normal active subs. A move to a lower plan shows in the agent's `nextplan`, not here. |
 | `provider` | `string` | `"prepaid"`: the plan is paid from the Wiro balance. `"stripe"` only on a plan paid by card before agent plans moved to the balance, until its period ends. |
 | `nextprovider` | `string\|null` | `"prepaid"` on a plan paid by card: it renews from the balance at the end of its period. `null` otherwise, and on such a plan once it is cancelled. |
@@ -2607,7 +2609,8 @@ If the useragent already has an active subscription, the call rejects with `Subs
 | Error | When |
 |-------|------|
 | `A checkout for this agent is already being opened. Try again in a moment.` | Another subscription request for the same agent is in progress |
-| `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | Another plan payment from the same wallet is still going through |
+| `We couldn't confirm this agent's previous checkout. Please try again in a minute.` | Wiro couldn't confirm the agent's current plan or an earlier checkout before charging; nothing is charged. Send the call again in a minute |
+| `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | Another plan payment from the same wallet is still going through (code `104`) |
 | `The wallet was charged $X.XX, but the plan could not be saved. Please contact support and do not try again.` (code `110`) | With `useprepaid: true`: the wallet paid and the plan could not be saved. Never send the call again: a retry charges again. The agent's plan and included AI usage stay as they were until support finishes the change; the payment is a `plan` row in its Transactions, and its activity log has an `AGENT_PLAN_NOT_SAVED` row for it (see [Plan payments that did not finish](/docs/agent-transactions#plan-not-saved)). `Deploy` with `useprepaid: true` answers the same, keeps the agent and returns its guid in `existingUserAgentGuid` |
 
 #### **POST** /UserAgent/Start
@@ -2669,11 +2672,11 @@ Soft-deletes a useragent. Delete stamps `deletedat` (returned in the response) a
 
 ##### Guards (run in this order)
 
-1. **Access**: owner of the row or a team admin of the UA's team. Members get `useragent-team-admin-required` (code `97`); strangers get `useragent-access-denied` (code `96`); unknown / already-deleted rows get `useragent-not-found` (code `95`).
-2. **Status**: must be in a clean terminal state: `0` (Stopped), `5` (Error), or `6` (Setup Required); `5` passes only once the agent no longer holds its runtime. Anything in flight (`1` Stopping, `2` Queued, `3` Starting, `4` Running) is rejected with `useragent-delete-running`, and so is an errored agent that still holds its runtime. Stop the agent first and wait for status `0`.
-3. **Active subscription**: a subscription with `status: "active"` blocks delete (`useragent-delete-sub-active`). `CancelSubscription` doesn't lift this right away: the subscription stays `active` until its period ends (`cancelsAt`) and is then marked expired. An expired, cancelled or refunded subscription, or none at all, passes.
+1. **Access**: owner of the row or a team admin of the UA's team. Members get `Only a team admin can perform this action on a team-owned agent.` (code `97`); strangers get `You don't have access to this user agent` (code `96`); unknown / already-deleted rows get `User agent not found` (code `95`).
+2. **Status**: must be in a clean terminal state: `0` (Stopped), `5` (Error), or `6` (Setup Required); `5` passes only once the agent no longer holds its runtime. Anything in flight (`1` Stopping, `2` Queued, `3` Starting, `4` Running) is rejected with `Stop the agent before deleting it.` (code `0`), and so is an errored agent that still holds its runtime. Stop the agent first and wait for status `0`.
+3. **Active subscription**: a subscription with `status: "active"` blocks delete with `Cancel the agent's subscription before deleting it.` (code `0`) until `CancelSubscription` has set it to end (`pendingdowngrade: "cancel"`). After that the agent can be deleted right away: the rest of the paid period is forfeited, nothing is refunded, and the plan ends at `cancelsAt` without renewing. A plan paid by card before agent plans moved to the balance (`provider: "stripe"`) still blocks after `CancelSubscription` until its period ends (`cancelsAt`) and it is marked expired. An expired, cancelled or refunded subscription, or none at all, passes.
 
-Delete is safe to repeat: calling it again on an agent that's already deleted returns `useragent-not-found` (code `95`, as in guard 1), so treat that code on a retry as already deleted. The stored `deletedat` never changes.
+Delete is safe to repeat: calling it again on an agent that's already deleted returns `User agent not found` (code `95`, as in guard 1), so treat that code on a retry as already deleted. The stored `deletedat` never changes.
 
 ##### Response
 
@@ -2692,11 +2695,11 @@ Delete is safe to repeat: calling it again on an agent that's already deleted re
 
 | Error code / message | When |
 |----------------------|------|
-| `useragent-not-found` (95) | Unknown guid, or the row is already soft-deleted |
-| `useragent-access-denied` (96) | Caller is not the owner and not a member of the UA's team |
-| `useragent-team-admin-required` (97) | Caller is a team member but not a team admin on the UA's team |
-| `useragent-delete-running` | Status is `1` / `2` / `3` / `4`, or `5` while the agent still holds its runtime. Call `Stop` first and retry once status reaches `0` |
-| `useragent-delete-sub-active` | An active subscription is still attached. After `CancelSubscription` it stays active until the period ends (`cancelsAt`); retry once it has expired |
+| `User agent not found` (95) | Unknown guid, or the row is already soft-deleted |
+| `You don't have access to this user agent` (96) | Caller is not the owner and not a member of the UA's team |
+| `Only a team admin can perform this action on a team-owned agent.` (97) | Caller is a team member but not a team admin on the UA's team |
+| `Stop the agent before deleting it.` (0) | Status is `1` / `2` / `3` / `4`, or `5` while the agent still holds its runtime. Call `Stop` first and retry once status reaches `0` |
+| `Cancel the agent's subscription before deleting it.` (0) | An active subscription that `CancelSubscription` hasn't set to end. Call `CancelSubscription`, then `Delete` again. A plan paid by card before plans moved to the balance blocks until its period ends (`cancelsAt`); retry once it has expired |
 
 #### **POST** /UserAgent/Logs
 
@@ -2992,7 +2995,7 @@ No request body fields are required: the workspace of your API key's project sco
       "creditsyncat": 1714694410,
       "usage": {
         "period": "2026-05",
-        "resetsat": 1717200000,
+        "resetsat": 1780272000,
         "includedusd": 30,
         "usedusd": 12.4,
         "leftusd": 17.6,
@@ -3022,8 +3025,8 @@ No request body fields are required: the workspace of your API key's project sco
         "status": "active",
         "amount": 30,
         "currency": "usd",
-        "currentperiodend": 1717200000,
-        "renewaldate": "2026-06-01T00:00:00.000Z",
+        "currentperiodend": 1780272000,
+        "renewaldate": "2026-06-02T00:00:00.000Z",
         "daysremaining": 28,
         "pendingdowngrade": null,
         "provider": "prepaid"
@@ -3424,6 +3427,10 @@ Retired. The call charges nothing, changes nothing and answers:
 
 Detect it by `retired: true`, and add funds to the balance instead.
 
+### Plan Changes & Renewals
+
+Cancel, change or renew an agent's plan. Every charge is paid from the Wiro balance of the agent's workspace (see [Paying for Plans](#paying-for-plans)).
+
 #### **POST** /UserAgent/CancelSubscription
 
 Schedules the subscription to end at the current billing period's expiry (a **cancel-at-period-end** pattern). The agent keeps running on its plan until that moment. No refund is issued for the remaining days: the period was paid up front.
@@ -3441,16 +3448,16 @@ A plan that was paid by card is cancelled the same way, also one that is set to 
 ```json
 {
   "result": true,
-  "cancelsAt": 1717200000,
+  "cancelsAt": 1780358400,
   "errors": []
 }
 ```
 
-- `cancelsAt` is the Unix timestamp when the subscription will finish.
+- `cancelsAt` is the Unix timestamp when the plan ends: one day after `currentperiodend` for a plan paid from the balance, the period end for a plan paid by card.
 - Server-side, `subscription.pendingdowngrade` is flipped to `"cancel"` and `subscription.status` stays `"active"` until the period end. Subsequent `UserAgent/Detail` responses reflect this: `subscription.pendingdowngrade = "cancel"` and the usual `currentperiodend`.
-- A scheduled move to a lower plan is dropped: the agent's `nextplan` goes back to `null`.
+- A scheduled move to a lower plan stays: `nextplan` keeps it. When the plan ends, the agent shows that plan and its price (`tier`, `monthlypriceusd`, `nextplan: null`), which is what `RenewSubscription` then charges. Undoing the cancel with `RenewSubscription` keeps the move scheduled, and `UpgradeTier` with the agent's current plan drops it (`nextplan: null`). A plan paid by card is the exception: its cancel drops the move, and `nextplan` goes back to `null`.
 - To reverse the cancellation **before** the period ends, call `POST /UserAgent/RenewSubscription`. It clears the flag without charging the balance again, and a plan paid by card goes back to switching to the balance at the end of its period.
-- When the period actually ends, the daily cron marks the subscription `"expired"` and stops the agent (`status: 0`). At that point the user must call `POST /UserAgent/RenewSubscription` (or `CreateSubscriptionCheckout` for a fresh sub) to continue.
+- When the plan ends (at `cancelsAt`), Wiro marks the subscription `"expired"` and stops the agent (`status: 0`). At that point the user must call `POST /UserAgent/RenewSubscription` (or `CreateSubscriptionCheckout` for a fresh sub) to continue.
 
 **Common errors:**
 
@@ -3583,7 +3590,7 @@ Called while the subscription is still `"active"` with a pending cancel flag set
 
 ##### Response: renew
 
-Called after the subscription has expired (daily cron flipped it to `status: "expired"` and stopped the agent). The renewal rolls the existing expired subscription forward into a fresh 30-day `active` row instead of inserting a new one:
+Called after the subscription has expired (Wiro marked it `status: "expired"` when the plan ended and stopped the agent). The renewal rolls the existing expired subscription forward into a fresh 30-day `active` row instead of inserting a new one:
 
 ```json
 {
@@ -3592,12 +3599,13 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
   "plan": "agent",
   "tier": "starter",
   "amount": 5,
+  "chargedUsd": 5,
   "errors": []
 }
 ```
 
 - Renews the subscription in place: `status` becomes `"active"`, a new 30-day period starts now (`currentperiodend` moves to now + 30 days), and `pendingdowngrade` is cleared to `null`.
-- Debits `amount`, the plan's price, from the wallet (caller's personal wallet, or the agent's team wallet if the agent is team-scoped).
+- `amount` is the plan's price; `chargedUsd` is what the balance paid (a user or team discount lowers it), taken from the owner's wallet for a personal agent or the team's wallet for a team agent.
 - `tier` names the plan the renewal charged.
 - Starts the period's included AI usage again in full and stamps the new `creditperiod`.
 - If the agent was in `status: 0` (Stopped) or `5` (Error), it's auto-queued back to `2` (Queued). It starts again without an extra `Start` call. Statuses `1`/`2`/`3`/`4` are already in progress and settle on their own.
@@ -3607,11 +3615,13 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
 | Error | When |
 |-------|------|
 | `Subscription is already active` | Called on an active subscription with **no** pending cancel (nothing to do) |
+| `Subscription is already active. It renews from your balance when its period ends.` | Called on a plan paid by card that already switches to the balance at its period end (nothing to do) |
 | `No expired subscription found to renew` | No active sub and no expired sub: agent was never subscribed, or data is gone |
 | `Your balance is $3.10; this plan needs $30.00. Add funds to continue.` (the amounts; a team agent's starts `The team's balance is`) | The balance can't pay the renewal (code `97`, with `neededusd`). Nothing is charged |
 | `This plan now renews on the Max plan at $100.00 a month, not the $70.00 it showed. Nothing was charged. Renew again to pay the new price.` (the plan's name and prices) | The renewal costs more than the agent's `monthlypriceusd` showed. Nothing is charged, and the agent now shows the renewal's plan and price (`tier` and `monthlypriceusd`, with `nextplan` cleared). Show the new price, then call `RenewSubscription` again to pay it |
 | `A checkout for this agent is already being opened. Try again in a moment.` | Another subscription request for the same agent is in progress; nothing is charged |
-| `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | Another plan payment from the same wallet is still going through; nothing is charged |
+| `We couldn't confirm this agent's previous checkout. Please try again in a minute.` | Wiro couldn't confirm the agent's current plan or an earlier checkout before charging; nothing is charged |
+| `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | Another plan payment from the same wallet is still going through (code `104`); nothing is charged |
 | `The wallet was charged $X.XX, but the renewal did not finish. Please contact support and do not try again.` (code `110`) | The wallet paid and the renewal could not be saved. Never call `RenewSubscription` again for it: a retry charges again. The agent's plan and included AI usage stay as they were until support finishes the renewal; the payment is a `plan` row in its Transactions, and its activity log has an `AGENT_PLAN_NOT_SAVED` row for it (see [Plan payments that did not finish](/docs/agent-transactions#plan-not-saved)) |
 
 ##### Full subscription lifecycle (prepaid)
@@ -3632,8 +3642,8 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
               │ pendingdowngrade:      │
               │   "cancel"             │
               └───────────┬────────────┘
-                          │ currentperiodend reached
-                          │ (daily cron)
+                          │ cancelsAt reached
+                          │ (the plan ends)
                           ▼
               ┌────────────────────────┐
               │ status: "expired"      │
@@ -3684,7 +3694,7 @@ A new turn needs an active plan, and included usage left or a balance of at leas
   "agentstatus": 4,
   "agentusage": {
     "period": "2026-05",
-    "resetsat": 1717200000,
+    "resetsat": 1780272000,
     "includedusd": 30,
     "usedusd": 30,
     "leftusd": 0,
@@ -3738,14 +3748,17 @@ Agent-specific errors you may encounter:
 | `Already on the Pro plan.` (the plan's name) | `UpgradeTier` with the agent's current plan when no lower plan is scheduled: no-op |
 | `The Starter plan is smaller than this agent's Pro plan, so this is not an upgrade. Nothing was changed. A move to a smaller plan starts at the next renewal; to ask for it, send allowDowngrade: true.` (the plans' names) | `UpgradeTier` with a `targetTier` lower than the agent's plan and no `allowDowngrade: true`. Nothing is changed or charged |
 | `This agent is on the Starter plan now, so Pro is an upgrade. Nothing was changed. Reload the plan and ask again.` (the plans' names) | `UpgradeTier` with `allowDowngrade: true` and a `targetTier` higher than the agent's plan, such as after the plan changed in another tab or at a renewal. Nothing is changed or charged |
-| `No active plan. Use /UserAgent/CreateSubscriptionCheckout to start one on the plan you pick.` | `UpgradeTier` called without an active subscription |
+| `No active plan. Use /UserAgent/CreateSubscriptionCheckout with useprepaid: true to start one on the plan you pick.` | `UpgradeTier` called without an active subscription |
 | `This plan is set to end at the end of its period, so there is no renewal to change. Renew it first.` | `UpgradeTier` to a lower plan while the subscription is cancelled at period end. Undo the cancel with `RenewSubscription` first |
+| `The move to the Starter plan started with this billing period, and its payment moves the agent there, so it can no longer be undone. Nothing was changed. Once the agent shows the Starter plan, change the plan again.` (the plan's name) | `UpgradeTier` with the agent's current plan, on a plan paid by card whose scheduled lower plan already started with its new period. Nothing is changed |
+| `This plan is set to end when its period ends, so it cannot be changed. Renew it first: it then renews from your balance.` | `UpgradeTier` on a plan paid by card that is set to end. Undo the cancel with `RenewSubscription` first; nothing is charged |
+| `We couldn't read this plan's billing. Nothing was changed; please try again in a minute.` | `UpgradeTier` or `RenewSubscription` on a plan paid by card when its card billing can't be read; nothing is charged |
 | `Your balance is $3.10; this plan needs $100.00. Add funds to continue.` (the amounts; a team agent's starts `The team's balance is`) | `Deploy`, `CreateSubscriptionCheckout`, `UpgradeTier` or `RenewSubscription` when the balance can't pay the plan (code `97`, with `neededusd`). Nothing is created or charged |
-| `Wallet deduction failed: {error}` | `UpgradeTier`: wallet write itself failed (rare; transient backend error) |
+| `Wallet deduction failed: {error}` | `Deploy` or `CreateSubscriptionCheckout` with `useprepaid: true`, `RenewSubscription` or `UpgradeTier`: the wallet write itself failed (rare; transient backend error); nothing was charged |
 | `Another change to this agent's plan is going through. Nothing was changed; please try again in a minute.` | `UpgradeTier` (code `104`) while a skill change or another plan change of the same agent is going through |
 | `The agent's plan changed while this was asked for. Nothing was changed; please retry.` | `UpgradeTier` when the agent's plan ended or moved off the wallet after the call was made |
 | `Could not read the agent's plan. Nothing was changed; please retry.` | `UpgradeTier`: the agent's plan could not be read |
-| `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | `Deploy` or `CreateSubscriptionCheckout` with `useprepaid: true`, `RenewSubscription` or `UpgradeTier` (code `104` on `UpgradeTier`) while another plan payment from the same wallet is going through. A `Deploy` refused this way creates no agent |
+| `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | `Deploy` or `CreateSubscriptionCheckout` with `useprepaid: true`, `RenewSubscription` or `UpgradeTier` (code `104` on each of them) while another plan payment from the same wallet is going through. A `Deploy` refused this way creates no agent |
 | `The wallet was charged $X.XX, but the plan could not be saved. Please contact support and do not try again.`, the same with `the renewal did not finish` or `the plan change did not finish` (code `110`) | `Deploy` or `CreateSubscriptionCheckout` with `useprepaid: true`, `RenewSubscription` or `UpgradeTier`: the wallet paid and the change could not be saved. Never send the call again: a retry charges again. Match code `110`, not the sentence. The agent's plan and included AI usage stay as they were until support finishes the change (see [Plan payments that did not finish](/docs/agent-transactions#plan-not-saved)). A `Deploy` answered this way keeps the agent and returns `existingUserAgentGuid` |
 | `Agent plans are paid from your Wiro balance. Add funds, then choose the plan.` | `CreateSubscriptionCheckout` without `useprepaid: true`: card checkouts for agent plans are retired. The answer carries `retired: true`, and nothing is charged |
 | `Extra credit packs are retired. Your agent uses your Wiro balance after its plan's included usage. Add funds to your balance instead.` | `CreateExtraCreditCheckout`, which is retired. The answer carries `retired: true`, and nothing is charged |
