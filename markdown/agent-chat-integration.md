@@ -66,6 +66,19 @@ Deploy one agent per customer of yours with [`POST /UserAgent/Deploy`](/docs/age
 }
 ```
 
+`useprepaid: true` pays the plan from the balance of your key's workspace: Starter $5, Pro $30 or Max $100 a month, each including its own price in AI usage, and every renewal is paid from that balance too. When the balance is short, Deploy creates nothing, charges nothing and answers code `97` with `neededusd`, the amount to add: add funds (see [Adding Funds](/docs/agent-overview#adding-funds)) and send the same Deploy again.
+
+```json
+{
+  "result": false,
+  "useragents": [],
+  "errors": [{ "code": 97, "message": "Your balance is $3.10; this plan needs $30.00. Add funds to continue.", "time": 1794654000 }],
+  "neededusd": 26.9
+}
+```
+
+Code `110`, `The wallet was charged $30.00, but the plan could not be saved. Please contact support and do not try again.`, means the balance paid and the plan was not saved: never send the Deploy again, since a retry charges again (see [Paying for Plans](/docs/agent-overview#paying-for-plans) and [Deploy](/docs/agent-overview#post-useragentdeploy)).
+
 ### Allow setup cards in API chats
 
 Where setup cards can be proposed and applied is the agent's `chatsetup` setting. Wiro reads every request sent with a project API key as an API chat:
@@ -152,11 +165,40 @@ When the agent has used the AI usage its plan includes and the balance is under 
   "agenttoken": null,
   "status": null,
   "agentstatus": 4,
-  "agentusage": { "period": "2026-11", "resetsat": 1796083200, "includedusd": 30, "usedusd": 30, "leftusd": 0, "renewalusd": 30, "frombalanceusd": 12.85, "balanceusd": 0.31, "wallet": "personal", "minbalanceusd": 0.5, "paused": true, "pausedreason": "balance" }
+  "agentusage": { "period": "2026-11", "resetsat": 1796083200, "includedusd": 30, "usedusd": 30, "leftusd": 0, "renewalusd": 30, "frombalanceusd": 0, "balanceusd": 0.31, "wallet": "personal", "minbalanceusd": 0.5, "paused": true, "pausedreason": "balance" }
 }
 ```
 
-That sentence speaks to whoever pays for the agent, which is you; it leaves out the date when the plan's renewal can't be read. Detect the refusal by `agentusage`, show your users your own words, and add funds to the balance of the agent's workspace (see [Adding Funds](/docs/agent-overview#adding-funds)), or move the agent to a larger plan with [`UpgradeTier`](/docs/agent-overview#post-useragentupgradetier). The agent answers again as soon as the balance is back at $0.50 or more. Your users in Telegram, Slack and Discord read `This agent is paused for now. It runs again once its owner adds funds or its plan renews.` instead, with no amount. Setup replies that Wiro answers itself still work while the agent is paused: see [Replies the API answers itself](#replies-the-api-answers-itself).
+That sentence speaks to whoever pays for the agent, which is you; it leaves out the date when the plan's renewal can't be read. Detect the refusal by `agentusage` with `pausedreason: "balance"`, show your users your own words, and add funds to the balance of the agent's workspace (see [Adding Funds](/docs/agent-overview#adding-funds)). While its plan is live, the agent answers again as soon as the balance is back at $0.50 or more. A larger plan, with [`UpgradeTier`](/docs/agent-overview#post-useragentupgradetier), gives the agent more AI usage at once but is paid from the same balance, so add funds first: while the balance is short, UpgradeTier answers code `97` with `neededusd`. On this refusal `frombalanceusd` is always `0`: read what the balance paid this period from `usage` on [`UserAgent/Detail`](/docs/agent-overview#post-useragentdetail). Your users in Telegram, Slack and Discord read `This agent's plan usage and its owner's balance are used up.` when they write while it is paused, or `This agent is paused for now. It runs again once its owner adds funds or its plan renews.` when a reply is cut off, with no amount. Setup replies that Wiro answers itself still work while the agent is paused: see [Replies the API answers itself](#replies-the-api-answers-itself).
+
+An agent runs only with a live plan. When its plan ends, cancelled or with a renewal the balance couldn't pay, the agent stops whatever the balance holds, and adding funds doesn't start it again. Send then answers `Agent is stopped. Start it before sending messages.` with `agentstatus: 0`, and [`Start`](/docs/agent-overview#post-useragentstart) answers `Subscription required — please subscribe to this agent before starting it.` (code `0`). Renew the plan with [`RenewSubscription`](/docs/agent-overview#post-useragentrenewsubscription), or start a new one with [`CreateSubscriptionCheckout`](/docs/agent-overview#post-useragentcreatesubscriptioncheckout) and `useprepaid: true`: both are paid from the balance, and either one queues the agent to start by itself. A Send that reaches the agent before it has stopped answers code `97` with `agentusage.pausedreason: "plan"` and `<agent> has no active plan. Choose a plan to keep it running.`, and your users in Telegram, Slack and Discord read `This agent has no active plan, so it paused.`: offer a plan there, not funds.
+
+When a [spend limit](/docs/spend-limits) that covers the agent is used up, Send answers `result: false` with code `93` and `agentstatus`. The limit is the agent's own or, once its plan's included AI usage is used up, the account's or team's limit or the `agent` surface's limit:
+
+```json
+{
+  "result": false,
+  "errors": [{ "code": 93, "message": "This agent's monthly spend limit is reached ($20.35 of $20.00). It resets on December 1, 2026 at 00:00 UTC.", "time": 1794654900 }],
+  "messageguid": null,
+  "agenttoken": null,
+  "status": null,
+  "agentstatus": 4
+}
+```
+
+When a [Model Access](/docs/model-access) rule for the agent blocks the `model` you send for the turn (its own rule, the account's or team's rule, or the `agent` surface's rule), Send answers `result: false` with code `92`:
+
+```json
+{
+  "result": false,
+  "errors": [{ "code": 92, "message": "This agent can't use openai/gpt-5-6-sol. Model Access rules decide which models can run.", "time": 1794654900 }],
+  "messageguid": null,
+  "agenttoken": null,
+  "status": null
+}
+```
+
+In both cases nothing runs and nothing is charged. Show the sentence as it is, or your own words, and branch on the code.
 
 ### Follow the turn
 
@@ -215,9 +257,9 @@ A turn that fails ends with `status: "agent_error"`, and a cancelled one with `"
 | `[SECURITY_BLOCKED]` | `agent_error` | The agent's security rules blocked the message: ask the person to change it. |
 | `[SAFETY_POLICY_BLOCKED]` | `agent_error` | The model's provider declined the request: ask the person to rephrase it. |
 | `[TURN_INTERRUPTED]` | `agent_error` | A restart cut the turn short: offer to send it again. |
-| `[SPEND_LIMIT_REACHED]` | `agent_error` | The agent's spend limit is used up: show the sentence as it is. |
+| `[SPEND_LIMIT_REACHED]` | `agent_error` | A spend limit that covers the agent is used up: its own or, once its plan's included AI usage is used up, the account's or team's or the `agent` surface's. Show the sentence as it is. |
 | `[USAGE_CEILING_REACHED]` | `agent_error` | The agent reached its hourly or daily safety ceiling for AI model calls: say it runs again when that hour or day is over. |
-| `[MODEL_NOT_ALLOWED]` | `agent_error` | The agent's Model Access rule blocks the model it uses: show the sentence as it is. |
+| `[MODEL_NOT_ALLOWED]` | `agent_error` | A Model Access rule for the agent blocks the model it uses (its own, the account's or team's, or the `agent` surface's): show the sentence as it is. |
 | `[CREDITS_EXHAUSTED]` | `agent_error` | The agent has used the AI usage its plan includes and the balance is under $0.50: say it runs again once funds are added or its plan renews, and don't offer to try again before that. |
 | `[AGENT_UNAVAILABLE]` | `agent_error` | Anything else, a message that couldn't be queued included: offer to try again shortly. |
 | `[REQUEST_CANCELLED]` | `agent_cancel` | The turn was cancelled. |
@@ -1066,7 +1108,7 @@ Read the agent's `status` with [`POST /UserAgent/Detail`](/docs/agent-overview#p
 | `3` Starting | It is starting. |
 | `4` Running | Ready for messages again. |
 
-A restart takes about a minute. If the poll reads `0` (stopped), `5` (error) or `6` (setup required) instead, the agent won't start by itself: stop polling and say so. `0` and `5` start again with [`POST /UserAgent/Start`](/docs/agent-overview#post-useragentstart), and `6` needs its missing required credential first (a connector never holds an agent at `6`); see [UserAgent Statuses](/docs/agent-overview#useragent-statuses).
+A restart takes about a minute. If the poll reads `0` (stopped), `5` (error) or `6` (setup required) instead, the agent won't start by itself: stop polling and say so. `0` and `5` start again with [`POST /UserAgent/Start`](/docs/agent-overview#post-useragentstart), unless the agent's plan has ended: Start then answers `Subscription required — please subscribe to this agent before starting it.`, and renewing the plan starts the agent (see [Send a message](#send-a-message)). `6` needs its missing required credential first (a connector never holds an agent at `6`); see [UserAgent Statuses](/docs/agent-overview#useragent-statuses).
 
 ### Showing a restart
 
@@ -2122,7 +2164,7 @@ Each row also carries `user`, your key owner's account, left out here. The rows 
 - Each conversation has its own `sessionkey`, and you check that every `messageguid` a person acts on is in their session.
 - Message rows and cards name your key's owner: your UI shows your own names for the sender.
 - Messages go out with `Message/Send`; replies are followed on the WebSocket or with `Message/Detail`, and loaded with `Message/History`; rows added between turns arrive on the session's `sessiontoken`.
-- Failed turns are told apart by their bracketed code, and the refusal of an agent paused for its balance by `agentusage`.
+- Failed turns are told apart by their bracketed code. Send's refusals are told apart by `agentstatus`, by `agentusage` and its `pausedreason` (`"balance"` or `"plan"`), and by codes `93` (spend limit) and `92` (Model Access).
 - Timeline blocks are merged by `blockid` and newer `version`, sorted by `callindex`, `contentindex`, `blockid`, and drawn by `type`; unknown types and kinds are skipped.
 - Replies Wiro answers itself (`agenttoken: null`, `status: "agent_end"`) show `response` as plain text.
 - Setup cards show the right title, body and buttons for their kind and state, `add` cards together with their `connect` cards.
