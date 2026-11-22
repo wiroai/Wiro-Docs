@@ -907,7 +907,7 @@ Code examples in 9 languages: curl, Python, Node.js, PHP, C#, Go, Swift, Kotlin,
 
 ## Error Codes
 
-All API responses return HTTP 200. Check `result` field and error `code`:
+Most errors return HTTP 200, so check the `result` field and error `code` whatever the status; some also use another status, such as 401 for a failed API key or bearer token, 404 for an unknown endpoint and 403 for the Studio and Workflow Agent team check:
 - Code 0: General/validation errors (missing params, server errors)
 - Code 1: Not found (model, task)
 - Code 92: Model blocked by a Model Access rule of the workspace. The message names the rule; nothing runs or is charged, and retrying does not help until the rule changes

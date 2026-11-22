@@ -9273,7 +9273,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
     }
   ]
 }</code></pre>
-                    <p>All API responses return HTTP <code>200</code>. Use the <code>result</code> field and error <code>code</code> to determine success or failure.</p>
+                    <p>Most errors return HTTP <code>200</code>, so use the <code>result</code> field and error <code>code</code> to determine success or failure, whatever the status. Some errors also use another HTTP status, such as <code>401</code> for a failed API key or bearer token, <code>404</code> for an unknown endpoint and <code>403</code> for the Studio and Workflow Agent team check (see below).</p>
                   </section>
 
                   <section id="error-codes">

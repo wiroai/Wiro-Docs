@@ -18,7 +18,7 @@ When an API request fails, the response includes `result: false` and an `errors`
 }
 ```
 
-All API responses return HTTP `200`. Use the `result` field and error `code` to determine success or failure.
+Most errors return HTTP `200`, so use the `result` field and error `code` to determine success or failure, whatever the status. Some errors also use another HTTP status, such as `401` for a failed API key or bearer token, `404` for an unknown endpoint and `403` for the Studio and Workflow Agent team check (see below).
 
 ## Error Codes
 
