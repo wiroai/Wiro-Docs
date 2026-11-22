@@ -90,9 +90,9 @@ Accepts either `application/json` (text-only) or `multipart/form-data` (text + f
 | `sessionkey` | string | No | Session identifier for conversation continuity. Defaults to `"default"`. |
 | `callbackurl` | string | No | Webhook URL: the system will POST the final response to this URL when the agent finishes. It must be a public `http(s)` address: a host that is, or resolves to, a private, loopback or link-local address gets no webhook. |
 | `model` | string | No | Canonical model slug to run **this turn** on (e.g. `"openai/gpt-5.6-sol"`), chosen from the agent's selectable set. Validated server-side: an unknown or non-selectable slug is rejected in `errors[]` and the turn is **not** sent. So is a model that a [Model Access](/docs/model-access) rule for the agent blocks (code `92`): its own rule, the account's or team's rule, or the `agent` surface's rule. Omit to use the agent's configured chat model. |
-| `attachment` / `attachments[]` | file | No | Multipart only: one or more file attachments that the agent can process. |
+| `attachment` / `attachments[]` | file | No | Multipart only: up to 8 files the agent can process. More are refused with `Too many files (max 8)`, and the message is not sent. |
 
-> **Per-turn model selection.** `model` selects the chat model for a single turn instead of the agent's configured default. Valid values are the agent's **selectable** slugs: the `tokenRates.models[]` entries where `selectable` is `true`, returned by `UserAgent/Detail` (see [Agent Overview](/docs/agent-overview)). The current set includes `openai/gpt-5.6-sol` (the platform chat default), `openai/gpt-5.6-terra`, `openai/gpt-5.6-luna`, `openai/gpt-5.5`, `openai/gpt-5.5-pro`, `openai/gpt-5.4`, `openai/gpt-5.4-mini`, `openai/gpt-5.2`, `openai/gpt-5.1`, `openai/gpt-5`, and `openai/gpt-5-mini`. Always read the live set from that field. The server applies the chosen model to that turn only.
+> **Per-turn model selection.** `model` selects the chat model for a single turn instead of the agent's configured default. Valid values are the agent's **selectable** slugs: the slugs in `tokenRates.models` whose `selectable` is `true`, returned by `UserAgent/Detail` (see [Agent Overview](/docs/agent-overview)). The set changes over time, so read it from that field each time instead of keeping a list. The server applies the chosen model to that turn only.
 
 ### Response
 
@@ -108,7 +108,7 @@ Accepts either `application/json` (text-only) or `multipart/form-data` (text + f
 
 > **A successful Send response means the message was accepted and queued, not that it will definitely reach the agent.** After this response the system queues the message for the agent. If that queueing step itself fails (for example, a queue outage), the message's `status` is set to `agent_error` server-side **after** the HTTP response was already sent with `result: true`. Always confirm the final state via `POST /UserAgent/Message/Detail` or the WebSocket stream; don't assume the message progresses to `agent_start` just because Send returned `result: true`.
 
-> **Reserved session keys.** The platform reserves a small set of `sessionkey` prefixes for system-managed threads: `wiro:api`, `voice-prep*`, `voice-call-*`, and `cs-cron-*`. Sending a user message into one of these keys is rejected with `Reserved sessionkey` (the same guard that protects `Message/DeleteSession`). Pick any other identifier for your own threads.
+> **Reserved session keys.** The platform keeps these `sessionkey`s for its own threads: `wiro:api` and keys that start with `wiro:api:`, keys that start with `voice-prep`, `voice-call-`, `cs-cron-` or `cron:`, and any key that contains `:cron:`. Send refuses them with `Reserved sessionkey`, `Message/History` returns an empty page for them, and `Message/DeleteSession` and `Message/RenameSession` answer `Session not found`. Pick any other identifier for your own threads.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -623,7 +623,7 @@ Lists all conversation sessions for an agent. Returns each session's key, messag
 
 > **Named-but-empty sessions appear too.** A session created by [`RenameSession`](#post-useragentmessagerenamesession) before its first `Message/Send` surfaces here with `messagecount: 0`, `lastmessage: ""`, and the `name` you set, so a freshly created chat shows up in the list immediately.
 
-> **Reserved session keys.** The list leaves out the reserved session keys `wiro:api`, `voice-prep*`, `voice-call-*` and `cs-cron-*`. `Message/History` and `DeleteSession` reject them too.
+> **Reserved session keys.** The list leaves out the platform's own threads: `wiro:api` and keys that start with `voice-prep`, `voice-call-` or `cs-cron-`. Every key the platform keeps is listed under [Message/Send](#post-useragentmessagesend).
 
 > **Marker rows excluded.** `model_change` marker rows are not real turns. They're skipped when building this list, so they never surface as a session's `lastmessage`.
 
@@ -639,7 +639,7 @@ Deletes messages in the given session for the **calling user**. This action cann
 
 > **Scope of deletion:** Hard delete. The session's messages are removed permanently, not hidden. Only the caller's own messages in the session are purged. This holds in both private and collaborative team modes. Even when `teamsessionmode: "collaborative"` (e.g. Telegram group-shared sessions) means every member sees the same thread, each member's `DeleteSession` only wipes their own contributions. Compare with `Message/Delete` (per-message), which is a soft delete that hides messages instead of removing them.
 
-> **Reserved session keys.** `wiro:api`, `voice-prep*`, `voice-call-*` and `cs-cron-*` are reserved. Passing one of them as `sessionkey` returns `"Session not found"`, and `Sessions` never lists them.
+> **Reserved session keys.** Passing a key the platform keeps for its own threads (see [Message/Send](#post-useragentmessagesend)) as `sessionkey` returns `"Session not found"`.
 
 ### Response
 
@@ -657,7 +657,7 @@ Sets a human-readable display **name** on a session without touching its message
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | The agent instance GUID. |
-| `sessionkey` | string | Yes | The session to name. Reserved system keys (`wiro:api`, `voice-prep*`, `voice-call-*`, `cs-cron-*`) are rejected with `"Session not found"`, same as `DeleteSession`. |
+| `sessionkey` | string | Yes | The session to name. Keys the platform keeps for its own threads (see [Message/Send](#post-useragentmessagesend)) are rejected with `"Session not found"`, same as `DeleteSession`. |
 | `name` | string | Yes | The display name. The server strips control characters, collapses whitespace, trims, and caps the result at **40 characters**. An empty string after sanitization is rejected with `request-parameter-required`. |
 
 > **Doubles as "create a named session".** Calling `RenameSession` with a brand-new `sessionkey`, before any `Message/Send` on it, seeds a named-but-empty session that immediately appears in [`Message/Sessions`](#post-useragentmessagesessions) with `messagecount: 0` and `lastmessage: ""`. This is the canonical way to let a user open a fresh, titled chat before they type anything.

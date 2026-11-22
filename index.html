@@ -22930,14 +22930,14 @@ print(response.body);
 <td><code>attachment</code> / <code>attachments[]</code></td>
 <td>file</td>
 <td>No</td>
-<td>Multipart only: one or more file attachments that the agent can process.</td>
+<td>Multipart only: up to 8 files the agent can process. More are refused with <code>Too many files (max 8)</code>, and the message is not sent.</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
 <blockquote>
-<p><strong>Per-turn model selection.</strong> <code>model</code> selects the chat model for a single turn instead of the agent's configured default. Valid values are the agent's <strong>selectable</strong> slugs: the <code>tokenRates.models[]</code> entries where <code>selectable</code> is <code>true</code>, returned by <code>UserAgent/Detail</code> (see <a href="/docs/agent-overview">Agent Overview</a>). The current set includes <code>openai/gpt-5.6-sol</code> (the platform chat default), <code>openai/gpt-5.6-terra</code>, <code>openai/gpt-5.6-luna</code>, <code>openai/gpt-5.5</code>, <code>openai/gpt-5.5-pro</code>, <code>openai/gpt-5.4</code>, <code>openai/gpt-5.4-mini</code>, <code>openai/gpt-5.2</code>, <code>openai/gpt-5.1</code>, <code>openai/gpt-5</code>, and <code>openai/gpt-5-mini</code>. Always read the live set from that field. The server applies the chosen model to that turn only.</p>
+<p><strong>Per-turn model selection.</strong> <code>model</code> selects the chat model for a single turn instead of the agent's configured default. Valid values are the agent's <strong>selectable</strong> slugs: the slugs in <code>tokenRates.models</code> whose <code>selectable</code> is <code>true</code>, returned by <code>UserAgent/Detail</code> (see <a href="/docs/agent-overview">Agent Overview</a>). The set changes over time, so read it from that field each time instead of keeping a list. The server applies the chosen model to that turn only.</p>
 </blockquote>
 <h3 id="response">Response</h3>
 <pre><code class="language-json">{
@@ -22950,7 +22950,7 @@ print(response.body);
 </code></pre>
 <blockquote>
 <p><strong>A successful Send response means the message was accepted and queued, not that it will definitely reach the agent.</strong> After this response the system queues the message for the agent. If that queueing step itself fails (for example, a queue outage), the message's <code>status</code> is set to <code>agent_error</code> server-side <strong>after</strong> the HTTP response was already sent with <code>result: true</code>. Always confirm the final state via <code>POST /UserAgent/Message/Detail</code> or the WebSocket stream; don't assume the message progresses to <code>agent_start</code> just because Send returned <code>result: true</code>.</p>
-<p><strong>Reserved session keys.</strong> The platform reserves a small set of <code>sessionkey</code> prefixes for system-managed threads: <code>wiro:api</code>, <code>voice-prep*</code>, <code>voice-call-*</code>, and <code>cs-cron-*</code>. Sending a user message into one of these keys is rejected with <code>Reserved sessionkey</code> (the same guard that protects <code>Message/DeleteSession</code>). Pick any other identifier for your own threads.</p>
+<p><strong>Reserved session keys.</strong> The platform keeps these <code>sessionkey</code>s for its own threads: <code>wiro:api</code> and keys that start with <code>wiro:api:</code>, keys that start with <code>voice-prep</code>, <code>voice-call-</code>, <code>cs-cron-</code> or <code>cron:</code>, and any key that contains <code>:cron:</code>. Send refuses them with <code>Reserved sessionkey</code>, <code>Message/History</code> returns an empty page for them, and <code>Message/DeleteSession</code> and <code>Message/RenameSession</code> answer <code>Session not found</code>. Pick any other identifier for your own threads.</p>
 </blockquote>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -23893,7 +23893,7 @@ print(response.body);
 </div>
 <blockquote>
 <p><strong>Named-but-empty sessions appear too.</strong> A session created by <a href="#post-useragentmessagerenamesession"><code>RenameSession</code></a> before its first <code>Message/Send</code> surfaces here with <code>messagecount: 0</code>, <code>lastmessage: ""</code>, and the <code>name</code> you set, so a freshly created chat shows up in the list immediately.</p>
-<p><strong>Reserved session keys.</strong> The list leaves out the reserved session keys <code>wiro:api</code>, <code>voice-prep*</code>, <code>voice-call-*</code> and <code>cs-cron-*</code>. <code>Message/History</code> and <code>DeleteSession</code> reject them too.</p>
+<p><strong>Reserved session keys.</strong> The list leaves out the platform's own threads: <code>wiro:api</code> and keys that start with <code>voice-prep</code>, <code>voice-call-</code> or <code>cs-cron-</code>. Every key the platform keeps is listed under <a href="#post-useragentmessagesend">Message/Send</a>.</p>
 <p><strong>Marker rows excluded.</strong> <code>model_change</code> marker rows are not real turns. They're skipped when building this list, so they never surface as a session's <code>lastmessage</code>.</p>
 </blockquote>
 <h2 id="post-useragentmessagedeletesession"><strong>POST</strong> /UserAgent/Message/DeleteSession</h2>
@@ -23934,7 +23934,7 @@ print(response.body);
 </div>
 <blockquote>
 <p><strong>Scope of deletion:</strong> Hard delete. The session's messages are removed permanently, not hidden. Only the caller's own messages in the session are purged. This holds in both private and collaborative team modes. Even when <code>teamsessionmode: "collaborative"</code> (e.g. Telegram group-shared sessions) means every member sees the same thread, each member's <code>DeleteSession</code> only wipes their own contributions. Compare with <code>Message/Delete</code> (per-message), which is a soft delete that hides messages instead of removing them.</p>
-<p><strong>Reserved session keys.</strong> <code>wiro:api</code>, <code>voice-prep*</code>, <code>voice-call-*</code> and <code>cs-cron-*</code> are reserved. Passing one of them as <code>sessionkey</code> returns <code>"Session not found"</code>, and <code>Sessions</code> never lists them.</p>
+<p><strong>Reserved session keys.</strong> Passing a key the platform keeps for its own threads (see <a href="#post-useragentmessagesend">Message/Send</a>) as <code>sessionkey</code> returns <code>"Session not found"</code>.</p>
 </blockquote>
 <h3 id="response_4">Response</h3>
 <pre><code class="language-json">{
@@ -23966,7 +23966,7 @@ print(response.body);
 <td><code>sessionkey</code></td>
 <td>string</td>
 <td>Yes</td>
-<td>The session to name. Reserved system keys (<code>wiro:api</code>, <code>voice-prep*</code>, <code>voice-call-*</code>, <code>cs-cron-*</code>) are rejected with <code>"Session not found"</code>, same as <code>DeleteSession</code>.</td>
+<td>The session to name. Keys the platform keeps for its own threads (see <a href="#post-useragentmessagesend">Message/Send</a>) are rejected with <code>"Session not found"</code>, same as <code>DeleteSession</code>.</td>
 </tr>
 <tr>
 <td><code>name</code></td>
