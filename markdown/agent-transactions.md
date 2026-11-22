@@ -4,7 +4,9 @@ What an agent cost, in dollars: its AI usage, the models it ran, its plan paymen
 
 ## Overview
 
-Every charge an agent makes is a row of the wallet transactions of its workspace, the same ledger as your model runs. `POST /UserAgent/TransactionList` lists the rows of one agent, newest first, with a summary of the current month. It powers the agent's **Transactions** view in the Wiro dashboard.
+<a id="tx-overview"></a>
+
+Every charge an agent makes is a row of the wallet transactions of its workspace, the same ledger as your model runs. `POST /UserAgent/TransactionList` lists the rows of one agent, newest first, with a summary of the current month. It powers the agent's **Transactions** view in the Wiro dashboard. It reads the wallet that pays for the agent now: the team wallet for a team agent, else its owner's. After the agent moves to another workspace, the rows the earlier wallet holds are listed only in that wallet's [`Wallet/TransactionList`](/docs/organizations-api-access#billing-flow).
 
 | `kind` | What the row is |
 |--------|-----------------|
@@ -58,7 +60,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
     "includedusd": 30,
     "usage": {
       "period": "2026-11",
-      "resetsat": 1797724800,
+      "resetsat": null,
       "includedusd": 30,
       "usedusd": 12.4,
       "leftusd": 17.6,
@@ -144,14 +146,16 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `month` | `string` | The month the figures cover, `'YYYY-MM'`. |
-| `planusd` | `number` | Plan payments for the agent. |
-| `aiusageplanusd` | `number` | AI usage the plan's included usage covered. |
-| `aiusagebalanceusd` | `number` | AI usage paid from the balance. |
-| `modelrunsusd` | `number` | Models the agent ran. |
-| `fundsaddedusd` | `number` | Funds added from the agent's page. |
-| `includedusd` | `number` | The AI usage the plan includes this period. |
-| `usage` | `object` | The agent's `usage`, as on [`UserAgent/Detail`](/docs/agent-overview#usage-object). |
+| `month` | `string\|null` | The month the figures cover, `'YYYY-MM'`. |
+| `planusd` | `number\|null` | Plan payments for the agent. |
+| `aiusageplanusd` | `number\|null` | AI usage the plan's included usage covered. |
+| `aiusagebalanceusd` | `number\|null` | AI usage paid from the balance. |
+| `modelrunsusd` | `number\|null` | Models the agent ran. |
+| `fundsaddedusd` | `number\|null` | Funds added for the agent: from its page, and what was left of a pack moved to the balance, less any refund taken back from it. |
+| `includedusd` | `number\|null` | The AI usage the plan includes this period. |
+| `usage` | `object\|null` | The agent's `usage`, as on [`UserAgent/Detail`](/docs/agent-overview#usage-object), except `resetsat`, which is `null` here: read it from `UserAgent/Detail`. |
+
+A field is `null` when its part of the summary could not be read: ask again, and never read it as zero.
 
 The summary also still carries the credit counts it had before dollar billing (`monthlycredits`, `renewalcredits`, `extracredits`, `usedcredits`, `remainingcredits`, `extrapacks`, `byModel` and the period fields), and the answer still carries the old `transactions` list and its `total`. They are deprecated and will be removed: read `rows`, `rowstotal` and the fields above.
 
@@ -164,17 +168,19 @@ The summary also still carries the credit counts it had before dollar billing (`
 | `kind` | `string` | `"ai-usage"`, `"model-run"`, `"plan"`, `"funds"` or `"other"` (see the [Overview](#tx-overview)). |
 | `title` | `string` | A short line that says what the row is, such as `AI Usage`, `Model Run` or the plan payment's line. Show it as it is: its wording can change. |
 | `description` | `string\|null` | The ledger's own line for the row, when it has one, such as `AI usage: Sales Desk (openai/gpt-5.6-terra, 54,969 tokens)`. |
-| `model` | `string\|null` | `ai-usage` rows: the model that served the calls. `model-run` rows: the model that ran, by its `owner/slug`. `null` otherwise. |
+| `model` | `string\|null` | `ai-usage` rows: the model of the costliest call the row covers; `tokens` and `costs` add up all its calls, whatever their model. `model-run` rows: the model that ran, by its `owner/slug`. `null` otherwise. |
 | `tokens` | `object\|null` | `ai-usage` rows: `{ input, cacheRead, cacheWrite, output }` token counts, where `input` is uncached input. `null` otherwise. |
 | `costs` | `object\|null` | `ai-usage` rows: what each kind of token cost, in USD, exact to 7 decimals: `{ input, cacheRead, cacheWrite, output }`. `null` on other rows and on legacy rows. |
-| `amountusd` | `number` | The row's amount in USD, in whole cents. On an `ai-usage` row the exact `costs` can leave a fraction of a cent: it carries to the agent's next row, so `amountusd` can differ from their sum by less than a cent. |
+| `amountusd` | `number` | The row's amount in USD, in whole cents. When Wiro measures the agent's model calls itself, the exact `costs` can leave a fraction of a cent that carries to the agent's next row, so `amountusd` can differ from their sum by less than a cent. Otherwise each turn is billed on its own at its exact cost rounded up to the next cent, so a turn's `amountusd` can be less than a cent above the sum of its `costs`. |
 | `paidfrom` | `string\|null` | How the row was paid: `"plan"` (the plan's included usage), `"balance"` (the Wiro balance), `"coupon"` (coupon credit in the balance) or `"card"` (a card payment, such as a plan renewal from before plans moved to the balance, or funds added by card). |
-| `direction` | `string` | `"out"` for spending, `"in"` for funds added and other credits. |
+| `direction` | `string` | `"out"` for spending, `"in"` for funds added and other credits (for legacy `plan` rows and refunds, see below). |
 | `surface` | `string\|null` | The surface the row was charged on, such as `"agent"`. `null` on older rows. |
 | `taskid` | `string\|null` | `model-run` rows: the task of the run (see [Tasks](/docs/tasks)). `null` otherwise. |
 | `legacy` | `boolean` | `true` on rows from before dollar billing, converted to dollars. |
 
-> **Pagination.** `rowstotal` is the number of rows the `kind` lists, so you can render a precise paginator. Default page size is 50, max is 500. Use `start` to skip rows.
+A legacy `plan` row keeps the old record's sign and line: its `direction` is `"in"`, its `amountusd` is the AI usage the payment granted, not what was paid, and its `title` is the old record's line, such as `Subscription renewal`, which may not name the plan. A refund taken back from what was left of a pack moved to the balance is a `funds` row titled `Funds Added` with `direction: "in"`, though it took that amount out of the balance; its `description` starts with `Refund:`.
+
+> **Pagination.** With `kind: "all"`, `rowstotal` counts every row, so you can render a precise paginator. With another `kind`, rows from before dollar billing are searched only among the newest `start` + `limit` older records, so `rowstotal` and the pages can leave older ones out: for a full history, page with `kind: "all"` and filter by `kind` yourself. Default page size is 50, max is 500. Use `start` to skip rows.
 
 ## Reading the List: Patterns
 
@@ -217,7 +223,7 @@ console.log(totals);
 
 ### Reconcile a plan change
 
-Every plan payment is a `plan` row: the deploy, a move to a higher plan (the prorated difference) and each renewal, with the plan's name in its `title`. A move to a lower plan charges nothing when it is asked for: the renewal that starts it is a `plan` row at the lower price. Use these rows to render a plan history in your UI.
+Every plan payment is a `plan` row: the deploy, a move to a higher plan (the prorated difference) and each renewal, with the plan's name in its `title` (for legacy rows, see the note under Row fields). A move to a lower plan charges nothing when it is asked for: the renewal that starts it is a `plan` row at the lower price. Use these rows to render a plan history in your UI. For an agent from before dollar billing, page with `kind: "all"` and keep the `plan` rows, as the Pagination note says.
 
 ### Rows that cover several model calls
 
@@ -249,11 +255,12 @@ The payment is a `plan` row like any other, with what the balance paid as `amoun
 
 | Error | When |
 |-------|------|
-| `useragentguid is required` | `TransactionList` without `useragentguid` |
-| `useragent-access-denied` | Caller is neither the owner nor on the agent's team |
-| `useragent-team-admin-required` | Caller is a member of the agent's team but not a team admin (code `97`) |
-| `Invalid credentials` | API key is missing or doesn't resolve to a valid Wiro user |
-| `transactions-list-failed` | `TransactionList` server-side error (DB): surfaced loudly so it's distinguishable from an empty list |
+| `Request parameter [useragentguid] required` (code `0`) | `TransactionList` without `useragentguid` |
+| `User agent not found` (code `95`) | No agent has this guid, or the agent was deleted |
+| `You don't have access to this user agent` (code `96`) | Caller is neither the owner nor on the agent's team |
+| `Only a team admin can perform this action on a team-owned agent.` (code `97`) | Caller is a member of the agent's team but not a team admin |
+| HTTP `401` (see [Authentication Errors](/docs/error-reference)) | API key is missing or invalid |
+| Any other message (code `0`) | A server-side read failed. Retry: a failed read is never answered as an empty list |
 
 ## Code Examples
 
@@ -351,6 +358,6 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
 
 ## What's Next
 
-- [Agent Logs](/docs/agent-logs): Activity feed (tool calls, cron runs, message exchanges) for the same useragent
+- [Agent Logs](/docs/agent-logs): Activity feed (tool calls, Scheduled Task runs, message exchanges) for the same agent
 - [Agent Overview](/docs/agent-overview): Full agent endpoint catalog, including plans, AI usage and the balance
 - [Agent Builder](/docs/agent-builder): Build a custom agent and watch its usage come in as it runs
