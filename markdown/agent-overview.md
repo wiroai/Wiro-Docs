@@ -178,7 +178,7 @@ Before agents were billed in dollars, these fields counted credits. They still c
 | `monthlycredits`, `renewalcredits`, `usedcredits`, `remainingcredits` | Agent rows: `Deploy`, `MyAgents`, `Detail`, `Update`, `Cover`, `PinnedAgents` | [`usage`](#usage-object): `includedusd`, `renewalusd`, `usedusd`, `leftusd` |
 | `extracredits`, `extracreditsexpiry` | Agent rows | Nothing: an agent has no balance of its own |
 | `credits` in `tiers`, `monthlyCredits` in `plans` | Catalog, agent rows, `PricingPreview` | `includedUsageUsd` in `plans` |
-| `extracreditpacks` | `Agent/Detail`, `agent` on agent rows | Nothing: it is always `[]` |
+| `extracreditpacks` | `Agent/List` rows, `Agent/Detail`, `agent` on agent rows | Nothing: it is always `[]` |
 | Credit counts in plan answers, such as `totalMonthlyCredits`, `creditsNow`, `creditsThisPeriod`, `creditsFromRenewal`, `newMonthlyCredits` and `monthlycredits` | `PricingPreview`, `SkillsApply`, `UpgradeTier`, `CreateSubscriptionCheckout`, `RenewSubscription` | The answer's USD fields, and `usage` on `Detail` once the change is made |
 | `remainingcredits` | `agent_usage_report` frames, `token_usage` log events | `usage` on `Detail` |
 | `agentbalance` | The `Message/Send` refusal for AI usage | `agentusage` |
@@ -478,7 +478,7 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
 |-----------|------|----------|-------------|
 | `guid` | string | No* | Agent guid. |
 | `slug` | string | No* | Agent slug (e.g. `"instagram-manager"`). |
-| `type` | string | No | Pass `"full"` to also include `customskills` (the template's strategies a deployer can edit) and `scheduledskills` (every scheduled task) in the response. Each row: `{ key, value, description, interval, enabled, requires_credentials, requires_connectors, _editable }`. `requires_connectors` lists the Connectors a scheduled task needs, by catalog slug (one connected runs it), and `requires_credentials` the channels and settings it needs. Without `type: "full"`, the response carries the catalog header + `tiers` + `plans` + `tokenRates` + `credentials` + `skills` + `skillsmeta` + `suggestedconnectors` + `communicationChannels` only. |
+| `type` | string | No | Pass `"full"` to also include `customskills` (the template's strategies a deployer can edit) and `scheduledskills` (every scheduled task) in the response. Each row: `{ key, value, description, interval, enabled, requires_credentials, requires_connectors, _editable }`. `requires_connectors` lists the Connectors a scheduled task needs, by catalog slug (one connected runs it), and `requires_credentials` the channels and settings it needs. Without `type: "full"`, the response carries the catalog header + `tiers` + `plans` + `tokenRates` + `credentials` + `skills` + `skillsmeta` + `suggestedconnectors` + `communicationChannels` only (plus the deprecated `extracreditpacks: []`). |
 
 > **Note:** You must provide either `guid` or `slug`. If both are provided, `slug` takes priority. Pass `type: "full"` when you need to preview custom skill keys and scheduled task cron expressions before deploying; omit it for a lightweight catalog detail call.
 
@@ -596,9 +596,9 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
 
 | Flag | Type | Meaning |
 |------|------|---------|
-| `_connected` | boolean | **Connection readiness indicator** for a credential whose setup writes a connection time. Plain value credentials, such as the channels, can remain `false`; use `setuprequired` to determine overall setup readiness. A connector's state is its `status` on [`ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist). |
+| `_connected` | boolean | On a channel (Telegram, Slack, Discord), `true` once every field in its `required_fields` is filled. `false` on other credentials, where `_filled` and `_required_missing` tell the state; use `setuprequired` for overall setup readiness. A connector's state is its `status` on [`ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist). |
 | `optional` | boolean | `true` when the template marks this credential as not required for the agent to run. Agents can start even if `optional: true` credentials are empty. A credential nothing on the agent asks for reads `true`, with `extra: false`. |
-| `extra` | boolean | `true` when the template groups the credential under "extra integrations" in the UI (disabled by default until the user opts into the skill). |
+| `extra` | boolean | `true` when the agent template marks this credential as an optional extra; the panel lists it after the required ones. |
 | `_editable` | object | Map of `fieldname → true\|false` over the registry schema: `false` for a field the caller can't write (platform-managed or computed). |
 | `_schema` | object | Inlined registry descriptor: `{ title, icon, brand_color, brand_text_color, brand_logo_filter, docs_url, credential_mode, channel, fields[] }`, where `channel` describes a communication channel and is `null` or absent on any other credential. Lets a UI render the form without a separate `Credentials/Detail` round-trip. Other keys are for Wiro's own panel: ignore them. |
 
@@ -1370,15 +1370,13 @@ Every provider entry under `credentials.<key>` carries:
 
 | Sub-field | Type | Description |
 |-----------|------|-------------|
-| `_connected` | `boolean` | Connection-readiness flag for a credential whose setup writes a connection time. Plain value credentials, such as the channels, can remain `false`; for those use `_required_missing` or inspect the field values directly. A connector's state is its `status` on [`ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist). |
+| `_connected` | `boolean` | On a channel (Telegram, Slack, Discord), `true` once every field in its `required_fields` is filled. `false` on other credentials, where `_filled` and `_required_missing` tell the state. A connector's state is its `status` on [`ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist). |
 | `optional` | `boolean` | `true` when the agent template marks this credential as optional (the agent can run without it). `false` for required credentials. A credential nothing on the agent asks for reads `true`, with `extra: false`. |
-| `extra` | `boolean` | `true` when this credential surfaces in the "alternative" / secondary group on the panel (rare; most credentials are primary). |
+| `extra` | `boolean` | `true` when the agent template marks this credential as an optional extra; the panel lists it after the required ones. |
 | `_editable` | `object` | Per-field edit map: `{ fieldname: true\|false }`. `false` means the field is read-only (platform-managed or computed). The frontend uses this to disable inputs. |
 | `_schema` | `object` | Inline registry descriptor: `title`, `icon`, `brand_color`, `docs_url`, `credential_mode`, `channel` (on the external chat channels) and `fields[]`. Other keys are for Wiro's own panel: ignore them. |
 | `_required_missing` | `boolean` | `true` when this credential is required (`optional: false`) and a required field you fill in is still empty. Drives the "needs attention" bullet on each credential card and the aggregate count badge in the agent's settings. Always `false` on an optional credential. A list field counts as empty while its rows hold nothing but a choice or a switch, such as a default platform on an otherwise blank row. A value the agent template holds counts as filled, even on a secret field that reads empty here. |
 | `_filled` | `boolean` | `true` when the credential holds what the agent needs: at least one field holds a value and no required field you fill in is empty. A value the agent template holds counts, even on a secret field that reads empty here. For `setuprequired`, a credential counts only the values saved on this agent; see [Setup Required](/docs/agent-credentials#setup-required-state). |
-| `connectedat` | `string\|null` | Credentials whose setup writes one: ISO timestamp of the last successful connection. |
-| `tokenexpiresat` | `string\|null` | ISO timestamp when the current token expires, or an empty value when the provider reports no fixed expiry. |
 | `<fieldname>` | `string\|number\|boolean\|array` | The field value as you saved it, returned to the agent's owner and team admins. A saved secret (a `password` field) reads `"••••••••"` instead, for every caller, and one with nothing saved reads `""`. Field types match `_schema.fields[].type`. Never returned: Wiro-managed fields, and a value the agent template holds on a field Wiro stores encrypted: such a field reads empty until you save your own. |
 
 ##### Usage object
@@ -3408,7 +3406,7 @@ A refused start answers `result: false` with one entry in `errors`, and no ticke
 
 ### Retired: Extra Credit Packs
 
-Extra credit packs are retired. An agent has no balance of its own: past its plan's included AI usage it uses the Wiro balance of its workspace, so funds go to that balance (see [Adding Funds](#adding-funds)). `extracreditpacks` on `Agent/Detail` and under `agent` on agent rows is always `[]`.
+Extra credit packs are retired. An agent has no balance of its own: past its plan's included AI usage it uses the Wiro balance of its workspace, so funds go to that balance (see [Adding Funds](#adding-funds)). `extracreditpacks` on `Agent/List` rows, `Agent/Detail` and under `agent` on agent rows is always `[]`.
 
 #### **POST** /UserAgent/CreateExtraCreditCheckout
 

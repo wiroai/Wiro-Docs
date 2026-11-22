@@ -15720,7 +15720,7 @@ import type {
 </tr>
 <tr>
 <td><code>extracreditpacks</code></td>
-<td><code>Agent/Detail</code>, <code>agent</code> on agent rows</td>
+<td><code>Agent/List</code> rows, <code>Agent/Detail</code>, <code>agent</code> on agent rows</td>
 <td>Nothing: it is always <code>[]</code></td>
 </tr>
 <tr>
@@ -16302,7 +16302,7 @@ import type {
 <td><code>type</code></td>
 <td>string</td>
 <td>No</td>
-<td>Pass <code>"full"</code> to also include <code>customskills</code> (the template's strategies a deployer can edit) and <code>scheduledskills</code> (every scheduled task) in the response. Each row: <code>{ key, value, description, interval, enabled, requires_credentials, requires_connectors, _editable }</code>. <code>requires_connectors</code> lists the Connectors a scheduled task needs, by catalog slug (one connected runs it), and <code>requires_credentials</code> the channels and settings it needs. Without <code>type: "full"</code>, the response carries the catalog header + <code>tiers</code> + <code>plans</code> + <code>tokenRates</code> + <code>credentials</code> + <code>skills</code> + <code>skillsmeta</code> + <code>suggestedconnectors</code> + <code>communicationChannels</code> only.</td>
+<td>Pass <code>"full"</code> to also include <code>customskills</code> (the template's strategies a deployer can edit) and <code>scheduledskills</code> (every scheduled task) in the response. Each row: <code>{ key, value, description, interval, enabled, requires_credentials, requires_connectors, _editable }</code>. <code>requires_connectors</code> lists the Connectors a scheduled task needs, by catalog slug (one connected runs it), and <code>requires_credentials</code> the channels and settings it needs. Without <code>type: "full"</code>, the response carries the catalog header + <code>tiers</code> + <code>plans</code> + <code>tokenRates</code> + <code>credentials</code> + <code>skills</code> + <code>skillsmeta</code> + <code>suggestedconnectors</code> + <code>communicationChannels</code> only (plus the deprecated <code>extracreditpacks: []</code>).</td>
 </tr>
 </tbody>
 </table>
@@ -16433,7 +16433,7 @@ import type {
 <tr>
 <td><code>_connected</code></td>
 <td>boolean</td>
-<td><strong>Connection readiness indicator</strong> for a credential whose setup writes a connection time. Plain value credentials, such as the channels, can remain <code>false</code>; use <code>setuprequired</code> to determine overall setup readiness. A connector's state is its <code>status</code> on <a href="/docs/agent-connectors#post-useragentconnectorlist"><code>ConnectorList</code></a>.</td>
+<td>On a channel (Telegram, Slack, Discord), <code>true</code> once every field in its <code>required_fields</code> is filled. <code>false</code> on other credentials, where <code>_filled</code> and <code>_required_missing</code> tell the state; use <code>setuprequired</code> for overall setup readiness. A connector's state is its <code>status</code> on <a href="/docs/agent-connectors#post-useragentconnectorlist"><code>ConnectorList</code></a>.</td>
 </tr>
 <tr>
 <td><code>optional</code></td>
@@ -16443,7 +16443,7 @@ import type {
 <tr>
 <td><code>extra</code></td>
 <td>boolean</td>
-<td><code>true</code> when the template groups the credential under "extra integrations" in the UI (disabled by default until the user opts into the skill).</td>
+<td><code>true</code> when the agent template marks this credential as an optional extra; the panel lists it after the required ones.</td>
 </tr>
 <tr>
 <td><code>_editable</code></td>
@@ -17672,7 +17672,7 @@ for the channel contract.</p>
 <tr>
 <td><code>_connected</code></td>
 <td><code>boolean</code></td>
-<td>Connection-readiness flag for a credential whose setup writes a connection time. Plain value credentials, such as the channels, can remain <code>false</code>; for those use <code>_required_missing</code> or inspect the field values directly. A connector's state is its <code>status</code> on <a href="/docs/agent-connectors#post-useragentconnectorlist"><code>ConnectorList</code></a>.</td>
+<td>On a channel (Telegram, Slack, Discord), <code>true</code> once every field in its <code>required_fields</code> is filled. <code>false</code> on other credentials, where <code>_filled</code> and <code>_required_missing</code> tell the state. A connector's state is its <code>status</code> on <a href="/docs/agent-connectors#post-useragentconnectorlist"><code>ConnectorList</code></a>.</td>
 </tr>
 <tr>
 <td><code>optional</code></td>
@@ -17682,7 +17682,7 @@ for the channel contract.</p>
 <tr>
 <td><code>extra</code></td>
 <td><code>boolean</code></td>
-<td><code>true</code> when this credential surfaces in the "alternative" / secondary group on the panel (rare; most credentials are primary).</td>
+<td><code>true</code> when the agent template marks this credential as an optional extra; the panel lists it after the required ones.</td>
 </tr>
 <tr>
 <td><code>_editable</code></td>
@@ -17703,16 +17703,6 @@ for the channel contract.</p>
 <td><code>_filled</code></td>
 <td><code>boolean</code></td>
 <td><code>true</code> when the credential holds what the agent needs: at least one field holds a value and no required field you fill in is empty. A value the agent template holds counts, even on a secret field that reads empty here. For <code>setuprequired</code>, a credential counts only the values saved on this agent; see <a href="/docs/agent-credentials#setup-required-state">Setup Required</a>.</td>
-</tr>
-<tr>
-<td><code>connectedat</code></td>
-<td><code>string|null</code></td>
-<td>Credentials whose setup writes one: ISO timestamp of the last successful connection.</td>
-</tr>
-<tr>
-<td><code>tokenexpiresat</code></td>
-<td><code>string|null</code></td>
-<td>ISO timestamp when the current token expires, or an empty value when the provider reports no fixed expiry.</td>
 </tr>
 <tr>
 <td><code>&lt;fieldname&gt;</code></td>
@@ -21678,7 +21668,7 @@ channel-enable endpoint or persisted switch.</p>
 </div>
 </div>
 <h3 id="retired-extra-credit-packs">Retired: Extra Credit Packs</h3>
-<p>Extra credit packs are retired. An agent has no balance of its own: past its plan's included AI usage it uses the Wiro balance of its workspace, so funds go to that balance (see <a href="#adding-funds">Adding Funds</a>). <code>extracreditpacks</code> on <code>Agent/Detail</code> and under <code>agent</code> on agent rows is always <code>[]</code>.</p>
+<p>Extra credit packs are retired. An agent has no balance of its own: past its plan's included AI usage it uses the Wiro balance of its workspace, so funds go to that balance (see <a href="#adding-funds">Adding Funds</a>). <code>extracreditpacks</code> on <code>Agent/List</code> rows, <code>Agent/Detail</code> and under <code>agent</code> on agent rows is always <code>[]</code>.</p>
 <h4 id="post-useragentcreateextracreditcheckout"><strong>POST</strong> /UserAgent/CreateExtraCreditCheckout</h4>
 <p>Retired. The call charges nothing, changes nothing and answers:</p>
 <pre><code class="language-json">{
