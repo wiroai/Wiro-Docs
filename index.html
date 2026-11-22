@@ -28820,12 +28820,12 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </tr>
 <tr>
 <td><code>pending</code></td>
-<td>A sign-in was started and has not come back yet, or a connection that <a href="#coming-from-credential-connectors">moved over</a> misses a required value.</td>
+<td>A sign-in was started and has not come back yet, or the connection misses a required value.</td>
 <td>Waiting for the sign-in, with a way to start it again; or the form, to send the missing value with ConnectorConnect.</td>
 </tr>
 <tr>
 <td><code>reauth</code></td>
-<td>The sign-in expired or was revoked at the vendor: refreshing it failed (<code>lasterror</code> is a code), or the vendor's own MCP server refused it with HTTP 401 or 403 as Wiro listed the connection's accounts (<code>lasterror: "unauthorized"</code>; <code>"no_access_token"</code> when the connection held no token to send). Or the connector's way in changed (<code>lasterror: "auth_changed"</code>). Until the agent's next restart, the connector's tools answer that it must be connected again; after it, the agent no longer has them.</td>
+<td>The sign-in expired or was revoked at the vendor: refreshing it failed (<code>lasterror</code> is a code), or the vendor's own MCP server refused it with HTTP 401 or 403 as Wiro listed the connection's accounts (<code>lasterror: "unauthorized"</code>; <code>"no_access_token"</code> when the connection held no token to send). Or the connection holds a way in the connector no longer takes (<code>lasterror: "auth_changed"</code>): a Gmail app password, or a sign-in with Wiro's own app on a connector whose <code>wiroapp</code> is <code>false</code>; sign in again with an OAuth app of your own. Until the agent's next restart, the connector's tools answer that it must be connected again; after it, the agent no longer has them.</td>
 <td>Reconnect: start a new sign-in with ConnectorConnect.</td>
 </tr>
 <tr>
@@ -29143,7 +29143,6 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 <p>Once the agent restarts, its TikTok Ads tools work with the saved advertisers only: a call that names any other advertiser is refused before it leaves the agent.</p>
 <ul>
 <li>When TikTok's server no longer accepts the connection's sign-in (HTTP 401 or 403), <code>ConnectorAccounts</code> and <code>ConnectorSetAccounts</code> answer <code>The sign-in for this connector expired or was revoked, so it has to be connected again. Ask the agent's operator to reconnect it.</code> Start a new sign-in with <a href="#connect-with-a-sign-in">ConnectorConnect</a>, then list the advertisers again.</li>
-<li>A TikTok Ads connection that <a href="#coming-from-credential-connectors">moved over</a> keeps its advertiser in <code>accounts.advertisers</code>.</li>
 </ul>
 <h2 id="disconnecting">Disconnecting</h2>
 <h3 id="post-useragentconnectordisconnect"><strong>POST</strong> /UserAgent/ConnectorDisconnect</h3>
@@ -29581,84 +29580,54 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </table>
 </div>
 </div>
-<p>The account picker refusals are under <a href="#post-useragentconnectorsetaccounts">ConnectorSetAccounts</a>, the callback codes under <a href="#the-callback-and-your-redirect-url">The callback and your redirect URL</a>.</p>
-<h2 id="coming-from-credential-connectors">Coming From Credential Connectors</h2>
-<p>Connectors used to be skills that read credentials. If your code still uses those calls or names, this is where each one went. Each connector's <code>slug</code> is the credential key it had before (<code>serper</code>, <code>shopify</code>, <code>google-ads</code>, <code>facebook-pages</code>, ...).</p>
+<p>The account picker refusals are under <a href="#post-useragentconnectorsetaccounts">ConnectorSetAccounts</a>, the callback codes under <a href="#the-callback-and-your-redirect-url">The callback and your redirect URL</a>, and what Deploy, <code>SkillsApply</code> and <code>CredentialUpsert</code> answer for a connector under <a href="#connectors-skills-and-credentials">Connectors, Skills and Credentials</a>.</p>
+<h2 id="connectors-skills-and-credentials">Connectors, Skills and Credentials</h2>
+<p>A connector is on while it is connected: it is never a Skill to turn on or a credential to save. The calls that take Skills or credentials refuse a connector before anything is saved, created or charged:</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
 <thead>
 <tr>
-<th>Before</th>
-<th>Now</th>
+<th>Call</th>
+<th>Refused</th>
+<th>Answer</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>A connector's skill (<code>int-&lt;name&gt;</code>) turned on with <code>SkillsApply</code> or Deploy's <code>skills</code></td>
-<td>Nothing to turn on: a connected connector is on. <code>skills</code> and <code>SkillsApply</code> take Skills (<code>util-*</code>) only.</td>
+<td><code>POST /UserAgent/Deploy</code></td>
+<td>A connector's slug as a key of <code>credentials</code></td>
+<td><code>Unknown credential: &lt;key&gt;. Connect a connector after the deploy with UserAgent/ConnectorConnect.</code></td>
 </tr>
 <tr>
-<td><code>int-twilio-channel</code>, the Twilio Voice channel</td>
-<td><code>util-twilio-channel</code>, a Skill: turn it on with <code>SkillsApply</code> or Deploy's <code>skills</code>. See <a href="/docs/integration-twiliovoice-skills">Twilio Voice Channel</a>.</td>
+<td><code>POST /UserAgent/Deploy</code></td>
+<td>A <code>skills</code> name that isn't a Skill</td>
+<td><code>Unknown skill: &lt;name&gt;.</code>, or for a name that starts with <code>int-</code>, <code>Unknown skill: &lt;name&gt;. Connectors are connected with UserAgent/ConnectorConnect, not turned on as skills.</code></td>
 </tr>
 <tr>
-<td><code>int-googleplay-events</code>, Google Play promotional content</td>
-<td><code>util-googleplay-events</code>, a Skill that prepares the content for you to publish in Play Console. It works with the <code>google-play</code> connector: its <code>docs_url</code> is that connector's page, <a href="https://wiro.ai/connectors/google-play">https://wiro.ai/connectors/google-play</a>.</td>
+<td><code>POST /UserAgent/SkillsApply</code></td>
+<td>A <code>skills</code> name that isn't a Skill</td>
+<td><code>Unknown skill: &lt;name&gt;</code></td>
 </tr>
 <tr>
-<td><code>int-wiro-aimodels</code>, Wiro AI Models</td>
-<td>The <code>wiro</code> connector: see <a href="#the-wiro-connector">The Wiro connector</a>. An agent that had it on and had a Wiro project was connected to it.</td>
+<td><code>POST /UserAgent/CredentialUpsert</code></td>
+<td>A row whose <code>credentialkey</code> is a connector's slug: the whole request, its other rows included</td>
+<td><code>Unknown credential: &lt;key&gt;. Connectors are connected with UserAgent/ConnectorConnect.</code></td>
 </tr>
 <tr>
-<td><code>POST /Credentials/List</code>, <code>POST /Credentials/Detail</code> for a connector</td>
-<td><a href="#post-agentconnectorlist"><code>POST /AgentConnector/List</code></a>, <a href="#post-agentconnectordetail"><code>POST /AgentConnector/Detail</code></a></td>
-</tr>
-<tr>
-<td><code>POST /UserAgent/CredentialUpsert</code> with a connector's <code>credentialkey</code></td>
-<td><a href="#connect-with-fields"><code>POST /UserAgent/ConnectorConnect</code></a> with <code>values</code></td>
-</tr>
-<tr>
-<td><code>POST /UserAgentOAuth/OAuthConnect</code></td>
-<td><a href="#connect-with-a-sign-in"><code>POST /UserAgent/ConnectorConnect</code></a></td>
-</tr>
-<tr>
-<td><code>POST /UserAgentOAuth/OAuthStatus</code></td>
-<td><a href="#post-useragentconnectorlist"><code>POST /UserAgent/ConnectorList</code></a></td>
-</tr>
-<tr>
-<td><code>POST /UserAgentOAuth/DiscoverPickerItems</code></td>
-<td><a href="#post-useragentconnectoraccounts"><code>POST /UserAgent/ConnectorAccounts</code></a></td>
-</tr>
-<tr>
-<td><code>POST /UserAgentOAuth/SetPickerAccounts</code></td>
-<td><a href="#post-useragentconnectorsetaccounts"><code>POST /UserAgent/ConnectorSetAccounts</code></a></td>
-</tr>
-<tr>
-<td><code>POST /UserAgentOAuth/OAuthDisconnect</code></td>
-<td><a href="#post-useragentconnectordisconnect"><code>POST /UserAgent/ConnectorDisconnect</code></a></td>
-</tr>
-<tr>
-<td>A redirect URI per vendor (<code>/UserAgentOAuth/&lt;Vendor&gt;Callback</code>)</td>
-<td>One for every vendor: <code>https://api.wiro.ai/v1/AgentConnector/OAuthCallback</code>. Add it to each of your OAuth apps.</td>
-</tr>
-<tr>
-<td><code>&lt;vendor&gt;_connected=true</code> and <code>&lt;vendor&gt;_error=&lt;code&gt;</code> on your redirect URL</td>
-<td><code>connector_connected=true</code> and <code>connector_error=&lt;code&gt;</code></td>
+<td><code>POST /Credentials/Detail</code></td>
+<td>A connector's slug as <code>key</code></td>
+<td><code>Credential not found: &lt;key&gt;</code> (code <code>404</code>): read it with <a href="#post-agentconnectordetail"><code>AgentConnector/Detail</code></a>.</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
-<p><strong>Connections you already had.</strong> Each agent's connector credentials moved over as connections, so a connector that was set up stays connected:</p>
 <ul>
-<li>Values kept their field names, a sign-in kept its tokens and the app it signed in with, and the accounts its pickers had chosen are now in <code>accounts</code>.</li>
-<li>A connection that misses a required value reads <code>pending</code>: send the value with <a href="#post-useragentconnectorconnect">ConnectorConnect</a>.</li>
-<li>Gmail moved from an app password to a Google sign-in with an OAuth app of your own, so its connections read <code>reauth</code> with <code>lasterror: "auth_changed"</code> and give the agent no tools: create the app, as its field help says, and <a href="#connect-with-a-sign-in">sign in</a> again.</li>
-<li>A connection that signed in with Wiro's own app signs in again with an app of your own once it reads <code>reauth</code>. Only HubSpot, Mailchimp and X still sign in with Wiro's app, and only from Wiro's own panel.</li>
-<li>Every OAuth app of your own must list the new redirect URI, <code>https://api.wiro.ai/v1/AgentConnector/OAuthCallback</code>. Tokens it issued before keep refreshing without it, but a new sign-in needs it.</li>
+<li>Deploy's <code>skills</code> and <code>SkillsApply</code> take Skills (<code>util-*</code>) only. The Twilio Voice phone line is the Twilio Voice Channel (<code>util-twilio-channel</code>) Skill, with its account in the <code>twilio-voice</code> credential: see <a href="/docs/integration-twiliovoice-skills">Twilio Voice Channel</a>.</li>
+<li>Channels (Telegram, Slack, Discord, Twilio Voice) are not connectors: they keep their credentials. See <a href="/docs/agent-credentials">Agent Credentials</a>.</li>
+<li>Every OAuth app of your own lists one redirect URI, the same for every vendor: <code>https://api.wiro.ai/v1/AgentConnector/OAuthCallback</code>.</li>
 </ul>
-<p>Channels (Telegram, Slack, Discord, Twilio Voice) are not connectors: they keep their credentials, see <a href="/docs/agent-credentials">Agent Credentials</a>.</p>
 <h2 id="code-examples">Code Examples</h2>
 <p>The same flow in each language: list the catalog, connect Serper with its key, and read the agent's connections.</p>
 <h3 id="curl">curl</h3>
