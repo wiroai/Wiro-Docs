@@ -10318,7 +10318,7 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
 
                   <section id="mcp-tools">
                     <h2>Available Tools</h2>
-                    <p>The MCP server has 54 tools. Most of them belong to one of four groups, Models, Workflows, Agents and Controls, and three tools for your account, the playbooks and the docs are always available. Your AI assistant picks the right tool for each request, and for longer jobs it reads a playbook first.</p>
+                    <p>The MCP server has 56 tools. Most of them belong to one of four groups, Models, Workflows, Agents and Controls, and three tools for your account, the playbooks and the docs are always available. Your AI assistant picks the right tool for each request, and for longer jobs it reads a playbook first.</p>
                     <p><strong>Model slugs:</strong> Use the clean/lowercase format <code>owner/model</code> (e.g. <code>openai/sora-2</code>, <code>wiro/virtual-try-on</code>). These correspond to the <code>cleanslugowner/cleanslugproject</code> values returned by <code>search_models</code>.</p>
                     <h3>Models</h3>
                     <table>
@@ -10490,7 +10490,11 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
                         </tr>
                         <tr>
                           <td><code>get_agent_template</code></td>
-                          <td>Read a template's skills, plans, and the accounts and keys it needs</td>
+                          <td>Read a template's skills, plans, the connectors it suggests and the keys it needs</td>
+                        </tr>
+                        <tr>
+                          <td><code>list_agent_connectors</code></td>
+                          <td>Browse the connectors an agent can connect (ad accounts, stores, social accounts, mailboxes, data sources), what each one needs and the tools it gives the agent; with an agent, its connections</td>
                         </tr>
                         <tr>
                           <td><code>list_agent_skills</code></td>
@@ -10522,15 +10526,19 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
                         </tr>
                         <tr>
                           <td><code>set_agent_credentials</code></td>
-                          <td>Save the keys, tokens and settings an agent's skills and channels need, such as a Telegram bot token or a Gmail app password</td>
+                          <td>Save an agent's chat channel keys (such as a Telegram bot token), Twilio Voice and settings</td>
                         </tr>
                         <tr>
-                          <td><code>connect_agent_oauth</code></td>
-                          <td>Connect sign-in accounts such as HubSpot or X for the services an agent's skills use; you approve the connection in your browser. Some services need your own app keys or a token first</td>
+                          <td><code>connect_agent_connector</code></td>
+                          <td>Connect a connector to an agent: save its keys, or start its sign-in, which you approve in your browser. A connector that runs with a Wiro project shows the project and its wallet first</td>
                         </tr>
                         <tr>
-                          <td><code>disconnect_agent_oauth</code></td>
-                          <td>Disconnect a connected account, after your confirmation</td>
+                          <td><code>set_agent_connector_accounts</code></td>
+                          <td>Choose the accounts a connected connector may act on, such as its ad accounts, pages or channels</td>
+                        </tr>
+                        <tr>
+                          <td><code>disconnect_agent_connector</code></td>
+                          <td>Disconnect a connector from an agent, after your confirmation</td>
                         </tr>
                         <tr>
                           <td><code>list_projects</code></td>
@@ -10558,7 +10566,7 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
                         </tr>
                       </tbody>
                     </table>
-                    <p><strong>Setup changes from chat.</strong> A reply from one of your agents can propose a change to its own setup, such as connecting a service, adding a connector or skill, or creating a scheduled task (see <a href="/docs/agent-messaging#setup-from-chat">Setup From Chat</a>). The assistant shows you the proposal and never approves it on its own. When you agree, it sends your yes as the next message: Wiro answers the first yes with the exact change, and your next yes (or <code>yes 2</code> for the second of several changes) applies it. Keys never go in a chat message: the assistant saves them with <code>set_agent_credentials</code>. When the change adds a connector that takes a key, the assistant asks for the key together with your yes and saves it right after the change is applied, so one restart loads both. This works while the agent's setup from chat is <code>all</code>, the default, which <code>deploy_agent</code> and <code>update_agent</code> set with <code>chat_setup</code>. With <code>webchat</code>, apply the change in the agent's chat on wiro.ai; with <code>off</code>, the agent asks for it on the agent page.</p>
+                    <p><strong>Setup changes from chat.</strong> A reply from one of your agents can propose a change to its own setup, such as connecting a connector, adding a skill, or creating a scheduled task (see <a href="/docs/agent-messaging#setup-from-chat">Setup From Chat</a>). The assistant shows you the proposal and never approves it on its own. When you agree, it sends your yes as the next message: Wiro answers the first yes with the exact change, and your next yes (or <code>yes 2</code> for the second of several changes) applies it. Keys never go in a chat message: the assistant connects a connector with <code>connect_agent_connector</code>, and saves a channel's key with <code>set_agent_credentials</code>. This works while the agent's setup from chat is <code>all</code>, the default, which <code>deploy_agent</code> and <code>update_agent</code> set with <code>chat_setup</code>. With <code>webchat</code>, apply the change in the agent's chat on wiro.ai; with <code>off</code>, the agent asks for it on the agent page.</p>
 
                     <h3 id="mcp-controls">Controls</h3>
                     <p>These tools read and change the workspace's <a href="/docs/spend-limits">spend limits</a> and <a href="/docs/model-access">Model Access</a> rules. Reading them is free. They change limits and rules only when the person who created the connected project can change them: a personal account's owner, or in a team a team admin or the organization owner. Other members' connections can read them.</p>
@@ -10695,8 +10703,8 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
 
                     <h3>Paid and irreversible actions</h3>
                     <p>Running a model or a workflow, sending a message to Studio or the Workflow Agent, and messages to your own agents (which use the agent's credits) cost money. Before a run or a Studio or Workflow Agent turn, the assistant tells you the expected cost in one line and waits for your yes. A message to your own agent goes out once the assistant has said that it uses the agent's credits.</p>
-                    <p>Agent plans, moves to a larger plan and credit packs are charged to your wallet, so <code>deploy_agent</code> and <code>manage_agent_billing</code> first return the price (for a move inside a billing period, the amount Wiro works out for the time left). They act only when they are called again with <code>confirm: true</code> and <code>confirm_charge_usd</code>, the approved amount, after you agree. If the price changed in between, nothing is charged and you get a new quote. Turning an agent's skills on or off with <code>apply_agent_skills</code> costs nothing, since every plan includes every skill, and a move to a smaller plan starts with the next renewal, with nothing charged or refunded.</p>
-                    <p>Deleting a workflow, an agent, a conversation or an account connection also waits for <code>confirm: true</code>, and so do connecting an agent to a Wiro project with <code>bind_agent_project</code> and replacing a workflow's steps with <code>update_workflow</code> or <code>save_workflow_from_agent</code>: you see a summary of the change first, with the old and new value of each step input that changes. Changing a spend limit or a Model Access rule with <code>manage_spend_limit</code> or <code>manage_model_access</code> also waits for <code>confirm: true</code>: you see the old and new values first and, for a limit, what was spent this period. No tool adds funds or takes a card payment. Funds are added in the Wiro dashboard, and an agent plan paid by card moves to a larger plan or is topped up there.</p>
+                    <p>Agent plans, moves to a larger plan and credit packs are charged to your wallet, so <code>deploy_agent</code> and <code>manage_agent_billing</code> first return the price (for a move inside a billing period, the amount Wiro works out for the time left). They act only when they are called again with <code>confirm: true</code> and <code>confirm_charge_usd</code>, the approved amount, after you agree. If the price changed in between, nothing is charged and you get a new quote. Turning an agent's skills on or off with <code>apply_agent_skills</code> costs nothing, and so does connecting its connectors, since every plan includes every skill and connector, and a move to a smaller plan starts with the next renewal, with nothing charged or refunded.</p>
+                    <p>Deleting a workflow, an agent, a conversation or a connector connection also waits for <code>confirm: true</code>, and so do replacing a working connector connection, connecting an agent or a connector to a Wiro project with <code>bind_agent_project</code> or <code>connect_agent_connector</code>, and replacing a workflow's steps with <code>update_workflow</code> or <code>save_workflow_from_agent</code>: you see a summary of the change first, with the old and new value of each step input that changes. Changing a spend limit or a Model Access rule with <code>manage_spend_limit</code> or <code>manage_model_access</code> also waits for <code>confirm: true</code>: you see the old and new values first and, for a limit, what was spent this period. No tool adds funds or takes a card payment. Funds are added in the Wiro dashboard, and an agent plan paid by card moves to a larger plan or is topped up there.</p>
                     <p>The connected project decides the workspace: a personal project uses your personal wallet, a team project uses the team wallet. <code>get_account</code> shows which one, its balance and its spend limits, and <code>get_controls</code> its spend limits and Model Access rules in full.</p>
                     <p>Calls through the hosted MCP server count toward the workspace's <a href="/docs/spend-limits">spend limits</a> on the <code>mcp</code> surface, and calls from the Wiro browser extensions on the <code>extension</code> surface. The <a href="/docs/mcp-self-hosted">self-hosted</a> package's calls count on the <code>api</code> surface, as calls with its API key. When a limit refuses work (error code <code>93</code>), the tool returns an error with Wiro's message and a note: nothing ran and nothing was charged, and the work should not be tried again until the limit resets or someone who manages it raises it. <code>get_controls</code> shows the limit and when it resets, and <code>manage_spend_limit</code> changes it after a change summary. Limits are also managed under <a href="https://wiro.ai/panel/controls/spend-limits" target="_blank">Controls &gt; Spend Limits</a>.</p>
                     <p>The workspace's <a href="/docs/model-access">Model Access</a> rules apply to these calls too, on the same surfaces. A model a rule blocks is refused before anything runs (error code <code>92</code>), and the tool returns an error with Wiro's message, which names the rule. A message to Studio or the Workflow Agent is refused the same way when a rule blocks its chat model, the one it names or the default. Nothing ran and nothing was charged. <code>check_model_access</code> shows why the model is blocked, and <code>manage_model_access</code> changes the rule after a change summary. Rules are also managed under <a href="https://wiro.ai/panel/controls/model-access" target="_blank">Controls &gt; Model Access</a>.</p>
@@ -10769,7 +10777,7 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
                     <p>The assistant checks the balance with <code>get_account</code>, tells you what a Studio turn costs, sends the brief with <code>send_agent_message</code> (<code>agent: "studio"</code>) and shows the images from the reply.</p>
                     <h3>Deploy an agent</h3>
                     <div class="info-callout"><p>"Deploy an agent that posts to our Instagram account and tell me what it still needs"</p></div>
-                    <p>The assistant compares templates with <code>list_agent_templates</code> and <code>get_agent_template</code>, gets the price from <code>deploy_agent</code>, and deploys only after you confirm the amount. Then it lists the missing setup with <code>get_my_agent</code> and connects the account with <code>connect_agent_oauth</code>. If the agent runs Wiro models, it connects a Wiro project with <code>bind_agent_project</code> once you agree to the project it shows.</p>
+                    <p>The assistant compares templates with <code>list_agent_templates</code> and <code>get_agent_template</code>, gets the price from <code>deploy_agent</code>, and deploys only after you confirm the amount. Then it lists the missing setup with <code>get_my_agent</code> and connects the Instagram connector with <code>connect_agent_connector</code>. If the agent runs Wiro models, it connects a Wiro project with <code>bind_agent_project</code> once you agree to the project it shows.</p>
                     <h3>Talk to your agent</h3>
                     <div class="info-callout"><p>"Tell my support agent to summarise today's tickets"</p></div>
                     <p>The assistant finds the agent with <code>list_my_agents</code>, checks that it is running with <code>get_my_agent</code>, and sends the message with <code>send_agent_message</code>. The message uses the agent's credits. If the reply proposes a setup change, the assistant shows it and sends your yes only after you agree.</p>
@@ -11252,6 +11260,10 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
                           <td><code>template</code>, <code>include_tasks</code></td>
                         </tr>
                         <tr>
+                          <td><code>list_agent_connectors</code></td>
+                          <td><code>name</code>, <code>search</code>, <code>category</code>, <code>agent_guid</code> (its connections too)</td>
+                        </tr>
+                        <tr>
                           <td><code>list_agent_skills</code></td>
                           <td><code>name</code>, <code>category</code>, <code>capability</code></td>
                         </tr>
@@ -11284,12 +11296,16 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
                           <td><code>agent_guid</code>, <code>credential</code>, <code>fields</code></td>
                         </tr>
                         <tr>
-                          <td><code>connect_agent_oauth</code></td>
-                          <td><code>agent_guid</code>, <code>credential</code>, <code>action</code> (<code>connect</code>, <code>status</code> or <code>select_accounts</code>), <code>mode</code> (<code>wiro</code>, <code>own</code> or <code>api_key</code>), <code>confirm</code></td>
+                          <td><code>connect_agent_connector</code></td>
+                          <td><code>agent_guid</code>, <code>connector</code>, <code>action</code> (<code>connect</code> or <code>status</code>), <code>values</code>, <code>mode</code> (<code>sign_in</code> or <code>key</code>), <code>project_id</code>, <code>redirect_url</code>, <code>wait_seconds</code>, <code>confirm</code></td>
                         </tr>
                         <tr>
-                          <td><code>disconnect_agent_oauth</code></td>
-                          <td><code>agent_guid</code>, <code>credential</code>, <code>confirm</code></td>
+                          <td><code>set_agent_connector_accounts</code></td>
+                          <td><code>agent_guid</code>, <code>connector</code>, <code>accounts</code> (leave it out to see the choices)</td>
+                        </tr>
+                        <tr>
+                          <td><code>disconnect_agent_connector</code></td>
+                          <td><code>agent_guid</code>, <code>connector</code>, <code>confirm</code></td>
                         </tr>
                         <tr>
                           <td><code>list_projects</code></td>
@@ -11549,7 +11565,7 @@ WIRO_API_SECRET=your-api-secret</code></pre>
 
                   <section id="self-hosted-tools">
                     <h2>Available Tools</h2>
-                    <p>The self-hosted server provides the same 54 typed tools, playbooks and prompts as the <a href="/docs/wiro-mcp-server">hosted MCP server</a>. Successful calls include <code>structuredContent</code> for LLM chaining plus text content for compatibility. Completed media calls return standard MCP resource links and an assistant-audience delivery instruction so the assistant can present image previews and clickable media links in its user-facing response even when the client does not render media inside its tool card.</p>
+                    <p>The self-hosted server provides the same 56 typed tools, playbooks and prompts as the <a href="/docs/wiro-mcp-server">hosted MCP server</a>. Successful calls include <code>structuredContent</code> for LLM chaining plus text content for compatibility. Completed media calls return standard MCP resource links and an assistant-audience delivery instruction so the assistant can present image previews and clickable media links in its user-facing response even when the client does not render media inside its tool card.</p>
                     <p>All four tool groups load by default. To load fewer tools, set <code>WIRO_TOOLSETS</code> (see <a href="#self-hosted-env">Environment Variables</a>). <code>get_account</code>, <code>get_playbook</code> and <code>search_docs</code> are always available.</p>
                     <p><strong>Model slugs:</strong> Use the clean/lowercase format <code>owner/model</code> (e.g. <code>openai/sora-2</code>, <code>wiro/virtual-try-on</code>). These correspond to <code>cleanslugowner/cleanslugproject</code> values returned by <code>search_models</code>.</p>
                     <h3>Models</h3>
@@ -11740,7 +11756,12 @@ WIRO_API_SECRET=your-api-secret</code></pre>
                         <tr>
                           <td><code>get_agent_template</code></td>
                           <td><code>POST /Agent/Detail</code></td>
-                          <td>Read a template's skills, plans, and the accounts and keys it needs.</td>
+                          <td>Read a template's skills, plans, the connectors it suggests and the keys it needs.</td>
+                        </tr>
+                        <tr>
+                          <td><code>list_agent_connectors</code></td>
+                          <td><code>POST /AgentConnector/List</code>, <code>/AgentConnector/Detail</code>, <code>/UserAgent/ConnectorList</code> (with <code>agent_guid</code>)</td>
+                          <td>Browse the connectors an agent can connect, what each one needs and the tools it gives the agent; with an agent, its connections.</td>
                         </tr>
                         <tr>
                           <td><code>list_agent_skills</code></td>
@@ -11780,17 +11801,22 @@ WIRO_API_SECRET=your-api-secret</code></pre>
                         <tr>
                           <td><code>set_agent_credentials</code></td>
                           <td><code>POST /UserAgent/CredentialUpsert</code>, <code>/UserAgent/CredentialFileUpload</code></td>
-                          <td>Save the keys, tokens and settings an agent's skills and channels need, such as a Telegram bot token or a Gmail app password.</td>
+                          <td>Save an agent's chat channel keys (such as a Telegram bot token), Twilio Voice and settings.</td>
                         </tr>
                         <tr>
-                          <td><code>connect_agent_oauth</code></td>
-                          <td><code>POST /UserAgentOAuth/OAuthConnect</code>, <code>/UserAgentOAuth/OAuthStatus</code>, <code>/UserAgentOAuth/SetPickerAccounts</code></td>
-                          <td>Connect sign-in accounts such as HubSpot or X for the services an agent's skills use; you approve the connection in your browser. Some services need your own app keys or a token first.</td>
+                          <td><code>connect_agent_connector</code></td>
+                          <td><code>POST /UserAgent/ConnectorConnect</code>, <code>/UserAgent/ConnectorList</code> (status)</td>
+                          <td>Connect a connector to an agent: save its keys, or start its sign-in, which you approve in your browser. A connector that runs with a Wiro project shows the project and its wallet first.</td>
                         </tr>
                         <tr>
-                          <td><code>disconnect_agent_oauth</code></td>
-                          <td><code>POST /UserAgentOAuth/OAuthDisconnect</code></td>
-                          <td>Disconnect a connected account, after your confirmation.</td>
+                          <td><code>set_agent_connector_accounts</code></td>
+                          <td><code>POST /UserAgent/ConnectorAccounts</code>, <code>/UserAgent/ConnectorSetAccounts</code></td>
+                          <td>Choose the accounts a connected connector may act on, such as its ad accounts, pages or channels.</td>
+                        </tr>
+                        <tr>
+                          <td><code>disconnect_agent_connector</code></td>
+                          <td><code>POST /UserAgent/ConnectorDisconnect</code></td>
+                          <td>Disconnect a connector from an agent, after your confirmation.</td>
                         </tr>
                         <tr>
                           <td><code>list_projects</code></td>

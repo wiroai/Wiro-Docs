@@ -7510,7 +7510,7 @@ Wiro API error.
 
 **Model slugs:** Use the clean/lowercase format `owner/model` (e.g. `openai/sora-2`, `wiro/virtual-try-on`). These correspond to the `cleanslugowner/cleanslugproject` values returned by `search_models`.
 
-The server has 54 tools: four groups (Models, Workflows, Agents, Controls) and
+The server has 56 tools: four groups (Models, Workflows, Agents, Controls) and
 three tools that are always available.
 
 | Tool | Description |
@@ -7556,7 +7556,8 @@ is `"studio"`, `"workflow-agent"` or the guid of one of your own agents:
 | `delete_agent_session` | Delete a conversation and the agent's memory of it, after your confirmation |
 | `list_studio_results` | List the images, videos and other results Studio generated for you |
 | `list_agent_templates` | Browse ready-made agent templates and the three monthly plans |
-| `get_agent_template` | Read a template's skills, plans, and the accounts and keys it needs |
+| `get_agent_template` | Read a template's skills, plans, the connectors it suggests and the keys it needs |
+| `list_agent_connectors` | Browse the connectors an agent can connect (ad accounts, stores, social accounts, mailboxes, data sources), what each one needs and the tools it gives the agent; with an agent, its connections |
 | `list_agent_skills` | Browse the skills an agent can have, and what each one needs to work |
 | `deploy_agent` | Deploy an agent from a template or build one from skills, on the Starter, Pro or Max plan; shows the plan's price, the wallet it charges and the other plans' prices, and asks before charging |
 | `list_my_agents` | List your agents with their status, plan and credits |
@@ -7564,9 +7565,10 @@ is `"studio"`, `"workflow-agent"` or the guid of one of your own agents:
 | `control_agent` | Start, stop or restart an agent |
 | `update_agent` | Change an agent's name, description, time zone, models, chat commands and setup from chat |
 | `apply_agent_skills` | Turn skills on or off; every plan includes every skill, so a change costs nothing |
-| `set_agent_credentials` | Save the keys, tokens and settings an agent's skills and channels need, such as a Telegram bot token or a Gmail app password |
-| `connect_agent_oauth` | Connect sign-in accounts such as HubSpot or X for the services an agent's skills use; you approve the connection in your browser. Some services need your own app keys or a token first |
-| `disconnect_agent_oauth` | Disconnect a connected account, after your confirmation |
+| `set_agent_credentials` | Save an agent's chat channel keys (such as a Telegram bot token), Twilio Voice and settings |
+| `connect_agent_connector` | Connect a connector to an agent: save its keys, or start its sign-in, which you approve in your browser. A connector that runs with a Wiro project shows the project and its wallet first |
+| `set_agent_connector_accounts` | Choose the accounts a connected connector may act on, such as its ad accounts, pages or channels |
+| `disconnect_agent_connector` | Disconnect a connector from an agent, after your confirmation |
 | `list_projects` | List the projects of the connected project's workspace, to pick one for an agent; no keys are shown |
 | `bind_agent_project` | Connect an agent to a Wiro project so it can run models, with no key in the chat; shows the project first, then asks for your confirmation |
 | `manage_agent_custom_skill` | Add, edit, schedule, restore or remove an agent's own instructions and scheduled tasks; turning off its approval policy or changing its rules needs your confirmation |
@@ -7575,16 +7577,15 @@ is `"studio"`, `"workflow-agent"` or the guid of one of your own agents:
 | `delete_agent` | Delete an agent, after your confirmation |
 
 **Setup changes from chat.** A reply from one of your agents can propose a
-change to its own setup, such as connecting a service, adding a connector or
-skill, or creating a scheduled task (see
+change to its own setup, such as connecting a connector, adding a skill, or
+creating a scheduled task (see
 [Setup From Chat](/docs/agent-messaging#setup-from-chat)). The assistant shows
 you the proposal and never approves it on its own. When you agree, it sends
 your yes as the next message: Wiro answers the first yes with the exact
 change, and your next yes (or `yes 2` for the second of several changes)
-applies it. Keys never go in a chat message: the assistant saves them with
-`set_agent_credentials`. When the change adds a connector that takes a key,
-the assistant asks for the key together with your yes and saves it right
-after the change is applied, so one restart loads both. This works while the
+applies it. Keys never go in a chat message: the assistant connects a
+connector with `connect_agent_connector`, and saves a channel's key with
+`set_agent_credentials`. This works while the
 agent's setup from chat is `all`, the default, which `deploy_agent` and
 `update_agent` set with `chat_setup`. With `webchat`, apply the change in the
 agent's chat on wiro.ai; with `off`, the agent asks for it on the agent page.
@@ -7706,7 +7707,7 @@ Run the Wiro MCP server locally on your own machine using npx.
 }
 ```
 
-The self-hosted server exposes the same 54 tools, playbooks and prompts as
+The self-hosted server exposes the same 56 tools, playbooks and prompts as
 the hosted server, including bounded `run_model`, `wait_for_task`, and optional short waits through
 `get_task.wait_seconds`. The `@latest` in the npx `args` makes
 `npx` look up the newest version on npm at every start, so clients do not

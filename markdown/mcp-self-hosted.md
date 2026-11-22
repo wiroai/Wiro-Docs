@@ -166,7 +166,7 @@ Add `WIRO_API_SECRET` to the `env` block of your MCP config and restart the clie
 
 ## Available Tools
 
-The self-hosted server provides the same 54 typed tools, playbooks and prompts as the [hosted MCP server](/docs/wiro-mcp-server). Successful calls include `structuredContent` for LLM chaining plus text content for compatibility. Completed media calls return standard MCP resource links and an assistant-audience delivery instruction so the assistant can present image previews and clickable media links in its user-facing response even when the client does not render media inside its tool card.
+The self-hosted server provides the same 56 typed tools, playbooks and prompts as the [hosted MCP server](/docs/wiro-mcp-server). Successful calls include `structuredContent` for LLM chaining plus text content for compatibility. Completed media calls return standard MCP resource links and an assistant-audience delivery instruction so the assistant can present image previews and clickable media links in its user-facing response even when the client does not render media inside its tool card.
 
 All four tool groups load by default. To load fewer tools, set `WIRO_TOOLSETS` (see [Environment Variables](#environment-variables)). `get_account`, `get_playbook` and `search_docs` are always available.
 
@@ -218,7 +218,8 @@ The conversation tools call the matching `Message/*` route of [Studio](/docs/stu
 | `delete_agent_session` | `Message/ClearSession` (Studio), `Message/DeleteSession` | Delete a conversation and the agent's memory of it, after your confirmation. |
 | `list_studio_results` | `POST /Studio/Tasks` | List the images, videos and other results Studio generated for you. |
 | `list_agent_templates` | `POST /Agent/List` | Browse ready-made agent templates and the three monthly plans. |
-| `get_agent_template` | `POST /Agent/Detail` | Read a template's skills, plans, and the accounts and keys it needs. |
+| `get_agent_template` | `POST /Agent/Detail` | Read a template's skills, plans, the connectors it suggests and the keys it needs. |
+| `list_agent_connectors` | `POST /AgentConnector/List`, `/AgentConnector/Detail`, `/UserAgent/ConnectorList` (with `agent_guid`) | Browse the connectors an agent can connect, what each one needs and the tools it gives the agent; with an agent, its connections. |
 | `list_agent_skills` | `POST /Skills/List`, `/Skills/Detail`, `/Skills/Capabilities` | Browse the skills an agent can have, and what each one needs to work. |
 | `deploy_agent` | `POST /UserAgent/PricingPreview`, `/UserAgent/Deploy` | Deploy an agent from a template or build one from skills, on the Starter, Pro or Max plan; shows the plan's price, the wallet it charges and the other plans' prices, and asks before charging. |
 | `list_my_agents` | `POST /UserAgent/MyAgents` | List your agents with their status, plan and credits. |
@@ -226,9 +227,10 @@ The conversation tools call the matching `Message/*` route of [Studio](/docs/stu
 | `control_agent` | `POST /UserAgent/Start`, `/UserAgent/Stop`, `/UserAgent/Update` (restart) | Start, stop or restart an agent. |
 | `update_agent` | `POST /UserAgent/Update`, `/UserAgent/UpdateSettings` | Change an agent's name, description, time zone, models, chat commands and setup from chat. |
 | `apply_agent_skills` | `POST /UserAgent/PricingPreview`, `/UserAgent/SkillsApply` | Turn skills on or off; every plan includes every skill, so a change costs nothing. |
-| `set_agent_credentials` | `POST /UserAgent/CredentialUpsert`, `/UserAgent/CredentialFileUpload` | Save the keys, tokens and settings an agent's skills and channels need, such as a Telegram bot token or a Gmail app password. |
-| `connect_agent_oauth` | `POST /UserAgentOAuth/OAuthConnect`, `/UserAgentOAuth/OAuthStatus`, `/UserAgentOAuth/SetPickerAccounts` | Connect sign-in accounts such as HubSpot or X for the services an agent's skills use; you approve the connection in your browser. Some services need your own app keys or a token first. |
-| `disconnect_agent_oauth` | `POST /UserAgentOAuth/OAuthDisconnect` | Disconnect a connected account, after your confirmation. |
+| `set_agent_credentials` | `POST /UserAgent/CredentialUpsert`, `/UserAgent/CredentialFileUpload` | Save an agent's chat channel keys (such as a Telegram bot token), Twilio Voice and settings. |
+| `connect_agent_connector` | `POST /UserAgent/ConnectorConnect`, `/UserAgent/ConnectorList` (status) | Connect a connector to an agent: save its keys, or start its sign-in, which you approve in your browser. A connector that runs with a Wiro project shows the project and its wallet first. |
+| `set_agent_connector_accounts` | `POST /UserAgent/ConnectorAccounts`, `/UserAgent/ConnectorSetAccounts` | Choose the accounts a connected connector may act on, such as its ad accounts, pages or channels. |
+| `disconnect_agent_connector` | `POST /UserAgent/ConnectorDisconnect` | Disconnect a connector from an agent, after your confirmation. |
 | `list_projects` | `POST /Project/List`, `/UserAgent/Detail` (with `agent_guid`) | List the projects of the connected project's workspace, to pick one for an agent; no keys are shown. |
 | `bind_agent_project` | `POST /UserAgent/Detail`, `/Project/List`, then `/UserAgent/CredentialProjectBind` | Connect an agent to a Wiro project so it can run models, with no key in the chat; shows the project first, then asks for your confirmation. |
 | `manage_agent_custom_skill` | `POST /UserAgent/CustomSkillUpsert`, `CustomSkillRename`, `CustomSkillDelete`, `CustomSkillHistory`, `CustomSkillRevert` | Add, edit, schedule, restore or remove an agent's own instructions and scheduled tasks; turning off its approval policy or changing its rules needs your confirmation. |

@@ -644,7 +644,7 @@ expired or disconnected sign-in gets the same answer with
 
 ## Available Tools
 
-The MCP server has 54 tools. Most of them belong to one of four groups, Models, Workflows, Agents and Controls, and three tools for your account, the playbooks and the docs are always available. Your AI assistant picks the right tool for each request, and for longer jobs it reads a playbook first.
+The MCP server has 56 tools. Most of them belong to one of four groups, Models, Workflows, Agents and Controls, and three tools for your account, the playbooks and the docs are always available. Your AI assistant picks the right tool for each request, and for longer jobs it reads a playbook first.
 
 **Model slugs:** When a tool requires a model identifier, use the clean/lowercase format `owner/model` (e.g. `openai/sora-2`, `wiro/virtual-try-on`). These correspond to the `cleanslugowner/cleanslugproject` values returned by `search_models`.
 
@@ -725,7 +725,8 @@ agents run on a monthly plan with credits (see
 | Tool | What it does |
 |------|-------------|
 | `list_agent_templates` | Browse ready-made agent templates and the three monthly plans |
-| `get_agent_template` | Read a template's skills, plans, and the accounts and keys it needs |
+| `get_agent_template` | Read a template's skills, plans, the connectors it suggests and the keys it needs |
+| `list_agent_connectors` | Browse the connectors an agent can connect (ad accounts, stores, social accounts, mailboxes, data sources), what each one needs and the tools it gives the agent; with an agent, its connections |
 | `list_agent_skills` | Browse the skills an agent can have, and what each one needs to work |
 | `deploy_agent` | Deploy an agent from a template or build one from skills, on the Starter, Pro or Max plan; shows the plan's price, the wallet it charges and the other plans' prices, and asks before charging |
 | `list_my_agents` | List your agents with their status, plan and credits |
@@ -733,9 +734,10 @@ agents run on a monthly plan with credits (see
 | `control_agent` | Start, stop or restart an agent |
 | `update_agent` | Change an agent's name, description, time zone, models, chat commands and setup from chat |
 | `apply_agent_skills` | Turn skills on or off; every plan includes every skill, so a change costs nothing |
-| `set_agent_credentials` | Save the keys, tokens and settings an agent's skills and channels need, such as a Telegram bot token or a Gmail app password |
-| `connect_agent_oauth` | Connect sign-in accounts such as HubSpot or X for the services an agent's skills use; you approve the connection in your browser. Some services need your own app keys or a token first |
-| `disconnect_agent_oauth` | Disconnect a connected account, after your confirmation |
+| `set_agent_credentials` | Save an agent's chat channel keys (such as a Telegram bot token), Twilio Voice and settings |
+| `connect_agent_connector` | Connect a connector to an agent: save its keys, or start its sign-in, which you approve in your browser. A connector that runs with a Wiro project shows the project and its wallet first |
+| `set_agent_connector_accounts` | Choose the accounts a connected connector may act on, such as its ad accounts, pages or channels |
+| `disconnect_agent_connector` | Disconnect a connector from an agent, after your confirmation |
 | `list_projects` | List the projects of the connected project's workspace, to pick one for an agent; no keys are shown |
 | `bind_agent_project` | Connect an agent to a Wiro project so it can run models, with no key in the chat; shows the project first, then asks for your confirmation |
 | `manage_agent_custom_skill` | Add, edit, schedule, restore or remove an agent's own instructions and scheduled tasks; turning off its approval policy or changing its rules needs your confirmation |
@@ -744,16 +746,15 @@ agents run on a monthly plan with credits (see
 | `delete_agent` | Delete an agent, after your confirmation |
 
 **Setup changes from chat.** A reply from one of your agents can propose a
-change to its own setup, such as connecting a service, adding a connector or
-skill, or creating a scheduled task (see
+change to its own setup, such as connecting a connector, adding a skill, or
+creating a scheduled task (see
 [Setup From Chat](/docs/agent-messaging#setup-from-chat)). The assistant shows
 you the proposal and never approves it on its own. When you agree, it sends
 your yes as the next message: Wiro answers the first yes with the exact
 change, and your next yes (or `yes 2` for the second of several changes)
-applies it. Keys never go in a chat message: the assistant saves them with
-`set_agent_credentials`. When the change adds a connector that takes a key,
-the assistant asks for the key together with your yes and saves it right
-after the change is applied, so one restart loads both. This works while the
+applies it. Keys never go in a chat message: the assistant connects a
+connector with `connect_agent_connector`, and saves a channel's key with
+`set_agent_credentials`. This works while the
 agent's setup from chat is `all`, the default, which `deploy_agent` and
 `update_agent` set with `chat_setup`. With `webchat`, apply the change in the
 agent's chat on wiro.ai; with `off`, the agent asks for it on the agent page.
@@ -825,13 +826,15 @@ wallet, so `deploy_agent` and `manage_agent_billing` first return the price
 left). They act only when they are called again with `confirm: true` and
 `confirm_charge_usd`, the approved amount, after you agree. If the price
 changed in between, nothing is charged and you get a new quote. Turning an
-agent's skills on or off with `apply_agent_skills` costs nothing, since every
-plan includes every skill, and a move to a smaller plan starts with the next
-renewal, with nothing charged or refunded.
+agent's skills on or off with `apply_agent_skills` costs nothing, and so does
+connecting its connectors, since every plan includes every skill and
+connector, and a move to a smaller plan starts with the next renewal, with
+nothing charged or refunded.
 
-Deleting a workflow, an agent, a conversation or an account connection also
-waits for `confirm: true`, and so do connecting an agent to a Wiro project with
-`bind_agent_project` and replacing a workflow's steps with `update_workflow` or
+Deleting a workflow, an agent, a conversation or a connector connection also
+waits for `confirm: true`, and so do replacing a working connector connection,
+connecting an agent or a connector to a Wiro project with `bind_agent_project`
+or `connect_agent_connector`, and replacing a workflow's steps with `update_workflow` or
 `save_workflow_from_agent`: you see a summary of the change first, with the old
 and new value of each step input that changes. Changing a spend limit or a
 Model Access rule with `manage_spend_limit` or `manage_model_access` also waits
@@ -1024,7 +1027,8 @@ shows the images from the reply.
 The assistant compares templates with `list_agent_templates` and
 `get_agent_template`, gets the price from `deploy_agent`, and deploys only
 after you confirm the amount. Then it lists the missing setup with
-`get_my_agent` and connects the account with `connect_agent_oauth`. If the
+`get_my_agent` and connects the Instagram connector with
+`connect_agent_connector`. If the
 agent runs Wiro models, it connects a Wiro project with `bind_agent_project`
 once you agree to the project it shows.
 
@@ -1310,6 +1314,7 @@ An agent is named by its guid, which `list_my_agents` returns. See
 |------|----------------|
 | `list_agent_templates` | `search`, `category`, `sort` (`newest`, `popular` or `title`), `start`, `limit` |
 | `get_agent_template` | `template`, `include_tasks` |
+| `list_agent_connectors` | `name`, `search`, `category`, `agent_guid` (its connections too) |
 | `list_agent_skills` | `name`, `category`, `capability` |
 | `deploy_agent` | `template`, or `custom: true` with `skills`; `tier` (`starter`, `pro` or `max`), `title`, `credentials`, `chat_setup` (`all`, `webchat` or `off`), `confirm`, `confirm_charge_usd` |
 | `list_my_agents` | `sort`, `start`, `limit` |
@@ -1318,8 +1323,9 @@ An agent is named by its guid, which `list_my_agents` returns. See
 | `update_agent` | `agent_guid`, `title`, `description`, `timezone`, `team_session_mode`, `chat_model`, `cron_model`, `enabled_commands`, `chat_setup` (`all`, `webchat` or `off`; `null` goes back to `all`) |
 | `apply_agent_skills` | `agent_guid`, `skills`, `add_dependencies`, `idempotency_key` (only to repeat a change whose answer did not arrive) |
 | `set_agent_credentials` | `agent_guid`, `credential`, `fields` |
-| `connect_agent_oauth` | `agent_guid`, `credential`, `action` (`connect`, `status` or `select_accounts`), `mode` (`wiro`, `own` or `api_key`), `confirm` |
-| `disconnect_agent_oauth` | `agent_guid`, `credential`, `confirm` |
+| `connect_agent_connector` | `agent_guid`, `connector`, `action` (`connect` or `status`), `values`, `mode` (`sign_in` or `key`), `project_id`, `redirect_url`, `wait_seconds`, `confirm` |
+| `set_agent_connector_accounts` | `agent_guid`, `connector`, `accounts` (leave it out to see the choices) |
+| `disconnect_agent_connector` | `agent_guid`, `connector`, `confirm` |
 | `list_projects` | `agent_guid` (optional: also says which listed project that agent uses) |
 | `bind_agent_project` | `agent_guid`, `project_id` (from `list_projects`; leave it out for the connection's own project), `confirm` |
 | `manage_agent_custom_skill` | `agent_guid`, `action` (`upsert`, `rename`, `delete`, `history` or `revert`), `key`, `kind`, `value`, `interval`, `enabled`, `confirm` |
