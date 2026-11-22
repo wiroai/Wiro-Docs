@@ -37453,19 +37453,18 @@ for e in cron_runs:
                 <article class="docs-section">
                   <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="/docs/markdown/integration-webvoice-skills.md" target="_blank" class="docs-section-md-btn">View</a> <a href="/docs/markdown/integration-webvoice-skills.md" download class="docs-section-md-btn">Download</a></div>
                   <h1>Web Voice Channel</h1>
-                  <p class="section-subtitle">Embed a real-time voice conversation with a Wiro agent into your own browser app. Used by the Voice Receptionist and Voice Sales Rep preset agents, and by any custom agent that needs an "Open mic" button on a website.</p>
+                  <p class="section-subtitle">Embed a real-time voice conversation with a Wiro agent into your own browser app. Used by the Voice Receptionist agent, and by any custom agent that needs an "Open mic" button on a website.</p>
 
                   <section id="overview">
                     <h2>Overview</h2>
-                    <p>Toggle <code>util-web-channel</code> on a useragent and a single REST call (<code>POST /UserAgent/Realtime/WebStart</code>) returns everything the browser needs to open an authenticated WebSocket and stream microphone audio straight to the agent. The same agent can also pick up phone calls via <a href="/docs/integration-twiliovoice-skills">Twilio Voice</a>: the two channels share the same realtime runtime and end up in the same <a href="/docs/integration-twiliovoice-skills#call-history">Call History</a>.</p>
+                    <p>Turn on Web Voice Channel (<code>util-web-channel</code>) on a useragent and a single REST call (<code>POST /UserAgent/Realtime/WebStart</code>) returns everything the browser needs to open an authenticated WebSocket and stream microphone audio straight to the agent. The same agent can also pick up phone calls via <a href="/docs/integration-twiliovoice-skills">Twilio Voice</a>: the two channels share the same realtime runtime and end up in the same <a href="/docs/integration-twiliovoice-skills#call-history">Call History</a>.</p>
                     <p><strong>Skill that powers this channel:</strong></p>
                     <ul>
-                      <li><code>util-web-channel</code>: browser voice channel. Bundled on the Voice Receptionist and Voice Sales Rep presets; toggle it on for any other agent via <code>POST /UserAgent/SkillsApply</code>.</li>
+                      <li>Web Voice Channel (<code>util-web-channel</code>): browser voice channel. Bundled on the Voice Receptionist template. On any other agent, turn it on in one <code>POST /UserAgent/SkillsApply</code> call together with the two Skills it depends on, Voice Receptionist Rules (<code>util-voice-receptionist</code>) and Voice Call Prep Rules (<code>util-voice-call-prep</code>): <code>"skills": { "util-web-channel": true, "util-voice-receptionist": true, "util-voice-call-prep": true }</code>. Sent alone while those are off, the channel is refused with code <code>101</code> and a <code>deps[]</code> list, and nothing changes. Deploy's <code>skills</code> turns them on with the channel.</li>
                     </ul>
                     <p><strong>Agents that typically enable this channel:</strong></p>
                     <ul>
                       <li><a href="https://wiro.ai/agents/voice-receptionist" target="_blank" rel="noopener">Voice Receptionist</a>: phone + browser receptionist.</li>
-                      <li><a href="https://wiro.ai/agents/voice-sales-rep" target="_blank" rel="noopener">Voice Sales Rep</a>: outbound sales rep with an "Open mic" CTA.</li>
                       <li>Custom agents that need a voice button on a website or web app.</li>
                     </ul>
                     <p><strong>Web channel or Twilio channel</strong>? Pick by where the caller comes from:</p>
@@ -37522,7 +37521,7 @@ for e in cron_runs:
                     <h2>Prerequisites</h2>
                     <ul>
                       <li><strong>A Wiro API key</strong> (see <a href="/docs/authentication">Authentication</a>).</li>
-                      <li><strong>A deployed agent</strong> in <code>status: 4</code> (Running), see <a href="/docs/agent-overview">Agent Overview</a>. Voice Receptionist / Voice Sales Rep presets work out of the box; for custom agents, enable <code>util-web-channel</code> via <code>POST /UserAgent/SkillsApply</code>.</li>
+                      <li><strong>A deployed agent</strong> in <code>status: 4</code> (Running), see <a href="/docs/agent-overview">Agent Overview</a>. The Voice Receptionist template works out of the box; for other agents, turn on Web Voice Channel (<code>util-web-channel</code>) together with Voice Receptionist Rules (<code>util-voice-receptionist</code>) and Voice Call Prep Rules (<code>util-voice-call-prep</code>) in one <code>POST /UserAgent/SkillsApply</code> call (see <a href="#overview">Overview</a>).</li>
                       <li><strong>A browser that can capture microphone audio</strong> at 24 kHz mono PCM (every evergreen browser via <code>getUserMedia</code> + Web Audio).</li>
                     </ul>
                   </section>
@@ -37553,7 +37552,7 @@ for e in cron_runs:
                               <td><code>useragentguid</code></td>
                               <td>string</td>
                               <td>Yes</td>
-                              <td>Useragent instance guid. Must be an agent you deployed (for a team agent, call with that team's project key or workspace, or remain an active member of the team), must be in <code>status: 4</code> (Running), and must have <code>util-web-channel</code> enabled.</td>
+                              <td>Useragent instance guid. Must be an agent you deployed (for a team agent, call with that team's project key or workspace, or remain an active member of the team), must be in <code>status: 4</code> (Running), and must have Web Voice Channel (<code>util-web-channel</code>) on.</td>
                             </tr>
                             <tr>
                               <td><code>session_metadata</code></td>
@@ -37626,7 +37625,7 @@ for e in cron_runs:
 
                     <h3>Step 2: Connect the WebSocket</h3>
                     <p>Open a WebSocket to the returned <code>wsUrl</code> and send the <code>session_start</code> JSON frame <strong>within 10 seconds</strong>. After that, frame microphone audio as 24 kHz mono PCM int16 with a <code>&lt;correlationId&gt;|</code> text prefix. <strong>Server-sent binary audio frames use the same prefix shape, so you must strip it before feeding the bytes to Web Audio.</strong></p>
-                    <p>The example below boots a working voice call end-to-end: it acquires the mic, mounts an <code>AudioWorklet</code> that emits 24 kHz Int16 PCM, opens the WebSocket, presents the token, handles every server frame the bridge actually sends, and plays the agent's audio back through <code>AudioContext</code>. Drop it into a page paired with the worklet at <code>audio-processor.js</code> shown below.</p>
+                    <p>The example below boots a working voice call end-to-end: it acquires the mic, mounts an <code>AudioWorklet</code> that emits 24 kHz Int16 PCM, opens the WebSocket, presents the token, handles every frame the server sends, and plays the agent's audio back through <code>AudioContext</code>. Drop it into a page paired with the worklet at <code>audio-processor.js</code> shown below.</p>
                     <pre><code class="language-javascript">// ===== voice-client.js: runs in the browser =====
 
 // 1. POST /UserAgent/Realtime/WebStart from YOUR backend, then pass the
@@ -37724,7 +37723,8 @@ async function startMicCapture() {
 
 // 4. UI hooks.
 function muteMic(on) {
-  // Mute is purely client-side: the bridge has no server-side mute handler.
+  // Mute is purely client-side: toggle the mic track. The server has no
+  // mute frame.
   micStream?.getAudioTracks().forEach((t) =&gt; (t.enabled = !on));
 }
 function bargeIn() { ws.send(JSON.stringify({ type: "interrupt" })); }
@@ -37813,7 +37813,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
 
                   <section id="websocket-protocol">
                     <h2>WebSocket Protocol</h2>
-                    <p>The browser bridge lives at <code>wss://&lt;env&gt;/v1/AgentRealtime/Web</code>.</p>
+                    <p>Open the <code>wsUrl</code> that WebStart returns (<code>wss://socket.wiro.ai/v1/AgentRealtime/Web</code>).</p>
 
                     <h3>First message (text frame)</h3>
                     <pre><code class="language-json">{ "type": "session_start", "sessionToken": "&lt;sessionToken-from-WebStart&gt;" }</code></pre>
@@ -37839,7 +37839,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                         </table>
                       </div>
                     </div>
-                    <p>The bridge transcodes server-side if a downstream model needs a different sample rate, so you always send 24 kHz from the browser.</p>
+                    <p>The server transcodes if a downstream model needs a different sample rate, so you always send 24 kHz from the browser.</p>
 
                     <h3>Browser → server control frames (text)</h3>
                     <div class="docs-param-table">
@@ -37851,17 +37851,17 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                           <tbody>
                             <tr>
                               <td><code>{ "type": "interrupt" }</code></td>
-                              <td>Cuts the agent mid-sentence (barge-in). Use this when the user starts speaking again before the agent finishes. The bridge confirms with a <code>clear</code> frame back.</td>
+                              <td>Cuts the agent mid-sentence (barge-in). Use this when the user starts speaking again before the agent finishes. The server confirms with a <code>clear</code> frame back.</td>
                             </tr>
                             <tr>
                               <td><code>{ "type": "end" }</code></td>
-                              <td>Graceful disconnect: the bridge flushes its buffers, emits a final transcript + <code>session_end</code> frame, then closes.</td>
+                              <td>Graceful disconnect: the server flushes its buffers, emits a final transcript + <code>session_end</code> frame, then closes.</td>
                             </tr>
                           </tbody>
                         </table>
                       </div>
                     </div>
-                    <div class="info-callout"><p><strong>Mute is client-side, not a server frame.</strong> The bridge has no <code>mute</code> handler, so toggle the mic <code>MediaStreamTrack.enabled = false</code> (or stop posting audio frames from your worklet) instead. Sending <code>{type:"mute"}</code> is silently ignored.</p></div>
+                    <div class="info-callout"><p><strong>Mute is client-side, not a server frame.</strong> The server has no <code>mute</code> frame, so toggle the mic <code>MediaStreamTrack.enabled = false</code> (or stop posting audio frames from your worklet) instead. Sending <code>{type:"mute"}</code> is silently ignored.</p></div>
 
                     <h3>Server → browser frames</h3>
                     <div class="docs-param-table">
@@ -37873,7 +37873,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                           <tbody>
                             <tr>
                               <td><code>{ "type": "connecting" }</code></td>
-                              <td>Sent right after the bridge accepts your <code>session_start</code>. Handshake is in progress; the realtime model is being warmed up. UI can show a "connecting" state.</td>
+                              <td>Sent right after the server accepts your <code>session_start</code>. Handshake is in progress; the realtime model is being warmed up. UI can show a "connecting" state.</td>
                             </tr>
                             <tr>
                               <td><code>{ "type": "ready" }</code></td>
@@ -37885,7 +37885,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                             </tr>
                             <tr>
                               <td><code>{ "type": "clear" }</code></td>
-                              <td>Barge-in confirmation: the bridge has discarded the agent utterance still in flight. Drop every <code>AudioBufferSourceNode</code> you've already scheduled and stop appending new audio until you see <code>resume</code>.</td>
+                              <td>Barge-in confirmation: the server has discarded the agent utterance still in flight. Drop every <code>AudioBufferSourceNode</code> you've already scheduled and stop appending new audio until you see <code>resume</code>.</td>
                             </tr>
                             <tr>
                               <td><code>{ "type": "resume" }</code></td>
@@ -37897,7 +37897,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                             </tr>
                             <tr>
                               <td><code>{ "type": "session_end", "reason": "...", "message"?: "..." }</code></td>
-                              <td>Terminal frame, immediately followed by a clean <code>ws.close(1000, …)</code>. <strong>All errors and graceful ends arrive here</strong>. There is no separate <code>error</code> frame. <code>reason</code> is <code>rejected</code> (the call could not start or was turned away), <code>spend_limit</code> (a <a href="/docs/spend-limits" class="docs-link">spend limit</a> was reached during the call), <code>balance</code> (the balance ran out during the call) or <code>ended</code> (any other end; <a href="/docs/integration-twiliovoice-skills#call-history">Call History</a> has the detail in <code>endReason</code>). <code>message</code>, when present, is a short sentence you can show. With <code>spend_limit</code> and <code>balance</code> the bridge lets the reply that is playing finish first and sends no <code>message</code>, so show your own text.</td>
+                              <td>Terminal frame, immediately followed by a clean <code>ws.close(1000, …)</code>. <strong>All errors and graceful ends arrive here</strong>. There is no separate <code>error</code> frame. <code>reason</code> is <code>rejected</code> (the call could not start or was turned away), <code>spend_limit</code> (a <a href="/docs/spend-limits" class="docs-link">spend limit</a> was reached during the call), <code>balance</code> (the balance ran out during the call) or <code>ended</code> (any other end; <a href="/docs/integration-twiliovoice-skills#call-history">Call History</a> has the detail in <code>endReason</code>). <code>message</code>, when present, is a short sentence you can show. With <code>spend_limit</code> and <code>balance</code> the server lets the reply that is playing finish first and sends no <code>message</code>, so show your own text.</td>
                             </tr>
                           </tbody>
                         </table>
@@ -37907,7 +37907,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                     <h3>Session lifetime</h3>
                     <ul>
                       <li>The <code>sessionToken</code> handle is valid for <strong>300 seconds</strong> from issue (until <code>expiresAt</code>) and works once, so the browser must send <code>session_start</code> before then. To connect again, call <code>WebStart</code> for fresh handles, since there's no in-band refresh.</li>
-                      <li>Once the bridge accepts your <code>session_start</code> frame, the 5-minute release timer no longer applies to the call. Live call audio is billed to the agent's Wiro project; the time before the browser connects carries no audio charge.</li>
+                      <li>Once the server accepts your <code>session_start</code> frame, the 5-minute release timer no longer applies to the call. Live call audio is billed to the agent's Wiro project; the time before the browser connects carries no audio charge.</li>
                     </ul>
                   </section>
 
@@ -37969,7 +37969,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                               <td>200</td>
                               <td>none</td>
                               <td><code>util-web-channel not enabled</code></td>
-                              <td>Toggle <code>util-web-channel</code> via <code>POST /UserAgent/SkillsApply</code> (custom agents) or pick a preset that bundles it (Voice Receptionist / Voice Sales Rep).</td>
+                              <td>Turn on Web Voice Channel (<code>util-web-channel</code>) with Voice Receptionist Rules (<code>util-voice-receptionist</code>) and Voice Call Prep Rules (<code>util-voice-call-prep</code>) in one <code>POST /UserAgent/SkillsApply</code> call, or pick the Voice Receptionist template, which bundles it.</td>
                             </tr>
                             <tr>
                               <td>403</td>
@@ -38006,7 +38006,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                       <li><a href="/docs/integration-twiliovoice-skills" class="docs-link">Twilio Voice</a>: pair the same agent with a real phone number for inbound PSTN calls. Both channels surface in the same <a href="/docs/integration-twiliovoice-skills#call-history">Call History</a> feed.</li>
                       <li><a href="/docs/realtime-voice-conversation" class="docs-link">Realtime Voice Conversation</a>: the underlying model-level realtime protocol (used by <code>wiro.ai/models/openai/gpt-realtime-mini</code>, etc.). Web Channel is the agent-aware wrapper around it.</li>
                       <li><a href="/docs/agent-overview" class="docs-link">Agent Overview</a>: useragent statuses, plans, AI usage and the balance, and the rest of the agent surface.</li>
-                      <li><a href="/docs/agent-skills" class="docs-link">Agent Skills</a>: toggling <code>util-web-channel</code> on any agent.</li>
+                      <li><a href="/docs/agent-skills" class="docs-link">Agent Skills</a>: turning on Web Voice Channel (<code>util-web-channel</code>) on any agent.</li>
                       <li><a href="/docs/agent-use-cases" class="docs-link">Agent Use Cases: Voice Receptionist</a>, the preset that ships Web + Twilio channels on by default.</li>
                     </ul>
                   </section>
