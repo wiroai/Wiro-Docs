@@ -308,6 +308,8 @@ Adds a spend limit to the call's workspace, or changes the existing limit with t
 | `That agent is not in this workspace.` | An `agent` limit for an agent of another workspace |
 | `Too many changes to Spend Limits and Model Access in the last hour. Try again later.` | With API keys, this workspace's spend limits and Model Access rules have been changed 60 times in the last hour |
 
+<a id="spend-limit-preview"></a>
+
 ## **POST** /SpendLimit/Preview
 
 Shows what `/SpendLimit/Set` would do, and changes nothing. It takes the same body as `/SpendLimit/Set` and checks it the same way, so only the people who can change limits can call it. Use it to see which workspace a change lands in, the limit as it would be saved and the limit it would replace.

@@ -353,6 +353,8 @@ Adds a rule to the call's workspace, or replaces the rule with the same `scope` 
 | `That agent is not in this workspace.` | An `agent` rule for an agent of another workspace |
 | `Too many changes to Spend Limits and Model Access in the last hour. Try again later.` | With API keys, this workspace's spend limits and Model Access rules have been changed 60 times in the last hour |
 
+<a id="model-access-preview"></a>
+
 ## **POST** /ModelAccess/Preview
 
 Shows what `/ModelAccess/Set` would do, and changes nothing. It takes the same body as `/ModelAccess/Set` and checks it the same way, so only the people who can change rules can call it. Use it to see which workspace a change lands in, the rule as it would be saved and the rule it would replace. For an `agent` rule, it also says whether the rule would block the chat model the agent answers with.

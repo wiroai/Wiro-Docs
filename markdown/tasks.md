@@ -133,6 +133,8 @@ The `totalcost` field in the Task Detail response shows the actual cost charged 
 
 Use the `totalcost` field to track spending per task. For more details on how costs are calculated, see [Pricing](/docs/pricing).
 
+<a id="task-surfaces"></a>
+
 ## Surfaces
 
 Every task records its surface: the way its work came in, such as an API key, MCP or Studio. Task/Detail and Task/List return it as `surface`, and Task/List can list the tasks of one surface. [Spend limits](/docs/spend-limits) and [Model Access](/docs/model-access) rules use the same surfaces and decide them the same way, so a task's `surface` is the one its run counted on.
@@ -221,6 +223,8 @@ Plain-text integrations can use `debugoutput`. Tool integrations must inspect
 `segments`, `finishreason`, and `pexit`. A final structured validation failure
 produces a non-zero `pexit`.
 
+<a id="task-detail"></a>
+
 ## **POST** /Task/Detail
 
 Retrieves the current status and output of a task. You can query by either `tasktoken` or `taskid`.
@@ -278,7 +282,7 @@ Retrieves the current status and output of a task. You can query by either `task
 | `modeldescription` | `string` | Description of the model that was executed. |
 | `modelslugowner` | `string` | Model owner slug (e.g. `"google"`, `"wiro"`). |
 | `modelslugproject` | `string` | Model project slug (e.g. `"nano-banana-pro"`). |
-| `surface` | `string \| null` | The way the task came in, such as `"api"` (see [Surfaces](#surfaces)). `null` for an older task whose surface is not known for certain. |
+| `surface` | `string \| null` | The way the task came in, such as `"api"` (see [Surfaces](#task-surfaces)). `null` for an older task whose surface is not known for certain. |
 | `outputs` | `array` | Output files (CDN URLs) or structured LLM content (`contenttype: "raw"`). |
 
 ## **POST** /Task/List
@@ -287,7 +291,7 @@ Lists the tasks of the call's workspace, newest first. A team project's API key 
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `surface` | string | No | Only the tasks of one [surface](#surfaces): `web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, `studio`, `workflow-agent` or `workflow`. Empty or left out: every surface |
+| `surface` | string | No | Only the tasks of one [surface](#task-surfaces): `web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, `studio`, `workflow-agent` or `workflow`. Empty or left out: every surface |
 | `type` | string | No | `"model"` for model runs, `"train"` for training runs, or `"running"` for the tasks that have not ended and were not cancelled, queued ones included. Left out: every task |
 | `projectid` | string | No | Only the tasks of this project, by its `id` from `/Project/List` |
 | `modelid` | string | No | Only the runs of this model, by its `id` from [`/Tool/List`](/docs/models) |
@@ -342,7 +346,7 @@ Without `surface`, the list leaves out the tasks that workflow runs start for th
 | Field | Type | Description |
 |-------|------|-------------|
 | `total` | `string` | How many tasks match, counting every page. |
-| `tasklist` | `array` | The tasks of this page, newest first, each with the fields of [Task/Detail](#post-taskdetail), `surface` included. |
+| `tasklist` | `array` | The tasks of this page, newest first, each with the fields of [Task/Detail](#task-detail), `surface` included. |
 
 ### Errors
 
