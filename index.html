@@ -8161,6 +8161,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                     </div>
                     <p>An agent plan's automatic renewal counts in <code>totalusd</code>, in the <code>agent</code> row of <code>usage.surfaces</code> and, in a team, in the row of the member who bought the plan, but in no row of <code>usage.projects</code> or <code>usage.agents</code>, so those rows can add up to less than <code>totalusd</code>. An agent's row counts what its own limit counts, so it also holds the AI usage its plan covered, which is not in <code>totalusd</code>: the plan payment already is.</p>
                     <p>For other breakdowns, <code>/Project/UsageSummary</code> gives usage per project and <code>/Task/Stat</code> gives time-series task execution data. Both filter by the active workspace.</p>
+                    <p><code>/Project/UsageSummary</code> counts only charges made with one of the workspace's projects, so an agent's plan payments and AI usage are not in it. <code>/Wallet/TransactionList</code> lists all of the wallet's rows, agents' charges included; AI usage an agent's plan covered is listed there as a <code>USAGE (AGENT PLAN)</code> row that took nothing from the balance (see <a href="/docs/organizations-api-access#billing-flow">Wallet Billing Flow</a>). <code>/Project/UsageSummary</code> and <code>/Wallet/TransactionList</code> take an optional <code>surface</code> (<code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code>, <code>agent</code>, <code>studio</code>, <code>workflow-agent</code> or <code>workflow</code>; see <a href="/docs/tasks#task-surfaces">Surfaces</a>) to show only what one surface charged. <code>/Wallet/TransactionList</code> also takes <code>useragentguid</code> to list one agent's rows. Any other <code>surface</code> is refused with <code>surface must be one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow.</code> Rows from before surfaces were recorded have no surface, so a <code>surface</code> filter leaves them out.</p>
                   </section>
                 </article>
               </div>
@@ -17810,7 +17811,7 @@ for the channel contract.</p>
 </div>
 </div>
 <h5 id="spend-object">Spend object</h5>
-<p><code>spend</code> says what the agent cost in the current calendar month (UTC), in USD.</p>
+<p><code>spend</code> says what the agent cost in the current calendar month (UTC), in USD. It counts only the rows of the wallet that pays for the agent now: after a move to another workspace, the earlier wallet's rows are not in it.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>

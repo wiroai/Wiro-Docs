@@ -1400,7 +1400,7 @@ Every provider entry under `credentials.<key>` carries:
 
 ##### Spend object
 
-`spend` says what the agent cost in the current calendar month (UTC), in USD.
+`spend` says what the agent cost in the current calendar month (UTC), in USD. It counts only the rows of the wallet that pays for the agent now: after a move to another workspace, the earlier wallet's rows are not in it.
 
 | Sub-field | Type | Description |
 |-----------|------|-------------|

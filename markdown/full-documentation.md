@@ -6054,6 +6054,8 @@ An agent plan's automatic renewal counts in `totalusd`, in the `agent` row of `u
 
 For other breakdowns, `/Project/UsageSummary` gives usage per project and `/Task/Stat` gives time-series task execution data. Both filter by the active workspace.
 
+`/Project/UsageSummary` counts only charges made with one of the workspace's projects, so an agent's plan payments and AI usage are not in it. `/Wallet/TransactionList` lists all of the wallet's rows, agents' charges included; AI usage an agent's plan covered is listed there as a `USAGE (AGENT PLAN)` row that took nothing from the balance (see [Wallet Billing Flow](/docs/organizations-api-access#billing-flow)). `/Project/UsageSummary` and `/Wallet/TransactionList` take an optional `surface` (`web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, `studio`, `workflow-agent` or `workflow`; see [Surfaces](/docs/tasks#task-surfaces)) to show only what one surface charged. `/Wallet/TransactionList` also takes `useragentguid` to list one agent's rows. Any other `surface` is refused with `surface must be one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow.` Rows from before surfaces were recorded have no surface, so a `surface` filter leaves them out.
+
 ---
 
 # Model Access
@@ -11083,7 +11085,7 @@ Every provider entry under `credentials.<key>` carries:
 
 ##### Spend object
 
-`spend` says what the agent cost in the current calendar month (UTC), in USD.
+`spend` says what the agent cost in the current calendar month (UTC), in USD. It counts only the rows of the wallet that pays for the agent now: after a move to another workspace, the earlier wallet's rows are not in it.
 
 | Sub-field | Type | Description |
 |-----------|------|-------------|
