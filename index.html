@@ -18179,7 +18179,7 @@ for the channel contract.</p>
 <td><code>timezone</code></td>
 <td>string|null</td>
 <td>No</td>
-<td>IANA timezone identifier (e.g. <code>"Europe/Istanbul"</code>, <code>"America/New_York"</code>, <code>"Asia/Tokyo"</code>). Pass <code>null</code>, <code>""</code>, or the literal <code>"UTC"</code> to <strong>clear</strong> the override; the agent then uses UTC. Unknown zones are rejected with <code>invalid-timezone</code>.</td>
+<td>IANA timezone identifier (e.g. <code>"Europe/Istanbul"</code>, <code>"America/New_York"</code>, <code>"Asia/Tokyo"</code>). Pass <code>null</code>, <code>""</code>, or the literal <code>"UTC"</code> to <strong>clear</strong> the override; the agent then uses UTC. Unknown zones are rejected with <code>Invalid timezone — must be a valid IANA identifier (e.g. 'Europe/Istanbul').</code></td>
 </tr>
 <tr>
 <td><code>teamsessionmode</code></td>
@@ -18191,7 +18191,7 @@ for the channel contract.</p>
 <td><code>chatmodel</code></td>
 <td>string|null</td>
 <td>No</td>
-<td>Canonical model slug for <strong>chat replies</strong> (e.g. <code>"openai/gpt-5.6-sol"</code>). Must be a <strong>selectable</strong> model, i.e. <code>tokenRates.models[&lt;slug&gt;].selectable === true</code>; an unknown / non-selectable slug is rejected with <code>invalid-model-selection</code>. A model that the agent's own <a href="/docs/model-access">Model Access</a> rule blocks is refused with code <code>92</code>. Pass <code>null</code> or <code>""</code> to clear the override and fall back to the platform default.</td>
+<td>Canonical model slug for <strong>chat replies</strong> (e.g. <code>"openai/gpt-5.6-sol"</code>). Must be a <strong>selectable</strong> model, i.e. <code>tokenRates.models[&lt;slug&gt;].selectable === true</code>; an unknown / non-selectable slug is rejected with <code>Invalid model: &lt;slug&gt; is not in the selectable model allowlist.</code> A model that the agent's own <a href="/docs/model-access">Model Access</a> rule blocks is refused with code <code>92</code>. Pass <code>null</code> or <code>""</code> to clear the override and fall back to the platform default.</td>
 </tr>
 <tr>
 <td><code>cronmodel</code></td>
@@ -18215,7 +18215,7 @@ for the channel contract.</p>
 <td><code>enabledcommands</code></td>
 <td>string[]</td>
 <td>No</td>
-<td>Allowlist of in-chat <strong>slash commands</strong> the agent exposes, as an array of command keys <strong>without</strong> the leading slash (e.g. <code>["agent_help", "new_session", "agent_status"]</code>). Validated against the command catalog: an unknown key is rejected with <code>invalid-command-selection</code>, a non-array value with <code>invalid-command-list</code>. Order is preserved and duplicates are removed. An empty array <code>[]</code> is valid and <strong>hides the slash-command menu</strong> entirely. Omit the field to leave the current allowlist untouched.</td>
+<td>Allowlist of in-chat <strong>slash commands</strong> the agent exposes, as an array of command keys <strong>without</strong> the leading slash (e.g. <code>["agent_help", "new_session", "agent_status"]</code>). Validated against the command catalog: an unknown key is rejected with <code>Invalid command: &lt;key&gt; is not a known agent command.</code>, a non-array value with <code>enabledcommands must be an array of command keys.</code> Order is preserved and duplicates are removed. An empty array <code>[]</code> is valid and <strong>hides the slash-command menu</strong> entirely. Omit the field to leave the current allowlist untouched.</td>
 </tr>
 <tr>
 <td><code>wiroapiallowedpaths</code></td>
@@ -18241,7 +18241,7 @@ for the channel contract.</p>
 </div>
 <blockquote>
 <p><strong>Slash-command catalog.</strong> Valid <code>enabledcommands</code> keys are: <code>agent_help</code>, <code>new_session</code>, <code>agent_status</code>, <code>agent_limits</code>, <code>last_scan</code>, <code>last_heartbeat</code>, <code>agent_restart</code>, <code>clear_all_sessions</code>, <code>clear_history</code>. Read the agent's current allowlist from the <code>enabledCommands</code> field (camelCase) on <a href="#post-useragentdetail"><code>UserAgent/Detail</code></a> / <code>MyAgents</code> / <code>PinnedAgents</code>, where <code>null</code> means the operator never customized it (all commands available) and an array (including <code>[]</code>) is an explicit allowlist.</p>
-<p><strong>Omitted fields are preserved.</strong> The handler distinguishes between "field not in the body" and "field present with <code>null</code>/<code>""</code>/value", so a POST that carries only <code>timezone</code> does <strong>not</strong> touch <code>teamsessionmode</code> or any model field, and vice versa. Sending an empty body (none of the recognised fields) is rejected with <code>nothing-to-update</code> to avoid charging a no-op restart.</p>
+<p><strong>Omitted fields are preserved.</strong> The handler distinguishes between "field not in the body" and "field present with <code>null</code>/<code>""</code>/value", so a POST that carries only <code>timezone</code> does <strong>not</strong> touch <code>teamsessionmode</code> or any model field, and vice versa. Sending an empty body (none of the recognised fields) is rejected with <code>No fields supplied to update.</code>, so it never restarts the agent for nothing.</p>
 <p><strong>Read vs write casing.</strong> You <strong>read</strong> the current selection from the <code>agentModel</code> object on <code>UserAgent/Detail</code> / <code>MyAgents</code> / <code>PinnedAgents</code> in camelCase (<code>chatModel</code>, <code>cronModel</code>, <code>voicePrepModel</code>, <code>voicePostcallModel</code>); you <strong>write</strong> it here in lowercase (<code>chatmodel</code>, <code>cronmodel</code>, <code>voiceprepmodel</code>, <code>voicepostcallmodel</code>). The selectable set is exactly the models that <code>tokenRates.models</code> marks <code>selectable: true</code>. There is no separate "list models" endpoint, so read <code>tokenRates</code> to populate a picker.</p>
 <p><strong>An agent's own calls never manage an account.</strong> Calls the agent makes itself to the Wiro API with its Wiro project key are refused with HTTP <code>403</code> on account, agent, team and billing endpoints, such as <code>/UserAgent/*</code>, <code>/Project/*</code>, <code>/Team/*</code> and <code>/Wallet/*</code>, whatever <code>wiroapiallowedpaths</code> allows: <code>An agent can't call this endpoint. An agent admin changes the agent's setup in its settings or with a setup card in chat.</code> <code>POST /v1/UserAgent/Message/UploadAsset</code> stays open. On <code>Task/Detail</code>, and on <code>Task/List</code>, <code>Task/Cancel</code> and <code>Task/Kill</code> if your <code>wiroapiallowedpaths</code> adds them, the agent's calls reach only the tasks it started: a task your backend or anyone else started is not listed and answers as one that does not exist. An agent changes its own setup only through <a href="/docs/agent-messaging#setup-from-chat">setup cards</a> that an agent admin approves. A <a href="/docs/agent-connectors">connector</a>'s tools are the ones its <code>tools</code> on <code>AgentConnector/Detail</code> list, and they act with that connection's own credentials. The <a href="/docs/agent-connectors#the-wiro-connector"><code>wiro</code> connector</a> acts with the agent's own Wiro project key, so its calls are the agent's own calls, and these refusals apply to them too.</p>
 </blockquote>
@@ -18339,86 +18339,97 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <p><strong>Light response by design.</strong> <code>UpdateSettings</code> returns just <code>result</code> + <code>errors</code>, not the full useragent shape. Pull the refreshed row with <code>POST /UserAgent/Detail</code> if you need to re-render the panel after the write.</p>
 </blockquote>
 <h5 id="common-errors">Common errors</h5>
+<p>Each of these comes back with HTTP 200 and <code>result: false</code>, like every API answer (see <a href="/docs/error-reference">Error Reference</a>), and nothing is saved:</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
 <thead>
 <tr>
-<th>Code</th>
-<th>Message key</th>
+<th><code>errors[0].code</code></th>
+<th>Message</th>
 <th>When</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>400</td>
-<td><code>request-parameter-required</code></td>
+<td>0</td>
+<td><code>Request parameter [useragentguid] required</code></td>
 <td><code>useragentguid</code> missing from the body.</td>
 </tr>
 <tr>
-<td>400</td>
-<td><code>nothing-to-update</code></td>
+<td>0</td>
+<td><code>No fields supplied to update.</code></td>
 <td>Body had none of the recognised fields (<code>timezone</code>, <code>teamsessionmode</code>, a model override, <code>enabledcommands</code>, <code>wiroapiallowedpaths</code>, <code>chatsetup</code> or <code>screen</code>).</td>
 </tr>
 <tr>
-<td>400</td>
-<td><code>invalid-timezone</code></td>
+<td>0</td>
+<td><code>Invalid timezone — must be a valid IANA identifier (e.g. 'Europe/Istanbul').</code></td>
 <td><code>timezone</code> is not a valid IANA time zone.</td>
 </tr>
 <tr>
-<td>400</td>
+<td>0</td>
 <td><code>teamsessionmode must be private or collaborative</code></td>
 <td><code>teamsessionmode</code> wasn't one of the two supported values.</td>
 </tr>
 <tr>
-<td>400</td>
-<td><code>directchatmode is not accepted</code></td>
+<td>0</td>
+<td><code>directchatmode is not accepted; teamsessionmode is the unified chat mode</code></td>
 <td>Obsolete separate mode was sent instead of unified <code>teamsessionmode</code>.</td>
 </tr>
 <tr>
-<td>400</td>
-<td><code>invalid-model-selection</code></td>
+<td>0</td>
+<td><code>Invalid model: &lt;slug&gt; is not in the selectable model allowlist.</code></td>
 <td>A model override (<code>chatmodel</code> / <code>cronmodel</code> / <code>voiceprepmodel</code> / <code>voicepostcallmodel</code>) was an unknown or non-selectable slug (<code>tokenRates.models[&lt;slug&gt;].selectable !== true</code>).</td>
 </tr>
 <tr>
-<td>400</td>
-<td><code>invalid-command-list</code></td>
+<td>92</td>
+<td>The Model Access rule's sentence, such as <code>This agent can't use openai/gpt-5.5. Model Access rules decide which models can run.</code></td>
+<td>A model override that a <a href="/docs/model-access">Model Access</a> rule for the agent blocks.</td>
+</tr>
+<tr>
+<td>0</td>
+<td><code>enabledcommands must be an array of command keys.</code></td>
 <td><code>enabledcommands</code> was present but not an array.</td>
 </tr>
 <tr>
-<td>400</td>
-<td><code>invalid-command-selection</code></td>
+<td>0</td>
+<td><code>Invalid command: &lt;key&gt; is not a known agent command.</code></td>
 <td><code>enabledcommands</code> contained a key that isn't in the slash-command catalog.</td>
 </tr>
 <tr>
-<td>400</td>
+<td>0</td>
 <td><code>invalid-wiro-api-path-rule</code></td>
 <td><code>wiroapiallowedpaths</code> was not an array, or a rule broke the format or the limits above.</td>
 </tr>
 <tr>
-<td>400</td>
+<td>0</td>
 <td><code>chatsetup must be off, webchat or all</code></td>
 <td><code>chatsetup</code> wasn't <code>"all"</code>, <code>"webchat"</code>, <code>"off"</code> or <code>null</code>.</td>
 </tr>
 <tr>
-<td>400</td>
+<td>0</td>
 <td><code>screen must be on or off</code></td>
 <td><code>screen</code> wasn't <code>"on"</code>, <code>"off"</code> or <code>null</code>.</td>
 </tr>
 <tr>
-<td>403</td>
-<td><code>useragent-access-denied</code></td>
+<td>95</td>
+<td><code>User agent not found</code></td>
+<td>Unknown guid, or the agent has been deleted.</td>
+</tr>
+<tr>
+<td>96</td>
+<td><code>You don't have access to this user agent</code></td>
 <td>Caller is neither the owner nor on the agent's team.</td>
 </tr>
 <tr>
-<td>403</td>
-<td><code>useragent-team-admin-required</code></td>
-<td>Caller is a member of the agent's team but not a team admin. Carries <code>errors[0].code: 97</code>.</td>
+<td>97</td>
+<td><code>Only a team admin can perform this action on a team-owned agent.</code></td>
+<td>Caller is a member of the agent's team but not a team admin.</td>
 </tr>
 <tr>
-<td>500</td>
-<td><code>failed-to-update-useragent</code></td>
-<td>DB write failed (transient, safe to retry).</td>
+<td>0</td>
+<td><code>Failed to update user agent — please retry.</code></td>
+<td>The write failed (transient, safe to retry).</td>
 </tr>
 </tbody>
 </table>

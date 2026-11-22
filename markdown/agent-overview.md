@@ -1549,20 +1549,20 @@ Writes per-agent preference toggles that are not credentials and not skill rows.
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid. |
-| `timezone` | string\|null | No | IANA timezone identifier (e.g. `"Europe/Istanbul"`, `"America/New_York"`, `"Asia/Tokyo"`). Pass `null`, `""`, or the literal `"UTC"` to **clear** the override; the agent then uses UTC. Unknown zones are rejected with `invalid-timezone`. |
+| `timezone` | string\|null | No | IANA timezone identifier (e.g. `"Europe/Istanbul"`, `"America/New_York"`, `"Asia/Tokyo"`). Pass `null`, `""`, or the literal `"UTC"` to **clear** the override; the agent then uses UTC. Unknown zones are rejected with `Invalid timezone — must be a valid IANA identifier (e.g. 'Europe/Istanbul').` |
 | `teamsessionmode` | string | No | Unified Chat Mode: `"private"` isolates each team member's Wiro web-chat history and native agent memory plus each approved external-channel DM operator; `"collaborative"` shares both runtime contexts. Personal agents can set it because external-channel DMs can have multiple operators. Web and external-channel message lists remain separate transports; room/thread sessions remain room-scoped. Channel activation remains credential-derived. On a team agent, `"private"` also keeps the agent's Screen closed to the team (see [Who Can Watch](#who-can-watch)). |
-| `chatmodel` | string\|null | No | Canonical model slug for **chat replies** (e.g. `"openai/gpt-5.6-sol"`). Must be a **selectable** model, i.e. `tokenRates.models[<slug>].selectable === true`; an unknown / non-selectable slug is rejected with `invalid-model-selection`. A model that the agent's own [Model Access](/docs/model-access) rule blocks is refused with code `92`. Pass `null` or `""` to clear the override and fall back to the platform default. |
+| `chatmodel` | string\|null | No | Canonical model slug for **chat replies** (e.g. `"openai/gpt-5.6-sol"`). Must be a **selectable** model, i.e. `tokenRates.models[<slug>].selectable === true`; an unknown / non-selectable slug is rejected with `Invalid model: <slug> is not in the selectable model allowlist.` A model that the agent's own [Model Access](/docs/model-access) rule blocks is refused with code `92`. Pass `null` or `""` to clear the override and fall back to the platform default. |
 | `cronmodel` | string\|null | No | Same rules as `chatmodel`, applied to **scheduled (cron) turns**. |
 | `voiceprepmodel` | string\|null | No | Same rules as `chatmodel`, applied to the **voice-call prep** turn (context assembled before a realtime call). |
 | `voicepostcallmodel` | string\|null | No | Same rules as `chatmodel`, applied to the **post-call summary** turn after a realtime voice call ends. |
-| `enabledcommands` | string[] | No | Allowlist of in-chat **slash commands** the agent exposes, as an array of command keys **without** the leading slash (e.g. `["agent_help", "new_session", "agent_status"]`). Validated against the command catalog: an unknown key is rejected with `invalid-command-selection`, a non-array value with `invalid-command-list`. Order is preserved and duplicates are removed. An empty array `[]` is valid and **hides the slash-command menu** entirely. Omit the field to leave the current allowlist untouched. |
+| `enabledcommands` | string[] | No | Allowlist of in-chat **slash commands** the agent exposes, as an array of command keys **without** the leading slash (e.g. `["agent_help", "new_session", "agent_status"]`). Validated against the command catalog: an unknown key is rejected with `Invalid command: <key> is not a known agent command.`, a non-array value with `enabledcommands must be an array of command keys.` Order is preserved and duplicates are removed. An empty array `[]` is valid and **hides the slash-command menu** entirely. Omit the field to leave the current allowlist untouched. |
 | `wiroapiallowedpaths` | string[]\|null | No | Limits the agent's own calls to the Wiro API, the ones its skills make with its Wiro project key (for example to run models), to the endpoints you list. It doesn't cover the tools of the [`wiro` connector](/docs/agent-connectors#the-wiro-connector): those are the ones its `tools` on `AgentConnector/Detail` list. Each rule is a method in capitals (`GET`, `POST`, `PUT`, `PATCH`, `DELETE` or `HEAD`), one space and a `/v1` path, such as `"POST /v1/Task/Detail"`. A `*` stands for exactly one whole path segment: `"POST /v1/Run/*/*"` allows every model run, while `"POST /v1/Run/x*"` is invalid. Up to 64 rules of at most 200 characters each; duplicates are removed and the order is kept. Calls to endpoints that no rule matches are refused. `[]` refuses every call, model runs included; `null` removes your list, and the agent goes back to the default list. An invalid rule, or a value that isn't an array, is rejected with `invalid-wiro-api-path-rule`, and nothing in the request is saved. Omit the field to keep the current list. An agent with no list of its own uses the default list: `POST /v1/Run/*/*`, `POST /v1/Task/Detail`, `POST /v1/Tool/List`, `POST /v1/Tool/Detail`, `POST /v1/Tool/UploadModelPostImage` and `POST /v1/UserAgent/Message/UploadAsset`. If a custom skill of yours calls another endpoint, send a list that includes it. |
 | `chatsetup` | string\|null | No | Setup From Chat: where people can change the agent's setup by approving setup cards in chat. `"all"` (the default): in the Wiro web chat and in messages sent with a project API key, such as from your backend or an MCP client. `"webchat"`: only in the Wiro web chat on wiro.ai. `"off"`: never from chat; the agent says that an agent admin makes the change in the agent's settings. `null` goes back to `"all"`, and any other value is rejected with `chatsetup must be off, webchat or all`. Agents that your customers or many people talk to usually choose `"webchat"` or `"off"`; see [Setup From Chat](/docs/agent-messaging#setup-from-chat). Read it back as `chatSetup` on [`UserAgent/Detail`](#post-useragentdetail). |
 | `screen` | string\|null | No | Screen: whether the agent's [Screen](#screen-and-take-control) opens, in the Wiro panel and in your own app through [`ScreenStart`](#post-useragentrealtimescreenstart) with a project API key. The people who manage the agent (its owner and the team's admins) watch its computer live, and the owner of a personal agent that has never been in a team, or whose browser was reset after it last left one, can take control of it. `"on"` (the default) or `"off"`. `"off"` closes it for everyone, watching and Take Control alike, in the panel and in your app, and also closes screens that are open, a Take Control session included, within about half a minute. On a team agent whose Chat Mode is `"private"` the screen stays closed to the team whatever this says. `null` goes back to `"on"`, and any other value is rejected with `screen must be on or off`. It never restarts the agent. Read it back as `screen` on [`UserAgent/Detail`](#post-useragentdetail). |
 
 > **Slash-command catalog.** Valid `enabledcommands` keys are: `agent_help`, `new_session`, `agent_status`, `agent_limits`, `last_scan`, `last_heartbeat`, `agent_restart`, `clear_all_sessions`, `clear_history`. Read the agent's current allowlist from the `enabledCommands` field (camelCase) on [`UserAgent/Detail`](#post-useragentdetail) / `MyAgents` / `PinnedAgents`, where `null` means the operator never customized it (all commands available) and an array (including `[]`) is an explicit allowlist.
 
-> **Omitted fields are preserved.** The handler distinguishes between "field not in the body" and "field present with `null`/`""`/value", so a POST that carries only `timezone` does **not** touch `teamsessionmode` or any model field, and vice versa. Sending an empty body (none of the recognised fields) is rejected with `nothing-to-update` to avoid charging a no-op restart.
+> **Omitted fields are preserved.** The handler distinguishes between "field not in the body" and "field present with `null`/`""`/value", so a POST that carries only `timezone` does **not** touch `teamsessionmode` or any model field, and vice versa. Sending an empty body (none of the recognised fields) is rejected with `No fields supplied to update.`, so it never restarts the agent for nothing.
 
 > **Read vs write casing.** You **read** the current selection from the `agentModel` object on `UserAgent/Detail` / `MyAgents` / `PinnedAgents` in camelCase (`chatModel`, `cronModel`, `voicePrepModel`, `voicePostcallModel`); you **write** it here in lowercase (`chatmodel`, `cronmodel`, `voiceprepmodel`, `voicepostcallmodel`). The selectable set is exactly the models that `tokenRates.models` marks `selectable: true`. There is no separate "list models" endpoint, so read `tokenRates` to populate a picker.
 
@@ -1668,22 +1668,26 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
 
 ##### Common errors
 
-| Code | Message key | When |
+Each of these comes back with HTTP 200 and `result: false`, like every API answer (see [Error Reference](/docs/error-reference)), and nothing is saved:
+
+| `errors[0].code` | Message | When |
 |------|-------------|------|
-| 400 | `request-parameter-required` | `useragentguid` missing from the body. |
-| 400 | `nothing-to-update` | Body had none of the recognised fields (`timezone`, `teamsessionmode`, a model override, `enabledcommands`, `wiroapiallowedpaths`, `chatsetup` or `screen`). |
-| 400 | `invalid-timezone` | `timezone` is not a valid IANA time zone. |
-| 400 | `teamsessionmode must be private or collaborative` | `teamsessionmode` wasn't one of the two supported values. |
-| 400 | `directchatmode is not accepted` | Obsolete separate mode was sent instead of unified `teamsessionmode`. |
-| 400 | `invalid-model-selection` | A model override (`chatmodel` / `cronmodel` / `voiceprepmodel` / `voicepostcallmodel`) was an unknown or non-selectable slug (`tokenRates.models[<slug>].selectable !== true`). |
-| 400 | `invalid-command-list` | `enabledcommands` was present but not an array. |
-| 400 | `invalid-command-selection` | `enabledcommands` contained a key that isn't in the slash-command catalog. |
-| 400 | `invalid-wiro-api-path-rule` | `wiroapiallowedpaths` was not an array, or a rule broke the format or the limits above. |
-| 400 | `chatsetup must be off, webchat or all` | `chatsetup` wasn't `"all"`, `"webchat"`, `"off"` or `null`. |
-| 400 | `screen must be on or off` | `screen` wasn't `"on"`, `"off"` or `null`. |
-| 403 | `useragent-access-denied` | Caller is neither the owner nor on the agent's team. |
-| 403 | `useragent-team-admin-required` | Caller is a member of the agent's team but not a team admin. Carries `errors[0].code: 97`. |
-| 500 | `failed-to-update-useragent` | DB write failed (transient, safe to retry). |
+| 0 | `Request parameter [useragentguid] required` | `useragentguid` missing from the body. |
+| 0 | `No fields supplied to update.` | Body had none of the recognised fields (`timezone`, `teamsessionmode`, a model override, `enabledcommands`, `wiroapiallowedpaths`, `chatsetup` or `screen`). |
+| 0 | `Invalid timezone — must be a valid IANA identifier (e.g. 'Europe/Istanbul').` | `timezone` is not a valid IANA time zone. |
+| 0 | `teamsessionmode must be private or collaborative` | `teamsessionmode` wasn't one of the two supported values. |
+| 0 | `directchatmode is not accepted; teamsessionmode is the unified chat mode` | Obsolete separate mode was sent instead of unified `teamsessionmode`. |
+| 0 | `Invalid model: <slug> is not in the selectable model allowlist.` | A model override (`chatmodel` / `cronmodel` / `voiceprepmodel` / `voicepostcallmodel`) was an unknown or non-selectable slug (`tokenRates.models[<slug>].selectable !== true`). |
+| 92 | The Model Access rule's sentence, such as `This agent can't use openai/gpt-5.5. Model Access rules decide which models can run.` | A model override that a [Model Access](/docs/model-access) rule for the agent blocks. |
+| 0 | `enabledcommands must be an array of command keys.` | `enabledcommands` was present but not an array. |
+| 0 | `Invalid command: <key> is not a known agent command.` | `enabledcommands` contained a key that isn't in the slash-command catalog. |
+| 0 | `invalid-wiro-api-path-rule` | `wiroapiallowedpaths` was not an array, or a rule broke the format or the limits above. |
+| 0 | `chatsetup must be off, webchat or all` | `chatsetup` wasn't `"all"`, `"webchat"`, `"off"` or `null`. |
+| 0 | `screen must be on or off` | `screen` wasn't `"on"`, `"off"` or `null`. |
+| 95 | `User agent not found` | Unknown guid, or the agent has been deleted. |
+| 96 | `You don't have access to this user agent` | Caller is neither the owner nor on the agent's team. |
+| 97 | `Only a team admin can perform this action on a team-owned agent.` | Caller is a member of the agent's team but not a team admin. |
+| 0 | `Failed to update user agent — please retry.` | The write failed (transient, safe to retry). |
 
 #### **POST** /UserAgent/ResetBrowser
 
