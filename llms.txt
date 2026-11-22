@@ -101,6 +101,7 @@ Headers:
 
 Create a project at https://wiro.ai/panel/project/new to get API key and secret.
 Each project has its own API key, optional API secret, and usage tracking. A project has no wallet of its own: its runs are paid from your personal wallet, or from the team wallet for a team project.
+Each workspace also has a Studio project, the one Studio and the Workflow Agent work on for messages sent from wiro.ai (their usage is tracked there): the first such message in a workspace without one uses its project named "Studio", or creates one with that name, with its own API key and the email that comes with a new key. Change it with POST /Studio/ProjectSet (in a team, a team admin or the organization owner can); if it is deleted, the next such message gives the workspace one again. Messages sent with an API key run on that key's own project.
 
 ## Endpoints
 

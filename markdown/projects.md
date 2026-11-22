@@ -11,6 +11,8 @@ A project is a container that holds your **API keys**, **authentication settings
 - A project has no wallet of its own. Its runs are paid from your personal wallet, or from the team wallet for a team project
 - You can create multiple projects under one account
 
+Each workspace also has a Studio project: the project [Studio](/docs/studio) and the [Workflow Agent](/docs/workflow-agent) work on for messages sent from wiro.ai, so their usage is tracked there. The first such message in a workspace that has none uses its project named "Studio", or creates one with that name, with its own API key and the email that comes with a new key. You can pick another project with [Studio/ProjectSet](/docs/studio#post-studioprojectset); in a team, a team admin or the organization owner can. If the Studio project is deleted, the next such message gives the workspace one again the same way. Messages sent with an API key run on that key's own project.
+
 ## Creating a Project
 
 1. Go to your [Dashboard](https://wiro.ai/panel)

@@ -863,6 +863,7 @@
                       <li>A project has no wallet of its own. Its runs are paid from your personal wallet, or from the team wallet for a team project</li>
                       <li>You can create multiple projects under one account</li>
                     </ul>
+                    <p>Each workspace also has a Studio project: the project <a href="/docs/studio">Studio</a> and the <a href="/docs/workflow-agent">Workflow Agent</a> work on for messages sent from wiro.ai, so their usage is tracked there. The first such message in a workspace that has none uses its project named "Studio", or creates one with that name, with its own API key and the email that comes with a new key. You can pick another project with <a href="/docs/studio#post-studioprojectset">Studio/ProjectSet</a>; in a team, a team admin or the organization owner can. If the Studio project is deleted, the next such message gives the workspace one again the same way. Messages sent with an API key run on that key's own project.</p>
                   </section>
 
                   <section id="creating-project">
