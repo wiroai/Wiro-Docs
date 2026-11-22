@@ -21168,7 +21168,7 @@ channel-enable endpoint or persisted switch.</p>
 <p>Without this call, the session is released after about 5 minutes. Calling <code>Cancel</code> releases it right away.</p>
 </blockquote>
 <h4 id="post-useragenttwiliocallhistorylist"><strong>POST</strong> /UserAgent/TwilioCallHistory/List</h4>
-<p>Returns the last N realtime voice sessions for a useragent, covering <strong>both Twilio and Web channels</strong> despite the Twilio-named path, since both are stored as messages whose <code>metadata.type</code> starts with <code>realtime_session</code>. Owner / team-member access only.</p>
+<p>Returns the realtime voice sessions among a useragent's latest messages, covering <strong>both Twilio and Web channels</strong> despite the Twilio-named path, since both are stored as messages whose <code>metadata.type</code> starts with <code>realtime_session</code>. Owner / team-member access only.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -21191,7 +21191,7 @@ channel-enable endpoint or persisted switch.</p>
 <td><code>limit</code></td>
 <td>number</td>
 <td>No</td>
-<td>Max sessions to return. Default <code>50</code>, hard-capped at <code>200</code>. Sorted newest-first.</td>
+<td>How many of the agent's latest messages to read (every kind, not only calls). Default <code>50</code>, at most <code>200</code>. The voice sessions among them come back newest first, so the list can be shorter than <code>limit</code>, or empty while older calls exist.</td>
 </tr>
 </tbody>
 </table>
@@ -21204,11 +21204,9 @@ channel-enable endpoint or persisted switch.</p>
   &quot;data&quot;: [
     {
       &quot;messageguid&quot;: &quot;5d6e7f80-9a1b-4c2d-8e3f-4a5b6c7d8e01&quot;,
-      &quot;agenttoken&quot;: &quot;8a5b9e2f-4d3c-4a01-9c2e-1b6d4e7a9c5d&quot;,
+      &quot;correlationId&quot;: &quot;voice_Q7mN2xR8kLp4WzT1vYc6HdBs&quot;,
       &quot;channel&quot;: &quot;twilio&quot;,
-      &quot;callsid&quot;: &quot;CAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx&quot;,
       &quot;callerInfo&quot;: { &quot;number&quot;: &quot;+15551234567&quot;, &quot;country&quot;: &quot;US&quot; },
-      &quot;callerProfile&quot;: &quot;Returning caller — last asked about pricing. Mentioned company name 'Acme Corp'.&quot;,
       &quot;status&quot;: &quot;realtime_session&quot;,
       &quot;endReason&quot;: &quot;wiro_completed&quot;,
       &quot;durationSeconds&quot;: 137,
@@ -21218,11 +21216,9 @@ channel-enable endpoint or persisted switch.</p>
     },
     {
       &quot;messageguid&quot;: &quot;5d6e7f80-9a1b-4c2d-8e3f-4a5b6c7d8e02&quot;,
-      &quot;agenttoken&quot;: &quot;8a5b9e2f-4d3c-4a01-9c2e-1b6d4e7a9c5d&quot;,
+      &quot;correlationId&quot;: &quot;voice_3fK9xQ2LmVb7TzR1pWc8NdYa&quot;,
       &quot;channel&quot;: &quot;web&quot;,
-      &quot;callsid&quot;: &quot;voice-call-7f3c2b1d8e&quot;,
       &quot;callerInfo&quot;: { &quot;page_url&quot;: &quot;https://example.com/contact&quot;, &quot;display_identifier&quot;: &quot;+15551234567&quot; },
-      &quot;callerProfile&quot;: null,
       &quot;status&quot;: &quot;realtime_session&quot;,
       &quot;endReason&quot;: &quot;browser_disconnect&quot;,
       &quot;durationSeconds&quot;: 84,
@@ -21250,9 +21246,9 @@ channel-enable endpoint or persisted switch.</p>
 <td>The guid of the message that holds this call. Use it with <code>Message/Detail</code> for the full transcript.</td>
 </tr>
 <tr>
-<td><code>agenttoken</code></td>
-<td>string</td>
-<td>Useragent token. Same value across all rows for a given agent.</td>
+<td><code>correlationId</code></td>
+<td>string | null</td>
+<td>The session's public id. For a web call it is the <code>correlationId</code> that <code>WebStart</code> returned; phone calls get one too. <code>null</code> when the session has none.</td>
 </tr>
 <tr>
 <td><code>channel</code></td>
@@ -21260,19 +21256,9 @@ channel-enable endpoint or persisted switch.</p>
 <td>Which voice channel served the call.</td>
 </tr>
 <tr>
-<td><code>callsid</code></td>
-<td>string</td>
-<td>Twilio Call SID for <code>channel: "twilio"</code>; the internal session id (<code>voice-call-*</code>) for <code>channel: "web"</code>.</td>
-</tr>
-<tr>
 <td><code>callerInfo</code></td>
 <td>object</td>
 <td>Twilio rows: <code>{ number, country }</code> (E.164 + ISO-2). Web rows: <code>{ page_url, display_identifier? }</code>, where <code>display_identifier</code> is only present when the embedding page validated a phone-style identifier; <code>page_url</code> is the page hosting the widget.</td>
-</tr>
-<tr>
-<td><code>callerProfile</code></td>
-<td>string | null</td>
-<td>Free-text summary of the caller that the agent writes before the call. <code>null</code> until it is ready.</td>
 </tr>
 <tr>
 <td><code>status</code></td>

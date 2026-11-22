@@ -3169,12 +3169,12 @@ Cancels a `WebStart`-initiated session **before the WebSocket handshake**. Use i
 
 #### **POST** /UserAgent/TwilioCallHistory/List
 
-Returns the last N realtime voice sessions for a useragent, covering **both Twilio and Web channels** despite the Twilio-named path, since both are stored as messages whose `metadata.type` starts with `realtime_session`. Owner / team-member access only.
+Returns the realtime voice sessions among a useragent's latest messages, covering **both Twilio and Web channels** despite the Twilio-named path, since both are stored as messages whose `metadata.type` starts with `realtime_session`. Owner / team-member access only.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Useragent instance guid. |
-| `limit` | number | No | Max sessions to return. Default `50`, hard-capped at `200`. Sorted newest-first. |
+| `limit` | number | No | How many of the agent's latest messages to read (every kind, not only calls). Default `50`, at most `200`. The voice sessions among them come back newest first, so the list can be shorter than `limit`, or empty while older calls exist. |
 
 ##### Response
 
@@ -3185,11 +3185,9 @@ Returns the last N realtime voice sessions for a useragent, covering **both Twil
   "data": [
     {
       "messageguid": "5d6e7f80-9a1b-4c2d-8e3f-4a5b6c7d8e01",
-      "agenttoken": "8a5b9e2f-4d3c-4a01-9c2e-1b6d4e7a9c5d",
+      "correlationId": "voice_Q7mN2xR8kLp4WzT1vYc6HdBs",
       "channel": "twilio",
-      "callsid": "CAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
       "callerInfo": { "number": "+15551234567", "country": "US" },
-      "callerProfile": "Returning caller — last asked about pricing. Mentioned company name 'Acme Corp'.",
       "status": "realtime_session",
       "endReason": "wiro_completed",
       "durationSeconds": 137,
@@ -3199,11 +3197,9 @@ Returns the last N realtime voice sessions for a useragent, covering **both Twil
     },
     {
       "messageguid": "5d6e7f80-9a1b-4c2d-8e3f-4a5b6c7d8e02",
-      "agenttoken": "8a5b9e2f-4d3c-4a01-9c2e-1b6d4e7a9c5d",
+      "correlationId": "voice_3fK9xQ2LmVb7TzR1pWc8NdYa",
       "channel": "web",
-      "callsid": "voice-call-7f3c2b1d8e",
       "callerInfo": { "page_url": "https://example.com/contact", "display_identifier": "+15551234567" },
-      "callerProfile": null,
       "status": "realtime_session",
       "endReason": "browser_disconnect",
       "durationSeconds": 84,
@@ -3218,11 +3214,9 @@ Returns the last N realtime voice sessions for a useragent, covering **both Twil
 | Field | Type | Description |
 |-------|------|-------------|
 | `messageguid` | string | The guid of the message that holds this call. Use it with `Message/Detail` for the full transcript. |
-| `agenttoken` | string | Useragent token. Same value across all rows for a given agent. |
+| `correlationId` | string \| null | The session's public id. For a web call it is the `correlationId` that `WebStart` returned; phone calls get one too. `null` when the session has none. |
 | `channel` | `"twilio"` \| `"web"` | Which voice channel served the call. |
-| `callsid` | string | Twilio Call SID for `channel: "twilio"`; the internal session id (`voice-call-*`) for `channel: "web"`. |
 | `callerInfo` | object | Twilio rows: `{ number, country }` (E.164 + ISO-2). Web rows: `{ page_url, display_identifier? }`, where `display_identifier` is only present when the embedding page validated a phone-style identifier; `page_url` is the page hosting the widget. |
-| `callerProfile` | string \| null | Free-text summary of the caller that the agent writes before the call. `null` until it is ready. |
 | `status` | string | `realtime_session_incoming` (call accepted, prep in flight) → `realtime_session_active` (audio flowing) → `realtime_session` (completed normally) or `realtime_session_rejected` (rejected before active state, with `metadata.reason`). |
 | `endReason` | string \| null | Set on `realtime_session` rows only. One of: `wiro_completed`, `wiro_cancelled`, `wiro_disconnect`, `wiro_error`, `twilio_disconnect`, `browser_disconnect`, `max_duration`, `spend_limit` (a [spend limit](/docs/spend-limits) was reached during the call), `balance` (the balance ran out during the call). `null` while the call is still in flight or rejected. |
 | `durationSeconds` | number \| null | Total elapsed seconds. `null` until end. |
