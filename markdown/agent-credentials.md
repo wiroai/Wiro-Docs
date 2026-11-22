@@ -374,7 +374,7 @@ Response: `{ "result": true, "applied": 3, "errors": [] }`. Each of these is ref
 
 - an entry without a name or a URL: `Website Name in Websites #1 is required` (or `URL in Websites #1 is required`);
 - any other key in an entry: `Websites #1 contains an unknown field: <key>`;
-- a `urls` value that isn't a JSON array: `Websites must be an array`.
+- a `urls` value that isn't a JSON array, such as one URL as text: `Websites must be an array`.
 
 ### Field-level write rules
 
