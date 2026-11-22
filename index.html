@@ -24400,6 +24400,113 @@ End every post with three questions readers ask, each with a two-sentence answer
 <li><strong>With a sign-in.</strong> When its <code>needs</code> names one connector with <code>mode: "signin"</code> whose <code>connect</code> card waits, start the sign-in on that <code>connect</code> card (see <a href="#setup-signin-cards">Connecting a connector</a>). Once the browser is back, send the <code>add</code> card with <code>signin: true</code>. Wiro checks that the connector reads connected: when it doesn't, nothing is applied and the answer is <code>&lt;Title&gt; is not connected yet. Finish the sign-in on the card first.</code> with <code>errorcode: "not_connected"</code>. Otherwise it applies the <code>add</code> card, then the <code>connect</code> card.</li>
 </ul>
 <p><code>setup</code> is the <code>add</code> card after the call, <code>summary</code> names both changes, such as <code>Google Play Promotional Content added. Google Play Console connected.</code>, and <code>paired</code> holds the <code>connect</code> card's outcome as <code>[{ setup, result, error }]</code>.</p>
+<p>An <code>add</code> card for Google Play Promotional Content (<code>util-googleplay-events</code>), applied with the values of its Google Play Console (<code>google-play</code>) <code>connect</code> card:</p>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;,
+    &quot;messageguid&quot;: &quot;c3d4e5f6-a7b8-9012-cdef-345678901234&quot;,
+    &quot;cardid&quot;: &quot;g7p2l4y9e1vd&quot;,
+    &quot;action&quot;: &quot;apply&quot;,
+    &quot;values&quot;: { &quot;serviceaccountjson&quot;: { &quot;type&quot;: &quot;service_account&quot;, &quot;client_email&quot;: &quot;play-agent@your-project.iam.gserviceaccount.com&quot;, &quot;private_key&quot;: &quot;YOUR_PRIVATE_KEY&quot; } }
+  }'
+</code></pre>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;setup&quot;: {
+    &quot;v&quot;: 1,
+    &quot;id&quot;: &quot;g7p2l4y9e1vd&quot;,
+    &quot;kind&quot;: &quot;add&quot;,
+    &quot;key&quot;: &quot;util-googleplay-events&quot;,
+    &quot;needs&quot;: [{ &quot;connector&quot;: &quot;google-play&quot;, &quot;title&quot;: &quot;Google Play Console&quot;, &quot;mode&quot;: &quot;key&quot; }],
+    &quot;requestedby&quot;: &quot;ada-uuid&quot;,
+    &quot;createdat&quot;: 1743350406,
+    &quot;status&quot;: &quot;applied&quot;,
+    &quot;actedat&quot;: 1743350460,
+    &quot;actedby&quot;: &quot;ada-uuid&quot;
+  },
+  &quot;restarting&quot;: true,
+  &quot;summary&quot;: &quot;Google Play Promotional Content added. Google Play Console connected.&quot;,
+  &quot;paired&quot;: [
+    {
+      &quot;setup&quot;: {
+        &quot;v&quot;: 1,
+        &quot;id&quot;: &quot;c5k8w3n1r6tf&quot;,
+        &quot;kind&quot;: &quot;connect&quot;,
+        &quot;connector&quot;: &quot;google-play&quot;,
+        &quot;title&quot;: &quot;Google Play Console&quot;,
+        &quot;authtype&quot;: &quot;fields&quot;,
+        &quot;mode&quot;: &quot;key&quot;,
+        &quot;fields&quot;: [
+          { &quot;name&quot;: &quot;serviceaccountjson&quot;, &quot;label&quot;: &quot;Service Account JSON&quot;, &quot;description&quot;: &quot;1. Go to [Google Cloud Console → IAM &amp; Admin → Service Accounts](https://console.cloud.google.com/iam-admin/serviceaccounts) ...&quot;, &quot;required&quot;: true, &quot;secret&quot;: true, &quot;format&quot;: &quot;json&quot; }
+        ],
+        &quot;requestedby&quot;: &quot;ada-uuid&quot;,
+        &quot;createdat&quot;: 1743350406,
+        &quot;status&quot;: &quot;applied&quot;,
+        &quot;actedat&quot;: 1743350460,
+        &quot;actedby&quot;: &quot;ada-uuid&quot;
+      },
+      &quot;result&quot;: true,
+      &quot;error&quot;: null
+    }
+  ]
+}
+</code></pre>
+<p><code>next</code> is absent: the pair connected the only connector the card needed. With <code>signin: true</code> the answer has the same shape. Store Review Response Rules (<code>util-store-review-response</code>), on an agent that already has App Store Connect and Google Play Console connected, needs only Google Business Profile, which signs in. Sent with <code>signin: true</code> before the browser is back from the sign-in, it applies nothing:</p>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;,
+    &quot;messageguid&quot;: &quot;e6f7a8b9-c0d1-2345-f678-90123456789a&quot;,
+    &quot;cardid&quot;: &quot;s2r6v9b4m8qa&quot;,
+    &quot;action&quot;: &quot;apply&quot;,
+    &quot;signin&quot;: true
+  }'
+</code></pre>
+<pre><code class="language-json">{
+  &quot;result&quot;: false,
+  &quot;errors&quot;: [
+    { &quot;code&quot;: 0, &quot;message&quot;: &quot;Google Business Profile is not connected yet. Finish the sign-in on the card first.&quot;, &quot;time&quot;: 1743350460 }
+  ],
+  &quot;setup&quot;: {
+    &quot;v&quot;: 1,
+    &quot;id&quot;: &quot;s2r6v9b4m8qa&quot;,
+    &quot;kind&quot;: &quot;add&quot;,
+    &quot;key&quot;: &quot;util-store-review-response&quot;,
+    &quot;needs&quot;: [{ &quot;connector&quot;: &quot;google-business&quot;, &quot;title&quot;: &quot;Google Business Profile&quot;, &quot;mode&quot;: &quot;signin&quot; }],
+    &quot;requestedby&quot;: &quot;ada-uuid&quot;,
+    &quot;createdat&quot;: 1743350406
+  },
+  &quot;restarting&quot;: false,
+  &quot;summary&quot;: &quot;&quot;,
+  &quot;errorcode&quot;: &quot;not_connected&quot;,
+  &quot;paired&quot;: [
+    {
+      &quot;setup&quot;: {
+        &quot;v&quot;: 1,
+        &quot;id&quot;: &quot;b3t7q1x5n9we&quot;,
+        &quot;kind&quot;: &quot;connect&quot;,
+        &quot;connector&quot;: &quot;google-business&quot;,
+        &quot;title&quot;: &quot;Google Business Profile&quot;,
+        &quot;authtype&quot;: &quot;provider-oauth&quot;,
+        &quot;mode&quot;: &quot;signin&quot;,
+        &quot;fields&quot;: [
+          { &quot;name&quot;: &quot;clientid&quot;, &quot;label&quot;: &quot;OAuth Client ID&quot;, &quot;description&quot;: &quot;1. In [Google Cloud Console](https://console.cloud.google.com/), create a project (or pick one) ...&quot;, &quot;required&quot;: true, &quot;secret&quot;: false, &quot;format&quot;: &quot;text&quot;, &quot;placeholder&quot;: &quot;123-abc.apps.googleusercontent.com&quot;, &quot;maxlength&quot;: 200, &quot;serveronly&quot;: true, &quot;mode&quot;: &quot;oauth&quot; },
+          { &quot;name&quot;: &quot;clientsecret&quot;, &quot;label&quot;: &quot;OAuth Client Secret&quot;, &quot;description&quot;: &quot;Google shows the **Client secret** only once ...&quot;, &quot;required&quot;: true, &quot;secret&quot;: true, &quot;format&quot;: &quot;password&quot;, &quot;maxlength&quot;: 200, &quot;serveronly&quot;: true, &quot;mode&quot;: &quot;oauth&quot; }
+        ],
+        &quot;requestedby&quot;: &quot;ada-uuid&quot;,
+        &quot;createdat&quot;: 1743350406
+      },
+      &quot;result&quot;: false,
+      &quot;error&quot;: &quot;Google Business Profile is not connected yet. Finish the sign-in on the card first.&quot;
+    }
+  ]
+}
+</code></pre>
+<p>Once the browser is back, the same call answers <code>result: true</code>, <code>summary</code> <code>Store Review Response Rules added. Google Business Profile connected.</code> and <code>paired[0].result: true</code>.</p>
 <p>When the <code>add</code> card fails as it is applied, the <code>connect</code> card stays pending, and its <code>error</code> in <code>paired</code> reads <code>&lt;Connector title&gt; is not connected: &lt;Title&gt; was not added.</code> (with a key: nothing was saved) or <code>&lt;Connector title&gt; is connected, but &lt;Title&gt; was not added.</code> (with a sign-in: the connection stays). When the <code>add</code> card has no pending <code>connect</code> card to take the values, Wiro answers <code>This card takes no key. Apply it without one.</code>, and when more than one has, <code>This card brings more than one key. Apply it, then add each key on its own card.</code> With <code>signin: true</code>, the same cases answer <code>This card has no sign-in to finish. Apply it without one.</code> (<code>errorcode: "signin_no_pair"</code>) and <code>This card brings more than one sign-in. Apply it, then connect each on its own card.</code> (<code>errorcode: "signin_many"</code>). <code>values</code> and <code>signin</code> together answer <code>Send values or signin, not both.</code> In each case nothing changes and the cards stay pending.</p>
 <p><strong>In messages sent with a project API key.</strong> When the only pending cards of the agent's latest reply are an <code>add</code> card and its <code>connect</code> card, and the key is all that is needed, the <a href="#setup-card-listing">card listing</a> ends by offering the key as the reply, and once Wiro has listed the <code>add</code> card, the key pasted as the reply applies both cards at once. A key sent before Wiro has listed the <code>add</code> card saves nothing: the stored message reads <code>[key removed]</code> in its place, and Wiro answers with the listing.</p>
 <h3 id="setup-signin-cards">Connecting a connector</h3>
@@ -24475,7 +24582,7 @@ Instructions:
 
 Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it down.
 </code></pre>
-<p>An <code>append</code> card's first line reads <code>Card 1: Add to custom skill &lt;key&gt;.</code>, followed by only the text it adds. A <code>revert</code> card's first line reads <code>Card 1: Undo the last change to custom skill &lt;key&gt;.</code>, followed by the text it restores. A <code>disconnect</code> card has one line: <code>Card 1: Disconnect &lt;Connector&gt; (what was saved to connect it is removed).</code></p>
+<p>An <code>append</code> card's first line reads <code>Card 1: Add to custom skill &lt;title&gt;.</code>, followed by only the text it adds. A <code>revert</code> card's first line reads <code>Card 1: Undo the last change to custom skill &lt;title&gt;.</code>, followed by the text it restores. <code>&lt;title&gt;</code> is the skill's title, or its key when it has none. A <code>disconnect</code> card has one line: <code>Card 1: Disconnect &lt;Connector&gt; (what was saved to connect it is removed).</code></p>
 <p>An <code>add</code> or <code>remove</code> card names what it changes by title, never by key. Its first line is <code>Card 1: Add &lt;Title&gt; (skill).</code> or <code>Card 1: Remove &lt;Title&gt; (skill).</code>, and only the lines that apply follow it: <code>Also turns on: &lt;titles&gt;.</code>, <code>Also turns off: &lt;titles&gt;.</code>, <code>Scheduled tasks that pause: &lt;titles&gt;.</code>, <code>Scheduled tasks that run again: &lt;titles&gt;.</code> and <code>Still to connect: &lt;titles&gt;.</code> A <code>connect</code> card that takes values, signs in or picks a project isn't listed: it waits for its values, its sign-in or its project. One that needs no values is listed as <code>Card 1: Connect &lt;Connector&gt;.</code> When a message sent with a project API key gets the listing while the only pending cards are an <code>add</code> card and its <code>connect</code> card, and the key is all that is needed, the listing's last line offers the key as the reply instead: <code>Reply with your &lt;Connector title&gt; key to add &lt;Title&gt; and connect it at once, "yes" to add it now and give the key later, or "no" to turn it down.</code> See <a href="#setup-add-and-connect">Adding and connecting in one step</a>.</p>
 <p>With several cards, it starts with <code>The agent proposes these setup changes. Nothing is applied yet.</code> and ends with <code>To apply one, reply "yes" and its number, such as "yes 1", one card per reply. Reply "no" to turn them all down.</code> Show this text, as it is, to the person who approves. The listing is a reply Wiro handles itself (see <a href="#handled-setup-replies">below</a>), and its <code>setupresult</code> lists no card.</p>
 <h3 id="keys-in-chat">Keys in chat</h3>
