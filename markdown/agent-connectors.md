@@ -28,9 +28,11 @@ Every connector also has a public page, `https://wiro.ai/connectors/{slug}`, wit
 
 ### Who your customer sees
 
-A sign-in you start with your project API key comes from your product, so the vendor's consent screen names you, never Wiro: your organization's name (else your team's name, else your account's name) and your organization's avatar when it is an https image. A connector that signs in with an app of your own shows that app's name and logo, as you set them in the vendor's developer console. Sign-ins started in Wiro's own panel show Wiro.
+A sign-in you start with your project API key comes from your product. The vendor's consent screen shows your organization's name (else your team's name, else your account's name) and your organization's avatar when it is an https image, or, for a connector that signs in with an app of your own, that app's name and logo as you set them in the vendor's developer console. Wiro's own app signs in only from Wiro's own panel, and sign-ins started there show Wiro.
 
-Connector texts your customer may read (field labels, help texts, error sentences) name the vendor only.
+One Wiro address can still show: the redirect URI, `https://api.wiro.ai/v1/AgentConnector/OAuthCallback`, which the browser passes through on its way back to your `redirecturl`. Some vendors show it on their consent screen, and some also show the address that identifies the sign-in's client, which is on the same API host. The help text of your own app's fields names the redirect URI too, since the app must register it: if your customers must not read it there, register the OAuth app yourself and keep the own-app fields out of the forms they fill in.
+
+Otherwise, the connector texts your customer may read (field labels, help texts, error sentences) name the vendor only.
 
 ## Authentication
 
@@ -230,7 +232,7 @@ Build your Connect form from `credentialfields`, in their order:
 | `secret` | Mask the input, and never show a saved value: answers only list the names of saved values. |
 | `format` | The input to show and the check Wiro runs: `text`, `password`, `email`, `url` (an https address, or a bare host such as `shop.example.com`), `textarea` (several lines), `json` (a JSON value, or its text: a service account file, a structured list) or `select` (one of `options`). |
 | `options` | `select` only: `[{ value, label }]`. Send the `value`. |
-| `placeholder`, `pattern`, `maxlength` | Optional input hints. Wiro checks `pattern` (a regular expression) and `maxlength` too. A value is at most 65,536 characters. |
+| `placeholder`, `pattern`, `maxlength` | Optional input hints. Wiro checks `pattern` (a regular expression) and `maxlength` too. A value is at most 65,536 characters. A `headers` connector's values are at most 4,096 characters each, on one line. |
 | `serveronly` | `true` for your own OAuth app's keys (client id and secret): Wiro uses them for the sign-in and its token refreshes only, and they never reach the agent. |
 | `mode` | `provider-oauth` rows only: `oauth` (a key of your own app, sent with a sign-in) or `key` (the key way in, such as a Meta System User token). A field without `mode` belongs to both ways. Show the two ways as two choices on the card. |
 | `source` | `wiro_project` on the Wiro connector's project field: show a picker of your Wiro projects instead of an input. See [The Wiro connector](#the-wiro-connector). |
@@ -256,8 +258,8 @@ All three ways go through one call, `POST /UserAgent/ConnectorConnect`. The conn
 | `values` | object | No | `{ <field name>: value }` from `credentialfields`. A field you leave out keeps its saved value; `""` or `null` clears it. Numbers and booleans are taken as text, and a `json` field also takes an object or array. |
 | `mode` | string | No | `provider-oauth` rows only: `oauth` (the default, a sign-in) or `key` (the key way in, when `modes` includes `key`). |
 | `redirecturl` | string | No | Sign-ins only: where the browser returns. See [The redirect URL](#the-redirect-url). |
-| `accounts` | object | No | A first account selection, `{ <picker key>: [ids] }`, such as `{ "pages": ["123"] }`. You can set it later with [ConnectorSetAccounts](#post-useragentconnectorsetaccounts), which checks every id with the vendor. |
-| `wiroprojectguid` | string | No | The Wiro connector only: the id of the project it bills. See [The Wiro connector](#the-wiro-connector). |
+| `accounts` | object | No | A first account selection for a connector with [account pickers](#account-pickers), `{ <picker key>: [ids] }`, such as `{ "pages": ["123"] }`. Only its shape is checked here; [ConnectorSetAccounts](#post-useragentconnectorsetaccounts) checks every id with the vendor once the connector is connected. |
+| `wiroprojectguid` | string | No | The Wiro connector only: the id of the project it bills. See [The Wiro connector](#the-wiro-connector). A connector whose tools run inside the agent refuses it; one on a vendor's own MCP server ignores it. |
 
 ### Connect with fields
 
@@ -328,7 +330,7 @@ Show that sentence next to the form: it names the vendor only.
 
 **Changing a value later.** Send only the fields that change: the others keep their saved values. To replace a key, send the new one; to remove an optional value, send `""`.
 
-A `headers` connector (one of the vendors' own MCP servers that takes an API key) connects the same way: its `credentialfields` are the values it takes.
+A `headers` connector (one of the vendors' own MCP servers that takes an API key, such as Lemlist or DataForSEO) connects the same way: its `credentialfields` are the values it takes, each named by its `name`, such as `apikey`. Its values are at most 4,096 characters each, on one line, and its refusals name the value by that `name` (`apikey is required.`). It has no credential check: the vendor's server answers the agent's first call.
 
 ### Connect with a key instead of a sign-in
 
@@ -343,7 +345,41 @@ Some vendors that sign in with your own app also take a key or token (`modes: ["
 }
 ```
 
-The answer is the same as [Connect with fields](#connect-with-fields), with `authmode: "key"` on the connection. Fields of the other way are not kept: a connection holds either a sign-in or a key. A vendor that only signs in refuses `mode: "key"` with `This connector connects only by signing in.`
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "status": "connected",
+  "applied": 1,
+  "restart": "scheduled",
+  "useragentconnectors": [
+    {
+      "slug": "facebook-pages",
+      "title": "Facebook Pages",
+      "iconurl": "https://wiro.ai/images/icons/skills/facebook.svg",
+      "category": "social",
+      "authtype": "provider-oauth",
+      "transport": "local",
+      "authmode": "key",
+      "catalogstatus": "active",
+      "status": "connected",
+      "connectedat": 1795390000,
+      "updatedat": 1795390000,
+      "tokenexpiresat": null,
+      "refreshtokenexpiresat": null,
+      "scope": null,
+      "accounts": {},
+      "wiroprojectid": null,
+      "savedvariables": ["systemusertoken"],
+      "lasterror": null
+    }
+  ]
+}
+```
+
+The answer has the fields of [Connect with fields](#connect-with-fields), with `authmode: "key"` on the connection. Fields of the other way are not kept: a connection holds either a sign-in or a key. A vendor that only signs in refuses `mode: "key"` with `This connector connects only by signing in.` Facebook Pages has account pickers: choose its Pages next, as in [Account Pickers](#account-pickers).
 
 ### Connect with a sign-in
 
@@ -363,8 +399,6 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
   }'
 ```
 
-An `oauth` connector (a vendor MCP server with its own sign-in, such as TikTok Ads) needs no app of yours: send `useragentguid`, `slug` and `redirecturl` only.
-
 ##### Response
 
 ```json
@@ -373,6 +407,28 @@ An `oauth` connector (a vendor MCP server with its own sign-in, such as TikTok A
   "errors": [],
   "status": "pending",
   "authorizeUrl": "https://www.facebook.com/v26.0/dialog/oauth?client_id=1234567890&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FAgentConnector%2FOAuthCallback&state=7f3c...&response_type=code&scope=pages_show_list%2Cpages_manage_posts"
+}
+```
+
+An `oauth` connector, a vendor's own MCP server with its own sign-in such as TikTok Ads, needs no app of yours: send `useragentguid`, `slug` and `redirecturl` only. Its consent screen names your organization.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "slug": "tiktok-ads",
+    "redirecturl": "https://app.example.com/agents/42/connectors?slug=tiktok-ads"
+  }'
+```
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "status": "pending",
+  "authorizeUrl": "https://business-api.tiktok.com/portal/mcp-tt4b-authorize?response_type=code&client_id=...&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FAgentConnector%2FOAuthCallback&state=...&code_challenge=...&code_challenge_method=S256&resource=...&scope=mcp%3Att4b"
 }
 ```
 
@@ -417,7 +473,7 @@ A callback whose sign-in is unknown (no `state`, or one Wiro never issued) ends 
 ### The redirect URL
 
 - `redirecturl` must be an `https` address on any host, or `http` on `localhost` or `127.0.0.1` while you develop. Anything else is refused with `Invalid redirect URL`.
-- Send your own page with every sign-in. Without one, the browser comes back to Wiro's own connect-return page on wiro.ai.
+- Send your own page with every sign-in, from a [setup card](/docs/agent-chat-integration#sign-in-hubspot) too. Without one, the browser comes back to Wiro's own connect-return page on wiro.ai.
 - It is used exactly as you send it, with your own query kept.
 
 ### Restarts
@@ -433,6 +489,13 @@ Every connection of one agent, including sign-ins under way and ones that need a
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | The agent. |
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorList" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "useragentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890" }'
+```
 
 ##### Response
 
@@ -502,8 +565,8 @@ Every connection of one agent, including sign-ins under way and ones that need a
 | `status` | Meaning | What to show |
 |----------|---------|--------------|
 | `connected` | The agent has the connector's tools. | Connected, with Disconnect and, when it has pickers, the account choice. |
-| `pending` | A sign-in was started and has not come back yet. | Waiting for the sign-in, with a way to start it again. |
-| `reauth` | The sign-in expired or was revoked at the vendor, and refreshing it failed. The connector's tools tell the agent it must be connected again. | Reconnect: start a new sign-in with ConnectorConnect. |
+| `pending` | A sign-in was started and has not come back yet, or a connection that [moved over](#coming-from-credential-connectors) misses a required value. | Waiting for the sign-in, with a way to start it again; or the form, to send the missing value with ConnectorConnect. |
+| `reauth` | The sign-in expired or was revoked at the vendor and refreshing it failed (`lasterror` is a code), or the connector's way in changed (`lasterror: "auth_changed"`). Until the agent's next restart, the connector's tools answer that it must be connected again; after it, the agent no longer has them. | Reconnect: start a new sign-in with ConnectorConnect. |
 | `error` | The last sign-in failed (`lasterror` says how). | Connect again. |
 
 A connector that was never connected, or was disconnected, has no row.
@@ -511,6 +574,8 @@ A connector that was never connected, or was disconnected, has no row.
 ## Account Pickers
 
 Some connectors act on accounts inside the vendor: Facebook Pages, Meta ad accounts, Google Ads customers, a GA4 property, Search Console sites, Business Profile locations, YouTube channels, apps in App Store Connect and Google Play. Their catalog row lists `accountpickers`. After the connection is `connected`, list the candidates, let your customer choose, and save the choice. The connector's tools refuse any account outside the selection, and until something is picked they have no account to act on.
+
+Account pickers belong to connectors whose tools run inside the agent (`transport: "local"`). A connector whose tools run on the vendor's own MCP server, such as TikTok Ads, has none: its `accountpickers` is empty, and `ConnectorAccounts` answers `This connector has no accounts to pick.`
 
 ### **POST** /UserAgent/ConnectorAccounts
 
@@ -520,6 +585,16 @@ Lists each picker's candidates now, from the vendor, with the connection's own c
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | The agent. |
 | `slug` | string | Yes | A connected connector. |
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorAccounts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "slug": "facebook-pages"
+  }'
+```
 
 ##### Response
 
@@ -551,7 +626,7 @@ Lists each picker's candidates now, from the vendor, with the connection's own c
 | `candidates` | What this connection can reach at the vendor right now, each `{ id, name }`. |
 | `selected` | The ids saved now. |
 
-A connector with no pickers answers `pickers: []`.
+A connector whose tools run inside the agent and that has no pickers answers `pickers: []`.
 
 ### **POST** /UserAgent/ConnectorSetAccounts
 
@@ -612,12 +687,13 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetAccounts" \
 
 | Refusal | Why |
 |---------|-----|
-| `Unknown account picker: <key>. This connector has: pages.` | A key the connector does not have. |
+| `Unknown account picker: <key>. This connector has: pages.`, `Unknown account picker: <key>. This connector has none.` | A key the connector does not have. |
 | `<label> takes one account.` | More than one id for a picker with `multiple: false`. |
 | `<label>: 1 of the accounts sent is not among the ones this connection can use.` | An id the vendor did not list for this connection. |
-| `accounts must be an object of lists of account ids.` | The body's shape. |
+| `accounts must be an object of lists of account ids.`, `accounts has too many keys.`, `Each account id is text of at most 200 characters.` | The body's shape. |
 | `This connector is not connected to the agent.` | No connected connection for this slug. |
-| `This connector has no accounts to pick.` | `ConnectorAccounts` on a connector without pickers. |
+| `This connector has no accounts to pick.` | `ConnectorAccounts` on a connector whose tools run on the vendor's own MCP server. |
+| `This connector's accounts cannot be listed yet.` | The connector's account lists aren't available right now. Try again later. |
 | `The sign-in for this connector expired or was revoked, so it has to be connected again. Ask the agent's operator to reconnect it.` | The sign-in could not be refreshed: the connection is now `reauth`. |
 | `The token is being refreshed. Try again in a moment.` | A refresh was under way. |
 
@@ -631,6 +707,16 @@ Deletes the connection: its values, tokens and account selection. For a sign-in,
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | The agent. |
 | `slug` | string | Yes | The connector. |
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorDisconnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "slug": "facebook-pages"
+  }'
+```
 
 ##### Response
 
@@ -664,27 +750,65 @@ When the agent is back up, every `connected` connection whose connector is still
 - A tool acts with the connection's own credentials and, where the connector has pickers, only on the selected accounts.
 - To tell the agent when and how to use the tools, write a [Custom Skill](/docs/agent-skills#using-connectors-in-skills) that names them, such as: "Before you write an article, research the topic with `serper__web_search` and cite the top three results."
 - A scheduled task of an agent template that works with a connector stays off until that connector is connected.
-- A disconnected connector's tools are gone after the restart. A `reauth` connection's tools answer that it must be connected again, in words your customer can read: they name no Wiro place or link.
+- A disconnected connector's tools are gone after the restart. A `reauth` connection's tools answer that it must be connected again, in words your customer can read (they name no Wiro place or link), until the agent's next restart; after it, the agent no longer has them.
 
 ## The Wiro Connector
 
-The `wiro` connector gives the agent Wiro's own tools, such as running AI models and reading their tasks. Its model runs are billed to one of your projects. Its `credentialfields` have one field with `source: "wiro_project"`: show a picker of your projects ([`POST /Project/List`](/docs/projects)) instead of an input, and send the chosen project's id as `wiroprojectguid`:
+The `wiro` connector gives the agent Wiro's own tools, the ones its `tools` on [Detail](#post-agentconnectordetail) list, such as running AI models and reading their tasks. They act with the API key of one of your projects, and the model runs they start are billed to that project's wallet. Its `credentialfields` have one field with `source: "wiro_project"`: show a picker of your projects ([`POST /Project/List`](/docs/projects)) instead of an input, and send the chosen project's id as `wiroprojectguid`:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "slug": "wiro",
+    "wiroprojectguid": "1234"
+  }'
+```
+
+##### Response
 
 ```json
 {
-  "useragentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "slug": "wiro",
-  "wiroprojectguid": "1234"
+  "result": true,
+  "errors": [],
+  "status": "connected",
+  "applied": 1,
+  "restart": "scheduled",
+  "useragentconnectors": [
+    {
+      "slug": "wiro",
+      "title": "Wiro AI Models",
+      "iconurl": "https://wiro.ai/images/icons/skills/wiro.svg",
+      "category": "ai",
+      "authtype": "headers",
+      "transport": "streamable-http",
+      "authmode": null,
+      "catalogstatus": "active",
+      "status": "connected",
+      "connectedat": 1795390000,
+      "updatedat": 1795390000,
+      "tokenexpiresat": null,
+      "refreshtokenexpiresat": null,
+      "scope": null,
+      "accounts": {},
+      "wiroprojectid": "1234",
+      "savedvariables": [],
+      "lasterror": null
+    }
+  ]
 }
 ```
 
 - A request made with a project API key may leave `wiroprojectguid` out: the key's own project is used.
 - The project must be one you created, or any project of a team you are an admin of, and in the agent's workspace: a personal agent takes one of its owner's personal projects, a team agent one of its team's projects.
-- The connection shows the project's id as `wiroprojectid`.
+- The connection shows the project's id as `wiroprojectid`, a string.
+- The agent's [Wiro API path list](/docs/agent-overview#post-useragentupdatesettings) (`wiroapiallowedpaths`) limits the Wiro API calls its skills make with the agent's own Wiro project; it doesn't apply to this connector's tools. Read the tools the connector gives on [Detail](#post-agentconnectordetail) before you connect it.
 
 ## Errors
 
-Refusals come as `result: false` with one sentence per problem in `errors`. Show the sentence: it names fields by their labels and never repeats a value.
+Refusals come as `result: false` with one sentence per problem in `errors`. Show the sentence: it names a field by its `label` (a `headers` connector's value by its `name`) and never repeats a value.
 
 | Call | Message | Why |
 |------|---------|-----|
@@ -693,9 +817,11 @@ Refusals come as `result: false` with one sentence per problem in `errors`. Show
 | `List` | `search is text of at most 100 characters.` | `search` too long. |
 | `List` | `category must be one lowercase word (letters, digits or dashes, at most 40).` | A malformed `category`. |
 | `ConnectorConnect` | `This connector is not available.` | The slug is not in the catalog. |
-| `ConnectorConnect` | `<Label> is required.` | A required field has no value, sent or saved. |
-| `ConnectorConnect` | `Unknown field <name>. This connector takes: <names>.` | A key in `values` the connector does not take. |
-| `ConnectorConnect` | `<Label> must be an https address.`, `<Label> must be valid JSON.`, `<Label> must be an email address.`, `<Label> must be one of: <values>.`, `<Label> is not in the expected format.`, `<Label> must be at most <n> characters.`, `<Label> must be on one line.` | A value that fails its field's `format`, `pattern` or `maxlength`. |
+| `ConnectorConnect` | `<Label> is required.` (a `headers` connector: `<name> is required.`) | A required field has no value, sent or saved. |
+| `ConnectorConnect` | `Unknown field <name>. This connector takes: <names>.` (a `headers` connector: `Unknown variable <name>. This connector takes: <names>.`) | A key in `values` the connector does not take. |
+| `ConnectorConnect` | `values must be an object of field names and values.` (a `headers` connector: `values must be an object of variable names and values.`), `<Label> must be text.` | The shape of `values`. |
+| `ConnectorConnect` | `<Label> must be an https address.`, `<Label> must be valid JSON.`, `<Label> must be an email address.`, `<Label> must be one of: <values>.`, `<Label> is not in the expected format.`, `<Label> must be at most <n> characters.`, `<Label> must be on one line.`, `<Label> has characters it cannot take.` | A value that fails its field's `format`, `pattern` or `maxlength` (65,536 characters at most). |
+| `ConnectorConnect` | `<name> must be at most 4096 characters, on one line.`, `<name> must be a number.`, `<name> must be true or false.` | A `headers` connector's value that doesn't fit. |
 | `ConnectorConnect` | The vendor's own sentence | The credential check: the vendor refused the values. Nothing was saved. |
 | `ConnectorConnect` | `The vendor refused these credentials. Check them and try again.` | A key way that mints a token (Shopify) was refused. |
 | `ConnectorConnect` | `The vendor could not be reached. Try again in a moment.` | The vendor did not answer the key exchange. |
@@ -704,19 +830,29 @@ Refusals come as `result: false` with one sentence per problem in `errors`. Show
 | `ConnectorConnect` | `mode is oauth or key.`, `mode is only for a connector that signs in with its vendor's own OAuth.` | A wrong `mode`. |
 | `ConnectorConnect` | `Invalid redirect URL` | See [The redirect URL](#the-redirect-url). |
 | `ConnectorConnect` | `The sign-in address could not be made from these values.` | A value the sign-in address needs (such as Shopify's shop domain) does not fit. |
-| `ConnectorConnect` | `This connector takes no Wiro project.` | `wiroprojectguid` on a connector other than Wiro. |
+| `ConnectorConnect` | `This connector's OAuth client is not set up yet.` | An `oauth` connector whose sign-in isn't ready on Wiro's side yet. |
+| `ConnectorConnect` | `The connector's sign-in server did not register a client. Try again later.` | The vendor's sign-in server refused to register a client for the sign-in. |
+| `ConnectorConnect` | `This connector takes no Wiro project.` | `wiroprojectguid` on a connector whose tools run inside the agent. A connector on a vendor's own MCP server without a project field ignores it. |
+| `ConnectorConnect` | `<name> comes from the agent's Wiro project: send wiroprojectguid, not a value.` | A value sent for the Wiro connector's project field. |
 | `ConnectorConnect` | `wiroprojectguid is required: send the id of one of your projects from Project/List. ...` | The Wiro connector with no project, from a request without a project API key. |
+| `ConnectorConnect` | `wiroprojectguid must be a project's id from Project/List.` | A `wiroprojectguid` that isn't a project id. |
+| `ConnectorConnect` | `Project not found. Send the id of one of your projects from Project/List: one you created, or any project of a team you are an admin of.` | A project you can't use. |
+| `ConnectorConnect` | `This is a personal agent: use one of its owner's personal projects.`, `This is a team agent: use one of its team's projects.` | A project outside the agent's workspace. |
+| `ConnectorConnect` | `This project has no API key the connector can use.` | The project's key can't be used. |
+| `ConnectorConnect`, `ConnectorSetAccounts` | `accounts must be an object of lists of account ids.`, `accounts has too many keys.`, `Each account id is text of at most 200 characters.` | The shape of `accounts`: at most 10 keys and 500 ids per key. |
 | any | `Something went wrong. Try again.` | A temporary failure: nothing was changed. |
 
 The account picker refusals are under [ConnectorSetAccounts](#post-useragentconnectorsetaccounts), the callback codes under [The callback and your redirect URL](#the-callback-and-your-redirect-url).
 
 ## Coming From Credential Connectors
 
-Connectors used to be `int-*` skills that read credentials. If your code still uses those calls, this is where each one went. Each connector's `slug` is the credential key it had before (`serper`, `shopify`, `google-ads`, `facebook-pages`, ...).
+Connectors used to be skills that read credentials. If your code still uses those calls or names, this is where each one went. Each connector's `slug` is the credential key it had before (`serper`, `shopify`, `google-ads`, `facebook-pages`, ...).
 
 | Before | Now |
 |--------|-----|
-| An `int-*` skill turned on with `SkillsApply` or Deploy's `skills` | Nothing to turn on: a connected connector is on. `skills` and `SkillsApply` take Skills (`util-*`) only. |
+| A connector's skill (`int-<name>`) turned on with `SkillsApply` or Deploy's `skills` | Nothing to turn on: a connected connector is on. `skills` and `SkillsApply` take Skills (`util-*`) only. |
+| `int-twilio-channel`, the Twilio Voice channel | `util-twilio-channel`, a Skill: turn it on with `SkillsApply` or Deploy's `skills`. See [Twilio Voice Channel](/docs/integration-twiliovoice-skills). |
+| `int-googleplay-events`, Google Play promotional content | `util-googleplay-events`, a Skill that prepares the content for you to publish in Play Console. It works with the `google-play` connector. |
 | `POST /Credentials/List`, `POST /Credentials/Detail` for a connector | [`POST /AgentConnector/List`](#post-agentconnectorlist), [`POST /AgentConnector/Detail`](#post-agentconnectordetail) |
 | `POST /UserAgent/CredentialUpsert` with a connector's `credentialkey` | [`POST /UserAgent/ConnectorConnect`](#connect-with-fields) with `values` |
 | `POST /UserAgentOAuth/OAuthConnect` | [`POST /UserAgent/ConnectorConnect`](#connect-with-a-sign-in) |
@@ -726,6 +862,14 @@ Connectors used to be `int-*` skills that read credentials. If your code still u
 | `POST /UserAgentOAuth/OAuthDisconnect` | [`POST /UserAgent/ConnectorDisconnect`](#post-useragentconnectordisconnect) |
 | A redirect URI per vendor (`/UserAgentOAuth/<Vendor>Callback`) | One for every vendor: `https://api.wiro.ai/v1/AgentConnector/OAuthCallback`. Add it to each of your OAuth apps. |
 | `<vendor>_connected=true` and `<vendor>_error=<code>` on your redirect URL | `connector_connected=true` and `connector_error=<code>` |
+
+**Connections you already had.** Each agent's connector credentials moved over as connections, so a connector that was set up stays connected:
+
+- Values kept their field names, a sign-in kept its tokens and the app it signed in with, and the accounts its pickers had chosen are now in `accounts`.
+- A connection that misses a required value reads `pending`: send the value with [ConnectorConnect](#post-useragentconnectorconnect).
+- Gmail moved from an app password to a Google sign-in with an OAuth app of your own, so its connections read `reauth` with `lasterror: "auth_changed"` and give the agent no tools: create the app, as its field help says, and [sign in](#connect-with-a-sign-in) again.
+- A connection that signed in with Wiro's own app signs in again with an app of your own once it reads `reauth`. Only HubSpot, Mailchimp and X still sign in with Wiro's app, and only from Wiro's own panel.
+- Every OAuth app of your own must list the new redirect URI, `https://api.wiro.ai/v1/AgentConnector/OAuthCallback`. Tokens it issued before keep refreshing without it, but a new sign-in needs it.
 
 Channels (Telegram, Slack, Discord, Twilio Voice) are not connectors: they keep their credentials, see [Agent Credentials](/docs/agent-credentials).
 

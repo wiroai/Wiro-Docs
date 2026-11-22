@@ -15326,7 +15326,7 @@ import type {
 <ol>
 <li><strong>Browse</strong>: call <code>POST /Agent/List</code> to discover available agents in the catalog</li>
 <li><strong>Deploy</strong>: call <code>POST /UserAgent/Deploy</code> with <code>useprepaid: true</code> and <code>tier</code> (<code>"starter"</code>, <code>"pro"</code> or <code>"max"</code>). The plan's price is debited from your prepaid wallet immediately and a 30-day subscription row is created.</li>
-<li><strong>Configure</strong>: connect the services the agent works with through <a href="/docs/agent-connectors">Agent Connectors</a> (<code>POST /UserAgent/ConnectorConnect</code>), set optional Telegram, Slack, or Discord credentials with <code>POST /UserAgent/CredentialUpsert</code>, connect the Wiro project the agent runs models with using <code>POST /UserAgent/CredentialProjectBind</code>, and set preferences with <code>POST /UserAgent/CustomSkillUpsert</code>. An agent admin can also approve the setup cards the agent proposes in its chat (see <a href="/docs/agent-messaging#setup-from-chat">Setup From Chat</a>). See <a href="/docs/agent-credentials">Agent Credentials</a> for details</li>
+<li><strong>Configure</strong>: connect the services the agent works with through <a href="/docs/agent-connectors">Agent Connectors</a> (<code>POST /UserAgent/ConnectorConnect</code>; a template's <code>suggestedconnectors</code> on <a href="#post-agentdetail"><code>Agent/Detail</code></a> lists the ones it works with), set optional Telegram, Slack, or Discord credentials with <code>POST /UserAgent/CredentialUpsert</code>, connect the Wiro project the agent runs models with using <code>POST /UserAgent/CredentialProjectBind</code>, and set preferences with <code>POST /UserAgent/CustomSkillUpsert</code>. An agent admin can also approve the setup cards the agent proposes in its chat (see <a href="/docs/agent-messaging#setup-from-chat">Setup From Chat</a>). See <a href="/docs/agent-credentials">Agent Credentials</a> for details</li>
 <li><strong>Start</strong>: the prepaid Deploy already queued the agent, and Wiro starts it. Call <code>POST /UserAgent/Start</code> only for a stopped (status <code>0</code>) or errored (status <code>5</code>) agent</li>
 <li><strong>Running</strong>: the agent starts and becomes available for conversation</li>
 <li><strong>Chat</strong>: send messages via <code>POST /UserAgent/Message/Send</code>. See <a href="/docs/agent-messaging">Agent Messaging</a> for the full messaging API</li>
@@ -15876,7 +15876,7 @@ import type {
 <td><code>type</code></td>
 <td>string</td>
 <td>No</td>
-<td>Pass <code>"full"</code> to also include <code>customskills</code> (the template's strategies a deployer can edit) and <code>scheduledskills</code> (every scheduled task) in the response. Without <code>type: "full"</code>, the response carries the catalog header + <code>tiers</code> + <code>plans</code> + <code>tokenRates</code> + <code>credentials</code> + <code>skills</code> + <code>skillsmeta</code> + <code>communicationChannels</code> + <code>extracreditpacks</code> only.</td>
+<td>Pass <code>"full"</code> to also include <code>customskills</code> (the template's strategies a deployer can edit) and <code>scheduledskills</code> (every scheduled task) in the response. Without <code>type: "full"</code>, the response carries the catalog header + <code>tiers</code> + <code>plans</code> + <code>tokenRates</code> + <code>credentials</code> + <code>skills</code> + <code>skillsmeta</code> + <code>suggestedconnectors</code> + <code>communicationChannels</code> + <code>extracreditpacks</code> only.</td>
 </tr>
 </tbody>
 </table>
@@ -15953,6 +15953,7 @@ import type {
           &quot;description&quot;: &quot;Tone and craftsmanship rules for content-producing agents: banned generic words, sentence rhythm, copula/filler discipline, read-aloud test.&quot;
         }
       },
+      &quot;suggestedconnectors&quot;: [&quot;instagram&quot;],
       &quot;credentials&quot;: {
         &quot;telegram&quot;: {
           &quot;optional&quot;: true,
@@ -15993,6 +15994,7 @@ import type {
 }
 </code></pre>
 <blockquote>
+<p><code>suggestedconnectors</code> lists the connectors the template works with, by their catalog slugs, such as <code>instagram</code>. Nothing connects by itself: after Deploy, connect each one you want with <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>ConnectorConnect</code></a> (its fields and tools are on <a href="/docs/agent-connectors#post-agentconnectordetail"><code>AgentConnector/Detail</code></a>). A template's scheduled task that needs a connector stays off until that connector is connected, and a connector that isn't connected never holds the agent at status <code>6</code>.</p>
 <p><code>Agent/Detail</code> describes the <strong>template</strong>, so its <code>credentials</code> block only carries the <code>optional</code> / <code>extra</code> meta flags (when the template sets them) plus the registry-driven <code>_schema</code> (field labels / types) and <code>_editable</code> map. It holds no saved values, whoever calls it and whatever <code>type</code> is sent. The <code>_connected</code> flag is per-instance and appears on <code>UserAgent/Detail</code> and the <code>Deploy</code> and <code>Update</code> responses, not on the catalog endpoint. <code>plans</code> lists the three plans with their names, and <code>extracreditpacks</code> the three extra credit packs every plan can buy, so a visitor sees both before deploying. A deployed agent's <code>UserAgent/Detail</code> carries the same lists under <code>agent</code> (see <a href="#extra-credit-packs">Extra Credit Packs</a>).</p>
 </blockquote>
 <p><strong>Credential response flags</strong> (on <code>UserAgent/Detail</code> and the <code>Deploy</code> and <code>Update</code> responses): every credential object in the top-level <code>credentials</code> tree on the per-instance endpoints carries:</p>
@@ -16426,7 +16428,7 @@ for the channel contract.</p>
 <tbody>
 <tr>
 <td><code>status: 6</code></td>
-<td><strong>Setup Required</strong>: initial state for every fresh Deploy. With <code>useprepaid: true</code>, auto-queues to <code>status: 2</code> as soon as the subscription is provisioned, regardless of credential completeness. The agent then starts even if a connector is still missing, and <code>UserAgent/Detail</code> reads <code>setuprequired: true</code> until it is filled. Fill a missing connector with <code>POST /UserAgent/CredentialUpsert</code> or <code>POST /UserAgent/CredentialProjectBind</code>: a running agent restarts to pick it up. A row still at <code>status: 6</code> needs <code>POST /UserAgent/Update</code> first (any scalar body, even just <code>{ "guid": "&lt;useragent-guid&gt;" }</code>) to flip it to <code>status: 0</code> (Stopped): <code>Update</code> is the endpoint that performs the <code>setuprequired</code> re-check and the <code>6 → 0</code> transition.</td>
+<td><strong>Setup Required</strong>: initial state for every fresh Deploy. With <code>useprepaid: true</code>, auto-queues to <code>status: 2</code> as soon as the subscription is provisioned, regardless of credential completeness. The agent then starts even if a required credential is still missing, and <code>UserAgent/Detail</code> reads <code>setuprequired: true</code> until it is filled. Fill a missing credential, such as a channel or the Wiro project the template doesn't mark optional, with <code>POST /UserAgent/CredentialUpsert</code> or <code>POST /UserAgent/CredentialProjectBind</code>: a running agent restarts to pick it up. Connectors never hold an agent at Setup Required. A row still at <code>status: 6</code> needs <code>POST /UserAgent/Update</code> first (any scalar body, even just <code>{ "guid": "&lt;useragent-guid&gt;" }</code>) to flip it to <code>status: 0</code> (Stopped): <code>Update</code> is the endpoint that performs the <code>setuprequired</code> re-check and the <code>6 → 0</code> transition.</td>
 </tr>
 <tr>
 <td><code>status: 2</code></td>
@@ -16434,11 +16436,11 @@ for the channel contract.</p>
 </tr>
 <tr>
 <td><code>setuprequired: true</code></td>
-<td>A non-optional connector is missing, or the row is still at <code>status: 6</code>. At <code>status: 6</code>, <code>Start</code> rejects with <code>Agent setup is not complete</code>.</td>
+<td>A non-optional credential is missing, or the row is still at <code>status: 6</code>. At <code>status: 6</code>, <code>Start</code> rejects with <code>Agent setup is not complete</code>.</td>
 </tr>
 <tr>
 <td><code>setuprequired: false</code></td>
-<td>All non-optional connectors are set up and the row has left <code>status: 6</code>. A row sitting at Setup Required reads <code>true</code> until a <code>POST /UserAgent/Update</code> call flips it 6 → 0; <code>Start</code> then launches it normally.</td>
+<td>All non-optional credentials are set up and the row has left <code>status: 6</code>. A row sitting at Setup Required reads <code>true</code> until a <code>POST /UserAgent/Update</code> call flips it 6 → 0; <code>Start</code> then launches it normally.</td>
 </tr>
 </tbody>
 </table>
@@ -16450,7 +16452,7 @@ for the channel contract.</p>
 <p>Next steps for the API integration flow:</p>
 <ol>
 <li>Inspect <code>credentials</code> in the Deploy response (or call <code>POST /UserAgent/Detail</code>) to see each credential's fields, the <code>optional</code> / <code>extra</code> flags and the registry-driven <code>_schema</code>.</li>
-<li>Connect the services the agent works with through <a href="/docs/agent-connectors">Agent Connectors</a>: <code>POST /UserAgent/ConnectorConnect</code> with a connector's fields, or its vendor's sign-in. Call <code>POST /UserAgent/CredentialUpsert</code> for channels and settings (bot tokens, the support email), and <code>POST /UserAgent/CredentialProjectBind</code> to connect the Wiro project the agent runs models with.</li>
+<li>Connect the services the agent works with through <a href="/docs/agent-connectors">Agent Connectors</a>: <code>POST /UserAgent/ConnectorConnect</code> with a connector's fields, or its vendor's sign-in. A template's <code>suggestedconnectors</code> on <a href="#post-agentdetail"><code>Agent/Detail</code></a> lists the ones it works with. Call <code>POST /UserAgent/CredentialUpsert</code> for channels and settings (bot tokens, the support email), and <code>POST /UserAgent/CredentialProjectBind</code> to connect the Wiro project the agent runs models with.</li>
 <li>Call <code>POST /UserAgent/CustomSkillUpsert</code> per skill to customize strategy text or cron intervals, if the template exposes any.</li>
 <li>Once every non-optional credential is set up, <code>setuprequired</code> reads <code>false</code>. The start doesn't wait for it: the prepaid Deploy already queued the agent, Wiro starts it from the queue (<code>2</code> → <code>3</code> (Starting) → <code>4</code> (Running)), and a running agent restarts to pick up each connector you connect.</li>
 <li>If you want to re-launch a stopped agent (status <code>0</code>) or recover an errored one (status <code>5</code>), call <code>POST /UserAgent/Start</code> explicitly.</li>
@@ -17123,7 +17125,7 @@ for the channel contract.</p>
 <tr>
 <td><code>credentials</code></td>
 <td><code>object</code></td>
-<td>Per-provider credential map keyed by credential name (<code>instagram</code>, <code>telegram</code>, <code>wordpress</code>, …). Each provider object carries its saved field values, every saved secret read as the mask <code>"••••••••"</code>, plus a fixed metadata header (see "Credential object shape" below).</td>
+<td>Per-provider credential map keyed by credential name (<code>telegram</code>, <code>twilio-voice</code>, <code>wiro</code>, <code>var-support-email</code>, …). Each provider object carries its saved field values, every saved secret read as the mask <code>"••••••••"</code>, plus a fixed metadata header (see "Credential object shape" below).</td>
 </tr>
 <tr>
 <td><code>customskills</code></td>
@@ -17637,7 +17639,7 @@ for the channel contract.</p>
 <td><code>wiroapiallowedpaths</code></td>
 <td>string[]|null</td>
 <td>No</td>
-<td>Limits the agent's own calls to the Wiro API, the ones it makes with its Wiro project key (for example to run models for its skills), to the endpoints you list. Each rule is a method in capitals (<code>GET</code>, <code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code> or <code>HEAD</code>), one space and a <code>/v1</code> path, such as <code>"POST /v1/Task/Detail"</code>. A <code>*</code> stands for exactly one whole path segment: <code>"POST /v1/Run/*/*"</code> allows every model run, while <code>"POST /v1/Run/x*"</code> is invalid. Up to 64 rules of at most 200 characters each; duplicates are removed and the order is kept. Calls to endpoints that no rule matches are refused. <code>[]</code> refuses every call, model runs included; <code>null</code> removes your list, and the agent goes back to the default list. An invalid rule, or a value that isn't an array, is rejected with <code>invalid-wiro-api-path-rule</code>, and nothing in the request is saved. Omit the field to keep the current list. An agent with no list of its own uses the default list: <code>POST /v1/Run/*/*</code>, <code>POST /v1/Task/Detail</code>, <code>POST /v1/Tool/List</code>, <code>POST /v1/Tool/Detail</code>, <code>POST /v1/Tool/UploadModelPostImage</code>, <code>POST /v1/Tool/GenerateModelPostImage</code>, <code>GET /v1/Tool/GenerateModelPostImage</code> and <code>POST /v1/UserAgent/Message/UploadAsset</code>. If a custom skill of yours calls another endpoint, send a list that includes it.</td>
+<td>Limits the agent's own calls to the Wiro API, the ones its skills make with its Wiro project key (for example to run models), to the endpoints you list. It doesn't cover the tools of the <a href="/docs/agent-connectors#the-wiro-connector"><code>wiro</code> connector</a>: those are the ones its <code>tools</code> on <code>AgentConnector/Detail</code> list. Each rule is a method in capitals (<code>GET</code>, <code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code> or <code>HEAD</code>), one space and a <code>/v1</code> path, such as <code>"POST /v1/Task/Detail"</code>. A <code>*</code> stands for exactly one whole path segment: <code>"POST /v1/Run/*/*"</code> allows every model run, while <code>"POST /v1/Run/x*"</code> is invalid. Up to 64 rules of at most 200 characters each; duplicates are removed and the order is kept. Calls to endpoints that no rule matches are refused. <code>[]</code> refuses every call, model runs included; <code>null</code> removes your list, and the agent goes back to the default list. An invalid rule, or a value that isn't an array, is rejected with <code>invalid-wiro-api-path-rule</code>, and nothing in the request is saved. Omit the field to keep the current list. An agent with no list of its own uses the default list: <code>POST /v1/Run/*/*</code>, <code>POST /v1/Task/Detail</code>, <code>POST /v1/Tool/List</code>, <code>POST /v1/Tool/Detail</code>, <code>POST /v1/Tool/UploadModelPostImage</code>, <code>POST /v1/Tool/GenerateModelPostImage</code>, <code>GET /v1/Tool/GenerateModelPostImage</code> and <code>POST /v1/UserAgent/Message/UploadAsset</code>. If a custom skill of yours calls another endpoint, send a list that includes it.</td>
 </tr>
 <tr>
 <td><code>chatsetup</code></td>
@@ -17659,7 +17661,7 @@ for the channel contract.</p>
 <p><strong>Slash-command catalog.</strong> Valid <code>enabledcommands</code> keys are: <code>agent_help</code>, <code>new_session</code>, <code>agent_status</code>, <code>agent_limits</code>, <code>last_scan</code>, <code>last_heartbeat</code>, <code>agent_restart</code>, <code>clear_all_sessions</code>, <code>clear_history</code>. Read the agent's current allowlist from the <code>enabledCommands</code> field (camelCase) on <a href="#post-useragentdetail"><code>UserAgent/Detail</code></a> / <code>MyAgents</code> / <code>PinnedAgents</code>, where <code>null</code> means the operator never customized it (all commands available) and an array (including <code>[]</code>) is an explicit allowlist.</p>
 <p><strong>Omitted fields are preserved.</strong> The handler distinguishes between "field not in the body" and "field present with <code>null</code>/<code>""</code>/value", so a POST that carries only <code>timezone</code> does <strong>not</strong> touch <code>teamsessionmode</code> or any model field, and vice versa. Sending an empty body (none of the recognised fields) is rejected with <code>nothing-to-update</code> to avoid charging a no-op restart.</p>
 <p><strong>Read vs write casing.</strong> You <strong>read</strong> the current selection from the <code>agentModel</code> object on <code>UserAgent/Detail</code> / <code>MyAgents</code> / <code>PinnedAgents</code> in camelCase (<code>chatModel</code>, <code>cronModel</code>, <code>voicePrepModel</code>, <code>voicePostcallModel</code>); you <strong>write</strong> it here in lowercase (<code>chatmodel</code>, <code>cronmodel</code>, <code>voiceprepmodel</code>, <code>voicepostcallmodel</code>). The selectable set is exactly the models that <code>tokenRates.models</code> marks <code>selectable: true</code>. There is no separate "list models" endpoint, so read <code>tokenRates</code> to populate a picker.</p>
-<p><strong>An agent never manages an account.</strong> Calls the agent makes itself to account, agent, team and billing endpoints, such as <code>/UserAgent/*</code>, <code>/Project/*</code>, <code>/Team/*</code> and <code>/Wallet/*</code>, are refused with HTTP <code>403</code> whatever <code>wiroapiallowedpaths</code> allows: <code>An agent can't call this endpoint. An agent admin changes the agent's setup in its settings or with a setup card in chat.</code> <code>POST /v1/UserAgent/Message/UploadAsset</code> stays open. An agent changes its own setup only through <a href="/docs/agent-messaging#setup-from-chat">setup cards</a> that an agent admin approves.</p>
+<p><strong>An agent's own calls never manage an account.</strong> Calls the agent makes itself to the Wiro API with its Wiro project key are refused with HTTP <code>403</code> on account, agent, team and billing endpoints, such as <code>/UserAgent/*</code>, <code>/Project/*</code>, <code>/Team/*</code> and <code>/Wallet/*</code>, whatever <code>wiroapiallowedpaths</code> allows: <code>An agent can't call this endpoint. An agent admin changes the agent's setup in its settings or with a setup card in chat.</code> <code>POST /v1/UserAgent/Message/UploadAsset</code> stays open. An agent changes its own setup only through <a href="/docs/agent-messaging#setup-from-chat">setup cards</a> that an agent admin approves. A <a href="/docs/agent-connectors">connector</a>'s tools are the ones its <code>tools</code> on <code>AgentConnector/Detail</code> list, and they act with that connection's own credentials: for the <code>wiro</code> connector, its project's key.</p>
 </blockquote>
 <h5 id="request">Request</h5>
 <pre><code class="language-bash"># Set IANA timezone only
@@ -18135,7 +18137,7 @@ channel-enable endpoint or persisted switch.</p>
   }'
 </code></pre>
 <h5 id="response_7">Response</h5>
-<pre><code class="language-json">{ &quot;result&quot;: true, &quot;applied&quot;: 3, &quot;errors&quot;: [] }
+<pre><code class="language-json">{ &quot;result&quot;: true, &quot;applied&quot;: 2, &quot;errors&quot;: [] }
 </code></pre>
 <p><code>applied</code> is the number of rows saved without an error; a row sent with its current value still counts. A secret sent as <code>"••••••••"</code>, the mask <code>UserAgent/Detail</code> shows for a saved one, keeps the saved value and isn't counted (see <a href="/docs/agent-credentials#field-level-write-rules">Field-level write rules</a>). Every row is validated before anything is written. If any row fails validation (for example a reserved fieldname or a Wiro-managed field), the whole request is rejected and nothing is saved: the response has <code>result: false</code>, one <code>errors</code> entry per invalid row, and no <code>applied</code>. If a save fails after validation has passed, the other rows are still saved and the response has <code>result: false</code>, the <code>applied</code> count, and each failed row in <code>errors</code>. Re-sending the same request is safe.</p>
 <blockquote>
@@ -19758,7 +19760,7 @@ channel-enable endpoint or persisted switch.</p>
 <tr>
 <td><code>events[].toolintegration</code></td>
 <td>string | null</td>
-<td>On <code>tool_started</code> / <code>tool_completed</code> when the step works in a connector: the connector's <code>key</code> (for example <code>"wordpress"</code>). Same closed list as on <a href="/docs/agent-messaging#tool-integration-and-action-values">timeline tool blocks</a>.</td>
+<td>On <code>tool_started</code> / <code>tool_completed</code> when the step works in a connector: the connector's <code>slug</code> (for example <code>"wordpress"</code>), or a channel's key such as <code>"telegram"</code>. Same closed list as on <a href="/docs/agent-messaging#tool-integration-and-action-values">timeline tool blocks</a>.</td>
 </tr>
 <tr>
 <td><code>events[].toolaction</code></td>
@@ -27444,8 +27446,9 @@ echo json_encode(['ok' =&gt; true]);
 </div>
 </div>
 <h3 id="who-your-customer-sees">Who your customer sees</h3>
-<p>A sign-in you start with your project API key comes from your product, so the vendor's consent screen names you, never Wiro: your organization's name (else your team's name, else your account's name) and your organization's avatar when it is an https image. A connector that signs in with an app of your own shows that app's name and logo, as you set them in the vendor's developer console. Sign-ins started in Wiro's own panel show Wiro.</p>
-<p>Connector texts your customer may read (field labels, help texts, error sentences) name the vendor only.</p>
+<p>A sign-in you start with your project API key comes from your product. The vendor's consent screen shows your organization's name (else your team's name, else your account's name) and your organization's avatar when it is an https image, or, for a connector that signs in with an app of your own, that app's name and logo as you set them in the vendor's developer console. Wiro's own app signs in only from Wiro's own panel, and sign-ins started there show Wiro.</p>
+<p>One Wiro address can still show: the redirect URI, <code>https://api.wiro.ai/v1/AgentConnector/OAuthCallback</code>, which the browser passes through on its way back to your <code>redirecturl</code>. Some vendors show it on their consent screen, and some also show the address that identifies the sign-in's client, which is on the same API host. The help text of your own app's fields names the redirect URI too, since the app must register it: if your customers must not read it there, register the OAuth app yourself and keep the own-app fields out of the forms they fill in.</p>
+<p>Otherwise, the connector texts your customer may read (field labels, help texts, error sentences) name the vendor only.</p>
 <h2 id="authentication">Authentication</h2>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -27796,7 +27799,7 @@ echo json_encode(['ok' =&gt; true]);
 </tr>
 <tr>
 <td><code>placeholder</code>, <code>pattern</code>, <code>maxlength</code></td>
-<td>Optional input hints. Wiro checks <code>pattern</code> (a regular expression) and <code>maxlength</code> too. A value is at most 65,536 characters.</td>
+<td>Optional input hints. Wiro checks <code>pattern</code> (a regular expression) and <code>maxlength</code> too. A value is at most 65,536 characters. A <code>headers</code> connector's values are at most 4,096 characters each, on one line.</td>
 </tr>
 <tr>
 <td><code>serveronly</code></td>
@@ -27903,13 +27906,13 @@ echo json_encode(['ok' =&gt; true]);
 <td><code>accounts</code></td>
 <td>object</td>
 <td>No</td>
-<td>A first account selection, <code>{ &lt;picker key&gt;: [ids] }</code>, such as <code>{ "pages": ["123"] }</code>. You can set it later with <a href="#post-useragentconnectorsetaccounts">ConnectorSetAccounts</a>, which checks every id with the vendor.</td>
+<td>A first account selection for a connector with <a href="#account-pickers">account pickers</a>, <code>{ &lt;picker key&gt;: [ids] }</code>, such as <code>{ "pages": ["123"] }</code>. Only its shape is checked here; <a href="#post-useragentconnectorsetaccounts">ConnectorSetAccounts</a> checks every id with the vendor once the connector is connected.</td>
 </tr>
 <tr>
 <td><code>wiroprojectguid</code></td>
 <td>string</td>
 <td>No</td>
-<td>The Wiro connector only: the id of the project it bills. See <a href="#the-wiro-connector">The Wiro connector</a>.</td>
+<td>The Wiro connector only: the id of the project it bills. See <a href="#the-wiro-connector">The Wiro connector</a>. A connector whose tools run inside the agent refuses it; one on a vendor's own MCP server ignores it.</td>
 </tr>
 </tbody>
 </table>
@@ -27995,7 +27998,7 @@ echo json_encode(['ok' =&gt; true]);
 </code></pre>
 <p>Show that sentence next to the form: it names the vendor only.</p>
 <p><strong>Changing a value later.</strong> Send only the fields that change: the others keep their saved values. To replace a key, send the new one; to remove an optional value, send <code>""</code>.</p>
-<p>A <code>headers</code> connector (one of the vendors' own MCP servers that takes an API key) connects the same way: its <code>credentialfields</code> are the values it takes.</p>
+<p>A <code>headers</code> connector (one of the vendors' own MCP servers that takes an API key, such as Lemlist or DataForSEO) connects the same way: its <code>credentialfields</code> are the values it takes, each named by its <code>name</code>, such as <code>apikey</code>. Its values are at most 4,096 characters each, on one line, and its refusals name the value by that <code>name</code> (<code>apikey is required.</code>). It has no credential check: the vendor's server answers the agent's first call.</p>
 <h3 id="connect-with-a-key-instead-of-a-sign-in">Connect with a key instead of a sign-in</h3>
 <p>Some vendors that sign in with your own app also take a key or token (<code>modes: ["oauth", "key"]</code>): a Meta Business Manager System User token for Facebook Pages, Instagram and Meta Ads, a Mailchimp API key, a Shopify custom app's client credentials. Send <code>mode: "key"</code> and the fields of that way (<code>mode: "key"</code> or no <code>mode</code>):</p>
 <pre><code class="language-json">{
@@ -28005,7 +28008,38 @@ echo json_encode(['ok' =&gt; true]);
   &quot;values&quot;: { &quot;systemusertoken&quot;: &quot;EAAB...&quot; }
 }
 </code></pre>
-<p>The answer is the same as <a href="#connect-with-fields">Connect with fields</a>, with <code>authmode: "key"</code> on the connection. Fields of the other way are not kept: a connection holds either a sign-in or a key. A vendor that only signs in refuses <code>mode: "key"</code> with <code>This connector connects only by signing in.</code></p>
+<h5 id="response_3" aria-level="3">Response</h5>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;status&quot;: &quot;connected&quot;,
+  &quot;applied&quot;: 1,
+  &quot;restart&quot;: &quot;scheduled&quot;,
+  &quot;useragentconnectors&quot;: [
+    {
+      &quot;slug&quot;: &quot;facebook-pages&quot;,
+      &quot;title&quot;: &quot;Facebook Pages&quot;,
+      &quot;iconurl&quot;: &quot;https://wiro.ai/images/icons/skills/facebook.svg&quot;,
+      &quot;category&quot;: &quot;social&quot;,
+      &quot;authtype&quot;: &quot;provider-oauth&quot;,
+      &quot;transport&quot;: &quot;local&quot;,
+      &quot;authmode&quot;: &quot;key&quot;,
+      &quot;catalogstatus&quot;: &quot;active&quot;,
+      &quot;status&quot;: &quot;connected&quot;,
+      &quot;connectedat&quot;: 1795390000,
+      &quot;updatedat&quot;: 1795390000,
+      &quot;tokenexpiresat&quot;: null,
+      &quot;refreshtokenexpiresat&quot;: null,
+      &quot;scope&quot;: null,
+      &quot;accounts&quot;: {},
+      &quot;wiroprojectid&quot;: null,
+      &quot;savedvariables&quot;: [&quot;systemusertoken&quot;],
+      &quot;lasterror&quot;: null
+    }
+  ]
+}
+</code></pre>
+<p>The answer has the fields of <a href="#connect-with-fields">Connect with fields</a>, with <code>authmode: "key"</code> on the connection. Fields of the other way are not kept: a connection holds either a sign-in or a key. A vendor that only signs in refuses <code>mode: "key"</code> with <code>This connector connects only by signing in.</code> Facebook Pages has account pickers: choose its Pages next, as in <a href="#account-pickers">Account Pickers</a>.</p>
 <h3 id="connect-with-a-sign-in">Connect with a sign-in</h3>
 <p>A sign-in takes four steps: start it, open the vendor's page, let the vendor send the browser back, and read the outcome on your page.</p>
 <p><strong>1. Start it.</strong> For a <code>provider-oauth</code> connector, send your own app's keys (the <code>serveronly</code> fields with <code>mode: "oauth"</code>, or no <code>mode</code>) and any other field the sign-in needs, such as Shopify's shop domain. Keys saved by an earlier connect are used again when you leave them out. Register the redirect URI the field help names in your app first: <code>https://api.wiro.ai/v1/AgentConnector/OAuthCallback</code>.</p>
@@ -28019,13 +28053,29 @@ echo json_encode(['ok' =&gt; true]);
     &quot;redirecturl&quot;: &quot;https://app.example.com/agents/42/connectors?slug=facebook-pages&quot;
   }'
 </code></pre>
-<p>An <code>oauth</code> connector (a vendor MCP server with its own sign-in, such as TikTok Ads) needs no app of yours: send <code>useragentguid</code>, <code>slug</code> and <code>redirecturl</code> only.</p>
-<h5 id="response_3" aria-level="3">Response</h5>
+<h5 id="response_4" aria-level="3">Response</h5>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
   &quot;errors&quot;: [],
   &quot;status&quot;: &quot;pending&quot;,
   &quot;authorizeUrl&quot;: &quot;https://www.facebook.com/v26.0/dialog/oauth?client_id=1234567890&amp;redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FAgentConnector%2FOAuthCallback&amp;state=7f3c...&amp;response_type=code&amp;scope=pages_show_list%2Cpages_manage_posts&quot;
+}
+</code></pre>
+<p>An <code>oauth</code> connector, a vendor's own MCP server with its own sign-in such as TikTok Ads, needs no app of yours: send <code>useragentguid</code>, <code>slug</code> and <code>redirecturl</code> only. Its consent screen names your organization.</p>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;,
+    &quot;slug&quot;: &quot;tiktok-ads&quot;,
+    &quot;redirecturl&quot;: &quot;https://app.example.com/agents/42/connectors?slug=tiktok-ads&quot;
+  }'
+</code></pre>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;status&quot;: &quot;pending&quot;,
+  &quot;authorizeUrl&quot;: &quot;https://business-api.tiktok.com/portal/mcp-tt4b-authorize?response_type=code&amp;client_id=...&amp;redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FAgentConnector%2FOAuthCallback&amp;state=...&amp;code_challenge=...&amp;code_challenge_method=S256&amp;resource=...&amp;scope=mcp%3Att4b&quot;
 }
 </code></pre>
 <p>The connection is now <code>pending</code>. A connection that was already <code>connected</code> stays connected while the new sign-in runs, and the new tokens replace the old ones when it finishes.</p>
@@ -28124,7 +28174,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 <h3 id="the-redirect-url">The redirect URL</h3>
 <ul>
 <li><code>redirecturl</code> must be an <code>https</code> address on any host, or <code>http</code> on <code>localhost</code> or <code>127.0.0.1</code> while you develop. Anything else is refused with <code>Invalid redirect URL</code>.</li>
-<li>Send your own page with every sign-in. Without one, the browser comes back to Wiro's own connect-return page on wiro.ai.</li>
+<li>Send your own page with every sign-in, from a <a href="/docs/agent-chat-integration#sign-in-hubspot">setup card</a> too. Without one, the browser comes back to Wiro's own connect-return page on wiro.ai.</li>
 <li>It is used exactly as you send it, with your own query kept.</li>
 </ul>
 <h3 id="restarts">Restarts</h3>
@@ -28154,7 +28204,12 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </table>
 </div>
 </div>
-<h5 id="response_4" aria-level="3">Response</h5>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorList&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{ &quot;useragentguid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot; }'
+</code></pre>
+<h5 id="response_5" aria-level="3">Response</h5>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
   &quot;errors&quot;: [],
@@ -28278,12 +28333,12 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </tr>
 <tr>
 <td><code>pending</code></td>
-<td>A sign-in was started and has not come back yet.</td>
-<td>Waiting for the sign-in, with a way to start it again.</td>
+<td>A sign-in was started and has not come back yet, or a connection that <a href="#coming-from-credential-connectors">moved over</a> misses a required value.</td>
+<td>Waiting for the sign-in, with a way to start it again; or the form, to send the missing value with ConnectorConnect.</td>
 </tr>
 <tr>
 <td><code>reauth</code></td>
-<td>The sign-in expired or was revoked at the vendor, and refreshing it failed. The connector's tools tell the agent it must be connected again.</td>
+<td>The sign-in expired or was revoked at the vendor and refreshing it failed (<code>lasterror</code> is a code), or the connector's way in changed (<code>lasterror: "auth_changed"</code>). Until the agent's next restart, the connector's tools answer that it must be connected again; after it, the agent no longer has them.</td>
 <td>Reconnect: start a new sign-in with ConnectorConnect.</td>
 </tr>
 <tr>
@@ -28298,6 +28353,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 <p>A connector that was never connected, or was disconnected, has no row.</p>
 <h2 id="account-pickers">Account Pickers</h2>
 <p>Some connectors act on accounts inside the vendor: Facebook Pages, Meta ad accounts, Google Ads customers, a GA4 property, Search Console sites, Business Profile locations, YouTube channels, apps in App Store Connect and Google Play. Their catalog row lists <code>accountpickers</code>. After the connection is <code>connected</code>, list the candidates, let your customer choose, and save the choice. The connector's tools refuse any account outside the selection, and until something is picked they have no account to act on.</p>
+<p>Account pickers belong to connectors whose tools run inside the agent (<code>transport: "local"</code>). A connector whose tools run on the vendor's own MCP server, such as TikTok Ads, has none: its <code>accountpickers</code> is empty, and <code>ConnectorAccounts</code> answers <code>This connector has no accounts to pick.</code></p>
 <h3 id="post-useragentconnectoraccounts"><strong>POST</strong> /UserAgent/ConnectorAccounts</h3>
 <p>Lists each picker's candidates now, from the vendor, with the connection's own credentials (a sign-in due for a refresh is refreshed first), and the current selection.</p>
 <div class="docs-param-table">
@@ -28328,7 +28384,15 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </table>
 </div>
 </div>
-<h5 id="response_5" aria-level="3">Response</h5>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorAccounts&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;,
+    &quot;slug&quot;: &quot;facebook-pages&quot;
+  }'
+</code></pre>
+<h5 id="response_6" aria-level="3">Response</h5>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
   &quot;errors&quot;: [],
@@ -28381,7 +28445,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </table>
 </div>
 </div>
-<p>A connector with no pickers answers <code>pickers: []</code>.</p>
+<p>A connector whose tools run inside the agent and that has no pickers answers <code>pickers: []</code>.</p>
 <h3 id="post-useragentconnectorsetaccounts"><strong>POST</strong> /UserAgent/ConnectorSetAccounts</h3>
 <p>Saves the accounts the connection may act on. Wiro lists the candidates again and refuses any id that is not among them.</p>
 <div class="docs-param-table">
@@ -28427,7 +28491,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
     &quot;accounts&quot;: { &quot;pages&quot;: [&quot;123456789012345&quot;, &quot;234567890123456&quot;] }
   }'
 </code></pre>
-<h5 id="response_6" aria-level="3">Response</h5>
+<h5 id="response_7" aria-level="3">Response</h5>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
   &quot;errors&quot;: [],
@@ -28470,7 +28534,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </thead>
 <tbody>
 <tr>
-<td><code>Unknown account picker: &lt;key&gt;. This connector has: pages.</code></td>
+<td><code>Unknown account picker: &lt;key&gt;. This connector has: pages.</code>, <code>Unknown account picker: &lt;key&gt;. This connector has none.</code></td>
 <td>A key the connector does not have.</td>
 </tr>
 <tr>
@@ -28482,7 +28546,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 <td>An id the vendor did not list for this connection.</td>
 </tr>
 <tr>
-<td><code>accounts must be an object of lists of account ids.</code></td>
+<td><code>accounts must be an object of lists of account ids.</code>, <code>accounts has too many keys.</code>, <code>Each account id is text of at most 200 characters.</code></td>
 <td>The body's shape.</td>
 </tr>
 <tr>
@@ -28491,7 +28555,11 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </tr>
 <tr>
 <td><code>This connector has no accounts to pick.</code></td>
-<td><code>ConnectorAccounts</code> on a connector without pickers.</td>
+<td><code>ConnectorAccounts</code> on a connector whose tools run on the vendor's own MCP server.</td>
+</tr>
+<tr>
+<td><code>This connector's accounts cannot be listed yet.</code></td>
+<td>The connector's account lists aren't available right now. Try again later.</td>
 </tr>
 <tr>
 <td><code>The sign-in for this connector expired or was revoked, so it has to be connected again. Ask the agent's operator to reconnect it.</code></td>
@@ -28536,7 +28604,15 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </table>
 </div>
 </div>
-<h5 id="response_7" aria-level="3">Response</h5>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorDisconnect&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;,
+    &quot;slug&quot;: &quot;facebook-pages&quot;
+  }'
+</code></pre>
+<h5 id="response_8" aria-level="3">Response</h5>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
   &quot;errors&quot;: [],
@@ -28608,23 +28684,58 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 <li>A tool acts with the connection's own credentials and, where the connector has pickers, only on the selected accounts.</li>
 <li>To tell the agent when and how to use the tools, write a <a href="/docs/agent-skills#using-connectors-in-skills">Custom Skill</a> that names them, such as: "Before you write an article, research the topic with <code>serper__web_search</code> and cite the top three results."</li>
 <li>A scheduled task of an agent template that works with a connector stays off until that connector is connected.</li>
-<li>A disconnected connector's tools are gone after the restart. A <code>reauth</code> connection's tools answer that it must be connected again, in words your customer can read: they name no Wiro place or link.</li>
+<li>A disconnected connector's tools are gone after the restart. A <code>reauth</code> connection's tools answer that it must be connected again, in words your customer can read (they name no Wiro place or link), until the agent's next restart; after it, the agent no longer has them.</li>
 </ul>
 <h2 id="the-wiro-connector">The Wiro Connector</h2>
-<p>The <code>wiro</code> connector gives the agent Wiro's own tools, such as running AI models and reading their tasks. Its model runs are billed to one of your projects. Its <code>credentialfields</code> have one field with <code>source: "wiro_project"</code>: show a picker of your projects (<a href="/docs/projects"><code>POST /Project/List</code></a>) instead of an input, and send the chosen project's id as <code>wiroprojectguid</code>:</p>
+<p>The <code>wiro</code> connector gives the agent Wiro's own tools, the ones its <code>tools</code> on <a href="#post-agentconnectordetail">Detail</a> list, such as running AI models and reading their tasks. They act with the API key of one of your projects, and the model runs they start are billed to that project's wallet. Its <code>credentialfields</code> have one field with <code>source: "wiro_project"</code>: show a picker of your projects (<a href="/docs/projects"><code>POST /Project/List</code></a>) instead of an input, and send the chosen project's id as <code>wiroprojectguid</code>:</p>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;,
+    &quot;slug&quot;: &quot;wiro&quot;,
+    &quot;wiroprojectguid&quot;: &quot;1234&quot;
+  }'
+</code></pre>
+<h5 id="response_9" aria-level="3">Response</h5>
 <pre><code class="language-json">{
-  &quot;useragentguid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;,
-  &quot;slug&quot;: &quot;wiro&quot;,
-  &quot;wiroprojectguid&quot;: &quot;1234&quot;
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;status&quot;: &quot;connected&quot;,
+  &quot;applied&quot;: 1,
+  &quot;restart&quot;: &quot;scheduled&quot;,
+  &quot;useragentconnectors&quot;: [
+    {
+      &quot;slug&quot;: &quot;wiro&quot;,
+      &quot;title&quot;: &quot;Wiro AI Models&quot;,
+      &quot;iconurl&quot;: &quot;https://wiro.ai/images/icons/skills/wiro.svg&quot;,
+      &quot;category&quot;: &quot;ai&quot;,
+      &quot;authtype&quot;: &quot;headers&quot;,
+      &quot;transport&quot;: &quot;streamable-http&quot;,
+      &quot;authmode&quot;: null,
+      &quot;catalogstatus&quot;: &quot;active&quot;,
+      &quot;status&quot;: &quot;connected&quot;,
+      &quot;connectedat&quot;: 1795390000,
+      &quot;updatedat&quot;: 1795390000,
+      &quot;tokenexpiresat&quot;: null,
+      &quot;refreshtokenexpiresat&quot;: null,
+      &quot;scope&quot;: null,
+      &quot;accounts&quot;: {},
+      &quot;wiroprojectid&quot;: &quot;1234&quot;,
+      &quot;savedvariables&quot;: [],
+      &quot;lasterror&quot;: null
+    }
+  ]
 }
 </code></pre>
 <ul>
 <li>A request made with a project API key may leave <code>wiroprojectguid</code> out: the key's own project is used.</li>
 <li>The project must be one you created, or any project of a team you are an admin of, and in the agent's workspace: a personal agent takes one of its owner's personal projects, a team agent one of its team's projects.</li>
-<li>The connection shows the project's id as <code>wiroprojectid</code>.</li>
+<li>The connection shows the project's id as <code>wiroprojectid</code>, a string.</li>
+<li>The agent's <a href="/docs/agent-overview#post-useragentupdatesettings">Wiro API path list</a> (<code>wiroapiallowedpaths</code>) limits the Wiro API calls its skills make with the agent's own Wiro project; it doesn't apply to this connector's tools. Read the tools the connector gives on <a href="#post-agentconnectordetail">Detail</a> before you connect it.</li>
 </ul>
 <h2 id="errors">Errors</h2>
-<p>Refusals come as <code>result: false</code> with one sentence per problem in <code>errors</code>. Show the sentence: it names fields by their labels and never repeats a value.</p>
+<p>Refusals come as <code>result: false</code> with one sentence per problem in <code>errors</code>. Show the sentence: it names a field by its <code>label</code> (a <code>headers</code> connector's value by its <code>name</code>) and never repeats a value.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -28663,18 +28774,28 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </tr>
 <tr>
 <td><code>ConnectorConnect</code></td>
-<td><code>&lt;Label&gt; is required.</code></td>
+<td><code>&lt;Label&gt; is required.</code> (a <code>headers</code> connector: <code>&lt;name&gt; is required.</code>)</td>
 <td>A required field has no value, sent or saved.</td>
 </tr>
 <tr>
 <td><code>ConnectorConnect</code></td>
-<td><code>Unknown field &lt;name&gt;. This connector takes: &lt;names&gt;.</code></td>
+<td><code>Unknown field &lt;name&gt;. This connector takes: &lt;names&gt;.</code> (a <code>headers</code> connector: <code>Unknown variable &lt;name&gt;. This connector takes: &lt;names&gt;.</code>)</td>
 <td>A key in <code>values</code> the connector does not take.</td>
 </tr>
 <tr>
 <td><code>ConnectorConnect</code></td>
-<td><code>&lt;Label&gt; must be an https address.</code>, <code>&lt;Label&gt; must be valid JSON.</code>, <code>&lt;Label&gt; must be an email address.</code>, <code>&lt;Label&gt; must be one of: &lt;values&gt;.</code>, <code>&lt;Label&gt; is not in the expected format.</code>, <code>&lt;Label&gt; must be at most &lt;n&gt; characters.</code>, <code>&lt;Label&gt; must be on one line.</code></td>
-<td>A value that fails its field's <code>format</code>, <code>pattern</code> or <code>maxlength</code>.</td>
+<td><code>values must be an object of field names and values.</code> (a <code>headers</code> connector: <code>values must be an object of variable names and values.</code>), <code>&lt;Label&gt; must be text.</code></td>
+<td>The shape of <code>values</code>.</td>
+</tr>
+<tr>
+<td><code>ConnectorConnect</code></td>
+<td><code>&lt;Label&gt; must be an https address.</code>, <code>&lt;Label&gt; must be valid JSON.</code>, <code>&lt;Label&gt; must be an email address.</code>, <code>&lt;Label&gt; must be one of: &lt;values&gt;.</code>, <code>&lt;Label&gt; is not in the expected format.</code>, <code>&lt;Label&gt; must be at most &lt;n&gt; characters.</code>, <code>&lt;Label&gt; must be on one line.</code>, <code>&lt;Label&gt; has characters it cannot take.</code></td>
+<td>A value that fails its field's <code>format</code>, <code>pattern</code> or <code>maxlength</code> (65,536 characters at most).</td>
+</tr>
+<tr>
+<td><code>ConnectorConnect</code></td>
+<td><code>&lt;name&gt; must be at most 4096 characters, on one line.</code>, <code>&lt;name&gt; must be a number.</code>, <code>&lt;name&gt; must be true or false.</code></td>
+<td>A <code>headers</code> connector's value that doesn't fit.</td>
 </tr>
 <tr>
 <td><code>ConnectorConnect</code></td>
@@ -28718,13 +28839,53 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </tr>
 <tr>
 <td><code>ConnectorConnect</code></td>
+<td><code>This connector's OAuth client is not set up yet.</code></td>
+<td>An <code>oauth</code> connector whose sign-in isn't ready on Wiro's side yet.</td>
+</tr>
+<tr>
+<td><code>ConnectorConnect</code></td>
+<td><code>The connector's sign-in server did not register a client. Try again later.</code></td>
+<td>The vendor's sign-in server refused to register a client for the sign-in.</td>
+</tr>
+<tr>
+<td><code>ConnectorConnect</code></td>
 <td><code>This connector takes no Wiro project.</code></td>
-<td><code>wiroprojectguid</code> on a connector other than Wiro.</td>
+<td><code>wiroprojectguid</code> on a connector whose tools run inside the agent. A connector on a vendor's own MCP server without a project field ignores it.</td>
+</tr>
+<tr>
+<td><code>ConnectorConnect</code></td>
+<td><code>&lt;name&gt; comes from the agent's Wiro project: send wiroprojectguid, not a value.</code></td>
+<td>A value sent for the Wiro connector's project field.</td>
 </tr>
 <tr>
 <td><code>ConnectorConnect</code></td>
 <td><code>wiroprojectguid is required: send the id of one of your projects from Project/List. ...</code></td>
 <td>The Wiro connector with no project, from a request without a project API key.</td>
+</tr>
+<tr>
+<td><code>ConnectorConnect</code></td>
+<td><code>wiroprojectguid must be a project's id from Project/List.</code></td>
+<td>A <code>wiroprojectguid</code> that isn't a project id.</td>
+</tr>
+<tr>
+<td><code>ConnectorConnect</code></td>
+<td><code>Project not found. Send the id of one of your projects from Project/List: one you created, or any project of a team you are an admin of.</code></td>
+<td>A project you can't use.</td>
+</tr>
+<tr>
+<td><code>ConnectorConnect</code></td>
+<td><code>This is a personal agent: use one of its owner's personal projects.</code>, <code>This is a team agent: use one of its team's projects.</code></td>
+<td>A project outside the agent's workspace.</td>
+</tr>
+<tr>
+<td><code>ConnectorConnect</code></td>
+<td><code>This project has no API key the connector can use.</code></td>
+<td>The project's key can't be used.</td>
+</tr>
+<tr>
+<td><code>ConnectorConnect</code>, <code>ConnectorSetAccounts</code></td>
+<td><code>accounts must be an object of lists of account ids.</code>, <code>accounts has too many keys.</code>, <code>Each account id is text of at most 200 characters.</code></td>
+<td>The shape of <code>accounts</code>: at most 10 keys and 500 ids per key.</td>
 </tr>
 <tr>
 <td>any</td>
@@ -28737,7 +28898,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </div>
 <p>The account picker refusals are under <a href="#post-useragentconnectorsetaccounts">ConnectorSetAccounts</a>, the callback codes under <a href="#the-callback-and-your-redirect-url">The callback and your redirect URL</a>.</p>
 <h2 id="coming-from-credential-connectors">Coming From Credential Connectors</h2>
-<p>Connectors used to be <code>int-*</code> skills that read credentials. If your code still uses those calls, this is where each one went. Each connector's <code>slug</code> is the credential key it had before (<code>serper</code>, <code>shopify</code>, <code>google-ads</code>, <code>facebook-pages</code>, ...).</p>
+<p>Connectors used to be skills that read credentials. If your code still uses those calls or names, this is where each one went. Each connector's <code>slug</code> is the credential key it had before (<code>serper</code>, <code>shopify</code>, <code>google-ads</code>, <code>facebook-pages</code>, ...).</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -28749,8 +28910,16 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </thead>
 <tbody>
 <tr>
-<td>An <code>int-*</code> skill turned on with <code>SkillsApply</code> or Deploy's <code>skills</code></td>
+<td>A connector's skill (<code>int-&lt;name&gt;</code>) turned on with <code>SkillsApply</code> or Deploy's <code>skills</code></td>
 <td>Nothing to turn on: a connected connector is on. <code>skills</code> and <code>SkillsApply</code> take Skills (<code>util-*</code>) only.</td>
+</tr>
+<tr>
+<td><code>int-twilio-channel</code>, the Twilio Voice channel</td>
+<td><code>util-twilio-channel</code>, a Skill: turn it on with <code>SkillsApply</code> or Deploy's <code>skills</code>. See <a href="/docs/integration-twiliovoice-skills">Twilio Voice Channel</a>.</td>
+</tr>
+<tr>
+<td><code>int-googleplay-events</code>, Google Play promotional content</td>
+<td><code>util-googleplay-events</code>, a Skill that prepares the content for you to publish in Play Console. It works with the <code>google-play</code> connector.</td>
 </tr>
 <tr>
 <td><code>POST /Credentials/List</code>, <code>POST /Credentials/Detail</code> for a connector</td>
@@ -28792,6 +28961,14 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </table>
 </div>
 </div>
+<p><strong>Connections you already had.</strong> Each agent's connector credentials moved over as connections, so a connector that was set up stays connected:</p>
+<ul>
+<li>Values kept their field names, a sign-in kept its tokens and the app it signed in with, and the accounts its pickers had chosen are now in <code>accounts</code>.</li>
+<li>A connection that misses a required value reads <code>pending</code>: send the value with <a href="#post-useragentconnectorconnect">ConnectorConnect</a>.</li>
+<li>Gmail moved from an app password to a Google sign-in with an OAuth app of your own, so its connections read <code>reauth</code> with <code>lasterror: "auth_changed"</code> and give the agent no tools: create the app, as its field help says, and <a href="#connect-with-a-sign-in">sign in</a> again.</li>
+<li>A connection that signed in with Wiro's own app signs in again with an app of your own once it reads <code>reauth</code>. Only HubSpot, Mailchimp and X still sign in with Wiro's app, and only from Wiro's own panel.</li>
+<li>Every OAuth app of your own must list the new redirect URI, <code>https://api.wiro.ai/v1/AgentConnector/OAuthCallback</code>. Tokens it issued before keep refreshing without it, but a new sign-in needs it.</li>
+</ul>
 <p>Channels (Telegram, Slack, Discord, Twilio Voice) are not connectors: they keep their credentials, see <a href="/docs/agent-credentials">Agent Credentials</a>.</p>
 <h2 id="code-examples">Code Examples</h2>
 <p>The same flow in each language: list the catalog, connect Serper with its key, and read the agent's connections.</p>
@@ -32934,7 +33111,7 @@ page &lt;&gt; binary RFB 3.8 frames: noVNC draws the agent's browser, view only
 <pre><code class="language-json">{
   &quot;result&quot;: true,
   &quot;errors&quot;: [],
-  &quot;total&quot;: 17,
+  &quot;total&quot;: 19,
   &quot;skills&quot;: [
     {
       &quot;name&quot;: &quot;util-weather&quot;,
@@ -34120,7 +34297,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <p>This means <strong>your editable preference becomes the single place to customize agent behavior</strong> (brand voice, target audience, content sources, holiday markets, etc.), and the bundled scheduled task is a thin orchestration layer that defers to your preference.</p>
 <h3 id="using-connectors-in-skills">Using Connectors in Skills</h3>
 <p>A connected connector gives the agent its tools, named <code>&lt;slug&gt;__&lt;tool&gt;</code>, such as <code>serper__web_search</code> or <code>bluesky__create_post</code>. A template's scheduled tasks call them by these names, and your own custom skills can too: tell the agent which tools to use and when, for example "Research the topic with <code>serper__web_search</code> before you write." See <a href="/docs/agent-connectors#what-the-agent-gets">What the Agent Gets</a>.</p>
-<p>A template's scheduled task that needs a connector stays off until that connector is connected, so connect the ones a template works with after you deploy it: <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>POST /UserAgent/ConnectorConnect</code></a>.</p>
+<p>A template's scheduled task that needs a connector stays off until that connector is connected, so connect the ones a template works with after you deploy it, with <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>POST /UserAgent/ConnectorConnect</code></a>. The template's <code>suggestedconnectors</code> on <a href="/docs/agent-overview#post-agentdetail"><code>POST /Agent/Detail</code></a> lists them by slug; nothing connects by itself.</p>
 <p>Agents can optionally forward operator notifications to a Telegram bot via the <code>telegram</code> credential (see <a href="/docs/integration-telegram-skills">Telegram Channel</a>). This is never required; every agent remains fully usable over web chat and the <a href="/docs/agent-messaging">Messaging API</a> without a bot configured.</p>
 <h3 id="utility-skills">Utility Skills</h3>
 <p><code>util-*</code> skills need no outside account. Most are rule sets that come with an agent template. These three can be added to any agent with <a href="#turning-skills-on-and-off"><code>SkillsApply</code></a>, on any plan and at no charge:</p>
@@ -34150,6 +34327,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 </table>
 </div>
 </div>
+<p>The voice channels are Skills too: <code>util-twilio-channel</code> answers phone calls through Twilio Voice and saves its account in the <code>twilio-voice</code> credential (see <a href="/docs/integration-twiliovoice-skills">Twilio Voice Channel</a>), and <code>util-web-channel</code> takes calls in the browser (see <a href="/docs/integration-webvoice-skills">Web Voice Channel</a>). Each brings <code>util-voice-receptionist</code> and <code>util-voice-call-prep</code> with it. Turn them on with <a href="#turning-skills-on-and-off"><code>SkillsApply</code></a> or Deploy's <code>skills</code>.</p>
 <p><code>POST /Skills/List</code> with <code>{ "category": "util" }</code> returns every utility skill.</p>
 <blockquote>
 <p><strong>Restart behavior:</strong> On a starting or running agent (status 3 or 4), <code>SkillsApply</code>, <code>CustomSkillRename</code>, <code>CustomSkillDelete</code> and <code>CustomSkillRevert</code> restart it so the new skill configuration is picked up, as credential updates do. <code>CustomSkillUpsert</code> restarts it for a new skill or task, a new <code>interval</code> or an <code>enabled</code> change. A change to the text or description of an existing one reaches the running agent without a restart, except for <code>cs-approval-policy</code>. See <a href="/docs/agent-overview#automatic-restart">Automatic Restart</a>.</p>
@@ -34158,7 +34336,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <p>An agent runs Wiro's own AI models (image, video, audio and LLM generation, cover images, model discovery) two ways:</p>
 <ul>
 <li><strong>With its Wiro project.</strong> Skills such as <code>util-video-creator</code> and the voice skills run their models with the agent's Wiro project, the <code>wiro</code> credential. Pick or create a project at <a href="https://wiro.ai/panel/project">wiro.ai/panel/project</a> and connect it in the agent's settings, or through the API with <code>POST /UserAgent/CredentialProjectBind</code>. Each run is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project). See <a href="/docs/agent-credentials#the-agents-wiro-project">The agent's Wiro project</a>.</li>
-<li><strong>With the Wiro connector.</strong> The <code>wiro</code> connector gives the agent Wiro's own tools (<code>wiro__*</code>) for any model, billed to the project you connect it with. See <a href="/docs/agent-connectors#the-wiro-connector">The Wiro connector</a>.</li>
+<li><strong>With the Wiro connector.</strong> The <code>wiro</code> connector gives the agent Wiro's own tools (<code>wiro__*</code>), the ones its <code>tools</code> on <a href="/docs/agent-connectors#post-agentconnectordetail"><code>AgentConnector/Detail</code></a> list, such as running any model. They act with the key of the project you connect it with, and their runs are billed to that project. See <a href="/docs/agent-connectors#the-wiro-connector">The Wiro connector</a>.</li>
 </ul>
 <p>The agent starts without a Wiro project. Where the template marks the project required (<code>optional: false</code>), <code>UserAgent/Detail</code> reads <code>setuprequired: true</code> until it is connected.</p>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CredentialProjectBind&quot; \
@@ -36176,7 +36354,16 @@ for e in cron_runs:
 
                   <section id="overview">
                     <h2>Overview</h2>
-                    <p>Turn on the Twilio Voice channel on a useragent and Wiro turns on the voice rules it needs (<code>util-voice-receptionist</code> + <code>util-voice-call-prep</code>), so you don't need to enable them separately.</p>
+                    <p>Turn on the Twilio Voice channel, the <code>util-twilio-channel</code> skill, on a useragent and Wiro turns on the voice rules it needs (<code>util-voice-receptionist</code> + <code>util-voice-call-prep</code>), so you don't need to enable them separately. On an agent that doesn't have it yet, turn it on with <a href="/docs/agent-overview#post-useragentskillsapply"><code>SkillsApply</code></a>, or name it in Deploy's <code>skills</code>:</p>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440002",
+    "skills": { "util-twilio-channel": true }
+  }'</code></pre>
+                    <p><strong>Skill:</strong> <code>util-twilio-channel</code>, the phone channel.</p>
                     <p><strong>Credential:</strong> <code>twilio-voice</code>, the Account SID, Auth Token and phone numbers below.</p>
                     <p><strong>Agents that typically enable this integration:</strong></p>
                     <ul>
@@ -36216,7 +36403,7 @@ for e in cron_runs:
                     <h2>Prerequisites</h2>
                     <ul>
                       <li><strong>A Wiro API key</strong> (see <a href="/docs/authentication">Authentication</a>).</li>
-                      <li><strong>A deployed agent</strong> (Voice Receptionist preset or any custom agent with the Twilio Voice channel), see <a href="/docs/agent-overview">Agent Overview</a>.</li>
+                      <li><strong>A deployed agent</strong> (Voice Receptionist preset or any custom agent with <code>util-twilio-channel</code> on), see <a href="/docs/agent-overview">Agent Overview</a>.</li>
                       <li><strong>A Twilio account</strong> with at least one purchased phone number.</li>
                     </ul>
                   </section>
@@ -36263,7 +36450,7 @@ for e in cron_runs:
       { "credentialkey": "twilio-voice", "fieldname": "holdvoice",       "fieldvalue": "Polly.Joanna-Neural" }
     ]
   }'</code></pre>
-                    <p>Or save through the panel: <strong><a href="https://wiro.ai/panel/agents" target="_blank" rel="noopener">My Agents</a></strong> → open agent → <strong>Connectors → Twilio Voice</strong>. The panel saves the card, and the same save sets up the number webhooks.</p>
+                    <p>Or save through the panel: <strong><a href="https://wiro.ai/panel/agents" target="_blank" rel="noopener">My Agents</a></strong> → open agent → <strong>Connectors</strong> tab → <strong>Channels → Twilio Voice</strong>. The panel saves the card, and the same save sets up the number webhooks.</p>
 
                     <h3>Step 4: Verify webhook configuration</h3>
                     <p>After saving credentials, the response includes:</p>
@@ -37366,12 +37553,12 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
 
                     <h3>White-Label Chat</h3>
                     <p>Build a fully branded chat experience with no Wiro UI visible to your users.</p>
-                    <p>The deploy flow has three stages: Deploy, Setup (only when the agent has connectors to set up), and Start.</p>
+                    <p>The deploy flow has three stages: Deploy, Setup (only when the agent works with connectors or needs credentials), and Start.</p>
                     <ol>
                       <li><strong>Deploy</strong> an agent via <code>POST /UserAgent/Deploy</code>: returns <code>useragents[0].guid</code> and starts the instance in <code>status: 6</code> (setup-required). A prepaid Deploy then queues it (<code>status: 2</code>) once its subscription is provisioned. Send <code>"chatsetup": "off"</code> too, so your users' messages can't change the agent's setup; make setup changes from your own backend.</li>
                       <li>
-                        <strong>Setup</strong> the connectors and credentials (only if the agent template needs them): connect the services it works with through <a href="/docs/agent-connectors" class="docs-link">Agent Connectors</a> (<code>POST /UserAgent/ConnectorConnect</code>, with fields or the vendor's sign-in), and save channels with <code>POST /UserAgent/CredentialUpsert</code> and the Wiro project with <code>POST /UserAgent/CredentialProjectBind</code> (see <a href="/docs/agent-credentials" class="docs-link">Agent Credentials</a>). These calls don't change <code>status</code>: on an agent still at <code>status: 6</code>, call <code>POST /UserAgent/Update</code> with <code>{ "guid": "&lt;useragent-guid&gt;" }</code> after the last one and check <code>setuprequired</code> on its response. While it's <code>true</code>, the agent cannot start. Once all required connectors are set up, that call flips <code>setuprequired</code> to <code>false</code> and
-                        <code>status</code> to <code>0</code>. For Pattern 2 (knowledge-base / chat-only agents) there are no connectors to set up, so this stage is skipped and the agent is ready to start right after Deploy.
+                        <strong>Setup</strong> the connectors and credentials (only if the agent template needs them): connect the services it works with through <a href="/docs/agent-connectors" class="docs-link">Agent Connectors</a> (<code>POST /UserAgent/ConnectorConnect</code>, with fields or the vendor's sign-in; the template's <code>suggestedconnectors</code> on <a href="/docs/agent-overview#post-agentdetail" class="docs-link"><code>Agent/Detail</code></a> lists them), and save channels with <code>POST /UserAgent/CredentialUpsert</code> and the Wiro project with <code>POST /UserAgent/CredentialProjectBind</code> (see <a href="/docs/agent-credentials" class="docs-link">Agent Credentials</a>). These calls don't change <code>status</code>: on an agent still at <code>status: 6</code>, call <code>POST /UserAgent/Update</code> with <code>{ "guid": "&lt;useragent-guid&gt;" }</code> after the last one and check <code>setuprequired</code> on its response. While it's <code>true</code>, the agent cannot start. Once all required credentials are set up, that call flips <code>setuprequired</code> to <code>false</code> and
+                        <code>status</code> to <code>0</code>; connectors never hold an agent at <code>status: 6</code>. For Pattern 2 (knowledge-base / chat-only agents) there is nothing to set up, so this stage is skipped and the agent is ready to start right after Deploy.
                       </li>
                       <li><strong>Start</strong>: a prepaid Deploy already queued the agent, and it goes through <code>status: 3</code> (starting) → <code>status: 4</code> (running). Call <code>POST /UserAgent/Start</code> when it is stopped (<code>status: 0</code>, for example after <code>Update</code> moved it out of <code>status: 6</code>) or errored (<code>status: 5</code>).</li>
                       <li>Build your own chat UI.</li>

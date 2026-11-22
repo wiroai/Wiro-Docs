@@ -4,7 +4,20 @@ Connect inbound phone calls (PSTN) to a Wiro agent. Used by the [Voice Reception
 
 ## Overview
 
-Turn on the Twilio Voice channel on a useragent and Wiro turns on the voice rules it needs (`util-voice-receptionist` + `util-voice-call-prep`), so you don't need to enable them separately.
+Turn on the Twilio Voice channel, the `util-twilio-channel` skill, on a useragent and Wiro turns on the voice rules it needs (`util-voice-receptionist` + `util-voice-call-prep`), so you don't need to enable them separately. On an agent that doesn't have it yet, turn it on with [`SkillsApply`](/docs/agent-overview#post-useragentskillsapply), or name it in Deploy's `skills`:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440002",
+    "skills": { "util-twilio-channel": true }
+  }'
+```
+
+**Skill:** `util-twilio-channel`, the phone channel.
 
 **Credential:** `twilio-voice`, the Account SID, Auth Token and phone numbers below.
 
@@ -30,7 +43,7 @@ You don't touch the Twilio Console's webhook fields manually. When you save this
 ## Prerequisites
 
 - **A Wiro API key** (see [Authentication](/docs/authentication)).
-- **A deployed agent** (Voice Receptionist preset or any custom agent with the Twilio Voice channel), see [Agent Overview](/docs/agent-overview).
+- **A deployed agent** (Voice Receptionist preset or any custom agent with `util-twilio-channel` on), see [Agent Overview](/docs/agent-overview).
 - **A Twilio account** with at least one purchased phone number.
 
 ## Setup
@@ -77,7 +90,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-Or save through the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Connectors → Twilio Voice**. The panel saves the card, and the same save sets up the number webhooks.
+Or save through the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Connectors** tab → **Channels → Twilio Voice**. The panel saves the card, and the same save sets up the number webhooks.
 
 ### Step 4: Verify webhook configuration
 

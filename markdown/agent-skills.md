@@ -56,7 +56,7 @@ Lists all skills in the registry.
 {
   "result": true,
   "errors": [],
-  "total": 17,
+  "total": 19,
   "skills": [
     {
       "name": "util-weather",
@@ -846,7 +846,7 @@ This means **your editable preference becomes the single place to customize agen
 
 A connected connector gives the agent its tools, named `<slug>__<tool>`, such as `serper__web_search` or `bluesky__create_post`. A template's scheduled tasks call them by these names, and your own custom skills can too: tell the agent which tools to use and when, for example "Research the topic with `serper__web_search` before you write." See [What the Agent Gets](/docs/agent-connectors#what-the-agent-gets).
 
-A template's scheduled task that needs a connector stays off until that connector is connected, so connect the ones a template works with after you deploy it: [`POST /UserAgent/ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect).
+A template's scheduled task that needs a connector stays off until that connector is connected, so connect the ones a template works with after you deploy it, with [`POST /UserAgent/ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect). The template's `suggestedconnectors` on [`POST /Agent/Detail`](/docs/agent-overview#post-agentdetail) lists them by slug; nothing connects by itself.
 
 Agents can optionally forward operator notifications to a Telegram bot via the `telegram` credential (see [Telegram Channel](/docs/integration-telegram-skills)). This is never required; every agent remains fully usable over web chat and the [Messaging API](/docs/agent-messaging) without a bot configured.
 
@@ -860,6 +860,8 @@ Agents can optionally forward operator notifications to a Telegram bot via the `
 | `util-diagram` | Flowcharts, architecture and sequence diagrams, state machines, data models, mind maps, timelines, Gantt plans and concept drawings as PNG images with an editable SVG copy, checked for overlapping or cut-off text. |
 | `util-video-creator` | The Video Creator's playbook: finished videos with voice-over, music and captions from a website or web app (behind a login too), an app-store listing, a document, an article or product photos; 16:9 or 9:16, up to 3 minutes. It brings `util-video-shots`, `util-video-docs` and `util-motion-effects` with it, and runs the video's models with the agent's Wiro project, which pays for them (see [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent)). `util-motion-effects` and `util-video-creator` always come together, whichever one you turn on. |
 
+The voice channels are Skills too: `util-twilio-channel` answers phone calls through Twilio Voice and saves its account in the `twilio-voice` credential (see [Twilio Voice Channel](/docs/integration-twiliovoice-skills)), and `util-web-channel` takes calls in the browser (see [Web Voice Channel](/docs/integration-webvoice-skills)). Each brings `util-voice-receptionist` and `util-voice-call-prep` with it. Turn them on with [`SkillsApply`](#turning-skills-on-and-off) or Deploy's `skills`.
+
 `POST /Skills/List` with `{ "category": "util" }` returns every utility skill.
 
 > **Restart behavior:** On a starting or running agent (status 3 or 4), `SkillsApply`, `CustomSkillRename`, `CustomSkillDelete` and `CustomSkillRevert` restart it so the new skill configuration is picked up, as credential updates do. `CustomSkillUpsert` restarts it for a new skill or task, a new `interval` or an `enabled` change. A change to the text or description of an existing one reaches the running agent without a restart, except for `cs-approval-policy`. See [Automatic Restart](/docs/agent-overview#automatic-restart).
@@ -869,7 +871,7 @@ Agents can optionally forward operator notifications to a Telegram bot via the `
 An agent runs Wiro's own AI models (image, video, audio and LLM generation, cover images, model discovery) two ways:
 
 - **With its Wiro project.** Skills such as `util-video-creator` and the voice skills run their models with the agent's Wiro project, the `wiro` credential. Pick or create a project at [wiro.ai/panel/project](https://wiro.ai/panel/project) and connect it in the agent's settings, or through the API with `POST /UserAgent/CredentialProjectBind`. Each run is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project). See [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project).
-- **With the Wiro connector.** The `wiro` connector gives the agent Wiro's own tools (`wiro__*`) for any model, billed to the project you connect it with. See [The Wiro connector](/docs/agent-connectors#the-wiro-connector).
+- **With the Wiro connector.** The `wiro` connector gives the agent Wiro's own tools (`wiro__*`), the ones its `tools` on [`AgentConnector/Detail`](/docs/agent-connectors#post-agentconnectordetail) list, such as running any model. They act with the key of the project you connect it with, and their runs are billed to that project. See [The Wiro connector](/docs/agent-connectors#the-wiro-connector).
 
 The agent starts without a Wiro project. Where the template marks the project required (`optional: false`), `UserAgent/Detail` reads `setuprequired: true` until it is connected.
 
