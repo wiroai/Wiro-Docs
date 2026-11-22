@@ -2,7 +2,7 @@ import { initModelBrowser } from './helpers.js';
 
 const sections = [
   { slug: 'introduction', title: 'Introduction', description: 'Wiro is a unified AI API platform that lets you run any model (video, image, audio, LLM, 3D) with a single API key and pay-per-use pricing.' },
-  { slug: 'authentication', title: 'Authentication', description: 'Authenticate with the Wiro API using Bearer tokens or query-string API keys. Learn how to generate and manage your credentials securely.' },
+  { slug: 'authentication', title: 'Authentication', description: 'Authenticate with the Wiro API using your project API key in the x-api-key header, alone or with an HMAC-SHA256 signature made with your API secret.' },
   { slug: 'projects', title: 'Projects', description: 'Create projects to organize your Wiro API usage. Each project has its own API key, usage tracking, and webhook configuration.' },
   { slug: 'models', title: 'Models', description: 'Browse, search, and discover AI models on Wiro. Filter by category, view pricing, parameters, and sample outputs for each model.' },
   { slug: 'run-a-model', title: 'Run a Model', description: 'Execute any AI model on Wiro with a single POST request, or wait on /sync for a finite task. Pass parameters, upload files, and receive outputs.' },
@@ -43,7 +43,7 @@ const sections = [
   { slug: 'agent-use-cases', title: 'Agent Use Cases', description: 'Learn how to build products with Wiro Agents. Deploy agents for your customers, connect their services with connectors, and create multi-agent workflows.' },
   { slug: 'integration-telegram-skills', title: 'Telegram Channel', description: 'Telegram bot setup: BotFather token, allowed users, private vs collaborative session modes.' },
   { slug: 'integration-twiliovoice-skills', title: 'Twilio Voice Channel', description: 'Inbound phone call channel via Twilio Voice Webhooks + Media Streams. Account SID + Auth Token, auto-configured webhooks, hold media, max-duration timer. Used by Voice Receptionist agents.' },
-  { slug: 'integration-webvoice-skills', title: 'Web Voice Channel', description: 'Browser-embedded realtime voice channel. POST /UserAgent/Realtime/WebStart issues a short-lived JWT + WebSocket URL; the browser presents it as the first WS message and streams 24 kHz PCM mono. Used by Voice Receptionist and Voice Sales Rep agents.' },
+  { slug: 'integration-webvoice-skills', title: 'Web Voice Channel', description: 'Browser-embedded realtime voice channel. POST /UserAgent/Realtime/WebStart issues a one-time session handle and the WebSocket URL; the browser sends the handle as its first WebSocket message and streams 24 kHz PCM mono. Used by Voice Receptionist and Voice Sales Rep agents.' },
   { slug: 'organizations-overview', title: 'Organizations & Teams', description: 'Collaborate with your team under a shared workspace with unified billing, access controls, and resource management. Learn about organizations, teams, and personal workspaces.' },
   { slug: 'organizations-managing-teams', title: 'Managing Teams', description: 'Create organizations, invite members, manage roles and permissions. Transfer agents and projects between workspaces.' },
   { slug: 'organizations-billing', title: 'Team Billing & Spending', description: 'Manage team wallets, transfer credit and track usage across your organization.' },
@@ -176,6 +176,14 @@ function parseLegacyHash(hash) {
     return null;
   }
   return sections.find((s) => s.slug === slug) ? slug : null;
+}
+
+// The same kind of link to a page that is no longer in the docs, such as
+// /docs#/integration-metaads-skills. Its path is where serve.js answers:
+// a 301 to the page it became (RETIRED_PAGES), or the not-found page.
+function parseMovedHash(hash) {
+  const match = /^#\/([a-z0-9-]+)\/?$/.exec(hash || '');
+  return match && !sections.some((s) => s.slug === match[1]) ? match[1] : null;
 }
 
 function decodeFragment(hash) {
@@ -1309,8 +1317,9 @@ function initScrollbarReveal() {
 
 function init() {
   const legacySlug = parseLegacyHash(window.location.hash);
-  if (legacySlug && !getSectionElement(legacySlug)) {
-    window.location.replace(`${BASE_PATH}/${legacySlug}`);
+  const movedSlug = parseMovedHash(window.location.hash);
+  if (movedSlug || (legacySlug && !getSectionElement(legacySlug))) {
+    window.location.replace(`${BASE_PATH}/${movedSlug || legacySlug}`);
     return;
   }
 

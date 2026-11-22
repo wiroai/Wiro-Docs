@@ -80,7 +80,7 @@
         } catch (error) {}
       })();
     </script>
-    <script type="module" src="js/app.js?v=2026112201"></script>
+    <script type="module" src="js/app.js?v=2026112202"></script>
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -19067,7 +19067,7 @@ channel-enable endpoint or persisted switch.</p>
 </div>
 </div>
 <blockquote>
-<p><strong>Only Twilio Voice takes a file here.</strong> The one credential with <code>fileinput</code> fields is Twilio Voice (<code>twilio-voice</code>): <code>holdaudio</code> and <code>holdmusic</code>, MP3 or WAV up to 10 MB. A key file for a service the agent works with, such as a Google service account JSON or an App Store Connect private key, belongs to that service's Connector. Send the file's text in <code>values</code> on <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>ConnectorConnect</code></a>: <code>serviceaccountjson</code> for Google Play Console (<code>google-play</code>), or <code>privatekey</code> for App Store Connect (<code>apple-appstore</code>). A connector's slug sent here answers <code>Unknown credential: &lt;key&gt;</code>.</p>
+<p><strong>Only Twilio Voice takes a file here.</strong> This endpoint stores the file of a credential field whose <code>type</code> is <code>fileinput</code>: Wiro keeps the file and the credential keeps a reference to it. The one credential with <code>fileinput</code> fields is Twilio Voice (<code>twilio-voice</code>): <code>holdaudio</code> and <code>holdmusic</code>, MP3 or WAV up to 10 MB. A key file for a service the agent works with, such as a Google service account JSON or an App Store Connect private key, belongs to that service's Connector and is not a credential. Send the file's text in <code>values</code> on <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>POST /UserAgent/ConnectorConnect</code></a>: <code>serviceaccountjson</code> for Google Play Console (<code>google-play</code>), or <code>privatekey</code> for App Store Connect (<code>apple-appstore</code>). A connector sent here as <code>credentialkey</code> answers <code>Unknown credential: &lt;key&gt;</code>, and a field of another type <code>Field is not a fileinput type</code>.</p>
 </blockquote>
 <h5 id="request_2">Request</h5>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CredentialFileUpload&quot; \

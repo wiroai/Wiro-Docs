@@ -15,7 +15,7 @@ const MIME = {
 
 const sections = [
   { slug: 'introduction', title: 'Introduction', description: 'Wiro is a unified AI API platform that lets you run any model (video, image, audio, LLM, 3D) with a single API key and pay-per-use pricing.' },
-  { slug: 'authentication', title: 'Authentication', description: 'Authenticate with the Wiro API using Bearer tokens or query-string API keys. Learn how to generate and manage your credentials securely.' },
+  { slug: 'authentication', title: 'Authentication', description: 'Authenticate with the Wiro API using your project API key in the x-api-key header, alone or with an HMAC-SHA256 signature made with your API secret.' },
   { slug: 'projects', title: 'Projects', description: 'Create projects to organize your Wiro API usage. Each project has its own API key, usage tracking, and webhook configuration.' },
   { slug: 'models', title: 'Models', description: 'Browse, search, and discover AI models on Wiro. Filter by category, view pricing, parameters, and sample outputs for each model.' },
   { slug: 'run-a-model', title: 'Run a Model', description: 'Execute any AI model on Wiro with a single POST request, or wait on /sync for a finite task. Pass parameters, upload files, and receive outputs.' },
@@ -56,7 +56,7 @@ const sections = [
   { slug: 'agent-use-cases', title: 'Agent Use Cases', description: 'Learn how to build products with Wiro Agents. Deploy agents for your customers, connect their services with connectors, and create multi-agent workflows.' },
   { slug: 'integration-telegram-skills', title: 'Telegram Channel', description: 'Telegram bot setup: BotFather token, allowed users, private vs collaborative session modes.' },
   { slug: 'integration-twiliovoice-skills', title: 'Twilio Voice Channel', description: 'Inbound phone call channel via Twilio Voice Webhooks + Media Streams. Account SID + Auth Token, auto-configured webhooks, hold media, max-duration timer. Used by Voice Receptionist agents.' },
-  { slug: 'integration-webvoice-skills', title: 'Web Voice Channel', description: 'Browser-embedded realtime voice channel. POST /UserAgent/Realtime/WebStart issues a short-lived JWT + WebSocket URL; the browser presents it as the first WS message and streams 24 kHz PCM mono. Used by Voice Receptionist and Voice Sales Rep agents.' },
+  { slug: 'integration-webvoice-skills', title: 'Web Voice Channel', description: 'Browser-embedded realtime voice channel. POST /UserAgent/Realtime/WebStart issues a one-time session handle and the WebSocket URL; the browser sends the handle as its first WebSocket message and streams 24 kHz PCM mono. Used by Voice Receptionist and Voice Sales Rep agents.' },
   { slug: 'organizations-overview', title: 'Organizations & Teams', description: 'Collaborate with your team under a shared workspace with unified billing, access controls, and resource management. Learn about organizations, teams, and personal workspaces.' },
   { slug: 'organizations-managing-teams', title: 'Managing Teams', description: 'Create organizations, invite members, manage roles and permissions. Transfer agents and projects between workspaces.' },
   { slug: 'organizations-billing', title: 'Team Billing & Spending', description: 'Manage team wallets, transfer credit and track usage across your organization.' },
@@ -68,7 +68,9 @@ const sectionMap = Object.fromEntries(sections.map(s => [s.slug, s]));
 // Pages that left the docs. The per-connector integration pages became the connector
 // catalog's own pages on the site, https://wiro.ai/connectors/{slug}, and the API they
 // described is the Agent Connectors page: each old address, and the address of its
-// Markdown copy, answers 301 with the connector's page.
+// Markdown copy, answers 301 with the connector's page. Links from before path URLs
+// (/docs#/integration-metaads-skills) get here too: app.js sends a #/slug that names
+// no page in the docs to /docs/slug.
 const CONNECTOR_PAGE = 'https://wiro.ai/connectors/';
 const RETIRED_PAGES = {
   'integration-metaads-skills': CONNECTOR_PAGE + 'meta-ads',
@@ -122,6 +124,7 @@ const RETIRED_PAGES = {
   'integration-tumblr-skills': CONNECTOR_PAGE + 'tumblr',
   'integration-apollo': CONNECTOR_PAGE + 'apollo',
   'integration-appstore': CONNECTOR_PAGE + 'apple-appstore',
+  'integration-brevo': CONNECTOR_PAGE + 'brevo',
   'integration-facebook': CONNECTOR_PAGE + 'facebook-pages',
   'integration-firebase': CONNECTOR_PAGE + 'firebase',
   'integration-gmail': CONNECTOR_PAGE + 'gmail',
@@ -130,14 +133,17 @@ const RETIRED_PAGES = {
   'integration-googleplay': CONNECTOR_PAGE + 'google-play',
   'integration-hubspot': CONNECTOR_PAGE + 'hubspot',
   'integration-instagram': CONNECTOR_PAGE + 'instagram',
+  'integration-lemlist': CONNECTOR_PAGE + 'lemlist',
   'integration-linkedin': CONNECTOR_PAGE + 'linkedin',
   'integration-mailchimp': CONNECTOR_PAGE + 'mailchimp',
   'integration-metaads': CONNECTOR_PAGE + 'meta-ads',
+  'integration-sendgrid': CONNECTOR_PAGE + 'sendgrid',
   'integration-tiktok': CONNECTOR_PAGE + 'tiktok',
   'integration-twitter': CONNECTOR_PAGE + 'twitter',
   'integration-wordpress': CONNECTOR_PAGE + 'wordpress',
   'integration-google-search-skills': CONNECTOR_PAGE + 'serper',
   'integration-telegram': `${BASE}/integration-telegram-skills`,
+  'voice-agent-twilio-channel': `${BASE}/integration-twiliovoice-skills`,
 };
 const RETIRED_MARKDOWN = /^markdown\/([a-z0-9-]+)\.md$/;
 
