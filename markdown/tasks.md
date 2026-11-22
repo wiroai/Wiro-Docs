@@ -168,7 +168,7 @@ The Wiro MCP package (`@wiro-ai/wiro-mcp`) counts as `mcp` when it names itself 
 
 ### Older Tasks
 
-Tasks from before surfaces were recorded have one only where it is certain: workflow steps, the runs of deployed agents, Studio and the Workflow Agent, and runs from MCP, the LLM gateway and the browser extensions. Runs with an API key and dashboard runs have one from late October 2026 on. Other tasks have `surface: null`: the dashboard shows no label for them, and a `surface` filter never lists them.
+Tasks from before surfaces were recorded have one only where it is certain: workflow steps, the runs of deployed agents, and runs from MCP, the LLM gateway and the browser extensions. Runs with an API key and dashboard runs have one from late October 2026 on. Such a task has the surface it would count on today, so an older workflow step has `workflow`, or `agent` when one of your deployed agents started its run, though at the time a workflow run counted on the surface it was started from. The model runs Studio made before they became your own tasks are not in your task list: [Studio/Tasks](/docs/studio#post-studiotasks) lists them. Other tasks have `surface: null`: the dashboard shows no label for them, and a `surface` filter never lists them.
 
 ## LLM Models
 
