@@ -36947,14 +36947,14 @@ for e in cron_runs:
     ]
   }'</code></pre>
                     <p>Send <code>allowedusers</code> and <code>groups</code> as native JSON arrays. <code>groups</code> is optional; omit it when the bot should be usable only in direct messages.</p>
-                    <p>If you are deploying a new agent, place the complete <code>telegram</code> group in <code>credentials</code>. Do not send an <code>enabledchannels</code> switch or chat-mode field to <code>POST /UserAgent/Deploy</code>; change Chat Mode after deployment with <code>POST /UserAgent/UpdateSettings</code>.</p>
+                    <p>If you are deploying a new agent, place the complete <code>telegram</code> group in <code>credentials</code>. Do not send an <code>enabledchannels</code> switch or chat-mode field to <code>POST /UserAgent/Deploy</code>; change Chat Mode after deployment when needed.</p>
 
                     <h3>Step 4: Verify the applied state</h3>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{ "guid": "your-useragent-guid" }'</code></pre>
-                    <p>Confirm that <code>enabledChannels</code> contains <code>"telegram"</code> and that its <code>communicationChannels</code> row reports <code>enabled: true</code>, <code>configured: true</code>, and an empty <code>missingfields</code> array.</p>
+                    <p>Confirm that <code>enabledChannels</code> contains <code>"telegram"</code> and the Telegram row in <code>communicationChannels</code> reports <code>enabled: true</code>, <code>configured: true</code>, and an empty <code>missingfields</code> array.</p>
                   </section>
 
                   <section id="credential-fields">
@@ -36982,7 +36982,7 @@ for e in cron_runs:
                           <tr>
                             <td><code>groups</code></td>
                             <td>object[]</td>
-                            <td>Optional room allowlist. Each row is <code>{ "chatid": "-100...", "allowedusers": ["..."] }</code>. Group IDs must be negative numeric strings.</td>
+                            <td>Optional room allowlist. Each row is <code>{ "chatid": "-100...", "allowedusers": ["..."] }</code>. Group/supergroup IDs must be negative numeric strings.</td>
                           </tr>
                         </tbody>
                       </table>
@@ -37010,17 +37010,17 @@ for e in cron_runs:
                         </tbody>
                       </table>
                     </div>
-                    <p>Group conversations remain scoped to their own group and never merge into the direct-message conversation.</p>
+                    <p>Group conversations are always scoped to their own group and do not merge into the shared direct-message conversation.</p>
                   </section>
 
                   <section id="access-behavior">
                     <h2>Access Behavior</h2>
                     <ul>
                       <li>Direct messages are accepted only from IDs in the top-level <code>allowedusers</code>.</li>
-                      <li>Group messages are accepted only in configured <code>groups[].chatid</code> rooms and from that room's approved users.</li>
+                      <li>Group messages are accepted only in configured <code>groups[].chatid</code> rooms and only from that room's <code>allowedusers</code>.</li>
                       <li>Group turns must mention the bot.</li>
-                      <li>Usernames and display names are never authorization values.</li>
-                      <li>Clear either <code>bottoken</code> or <code>allowedusers</code> with <code>CredentialUpsert</code> to disable Telegram; completing both reactivates it.</li>
+                      <li>Usernames and display names are never accepted as authorization values.</li>
+                      <li>Telegram is optional. Clear either <code>bottoken</code> or <code>allowedusers</code> with <code>CredentialUpsert</code> to disable it; completing both fields reactivates it.</li>
                     </ul>
                   </section>
 
@@ -37030,7 +37030,7 @@ for e in cron_runs:
                       <li><strong>Bot doesn't respond:</strong> Verify <code>bottoken</code> is correct and the sender's Telegram user ID is in <code>allowedusers</code>.</li>
                       <li><strong>"Unauthorized" (401) from Telegram API:</strong> BotFather regenerated the token, invalidating the old one. Create a new token and update.</li>
                       <li><strong>Rate limits:</strong> Telegram bots are limited to ~30 messages/second globally. For burst broadcasts, plan around this.</li>
-                      <li><strong>Bot works in DMs but not a group:</strong> Add the negative group chat ID and sender ID to the same <code>groups[]</code> row, then mention the bot.</li>
+                      <li><strong>Bot works in DMs but not a group:</strong> Add the negative group chat ID and the sender's immutable user ID to the same <code>groups[]</code> row, then mention the bot.</li>
                       <li><strong>Collaborative mode confusion:</strong> Call <code>UserAgent/UpdateSettings</code> with <code>teamsessionmode: "collaborative"</code>.</li>
                     </ul>
                   </section>
