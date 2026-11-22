@@ -192,7 +192,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
 
 ### Wallet Billing Flow
 
-Runs made with a team project's key are charged to the team wallet and appear in the team's `Wallet/TransactionList`; personal project keys charge your personal wallet.
+Runs made with a team project's key are charged to the team wallet and appear in the team's `Wallet/TransactionList`; personal project keys charge your personal wallet. Call it with `{ "uuid": "me", "type": "all", "start": 0, "limit": 100 }` (`limit` up to 400); another `type`, such as `"payment"`, lists only the rows whose type contains it. The list also holds your agents' rows (their plan payments, AI usage and model runs, and funds added from an agent's page), each with the agent's `useragentguid`. A charge carries the `surface` that made it, and an agent's AI usage row carries `usage`: the model, the number of calls, and the `tokens` and `costs` (in USD) of each kind of token. A batch paid more than one way gives a row for each way, each with the whole batch's `usage`. AI usage an agent's plan covered is a `USAGE (AGENT PLAN)` row: it is listed for the record but took nothing from the balance, so leave it out when you add up spending (`type: "payment"` lists only the rows that took money from the balance). To narrow the list, pass `useragentguid` or `surface` (`web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, `studio`, `workflow-agent` or `workflow`; any other value answers `surface must be one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow.`). Older rows carry neither field. For one agent's rows in dollars with a monthly summary, use [`UserAgent/TransactionList`](/docs/agent-transactions).
 
 ## Best Practices
 
