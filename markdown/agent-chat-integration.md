@@ -397,7 +397,7 @@ A setup block has the usual block fields, `type: "setup"`, `text: null` and a `s
 | `title` | `connect`, `disconnect`, `schedule`, `skill` | `connect` and `disconnect`: the connector's title, written by Wiro, up to 120 characters. `schedule` and `skill`: optional, one line, up to 80 characters. |
 | `authtype` | `connect` | Written by Wiro: the connector's `authtype` in the catalog, `fields`, `headers`, `none`, `oauth` or `provider-oauth`. |
 | `mode` | `connect` | Written by Wiro: how the card connects, `key` (the values its `fields` ask for), `signin` (the vendor's sign-in) or `project` (a Wiro project for the `wiro` connector). See [Modes](#modes). |
-| `fields` | `connect` | Written by Wiro: what the card's form asks for, at most 30, in the shape of `credentialfields` on [`AgentConnector/Detail`](/docs/agent-connectors#connect-card-fields): `name`, `label`, `description` (Markdown), `required`, `secret`, `format`, and `options`, `placeholder`, `pattern`, `maxlength`, `serveronly`, `mode` or `source` where they apply. On a `key` card, the connector's Connect fields. On a `project` card, one field with `source: "wiro_project"`: a project picker, never an input. On a `signin` card, the fields its sign-in takes: for a connector that signs in with an app of your own, that app's keys (`serveronly: true`). The fields of a connector's key way are never on a `signin` card. Empty when there is nothing to enter. |
+| `fields` | `connect` | Written by Wiro: what the card's form asks for, at most 30, in the shape of `credentialfields` on [`AgentConnector/Detail`](/docs/agent-connectors#connect-card-fields): `name`, `label`, `description` (Markdown), `required`, `secret`, `format`, and `options`, `placeholder`, `pattern`, `maxlength`, `serveronly`, `mode` or `source` where they apply. On a `key` card, the connector's Connect fields. On a `project` card, one field with `source: "wiro_project"`: a project picker, never an input. On a `signin` card, the fields its sign-in takes: for a connector that signs in with an app of your own, that app's keys (`serveronly: true`), and any other field the sign-in needs, such as Shopify's Shop Domain. The fields of a connector's key way are never on a `signin` card. Empty when there is nothing to enter. |
 | `wiroapp` | `connect` | Written by Wiro, only on a card from a Wiro web chat turn: `true` when its connector signs in there with Wiro's own app. Never on a card from a chat sent with your API key, whose sign-in always takes your own app's keys. |
 | `cron` | `schedule` | Five fields, in the agent's time zone. Always on `create`, optional on `update`. A task set up from chat runs at most once an hour. |
 | `instructions` | `schedule`, `skill` | `create` and `update`: the full text. `append`: only the text to add. `revert`: the text it restores. Up to 20,000 characters on what the agent writes. |
@@ -570,7 +570,7 @@ Whenever a card is applied, dismissed or fails, Wiro also marks applied the same
 |------|-----------|------|---------|
 | `add` | "Add `<title>`", the `title` of `key` in `Skills/List` | `with` as "Also turns on", `pauses` and `resumes`, and each entry of `needs` with its `connect` card | Apply, Dismiss, and the buttons of its `connect` cards; see [Buttons](#buttons) |
 | `remove` | "Remove `<title>`" | `with` as "Also turns off", `pauses` and `resumes` | Apply, Dismiss |
-| `connect` | "Connect `<title>`" | By `mode`: for `key`, a form from `fields`; for `signin`, the `serveronly` fields when the card has them, such as your own app's keys; for `project`, a picker of your projects | Save for `key` (Connect when no field is required), Sign in for `signin`, Connect for `project`, and Dismiss |
+| `connect` | "Connect `<title>`" | By `mode`: for `key`, a form from `fields`; for `signin`, a form from `fields` when the card has any: your own app's keys (`serveronly: true`) and any other field the sign-in needs, such as LinkedIn's Organization ID or Shopify's Shop Domain; for `project`, a picker of your projects | Save for `key` (Connect when no field is required), Sign in for `signin`, Connect for `project`, and Dismiss |
 | `disconnect` | "Disconnect `<title>`" | Say that the connection is removed and the agent loses the connector's tools until it is connected again | Disconnect, Dismiss |
 | `schedule` | "Create", "Change", "Pause", "Resume" or "Delete" scheduled task `<title or key>` | The schedule in words, in the agent's time zone, and `instructions` | Apply, Dismiss |
 | `skill` | "Create", "Change", "Add to", "Undo the last change to", "Turn off" or "Turn on" custom skill `<title or key>` | `instructions`; for `update`, `append` and `revert`, `before` next to the text after the change | Apply, Dismiss |
@@ -597,7 +597,7 @@ Show `note`, when there is one, under the title.
 - **Apply**: `SetupCardApply` with `action: "apply"`.
 - **Dismiss**: `SetupCardApply` with `action: "dismiss"`. A `connect` card connects its connector on its own, so dismissing an `add` card leaves its `connect` cards pending: dismiss them too when the person turns the whole change down.
 - **A `key` card**: show its `fields` and **Save**: `SetupCardApply` with the values in `values`. A card whose fields hold no required field connects with **Connect** and no `values`.
-- **A `signin` card**: show its `serveronly` fields when it has them, and **Sign in**: `SetupCardApply` with those keys in `values` and your `redirecturl`. Open the answer's `authorizeUrl`. Once the browser is back on your `redirecturl` with `connector_connected=true`, call `SetupCardApply` on the card again, with no `values`: it records the card applied. See [Sign-in: HubSpot](#sign-in-hubspot).
+- **A `signin` card**: show every field in its `fields` (your own app's keys are the `serveronly: true` ones; some sign-ins need more, such as LinkedIn's Organization ID, Reddit's Developer Profile Username or Shopify's Shop Domain), and **Sign in**: `SetupCardApply` with their values in `values` and your `redirecturl`. Open the answer's `authorizeUrl`. Once the browser is back on your `redirecturl` with `connector_connected=true`, call `SetupCardApply` on the card again, with no `values`: it records the card applied. It records the card only while the connector reads connected: if it doesn't yet, the same call starts a new sign-in and answers a new `authorizeUrl`, with the card still pending. After `connector_error=<code>`, show that code's sentence and offer **Sign in** again instead. See [Sign-in: HubSpot](#sign-in-hubspot).
 - **A `project` card**: show a picker of your projects and **Connect**: `SetupCardApply` with the chosen project's id as `wiroprojectguid`, and no `values`. See [Project: Wiro AI Models](#project-wiro-ai-models).
 - **An `add` card with its `connect` cards**: the `connect` cards on the same message whose `connector` is in the `add` card's `needs` belong to it. Show them inside the `add` card.
 - **Add and connect, with a key**: when the `add` card has one `key` card, show its fields and **Add and connect**: `SetupCardApply` on the `add` card with the values in `values`. Both cards apply in one step, with one restart.
@@ -698,7 +698,7 @@ A `connect` card connects its connector through `SetupCardApply`, with the check
 | `mode` | How it connects | Your UI | Calls |
 |--------|-----------------|---------|-------|
 | `key` | The values the vendor issues, such as an API key, typed by the person. A card with no required field connects with none. | A form from `setup.fields`, with masked inputs for `secret` fields | `SetupCardApply` with `values`: the connector connects and the card is applied |
-| `signin` | The vendor's consent screen, in the browser | The `serveronly` fields when the card has them (your own app's keys), and a Sign in button | `SetupCardApply` with your `redirecturl`, and the app's keys in `values`, answers `authorizeUrl`. Once the browser is back on your page, `SetupCardApply` again records the card applied |
+| `signin` | The vendor's consent screen, in the browser | A form from `setup.fields` when the card has any (your own app's keys and any other field the sign-in needs), and a Sign in button | `SetupCardApply` with your `redirecturl`, and the card's field values in `values`, answers `authorizeUrl`. Once the browser is back on your page, `SetupCardApply` again records the card applied |
 | `project` | One of your Wiro projects, picked for the `wiro` connector. It becomes the agent's own Wiro project. | A picker of your projects ([`POST /Project/List`](/docs/projects)) for its one `source: "wiro_project"` field, and a Connect button | `SetupCardApply` with the project's id as `wiroprojectguid` and no `values`: the project is bound, the connector connects and the card is applied |
 
 A card's `mode` follows its connector in the catalog: `oauth` and `provider-oauth` connectors sign in, the `wiro` connector, whose one field is a Wiro project, gets a `project` card, and the other `fields`, `headers` and `none` connectors take a key. More modes can be added: show a card whose `mode` you don't know with Dismiss only, and connect its connector from your settings screen.
@@ -905,7 +905,7 @@ The answer gives the vendor's sign-in address. The card stays pending, and `next
 
 **3. The browser comes back.** HubSpot sends the browser to the API's callback, which stores the tokens, marks the connection `connected`, restarts the agent and sends the browser on to your `redirecturl` with `connector_connected=true`, or with `connector_error=<code>` when the sign-in didn't finish (see [The callback and your redirect URL](/docs/agent-connectors#the-callback-and-your-redirect-url)).
 
-**4. Record the card.** Call `SetupCardApply` on the card again, with no `values`:
+**4. Record the card.** Once the browser is back with `connector_connected=true`, call `SetupCardApply` on the card again, with no `values`. Make this call only then: while the connector doesn't read connected, after `connector_error=<code>` or a closed window, it starts a new sign-in instead and answers a new `authorizeUrl`. It answers the card applied:
 
 ```json
 {
@@ -983,13 +983,14 @@ async function connectFromNext(entry, useragentguid, own) {
     return setupCardApply({ useragentguid, messageguid, cardid, action: "apply", values });
   }
   if (entry.mode === "signin") {
-    const values = await askForAppKeys(entry.connector); // the card's serveronly fields, when it has any
+    const values = await askForFields(entry.connector); // every field of the card, or Detail's credentialfields with mode "oauth" or none
     const redirecturl = returnPageFor(entry.connector);  // a page on your own site
     const started = cardid
       ? await setupCardApply({ useragentguid, messageguid, cardid, action: "apply", values, redirecturl })
       : await connectorConnect({ useragentguid, slug: entry.connector, values, redirecturl });
     if (!started.result || !started.authorizeUrl) return started; // a refusal, or already connected
-    await openAndWaitForReturn(started.authorizeUrl); // connector_connected=true on your redirecturl
+    const back = await openAndWaitForReturn(started.authorizeUrl); // the query your redirecturl received
+    if (back.connector_connected !== "true") return back; // connector_error=<code>: show it, offer Sign in again
     if (cardid) return setupCardApply({ useragentguid, messageguid, cardid, action: "apply" }); // records the card
     return started;
   }
@@ -2126,7 +2127,7 @@ Each row also carries `user`, your key owner's account, left out here. The rows 
 - Replies Wiro answers itself (`agenttoken: null`, `status: "agent_end"`) show `response` as plain text.
 - Setup cards show the right title, body and buttons for their kind and state, `add` cards together with their `connect` cards.
 - Apply waits for the reply to finish; Apply and Dismiss call `SetupCardApply`, and the card updates from the answer's `setup` (which can be `null`) and from later `version` 2 blocks.
-- Each connect mode has its flow: `key` (the card's `fields` as `values`), `signin` (`SetupCardApply` with your `redirecturl` and your app's keys, the browser sign-in, then `SetupCardApply` again to record the card) and `project` (your project picker, then `SetupCardApply` with `wiroprojectguid`); any connector also connects on your settings screens with the [Agent Connectors](/docs/agent-connectors) calls, account pickers included.
+- Each connect mode has its flow: `key` (the card's `fields` as `values`), `signin` (`SetupCardApply` with your `redirecturl` and the card's `fields` as `values`, your app's keys among them, the browser sign-in, then `SetupCardApply` again to record the card, only after `connector_connected=true`) and `project` (your project picker, then `SetupCardApply` with `wiroprojectguid`); any connector also connects on your settings screens with the [Agent Connectors](/docs/agent-connectors) calls, account pickers included.
 - `next` from blocks, `SetupCardApply` answers, `setupresult` and webhooks turns into your own Connect buttons.
 - Every `result: false` shows its sentence or your own words; code branches on codes and statuses, never on sentences.
 - Every restart signal (`restarting`, `restart`, `connector_connected=true`, and the saves that answer none) shows a restarting line until `UserAgent/Detail` reads `status: 4`, and the poll stops at `0`, `5` or `6`; Send refusals during a restart are shown as they are.

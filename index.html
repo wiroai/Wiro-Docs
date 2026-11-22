@@ -31218,7 +31218,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <tr>
 <td><code>fields</code></td>
 <td><code>connect</code></td>
-<td>Written by Wiro: what the card's form asks for, at most 30, in the shape of <code>credentialfields</code> on <a href="/docs/agent-connectors#connect-card-fields"><code>AgentConnector/Detail</code></a>: <code>name</code>, <code>label</code>, <code>description</code> (Markdown), <code>required</code>, <code>secret</code>, <code>format</code>, and <code>options</code>, <code>placeholder</code>, <code>pattern</code>, <code>maxlength</code>, <code>serveronly</code>, <code>mode</code> or <code>source</code> where they apply. On a <code>key</code> card, the connector's Connect fields. On a <code>project</code> card, one field with <code>source: "wiro_project"</code>: a project picker, never an input. On a <code>signin</code> card, the fields its sign-in takes: for a connector that signs in with an app of your own, that app's keys (<code>serveronly: true</code>). The fields of a connector's key way are never on a <code>signin</code> card. Empty when there is nothing to enter.</td>
+<td>Written by Wiro: what the card's form asks for, at most 30, in the shape of <code>credentialfields</code> on <a href="/docs/agent-connectors#connect-card-fields"><code>AgentConnector/Detail</code></a>: <code>name</code>, <code>label</code>, <code>description</code> (Markdown), <code>required</code>, <code>secret</code>, <code>format</code>, and <code>options</code>, <code>placeholder</code>, <code>pattern</code>, <code>maxlength</code>, <code>serveronly</code>, <code>mode</code> or <code>source</code> where they apply. On a <code>key</code> card, the connector's Connect fields. On a <code>project</code> card, one field with <code>source: "wiro_project"</code>: a project picker, never an input. On a <code>signin</code> card, the fields its sign-in takes: for a connector that signs in with an app of your own, that app's keys (<code>serveronly: true</code>), and any other field the sign-in needs, such as Shopify's Shop Domain. The fields of a connector's key way are never on a <code>signin</code> card. Empty when there is nothing to enter.</td>
 </tr>
 <tr>
 <td><code>wiroapp</code></td>
@@ -31469,7 +31469,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <tr>
 <td><code>connect</code></td>
 <td>"Connect <code>&lt;title&gt;</code>"</td>
-<td>By <code>mode</code>: for <code>key</code>, a form from <code>fields</code>; for <code>signin</code>, the <code>serveronly</code> fields when the card has them, such as your own app's keys; for <code>project</code>, a picker of your projects</td>
+<td>By <code>mode</code>: for <code>key</code>, a form from <code>fields</code>; for <code>signin</code>, a form from <code>fields</code> when the card has any: your own app's keys (<code>serveronly: true</code>) and any other field the sign-in needs, such as LinkedIn's Organization ID or Shopify's Shop Domain; for <code>project</code>, a picker of your projects</td>
 <td>Save for <code>key</code> (Connect when no field is required), Sign in for <code>signin</code>, Connect for <code>project</code>, and Dismiss</td>
 </tr>
 <tr>
@@ -31567,7 +31567,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <li><strong>Apply</strong>: <code>SetupCardApply</code> with <code>action: "apply"</code>.</li>
 <li><strong>Dismiss</strong>: <code>SetupCardApply</code> with <code>action: "dismiss"</code>. A <code>connect</code> card connects its connector on its own, so dismissing an <code>add</code> card leaves its <code>connect</code> cards pending: dismiss them too when the person turns the whole change down.</li>
 <li><strong>A <code>key</code> card</strong>: show its <code>fields</code> and <strong>Save</strong>: <code>SetupCardApply</code> with the values in <code>values</code>. A card whose fields hold no required field connects with <strong>Connect</strong> and no <code>values</code>.</li>
-<li><strong>A <code>signin</code> card</strong>: show its <code>serveronly</code> fields when it has them, and <strong>Sign in</strong>: <code>SetupCardApply</code> with those keys in <code>values</code> and your <code>redirecturl</code>. Open the answer's <code>authorizeUrl</code>. Once the browser is back on your <code>redirecturl</code> with <code>connector_connected=true</code>, call <code>SetupCardApply</code> on the card again, with no <code>values</code>: it records the card applied. See <a href="#sign-in-hubspot">Sign-in: HubSpot</a>.</li>
+<li><strong>A <code>signin</code> card</strong>: show every field in its <code>fields</code> (your own app's keys are the <code>serveronly: true</code> ones; some sign-ins need more, such as LinkedIn's Organization ID, Reddit's Developer Profile Username or Shopify's Shop Domain), and <strong>Sign in</strong>: <code>SetupCardApply</code> with their values in <code>values</code> and your <code>redirecturl</code>. Open the answer's <code>authorizeUrl</code>. Once the browser is back on your <code>redirecturl</code> with <code>connector_connected=true</code>, call <code>SetupCardApply</code> on the card again, with no <code>values</code>: it records the card applied. It records the card only while the connector reads connected: if it doesn't yet, the same call starts a new sign-in and answers a new <code>authorizeUrl</code>, with the card still pending. After <code>connector_error=&lt;code&gt;</code>, show that code's sentence and offer <strong>Sign in</strong> again instead. See <a href="#sign-in-hubspot">Sign-in: HubSpot</a>.</li>
 <li><strong>A <code>project</code> card</strong>: show a picker of your projects and <strong>Connect</strong>: <code>SetupCardApply</code> with the chosen project's id as <code>wiroprojectguid</code>, and no <code>values</code>. See <a href="#project-wiro-ai-models">Project: Wiro AI Models</a>.</li>
 <li><strong>An <code>add</code> card with its <code>connect</code> cards</strong>: the <code>connect</code> cards on the same message whose <code>connector</code> is in the <code>add</code> card's <code>needs</code> belong to it. Show them inside the <code>add</code> card.</li>
 <li><strong>Add and connect, with a key</strong>: when the <code>add</code> card has one <code>key</code> card, show its fields and <strong>Add and connect</strong>: <code>SetupCardApply</code> on the <code>add</code> card with the values in <code>values</code>. Both cards apply in one step, with one restart.</li>
@@ -31762,8 +31762,8 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <tr>
 <td><code>signin</code></td>
 <td>The vendor's consent screen, in the browser</td>
-<td>The <code>serveronly</code> fields when the card has them (your own app's keys), and a Sign in button</td>
-<td><code>SetupCardApply</code> with your <code>redirecturl</code>, and the app's keys in <code>values</code>, answers <code>authorizeUrl</code>. Once the browser is back on your page, <code>SetupCardApply</code> again records the card applied</td>
+<td>A form from <code>setup.fields</code> when the card has any (your own app's keys and any other field the sign-in needs), and a Sign in button</td>
+<td><code>SetupCardApply</code> with your <code>redirecturl</code>, and the card's field values in <code>values</code>, answers <code>authorizeUrl</code>. Once the browser is back on your page, <code>SetupCardApply</code> again records the card applied</td>
 </tr>
 <tr>
 <td><code>project</code></td>
@@ -31950,7 +31950,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 </code></pre>
 <p><strong>2. Open <code>authorizeUrl</code></strong> in the person's browser, in a popup or the same window. HubSpot's consent screen shows the app whose keys you sent. The address works for 10 minutes and once: a new <strong>Sign in</strong> gets a fresh one.</p>
 <p><strong>3. The browser comes back.</strong> HubSpot sends the browser to the API's callback, which stores the tokens, marks the connection <code>connected</code>, restarts the agent and sends the browser on to your <code>redirecturl</code> with <code>connector_connected=true</code>, or with <code>connector_error=&lt;code&gt;</code> when the sign-in didn't finish (see <a href="/docs/agent-connectors#the-callback-and-your-redirect-url">The callback and your redirect URL</a>).</p>
-<p><strong>4. Record the card.</strong> Call <code>SetupCardApply</code> on the card again, with no <code>values</code>:</p>
+<p><strong>4. Record the card.</strong> Once the browser is back with <code>connector_connected=true</code>, call <code>SetupCardApply</code> on the card again, with no <code>values</code>. Make this call only then: while the connector doesn't read connected, after <code>connector_error=&lt;code&gt;</code> or a closed window, it starts a new sign-in instead and answers a new <code>authorizeUrl</code>. It answers the card applied:</p>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
   &quot;errors&quot;: [],
@@ -32070,13 +32070,14 @@ async function connectFromNext(entry, useragentguid, own) {
     return setupCardApply({ useragentguid, messageguid, cardid, action: &quot;apply&quot;, values });
   }
   if (entry.mode === &quot;signin&quot;) {
-    const values = await askForAppKeys(entry.connector); // the card's serveronly fields, when it has any
+    const values = await askForFields(entry.connector); // every field of the card, or Detail's credentialfields with mode &quot;oauth&quot; or none
     const redirecturl = returnPageFor(entry.connector);  // a page on your own site
     const started = cardid
       ? await setupCardApply({ useragentguid, messageguid, cardid, action: &quot;apply&quot;, values, redirecturl })
       : await connectorConnect({ useragentguid, slug: entry.connector, values, redirecturl });
     if (!started.result || !started.authorizeUrl) return started; // a refusal, or already connected
-    await openAndWaitForReturn(started.authorizeUrl); // connector_connected=true on your redirecturl
+    const back = await openAndWaitForReturn(started.authorizeUrl); // the query your redirecturl received
+    if (back.connector_connected !== &quot;true&quot;) return back; // connector_error=&lt;code&gt;: show it, offer Sign in again
     if (cardid) return setupCardApply({ useragentguid, messageguid, cardid, action: &quot;apply&quot; }); // records the card
     return started;
   }
@@ -33686,7 +33687,7 @@ page &lt;&gt; binary RFB 3.8 frames: noVNC draws the agent's browser, view only
 <li>Replies Wiro answers itself (<code>agenttoken: null</code>, <code>status: "agent_end"</code>) show <code>response</code> as plain text.</li>
 <li>Setup cards show the right title, body and buttons for their kind and state, <code>add</code> cards together with their <code>connect</code> cards.</li>
 <li>Apply waits for the reply to finish; Apply and Dismiss call <code>SetupCardApply</code>, and the card updates from the answer's <code>setup</code> (which can be <code>null</code>) and from later <code>version</code> 2 blocks.</li>
-<li>Each connect mode has its flow: <code>key</code> (the card's <code>fields</code> as <code>values</code>), <code>signin</code> (<code>SetupCardApply</code> with your <code>redirecturl</code> and your app's keys, the browser sign-in, then <code>SetupCardApply</code> again to record the card) and <code>project</code> (your project picker, then <code>SetupCardApply</code> with <code>wiroprojectguid</code>); any connector also connects on your settings screens with the <a href="/docs/agent-connectors">Agent Connectors</a> calls, account pickers included.</li>
+<li>Each connect mode has its flow: <code>key</code> (the card's <code>fields</code> as <code>values</code>), <code>signin</code> (<code>SetupCardApply</code> with your <code>redirecturl</code> and the card's <code>fields</code> as <code>values</code>, your app's keys among them, the browser sign-in, then <code>SetupCardApply</code> again to record the card, only after <code>connector_connected=true</code>) and <code>project</code> (your project picker, then <code>SetupCardApply</code> with <code>wiroprojectguid</code>); any connector also connects on your settings screens with the <a href="/docs/agent-connectors">Agent Connectors</a> calls, account pickers included.</li>
 <li><code>next</code> from blocks, <code>SetupCardApply</code> answers, <code>setupresult</code> and webhooks turns into your own Connect buttons.</li>
 <li>Every <code>result: false</code> shows its sentence or your own words; code branches on codes and statuses, never on sentences.</li>
 <li>Every restart signal (<code>restarting</code>, <code>restart</code>, <code>connector_connected=true</code>, and the saves that answer none) shows a restarting line until <code>UserAgent/Detail</code> reads <code>status: 4</code>, and the poll stops at <code>0</code>, <code>5</code> or <code>6</code>; Send refusals during a restart are shown as they are.</li>
