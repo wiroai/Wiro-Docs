@@ -37,8 +37,9 @@ A session is one conversation with its own memory. `sessionkey` names it, and `"
 - **What a turn costs.** A turn's cost depends on the models Studio runs for it, and can be more than $10.
 - **Project.** Studio works on a project of the workspace. A call with an API key runs on that key's project. Work sent from wiro.ai runs on the workspace's Studio project: one for a personal workspace and one for each team, shared by Studio and the [Workflow Agent](/docs/workflow-agent). The first Studio or Workflow Agent message sent from wiro.ai in a workspace that has none creates a project named "Studio" there, or uses the workspace's existing project of that name. It is a normal project: like any project you create, it gets an API key, and you get the email that comes with a new key. [Studio/Status](#post-studiostatus) shows it, and [Studio/ProjectSet](#post-studioprojectset) changes it.
 - **Chat.** Each turn is charged for the tokens it used, at the chat model's rates in [Studio/Status](#post-studiostatus) (cents per 1M tokens), on the turn's project and the `studio` surface. The reply shows the chat charge in `tokencost`, in cents: `tokencost / 100` is the amount in USD.
-- **Model runs.** The models Studio runs for you are your own tasks, on the turn's project: [Task/List](/docs/tasks#task-list) and [Task/Detail](/docs/tasks#task-detail) return them with `surface` `studio`, and [Studio/Tasks](#post-studiotasks) lists them too. Each is charged like any model run when it finishes: at the model's price when it succeeds, and not at all when it fails or is cancelled. Studio/Tasks shows each run's `totalcost`.
+- **Model runs.** The models Studio runs for you are your own tasks, on the turn's project: [Task/List](/docs/tasks#task-list) and [Task/Detail](/docs/tasks#task-detail) return them with `surface` `studio`, and [Studio/Tasks](#post-studiotasks) lists them too. Each is charged like any model run when it finishes: at the model's price when it succeeds, and not at all when it fails or is cancelled. Studio/Tasks shows each run's `totalcost`. The runs Studio made before its runs became your own tasks are not your tasks: Studio/Tasks still lists them, but Task/List does not show them and Task/Detail does not find them.
 - **Spend limits and Model Access.** The models Studio runs for you follow your workspace's [spend limits](/docs/spend-limits) and [Model Access](/docs/model-access) rules, the same as the runs you start yourself: the account's or the team's, your own in a team, those of the turn's project (the API key you sent the message with, or the Studio project for a message sent from wiro.ai), and those of the `studio` [surface](/docs/tasks#task-surfaces). So does the chat: what it costs counts toward spend limits, and a message whose chat model a Model Access rule blocks is refused with code `92` before anything runs.
+- **Concurrency limit.** The models Studio runs for you count toward your workspace's [concurrency limit](/docs/concurrency-limits), like the runs you start yourself: while its balance is $250 or less, one unfinished task for each full $10 of balance, never less than 1, so one at a time below $20. Studio can't start a model while your unfinished tasks fill that limit, and while Studio's runs are unfinished, your own runs over it are refused with code `96`.
 - Chat charges are made within about a minute of the turn ending, and model runs are charged when they finish, like any model run. Both appear in the wallet's transactions, and [Studio/Transactions](#post-studiotransactions) lists the chat charges.
 
 ## **POST** /Studio/Status
@@ -56,7 +57,7 @@ Returns the wallet check, the chat models Studio can use and the project Studio 
 | `agentModelBlocked` | boolean | `true` when your rules block `agentModel.chatModel`: a message that leaves `model` out is then refused with code `92`. |
 | `agentModelMessage` | string \| null | The refusal such a message gets when `agentModelBlocked` is `true`, else `null`. |
 | `project.current` | object \| null | The project Studio works on, `{ "id", "name" }` with `id` as a string (see [Costs](#costs)). With an API key, the key's own project. Signed in, the workspace's Studio project, or `null` until the workspace has one: the first Studio or Workflow Agent message from wiro.ai creates it. |
-| `project.options` | object[] | The projects you can make the Studio project with [ProjectSet](#post-studioprojectset), each `{ "id", "name" }`. Signed in to a personal workspace, your personal projects; in a team, every team project for a team admin or the organization owner, and none for other members. Always `[]` with an API key. |
+| `project.options` | object[] | The projects you can make the Studio project with [ProjectSet](#post-studioprojectset), each `{ "id", "name" }`, newest first, at most 100. Signed in to a personal workspace, your personal projects; in a team, every team project for a team admin or the organization owner, and none for other members. Always `[]` with an API key. ProjectSet also takes any other project of the workspace by its `id`. |
 | `project.canchange` | boolean | `true` when you can change the Studio project. `false` for team members who are not admins, and with an API key. |
 | `title` | string | The agent's name. |
 | `status` | number | Always `4`. |
@@ -146,11 +147,11 @@ A message that leaves `model` out is then refused with `agentModelMessage`. Send
 
 ## **POST** /Studio/ProjectSet
 
-Changes the workspace's Studio project: the project that Studio and the [Workflow Agent](/docs/workflow-agent) work on for messages sent from wiro.ai. It works only signed in, in the dashboard or with a signed-in user's Bearer token, and changes your personal workspace's Studio project, or the team's when `x-team-guid` names a team. In a personal workspace you can pick any of your personal projects; in a team, a team admin or the organization owner can pick any team project. `project.options` in [Studio/Status](#post-studiostatus) lists them. A call with an API key always runs on the key's project, so ProjectSet refuses it.
+Changes the workspace's Studio project: the project that Studio and the [Workflow Agent](/docs/workflow-agent) work on for messages sent from wiro.ai. It works only signed in, in the dashboard or with a signed-in user's Bearer token, and changes your personal workspace's Studio project, or the team's when `x-team-guid` names a team. In a personal workspace you can pick any of your personal projects; in a team, a team admin or the organization owner can pick any team project. `project.options` in [Studio/Status](#post-studiostatus) lists the newest 100 of them. A call with an API key always runs on the key's project, so ProjectSet refuses it.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `projectid` | string | Yes | The project's `id`, from `project.options` in Studio/Status. |
+| `projectid` | string | Yes | The project's `id`, such as one from `project.options` in Studio/Status. |
 
 ### Response
 
@@ -169,8 +170,8 @@ Studio/Status then shows the new project. For a team admin, signed in, it reads:
   "project": {
     "current": { "id": "7001", "name": "Mobile App" },
     "options": [
-      { "id": "6839", "name": "Studio" },
-      { "id": "7001", "name": "Mobile App" }
+      { "id": "7001", "name": "Mobile App" },
+      { "id": "6839", "name": "Studio" }
     ],
     "canchange": true
   }
@@ -498,3 +499,245 @@ Business errors come back with HTTP 200, `result: false` and an `errors` array, 
 | `You must be a member of this team to perform this action` | HTTP 403 | A team project's key whose creator is no longer a member of the team. |
 
 Authentication errors are listed in the [Error Reference](/docs/error-reference).
+
+## Code Examples
+
+### curl (Send)
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/Studio/Message/Send" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "message": "Two square banner images for a bakery weekend sale, warm colors",
+    "sessionkey": "bakery-banners"
+  }'
+```
+
+### curl (Detail)
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/Studio/Message/Detail" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+    "sessionkey": "bakery-banners"
+  }'
+```
+
+### curl (Tasks)
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/Studio/Tasks" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "limit": 20 }'
+```
+
+### curl (SendForm)
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/Studio/Message/SendForm" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "message=Put this mug on a wooden table in morning light" \
+  -F "sessionkey=mug-shots" \
+  -F "attachments=@/path/to/mug.jpg"
+```
+
+### Python
+
+```python
+import time
+import requests
+
+BASE = "https://api.wiro.ai/v1"
+headers = {"x-api-key": "YOUR_API_KEY", "Content-Type": "application/json"}
+session = "bakery-banners"
+
+# 1. Send the brief
+sent = requests.post(f"{BASE}/Studio/Message/Send", headers=headers, json={
+    "message": "Two square banner images for a bakery weekend sale, warm colors",
+    "sessionkey": session,
+}).json()
+if not sent["result"]:
+    raise SystemExit(sent["errors"])
+
+# 2. Poll until the turn ends
+while True:
+    detail = requests.post(f"{BASE}/Studio/Message/Detail", headers=headers, json={
+        "messageguid": sent["messageguid"],
+        "sessionkey": session,
+    }).json()["data"]
+    if detail["status"] in ("agent_end", "agent_error", "agent_cancel"):
+        break
+    time.sleep(3)
+
+print(detail["response"])
+print("Chat charge (USD):", (detail.get("tokencost") or 0) / 100)
+
+# 3. The model runs Studio started, with their files and cost
+tasks = requests.post(f"{BASE}/Studio/Tasks", headers=headers, json={"limit": 10}).json()
+for task in tasks["tasks"]:
+    files = [o.get("url") for o in task["outputs"] if o.get("url")]
+    print(task["model"]["slugproject"], task["status"], task["totalcost"], files)
+```
+
+### Node.js
+
+```javascript
+const axios = require('axios');
+
+const BASE = 'https://api.wiro.ai/v1';
+const headers = { 'x-api-key': 'YOUR_API_KEY', 'Content-Type': 'application/json' };
+const session = 'bakery-banners';
+
+const { data: sent } = await axios.post(`${BASE}/Studio/Message/Send`, {
+  message: "Two square banner images for a bakery weekend sale, warm colors",
+  sessionkey: session
+}, { headers });
+if (!sent.result) throw new Error(JSON.stringify(sent.errors));
+
+let detail;
+do {
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+  const { data } = await axios.post(`${BASE}/Studio/Message/Detail`, {
+    messageguid: sent.messageguid,
+    sessionkey: session
+  }, { headers });
+  detail = data.data;
+} while (!['agent_end', 'agent_error', 'agent_cancel'].includes(detail.status));
+
+console.log(detail.response);
+console.log('Chat charge (USD):', (detail.tokencost || 0) / 100);
+
+const { data: runs } = await axios.post(`${BASE}/Studio/Tasks`, { limit: 10 }, { headers });
+for (const task of runs.tasks) {
+  console.log(task.model.slugproject, task.status, task.totalcost, task.outputs.map((o) => o.url));
+}
+```
+
+### PHP
+
+```php
+<?php
+function wiro($path, $body) {
+    $ch = curl_init("https://api.wiro.ai/v1" . $path);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        "Content-Type: application/json",
+        "x-api-key: YOUR_API_KEY"
+    ]);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $response = json_decode(curl_exec($ch), true);
+    curl_close($ch);
+    return $response;
+}
+
+$sent = wiro("/Studio/Message/Send", [
+    "message" => "Two square banner images for a bakery weekend sale, warm colors",
+    "sessionkey" => "bakery-banners"
+]);
+
+do {
+    sleep(3);
+    $detail = wiro("/Studio/Message/Detail", [
+        "messageguid" => $sent["messageguid"],
+        "sessionkey" => "bakery-banners"
+    ])["data"];
+} while (!in_array($detail["status"], ["agent_end", "agent_error", "agent_cancel"]));
+
+echo $detail["response"];
+```
+
+### C#
+
+```csharp
+using System.Net.Http.Json;
+using System.Text.Json;
+
+using var client = new HttpClient { BaseAddress = new Uri("https://api.wiro.ai/v1/") };
+client.DefaultRequestHeaders.Add("x-api-key", "YOUR_API_KEY");
+
+var sent = await (await client.PostAsJsonAsync("Studio/Message/Send", new {
+    message = "Two square banner images for a bakery weekend sale, warm colors",
+    sessionkey = "bakery-banners"
+})).Content.ReadFromJsonAsync<JsonElement>();
+var messageGuid = sent.GetProperty("messageguid").GetString();
+
+JsonElement data;
+string status;
+do {
+    await Task.Delay(3000);
+    var detail = await (await client.PostAsJsonAsync("Studio/Message/Detail", new {
+        messageguid = messageGuid,
+        sessionkey = "bakery-banners"
+    })).Content.ReadFromJsonAsync<JsonElement>();
+    data = detail.GetProperty("data");
+    status = data.GetProperty("status").GetString();
+} while (status != "agent_end" && status != "agent_error" && status != "agent_cancel");
+
+Console.WriteLine(data.GetProperty("response").GetString());
+```
+
+### Go
+
+```go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+    "time"
+)
+
+func wiro(path string, body map[string]interface{}) map[string]interface{} {
+    payload, _ := json.Marshal(body)
+    req, _ := http.NewRequest("POST", "https://api.wiro.ai/v1"+path, bytes.NewBuffer(payload))
+    req.Header.Set("Content-Type", "application/json")
+    req.Header.Set("x-api-key", "YOUR_API_KEY")
+    resp, err := http.DefaultClient.Do(req)
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    var out map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&out)
+    return out
+}
+
+func main() {
+    sent := wiro("/Studio/Message/Send", map[string]interface{}{
+        "message":    "Two square banner images for a bakery weekend sale, warm colors",
+        "sessionkey": "bakery-banners",
+    })
+
+    for {
+        time.Sleep(3 * time.Second)
+        detail := wiro("/Studio/Message/Detail", map[string]interface{}{
+            "messageguid": sent["messageguid"],
+            "sessionkey":  "bakery-banners",
+        })["data"].(map[string]interface{})
+        status := detail["status"].(string)
+        if status == "agent_end" || status == "agent_error" || status == "agent_cancel" {
+            fmt.Println(detail["response"])
+            break
+        }
+    }
+}
+```
+
+### Response (Send)
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "status": "agent_queue"
+}
+```

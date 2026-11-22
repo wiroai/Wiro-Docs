@@ -34,7 +34,7 @@ Each limit caps one scope of the wallet's spending:
 | `workflow-agent` | the Workflow Agent | The [Workflow Agent](/docs/workflow-agent): the messages you send it |
 | `workflow` | workflows | [Workflow](/docs/workflows) runs and resumes, and every step they run |
 
-When work fits more than one surface, the first match in this order decides: who does it (Studio, the Workflow Agent or a deployed agent), what it is (a workflow run and its steps, unless a deployed agent, Studio or the Workflow Agent started it), which client sends it (the LLM gateway, a browser extension or MCP), and last which credential it uses (an API key, else a signed-in session). So a message to Studio sent with an API key counts on `studio`, and a workflow run started with an API key or through MCP on `workflow`. Each task records the surface it counted on: see [Surfaces](/docs/tasks#task-surfaces). Refusal messages and `/SpendLimit/Usage` name a surface by its label.
+When work fits more than one surface, the first match in this order decides: who does it (Studio, the Workflow Agent or a deployed agent), what it is (a workflow run or resume and the steps it runs, unless one of your deployed agents sends it), which client sends it (the LLM gateway, a browser extension or MCP), and last which credential it uses (an API key, else a signed-in session). So a message to Studio sent with an API key counts on `studio`, and a workflow run started with an API key or through MCP on `workflow`. Each task records the surface it counted on: see [Surfaces](/docs/tasks#task-surfaces). Refusal messages and `/SpendLimit/Usage` name a surface by its label.
 
 Studio, the Workflow Agent and workflows used to have no surface of their own. Studio and Workflow Agent work counted on `web`, or on `api` when it was sent with an API key, and a workflow run counted on the surface that started it. Limits that were already set were not changed, so a limit on `web` or `api` no longer covers this work: to cap it by surface, set a limit on `studio`, `workflow-agent` or `workflow`.
 
@@ -65,7 +65,7 @@ When the price of the work is known before it starts, as for fixed-price models,
 
 Work that is already running finishes and is charged, with two exceptions. A realtime session ends after the turn that uses up a limit, the same way it ends when the balance runs out: its WebSocket clients get a `task_session_stopped` event with `reason` `spend_limit`, code `93` and the refusal `/Run` would give (see [Realtime Voice](/docs/realtime-voice-conversation#realtime-end-session)). An agent's voice call is a realtime session too and ends the same way: a web voice call then gets `session_end` with `reason` `spend_limit` (see [Web Voice](/docs/integration-webvoice-skills#websocket-protocol)), and a caller on the phone hears a short notice before the call ends. An agent pauses at its next model call when a limit that covers it is used up, even in the middle of a reply (see below).
 
-Every agent plan payment, a deploy, a move to a higher plan or a renewal, counts toward the account's or the team's limit and the limit of the `agent` surface, whichever way it was made, and in a team toward the limit of the member who bought the plan. A payment made with an API key also counts toward that key's limit. A plan payment never counts toward the agent's own limit. Automatic monthly renewals of running agents count the same way, with no API key, and are never refused by a limit.
+Every agent plan payment, a deploy, a move to a higher plan or a renewal, counts toward the account's or the team's limit and the limit of the `agent` surface, whichever way it was made, and in a team toward the limit of the member who bought the plan. A payment made with an API key also counts toward that key's limit. A plan payment never counts toward the agent's own limit. Automatic renewals of agent plans, every 30 days whether or not the agent is running, count the same way, with no API key, and are never refused by a limit.
 
 ### Work in Progress
 
@@ -307,6 +307,8 @@ Adds a spend limit to the call's workspace, or changes the existing limit with t
 | `That API key's project is not in this workspace.` | A `project` limit for a project of another workspace |
 | `That agent is not in this workspace.` | An `agent` limit for an agent of another workspace |
 | `Too many changes to Spend Limits and Model Access in the last hour. Try again later.` | With API keys, this workspace's spend limits and Model Access rules have been changed 60 times in the last hour |
+
+<a id="spend-limit-preview"></a>
 
 ## **POST** /SpendLimit/Preview
 

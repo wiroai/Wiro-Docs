@@ -212,3 +212,122 @@ Business errors come back with HTTP 200, `result: false` and an `errors` array. 
 | `You must be a member of this team to perform this action` | HTTP 403 | A team project's key whose creator is no longer a member of the team. |
 
 Authentication errors are listed in the [Error Reference](/docs/error-reference).
+
+## Code Examples
+
+### curl (Send)
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/StudioWorkflow/Message/Send" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "message": "A workflow that turns a recipe text into a short cooking video with a voice-over. Input: the recipe. Output: one vertical video under 30 seconds.",
+    "sessionkey": "recipe-video"
+  }'
+```
+
+### curl (Detail)
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/StudioWorkflow/Message/Detail" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "messageguid": "0b7f2c1e-5d4a-4c3b-9a8f-1e2d3c4b5a69",
+    "sessionkey": "recipe-video"
+  }'
+```
+
+### Python
+
+```python
+import json
+import re
+import time
+import requests
+
+BASE = "https://api.wiro.ai/v1"
+headers = {"x-api-key": "YOUR_API_KEY", "Content-Type": "application/json"}
+session = "recipe-video"
+
+sent = requests.post(f"{BASE}/StudioWorkflow/Message/Send", headers=headers, json={
+    "message": "A workflow that turns a recipe text into a short cooking video with a voice-over.",
+    "sessionkey": session,
+}).json()
+if not sent["result"]:
+    raise SystemExit(sent["errors"])
+
+while True:
+    detail = requests.post(f"{BASE}/StudioWorkflow/Message/Detail", headers=headers, json={
+        "messageguid": sent["messageguid"],
+        "sessionkey": session,
+    }).json()["data"]
+    if detail["status"] in ("agent_end", "agent_error", "agent_cancel"):
+        break
+    time.sleep(3)
+
+# Each proposal is a ```wiro-workflow fenced block in the reply
+blocks = re.findall(r"^ {0,3}```wiro-workflow[ \t]*\n(.*?)\n {0,3}```[ \t]*$",
+                    detail["response"], re.S | re.M)
+proposals = [json.loads(block) for block in blocks]
+for p in proposals:
+    print(p["title"], "-", len(p["contents"]["nodes"]) - 1, "steps")
+
+if proposals:
+    contents = proposals[0]["contents"]
+    prepared = requests.post(f"{BASE}/Workflow/Prepare", headers=headers, json={
+        "contents": contents, "mode": "create",
+    }).json()
+    if prepared["result"]:
+        saved = requests.post(f"{BASE}/Workflow/Add", headers=headers, json={
+            "slug": "recipe-video",
+            "title": proposals[0]["title"],
+            "contents": json.dumps(prepared["contents"]),
+        }).json()
+        print(saved)
+    else:
+        print(prepared["issues"])
+```
+
+### Node.js
+
+```javascript
+const axios = require('axios');
+
+const BASE = 'https://api.wiro.ai/v1';
+const headers = { 'x-api-key': 'YOUR_API_KEY', 'Content-Type': 'application/json' };
+const session = 'recipe-video';
+
+const { data: sent } = await axios.post(`${BASE}/StudioWorkflow/Message/Send`, {
+  message: 'A workflow that turns a recipe text into a short cooking video with a voice-over.',
+  sessionkey: session
+}, { headers });
+if (!sent.result) throw new Error(JSON.stringify(sent.errors));
+
+let detail;
+do {
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+  const { data } = await axios.post(`${BASE}/StudioWorkflow/Message/Detail`, {
+    messageguid: sent.messageguid,
+    sessionkey: session
+  }, { headers });
+  detail = data.data;
+} while (!['agent_end', 'agent_error', 'agent_cancel'].includes(detail.status));
+
+const fence = /^ {0,3}```wiro-workflow[ \t]*\n([\s\S]*?)\n {0,3}```[ \t]*$/gm;
+const proposals = [...detail.response.matchAll(fence)].map((m) => JSON.parse(m[1]));
+proposals.forEach((p) => console.log(p.title));
+```
+
+### Response (Send)
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "messageguid": "0b7f2c1e-5d4a-4c3b-9a8f-1e2d3c4b5a69",
+  "agenttoken": "Qm7Tz2LpX9vKc4RwN8yHa3JdF6sGb1",
+  "status": "agent_queue"
+}
+```

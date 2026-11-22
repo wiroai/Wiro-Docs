@@ -133,6 +133,8 @@ The `totalcost` field in the Task Detail response shows the actual cost charged 
 
 Use the `totalcost` field to track spending per task. For more details on how costs are calculated, see [Pricing](/docs/pricing).
 
+<a id="task-surfaces"></a>
+
 ## Surfaces
 
 Every task records its surface: the way its work came in, such as an API key, MCP or Studio. Task/Detail and Task/List return it as `surface`, and Task/List can list the tasks of one surface. [Spend limits](/docs/spend-limits) and [Model Access](/docs/model-access) rules use the same surfaces and decide them the same way, so a task's `surface` is the one its run counted on.
@@ -156,7 +158,7 @@ The label is the surface's name in the dashboard.
 Some work fits more than one surface, such as a workflow run started with an API key. The first match in this order decides:
 
 1. **Who does the work**: Studio, the Workflow Agent or one of your deployed agents. Messages to Studio and the Workflow Agent, the other calls to their `/Studio` and `/StudioWorkflow` endpoints and the models Studio runs for you count as `studio` and `workflow-agent`, and a deployed agent's own calls as `agent`.
-2. **What it is**: a workflow run, its resumes and every step it runs count as `workflow`. A workflow that a deployed agent, Studio or the Workflow Agent starts keeps that surface instead.
+2. **What it is**: a workflow run, its resumes and every step they run count as `workflow`. A run or resume that one of your deployed agents sends counts as `agent` instead. Each resume counts on the surface of the call that resumes it: if an agent started a run and you resume it with an API key, the remaining steps count as `workflow`.
 3. **Which client sends it**: the LLM gateway (`llm-gateway`), a Wiro browser extension (`extension`) or MCP (`mcp`).
 4. **Which credential it uses**: an API key (`api`), else a signed-in session (`web`).
 
@@ -168,7 +170,7 @@ The Wiro MCP package (`@wiro-ai/wiro-mcp`) counts as `mcp` when it names itself 
 
 ### Older Tasks
 
-Tasks from before surfaces were recorded have one only where it is certain: workflow steps, the runs of deployed agents, Studio and the Workflow Agent, and runs from MCP, the LLM gateway and the browser extensions. Runs with an API key and dashboard runs have one from late October 2026 on. Other tasks have `surface: null`: the dashboard shows no label for them, and a `surface` filter never lists them.
+Tasks from before surfaces were recorded have one only where it is certain: workflow steps, the runs of deployed agents, and runs from MCP, the LLM gateway and the browser extensions. Runs with an API key and dashboard runs have one from late October 2026 on. Such a task has the surface it would count on today, so an older workflow step has `workflow`, or `agent` when one of your deployed agents started its run, though at the time a workflow run counted on the surface it was started from. The model runs Studio made before they became your own tasks are not in your task list: [Studio/Tasks](/docs/studio#post-studiotasks) lists them. Other tasks have `surface: null`: the dashboard shows no label for them, and a `surface` filter never lists them.
 
 ## LLM Models
 
@@ -220,6 +222,8 @@ amount charged.
 Plain-text integrations can use `debugoutput`. Tool integrations must inspect
 `segments`, `finishreason`, and `pexit`. A final structured validation failure
 produces a non-zero `pexit`.
+
+<a id="task-detail"></a>
 
 ## **POST** /Task/Detail
 
@@ -278,7 +282,7 @@ Retrieves the current status and output of a task. You can query by either `task
 | `modeldescription` | `string` | Description of the model that was executed. |
 | `modelslugowner` | `string` | Model owner slug (e.g. `"google"`, `"wiro"`). |
 | `modelslugproject` | `string` | Model project slug (e.g. `"nano-banana-pro"`). |
-| `surface` | `string \| null` | The way the task came in, such as `"api"` (see [Surfaces](#surfaces)). `null` for an older task whose surface is not known for certain. |
+| `surface` | `string \| null` | The way the task came in, such as `"api"` (see [Surfaces](#task-surfaces)). `null` for an older task whose surface is not known for certain. |
 | `outputs` | `array` | Output files (CDN URLs) or structured LLM content (`contenttype: "raw"`). |
 
 ## **POST** /Task/List
@@ -287,7 +291,7 @@ Lists the tasks of the call's workspace, newest first. A team project's API key 
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `surface` | string | No | Only the tasks of one [surface](#surfaces): `web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, `studio`, `workflow-agent` or `workflow`. Empty or left out: every surface |
+| `surface` | string | No | Only the tasks of one [surface](#task-surfaces): `web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, `studio`, `workflow-agent` or `workflow`. Empty or left out: every surface |
 | `type` | string | No | `"model"` for model runs, `"train"` for training runs, or `"running"` for the tasks that have not ended and were not cancelled, queued ones included. Left out: every task |
 | `projectid` | string | No | Only the tasks of this project, by its `id` from `/Project/List` |
 | `modelid` | string | No | Only the runs of this model, by its `id` from [`/Tool/List`](/docs/models) |
@@ -342,7 +346,7 @@ Without `surface`, the list leaves out the tasks that workflow runs start for th
 | Field | Type | Description |
 |-------|------|-------------|
 | `total` | `string` | How many tasks match, counting every page. |
-| `tasklist` | `array` | The tasks of this page, newest first, each with the fields of [Task/Detail](#post-taskdetail), `surface` included. |
+| `tasklist` | `array` | The tasks of this page, newest first, each with the fields of [Task/Detail](#task-detail), `surface` included. |
 
 ### Errors
 

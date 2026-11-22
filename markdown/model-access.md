@@ -29,12 +29,12 @@ Each rule covers one scope of the wallet's work, the same scopes as [spend limit
 | `mcp` | The hosted [Wiro MCP server](/docs/wiro-mcp-server) at `mcp.wiro.ai`, and the Wiro MCP package when it names itself (see [Surfaces](/docs/tasks#task-surfaces)) |
 | `llm-gateway` | The OpenAI and Anthropic compatible [LLM gateway](/docs/completions-api) at `llm.wiro.ai` |
 | `extension` | Only the Wiro browser extensions |
-| `agent` | Your deployed agents' own runs |
+| `agent` | Your deployed agents: the models they run through Wiro, the chat models they answer with and their built-in voice |
 | `studio` | [Studio](/docs/studio): the chat model of each message you send it, and the models it runs for you |
 | `workflow-agent` | The [Workflow Agent](/docs/workflow-agent): the chat model of each message you send it |
 | `workflow` | [Workflow](/docs/workflows) runs and resumes, and every step they run |
 
-A run counts on one surface, decided the same way as for [spend limits](/docs/spend-limits): the first match among who does it (Studio, the Workflow Agent or a deployed agent), what it is (a workflow run and its steps, unless a deployed agent, Studio or the Workflow Agent started it), which client sends it (the LLM gateway, a browser extension or MCP), and last which credential it uses (an API key, else a signed-in session). So a message to Studio sent with an API key counts on `studio`, and a workflow run started with an API key or through MCP on `workflow`. See [Surfaces](/docs/tasks#task-surfaces).
+A run counts on one surface, decided the same way as for [spend limits](/docs/spend-limits): the first match among who does it (Studio, the Workflow Agent or a deployed agent), what it is (a workflow run or resume and the steps it runs, unless one of your deployed agents sends it), which client sends it (the LLM gateway, a browser extension or MCP), and last which credential it uses (an API key, else a signed-in session). So a message to Studio sent with an API key counts on `studio`, and a workflow run started with an API key or through MCP on `workflow`. See [Surfaces](/docs/tasks#task-surfaces).
 
 Studio, the Workflow Agent and workflows used to have no surface of their own. Studio and Workflow Agent work counted on `web`, or on `api` when it was sent with an API key, and a workflow run counted on the surface that started it. Rules that were already set were not changed, so a rule on `web` or `api` no longer covers this work: to decide its models by surface, set a rule on `studio`, `workflow-agent` or `workflow`.
 
@@ -352,6 +352,8 @@ Adds a rule to the call's workspace, or replaces the rule with the same `scope` 
 | `That API key's project is not in this workspace.` | A `project` rule for a project of another workspace |
 | `That agent is not in this workspace.` | An `agent` rule for an agent of another workspace |
 | `Too many changes to Spend Limits and Model Access in the last hour. Try again later.` | With API keys, this workspace's spend limits and Model Access rules have been changed 60 times in the last hour |
+
+<a id="model-access-preview"></a>
 
 ## **POST** /ModelAccess/Preview
 
