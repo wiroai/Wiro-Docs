@@ -4496,6 +4496,88 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                     <p>Use the <code>totalcost</code> field to track spending per task. For more details on how costs are calculated, see <a href="/docs/pricing">Pricing</a>.</p>
                   </section>
 
+                  <section id="task-surfaces">
+                    <h2>Surfaces</h2>
+                    <p>Every task records its surface: the way its work came in, such as an API key, MCP or Studio. Task/Detail and Task/List return it as <code>surface</code>, and Task/List can list the tasks of one surface. <a href="/docs/spend-limits">Spend limits</a> and <a href="/docs/model-access">Model Access</a> rules use the same surfaces and decide them the same way, so a task's <code>surface</code> is the one its run counted on.</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th><code>surface</code></th>
+                              <th>Label</th>
+                              <th>Covers</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>web</code></td>
+                              <td>Dashboard</td>
+                              <td>The Wiro dashboard, and calls with a signed-in user's Bearer token</td>
+                            </tr>
+                            <tr>
+                              <td><code>api</code></td>
+                              <td>API</td>
+                              <td>Calls with an API key, including <a href="/docs/run-a-model#run-sync"><code>/sync</code></a> and, for now, the <a href="/docs/mcp-self-hosted">Wiro MCP package</a> when you run it yourself</td>
+                            </tr>
+                            <tr>
+                              <td><code>mcp</code></td>
+                              <td>MCP</td>
+                              <td>The hosted <a href="/docs/wiro-mcp-server">Wiro MCP server</a> at <code>mcp.wiro.ai</code>, and the Wiro MCP package when it names itself (see below)</td>
+                            </tr>
+                            <tr>
+                              <td><code>llm-gateway</code></td>
+                              <td>LLM Gateway</td>
+                              <td>The OpenAI and Anthropic compatible <a href="/docs/completions-api">LLM gateway</a> at <code>llm.wiro.ai</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>extension</code></td>
+                              <td>Browser Extension</td>
+                              <td>The Wiro browser extensions</td>
+                            </tr>
+                            <tr>
+                              <td><code>agent</code></td>
+                              <td>Agent</td>
+                              <td>Your deployed agents' own runs</td>
+                            </tr>
+                            <tr>
+                              <td><code>studio</code></td>
+                              <td>Studio</td>
+                              <td><a href="/docs/studio">Studio</a>: the messages you send it and the models it runs for you</td>
+                            </tr>
+                            <tr>
+                              <td><code>workflow-agent</code></td>
+                              <td>Workflow Agent</td>
+                              <td>The <a href="/docs/workflow-agent">Workflow Agent</a>: the messages you send it</td>
+                            </tr>
+                            <tr>
+                              <td><code>workflow</code></td>
+                              <td>Workflow</td>
+                              <td><a href="/docs/workflows">Workflow</a> runs and resumes, and every step they run</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p>The label is the surface's name in the dashboard.</p>
+
+                    <h3>Which Surface Work Gets</h3>
+                    <p>Some work fits more than one surface, such as a workflow run started with an API key. The first match in this order decides:</p>
+                    <ol>
+                      <li><strong>Who does the work</strong>: Studio, the Workflow Agent or one of your deployed agents. Messages to Studio and the Workflow Agent, the other calls to their <code>/Studio</code> and <code>/StudioWorkflow</code> endpoints and the models Studio runs for you count as <code>studio</code> and <code>workflow-agent</code>, and a deployed agent's own calls as <code>agent</code>.</li>
+                      <li><strong>What it is</strong>: a workflow run, its resumes and every step it runs count as <code>workflow</code>. A workflow that a deployed agent, Studio or the Workflow Agent starts keeps that surface instead.</li>
+                      <li><strong>Which client sends it</strong>: the LLM gateway (<code>llm-gateway</code>), a Wiro browser extension (<code>extension</code>) or MCP (<code>mcp</code>).</li>
+                      <li><strong>Which credential it uses</strong>: an API key (<code>api</code>), else a signed-in session (<code>web</code>).</li>
+                    </ol>
+                    <p>So a model run started with an API key counts as <code>api</code>, a message to Studio sent with the same key as <code>studio</code>, and a workflow run started through MCP as <code>workflow</code>.</p>
+
+                    <h3>Clients That Name Themselves</h3>
+                    <p>The Wiro MCP package (<code>@wiro-ai/wiro-mcp</code>) counts as <code>mcp</code> when it names itself with the header <code>x-wiro-client: wiro-mcp/&lt;version&gt;</code>. The package does not send this header yet, so the runs of a package you run yourself count as <code>api</code> for now. A client's name for itself is its own word: anyone who holds the API key can leave the header out. A spend limit or Model Access rule that must hold whoever uses a key belongs on the key itself, with scope <code>project</code>.</p>
+
+                    <h3>Older Tasks</h3>
+                    <p>Tasks from before surfaces were recorded have one only where it is certain: workflow steps, the runs of deployed agents, Studio and the Workflow Agent, and runs from MCP, the LLM gateway and the browser extensions. Runs with an API key and dashboard runs have one from late October 2026 on. Other tasks have <code>surface: null</code>: the dashboard shows no label for them, and a <code>surface</code> filter never lists them.</p>
+                  </section>
+
                   <section id="llm-models">
                     <h2>LLM Models</h2>
                     <p>For LLM requests, <code>outputs</code> contains a structured entry with <code>contenttype: "raw"</code> and ordered <code>content.segments</code>; <code>debugoutput</code> contains the merged plain text. Use the representation that matches your UI.</p>
@@ -4605,6 +4687,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
     "modeldescription": "FLUX.2 [dev] is a 32 billion parameter rectified flow transformer...",
     "modelslugowner": "wiro",
     "modelslugproject": "flux-2-dev",
+    "surface": "api",
     "outputs": [{
       "name": "0.png",
       "contenttype": "image/png",
@@ -4695,12 +4778,164 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                             <td>Model project slug (e.g. <code>"nano-banana-pro"</code>).</td>
                           </tr>
                           <tr>
+                            <td><code>surface</code></td>
+                            <td><code>string | null</code></td>
+                            <td>The way the task came in, such as <code>"api"</code> (see <a href="#task-surfaces">Surfaces</a>). <code>null</code> for an older task whose surface is not known for certain.</td>
+                          </tr>
+                          <tr>
                             <td><code>outputs</code></td>
                             <td><code>array</code></td>
                             <td>Output files (CDN URLs) or structured LLM content (<code>contenttype: "raw"</code>).</td>
                           </tr>
                         </tbody>
                       </table>
+                    </div>
+                  </section>
+
+                  <section id="task-list">
+                    <h2>
+                      <span class="endpoint-badge post">POST</span>
+                      /Task/List
+                    </h2>
+                    <p>Lists the tasks of the call's workspace, newest first. A team project's API key lists the team's tasks, a personal project's key your personal tasks, and a signed-in call the tasks of the team named in <code>x-team-guid</code>, or your personal tasks without it. Every field is optional: send <code>{}</code> for the 20 most recent tasks.</p>
+
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Parameter</th>
+                              <th>Type</th>
+                              <th>Required</th>
+                              <th>Description</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>surface</code></td>
+                              <td>string</td>
+                              <td>No</td>
+                              <td>Only the tasks of one <a href="#task-surfaces">surface</a>: <code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code>, <code>agent</code>, <code>studio</code>, <code>workflow-agent</code> or <code>workflow</code>. Empty or left out: every surface</td>
+                            </tr>
+                            <tr>
+                              <td><code>type</code></td>
+                              <td>string</td>
+                              <td>No</td>
+                              <td><code>"model"</code> for model runs, <code>"train"</code> for training runs, or <code>"running"</code> for the tasks that have not ended and were not cancelled, queued ones included. Left out: every task</td>
+                            </tr>
+                            <tr>
+                              <td><code>projectid</code></td>
+                              <td>string</td>
+                              <td>No</td>
+                              <td>Only the tasks of this project, by its <code>id</code> from <code>/Project/List</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>modelid</code></td>
+                              <td>string</td>
+                              <td>No</td>
+                              <td>Only the runs of this model, by its <code>id</code> from <a href="/docs/models"><code>/Tool/List</code></a></td>
+                            </tr>
+                            <tr>
+                              <td><code>modelName</code></td>
+                              <td>string</td>
+                              <td>No</td>
+                              <td>Only the runs of the models whose owner or slug contains this text, ignoring case. When no model matches, the list is empty</td>
+                            </tr>
+                            <tr>
+                              <td><code>start</code></td>
+                              <td>number</td>
+                              <td>No</td>
+                              <td>How many tasks to skip, for the next page. Default: <code>0</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>limit</code></td>
+                              <td>number</td>
+                              <td>No</td>
+                              <td>How many tasks to return. Default: <code>20</code>, maximum <code>1000</code></td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p>Without <code>surface</code>, the list leaves out the tasks that workflow runs start for their steps. With <code>surface</code>, it lists every task of that surface, workflow steps included, so <code>"surface": "workflow"</code> lists the steps of your workflow runs.</p>
+
+                    <h3>Example</h3>
+                    <p><strong>The workspace's 10 most recent Studio tasks:</strong></p>
+                    <pre><code class="language-json">{
+  "surface": "studio",
+  "limit": 10
+}</code></pre>
+
+                    <h3>Response</h3>
+                    <pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "total": "1",
+  "tasklist": [{
+    "id": "534602",
+    "socketaccesstoken": "Tq4wZ8nLx2RmKc7VbYp3HdJ9sFgNa1",
+    "parameters": { "prompt": "Square banner for a bakery weekend sale, warm colors" },
+    "status": "task_postprocess_end",
+    "pexit": "0",
+    "debugoutput": "",
+    "starttime": "1734514421",
+    "endtime": "1734514452",
+    "elapsedseconds": "31.0000",
+    "totalcost": "0.140000000000",
+    "modelslugowner": "google",
+    "modelslugproject": "nano-banana-pro",
+    "surface": "studio",
+    "outputs": [{
+      "name": "0.png",
+      "contenttype": "image/png",
+      "size": "1843212",
+      "url": "https://cdn1.wiro.ai/.../0.png"
+    }]
+  }]
+}</code></pre>
+
+                    <div class="docs-comparison-table">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Field</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td><code>total</code></td>
+                            <td><code>string</code></td>
+                            <td>How many tasks match, counting every page.</td>
+                          </tr>
+                          <tr>
+                            <td><code>tasklist</code></td>
+                            <td><code>array</code></td>
+                            <td>The tasks of this page, newest first, each with the fields of <a href="#task-detail">Task/Detail</a>, <code>surface</code> included.</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <h3>Errors</h3>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Error</th>
+                              <th>When</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>surface must be one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow.</code></td>
+                              <td><code>surface</code> is not one of the nine surfaces</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </section>
 
@@ -4855,6 +5090,11 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                       "code": "# Get task details by task token\ncurl -X POST \"https://api.wiro.ai/v1/Task/Detail\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"tasktoken\": \"abc123-def456-ghi789\"}'\n\n# Or by task ID\ncurl -X POST \"https://api.wiro.ai/v1/Task/Detail\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"taskid\": \"task-id-here\"}'"
                     },
                     {
+                      "label": "curl (List)",
+                      "language": "bash",
+                      "code": "# List the workspace's 10 most recent Studio tasks\ncurl -X POST \"https://api.wiro.ai/v1/Task/List\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"surface\": \"studio\", \"limit\": 10}'"
+                    },
+                    {
                       "label": "curl (Cancel/Kill/InputOutputDelete)",
                       "language": "bash",
                       "code": "# Cancel a queued task\ncurl -X POST \"https://api.wiro.ai/v1/Task/Cancel\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"taskid\": \"534574\"}'\n\n# Kill a running task\ncurl -X POST \"https://api.wiro.ai/v1/Task/Kill\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"socketaccesstoken\": \"abc123-def456-ghi789\"}'\n\n# Delete task input and output files\ncurl -X POST \"https://api.wiro.ai/v1/Task/InputOutputDelete\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"tasktoken\": \"abc123-def456-ghi789\"}'"
@@ -4902,7 +5142,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                     {
                       "label": "Response",
                       "language": "json",
-                      "code": "{\n  \"result\": true,\n  \"errors\": [],\n  \"total\": \"1\",\n  \"tasklist\": [{\n    \"id\": \"534574\",\n    \"socketaccesstoken\": \"eDcCm5yyUfIvMFspTwww49OUfgXkQt\",\n    \"parameters\": { \"prompt\": \"Hello, world!\" },\n    \"status\": \"task_postprocess_end\",\n    \"pexit\": \"0\",\n    \"debugoutput\": \"\",\n    \"starttime\": \"1734513809\",\n    \"endtime\": \"1734513813\",\n    \"elapsedseconds\": \"6.0000\",\n    \"totalcost\": \"0.003510000000\",\n    \"modeldescription\": \"FLUX.2 [dev] is a 32 billion parameter rectified flow transformer...\",\n    \"modelslugowner\": \"wiro\",\n    \"modelslugproject\": \"flux-2-dev\",\n    \"outputs\": [{\n      \"name\": \"0.png\",\n      \"contenttype\": \"image/png\",\n      \"size\": \"202472\",\n      \"url\": \"https://cdn1.wiro.ai/.../0.png\"\n    }]\n  }]\n}"
+                      "code": "{\n  \"result\": true,\n  \"errors\": [],\n  \"total\": \"1\",\n  \"tasklist\": [{\n    \"id\": \"534574\",\n    \"socketaccesstoken\": \"eDcCm5yyUfIvMFspTwww49OUfgXkQt\",\n    \"parameters\": { \"prompt\": \"Hello, world!\" },\n    \"status\": \"task_postprocess_end\",\n    \"pexit\": \"0\",\n    \"debugoutput\": \"\",\n    \"starttime\": \"1734513809\",\n    \"endtime\": \"1734513813\",\n    \"elapsedseconds\": \"6.0000\",\n    \"totalcost\": \"0.003510000000\",\n    \"modeldescription\": \"FLUX.2 [dev] is a 32 billion parameter rectified flow transformer...\",\n    \"modelslugowner\": \"wiro\",\n    \"modelslugproject\": \"flux-2-dev\",\n    \"surface\": \"api\",\n    \"outputs\": [{\n      \"name\": \"0.png\",\n      \"contenttype\": \"image/png\",\n      \"size\": \"202472\",\n      \"url\": \"https://cdn1.wiro.ai/.../0.png\"\n    }]\n  }]\n}"
                     }
                   ]
                 </script>
