@@ -30041,13 +30041,13 @@ Future&lt;void&gt; main() async {
 <tr>
 <td>Settings</td>
 <td><code>var-support-email</code>, <code>var-website</code>, <code>var-newsletter-test-email</code></td>
-<td>Values the agent's skills read: the support email it gives customers, its website addresses, and the inbox that gets a test copy of each newsletter before it goes out.</td>
+<td>Values the agent's skills read: the support email it gives customers (field <code>value</code>), its website addresses (field <code>urls</code>: a list of <code>{ websitename, url }</code> entries, both required) and the inbox that gets a test copy of each newsletter before it goes out (field <code>value</code>). Save them with <code>CredentialUpsert</code>, as in <a href="#setting-credentials">Setting Credentials</a>.</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
-<p>The services an agent works with (Google Ads, Shopify, HubSpot, Serper and the rest) are <strong>connectors</strong>, not credentials: browse, connect and disconnect them with the calls on <a href="/docs/agent-connectors">Agent Connectors</a>. <code>CredentialUpsert</code> doesn't take a connector's values.</p>
+<p>The services an agent works with (Google Ads, Shopify, HubSpot, Serper and the rest) are <strong>connectors</strong>, not credentials: browse, connect and disconnect them with the calls on <a href="/docs/agent-connectors">Agent Connectors</a>. <code>CredentialUpsert</code> doesn't take a connector's values: a row whose <code>credentialkey</code> is a connector's slug refuses the whole request before anything is saved, its other rows included, with <code>{ "result": false, "errors": [{ "code": 0, "message": "Unknown credential: shopify. Connectors are connected with UserAgent/ConnectorConnect." }] }</code>.</p>
 <blockquote>
 <p><strong>Not from the agent's chat.</strong> <a href="/docs/agent-messaging#setup-from-chat">Setup cards</a> connect connectors of the catalog only: no card saves a channel, Twilio Voice or a setting. Save them with <code>CredentialUpsert</code>; in chat, the agent asks an agent admin to make the change in the agent's settings. The one card that sets a credential is the <code>wiro</code> connector's <code>project</code> card: it binds the agent's Wiro project, as <code>CredentialProjectBind</code> does.</p>
 </blockquote>
@@ -30369,7 +30369,7 @@ Completing the required fields again reactivates it automatically.</p>
 <tr>
 <td><code>type</code></td>
 <td><code>string</code></td>
-<td>Input type: <code>"text"</code>, <code>"password"</code>, <code>"email"</code>, <code>"number"</code>, <code>"textarea"</code>, <code>"select"</code>, <code>"boolean"</code>, <code>"string-array"</code>, <code>"object-array"</code>, <code>"fileinput"</code> (a public file, written with <code>CredentialFileUpload</code>), or <code>"custom"</code> (such as the Wiro project picker).</td>
+<td>Input type: <code>"text"</code>, <code>"password"</code>, <code>"email"</code>, <code>"url"</code>, <code>"number"</code>, <code>"textarea"</code>, <code>"select"</code>, <code>"boolean"</code>, <code>"string-array"</code>, <code>"object-array"</code>, <code>"fileinput"</code> (a public file, written with <code>CredentialFileUpload</code>), <code>"custom:wiro-project-picker"</code> (the Wiro project: bind it with <code>CredentialProjectBind</code>) or <code>"custom:urls-list"</code> (a list of objects, written like <code>"object-array"</code>; its entry fields are in <code>custom_component_config.per_url_schema</code>).</td>
 </tr>
 <tr>
 <td><code>label</code></td>
@@ -30425,6 +30425,11 @@ Completing the required fields again reactivates it automatically.</p>
 <td><code>item_schema</code> / <code>item_type</code></td>
 <td><code>object?</code></td>
 <td>For array-of-object fields: describes the per-entry shape (e.g. Telegram <code>groups[].{chatid, allowedusers}</code>).</td>
+</tr>
+<tr>
+<td><code>custom_component_config</code></td>
+<td><code>object?</code></td>
+<td>On a <code>"custom:urls-list"</code> field: <code>per_url_schema</code> holds the field objects of one entry (<code>websitename</code>, <code>url</code>). Its other keys are for Wiro's own panel.</td>
 </tr>
 </tbody>
 </table>
@@ -30603,15 +30608,32 @@ Completing the required fields again reactivates it automatically.</p>
   }'
 </code></pre>
 <p>Response: <code>{ "result": true, "applied": 2, "errors": [] }</code>. <code>applied</code> is the count of fields saved without an error (a field sent with its current value still counts; a secret sent back as the mask isn't counted, see below). All fields are validated before any is written: if one fails validation (for example a reserved fieldname prefixed with <code>_</code>), the whole request is rejected and nothing is saved; <code>result</code> is <code>false</code> and <code>errors</code> lists every invalid field. If a save fails after validation has passed, the other fields are still saved and each failed field is listed in <code>errors</code> with <code>result: false</code>. A starting or running agent restarts to apply the new values when the call changes a saved value.</p>
+<p>Settings are saved the same way. Each email setting has one field, <code>value</code>. The Website setting's <code>urls</code> is a list of <code>{ websitename, url }</code> entries, both required, and the list you send replaces the saved one:</p>
+<pre><code class="language-json">{
+  &quot;useragentguid&quot;: &quot;your-useragent-guid&quot;,
+  &quot;fields&quot;: [
+    { &quot;credentialkey&quot;: &quot;var-support-email&quot;, &quot;fieldname&quot;: &quot;value&quot;, &quot;fieldvalue&quot;: &quot;support@example.com&quot; },
+    { &quot;credentialkey&quot;: &quot;var-newsletter-test-email&quot;, &quot;fieldname&quot;: &quot;value&quot;, &quot;fieldvalue&quot;: &quot;newsletter-test@example.com&quot; },
+    { &quot;credentialkey&quot;: &quot;var-website&quot;, &quot;fieldname&quot;: &quot;urls&quot;, &quot;fieldvalue&quot;: [{ &quot;websitename&quot;: &quot;Main site&quot;, &quot;url&quot;: &quot;https://example.com&quot; }] }
+  ]
+}
+</code></pre>
+<p>Response: <code>{ "result": true, "applied": 3, "errors": [] }</code>. Each of these is refused, and nothing is saved:</p>
+<ul>
+<li>an entry without a name or a URL: <code>Website Name in Websites #1 is required</code> (or <code>URL in Websites #1 is required</code>);</li>
+<li>any other key in an entry: <code>Websites #1 contains an unknown field: &lt;key&gt;</code>;</li>
+<li>a <code>urls</code> value that isn't a JSON array: <code>Websites must be an array</code>.</li>
+</ul>
 <h3 id="field-level-write-rules">Field-level write rules</h3>
 <ul>
 <li><strong><code>fieldstatus</code> is assigned by the server.</strong> Any <code>fieldstatus</code> you send is ignored: a field that already exists keeps its stored status, and a new field gets the status its registry schema implies.</li>
 <li><strong>Wiro-managed fields are rejected.</strong> You can't write a field whose status is <code>platform</code>: it fails with <code>&lt;Field label&gt; is managed by the platform</code> (a field with no schema label is named <code>&lt;credentialkey&gt;.&lt;fieldname&gt;</code> instead). As with any invalid field, the whole request is rejected and nothing is saved.</li>
 <li><strong>Reserved fieldnames are rejected.</strong> Any <code>fieldname</code> starting with <code>_</code> (e.g. <code>_isoptional</code>, <code>_isextra</code>) is a sentinel used by the template itself and cannot be set by API callers.</li>
+<li><strong>A connector's slug is refused.</strong> A connector is connected with <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>ConnectorConnect</code></a>, never saved here: a row whose <code>credentialkey</code> is a connector's slug fails with <code>Unknown credential: &lt;key&gt;. Connectors are connected with UserAgent/ConnectorConnect.</code>, and nothing in the request is saved.</li>
 <li><strong>A secret sent back as the mask keeps its saved value.</strong> <code>UserAgent/Detail</code> shows a saved secret (a <code>password</code> field) as <code>"••••••••"</code>. A row whose <code>fieldvalue</code> is that mask, with or without spaces around it, keeps what is saved: it isn't written, isn't counted in <code>applied</code> and restarts nothing. So a card sent back as Detail showed it changes only the fields you edited. To change a secret, send its new value. The mask with other text beside it is refused, with <code>&lt;Field label&gt; holds "••••••••", which stands for a saved value. Clear it and enter the full value</code>.</li>
 <li><strong>Whitespace around a value is trimmed.</strong> Text, password, email, URL and number values, and each entry of a list of strings, are saved without the spaces, tabs or line breaks around them and are validated after trimming, so a token pasted with a trailing newline is accepted. Spaces inside a value are kept, and multi-line text, selections, booleans, files and nested rows are saved as sent. The same applies to inline Deploy credentials.</li>
 <li>Credential groups other than the channels must be declared by the agent template. Communication-channel credentials are the exception: every useragent may create the channel groups published in <code>POST /Skills/List</code> → <code>channels[]</code>, using <code>CredentialUpsert</code> or inline Deploy credentials.</li>
-<li><strong>Lists</strong> (Telegram <code>groups[]</code>, Slack <code>channels[]</code>, Discord <code>guilds[]</code>, Twilio <code>phonenumbers[]</code>) are sent as JSON arrays. An array <code>fieldvalue</code> (with no <code>parentfield</code>) replaces the whole stored list, so send the complete desired list. Per-row writes (a sub-field sent with <code>parentfield</code>, the list field's key, and <code>ordinal</code>, the array index) change only that entry; indices you don't send are kept. To clear an optional list, send <code>[]</code> as that field's <code>fieldvalue</code> with no <code>parentfield</code>.</li>
+<li><strong>Lists</strong> (Telegram <code>groups[]</code>, Slack <code>channels[]</code>, Discord <code>guilds[]</code>, Twilio <code>phonenumbers[]</code>, Website <code>urls[]</code>) are sent as JSON arrays. An array <code>fieldvalue</code> (with no <code>parentfield</code>) replaces the whole stored list, so send the complete desired list. Per-row writes (a sub-field sent with <code>parentfield</code>, the list field's key, and <code>ordinal</code>, the array index) change only that entry; indices you don't send are kept. To clear an optional list, send <code>[]</code> as that field's <code>fieldvalue</code> with no <code>parentfield</code>.</li>
 <li>Use <code>POST /UserAgent/Detail</code> to inspect which fields each credential exposes, and the <code>_connected</code> / <code>optional</code> / <code>extra</code> flags that describe its readiness state.</li>
 </ul>
 <h3 id="prepaid-deploy-inline-setup-supported-with-limitations">Prepaid deploy: inline setup supported (with limitations)</h3>
@@ -30625,6 +30647,11 @@ Completing the required fields again reactivates it automatically.</p>
 <li>Deploy never saves a <code>platform</code> field sent in <code>credentials</code>. In a communication-channel group (Telegram, Slack, Discord), such a field fails Deploy before the agent is created. In any other group, the field is dropped and Deploy continues.</li>
 <li>A secret sent as the mask, <code>"••••••••"</code>, isn't saved: a new agent has no saved value for it to keep. In a communication-channel group (Telegram, Slack, Discord), the mask is refused with <code>&lt;Field label&gt; holds "••••••••", which stands for a saved value. Clear it and enter the full value</code>, and Deploy fails before the agent is created. <code>UserAgent/Detail</code> never returns a saved secret, so to copy one agent's setup to another, send each secret's value.</li>
 <li>If <code>credentials</code> includes a communication-channel group, all of that channel's <code>required_fields</code> must be present. A missing or invalid activation credential fails Deploy instead of creating a partially configured channel.</li>
+<li>A connector's slug as a key of <code>credentials</code> fails Deploy before anything is created or charged, with <code>Unknown credential: &lt;key&gt;. Connect a connector after the deploy with UserAgent/ConnectorConnect.</code></li>
+</ul>
+<p><strong>Deploy body <code>skills</code> rules:</strong></p>
+<ul>
+<li>Skills (<code>util-*</code>) only. A name that isn't a Skill fails Deploy before anything is created or charged, with <code>Unknown skill: &lt;name&gt;.</code>; a name that starts with <code>int-</code> gets <code>Unknown skill: &lt;name&gt;. Connectors are connected with UserAgent/ConnectorConnect, not turned on as skills.</code></li>
 </ul>
 <p><strong>Deploy body <code>customskills</code> semantics:</strong></p>
 <ul>
