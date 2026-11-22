@@ -633,7 +633,7 @@ All endpoints below require authentication.
 
 Creates a new agent instance from a catalog template, **or** builds a brand-new custom agent (no template).
 
-> **Agent plans are paid from your Wiro balance.** Pass `useprepaid: true` + `tier`. The plan's price is taken from the balance of the workspace you deploy into, and the instance is created server-side in one call. An agent plan has no card payment, in the dashboard or the API. Add funds to your balance on [wiro.ai/panel/billing](https://wiro.ai/panel/billing) before calling Deploy: when the balance is short, Deploy is refused with code `97` and `neededusd` (see [Paying for Plans](#paying-for-plans)).
+> **Agent plans are paid from your Wiro balance.** Pass `useprepaid: true` + `tier`. The plan's price is taken from the balance of the workspace you deploy into, and the instance is created server-side in one call. An agent plan has no card payment, in the dashboard or the API. Add funds to your balance under **Credit Balance** ([add funds](https://wiro.ai/panel/wallet/deposit/credit-card)) before calling Deploy: when the balance is short, Deploy is refused with code `97` and `neededusd` (see [Paying for Plans](#paying-for-plans)).
 
 Prepaid deploy (`useprepaid: true` + `tier`) charges your wallet for the chosen plan's price immediately and inserts a 30-day subscription row (`plan: "agent"`, `provider: "prepaid"`). **Every fresh Deploy lands at `status: 6` first**. The row is then auto-queued to `status: 2` (Queued) once the prepaid subscription is provisioned. No manual `UserAgent/Start` is needed for prepaid deploys; Wiro starts the agent from the queue.
 
@@ -653,7 +653,7 @@ for the channel contract.
 | `custom` | boolean | Conditional | Pass `true` to deploy a custom-built agent (no marketplace template). Mutually exclusive with `agentguid`. See [Agent Builder](/docs/agent-builder) for the full builder flow. |
 | `title` | string | Yes | Display name for your instance. |
 | `description` | string | No | Optional description (custom builds: free-text describing what the agent does). |
-| `cover` | string | No | Optional cover image URL. Custom builds only. Template deploys clone the agent's cover automatically. |
+| `cover` | string | No | Optional cover image URL for this agent, on template deploys and custom builds alike. Without it `cover` stays `null`: show the template's `agent.cover` instead (a custom build has none). |
 | `useprepaid` | boolean | Yes | Send `true`: the plan's price is paid from your Wiro balance in this call, and the agent is queued. Without it, Deploy still creates the agent and charges nothing: the agent stays at status `6` with no plan until [`CreateSubscriptionCheckout`](#post-useragentcreatesubscriptioncheckout) (`useprepaid: true`) pays it, and if it still has no plan about an hour after Deploy, it is deleted. |
 | `tier` | string | No | The plan: `"starter"` (default, $5 a month, including $5 of AI usage a month), `"pro"` ($30, including $30) or `"max"` ($100, including $100). It sets the price taken from your balance at deploy time and the AI usage included each month. The param name is `tier`. Leave it out for Starter. Any other value is refused with `tier must be starter, pro or max`, and nothing is created or charged. |
 | `credentials` | object | No | Inline credential groups. If a communication-channel group is included, its matching `credentials[credential_key]` object must contain all channel `required_fields`; completeness activates that channel automatically. |
@@ -721,7 +721,7 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
 |--------|------------------------------|-------------------------------|
 | Linked marketplace template | Snapshotted from the resolved template | None: no template back-reference |
 | `categories` | Cloned from the agent template | `null` (custom agents have no marketplace categories) |
-| `cover` | Cloned from `agent.cover` automatically | Optional: pass `cover` in the body if you want one |
+| `cover` | `null` unless you pass one; the template's cover shows through `agent.cover` | Optional: pass `cover` in the body if you want one |
 | Bundled scheduled tasks | Cloned from the template's preset custom skills | Materialized from the standalone cron registry |
 | Onboarding placeholders | None: the template ships its own preset strategies | One invocation-only `cs-my-custom-strategy` and one scheduled `cs-cron-my-scheduled-task` are seeded so the panel always has something to render under "Custom Skills" / "Scheduled Tasks" |
 | Platform-managed credentials | Set up by Wiro | Set up by Wiro |
@@ -754,7 +754,10 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
           "groups": []
         }
       },
-      "skills": ["util-social-posting-common", "util-anti-ai-human-copy"],
+      "skills": [
+        { "name": "util-social-posting-common", "enabled": true, "_edited": false, "_user_created": false },
+        { "name": "util-anti-ai-human-copy",    "enabled": true, "_edited": false, "_user_created": false }
+      ],
       "customskills": [],
       "scheduledskills": [],
       "monthlypriceusd": 5,
@@ -782,7 +785,7 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
       "teamsessionmode": "private",
       "status": 2,
       "setuprequired": false,
-      "pinned": false,
+      "pinned": true,
       "agent": {
         "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "title": "Instagram Manager",
@@ -933,7 +936,12 @@ Lists all agent instances deployed under your account.
           "starter": { "priceUsd": 5 },
           "pro":     { "priceUsd": 30 },
           "max":     { "priceUsd": 100 }
-        }
+        },
+        "plans": [
+          { "key": "starter", "title": "Starter", "priceUsd": 5,   "includedUsageUsd": 5,   "diskMb": 250 },
+          { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "includedUsageUsd": 30,  "diskMb": 500 },
+          { "key": "max",     "title": "Max",     "priceUsd": 100, "includedUsageUsd": 100, "diskMb": 1024 }
+        ]
       },
       "enabledSkills": ["util-social-posting-common", "util-anti-ai-human-copy", "util-chat-markdown-reporting"],
       "tokenRates": {
@@ -992,7 +1000,7 @@ Retrieves full details for a single deployed agent instance, including subscript
       "title": "My Instagram Bot",
       "description": null,
       "categories": ["social-media", "marketing"],
-      "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
+      "cover": null,
       "tier": "pro",
       "nextplan": null,
       "status": 4,
@@ -1275,7 +1283,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `teamguid` | `string\|null` | Team GUID when the agent is team-scoped. `null` for personal agents. |
 | `title` | `string` | Display name you gave this instance at deploy. |
 | `description` | `string\|null` | Long-form description shown on the agent card. |
-| `cover` | `string\|null` | Per-instance cover URL. Falls back to `agent.cover` for template deploys; `null` for custom builds without an uploaded cover. |
+| `cover` | `string\|null` | Per-instance cover URL, `null` until one is set with `Deploy`, `Update` or `Cover`. Show `agent.cover` when it is `null`. |
 | `categories` | `array<string>` | Inherited from the template at deploy; editable via `Update`. |
 | `pinned` | `boolean` | `true` when the user pinned this instance to the global header dropdown. Mutate via `Pin`. |
 
@@ -2977,7 +2985,12 @@ No request body fields are required: the workspace of your API key's project sco
           "starter": { "priceUsd": 5 },
           "pro":     { "priceUsd": 30 },
           "max":     { "priceUsd": 100 }
-        }
+        },
+        "plans": [
+          { "key": "starter", "title": "Starter", "priceUsd": 5,   "includedUsageUsd": 5,   "diskMb": 250 },
+          { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "includedUsageUsd": 30,  "diskMb": 500 },
+          { "key": "max",     "title": "Max",     "priceUsd": 100, "includedUsageUsd": 100, "diskMb": 1024 }
+        ]
       },
       "enabledSkills": ["util-social-posting-common", "util-anti-ai-human-copy", "util-chat-markdown-reporting"],
       "tokenRates": {

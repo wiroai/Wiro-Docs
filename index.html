@@ -16509,7 +16509,7 @@ channel switch.</p>
 <h4 id="post-useragentdeploy"><strong>POST</strong> /UserAgent/Deploy</h4>
 <p>Creates a new agent instance from a catalog template, <strong>or</strong> builds a brand-new custom agent (no template).</p>
 <blockquote>
-<p><strong>Agent plans are paid from your Wiro balance.</strong> Pass <code>useprepaid: true</code> + <code>tier</code>. The plan's price is taken from the balance of the workspace you deploy into, and the instance is created server-side in one call. An agent plan has no card payment, in the dashboard or the API. Add funds to your balance on <a href="https://wiro.ai/panel/billing">wiro.ai/panel/billing</a> before calling Deploy: when the balance is short, Deploy is refused with code <code>97</code> and <code>neededusd</code> (see <a href="#paying-for-plans">Paying for Plans</a>).</p>
+<p><strong>Agent plans are paid from your Wiro balance.</strong> Pass <code>useprepaid: true</code> + <code>tier</code>. The plan's price is taken from the balance of the workspace you deploy into, and the instance is created server-side in one call. An agent plan has no card payment, in the dashboard or the API. Add funds to your balance under <strong>Credit Balance</strong> (<a href="https://wiro.ai/panel/wallet/deposit/credit-card">add funds</a>) before calling Deploy: when the balance is short, Deploy is refused with code <code>97</code> and <code>neededusd</code> (see <a href="#paying-for-plans">Paying for Plans</a>).</p>
 </blockquote>
 <p>Prepaid deploy (<code>useprepaid: true</code> + <code>tier</code>) charges your wallet for the chosen plan's price immediately and inserts a 30-day subscription row (<code>plan: "agent"</code>, <code>provider: "prepaid"</code>). <strong>Every fresh Deploy lands at <code>status: 6</code> first</strong>. The row is then auto-queued to <code>status: 2</code> (Queued) once the prepaid subscription is provisioned. No manual <code>UserAgent/Start</code> is needed for prepaid deploys; Wiro starts the agent from the queue.</p>
 <p>If you pass <code>credentials</code>, <code>skills</code>, or <code>customskills</code> at the top level of the
@@ -16561,7 +16561,7 @@ for the channel contract.</p>
 <td><code>cover</code></td>
 <td>string</td>
 <td>No</td>
-<td>Optional cover image URL. Custom builds only. Template deploys clone the agent's cover automatically.</td>
+<td>Optional cover image URL for this agent, on template deploys and custom builds alike. Without it <code>cover</code> stays <code>null</code>: show the template's <code>agent.cover</code> instead (a custom build has none).</td>
 </tr>
 <tr>
 <td><code>useprepaid</code></td>
@@ -16720,7 +16720,7 @@ for the channel contract.</p>
 </tr>
 <tr>
 <td><code>cover</code></td>
-<td>Cloned from <code>agent.cover</code> automatically</td>
+<td><code>null</code> unless you pass one; the template's cover shows through <code>agent.cover</code></td>
 <td>Optional: pass <code>cover</code> in the body if you want one</td>
 </tr>
 <tr>
@@ -16772,7 +16772,10 @@ for the channel contract.</p>
           &quot;groups&quot;: []
         }
       },
-      &quot;skills&quot;: [&quot;util-social-posting-common&quot;, &quot;util-anti-ai-human-copy&quot;],
+      &quot;skills&quot;: [
+        { &quot;name&quot;: &quot;util-social-posting-common&quot;, &quot;enabled&quot;: true, &quot;_edited&quot;: false, &quot;_user_created&quot;: false },
+        { &quot;name&quot;: &quot;util-anti-ai-human-copy&quot;,    &quot;enabled&quot;: true, &quot;_edited&quot;: false, &quot;_user_created&quot;: false }
+      ],
       &quot;customskills&quot;: [],
       &quot;scheduledskills&quot;: [],
       &quot;monthlypriceusd&quot;: 5,
@@ -16800,7 +16803,7 @@ for the channel contract.</p>
       &quot;teamsessionmode&quot;: &quot;private&quot;,
       &quot;status&quot;: 2,
       &quot;setuprequired&quot;: false,
-      &quot;pinned&quot;: false,
+      &quot;pinned&quot;: true,
       &quot;agent&quot;: {
         &quot;guid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;,
         &quot;title&quot;: &quot;Instagram Manager&quot;,
@@ -17003,7 +17006,12 @@ for the channel contract.</p>
           &quot;starter&quot;: { &quot;priceUsd&quot;: 5 },
           &quot;pro&quot;:     { &quot;priceUsd&quot;: 30 },
           &quot;max&quot;:     { &quot;priceUsd&quot;: 100 }
-        }
+        },
+        &quot;plans&quot;: [
+          { &quot;key&quot;: &quot;starter&quot;, &quot;title&quot;: &quot;Starter&quot;, &quot;priceUsd&quot;: 5,   &quot;includedUsageUsd&quot;: 5,   &quot;diskMb&quot;: 250 },
+          { &quot;key&quot;: &quot;pro&quot;,     &quot;title&quot;: &quot;Pro&quot;,     &quot;priceUsd&quot;: 30,  &quot;includedUsageUsd&quot;: 30,  &quot;diskMb&quot;: 500 },
+          { &quot;key&quot;: &quot;max&quot;,     &quot;title&quot;: &quot;Max&quot;,     &quot;priceUsd&quot;: 100, &quot;includedUsageUsd&quot;: 100, &quot;diskMb&quot;: 1024 }
+        ]
       },
       &quot;enabledSkills&quot;: [&quot;util-social-posting-common&quot;, &quot;util-anti-ai-human-copy&quot;, &quot;util-chat-markdown-reporting&quot;],
       &quot;tokenRates&quot;: {
@@ -17075,7 +17083,7 @@ for the channel contract.</p>
       &quot;title&quot;: &quot;My Instagram Bot&quot;,
       &quot;description&quot;: null,
       &quot;categories&quot;: [&quot;social-media&quot;, &quot;marketing&quot;],
-      &quot;cover&quot;: &quot;https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp&quot;,
+      &quot;cover&quot;: null,
       &quot;tier&quot;: &quot;pro&quot;,
       &quot;nextplan&quot;: null,
       &quot;status&quot;: 4,
@@ -17391,7 +17399,7 @@ for the channel contract.</p>
 <tr>
 <td><code>cover</code></td>
 <td><code>string|null</code></td>
-<td>Per-instance cover URL. Falls back to <code>agent.cover</code> for template deploys; <code>null</code> for custom builds without an uploaded cover.</td>
+<td>Per-instance cover URL, <code>null</code> until one is set with <code>Deploy</code>, <code>Update</code> or <code>Cover</code>. Show <code>agent.cover</code> when it is <code>null</code>.</td>
 </tr>
 <tr>
 <td><code>categories</code></td>
@@ -20786,7 +20794,12 @@ channel-enable endpoint or persisted switch.</p>
           &quot;starter&quot;: { &quot;priceUsd&quot;: 5 },
           &quot;pro&quot;:     { &quot;priceUsd&quot;: 30 },
           &quot;max&quot;:     { &quot;priceUsd&quot;: 100 }
-        }
+        },
+        &quot;plans&quot;: [
+          { &quot;key&quot;: &quot;starter&quot;, &quot;title&quot;: &quot;Starter&quot;, &quot;priceUsd&quot;: 5,   &quot;includedUsageUsd&quot;: 5,   &quot;diskMb&quot;: 250 },
+          { &quot;key&quot;: &quot;pro&quot;,     &quot;title&quot;: &quot;Pro&quot;,     &quot;priceUsd&quot;: 30,  &quot;includedUsageUsd&quot;: 30,  &quot;diskMb&quot;: 500 },
+          { &quot;key&quot;: &quot;max&quot;,     &quot;title&quot;: &quot;Max&quot;,     &quot;priceUsd&quot;: 100, &quot;includedUsageUsd&quot;: 100, &quot;diskMb&quot;: 1024 }
+        ]
       },
       &quot;enabledSkills&quot;: [&quot;util-social-posting-common&quot;, &quot;util-anti-ai-human-copy&quot;, &quot;util-chat-markdown-reporting&quot;],
       &quot;tokenRates&quot;: {
