@@ -10762,7 +10762,7 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
                     <p>The assistant will call <code>get_task</code> with the task token from the previous run.</p>
                     <h3>Resume a previous production</h3>
                     <div class="info-callout"><p>"Show my latest productions and open the newest result"</p></div>
-                    <p>The assistant will call <code>list_tasks</code>, select the matching task, and call <code>get_task</code> with its task ID. Task history covers the authenticated project's workspace, personal or team: model tasks from every project in it and from wiro.ai. The LLM never sends a user UUID.</p>
+                    <p>The assistant will call <code>list_tasks</code>, select the matching task, and call <code>get_task</code> with its task ID. Task history covers the authenticated project's workspace, personal or team: model tasks from every project in it and from wiro.ai. Steps of workflow runs and the runs Studio starts are not listed: <code>list_workflow_runs</code> and <code>list_studio_results</code> have those. The LLM never sends a user UUID.</p>
                     <h3>Build and run a workflow</h3>
                     <div class="info-callout"><p>"Build a workflow that turns a product photo into a short ad video, then run it on this photo"</p></div>
                     <p>The assistant reads the <code>workflows</code> and <code>workflow-graph</code> playbooks, picks a model for each step with <code>search_models</code> and <code>get_model_schema</code>, and saves the graph with <code>create_workflow</code>. It tells you the expected cost and waits for your yes, then calls <code>run_workflow</code> and follows <code>wait_for_workflow_run</code> until the video is ready.</p>
@@ -10993,7 +10993,7 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
                     <p>A live WebSocket <code>task_error</code> event is an interim stderr log, while persisted <code>status: "task_error"</code> returned by Task/Detail marks a pre-execution recovery state. Neither closes the task; <code>wait_for_task</code> continues until <code>task_postprocess_end</code> or <code>task_cancel</code>.</p>
 
                     <h3>list_tasks</h3>
-                    <p>List recent model-generation tasks in the authenticated project's workspace (personal or team), from every project in it and from wiro.ai. Calls <code>POST /Task/List</code> without a <code>uuid</code>; Wiro derives the workspace from the API credential.</p>
+                    <p>List recent model-generation tasks in the authenticated project's workspace (personal or team), from every project in it and from wiro.ai. Steps of workflow runs and the runs Studio starts are not listed: <code>list_workflow_runs</code> and <code>list_studio_results</code> have those. Calls <code>POST /Task/List</code> without a <code>uuid</code>; Wiro derives the workspace from the API credential.</p>
                     <table>
                       <thead>
                         <tr>

@@ -978,7 +978,7 @@ Models:
 - `run_model`: Run any model; waits 45s by default, then returns a recoverable task token (POST /Run/{cleanslugowner}/{cleanslugproject})
 - `wait_for_task`: Continue waiting for an existing task without creating a duplicate run (POST /Task/Detail)
 - `get_task`: Check task status immediately or wait up to 45s with `wait_seconds` (POST /Task/Detail)
-- `list_tasks`: Browse authenticated generation history across conversations, then continue with `get_task` (POST /Task/List; no uuid parameter; covers the authenticated project's workspace, personal or team: model tasks from every project in it and from wiro.ai)
+- `list_tasks`: Browse authenticated generation history across conversations, then continue with `get_task` (POST /Task/List; no uuid parameter; covers the authenticated project's workspace, personal or team: model tasks from every project in it and from wiro.ai, but not steps of workflow runs or the runs Studio starts, which `list_workflow_runs` and `list_studio_results` have)
 - `get_task_price`: Get cost of a completed task. Only successful tasks (pexit "0") are billed (POST /Task/Detail)
 - `cancel_task`: Cancel a queued task (POST /Task/Cancel)
 - `kill_task`: Stop a queued or running task (POST /Task/Kill)
