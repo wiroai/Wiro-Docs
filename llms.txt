@@ -921,7 +921,7 @@ Auth errors return HTTP 401: invalid API key, missing signature, IP not allowed,
 
 ## Pricing
 
-Prepaid credits, pay-per-use. Pricing info in `dynamicprice` field of Tool/List and Tool/Detail responses.
+Prepaid credits, pay-per-use. Pricing info in `dynamicprice` field of Tool/List and Tool/Detail responses. The same balance pays agent plans and the AI usage an agent uses once its plan's included usage is used up (see Pricing Model under Agent API). A model run's cost is the task's `totalcost` (Task/Detail); an agent's plan payments and AI usage have no task: read one agent's with POST /UserAgent/TransactionList, or the whole workspace's with POST /Wallet/TransactionList and `surface: "agent"`.
 
 Billing methods:
 - Fixed-rate: cpr (per request), cps (per second), cpo (per output), cpt (per token)

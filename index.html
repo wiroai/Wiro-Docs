@@ -6852,7 +6852,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                   <section id="pricing-overview">
                     <h2>Overview</h2>
                     <p>When you run an AI model through Wiro, you are billed based on the type of work performed. Each model has its own pricing, visible on the model's page in the <a href="https://wiro.ai/models" target="_blank">marketplace</a> and on the <a href="https://wiro.ai/product/pricing" target="_blank">pricing page</a>. You pay only for successful runs. Server errors are never billed.</p>
-                    <p>Wiro uses a prepaid credit model. You <a href="https://wiro.ai/panel/billing" target="_blank">add credits</a> to your account and they are drawn down as you use models. Credits also determine your <a href="/docs/concurrency-limits">concurrency limit</a>.</p>
+                    <p>Wiro uses a prepaid credit model. You <a href="https://wiro.ai/panel/billing" target="_blank">add credits</a> to your account and they are drawn down as you use models. Credits also determine your <a href="/docs/concurrency-limits">concurrency limit</a>. The same balance pays agent plans and the AI usage an agent uses once its plan's included usage is used up (see <a href="/docs/agent-overview#pricing-model-plans-ai-usage-balance">Pricing Model</a>).</p>
                   </section>
 
                   <section id="pricing-billing-methods">
@@ -7105,6 +7105,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
     "elapsedseconds": "6.0000"
   }]
 }</code></pre>
+                    <p>An agent's plan payments and AI usage have no task: read one agent's with <a href="/docs/agent-transactions"><code>UserAgent/TransactionList</code></a>, or the whole workspace's with <code>Wallet/TransactionList</code> and <code>surface: "agent"</code> (see <a href="/docs/organizations-api-access#billing-flow">Wallet Billing Flow</a>).</p>
 
                     <h3>Via MCP</h3>
                     <p>The <a href="/docs/wiro-mcp-server">MCP server</a> provides three ways to check costs:</p>
