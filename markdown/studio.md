@@ -18,7 +18,7 @@ Studio runs on one setup shared by everyone who uses it, so it never changes tha
 
 ### Authentication
 
-Every `/Studio/*` route takes a project API key: `x-api-key`, plus `x-nonce` and `x-signature` for a project that uses signature authentication (see [Authentication](/docs/authentication)). A key acts as the person who created its project, in that project's workspace: a personal project works in the personal workspace and pays from the personal wallet, a team project works in the team and pays from the team wallet. For a team project, that person must still be a member of the team; otherwise every route answers HTTP 403 with `You must be a member of this team to perform this action`.
+Every `/Studio/*` route takes a project API key: `x-api-key`, plus `x-nonce` and `x-signature` for a project that uses signature authentication (see [Authentication](/docs/authentication)). A key acts as the person who created its project, in that project's workspace: a personal project works in the personal workspace and pays from the personal wallet, a team project works in the team and pays from the team wallet. For a team project, that person must still be a member of the team; otherwise every route answers HTTP 403 with `You must be a member of this team to perform this action`. The one exception is [ProjectSet](#post-studioprojectset), which works only signed in.
 
 ### Sessions
 
@@ -35,14 +35,15 @@ A session is one conversation with its own memory. `sessionkey` names it, and `"
 
 - **$10 to start a turn.** [Message/Send](#post-studiomessagesend) and [Message/SendForm](#post-studiomessagesendform) need at least $10 spendable in the wallet of the key's workspace. Below that, the message is refused with code `97` (`Insufficient balance`), and the response carries `walletUsd`, the balance, and `minTopup`, the minimum. Nothing is charged for a refused message. Reading messages, sessions and results is free.
 - **What a turn costs.** A turn's cost depends on the models Studio runs for it, and can be more than $10.
-- **Chat.** Each turn is charged for the tokens it used, at the chat model's rates in [Studio/Status](#post-studiostatus) (credits per 1M tokens; 1 credit is $0.01). The reply shows the chat charge in `tokencost`, in credits: `tokencost / 100` is the amount in USD.
-- **Model runs.** Each model run Studio starts is charged at that model's price when it succeeds. Failed and cancelled runs are not charged. [Studio/Tasks](#post-studiotasks) shows each run's `totalcost`.
-- **Spend limits and Model Access.** The models Studio runs for you follow your workspace's [spend limits](/docs/spend-limits) and [Model Access](/docs/model-access) rules, the same as the runs you start yourself: the account's or the team's, your own in a team, and those of the API key and the surface you sent the message with. So does the chat: what it costs counts toward spend limits, and a message whose chat model a Model Access rule blocks is refused with code `92` before anything runs.
-- Charges are made within about a minute of the work finishing. [Studio/Transactions](#post-studiotransactions) lists them, and they also appear in the wallet's transactions.
+- **Project.** Studio works on a project of the workspace. A call with an API key runs on that key's project. Work sent from wiro.ai runs on the workspace's Studio project: one for a personal workspace and one for each team, shared by Studio and the [Workflow Agent](/docs/workflow-agent). The first Studio or Workflow Agent message sent from wiro.ai in a workspace that has none creates a project named "Studio" there, or uses the workspace's existing project of that name. It is a normal project: like any project you create, it gets an API key, and you get the email that comes with a new key. [Studio/Status](#post-studiostatus) shows it, and [Studio/ProjectSet](#post-studioprojectset) changes it.
+- **Chat.** Each turn is charged for the tokens it used, at the chat model's rates in [Studio/Status](#post-studiostatus) (credits per 1M tokens; 1 credit is $0.01), on the turn's project and the `studio` surface. The reply shows the chat charge in `tokencost`, in credits: `tokencost / 100` is the amount in USD.
+- **Model runs.** The models Studio runs for you are your own tasks, on the turn's project: [Task/List](/docs/tasks#task-list) and [Task/Detail](/docs/tasks#task-detail) return them with `surface` `studio`, and [Studio/Tasks](#post-studiotasks) lists them too. Each is charged like any model run when it finishes: at the model's price when it succeeds, and not at all when it fails or is cancelled. Studio/Tasks shows each run's `totalcost`.
+- **Spend limits and Model Access.** The models Studio runs for you follow your workspace's [spend limits](/docs/spend-limits) and [Model Access](/docs/model-access) rules, the same as the runs you start yourself: the account's or the team's, your own in a team, those of the API key you sent the message with, and those of the `studio` [surface](/docs/tasks#task-surfaces). So does the chat: what it costs counts toward spend limits, and a message whose chat model a Model Access rule blocks is refused with code `92` before anything runs.
+- Chat charges are made within about a minute of the turn ending, and model runs are charged when they finish, like any model run. Both appear in the wallet's transactions, and [Studio/Transactions](#post-studiotransactions) lists the chat charges.
 
 ## **POST** /Studio/Status
 
-Returns the wallet check and the chat models Studio can use. It settles your pending Studio charges first, so `walletUsd` is current. It takes no request fields.
+Returns the wallet check, the chat models Studio can use and the workspace's Studio project. It settles your pending Studio charges first, so `walletUsd` is current. It takes no request fields.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -54,6 +55,9 @@ Returns the wallet check and the chat models Studio can use. It settles your pen
 | `blockedModels` | string[] | The chat models you could pick that your Model Access rules block. `[]` when none is blocked. |
 | `agentModelBlocked` | boolean | `true` when your rules block `agentModel.chatModel`: a message that leaves `model` out is then refused with code `92`. |
 | `agentModelMessage` | string \| null | The refusal such a message gets when `agentModelBlocked` is `true`, else `null`. |
+| `project.current` | object \| null | The workspace's Studio project, `{ "id", "name" }` with `id` as a string: the project that work sent from wiro.ai runs on (see [Costs](#costs)). `null` until the workspace has one; the first Studio or Workflow Agent message from wiro.ai creates it. A call with an API key runs on the key's project instead. |
+| `project.options` | object[] | The projects you can make the Studio project with [ProjectSet](#post-studioprojectset), each `{ "id", "name" }`. Signed in to a personal workspace, your personal projects; in a team, every team project for a team admin or the organization owner, and none for other members. Always `[]` with an API key. |
+| `project.canchange` | boolean | `true` when you can change the Studio project. `false` for team members who are not admins, and with an API key. |
 | `title` | string | The agent's name. |
 | `status` | number | Always `4`. |
 
@@ -94,9 +98,16 @@ The response also carries fields that Wiro's own apps use. Ignore the ones not l
   },
   "blockedModels": [],
   "agentModelBlocked": false,
-  "agentModelMessage": null
+  "agentModelMessage": null,
+  "project": {
+    "current": { "id": "6839", "name": "Studio" },
+    "options": [],
+    "canchange": false
+  }
 }
 ```
+
+This call was made with an API key, so `project.options` is empty and `project.canchange` is `false`: the key's turns run on the key's own project.
 
 When a rule blocks a chat model, Status says so. With a team rule that blocks `openai/gpt-5-6-sol`, Studio's default chat model, these fields read:
 
@@ -132,6 +143,47 @@ When a rule blocks a chat model, Status says so. With a team rule that blocks `o
 ```
 
 A message that leaves `model` out is then refused with `agentModelMessage`. Send a model that is still selectable, such as `openai/gpt-5.4-mini`.
+
+## **POST** /Studio/ProjectSet
+
+Changes the workspace's Studio project: the project that Studio and the [Workflow Agent](/docs/workflow-agent) work on for messages sent from wiro.ai. It works only signed in, in the dashboard or with a signed-in user's Bearer token, and changes your personal workspace's Studio project, or the team's when `x-team-guid` names a team. In a personal workspace you can pick any of your personal projects; in a team, a team admin or the organization owner can pick any team project. `project.options` in [Studio/Status](#post-studiostatus) lists them. A call with an API key always runs on the key's project, so ProjectSet refuses it.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `projectid` | string | Yes | The project's `id`, from `project.options` in Studio/Status. |
+
+### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "project": { "id": "7001", "name": "Mobile App" }
+}
+```
+
+Studio/Status then shows the new project. For a team admin, signed in, it reads:
+
+```json
+{
+  "project": {
+    "current": { "id": "7001", "name": "Mobile App" },
+    "options": [
+      { "id": "6839", "name": "Studio" },
+      { "id": "7001", "name": "Mobile App" }
+    ],
+    "canchange": true
+  }
+}
+```
+
+A refusal comes back with `result: false` and code `0`:
+
+| Message | When |
+|---------|------|
+| `Studio runs on your API key's project. Change the Studio project on wiro.ai.` | The call was made with an API key. |
+| `Only a team admin can change the team's Studio project.` | In a team, the caller is a member who is not a team admin. |
+| `Project not found in this workspace.` | `projectid` is not a project of this workspace. |
 
 ## **POST** /Studio/Message/Send
 
@@ -409,7 +461,7 @@ Lists the wallet charges for your Studio use in the key's workspace, newest firs
 |-----------|------|----------|-------------|
 | `limit` | number | No | Default `50`, maximum `200`. |
 
-Each row has `guid`, `type`, `amount`, `description`, `modelid`, `taskid`, `confirmed` and `time`. A chat charge is described as `Generative Media Agent LLM <model> (...)` with its token counts, and a model run as `Generative Media Agent media run`.
+Each row has `guid`, `type`, `amount`, `description`, `modelid`, `taskid`, `confirmed` and `time`. A chat charge is described as `Generative Media Agent LLM <model> (...)` with its token counts. A model run from before Studio's runs became your own tasks is described as `Generative Media Agent media run`; the model runs since then are charged on their own tasks, like any model run (see [Costs](#costs)).
 
 ## **POST** /Studio/Task/DeleteOutput
 
@@ -439,6 +491,9 @@ Business errors come back with HTTP 200, `result: false` and an `errors` array, 
 | `Uploaded file format invalid. Supported: ...` | 0 | An attachment type that is not accepted. |
 | `Message not found` | 0 | Detail or Cancel with an unknown message, or one from another session. |
 | `Message cannot be cancelled (status: <status>)` | 0 | Cancel on a turn that has already ended. |
+| `Studio runs on your API key's project. Change the Studio project on wiro.ai.` | 0 | ProjectSet with an API key. |
+| `Only a team admin can change the team's Studio project.` | 0 | ProjectSet in a team by a member who is not a team admin. |
+| `Project not found in this workspace.` | 0 | ProjectSet with a `projectid` that is not a project of this workspace. |
 | `Agent is temporarily unavailable. Please try again shortly.` | 0 | Try again shortly. |
 | `You must be a member of this team to perform this action` | HTTP 403 | A team project's key whose creator is no longer a member of the team. |
 

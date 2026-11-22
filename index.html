@@ -14191,13 +14191,14 @@ import type {
 <h2 id="costs">Costs</h2>
 <ul>
 <li><strong>$10 to start a turn.</strong> Send and SendForm need at least $10 spendable in the wallet of the key's workspace. Below that, the message is refused with code <code>97</code> (<code>Insufficient balance</code>), with <code>walletUsd</code> and <code>minTopup</code> in the response, and nothing is charged.</li>
-<li><strong>Chat.</strong> Each turn is charged after it ends for the tokens it used, at the chat model's rates in <a href="#post-studioworkflowstatus">StudioWorkflow/Status</a> (credits per 1M tokens; 1 credit is $0.01). The reply's <code>tokencost</code> shows the charge in credits: <code>tokencost / 100</code> is the amount in USD.</li>
-<li><strong>Spend limits and Model Access.</strong> The chat counts toward your workspace's <a href="/docs/spend-limits">spend limits</a>, and its chat model follows your <a href="/docs/model-access">Model Access</a> rules: the account's or the team's, your own in a team, and those of the API key and the surface you sent the message with. A message whose chat model a rule blocks is refused with code <code>92</code> before anything runs.</li>
+<li><strong>Project.</strong> A call with an API key runs on that key's project. Messages sent from wiro.ai run on the workspace's Studio project, which the Workflow Agent shares with <a href="/docs/studio#costs">Studio</a>: the first Studio or Workflow Agent message from wiro.ai creates it, or uses the workspace's existing project named "Studio". <a href="#post-studioworkflowstatus">StudioWorkflow/Status</a> shows it, and <a href="/docs/studio#post-studioprojectset">Studio/ProjectSet</a> changes it.</li>
+<li><strong>Chat.</strong> Each turn is charged after it ends for the tokens it used, at the chat model's rates in <a href="#post-studioworkflowstatus">StudioWorkflow/Status</a> (credits per 1M tokens; 1 credit is $0.01), on the turn's project and the <code>workflow-agent</code> surface. The reply's <code>tokencost</code> shows the charge in credits: <code>tokencost / 100</code> is the amount in USD.</li>
+<li><strong>Spend limits and Model Access.</strong> The chat counts toward your workspace's <a href="/docs/spend-limits">spend limits</a>, and its chat model follows your <a href="/docs/model-access">Model Access</a> rules: the account's or the team's, your own in a team, those of the API key you sent the message with, and those of the <code>workflow-agent</code> <a href="/docs/tasks#task-surfaces">surface</a>. A message whose chat model a rule blocks is refused with code <code>92</code> before anything runs.</li>
 <li>The agent only reads the catalog, so its turns start no model runs. Saving a proposal is free, and running the saved workflow is billed like any <a href="/docs/workflows#costs">workflow run</a>.</li>
 <li><a href="#post-studioworkflowtransactions">StudioWorkflow/Transactions</a> lists the charges.</li>
 </ul>
 <h2 id="post-studioworkflowstatus"><strong>POST</strong> /StudioWorkflow/Status</h2>
-<p>Returns the wallet check and the chat models the agent can use, after settling your pending Workflow Agent charges. It takes no request fields, and its fields are the same as <a href="/docs/studio#post-studiostatus">Studio/Status</a>: <code>walletUsd</code>, <code>needsTopup</code>, <code>minTopup</code> (<code>10</code>), <code>tokenRates</code>, <code>agentModel.chatModel</code>, <code>blockedModels</code>, <code>agentModelBlocked</code> and <code>agentModelMessage</code>. <code>title</code> is <code>"Workflow Agent"</code>.</p>
+<p>Returns the wallet check, the chat models the agent can use and the workspace's Studio project, after settling your pending Workflow Agent charges. It takes no request fields, and its fields are the same as <a href="/docs/studio#post-studiostatus">Studio/Status</a>: <code>walletUsd</code>, <code>needsTopup</code>, <code>minTopup</code> (<code>10</code>), <code>tokenRates</code>, <code>agentModel.chatModel</code>, <code>blockedModels</code>, <code>agentModelBlocked</code>, <code>agentModelMessage</code> and <code>project</code> (<code>current</code>, <code>options</code> and <code>canchange</code>), the Studio project the Workflow Agent shares with Studio. <code>title</code> is <code>"Workflow Agent"</code>.</p>
 <h2 id="post-studioworkflowmessagesend"><strong>POST</strong> /StudioWorkflow/Message/Send</h2>
 <p>Sends a message to the Workflow Agent and returns at once with the turn's <code>messageguid</code> and <code>agenttoken</code>.</p>
 <div class="docs-param-table">
@@ -14568,7 +14569,7 @@ import type {
 <p>There is no agent guid to pass: every route talks to Studio. Studio is paid from your Wiro wallet, as described under <a href="#costs">Costs</a>.</p>
 <p>Studio runs on one setup shared by everyone who uses it, so it never changes that setup: it proposes no <a href="/docs/agent-messaging#setup-from-chat">setup cards</a>, and its connectors, skills and scheduled tasks are fixed. Asked to remember a rule or to repeat a job on a schedule, it helps with the request once, as a one-time task.</p>
 <h3 id="authentication">Authentication</h3>
-<p>Every <code>/Studio/*</code> route takes a project API key: <code>x-api-key</code>, plus <code>x-nonce</code> and <code>x-signature</code> for a project that uses signature authentication (see <a href="/docs/authentication">Authentication</a>). A key acts as the person who created its project, in that project's workspace: a personal project works in the personal workspace and pays from the personal wallet, a team project works in the team and pays from the team wallet. For a team project, that person must still be a member of the team; otherwise every route answers HTTP 403 with <code>You must be a member of this team to perform this action</code>.</p>
+<p>Every <code>/Studio/*</code> route takes a project API key: <code>x-api-key</code>, plus <code>x-nonce</code> and <code>x-signature</code> for a project that uses signature authentication (see <a href="/docs/authentication">Authentication</a>). A key acts as the person who created its project, in that project's workspace: a personal project works in the personal workspace and pays from the personal wallet, a team project works in the team and pays from the team wallet. For a team project, that person must still be a member of the team; otherwise every route answers HTTP 403 with <code>You must be a member of this team to perform this action</code>. The one exception is <a href="#post-studioprojectset">ProjectSet</a>, which works only signed in.</p>
 <h3 id="sessions">Sessions</h3>
 <p>A session is one conversation with its own memory. <code>sessionkey</code> names it, and <code>"default"</code> is used when you leave it out.</p>
 <ul>
@@ -14583,13 +14584,14 @@ import type {
 <ul>
 <li><strong>$10 to start a turn.</strong> <a href="#post-studiomessagesend">Message/Send</a> and <a href="#post-studiomessagesendform">Message/SendForm</a> need at least $10 spendable in the wallet of the key's workspace. Below that, the message is refused with code <code>97</code> (<code>Insufficient balance</code>), and the response carries <code>walletUsd</code>, the balance, and <code>minTopup</code>, the minimum. Nothing is charged for a refused message. Reading messages, sessions and results is free.</li>
 <li><strong>What a turn costs.</strong> A turn's cost depends on the models Studio runs for it, and can be more than $10.</li>
-<li><strong>Chat.</strong> Each turn is charged for the tokens it used, at the chat model's rates in <a href="#post-studiostatus">Studio/Status</a> (credits per 1M tokens; 1 credit is $0.01). The reply shows the chat charge in <code>tokencost</code>, in credits: <code>tokencost / 100</code> is the amount in USD.</li>
-<li><strong>Model runs.</strong> Each model run Studio starts is charged at that model's price when it succeeds. Failed and cancelled runs are not charged. <a href="#post-studiotasks">Studio/Tasks</a> shows each run's <code>totalcost</code>.</li>
-<li><strong>Spend limits and Model Access.</strong> The models Studio runs for you follow your workspace's <a href="/docs/spend-limits">spend limits</a> and <a href="/docs/model-access">Model Access</a> rules, the same as the runs you start yourself: the account's or the team's, your own in a team, and those of the API key and the surface you sent the message with. So does the chat: what it costs counts toward spend limits, and a message whose chat model a Model Access rule blocks is refused with code <code>92</code> before anything runs.</li>
-<li>Charges are made within about a minute of the work finishing. <a href="#post-studiotransactions">Studio/Transactions</a> lists them, and they also appear in the wallet's transactions.</li>
+<li><strong>Project.</strong> Studio works on a project of the workspace. A call with an API key runs on that key's project. Work sent from wiro.ai runs on the workspace's Studio project: one for a personal workspace and one for each team, shared by Studio and the <a href="/docs/workflow-agent">Workflow Agent</a>. The first Studio or Workflow Agent message sent from wiro.ai in a workspace that has none creates a project named "Studio" there, or uses the workspace's existing project of that name. It is a normal project: like any project you create, it gets an API key, and you get the email that comes with a new key. <a href="#post-studiostatus">Studio/Status</a> shows it, and <a href="#post-studioprojectset">Studio/ProjectSet</a> changes it.</li>
+<li><strong>Chat.</strong> Each turn is charged for the tokens it used, at the chat model's rates in <a href="#post-studiostatus">Studio/Status</a> (credits per 1M tokens; 1 credit is $0.01), on the turn's project and the <code>studio</code> surface. The reply shows the chat charge in <code>tokencost</code>, in credits: <code>tokencost / 100</code> is the amount in USD.</li>
+<li><strong>Model runs.</strong> The models Studio runs for you are your own tasks, on the turn's project: <a href="/docs/tasks#task-list">Task/List</a> and <a href="/docs/tasks#task-detail">Task/Detail</a> return them with <code>surface</code> <code>studio</code>, and <a href="#post-studiotasks">Studio/Tasks</a> lists them too. Each is charged like any model run when it finishes: at the model's price when it succeeds, and not at all when it fails or is cancelled. Studio/Tasks shows each run's <code>totalcost</code>.</li>
+<li><strong>Spend limits and Model Access.</strong> The models Studio runs for you follow your workspace's <a href="/docs/spend-limits">spend limits</a> and <a href="/docs/model-access">Model Access</a> rules, the same as the runs you start yourself: the account's or the team's, your own in a team, those of the API key you sent the message with, and those of the <code>studio</code> <a href="/docs/tasks#task-surfaces">surface</a>. So does the chat: what it costs counts toward spend limits, and a message whose chat model a Model Access rule blocks is refused with code <code>92</code> before anything runs.</li>
+<li>Chat charges are made within about a minute of the turn ending, and model runs are charged when they finish, like any model run. Both appear in the wallet's transactions, and <a href="#post-studiotransactions">Studio/Transactions</a> lists the chat charges.</li>
 </ul>
 <h2 id="post-studiostatus"><strong>POST</strong> /Studio/Status</h2>
-<p>Returns the wallet check and the chat models Studio can use. It settles your pending Studio charges first, so <code>walletUsd</code> is current. It takes no request fields.</p>
+<p>Returns the wallet check, the chat models Studio can use and the workspace's Studio project. It settles your pending Studio charges first, so <code>walletUsd</code> is current. It takes no request fields.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -14642,6 +14644,21 @@ import type {
 <td>The refusal such a message gets when <code>agentModelBlocked</code> is <code>true</code>, else <code>null</code>.</td>
 </tr>
 <tr>
+<td><code>project.current</code></td>
+<td>object | null</td>
+<td>The workspace's Studio project, <code>{ "id", "name" }</code> with <code>id</code> as a string: the project that work sent from wiro.ai runs on (see <a href="#costs">Costs</a>). <code>null</code> until the workspace has one; the first Studio or Workflow Agent message from wiro.ai creates it. A call with an API key runs on the key's project instead.</td>
+</tr>
+<tr>
+<td><code>project.options</code></td>
+<td>object[]</td>
+<td>The projects you can make the Studio project with <a href="#post-studioprojectset">ProjectSet</a>, each <code>{ "id", "name" }</code>. Signed in to a personal workspace, your personal projects; in a team, every team project for a team admin or the organization owner, and none for other members. Always <code>[]</code> with an API key.</td>
+</tr>
+<tr>
+<td><code>project.canchange</code></td>
+<td>boolean</td>
+<td><code>true</code> when you can change the Studio project. <code>false</code> for team members who are not admins, and with an API key.</td>
+</tr>
+<tr>
 <td><code>title</code></td>
 <td>string</td>
 <td>The agent's name.</td>
@@ -14689,9 +14706,15 @@ import type {
   },
   &quot;blockedModels&quot;: [],
   &quot;agentModelBlocked&quot;: false,
-  &quot;agentModelMessage&quot;: null
+  &quot;agentModelMessage&quot;: null,
+  &quot;project&quot;: {
+    &quot;current&quot;: { &quot;id&quot;: &quot;6839&quot;, &quot;name&quot;: &quot;Studio&quot; },
+    &quot;options&quot;: [],
+    &quot;canchange&quot;: false
+  }
 }
 </code></pre>
+<p>This call was made with an API key, so <code>project.options</code> is empty and <code>project.canchange</code> is <code>false</code>: the key's turns run on the key's own project.</p>
 <p>When a rule blocks a chat model, Status says so. With a team rule that blocks <code>openai/gpt-5-6-sol</code>, Studio's default chat model, these fields read:</p>
 <pre><code class="language-json">{
   &quot;tokenRates&quot;: {
@@ -14723,6 +14746,76 @@ import type {
 }
 </code></pre>
 <p>A message that leaves <code>model</code> out is then refused with <code>agentModelMessage</code>. Send a model that is still selectable, such as <code>openai/gpt-5.4-mini</code>.</p>
+<h2 id="post-studioprojectset"><strong>POST</strong> /Studio/ProjectSet</h2>
+<p>Changes the workspace's Studio project: the project that Studio and the <a href="/docs/workflow-agent">Workflow Agent</a> work on for messages sent from wiro.ai. It works only signed in, in the dashboard or with a signed-in user's Bearer token, and changes your personal workspace's Studio project, or the team's when <code>x-team-guid</code> names a team. In a personal workspace you can pick any of your personal projects; in a team, a team admin or the organization owner can pick any team project. <code>project.options</code> in <a href="#post-studiostatus">Studio/Status</a> lists them. A call with an API key always runs on the key's project, so ProjectSet refuses it.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>projectid</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The project's <code>id</code>, from <code>project.options</code> in Studio/Status.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<h3 id="response_projectset">Response</h3>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;project&quot;: { &quot;id&quot;: &quot;7001&quot;, &quot;name&quot;: &quot;Mobile App&quot; }
+}
+</code></pre>
+<p>Studio/Status then shows the new project. For a team admin, signed in, it reads:</p>
+<pre><code class="language-json">{
+  &quot;project&quot;: {
+    &quot;current&quot;: { &quot;id&quot;: &quot;7001&quot;, &quot;name&quot;: &quot;Mobile App&quot; },
+    &quot;options&quot;: [
+      { &quot;id&quot;: &quot;6839&quot;, &quot;name&quot;: &quot;Studio&quot; },
+      { &quot;id&quot;: &quot;7001&quot;, &quot;name&quot;: &quot;Mobile App&quot; }
+    ],
+    &quot;canchange&quot;: true
+  }
+}
+</code></pre>
+<p>A refusal comes back with <code>result: false</code> and code <code>0</code>:</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Message</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Studio runs on your API key's project. Change the Studio project on wiro.ai.</code></td>
+<td>The call was made with an API key.</td>
+</tr>
+<tr>
+<td><code>Only a team admin can change the team's Studio project.</code></td>
+<td>In a team, the caller is a member who is not a team admin.</td>
+</tr>
+<tr>
+<td><code>Project not found in this workspace.</code></td>
+<td><code>projectid</code> is not a project of this workspace.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 <h2 id="post-studiomessagesend"><strong>POST</strong> /Studio/Message/Send</h2>
 <p>Sends a message to Studio. It returns at once with the turn's <code>messageguid</code> and <code>agenttoken</code>; the reply arrives on the WebSocket and in <a href="#post-studiomessagedetail">Message/Detail</a>.</p>
 <div class="docs-param-table">
@@ -15277,7 +15370,7 @@ import type {
 </table>
 </div>
 </div>
-<p>Each row has <code>guid</code>, <code>type</code>, <code>amount</code>, <code>description</code>, <code>modelid</code>, <code>taskid</code>, <code>confirmed</code> and <code>time</code>. A chat charge is described as <code>Generative Media Agent LLM &lt;model&gt; (...)</code> with its token counts, and a model run as <code>Generative Media Agent media run</code>.</p>
+<p>Each row has <code>guid</code>, <code>type</code>, <code>amount</code>, <code>description</code>, <code>modelid</code>, <code>taskid</code>, <code>confirmed</code> and <code>time</code>. A chat charge is described as <code>Generative Media Agent LLM &lt;model&gt; (...)</code> with its token counts. A model run from before Studio's runs became your own tasks is described as <code>Generative Media Agent media run</code>; the model runs since then are charged on their own tasks, like any model run (see <a href="#costs">Costs</a>).</p>
 <h2 id="post-studiotaskdeleteoutput"><strong>POST</strong> /Studio/Task/DeleteOutput</h2>
 <p>Deletes the output and input files of one of your Studio runs once it has finished or was cancelled.</p>
 <div class="docs-param-table">
@@ -15375,6 +15468,21 @@ import type {
 <td><code>Message cannot be cancelled (status: &lt;status&gt;)</code></td>
 <td>0</td>
 <td>Cancel on a turn that has already ended.</td>
+</tr>
+<tr>
+<td><code>Studio runs on your API key's project. Change the Studio project on wiro.ai.</code></td>
+<td>0</td>
+<td>ProjectSet with an API key.</td>
+</tr>
+<tr>
+<td><code>Only a team admin can change the team's Studio project.</code></td>
+<td>0</td>
+<td>ProjectSet in a team by a member who is not a team admin.</td>
+</tr>
+<tr>
+<td><code>Project not found in this workspace.</code></td>
+<td>0</td>
+<td>ProjectSet with a <code>projectid</code> that is not a project of this workspace.</td>
 </tr>
 <tr>
 <td><code>Agent is temporarily unavailable. Please try again shortly.</code></td>

@@ -32,14 +32,15 @@ A session is one conversation with its own memory. `sessionkey` names it, and `"
 ## Costs
 
 - **$10 to start a turn.** Send and SendForm need at least $10 spendable in the wallet of the key's workspace. Below that, the message is refused with code `97` (`Insufficient balance`), with `walletUsd` and `minTopup` in the response, and nothing is charged.
-- **Chat.** Each turn is charged after it ends for the tokens it used, at the chat model's rates in [StudioWorkflow/Status](#post-studioworkflowstatus) (credits per 1M tokens; 1 credit is $0.01). The reply's `tokencost` shows the charge in credits: `tokencost / 100` is the amount in USD.
-- **Spend limits and Model Access.** The chat counts toward your workspace's [spend limits](/docs/spend-limits), and its chat model follows your [Model Access](/docs/model-access) rules: the account's or the team's, your own in a team, and those of the API key and the surface you sent the message with. A message whose chat model a rule blocks is refused with code `92` before anything runs.
+- **Project.** A call with an API key runs on that key's project. Messages sent from wiro.ai run on the workspace's Studio project, which the Workflow Agent shares with [Studio](/docs/studio#costs): the first Studio or Workflow Agent message from wiro.ai creates it, or uses the workspace's existing project named "Studio". [StudioWorkflow/Status](#post-studioworkflowstatus) shows it, and [Studio/ProjectSet](/docs/studio#post-studioprojectset) changes it.
+- **Chat.** Each turn is charged after it ends for the tokens it used, at the chat model's rates in [StudioWorkflow/Status](#post-studioworkflowstatus) (credits per 1M tokens; 1 credit is $0.01), on the turn's project and the `workflow-agent` surface. The reply's `tokencost` shows the charge in credits: `tokencost / 100` is the amount in USD.
+- **Spend limits and Model Access.** The chat counts toward your workspace's [spend limits](/docs/spend-limits), and its chat model follows your [Model Access](/docs/model-access) rules: the account's or the team's, your own in a team, those of the API key you sent the message with, and those of the `workflow-agent` [surface](/docs/tasks#task-surfaces). A message whose chat model a rule blocks is refused with code `92` before anything runs.
 - The agent only reads the catalog, so its turns start no model runs. Saving a proposal is free, and running the saved workflow is billed like any [workflow run](/docs/workflows#costs).
 - [StudioWorkflow/Transactions](#post-studioworkflowtransactions) lists the charges.
 
 ## **POST** /StudioWorkflow/Status
 
-Returns the wallet check and the chat models the agent can use, after settling your pending Workflow Agent charges. It takes no request fields, and its fields are the same as [Studio/Status](/docs/studio#post-studiostatus): `walletUsd`, `needsTopup`, `minTopup` (`10`), `tokenRates`, `agentModel.chatModel`, `blockedModels`, `agentModelBlocked` and `agentModelMessage`. `title` is `"Workflow Agent"`.
+Returns the wallet check, the chat models the agent can use and the workspace's Studio project, after settling your pending Workflow Agent charges. It takes no request fields, and its fields are the same as [Studio/Status](/docs/studio#post-studiostatus): `walletUsd`, `needsTopup`, `minTopup` (`10`), `tokenRates`, `agentModel.chatModel`, `blockedModels`, `agentModelBlocked`, `agentModelMessage` and `project` (`current`, `options` and `canchange`), the Studio project the Workflow Agent shares with Studio. `title` is `"Workflow Agent"`.
 
 ## **POST** /StudioWorkflow/Message/Send
 
