@@ -33787,7 +33787,7 @@ page &lt;&gt; binary RFB 3.8 frames: noVNC draws the agent's browser, view only
 </div>
 </div>
 <blockquote>
-<p>Read responses from <code>POST /UserAgent/Detail</code> expose the composed <code>customskills[]</code> array (preference skills + non-cron user-created skills), the <code>scheduledskills[]</code> array (scheduled tasks), and the <code>skills[]</code> array as top-level fields on the useragent object. <code>skills[]</code> is an <strong>object array</strong>: each entry is <code>{ name, enabled, _edited?, _user_created? }</code> (e.g. <code>[{ "name": "util-weather", "enabled": true }, { "name": "util-diagram", "enabled": true }]</code>).</p>
+<p>Read responses from <code>POST /UserAgent/Detail</code> expose the composed <code>customskills[]</code> array (preference skills + non-cron user-created skills), the <code>scheduledskills[]</code> array (scheduled tasks), and the <code>skills[]</code> array as top-level fields on the useragent object. <code>skills[]</code> is an <strong>object array</strong>: it holds only the Skills that are on, each <code>{ name, enabled: true, _edited, _user_created }</code> (e.g. <code>[{ "name": "util-diagram", "enabled": true, "_edited": false, "_user_created": false }, { "name": "util-weather", "enabled": true, "_edited": true, "_user_created": false }]</code>).</p>
 </blockquote>
 <h2 id="skill-registry-vs-custom-skills">Skill Registry vs Custom Skills</h2>
 <p>Two concepts share the word "skill" in the agent system, and connectors give them their tools. Keep them straight:</p>
@@ -34245,9 +34245,8 @@ complete. Channels are not skills and do not affect pricing.</p>
     }
   ],
   &quot;skills&quot;: [
-    { &quot;name&quot;: &quot;util-social-posting-common&quot;, &quot;enabled&quot;: true },
-    { &quot;name&quot;: &quot;util-weather&quot;, &quot;enabled&quot;: false },
-    { &quot;name&quot;: &quot;util-chat-markdown-reporting&quot;, &quot;enabled&quot;: true }
+    { &quot;name&quot;: &quot;util-chat-markdown-reporting&quot;, &quot;enabled&quot;: true, &quot;_edited&quot;: false, &quot;_user_created&quot;: false },
+    { &quot;name&quot;: &quot;util-social-posting-common&quot;, &quot;enabled&quot;: true, &quot;_edited&quot;: false, &quot;_user_created&quot;: false }
   ]
 }
 </code></pre>
@@ -34549,7 +34548,7 @@ complete. Channels are not skills and do not affect pricing.</p>
 </code></pre>
 <p>The response carries the post-revert state (<code>current_value</code>, <code>current_interval</code>, <code>current_enabled</code>) so the UI can refresh without a full <code>Detail</code> round-trip.</p>
 <h2 id="turning-skills-on-and-off">Turning Skills On and Off</h2>
-<p>The top-level <code>skills[]</code> array on <code>UserAgent/Detail</code> lists every Skill on the instance as an <strong>object array</strong>: <code>[{ name, enabled, _edited?, _user_created? }, ...]</code>. <code>enabled: false</code> entries are still returned (so a UI can show disabled rows); filter on <code>enabled: true</code> to get only the active set. Example: <code>[{ "name": "util-weather", "enabled": true }, { "name": "util-diagram", "enabled": false }]</code>. To enable or disable several skills in one shot, use <strong><code>POST /UserAgent/SkillsApply</code></strong>. Even when you only want to flip a single skill, send it as a one-entry <code>skills</code> map. Connectors are not in this list: a connected connector is on (see <a href="/docs/agent-connectors">Agent Connectors</a>). The endpoint:</p>
+<p>The top-level <code>skills[]</code> array on <code>UserAgent/Detail</code> lists the Skills that are on, as an <strong>object array</strong> sorted by name: <code>[{ name, enabled: true, _edited, _user_created }, ...]</code>. A Skill that is off is not in it, so <code>enabled</code> is always <code>true</code>; the full catalog of Skills is on <a href="#post-skillslist"><code>POST /Skills/List</code></a>. <code>_edited</code> is <code>true</code> for a Skill you turned on yourself rather than one the template or a dependency brought, and <code>_user_created</code> is <code>true</code> for a name neither the template nor the registry has. Example: <code>[{ "name": "util-diagram", "enabled": true, "_edited": false, "_user_created": false }, { "name": "util-weather", "enabled": true, "_edited": true, "_user_created": false }]</code>. To enable or disable several skills in one shot, use <strong><code>POST /UserAgent/SkillsApply</code></strong>. Even when you only want to flip a single skill, send it as a one-entry <code>skills</code> map. Connectors are not in this list: a connected connector is on (see <a href="/docs/agent-connectors">Agent Connectors</a>). The endpoint:</p>
 <ol>
 <li>Triggers exactly <strong>one agent restart</strong> after the new skill set lands.</li>
 <li>Uses <strong>idempotency</strong>: concurrent calls or client retries can't apply the change twice.</li>

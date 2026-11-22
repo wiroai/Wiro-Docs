@@ -20,7 +20,7 @@ Configure agent behavior with editable preferences, scheduled automation tasks, 
 | Preview a skill set or a plan change without saving it | [`POST /UserAgent/PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) |
 | Connect a service the agent works with (Shopify, Google Ads, Serper, ...) | [Agent Connectors](/docs/agent-connectors) |
 
-> Read responses from `POST /UserAgent/Detail` expose the composed `customskills[]` array (preference skills + non-cron user-created skills), the `scheduledskills[]` array (scheduled tasks), and the `skills[]` array as top-level fields on the useragent object. `skills[]` is an **object array**: each entry is `{ name, enabled, _edited?, _user_created? }` (e.g. `[{ "name": "util-weather", "enabled": true }, { "name": "util-diagram", "enabled": true }]`).
+> Read responses from `POST /UserAgent/Detail` expose the composed `customskills[]` array (preference skills + non-cron user-created skills), the `scheduledskills[]` array (scheduled tasks), and the `skills[]` array as top-level fields on the useragent object. `skills[]` is an **object array**: it holds only the Skills that are on, each `{ name, enabled: true, _edited, _user_created }` (e.g. `[{ "name": "util-diagram", "enabled": true, "_edited": false, "_user_created": false }, { "name": "util-weather", "enabled": true, "_edited": true, "_user_created": false }]`).
 
 ## Skill Registry vs Custom Skills
 
@@ -295,9 +295,8 @@ Once you've deployed a useragent, its current custom skills live under `customsk
     }
   ],
   "skills": [
-    { "name": "util-social-posting-common", "enabled": true },
-    { "name": "util-weather", "enabled": false },
-    { "name": "util-chat-markdown-reporting", "enabled": true }
+    { "name": "util-chat-markdown-reporting", "enabled": true, "_edited": false, "_user_created": false },
+    { "name": "util-social-posting-common", "enabled": true, "_edited": false, "_user_created": false }
   ]
 }
 ```
@@ -570,7 +569,7 @@ The response carries the post-revert state (`current_value`, `current_interval`,
 
 ## Turning Skills On and Off
 
-The top-level `skills[]` array on `UserAgent/Detail` lists every Skill on the instance as an **object array**: `[{ name, enabled, _edited?, _user_created? }, ...]`. `enabled: false` entries are still returned (so a UI can show disabled rows); filter on `enabled: true` to get only the active set. Example: `[{ "name": "util-weather", "enabled": true }, { "name": "util-diagram", "enabled": false }]`. To enable or disable several skills in one shot, use **`POST /UserAgent/SkillsApply`**. Even when you only want to flip a single skill, send it as a one-entry `skills` map. Connectors are not in this list: a connected connector is on (see [Agent Connectors](/docs/agent-connectors)). The endpoint:
+The top-level `skills[]` array on `UserAgent/Detail` lists the Skills that are on, as an **object array** sorted by name: `[{ name, enabled: true, _edited, _user_created }, ...]`. A Skill that is off is not in it, so `enabled` is always `true`; the full catalog of Skills is on [`POST /Skills/List`](#post-skillslist). `_edited` is `true` for a Skill you turned on yourself rather than one the template or a dependency brought, and `_user_created` is `true` for a name neither the template nor the registry has. Example: `[{ "name": "util-diagram", "enabled": true, "_edited": false, "_user_created": false }, { "name": "util-weather", "enabled": true, "_edited": true, "_user_created": false }]`. To enable or disable several skills in one shot, use **`POST /UserAgent/SkillsApply`**. Even when you only want to flip a single skill, send it as a one-entry `skills` map. Connectors are not in this list: a connected connector is on (see [Agent Connectors](/docs/agent-connectors)). The endpoint:
 
 1. Triggers exactly **one agent restart** after the new skill set lands.
 2. Uses **idempotency**: concurrent calls or client retries can't apply the change twice.
