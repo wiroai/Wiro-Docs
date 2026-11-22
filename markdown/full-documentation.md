@@ -9154,7 +9154,7 @@ Agents use the same authentication as the rest of the Wiro API. Include your key
 | API Key | `x-api-key: YOUR_API_KEY` |
 | Bearer Token | `Authorization: Bearer YOUR_API_KEY` |
 
-**Public endpoints**: `Agent/List`, `Agent/Detail`, `Skills/List`, `Skills/Detail`, `Skills/Capabilities`, `Credentials/List`, and `Credentials/Detail` are catalog endpoints and do not require authentication. You can browse available agents, the skill registry, and the credential schema without an API key.
+**Public endpoints**: `Agent/List`, `Agent/Detail`, `Skills/List`, `Skills/Detail`, `Skills/CredentialSchema`, `Skills/Capabilities`, `Credentials/List`, `Credentials/Detail`, `AgentConnector/List`, and `AgentConnector/Detail` are catalog endpoints and do not require authentication. You can browse available agents, the skill registry, the credential schema, and the connector catalog without an API key.
 
 **Authenticated endpoints**: All `UserAgent/*` endpoints require a valid API key.
 
