@@ -37674,7 +37674,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                     <h3>Pattern 1: Instance Per Customer</h3>
                     <p>Most agents interact with external services: posting to social media, managing ad campaigns, sending emails. These require OAuth tokens or API keys that belong to the end user. Deploy a <strong>separate agent instance</strong> for each of your customers.</p>
                     <p><strong>Why:</strong> Each customer connects their own accounts. Credentials are bound to the instance, isolated from other customers. Each instance also has its own computer and browser, so the <a href="/docs/agent-overview#screen-and-take-control" class="docs-link">Screen</a> of a customer's agent shows only that customer's work.</p>
-                    <p><strong>How:</strong> Call <code>POST /UserAgent/Deploy</code> once per customer, then use the <a href="/docs/agent-credentials">OAuth flow</a> to connect their accounts.</p>
+                    <p><strong>How:</strong> Call <code>POST /UserAgent/Deploy</code> once per customer, then connect their accounts with <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>ConnectorConnect</code></a> on <a href="/docs/agent-connectors">Agent Connectors</a>.</p>
 
                     <h4>Real-World Examples</h4>
                     <div class="docs-param-table">
@@ -37961,7 +37961,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
 
                   <section id="available-agents">
                     <h2>Available Agents</h2>
-                    <p>Wiro provides pre-built agent templates you can deploy immediately. Each agent specializes in a specific domain and comes with the relevant skills and connectors pre-configured.</p>
+                    <p>Wiro provides pre-built agent templates you can deploy immediately. Each agent specializes in a specific domain and comes with the relevant skills. It suggests the connectors it works with (<code>suggestedconnectors</code> on <a href="/docs/agent-overview#post-agentdetail"><code>Agent/Detail</code></a>), and you connect them after you deploy it.</p>
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
                         <table>

@@ -28,7 +28,7 @@ Most agents interact with external services: posting to social media, managing a
 
 **Why:** Each customer connects their own accounts. Credentials are bound to the instance, isolated from other customers. Each instance also has its own computer and browser, so the [Screen](/docs/agent-overview#screen-and-take-control) of a customer's agent shows only that customer's work.
 
-**How:** Call `POST /UserAgent/Deploy` once per customer, then use the [OAuth flow](/docs/agent-credentials) to connect their accounts.
+**How:** Call `POST /UserAgent/Deploy` once per customer, then connect their accounts with [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect) on [Agent Connectors](/docs/agent-connectors).
 
 #### Real-World Examples
 
@@ -218,7 +218,7 @@ Each agent is an independent instance with its own credentials. Your backend pas
 
 ## Available Agents
 
-Wiro provides pre-built agent templates you can deploy immediately. Each agent specializes in a specific domain and comes with the relevant skills and connectors pre-configured.
+Wiro provides pre-built agent templates you can deploy immediately. Each agent specializes in a specific domain and comes with the relevant skills. It suggests the connectors it works with (`suggestedconnectors` on [`Agent/Detail`](/docs/agent-overview#post-agentdetail)), and you connect them after you deploy it.
 
 | Agent | What It Does | Connectors |
 |-------|-------------|-------------|
