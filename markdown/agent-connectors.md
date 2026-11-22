@@ -7,7 +7,7 @@ Connect a Wiro agent to the services it works with: browse the connector catalog
 A connector gives an agent the tools of one outside service: Google search through Serper, a Shopify store, Google Ads, HubSpot, a Facebook Page. Each connector is one row of Wiro's connector catalog, named by its `slug`, such as `serper`, `shopify` or `facebook-pages`. You connect a connector to one agent at a time, in one of three ways. The first two always take your customer's own credentials:
 
 - **Fields.** The values the vendor issues, such as an API key, an app password or a store address, sent once with `ConnectorConnect`. Wiro stores them encrypted. Where the connector has a check, Wiro first makes one read call to the vendor with them and refuses values the vendor refuses.
-- **Sign-in.** The vendor's own consent screen in a browser. `ConnectorConnect` answers with an `authorizeUrl`; your customer opens it, agrees, and the vendor sends the browser back through Wiro to your page. Vendors whose sign-in needs an app of your own (the Google and Meta families, LinkedIn, TikTok, X, Reddit, Pinterest, Tumblr, Threads, HubSpot, Mailchimp, Shopify) take that app's client id and secret with the connect.
+- **Sign-in.** The vendor's own consent screen in a browser. `ConnectorConnect` answers with an `authorizeUrl`; your customer opens it, agrees, and the vendor sends the browser back through Wiro to your page. Vendors whose sign-in needs an app of your own (Blogger, Gmail, Google Ads, Google Analytics 4, Google Business Profile, Google Merchant Center, Google Search Console, YouTube, Facebook Pages, Instagram, Meta Ads, Threads, LinkedIn, TikTok, X, Reddit, Pinterest, Tumblr, HubSpot, Mailchimp and Shopify) take that app's client id and secret with the connect. Google Calendar, Google Drive and Google Play Console don't sign in: they take a service account's JSON as a field.
 - **A Wiro project.** Wiro AI Models (`wiro`), Wiro's own model and task tools, takes one of your Wiro projects instead of values: see [Wiro AI Models](#the-wiro-connector).
 
 Once a connector is connected, the agent restarts and has the connector's tools, named `<slug>__<tool>`. Values and tokens are never sent back in an answer and never reach the agent's chat.
@@ -61,7 +61,7 @@ Lists every available connector, in display order (`sortorder`, then title), at 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `search` | string | No | Matches the slug, title or description, ignoring case. At most 100 characters. |
-| `category` | string | No | One category, such as `social`, `ads`, `commerce`, `analytics`, `crm`, `content`, `email` or `data`. |
+| `category` | string | No | One category: `ads`, `ai`, `analytics`, `commerce`, `content`, `crm`, `data`, `email`, `marketing`, `messaging`, `productivity`, `social` or `stores`. |
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/AgentConnector/List" \
@@ -118,13 +118,16 @@ curl -X POST "https://api.wiro.ai/v1/AgentConnector/List" \
         }
       ],
       "accountpickers": [
-        { "key": "pages", "label": "Facebook Pages", "description": "", "multiple": true }
+        { "key": "pages", "label": "Facebook Pages", "description": "The Pages the agent may post to, comment on and read insights of.", "multiple": true }
       ],
-      "scopes": ["pages_show_list", "pages_manage_posts", "pages_read_engagement"],
+      "scopes": [
+        "pages_show_list", "pages_manage_posts", "publish_video", "pages_manage_engagement", "pages_read_engagement",
+        "pages_read_user_content", "pages_manage_metadata", "pages_messaging", "read_insights"
+      ],
       "modes": ["oauth", "key"],
       "wiroapp": false,
       "tools": [
-        { "name": "list_pages", "title": "List Pages", "description": "Lists the Facebook Pages this connection can reach.", "readonly": true, "destructive": false }
+        { "name": "list_pages", "title": "List Facebook Pages", "description": "Lists the Facebook Pages this connection can use ...", "readonly": true, "destructive": false }
       ],
       "docs": {
         "overview": "Publish posts, photos and videos to your Facebook Pages and read their engagement.",
@@ -137,7 +140,7 @@ curl -X POST "https://api.wiro.ai/v1/AgentConnector/List" \
 }
 ```
 
-The example is shortened: real help texts are longer, and `tools` lists every tool.
+The example is shortened: real help texts and tool descriptions are longer, and `tools` lists every tool.
 
 | Field | Description |
 |-------|-------------|
@@ -152,7 +155,7 @@ The example is shortened: real help texts are longer, and `tools` lists every to
 | `scopes` | The OAuth scopes the sign-in asks for (`oauth` and `provider-oauth` rows). |
 | `modes` | `provider-oauth` rows only: `["oauth"]` (sign-in only) or `["oauth", "key"]` (a sign-in, or a key or token instead). Empty for other rows. |
 | `wiroapp` | `true` when the vendor can also be signed in with Wiro's own app, which only Wiro's own panel uses. With your API key you always send your own app's keys. |
-| `tools` | The tools the agent gets, each `{ name, title, description, readonly, destructive }`. `name` is the tool's name before the slug prefix. A connector whose server lists its tools only after a sign-in can show none until its first connection. |
+| `tools` | The tools the agent gets, each `{ name, title, description, readonly, destructive }`. `name` is the tool's name before the slug prefix. A connector on a vendor's own MCP server (TikTok Ads, DataForSEO, lemlist, GitBook and HackMD) lists no tools until an agent first connects it, by sign-in or key: its `tools` is `[]` until then. |
 | `docs` | Optional public page copy: `{ overview, setup, revoke, limits }` (`setup` is a list of steps), or `null`. |
 | `sortorder`, `updatedat` | Display order and the row's last change (Unix seconds). |
 
@@ -218,6 +221,8 @@ curl -X POST "https://api.wiro.ai/v1/AgentConnector/Detail" \
 }
 ```
 
+The example is shortened: the help text and the tool's description are longer, `tools` lists all 13 Serper tools, and `docs` also has `revoke`.
+
 A slug that is not in the catalog, or a connector that is no longer offered, answers `result: false` with `Connector not found.`
 
 ### Connect card fields
@@ -235,7 +240,7 @@ Build your Connect form from `credentialfields`, in their order:
 | `options` | `select` only: `[{ value, label }]`. Send the `value`. |
 | `placeholder`, `pattern`, `maxlength` | Optional input hints. Wiro checks `pattern` (a regular expression) and `maxlength` too. A value is at most 65,536 characters. A `headers` connector's values are at most 4,096 characters each, on one line. |
 | `serveronly` | `true` for your own OAuth app's keys (client id and secret): Wiro uses them for the sign-in and its token refreshes only, and they never reach the agent. |
-| `mode` | `provider-oauth` rows only: `oauth` (a key of your own app, sent with a sign-in) or `key` (the key way in, such as a Meta System User token). A field without `mode` belongs to both ways. Show the two ways as two choices on the card. |
+| `mode` | `provider-oauth` rows only: `oauth` (a field of the sign-in way: your own app's keys, or another value the sign-in needs, such as Reddit's Developer Profile Username) or `key` (the key way in, such as a Meta System User token). A field without `mode` belongs to both ways. Show the two ways as two choices on the card. |
 | `source` | `wiro_project` on the project field of Wiro AI Models (`wiro`): show a picker of your Wiro projects instead of an input, and send the chosen project's id as `wiroprojectguid`, never in `values`. See [Wiro AI Models](#the-wiro-connector). |
 
 ## Connecting
@@ -248,7 +253,7 @@ Every way goes through one call, `POST /UserAgent/ConnectorConnect`. The connect
 | `headers` with a `source: "wiro_project"` field (Wiro AI Models, `wiro`) | `wiroprojectguid`, the id of one of your projects (a request made with a project API key may leave it out: see [Wiro AI Models](#the-wiro-connector)) | `connected` |
 | `none` | nothing but `useragentguid` and `slug` | `connected` |
 | `provider-oauth` with `mode: "key"` | `values` of the `key` way | `connected` |
-| `provider-oauth` (`mode` `oauth`, the default) | your app's keys in `values`, and `redirecturl` | `pending` and `authorizeUrl` |
+| `provider-oauth` (`mode` `oauth`, the default) | the sign-in's fields in `values` (no `mode` or `mode: "oauth"`: your app's keys and any other, such as Shopify's Shop Domain or LinkedIn's Organization ID), and `redirecturl` | `pending` and `authorizeUrl` |
 | `oauth` | `redirecturl` | `pending` and `authorizeUrl` |
 
 ### **POST** /UserAgent/ConnectorConnect
@@ -332,7 +337,59 @@ Show that sentence next to the form: it names the vendor only.
 
 **Changing a value later.** Send only the fields that change: the others keep their saved values. To replace a key, send the new one; to remove an optional value, send `""`.
 
-A `headers` connector (one of the vendors' own MCP servers that takes an API key, such as Lemlist or DataForSEO) connects the same way: its `credentialfields` are the values it takes, each named by its `name`, such as `apikey`. Its values are at most 4,096 characters each, on one line, and its refusals name the value by that `name` (`apikey is required.`). It has no credential check: the vendor's server answers the agent's first call.
+A `headers` connector (a vendor's own MCP server that takes a key or login: lemlist (`apikey`), DataForSEO (`login`, `password`), GitBook and HackMD (`token`)) connects the same way: its `credentialfields` are the values it takes, each named by its `name`. Their labels are made from those names (`Apikey`, `Login`, `Password`, `Token`), and a secret value has `format: "password"`. Its values are at most 4,096 characters each, on one line, and its refusals name the value by that `name` (`apikey is required.`). It has no credential check: the vendor's server answers the agent's first call. DataForSEO's fields on [Detail](#post-agentconnectordetail):
+
+```json
+"credentialfields": [
+  { "name": "login", "label": "Login", "description": "Keyword, search and app store data from your own [DataForSEO](https://dataforseo.com) account. 1. Sign in to [DataForSEO](https://app.dataforseo.com) and open **API Access** ...", "required": true, "secret": true, "format": "password" },
+  { "name": "password", "label": "Password", "description": "The **API password** is not the password you sign in with: DataForSEO generates a separate one for the API. ...", "required": true, "secret": true, "format": "password" }
+]
+```
+
+Send both in `values`:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "slug": "dataforseo",
+    "values": { "login": "YOUR_DATAFORSEO_API_LOGIN", "password": "YOUR_DATAFORSEO_API_PASSWORD" }
+  }'
+```
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "status": "connected",
+  "applied": 1,
+  "restart": "scheduled",
+  "useragentconnectors": [
+    {
+      "slug": "dataforseo",
+      "title": "DataForSEO",
+      "iconurl": "https://wiro.ai/images/icons/skills/dataforseo.svg",
+      "category": "data",
+      "authtype": "headers",
+      "transport": "streamable-http",
+      "authmode": null,
+      "catalogstatus": "active",
+      "status": "connected",
+      "connectedat": 1795390000,
+      "updatedat": 1795390000,
+      "tokenexpiresat": null,
+      "refreshtokenexpiresat": null,
+      "scope": null,
+      "accounts": {},
+      "wiroprojectid": null,
+      "savedvariables": ["login", "password"],
+      "lasterror": null
+    }
+  ]
+}
+```
 
 ### Connect with a key instead of a sign-in
 
@@ -577,7 +634,7 @@ A connector that was never connected, or was disconnected, has no row.
 
 ## Account Pickers
 
-Some connectors act on accounts inside the vendor: Facebook Pages, Meta ad accounts, Google Ads customers, TikTok Ads advertisers, a GA4 property, Search Console sites, Business Profile locations, YouTube channels, apps in App Store Connect and Google Play. Their catalog row lists `accountpickers`. After the connection is `connected`, list the candidates, let your customer choose, and save the choice. The connector's tools refuse any account outside the selection, and until something is picked they have no account to act on.
+Some connectors act on accounts inside the vendor: Adjust (apps), App Store Connect (apps), Blogger (blogs), Facebook Pages (Pages), Google Ads (accounts), Google Analytics 4 (properties), Google Business Profile (accounts and locations), Google Drive (folders), Google Merchant Center (accounts), Google Play Console (apps), Google Search Console (properties), Instagram (accounts), Meta Ads (ad accounts, and the Facebook Pages its ads use), Roasit (apps), TikTok Ads (advertisers), Tumblr (blogs) and YouTube (channels). Their catalog row lists `accountpickers`: build the pickers from that field, not from this list. After the connection is `connected`, list the candidates, let your customer choose, and save the choice. The connector's tools refuse any account outside the selection, and until something is picked they have no account to act on.
 
 Connectors of both kinds can have account pickers. Wiro lists the candidates with one of the connector's read tools and the connection's own credentials. For a connector whose tools run on the vendor's own MCP server, such as TikTok Ads, Wiro calls that tool on the vendor's server with the connection's sign-in: see [TikTok Ads: sign in, then pick advertisers](#tiktok-ads-sign-in-then-pick-advertisers). A connector with no pickers has an empty `accountpickers`.
 
@@ -610,7 +667,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorAccounts" \
     {
       "key": "pages",
       "label": "Facebook Pages",
-      "description": "",
+      "description": "The Pages the agent may post to, comment on and read insights of.",
       "multiple": true,
       "candidates": [
         { "id": "123456789012345", "name": "Acme Coffee" },

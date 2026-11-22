@@ -27865,7 +27865,7 @@ echo json_encode(['ok' =&gt; true]);
 <p>A connector gives an agent the tools of one outside service: Google search through Serper, a Shopify store, Google Ads, HubSpot, a Facebook Page. Each connector is one row of Wiro's connector catalog, named by its <code>slug</code>, such as <code>serper</code>, <code>shopify</code> or <code>facebook-pages</code>. You connect a connector to one agent at a time, in one of three ways. The first two always take your customer's own credentials:</p>
 <ul>
 <li><strong>Fields.</strong> The values the vendor issues, such as an API key, an app password or a store address, sent once with <code>ConnectorConnect</code>. Wiro stores them encrypted. Where the connector has a check, Wiro first makes one read call to the vendor with them and refuses values the vendor refuses.</li>
-<li><strong>Sign-in.</strong> The vendor's own consent screen in a browser. <code>ConnectorConnect</code> answers with an <code>authorizeUrl</code>; your customer opens it, agrees, and the vendor sends the browser back through Wiro to your page. Vendors whose sign-in needs an app of your own (the Google and Meta families, LinkedIn, TikTok, X, Reddit, Pinterest, Tumblr, Threads, HubSpot, Mailchimp, Shopify) take that app's client id and secret with the connect.</li>
+<li><strong>Sign-in.</strong> The vendor's own consent screen in a browser. <code>ConnectorConnect</code> answers with an <code>authorizeUrl</code>; your customer opens it, agrees, and the vendor sends the browser back through Wiro to your page. Vendors whose sign-in needs an app of your own (Blogger, Gmail, Google Ads, Google Analytics 4, Google Business Profile, Google Merchant Center, Google Search Console, YouTube, Facebook Pages, Instagram, Meta Ads, Threads, LinkedIn, TikTok, X, Reddit, Pinterest, Tumblr, HubSpot, Mailchimp and Shopify) take that app's client id and secret with the connect. Google Calendar, Google Drive and Google Play Console don't sign in: they take a service account's JSON as a field.</li>
 <li><strong>A Wiro project.</strong> Wiro AI Models (<code>wiro</code>), Wiro's own model and task tools, takes one of your Wiro projects instead of values: see <a href="#the-wiro-connector">Wiro AI Models</a>.</li>
 </ul>
 <p>Once a connector is connected, the agent restarts and has the connector's tools, named <code>&lt;slug&gt;__&lt;tool&gt;</code>. Values and tokens are never sent back in an answer and never reach the agent's chat.</p>
@@ -28018,7 +28018,7 @@ echo json_encode(['ok' =&gt; true]);
 <td><code>category</code></td>
 <td>string</td>
 <td>No</td>
-<td>One category, such as <code>social</code>, <code>ads</code>, <code>commerce</code>, <code>analytics</code>, <code>crm</code>, <code>content</code>, <code>email</code> or <code>data</code>.</td>
+<td>One category: <code>ads</code>, <code>ai</code>, <code>analytics</code>, <code>commerce</code>, <code>content</code>, <code>crm</code>, <code>data</code>, <code>email</code>, <code>marketing</code>, <code>messaging</code>, <code>productivity</code>, <code>social</code> or <code>stores</code>.</td>
 </tr>
 </tbody>
 </table>
@@ -28075,13 +28075,16 @@ echo json_encode(['ok' =&gt; true]);
         }
       ],
       &quot;accountpickers&quot;: [
-        { &quot;key&quot;: &quot;pages&quot;, &quot;label&quot;: &quot;Facebook Pages&quot;, &quot;description&quot;: &quot;&quot;, &quot;multiple&quot;: true }
+        { &quot;key&quot;: &quot;pages&quot;, &quot;label&quot;: &quot;Facebook Pages&quot;, &quot;description&quot;: &quot;The Pages the agent may post to, comment on and read insights of.&quot;, &quot;multiple&quot;: true }
       ],
-      &quot;scopes&quot;: [&quot;pages_show_list&quot;, &quot;pages_manage_posts&quot;, &quot;pages_read_engagement&quot;],
+      &quot;scopes&quot;: [
+        &quot;pages_show_list&quot;, &quot;pages_manage_posts&quot;, &quot;publish_video&quot;, &quot;pages_manage_engagement&quot;, &quot;pages_read_engagement&quot;,
+        &quot;pages_read_user_content&quot;, &quot;pages_manage_metadata&quot;, &quot;pages_messaging&quot;, &quot;read_insights&quot;
+      ],
       &quot;modes&quot;: [&quot;oauth&quot;, &quot;key&quot;],
       &quot;wiroapp&quot;: false,
       &quot;tools&quot;: [
-        { &quot;name&quot;: &quot;list_pages&quot;, &quot;title&quot;: &quot;List Pages&quot;, &quot;description&quot;: &quot;Lists the Facebook Pages this connection can reach.&quot;, &quot;readonly&quot;: true, &quot;destructive&quot;: false }
+        { &quot;name&quot;: &quot;list_pages&quot;, &quot;title&quot;: &quot;List Facebook Pages&quot;, &quot;description&quot;: &quot;Lists the Facebook Pages this connection can use ...&quot;, &quot;readonly&quot;: true, &quot;destructive&quot;: false }
       ],
       &quot;docs&quot;: {
         &quot;overview&quot;: &quot;Publish posts, photos and videos to your Facebook Pages and read their engagement.&quot;,
@@ -28093,7 +28096,7 @@ echo json_encode(['ok' =&gt; true]);
   ]
 }
 </code></pre>
-<p>The example is shortened: real help texts are longer, and <code>tools</code> lists every tool.</p>
+<p>The example is shortened: real help texts and tool descriptions are longer, and <code>tools</code> lists every tool.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -28150,7 +28153,7 @@ echo json_encode(['ok' =&gt; true]);
 </tr>
 <tr>
 <td><code>tools</code></td>
-<td>The tools the agent gets, each <code>{ name, title, description, readonly, destructive }</code>. <code>name</code> is the tool's name before the slug prefix. A connector whose server lists its tools only after a sign-in can show none until its first connection.</td>
+<td>The tools the agent gets, each <code>{ name, title, description, readonly, destructive }</code>. <code>name</code> is the tool's name before the slug prefix. A connector on a vendor's own MCP server (TikTok Ads, DataForSEO, lemlist, GitBook and HackMD) lists no tools until an agent first connects it, by sign-in or key: its <code>tools</code> is <code>[]</code> until then.</td>
 </tr>
 <tr>
 <td><code>docs</code></td>
@@ -28237,6 +28240,7 @@ echo json_encode(['ok' =&gt; true]);
   ]
 }
 </code></pre>
+<p>The example is shortened: the help text and the tool's description are longer, <code>tools</code> lists all 13 Serper tools, and <code>docs</code> also has <code>revoke</code>.</p>
 <p>A slug that is not in the catalog, or a connector that is no longer offered, answers <code>result: false</code> with <code>Connector not found.</code></p>
 <h3 id="connect-card-fields">Connect card fields</h3>
 <p>Build your Connect form from <code>credentialfields</code>, in their order:</p>
@@ -28288,7 +28292,7 @@ echo json_encode(['ok' =&gt; true]);
 </tr>
 <tr>
 <td><code>mode</code></td>
-<td><code>provider-oauth</code> rows only: <code>oauth</code> (a key of your own app, sent with a sign-in) or <code>key</code> (the key way in, such as a Meta System User token). A field without <code>mode</code> belongs to both ways. Show the two ways as two choices on the card.</td>
+<td><code>provider-oauth</code> rows only: <code>oauth</code> (a field of the sign-in way: your own app's keys, or another value the sign-in needs, such as Reddit's Developer Profile Username) or <code>key</code> (the key way in, such as a Meta System User token). A field without <code>mode</code> belongs to both ways. Show the two ways as two choices on the card.</td>
 </tr>
 <tr>
 <td><code>source</code></td>
@@ -28333,7 +28337,7 @@ echo json_encode(['ok' =&gt; true]);
 </tr>
 <tr>
 <td><code>provider-oauth</code> (<code>mode</code> <code>oauth</code>, the default)</td>
-<td>your app's keys in <code>values</code>, and <code>redirecturl</code></td>
+<td>the sign-in's fields in <code>values</code> (no <code>mode</code> or <code>mode: "oauth"</code>: your app's keys and any other, such as Shopify's Shop Domain or LinkedIn's Organization ID), and <code>redirecturl</code></td>
 <td><code>pending</code> and <code>authorizeUrl</code></td>
 </tr>
 <tr>
@@ -28484,7 +28488,52 @@ echo json_encode(['ok' =&gt; true]);
 </code></pre>
 <p>Show that sentence next to the form: it names the vendor only.</p>
 <p><strong>Changing a value later.</strong> Send only the fields that change: the others keep their saved values. To replace a key, send the new one; to remove an optional value, send <code>""</code>.</p>
-<p>A <code>headers</code> connector (one of the vendors' own MCP servers that takes an API key, such as Lemlist or DataForSEO) connects the same way: its <code>credentialfields</code> are the values it takes, each named by its <code>name</code>, such as <code>apikey</code>. Its values are at most 4,096 characters each, on one line, and its refusals name the value by that <code>name</code> (<code>apikey is required.</code>). It has no credential check: the vendor's server answers the agent's first call.</p>
+<p>A <code>headers</code> connector (a vendor's own MCP server that takes a key or login: lemlist (<code>apikey</code>), DataForSEO (<code>login</code>, <code>password</code>), GitBook and HackMD (<code>token</code>)) connects the same way: its <code>credentialfields</code> are the values it takes, each named by its <code>name</code>. Their labels are made from those names (<code>Apikey</code>, <code>Login</code>, <code>Password</code>, <code>Token</code>), and a secret value has <code>format: "password"</code>. Its values are at most 4,096 characters each, on one line, and its refusals name the value by that <code>name</code> (<code>apikey is required.</code>). It has no credential check: the vendor's server answers the agent's first call. DataForSEO's fields on <a href="#post-agentconnectordetail">Detail</a>:</p>
+<pre><code class="language-json">&quot;credentialfields&quot;: [
+  { &quot;name&quot;: &quot;login&quot;, &quot;label&quot;: &quot;Login&quot;, &quot;description&quot;: &quot;Keyword, search and app store data from your own [DataForSEO](https://dataforseo.com) account. 1. Sign in to [DataForSEO](https://app.dataforseo.com) and open **API Access** ...&quot;, &quot;required&quot;: true, &quot;secret&quot;: true, &quot;format&quot;: &quot;password&quot; },
+  { &quot;name&quot;: &quot;password&quot;, &quot;label&quot;: &quot;Password&quot;, &quot;description&quot;: &quot;The **API password** is not the password you sign in with: DataForSEO generates a separate one for the API. ...&quot;, &quot;required&quot;: true, &quot;secret&quot;: true, &quot;format&quot;: &quot;password&quot; }
+]
+</code></pre>
+<p>Send both in <code>values</code>:</p>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;,
+    &quot;slug&quot;: &quot;dataforseo&quot;,
+    &quot;values&quot;: { &quot;login&quot;: &quot;YOUR_DATAFORSEO_API_LOGIN&quot;, &quot;password&quot;: &quot;YOUR_DATAFORSEO_API_PASSWORD&quot; }
+  }'
+</code></pre>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;status&quot;: &quot;connected&quot;,
+  &quot;applied&quot;: 1,
+  &quot;restart&quot;: &quot;scheduled&quot;,
+  &quot;useragentconnectors&quot;: [
+    {
+      &quot;slug&quot;: &quot;dataforseo&quot;,
+      &quot;title&quot;: &quot;DataForSEO&quot;,
+      &quot;iconurl&quot;: &quot;https://wiro.ai/images/icons/skills/dataforseo.svg&quot;,
+      &quot;category&quot;: &quot;data&quot;,
+      &quot;authtype&quot;: &quot;headers&quot;,
+      &quot;transport&quot;: &quot;streamable-http&quot;,
+      &quot;authmode&quot;: null,
+      &quot;catalogstatus&quot;: &quot;active&quot;,
+      &quot;status&quot;: &quot;connected&quot;,
+      &quot;connectedat&quot;: 1795390000,
+      &quot;updatedat&quot;: 1795390000,
+      &quot;tokenexpiresat&quot;: null,
+      &quot;refreshtokenexpiresat&quot;: null,
+      &quot;scope&quot;: null,
+      &quot;accounts&quot;: {},
+      &quot;wiroprojectid&quot;: null,
+      &quot;savedvariables&quot;: [&quot;login&quot;, &quot;password&quot;],
+      &quot;lasterror&quot;: null
+    }
+  ]
+}
+</code></pre>
 <h3 id="connect-with-a-key-instead-of-a-sign-in">Connect with a key instead of a sign-in</h3>
 <p>Some vendors that sign in with your own app also take a key or token (<code>modes: ["oauth", "key"]</code>): a Meta Business Manager System User token for Facebook Pages, Instagram and Meta Ads, a Mailchimp API key, a Shopify custom app's client credentials. Send <code>mode: "key"</code> and the fields of that way (<code>mode: "key"</code> or no <code>mode</code>):</p>
 <pre><code class="language-json">{
@@ -28839,7 +28888,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </div>
 <p>A connector that was never connected, or was disconnected, has no row.</p>
 <h2 id="account-pickers">Account Pickers</h2>
-<p>Some connectors act on accounts inside the vendor: Facebook Pages, Meta ad accounts, Google Ads customers, TikTok Ads advertisers, a GA4 property, Search Console sites, Business Profile locations, YouTube channels, apps in App Store Connect and Google Play. Their catalog row lists <code>accountpickers</code>. After the connection is <code>connected</code>, list the candidates, let your customer choose, and save the choice. The connector's tools refuse any account outside the selection, and until something is picked they have no account to act on.</p>
+<p>Some connectors act on accounts inside the vendor: Adjust (apps), App Store Connect (apps), Blogger (blogs), Facebook Pages (Pages), Google Ads (accounts), Google Analytics 4 (properties), Google Business Profile (accounts and locations), Google Drive (folders), Google Merchant Center (accounts), Google Play Console (apps), Google Search Console (properties), Instagram (accounts), Meta Ads (ad accounts, and the Facebook Pages its ads use), Roasit (apps), TikTok Ads (advertisers), Tumblr (blogs) and YouTube (channels). Their catalog row lists <code>accountpickers</code>: build the pickers from that field, not from this list. After the connection is <code>connected</code>, list the candidates, let your customer choose, and save the choice. The connector's tools refuse any account outside the selection, and until something is picked they have no account to act on.</p>
 <p>Connectors of both kinds can have account pickers. Wiro lists the candidates with one of the connector's read tools and the connection's own credentials. For a connector whose tools run on the vendor's own MCP server, such as TikTok Ads, Wiro calls that tool on the vendor's server with the connection's sign-in: see <a href="#tiktok-ads-sign-in-then-pick-advertisers">TikTok Ads: sign in, then pick advertisers</a>. A connector with no pickers has an empty <code>accountpickers</code>.</p>
 <h3 id="post-useragentconnectoraccounts"><strong>POST</strong> /UserAgent/ConnectorAccounts</h3>
 <p>Lists each picker's candidates now, from the vendor, with the connection's own credentials (a sign-in due for a refresh is refreshed first), and the current selection.</p>
@@ -28887,7 +28936,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
     {
       &quot;key&quot;: &quot;pages&quot;,
       &quot;label&quot;: &quot;Facebook Pages&quot;,
-      &quot;description&quot;: &quot;&quot;,
+      &quot;description&quot;: &quot;The Pages the agent may post to, comment on and read insights of.&quot;,
       &quot;multiple&quot;: true,
       &quot;candidates&quot;: [
         { &quot;id&quot;: &quot;123456789012345&quot;, &quot;name&quot;: &quot;Acme Coffee&quot; },
