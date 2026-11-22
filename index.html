@@ -19838,7 +19838,7 @@ channel-enable endpoint or persisted switch.</p>
 <tr>
 <td><code>pricing.enabledSkills</code></td>
 <td><code>array&lt;string&gt;</code></td>
-<td>Final enabled skill set including transitive <code>depends_on</code> closure, as a flat array of skill names. The matching <code>useragent.skills</code> array on the next <code>Detail</code> call is an object array (<code>{name, enabled, _edited?, _user_created?}</code>); take <code>.name</code> from each entry to compare.</td>
+<td>Final enabled skill set including transitive <code>depends_on</code> closure, as a flat array of skill names. The matching <code>useragent.skills</code> array on the next <code>Detail</code> call is an object array (<code>{ name, enabled: true, _edited, _user_created }</code>, only the Skills that are on); take <code>.name</code> from each entry to compare.</td>
 </tr>
 <tr>
 <td><code>pricing.delta</code> / <code>deltaUsd</code></td>

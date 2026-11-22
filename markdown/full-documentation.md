@@ -12126,7 +12126,7 @@ When every entry in your `skills` map already matches the persisted state, the e
 | `tier` | `string` | The agent's plan (`"starter"`, `"pro"` or `"max"`), which a skill change never moves. |
 | `restartTriggered` | `boolean` | `true` when the call changed the skill set: a starting or running agent restarts to load it, and a stopped one loads it at its next start. `false` when nothing on the agent changed. |
 | `restartedAt` | `number\|null` | Unix seconds when the change was saved and the restart was asked for. `null` when `restartTriggered` is `false`. |
-| `pricing.enabledSkills` | `array<string>` | Final enabled skill set including transitive `depends_on` closure, as a flat array of skill names. The matching `useragent.skills` array on the next `Detail` call is an object array (`{name, enabled, _edited?, _user_created?}`); take `.name` from each entry to compare. |
+| `pricing.enabledSkills` | `array<string>` | Final enabled skill set including transitive `depends_on` closure, as a flat array of skill names. The matching `useragent.skills` array on the next `Detail` call is an object array (`{ name, enabled: true, _edited, _user_created }`, only the Skills that are on); take `.name` from each entry to compare. |
 | `pricing.delta` / `deltaUsd` | `number` | Always `0`: a skill change moves no money. The rest of `pricing` is kept for older clients and repeats the plan as it stands: its price in `previousPriceUsd` and `newPriceUsd`, and `periodEnd: null`; its credit counts are deprecated (see [Fields Kept for Older Clients](#fields-kept-for-older-clients)). `stripeProrationApplied` is always `false`, `prepaidWalletDelta` `null` and `usedCreditsUsd` `0`, in `pricing` and at the top level. |
 
 ##### Common error codes
