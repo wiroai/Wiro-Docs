@@ -719,8 +719,10 @@ go on with it, start a new session.
 
 **Studio** is Wiro's creative agent: it picks and runs models for you and
 charges your wallet after each reply (see [Studio](/docs/studio)). Your own
-agents run on a monthly plan that includes AI usage, then on your Wiro
-balance (see [Agent Overview](/docs/agent-overview)).
+agents run while their monthly plan is active. The plan includes AI usage, and
+past it the agent's usage is paid from your Wiro balance; an agent without an
+active plan does not run, whatever the balance holds (see
+[Agent Overview](/docs/agent-overview)).
 
 | Tool | What it does |
 |------|-------------|
