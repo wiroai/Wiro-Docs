@@ -5602,21 +5602,26 @@ Each limit caps one scope of the wallet's spending:
 | `account` | None | The whole wallet. In a team, the whole team's spending |
 | `member` | The member's `useruuid` from `/Team/Member/List` | One team member's spending in the team (team wallets only). A member's spending includes their dashboard runs in the team workspace and every run made with the API key of a team project they created |
 | `project` | The project's `id` from `/Project/List` | One API key: what is spent with that project's key |
-| `surface` | `web`, `api`, `mcp`, `llm-gateway`, `extension` or `agent` | One way in (see Surfaces below) |
+| `surface` | `web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, `studio`, `workflow-agent` or `workflow` | One way in (see Surfaces below) |
 | `agent` | The agent's `guid` (its `useragentguid`) | One deployed agent: what the agent itself spends, its own model runs and the credits its replies use (100 credits = $1). Its plan, upgrades and credit packs count toward the wallet's other limits, not this one |
 
 ### Surfaces
 
 | Surface | Label | Covers |
 |---------|-------|--------|
-| `web` | the dashboard | The Wiro dashboard, including Studio and the Workflow Agent used there |
-| `api` | the API | Calls with an API key, including [`/sync`](/docs/run-a-model#run-sync) and the [Wiro MCP package](/docs/mcp-self-hosted) when you run it yourself |
-| `mcp` | MCP | The hosted [Wiro MCP server](/docs/wiro-mcp-server) at `mcp.wiro.ai` |
+| `web` | the dashboard | The Wiro dashboard, and calls with a signed-in user's Bearer token |
+| `api` | the API | Calls with an API key, including [`/sync`](/docs/run-a-model#run-sync) and, for now, the [Wiro MCP package](/docs/mcp-self-hosted) when you run it yourself |
+| `mcp` | MCP | The hosted [Wiro MCP server](/docs/wiro-mcp-server) at `mcp.wiro.ai`, and the Wiro MCP package when it names itself (see [Surfaces](/docs/tasks#task-surfaces)) |
 | `llm-gateway` | the LLM gateway | The OpenAI and Anthropic compatible [LLM gateway](/docs/completions-api) at `llm.wiro.ai` |
 | `extension` | the browser extensions | Only the Wiro browser extensions |
 | `agent` | agents | Your deployed agents' own runs |
+| `studio` | Studio | [Studio](/docs/studio): the messages you send it and the models it runs for you |
+| `workflow-agent` | the Workflow Agent | The [Workflow Agent](/docs/workflow-agent): the messages you send it |
+| `workflow` | workflows | [Workflow](/docs/workflows) runs and resumes, and every step they run |
 
-Studio and Workflow Agent messages count on the surface they were sent from. Refusal messages and `/SpendLimit/Usage` name a surface by its label.
+When work fits more than one surface, the first match in this order decides: who does it (Studio, the Workflow Agent or a deployed agent), what it is (a workflow run and its steps, unless a deployed agent, Studio or the Workflow Agent started it), which client sends it (the LLM gateway, a browser extension or MCP), and last which credential it uses (an API key, else a signed-in session). So a message to Studio sent with an API key counts on `studio`, and a workflow run started with an API key or through MCP on `workflow`. Each task records the surface it counted on: see [Surfaces](/docs/tasks#task-surfaces). Refusal messages and `/SpendLimit/Usage` name a surface by its label.
+
+Studio, the Workflow Agent and workflows used to have no surface of their own. Studio and Workflow Agent work counted on `web`, or on `api` when it was sent with an API key, and a workflow run counted on the surface that started it. Limits that were already set were not changed, so a limit on `web` or `api` no longer covers this work: to cap it by surface, set a limit on `studio`, `workflow-agent` or `workflow`.
 
 ### Periods and Amounts
 
@@ -5628,7 +5633,7 @@ A limit's `period` is `month` (the default), which resets on the 1st of each mon
 
 Every charge to the wallet for usage counts: model runs, workflow runs, realtime sessions, Studio, the Workflow Agent, agent plans, upgrades and credit packs. Deposits are not spending.
 
-The models Studio runs for you are checked and counted like the runs you start yourself: against the account's or the team's limits, your member limit in a team, the limit of the API key you sent the message with and the limit of the surface you sent it from. What the chat of Studio and the Workflow Agent costs counts toward your limits too.
+The models Studio runs for you are checked and counted like the runs you start yourself: against the account's or the team's limits, your member limit in a team, the limit of the API key you sent the message with and the limit of the `studio` surface. What the chat of Studio and the Workflow Agent costs counts toward your limits too, on the `studio` and `workflow-agent` surfaces.
 
 ### When Limits Are Checked
 
@@ -5673,7 +5678,7 @@ When the price of the work is known before it starts, the message says what is l
 | A team's `account` limit | `This team's monthly spend limit` |
 | `member` | `Your monthly spend limit in this team` |
 | `project` | `This API key's monthly spend limit` |
-| `surface` | `The monthly spend limit for` and the surface's label, for example `The monthly spend limit for the LLM gateway` |
+| `surface` | `The monthly spend limit for` and the surface's label, for example `The monthly spend limit for the LLM gateway` or `The monthly spend limit for the Workflow Agent` |
 | `agent` | `This agent's monthly spend limit` |
 
 Nothing runs and nothing is charged. Retrying does not help until the limit resets or someone who manages it raises it. Through the [LLM gateway](/docs/completions-api#gateway-errors) the refusal is an HTTP `402` error with code `spend_limit_reached`, and the [MCP server](/docs/wiro-mcp-server) returns it as a tool error.
@@ -5799,7 +5804,7 @@ Adds a spend limit to the call's workspace, or changes the existing limit with t
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `scope` | string | Yes | `"account"`, `"member"`, `"project"`, `"surface"` or `"agent"`. See [Spend Limits](#how-spend-limits-work) |
-| `target` | string | For every scope but `account` | The member's `useruuid`, the project's `id`, the surface (`web`, `api`, `mcp`, `llm-gateway`, `extension` or `agent`) or the agent's guid. Leave it out for `account` |
+| `target` | string | For every scope but `account` | The member's `useruuid`, the project's `id`, the surface (`web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, `studio`, `workflow-agent` or `workflow`) or the agent's guid. Leave it out for `account` |
 | `period` | string | No | `"month"` or `"day"`. Default: `"month"` |
 | `amountusd` | number | Yes | The limit in USD, rounded to cents. Once rounded, it must be at least `0.01` |
 | `alertpct` | number | No | When the alert email goes out: `50`, `80` or `90` percent of the limit, or `null` for no alert email. Default: `80` |
@@ -5871,7 +5876,7 @@ Adds a spend limit to the call's workspace, or changes the existing limit with t
 | `scope must be one of account, member, project, surface, agent.` | `scope` is missing or not one of the five scopes |
 | `Member limits exist only in a team workspace.` | A `member` limit in a personal account |
 | `target is required for this scope.` | No `target` for a `member`, `project`, `surface` or `agent` limit |
-| `A surface is one of web, api, mcp, llm-gateway, extension, agent.` | A `surface` limit with another `target` |
+| `A surface is one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow.` | A `surface` limit with another `target` |
 | `target must be a project id.` | A `project` limit whose `target` is not a project id |
 | `period must be month or day.` | Another `period` |
 | `amountusd must be a positive number.` | `amountusd` is missing, zero or negative |
@@ -6001,12 +6006,15 @@ Returns what the call's workspace has spent this month or today, in total and by
     "totalusd": 248.7,
     "heldusd": 3.5,
     "surfaces": [
-      { "surface": "web", "label": "the dashboard", "spentusd": 40.1 },
+      { "surface": "web", "label": "the dashboard", "spentusd": 21.4 },
       { "surface": "api", "label": "the API", "spentusd": 168.2, "heldusd": 3.5 },
       { "surface": "mcp", "label": "MCP", "spentusd": 12.5 },
       { "surface": "llm-gateway", "label": "the LLM gateway", "spentusd": 7.9 },
       { "surface": "extension", "label": "the browser extensions", "spentusd": 0 },
-      { "surface": "agent", "label": "agents", "spentusd": 20 }
+      { "surface": "agent", "label": "agents", "spentusd": 20 },
+      { "surface": "studio", "label": "Studio", "spentusd": 14.5 },
+      { "surface": "workflow-agent", "label": "the Workflow Agent", "spentusd": 0.8 },
+      { "surface": "workflow", "label": "workflows", "spentusd": 3.4 }
     ],
     "members": [
       { "useruuid": "3f5a9c20-6d41-4b8e-a1c7-5e9d0f2b4c61", "label": "Jane Doe", "spentusd": 120.5 },
@@ -6029,7 +6037,7 @@ Returns what the call's workspace has spent this month or today, in total and by
 | `usage.periodstart`, `usage.resetsat` | Start and end of the period, in Unix seconds |
 | `usage.totalusd` | What the wallet has spent in the period, in USD |
 | `usage.heldusd` | What work in progress holds, in USD. Present only when it holds something (see [Work in Progress](#work-in-progress)) |
-| `usage.surfaces` | One row per surface, always in the order `web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, with its label |
+| `usage.surfaces` | One row per surface, always all nine in the order `web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, `studio`, `workflow-agent`, `workflow`, with its label |
 | `usage.members` | Spending per team member, with the member's name as `label`. Empty for a personal account |
 | `usage.projects` | Spending per API key, with the project's name as `label` |
 | `usage.agents` | Spending per deployed agent, with the agent's title as `label` |
@@ -6060,19 +6068,26 @@ Each rule covers one scope of the wallet's work, the same scopes as [spend limit
 | `account` | None | Everything the wallet runs. In a team, every run in the team |
 | `member` | The member's `useruuid` from `/Team/Member/List` | One team member's runs in the team (team wallets only): their dashboard runs in the team workspace and every run made with the API key of a team project they created |
 | `project` | The project's `id` from `/Project/List` | One API key: the runs made with that project's key |
-| `surface` | `web`, `api`, `mcp`, `llm-gateway`, `extension` or `agent` | One way in (see Surfaces below) |
+| `surface` | `web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, `studio`, `workflow-agent` or `workflow` | One way in (see Surfaces below) |
 | `agent` | The agent's `guid` (its `useragentguid`) | One deployed agent: the models it runs through Wiro, the chat models it answers with and its built-in voice |
 
 ### Surfaces
 
 | Surface | Covers |
 |---------|--------|
-| `web` | The Wiro dashboard, including Studio and the Workflow Agent used there |
-| `api` | Calls with an API key, including [`/sync`](/docs/run-a-model#run-sync) and the [Wiro MCP package](/docs/mcp-self-hosted) when you run it yourself |
-| `mcp` | The hosted [Wiro MCP server](/docs/wiro-mcp-server) at `mcp.wiro.ai` |
+| `web` | The Wiro dashboard, and calls with a signed-in user's Bearer token |
+| `api` | Calls with an API key, including [`/sync`](/docs/run-a-model#run-sync) and, for now, the [Wiro MCP package](/docs/mcp-self-hosted) when you run it yourself |
+| `mcp` | The hosted [Wiro MCP server](/docs/wiro-mcp-server) at `mcp.wiro.ai`, and the Wiro MCP package when it names itself (see [Surfaces](/docs/tasks#task-surfaces)) |
 | `llm-gateway` | The OpenAI and Anthropic compatible [LLM gateway](/docs/completions-api) at `llm.wiro.ai` |
 | `extension` | Only the Wiro browser extensions |
 | `agent` | Your deployed agents' own runs |
+| `studio` | [Studio](/docs/studio): the chat model of each message you send it, and the models it runs for you |
+| `workflow-agent` | The [Workflow Agent](/docs/workflow-agent): the chat model of each message you send it |
+| `workflow` | [Workflow](/docs/workflows) runs and resumes, and every step they run |
+
+A run counts on one surface, decided the same way as for [spend limits](/docs/spend-limits): the first match among who does it (Studio, the Workflow Agent or a deployed agent), what it is (a workflow run and its steps, unless a deployed agent, Studio or the Workflow Agent started it), which client sends it (the LLM gateway, a browser extension or MCP), and last which credential it uses (an API key, else a signed-in session). So a message to Studio sent with an API key counts on `studio`, and a workflow run started with an API key or through MCP on `workflow`. See [Surfaces](/docs/tasks#task-surfaces).
+
+Studio, the Workflow Agent and workflows used to have no surface of their own. Studio and Workflow Agent work counted on `web`, or on `api` when it was sent with an API key, and a workflow run counted on the surface that started it. Rules that were already set were not changed, so a rule on `web` or `api` no longer covers this work: to decide its models by surface, set a rule on `studio`, `workflow-agent` or `workflow`.
 
 ### Everything Else
 
@@ -6123,7 +6138,7 @@ Rules are checked before work starts:
 
 - Model runs: `/Run` and its `/sync` wait, realtime sessions, the [LLM gateway](/docs/completions-api), the [MCP server](/docs/wiro-mcp-server), the browser extensions and the dashboard
 - Workflow runs and resumes: every model step that will run must be allowed. Steps that will not run, such as the steps after a breakpoint, are not checked
-- Studio and the Workflow Agent: the models Studio runs for you, and the chat model of each message you send to Studio or the Workflow Agent, follow your own rules like the runs you start yourself: the account's or the team's rule, your member rule in a team, the rule of the API key you sent the message with and the rule of the surface you sent it from. A message whose chat model a rule blocks, the `model` it names or the default chat model when it names none, is refused with code `92` before anything runs. Chat models are LLM & Chat models: a rule that blocks LLM & Chat blocks them unless it allows the chat model by name, and a rule that lets only selected models run blocks them unless it allows LLM & Chat or the chat model. The Workflow Agent runs nothing but its chat model. [`/Studio/Status`](/docs/studio#post-studiostatus) and [`/StudioWorkflow/Status`](/docs/workflow-agent#post-studioworkflowstatus) list the chat models your rules block
+- Studio and the Workflow Agent: the models Studio runs for you, and the chat model of each message you send to Studio or the Workflow Agent, follow your own rules like the runs you start yourself: the account's or the team's rule, your member rule in a team, the rule of the API key you sent the message with and the rule of the `studio` surface, or of `workflow-agent` for a message to the Workflow Agent. A message whose chat model a rule blocks, the `model` it names or the default chat model when it names none, is refused with code `92` before anything runs. Chat models are LLM & Chat models: a rule that blocks LLM & Chat blocks them unless it allows the chat model by name, and a rule that lets only selected models run blocks them unless it allows LLM & Chat or the chat model. The Workflow Agent runs nothing but its chat model. [`/Studio/Status`](/docs/studio#post-studiostatus) and [`/StudioWorkflow/Status`](/docs/workflow-agent#post-studioworkflowstatus) list the chat models your rules block
 - The models your deployed agents run through Wiro
 - An agent's chat model: choosing one in the agent's settings, or sending `model` with `Message/Send`, follows that agent's own rule. If its rule blocks the model the agent already uses, its model calls are refused and the turn ends with `[MODEL_NOT_ALLOWED]`. A Scheduled Task whose model the rule blocks is paused rather than failed, and runs again at its next scheduled time once the model is allowed or another one is chosen
 - An agent's built-in voice: transcription of the voice notes people send the agent, and the voice replies it sends, follow that agent's own rule as Audio & Speech models. A rule that blocks Audio & Speech, or that lets only selected models run without allowing Audio & Speech, blocks them, even when it allows LLM & Chat. Voice notes are then not transcribed, and the agent replies in text. An agent that chats on a Gemini model has its voice notes transcribed by `google/gemini-3-flash`, so a rule that names that model decides them too. A rule that does not name that model blocks those voice notes unless it lets both Audio & Speech and LLM & Chat models run
@@ -6160,7 +6175,7 @@ The message also says what blocked the model:
 | A team's `account` rule | `This team` |
 | `member` | `You`, with `in this team` after the model or category, for example `You can't use openai/gpt-6-2-astra in this team.` |
 | `project` | `This API key` |
-| `surface` | The surface's name: `The dashboard`, `The API`, `MCP`, `The LLM gateway`, `The browser extensions` or `Agents` |
+| `surface` | The surface's name: `The dashboard`, `The API`, `MCP`, `The LLM gateway`, `The browser extensions`, `Agents`, `Studio`, `The Workflow Agent` or `Workflows`, for example `Studio can't use openai/gpt-6-2-astra.` |
 | `agent` | `This agent` |
 
 Nothing runs and nothing is charged. Retrying does not help: run a model the rules allow, or ask someone who manages the rule to change it. Through the [LLM gateway](/docs/completions-api#gateway-errors) the refusal is an HTTP `403` error with code `model_not_allowed`, and the [MCP server](/docs/wiro-mcp-server) returns it as a tool error.
@@ -6282,7 +6297,7 @@ Adds a rule to the call's workspace, or replaces the rule with the same `scope` 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `scope` | string | Yes | `"account"`, `"member"`, `"project"`, `"surface"` or `"agent"`. See [What a Rule Covers](#how-model-access-works) |
-| `target` | string | For every scope but `account` | The member's `useruuid`, the project's `id`, the surface (`web`, `api`, `mcp`, `llm-gateway`, `extension` or `agent`) or the agent's guid. Leave it out for `account` |
+| `target` | string | For every scope but `account` | The member's `useruuid`, the project's `id`, the surface (`web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, `studio`, `workflow-agent` or `workflow`) or the agent's guid. Leave it out for `account` |
 | `access` | string | No | Everything Else: `"allow"` or `"block"`. Default: `"allow"` |
 | `categories` | array or object | No | The categories the rule allows or blocks, as `[{ "category": "video", "access": "block" }]` or as `{ "video": "block" }`. A category is `image`, `video`, `audio`, `music`, `3d`, `llm` or `utilities` |
 | `models` | array or object | No | The single models the rule allows or blocks, as `[{ "model": "openai/gpt-6-2-astra", "access": "block" }]` or as `{ "openai/gpt-6-2-astra": "block" }`. Name a model by its `owner/slug` or its `id`. At most 500 models |
@@ -6368,7 +6383,7 @@ Adds a rule to the call's workspace, or replaces the rule with the same `scope` 
 | `scope must be one of account, member, project, surface, agent.` | `scope` is missing or not one of the five scopes |
 | `Member rules exist only in a team workspace.` | A `member` rule in a personal account |
 | `target is required for this scope.` | No `target` for a `member`, `project`, `surface` or `agent` rule |
-| `A surface is one of web, api, mcp, llm-gateway, extension, agent.` | A `surface` rule with another `target` |
+| `A surface is one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow.` | A `surface` rule with another `target` |
 | `target must be a project id.` | A `project` rule whose `target` is not a project id |
 | `access must be allow or block.` | Another `access` |
 | `categories must be a list of { category, access }.` | `categories` is neither a list nor an object |
@@ -6499,7 +6514,7 @@ Shows how the rules of the call's workspace decide one model for one run: which 
 | `model` | string | Yes | The model's `owner/slug` or `id` |
 | `member` | string | No | In a team, the `useruuid` of the member whose dashboard run to check. Default: you (with an API key, the person who created its project). With `project` or `agent`, the run is checked as the person who created that API key, and `member` is not used |
 | `project` | string | No | A project's `id`, to check a run made with that project's API key, as the person who created the project. The surface is then `api` unless you name another one, and `web` is refused: a run made with an API key never counts as the dashboard |
-| `surface` | string | No | Where the run comes from: `web`, `api`, `mcp`, `llm-gateway`, `extension` or `agent`. Default: `web`, a dashboard run. With `project` the default is `api`, and with `agent` the surface is always `agent`. The `agent` surface needs an agent: send its guid in `agent` |
+| `surface` | string | No | Where the run comes from: `web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, `studio`, `workflow-agent` or `workflow`. Default: `web`, a dashboard run. With `project` the default is `api`, and with `agent` the surface is always `agent`. The `agent` surface needs an agent: send its guid in `agent` |
 | `agent` | string | No | An agent's guid, to check a model run that agent makes: with the API key it runs models with, as the person who created that key, on the `agent` surface. `project` is not used then |
 
 ### Example
@@ -6600,7 +6615,7 @@ Each applicable rule comes back shaped like a row of `/ModelAccess/List`, with w
 | `model is required.` | No `model` was sent |
 | `<model> is not a model's owner/slug or id.` | `model` is neither an `owner/slug` nor a number |
 | `<model> is not a model on Wiro.` | No model listed on Wiro has that `owner/slug` or id |
-| `A surface is one of web, api, mcp, llm-gateway, extension, agent.` | Another `surface` |
+| `A surface is one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow.` | Another `surface` |
 | `Name the agent to check its runs.` | `surface` is `agent` and no `agent` was sent |
 | `That API key's project is not in this workspace.` | `project` is not the id of a project of this workspace |
 | `A run made with an API key never counts as the dashboard. Leave surface out or pick another one.` | `project` with `surface` `web` |
