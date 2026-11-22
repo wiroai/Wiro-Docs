@@ -13376,7 +13376,7 @@ A new turn needs an active plan, and included usage left or a balance of at leas
     "usedusd": 30,
     "leftusd": 0,
     "renewalusd": 30,
-    "frombalanceusd": 8.65,
+    "frombalanceusd": 0,
     "balanceusd": 0.31,
     "wallet": "personal",
     "minbalanceusd": 0.5,
@@ -13386,7 +13386,7 @@ A new turn needs an active plan, and included usage left or a balance of at leas
 }
 ```
 
-The date is left out when the plan's renewal can't be read, and for a team agent the sentence says `the team's balance`. In Telegram, Slack and Discord the agent tells people `This agent is paused for now. It runs again once its owner adds funds or its plan renews.`, with no amount. Once funds are added, the agent answers again.
+The date is left out when the plan's renewal can't be read, and for a team agent the sentence says `the team's balance`. On this refusal `frombalanceusd` is always `0`: read what the balance paid this period from `usage` on [`UserAgent/Detail`](#post-useragentdetail). In Telegram, Slack and Discord the agent tells people `This agent is paused for now. It runs again once its owner adds funds or its plan renews.`, with no amount. Once funds are added, the agent answers again.
 
 An agent runs only while its plan is active, whatever its balance. When its plan ends, the agent stops and its `usage` reads `paused: true` with `pausedreason: "plan"`, as does an agent that never had a plan. Adding funds doesn't start it: renew the plan with [`RenewSubscription`](#post-useragentrenewsubscription), or start a new one with [`CreateSubscriptionCheckout`](#post-useragentcreatesubscriptioncheckout) and `useprepaid: true`. Either call queues the agent to start. Until then, `Start` answers code `97` with `agentusage` (`pausedreason: "plan"`) and `<agent> has no active plan. Choose a plan to keep it running.` A message sent before the agent has stopped gets code `97` from `Message/Send`, with `agentstatus`, `agentusage` and `<agent> has no active plan. Choose a plan to keep it running.`
 
