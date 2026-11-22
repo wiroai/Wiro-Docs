@@ -137,12 +137,15 @@ Accepts either `application/json` (text-only) or `multipart/form-data` (text + f
 
 #### Failure responses
 
-When `result: false`, the response shape is `{ result: false, errors: [{ code, message }], messageguid: null, agenttoken: null, status: null }`. Two branches add extra context:
+When `result: false`, the response shape is `{ result: false, errors: [{ code, message }], messageguid: null, agenttoken: null, status: null }`. Three branches add extra context:
 
 | Failure branch | Extra fields | Notes |
 |----------------|--------------|-------|
 | Agent not running (`status` ≠ 4) | `agentstatus: <int>` | Returned for every message Wiro doesn't answer itself as a setup reply (see [Replies Wiro handles itself](#handled-setup-replies)). Echoes the agent's current `status` so the caller can decide whether to wait, call `Start`, or surface "Setup Required" UI: `0` Stopped (call `Start`), `1` Stopping, `2` Queued and `3` Starting (wait and retry), `5` Error (call `Start` to retry), `6` Setup Required. With status `1`, the error reads `Agent is stopping. Please wait a moment and try again.` when the agent is shutting down to stay stopped, and `Agent is restarting. Please wait a moment and try again.` when it is shutting down to start again, as in a [restart](/docs/agent-overview#automatic-restart). See [UserAgent Statuses](/docs/agent-overview#useragent-statuses). |
-| AI usage and balance used up | `agentstatus`, `agentusage` | Code `97`: the agent has used the AI usage its plan includes and the balance is under $0.50. `agentusage` is the agent's [`usage`](/docs/agent-overview#usage-object) (`paused: true`, `pausedreason: "balance"`). The message speaks to whoever pays for the agent: surface an "Add funds" action. See [AI Usage and the Balance](/docs/agent-overview#ai-usage-and-the-balance). |
+| Spend limit used up | `agentstatus` | Code `93`: a [spend limit](/docs/spend-limits) that covers the agent is used up: its own limit or, once its plan's included AI usage is used up, the account's or team's limit or the `agent` surface's limit. The message names the limit and when it resets, such as `This agent's monthly spend limit is reached ($20.35 of $20.00). It resets on December 1, 2026 at 00:00 UTC.` It is checked before code `97`, and `agentstatus` is `4` here, so branch on the code. Nothing is queued or charged. When the limits can't be checked at that moment, this branch answers code `0` `Spend limits could not be checked. Try again in a moment.` instead: send the message again shortly. |
+| Agent paused (balance or plan) | `agentstatus`, `agentusage` | Code `97`. `agentusage` is the agent's [`usage`](/docs/agent-overview#usage-object) with `paused: true`, and its `pausedreason` says why. `"balance"`: the agent has used the AI usage its plan includes and the balance is under $0.50. The message speaks to whoever pays for the agent: surface an "Add funds" action. `"plan"`: the agent has no active plan, and the message reads `<Agent name> has no active plan. Choose a plan to keep it running.` Surface a "Choose a plan" action that renews the plan with [`RenewSubscription`](/docs/agent-overview#post-useragentrenewsubscription): adding funds doesn't run it. See [AI Usage and the Balance](/docs/agent-overview#ai-usage-and-the-balance). |
+
+A deleted agent answers code `95`, `User agent not found`, with no extra fields.
 
 ### Unknown or disabled commands
 

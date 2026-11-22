@@ -23020,7 +23020,7 @@ print(response.body);
 <p>See <a href="#post-useragentmessagehistory"><code>Message/History</code></a> for the shape and ordering of the marker row it materializes.</p>
 </blockquote>
 <h4 id="failure-responses">Failure responses</h4>
-<p>When <code>result: false</code>, the response shape is <code>{ result: false, errors: [{ code, message }], messageguid: null, agenttoken: null, status: null }</code>. Two branches add extra context:</p>
+<p>When <code>result: false</code>, the response shape is <code>{ result: false, errors: [{ code, message }], messageguid: null, agenttoken: null, status: null }</code>. Three branches add extra context:</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -23038,14 +23038,20 @@ print(response.body);
 <td>Returned for every message Wiro doesn't answer itself as a setup reply (see <a href="#handled-setup-replies">Replies Wiro handles itself</a>). Echoes the agent's current <code>status</code> so the caller can decide whether to wait, call <code>Start</code>, or surface "Setup Required" UI: <code>0</code> Stopped (call <code>Start</code>), <code>1</code> Stopping, <code>2</code> Queued and <code>3</code> Starting (wait and retry), <code>5</code> Error (call <code>Start</code> to retry), <code>6</code> Setup Required. With status <code>1</code>, the error reads <code>Agent is stopping. Please wait a moment and try again.</code> when the agent is shutting down to stay stopped, and <code>Agent is restarting. Please wait a moment and try again.</code> when it is shutting down to start again, as in a <a href="/docs/agent-overview#automatic-restart">restart</a>. See <a href="/docs/agent-overview#useragent-statuses">UserAgent Statuses</a>.</td>
 </tr>
 <tr>
-<td>AI usage and balance used up</td>
+<td>Spend limit used up</td>
+<td><code>agentstatus</code></td>
+<td>Code <code>93</code>: a <a href="/docs/spend-limits">spend limit</a> that covers the agent is used up: its own limit or, once its plan's included AI usage is used up, the account's or team's limit or the <code>agent</code> surface's limit. The message names the limit and when it resets, such as <code>This agent's monthly spend limit is reached ($20.35 of $20.00). It resets on December 1, 2026 at 00:00 UTC.</code> It is checked before code <code>97</code>, and <code>agentstatus</code> is <code>4</code> here, so branch on the code. Nothing is queued or charged. When the limits can't be checked at that moment, this branch answers code <code>0</code> <code>Spend limits could not be checked. Try again in a moment.</code> instead: send the message again shortly.</td>
+</tr>
+<tr>
+<td>Agent paused (balance or plan)</td>
 <td><code>agentstatus</code>, <code>agentusage</code></td>
-<td>Code <code>97</code>: the agent has used the AI usage its plan includes and the balance is under $0.50. <code>agentusage</code> is the agent's <a href="/docs/agent-overview#usage-object"><code>usage</code></a> (<code>paused: true</code>, <code>pausedreason: "balance"</code>). The message speaks to whoever pays for the agent: surface an "Add funds" action. See <a href="/docs/agent-overview#ai-usage-and-the-balance">AI Usage and the Balance</a>.</td>
+<td>Code <code>97</code>. <code>agentusage</code> is the agent's <a href="/docs/agent-overview#usage-object"><code>usage</code></a> with <code>paused: true</code>, and its <code>pausedreason</code> says why. <code>"balance"</code>: the agent has used the AI usage its plan includes and the balance is under $0.50. The message speaks to whoever pays for the agent: surface an "Add funds" action. <code>"plan"</code>: the agent has no active plan, and the message reads <code>&lt;Agent name&gt; has no active plan. Choose a plan to keep it running.</code> Surface a "Choose a plan" action that renews the plan with <a href="/docs/agent-overview#post-useragentrenewsubscription"><code>RenewSubscription</code></a>: adding funds doesn't run it. See <a href="/docs/agent-overview#ai-usage-and-the-balance">AI Usage and the Balance</a>.</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
+<p>A deleted agent answers code <code>95</code>, <code>User agent not found</code>, with no extra fields.</p>
 <h3 id="unknown-or-disabled-commands">Unknown or disabled commands</h3>
 <p>While the agent is running, Wiro answers a slash command the agent doesn't run, such as <code>/status</code>, or one of its commands that is turned off in <a href="/docs/agent-overview#post-useragentupdatesettings"><code>enabledcommands</code></a>. No agent turn runs and nothing is charged, even while the agent is paused for its balance. Send answers at once:</p>
 <pre><code class="language-json">{
