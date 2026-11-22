@@ -15,7 +15,7 @@ A credential is a set of values an agent keeps for something it is, rather than 
 
 The services an agent works with (Google Ads, Shopify, HubSpot, Serper and the rest) are **connectors**, not credentials: browse, connect and disconnect them with the calls on [Agent Connectors](/docs/agent-connectors). `CredentialUpsert` doesn't take a connector's values.
 
-> **From the agent's chat.** With [Setup From Chat](/docs/agent-messaging#setup-from-chat) on, the agent can propose a `connect` card for a credential that takes a key, and an agent admin pastes the key as the reply or enters it on the card. Wiro saves it, and the agent never sees it. To run these steps from a chat in your own product, see [Agent Chat Integration](/docs/agent-chat-integration).
+> **Not from the agent's chat.** [Setup cards](/docs/agent-messaging#setup-from-chat) connect connectors of the catalog only: no card saves a channel, Twilio Voice, the Wiro project or a setting. Save them with `CredentialUpsert` or `CredentialProjectBind`; in chat, the agent asks an agent admin to make the change in the agent's settings.
 
 **Read & write paths at a glance:**
 
@@ -25,7 +25,6 @@ The services an agent works with (Google Ads, Shopify, HubSpot, Serper and the r
 | Inspect a single credential schema | [`POST /Credentials/Detail`](#post-credentialsdetail) (public) |
 | Find the credential a skill needs | [`POST /Skills/CredentialSchema`](/docs/agent-skills#post-skillscredentialschema) (public) |
 | Write one or more credential fields | [`POST /UserAgent/CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert) |
-| Save a key from the agent's chat | A `connect` card: the key pasted as the reply, or [`POST /UserAgent/Message/SetupCardApply`](/docs/agent-messaging#post-useragentmessagesetupcardapply) with `values` |
 | Connect the agent's Wiro project by its id | [`POST /UserAgent/CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) |
 | Discover external communication channels | [`POST /Skills/List`](/docs/agent-skills#post-skillslist) → `channels[]` (public) |
 | Connect or disable an external channel | [`POST /UserAgent/CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert) |
@@ -125,7 +124,7 @@ These endpoints are **public, so no authentication is required**. They return da
 
 ### **POST** /Credentials/List
 
-Lists every credential in the registry: the channels, Twilio Voice, the Wiro project, the settings, and platform entries (`sys-*`) that Wiro fills in itself.
+Lists every credential in the registry: the channels, Twilio Voice, the Wiro project, the settings, and entries Wiro manages itself. Ignore keys this page doesn't list.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
