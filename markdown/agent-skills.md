@@ -28,7 +28,7 @@ Two concepts share the word "skill" in the agent system, and connectors give the
 
 | Concept | What it is | Where it lives | API surface |
 |---------|------------|----------------|-------------|
-| **Registry skills** | Platform-shipped Skills (`util-*`): rule sets, playbooks and tools that need no outside account, such as `util-weather`, `util-diagram` and `util-video-creator`. Wiro defines them, and every plan includes them. | Wiro's skill registry. | `POST /Skills/List` / `POST /Skills/Detail` (read), `POST /UserAgent/SkillsApply` (toggle on/off per useragent). |
+| **Registry skills** | Platform-shipped Skills (`util-*`): rule sets, playbooks, the voice channels and tools, such as Weather (`util-weather`), Diagrams (`util-diagram`) and Video Creator (`util-video-creator`). Wiro defines them, and every plan includes them. | Wiro's skill registry. | `POST /Skills/List` / `POST /Skills/Detail` (read), `POST /UserAgent/SkillsApply` (toggle on/off per useragent). |
 | **Custom skills** | User-editable preference text (`cs-content-tone`) or scheduled tasks (`cs-cron-blog-scanner`) that live ON a useragent. They can use the tools of the agent's connectors (e.g. a scheduled task drafts posts with `wordpress__*`) but are scoped to one instance. | Per useragent on the Wiro platform. | `POST /UserAgent/CustomSkillUpsert` / `POST /UserAgent/CustomSkillRename` / `POST /UserAgent/CustomSkillDelete` / `POST /UserAgent/CustomSkillHistory` / `POST /UserAgent/CustomSkillRevert`. |
 | **Connectors** | The outside services an agent works with (Shopify, Google Ads, HubSpot, Serper, ...), connected with your customer's own credentials. Each gives the agent tools named `<slug>__<tool>`. | Per useragent. | [Agent Connectors](/docs/agent-connectors) |
 
@@ -44,7 +44,7 @@ Lists all skills in the registry.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `category` | string | No | Filter by category. Every registry skill is `"util"`: rule sets, playbooks, and keyless tools such as weather and diagrams. |
+| `category` | string | No | Filter by category. Every registry skill is `"util"`: rule sets, playbooks, the voice channels and tools such as weather and diagrams. |
 | `capability` | string | No | Filter by capability key (see [`POST /Skills/Capabilities`](#post-skillscapabilities) for the closed-set vocabulary). |
 | `user_invocable` | boolean | No | When `true`, only return skills end users can call directly through chat (filters out plumbing skills wired by the runtime). |
 | `requires_credentials` | boolean | No | Filter by whether the skill requires a credential. |
@@ -110,7 +110,7 @@ Lists all skills in the registry.
 | Field | Type | Description |
 |-------|------|-------------|
 | `name` | `string` | Canonical skill key, **including the registry prefix** `util-`. Use this exact value in `SkillsApply` and `Deploy.body.skills`. |
-| `category` | `string` | `"util"`: rule sets, playbooks, and keyless tools such as weather and diagrams. |
+| `category` | `string` | `"util"`: rule sets, playbooks, the voice channels and tools such as weather and diagrams. |
 | `version` | `string` | Semver for the registry entry. Bumped when the skill's tool surface changes. |
 | `title` | `string` | Display name shown on chips / filters / cards. |
 | `description` | `string` | One-line summary used on marketing surfaces. |
@@ -118,7 +118,7 @@ Lists all skills in the registry.
 | `brand_color` | `string\|null` | Brand background colour (hex) for chips and cards. |
 | `brand_text_color` | `string\|null` | Foreground colour to render on top of `brand_color`. |
 | `brand_logo_filter` | `string\|null` | CSS `filter` value applied to monochrome SVG icons (e.g. `"brightness(0) invert(1)"`) so the same source SVG renders correctly on light and dark brand colours. |
-| `docs_url` | `string\|null` | The page about the skill, when it has one: a slug or path on this docs site, which frontends prefix with `/docs/`, such as `integration-twiliovoice-skills` for `util-twilio-channel`, or a full `https` address, used as it is, such as `https://wiro.ai/connectors/google-play` for `util-googleplay-events`, whose page is its connector's. Empty when there is none. |
+| `docs_url` | `string\|null` | The page about the skill, when it has one: a slug or path on this docs site, which frontends prefix with `/docs/`, such as `integration-twiliovoice-skills` for Twilio Voice Channel (`util-twilio-channel`), or a full `https` address, used as it is, such as `https://wiro.ai/connectors/google-play` for Google Play Promotional Content (`util-googleplay-events`), whose page is its connector's. Empty when there is none. |
 | `requires_credentials` | `boolean` | `true` when the skill needs a credential the operator must supply (effectively `true` whenever `credential_key` names a credential you supply). |
 | `credential_key` | `string\|null` | The credential this skill needs, when it needs one (see [Agent Credentials](/docs/agent-credentials)); [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail) shows its schema. `null` for skills that need none. |
 | `additional_credential_keys` | `array<string>` | **Optional: only present when the skill reads further credentials,** such as `["var-support-email"]` for the support-email setting; most skills omit this field entirely. |
@@ -126,7 +126,7 @@ Lists all skills in the registry.
 | `suggested_connectors` | `array<string>` | **Optional: only present when set.** The connectors the skill works with, by catalog slug, such as `["google-ads", "meta-ads", "tiktok-ads"]` on Ads Manager Common Rules (`util-ads-manager-common`). Nothing connects by itself: connect the ones you want with [`POST /UserAgent/ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect). An `add` setup card names up to 3 of them that aren't connected yet in its `needs` (see [Setup From Chat](/docs/agent-messaging#setup-from-chat)). |
 | `depends_on` | `array<string>` | Other skill names that must be on while this one is. Deploy's `skills` and an `add` setup card turn them on with it. `SkillsApply` turns on only the names you send and refuses, with code `101` and `deps[]`, a change that leaves one of them off, so send them in the same call. |
 | `conflicts_with` | `array<string>` | Mutually-exclusive skill names. `SkillsApply` rejects toggle batches that would enable two conflicting skills. |
-| `user_invocable` | `boolean` | `true` when end users can call the skill via chat. `false` marks supporting parts that come with another skill, such as `util-video-shots` and `util-video-docs`, which come with `util-video-creator`. |
+| `user_invocable` | `boolean` | `true` when end users can call the skill via chat. `false` marks supporting parts that come with another skill, such as Video Story & Shots (`util-video-shots`) and Document Videos (`util-video-docs`), which come with Video Creator (`util-video-creator`). |
 | `deprecated` | `boolean` | `true` for skills slated for removal, and `replacement` (if any) names the migration target. |
 | `replacement` | `string\|null` | When `deprecated: true`, the registry-recommended successor skill name. |
 | `pricing` | `object` | `{ monthly_price_weight_usd, monthly_credits_weight, billing_model }`. Every plan includes every skill, so both weights are `0` (see below). |
@@ -138,7 +138,7 @@ Skill filters do not remove channel rows. Each channel includes its stable
 to render channel setup. Save the matching credential group through
 [`UserAgent/CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert);
 the channel activates automatically when every `required_fields` value is
-complete. Channels are not skills and do not affect pricing.
+complete. These channels (Telegram, Slack, Discord) are not Skills and do not affect pricing.
 
 **`pricing` object:**
 
@@ -759,17 +759,20 @@ All three requests succeed independently. The agent restarts once: the server co
 
 | Agent | Skill Key | What It Controls |
 |-------|-----------|-----------------|
+| Every template except Voice Receptionist | `approval-policy` | What waits for your approval before the agent acts, and the words that approve it |
 | Social Manager | `content-tone` | Brand voice, hashtags, posting style |
 | Blog Content Editor | `content-strategy` | Writing style, topics, research rules |
 | App Review Support | `review-preferences` | Response tone, support channels |
+| Google Review Manager | `review-preferences` | Reply tone, length by rating, contact line, sign-off and house rules |
 | App Event Manager | `event-preferences` | Event regions, holiday priorities |
-| Push Notification | `push-preferences` | Push tone, language, targeting |
+| Push Notification Manager | `push-preferences` | Push tone, language, targeting |
 | Newsletter Manager | `newsletter-strategy` | Topics, tone, audience, frequency |
 | Lead Generation Manager | `lead-strategy` | ICP definition, outreach tone |
-| Google Ads Manager | `ad-strategy` | Target audience, budget goals |
-| Meta Ads Manager | `ad-strategy` | Target audience, creative preferences |
-| TikTok Ads Manager | `ad-strategy`, `tiktok-ads-strategy` | Target audience, budget goals; TikTok tracking gates, kill thresholds, placement, Spark Ads and Smart+ rules |
+| Google Ads Manager | `ad-strategy`, `google-ads-strategy`, `audience-strategy`, `attribution-strategy`, `shopping-strategy`, `video-strategy`, `learning-phase-rules`, `adjust-strategy`, `roasit-strategy` | Target audience, budget goals; Google Ads tracking gates, kill thresholds and bidding defaults; Customer Match and remarketing audiences; attribution and conversion goals; Shopping feeds and campaigns; YouTube video campaigns; learning-phase limits; Adjust and Roasit ROAS reporting |
+| Meta Ads Manager | `ad-strategy`, `meta-ads-strategy`, `adjust-strategy`, `roasit-strategy` | Target audience, creative preferences; Meta tracking gates, attribution window, kill thresholds and placements; Adjust and Roasit ROAS reporting |
+| TikTok Ads Manager | `ad-strategy`, `tiktok-ads-strategy`, `adjust-strategy`, `roasit-strategy` | Target audience, budget goals; TikTok tracking gates, kill thresholds, placement, Spark Ads and Smart+ rules; Adjust and Roasit ROAS reporting |
 | Video Creator | `video-preferences`, `saved-logins` | Default format, length, voice, look, music, captions and ending card; test accounts for the screens behind a login |
+| Voice Receptionist | `voice-config` | Working hours, caller classification, pricing and escalation rules |
 
 ### Scheduled Tasks
 
@@ -840,19 +843,19 @@ A template's scheduled task that needs a connector runs only while that connecto
 
 Agents can optionally forward operator notifications to a Telegram bot via the `telegram` credential (see [Telegram Channel](/docs/integration-telegram-skills)). This is never required; every agent remains fully usable over web chat and the [Messaging API](/docs/agent-messaging) without a bot configured.
 
-### Utility Skills
+### Built-in Skills
 
-`util-*` skills need no outside account. Most are rule sets that come with an agent template. These three can be added to any agent with [`SkillsApply`](#turning-skills-on-and-off), on any plan and at no charge:
+Skills (`util-*`) need no outside account, except the Twilio Voice Channel (`util-twilio-channel`), which takes your Twilio account. Most are rule sets that come with an agent template. These three can be added to any agent with [`SkillsApply`](#turning-skills-on-and-off), on any plan and at no charge:
 
 | Skill | What it adds |
 |-------|--------------|
-| `util-weather` | Current weather and a 9-day forecast for any place: temperature, rain, wind and UV from MET Norway's open forecast data, with the place found on OpenStreetMap. |
-| `util-diagram` | Flowcharts, architecture and sequence diagrams, state machines, data models, mind maps, timelines, Gantt plans and concept drawings as PNG images with an editable SVG copy, checked for overlapping or cut-off text. |
+| Weather (`util-weather`) | Current weather and a 9-day forecast for any place: temperature, rain, wind and UV from MET Norway's open forecast data, with the place found on OpenStreetMap. |
+| Diagrams (`util-diagram`) | Flowcharts, architecture and sequence diagrams, state machines, data models, mind maps, timelines, Gantt plans and concept drawings as PNG images with an editable SVG copy, checked for overlapping or cut-off text. |
 | Video Creator (`util-video-creator`) | The Video Creator's playbook: finished videos with voice-over, music and captions from a website or web app (behind a login too), an app-store listing, a document, an article or product photos; 16:9 or 9:16, up to 3 minutes. It needs Video Story & Shots (`util-video-shots`), Document Videos (`util-video-docs`) and Motion Effects (`util-motion-effects`), and runs the video's models with the agent's Wiro project, which pays for them (see [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent)). Motion Effects needs Video Creator too, so the four are on together: with `SkillsApply` send all four in one call, `{ "util-video-creator": true, "util-video-shots": true, "util-video-docs": true, "util-motion-effects": true }`. Deploy's `skills` and an `add` setup card turn the rest on by themselves. |
 
 The voice channels are Skills too: Twilio Voice Channel (`util-twilio-channel`) answers phone calls through Twilio Voice and saves its account in the `twilio-voice` credential (see [Twilio Voice Channel](/docs/integration-twiliovoice-skills)), and Web Voice Channel (`util-web-channel`) takes calls in the browser (see [Web Voice Channel](/docs/integration-webvoice-skills)). Each needs Voice Receptionist Rules (`util-voice-receptionist`) and Voice Call Prep Rules (`util-voice-call-prep`). With [`SkillsApply`](#turning-skills-on-and-off) send them in the same call, for example `{ "util-twilio-channel": true, "util-voice-receptionist": true, "util-voice-call-prep": true }`: sent alone while the two are off, a channel is refused with code `101` and `deps[]`. Deploy's `skills` turns them on by itself.
 
-`POST /Skills/List` with `{ "category": "util" }` returns every utility skill.
+`POST /Skills/List` with `{ "category": "util" }` returns every Skill.
 
 > **Restart behavior:** On a starting or running agent (status 3 or 4), `SkillsApply`, `CustomSkillRename`, `CustomSkillDelete` and `CustomSkillRevert` restart it so the new skill configuration is picked up, as credential updates do. `CustomSkillUpsert` restarts it for a new skill or task, a new `interval` or an `enabled` change. A change to the text or description of an existing one reaches the running agent without a restart, except for `cs-approval-policy`. See [Automatic Restart](/docs/agent-overview#automatic-restart).
 
@@ -860,8 +863,8 @@ The voice channels are Skills too: Twilio Voice Channel (`util-twilio-channel`) 
 
 An agent runs Wiro's own AI models (image, video, audio and LLM generation, cover images, model discovery) two ways:
 
-- **With its Wiro project.** Skills such as `util-video-creator` and the voice skills run their models with the agent's Wiro project, the `wiro` credential. Pick or create a project at [wiro.ai/panel/project](https://wiro.ai/panel/project) and connect it in the agent's settings, or through the API with `POST /UserAgent/CredentialProjectBind`. Each run is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project). See [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project).
-- **With the Wiro connector.** The `wiro` connector gives the agent Wiro's own model and task tools (`wiro__*`), the ones its `tools` on [`AgentConnector/Detail`](/docs/agent-connectors#post-agentconnectordetail) list, such as running any model. They act with the agent's own Wiro project, the same one: connecting the connector binds the project you pick to the agent, as `CredentialProjectBind` does. Their runs are the agent's own, billed to that project's wallet under the agent's spend limit and Model Access rule. See [The Wiro connector](/docs/agent-connectors#the-wiro-connector).
+- **With its Wiro project.** Skills such as Video Creator (`util-video-creator`) and the voice skills run their models with the agent's Wiro project, the `wiro` credential. Pick or create a project at [wiro.ai/panel/project](https://wiro.ai/panel/project) and connect it in the agent's settings, or through the API with `POST /UserAgent/CredentialProjectBind`. Each run is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project). See [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project).
+- **With Wiro AI Models (`wiro`).** The Wiro AI Models connector gives the agent Wiro's own model and task tools (`wiro__*`), the ones its `tools` on [`AgentConnector/Detail`](/docs/agent-connectors#post-agentconnectordetail) list, such as running any model. They act with the agent's own Wiro project, the same one: connecting the connector binds the project you pick to the agent, as `CredentialProjectBind` does. Their runs are the agent's own, billed to that project's wallet under the agent's spend limit and Model Access rule. See [The Wiro connector](/docs/agent-connectors#the-wiro-connector).
 
 The agent starts without a Wiro project. Where the template marks the project required (`optional: false`), `UserAgent/Detail` reads `setuprequired: true` until it is connected.
 
