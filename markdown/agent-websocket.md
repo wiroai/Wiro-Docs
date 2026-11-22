@@ -111,7 +111,7 @@ Frames flow in two directions. `↓` = server → client, `↑` = client → ser
 | ↓ | `agent_error` | Terminal failure event. `message` is a plain string: the turn's coded failure message, the same text `response` holds (see [Failed turns](/docs/agent-messaging#failed-turns)). Emits at most once. |
 | ↓ | `agent_cancel` | Terminal cancel event. Fires **only** when an already-active message is aborted mid-stream (via `Message/Cancel` or upstream abort). Cancels against a still-queued message do **not** broadcast this event, so check `Message/Detail` for those. Emits at most once. |
 | ↓ | `agent_usage_report` | Post-terminal usage/billing frame. Fires once, ~250-500 ms after a successful `agent_end`, on the same `agenttoken`. Carries the final token counts, `model`, `tokencost`, and `remainingcredits` for the message identified by `messageguid`. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns); follow those on the [run stream](#following-an-agents-background-runs). |
-| ↓ | `agent_wiroai_runtask` | Model-run discovery frame. Fires whenever the agent itself launches a Wiro model run during a turn (e.g. generating an image or video for a skill or through the `wiro` connector). Arrives on the `agenttoken` of the turn that launched the run, carrying the new task's `socketaccesstoken` so you can subscribe to that run's `task_*` lifecycle and collect its outputs. See [Model runs the agent triggers](#model-runs-the-agent-triggers). |
+| ↓ | `agent_wiroai_runtask` | Model-run discovery frame. Fires whenever a skill of the agent launches a Wiro model run during a turn (e.g. generating an image or video). Runs made with the `wiro` connector's tools don't send it. Arrives on the `agenttoken` of the turn that launched the run, carrying the new task's `socketaccesstoken` so you can subscribe to that run's `task_*` lifecycle and collect its outputs. See [Model runs the agent triggers](#model-runs-the-agent-triggers). |
 | ↑ | `agent_session_subscribe` | Follow a session with the `sessiontoken` from `Message/History`. See [Following a session](#following-a-session). |
 | ↓ | `agent_session_subscribed` | Session follow acknowledged. |
 | ↓ | `agent_message_inserted` | A message was added to a followed session between turns (a scheduled report, files sent after an answer, the result of background work). Carries the `sessiontoken` and the new row in `message`. |
@@ -121,7 +121,7 @@ Frames flow in two directions. `↓` = server → client, `↑` = client → ser
 | ↓ | `agent_run_start` | A background run started: a Scheduled Task, a sub-agent, or another run with no chat message. Once per run. |
 | ↓ | `agent_run_block` | One step of an open background run changed. Carries one public block with `text: null`. |
 | ↓ | `agent_run_end` | A background run ended, with `ok`, `reason`, `durationms`, and `endedat`. Once per run. |
-| ↓ | `agent_run_model_start` | The agent started a Wiro model run, in a chat turn or a background run. Once per model run. |
+| ↓ | `agent_run_model_start` | A skill of the agent started a Wiro model run, in a chat turn or a background run. Once per model run. |
 | ↓ | `agent_run_model_end` | A model run the agent started ended, with `ok`, `outcome`, `durationms`, and `endedat`. Once per model run. |
 | ↑ | `agent_run_unsubscribe` | Stop following an agent's runs. |
 | ↓ | `agent_run_unsubscribed` | Run stream follow stopped. |
@@ -438,7 +438,7 @@ It is **not** emitted for:
 
 ### Model runs the agent triggers
 
-When the agent **itself** kicks off a Wiro model run during a turn (for example generating an image or a video for a skill, or through the `wiro` connector), the bridge emits an `agent_wiroai_runtask` discovery frame. It hands you the new model run's `socketaccesstoken` so you can subscribe to that run and stream its progress and final media outputs. This is how a chat product surfaces a "live activity feed" of the media the agent is producing.
+When the agent **itself** kicks off a Wiro model run during a turn from a skill, which calls the Wiro API with the agent's own Wiro project key (for example to generate an image or a video, such as the videos `util-video-creator` makes), the bridge emits an `agent_wiroai_runtask` discovery frame. It hands you the new model run's `socketaccesstoken` so you can subscribe to that run and stream its progress and final media outputs. This is how a chat product surfaces a "live activity feed" of the media the agent is producing. A model the agent runs with the [`wiro` connector](/docs/agent-connectors#the-wiro-connector)'s tools sends no `agent_wiroai_runtask` and no run stream frame, although it uses the same key: its outputs go back to the agent as the tool's answer, and reach your users only in what the agent replies or sends.
 
 ```json
 {
@@ -471,7 +471,7 @@ When the agent **itself** kicks off a Wiro model run during a turn (for example 
 
 **Then pivot to the task socket for outputs.** Take `message.socketaccesstoken` and subscribe to the standard model-run WebSocket exactly as documented in [WebSocket](/docs/websocket): send `{ "type": "task_info", "tasktoken": "<socketaccesstoken>" }` and stream `task_queue → task_start → task_output → task_postprocess_end`. The final `task_postprocess_end` carries the output array (media URLs). The model-run `task_*` events are **only** delivered on the task's own `socketaccesstoken` channel. They are never re-broadcast on the agent channel.
 
-> **Only fires for agent-initiated runs.** `agent_wiroai_runtask` is emitted when the *agent* calls a model mid-turn. Model runs you launch yourself with `POST /Run` (your own `x-api-key`) do not produce this frame, because you already hold their `socketaccesstoken` from the `/Run` response. It fires only for model runs the agent starts while answering your `Message/Send` turn. To see every model run the agent starts, Scheduled Tasks included, follow its [run stream](#following-an-agents-background-runs) (`agent_run_model_start` and `agent_run_model_end`).
+> **Only fires for agent-initiated runs.** `agent_wiroai_runtask` is emitted when the *agent* calls a model mid-turn. Model runs you launch yourself with `POST /Run` (your own `x-api-key`) do not produce this frame, because you already hold their `socketaccesstoken` from the `/Run` response. It fires only for model runs the agent starts while answering your `Message/Send` turn. To see every model run the agent's skills start, Scheduled Tasks included, follow its [run stream](#following-an-agents-background-runs) (`agent_run_model_start` and `agent_run_model_end`). Neither shows the runs made with the `wiro` connector's tools.
 
 ### Following a session
 
@@ -532,7 +532,7 @@ Each message added to that session afterwards arrives as an `agent_message_inser
 
 ### Following an agent's background runs
 
-Some of an agent's work never shows up as a chat turn: its Scheduled Tasks, the sub-agents it starts to work on something in the background, and other runs that have no chat message, such as a reply on a connected Telegram, Slack or Discord channel. The run stream lets you follow them live: when each run starts, each step it takes, and when it ends. It also reports every Wiro model run the agent starts, in chat turns too, from start to end.
+Some of an agent's work never shows up as a chat turn: its Scheduled Tasks, the sub-agents it starts to work on something in the background, and other runs that have no chat message, such as a reply on a connected Telegram, Slack or Discord channel. The run stream lets you follow them live: when each run starts, each step it takes, and when it ends. It also reports, from start to end, every Wiro model run the agent's skills start, in chat turns too. Runs made with the [`wiro` connector](/docs/agent-connectors#the-wiro-connector)'s tools aren't on it.
 
 The stream carries labels only. Reasoning and answer text never appear on it (a block's `text` is always `null`), and a tool step shows only its label, its status and the two closed-list words a timeline tool block has.
 
@@ -661,7 +661,7 @@ Each event carries `type`, `useragentguid`, `message`, and `result`. `result` is
 | `agent_run_model_start` | `modelref`, `runref`, `sessionkey`, `slugowner`, `slugproject`, `categories`, `startedat` | The agent started a Wiro model run. Once per model run. |
 | `agent_run_model_end` | `modelref`, `ok`, `outcome`, `durationms`, `endedat` | That model run ended. Once per model run. |
 
-`agent_run_start`, `agent_run_block`, and `agent_run_end` cover only runs that have no chat message. A chat turn you start with `Message/Send` streams on its `agenttoken` and never shows up here. `agent_run_model_start` and `agent_run_model_end` cover every Wiro model run the agent starts, chat turns included.
+`agent_run_start`, `agent_run_block`, and `agent_run_end` cover only runs that have no chat message. A chat turn you start with `Message/Send` streams on its `agenttoken` and never shows up here. `agent_run_model_start` and `agent_run_model_end` cover every Wiro model run the agent's skills start, chat turns included, and none made with the `wiro` connector's tools.
 
 A model run can start before its run's `agent_run_start` reaches you, and in rare cases a block can too: treat either one as the run being open.
 
@@ -939,7 +939,7 @@ agent_queue  →  agent_start  →  (agent_timeline_delta | agent_output) × N  
 
 `agent_queue` is **not** a WebSocket frame: it's the `status` returned synchronously in the `Message/Send` response (and reflected by `agent_subscribed` if you subscribe while the message is still queued). Timeline and provisional answer events can interleave between start and terminal status. On the failure path, `agent_error` or `agent_cancel` takes the place of `agent_end`, and **no** `agent_usage_report` follows. `Message/Detail` is authoritative for the final persisted timeline.
 
-[`agent_wiroai_runtask`](#model-runs-the-agent-triggers) is **not** part of this linear order: it fires out-of-band (zero or more times per turn, whenever the agent launches a model run) on the same `agenttoken` as the turn's other frames.
+[`agent_wiroai_runtask`](#model-runs-the-agent-triggers) is **not** part of this linear order: it fires out-of-band (zero or more times per turn, whenever a skill of the agent launches a model run) on the same `agenttoken` as the turn's other frames.
 
 ## Code Examples
 

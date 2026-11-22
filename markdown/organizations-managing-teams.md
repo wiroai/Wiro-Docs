@@ -293,8 +293,17 @@ When an agent is transferred:
 - Its chat history moves with it
 - The agent is restarted with the new context
 - Future billing is charged to the new workspace's wallet
-- When the agent's Wiro project isn't in the new workspace, the agent is disconnected from it, and its [`wiro` connector](/docs/agent-connectors#moving-the-agent-to-another-workspace) is disconnected too: the answer's `wiroproject` reads `"cleared"`, and its `notes` hold `The agent's Wiro project belongs to another workspace, so the agent was disconnected from it. Pick a project of its new workspace so the agent can run models again.`
+- When the agent's Wiro project isn't in the new workspace, the agent is disconnected from it, and its [`wiro` connector](/docs/agent-connectors#moving-the-agent-to-another-workspace) is disconnected too (see `wiroproject` below)
 - [Take Control](/docs/agent-overview#take-control) stays off for an agent that has been in a team after it moves back to a personal workspace, until its owner [resets its browser](/docs/agent-overview#resetting-the-browser): the browser goes with it, signed in wherever the team's chats signed in
+
+The answer's `wiroproject` says what happened to the agent's Wiro project, the project its model runs are paid from, and `notes` lists sentences to show the person who moved it:
+
+| `wiroproject` | Meaning |
+|---------------|---------|
+| `none` | The agent has no Wiro project, or its key belongs to no project any more. |
+| `kept` | The project is in the new workspace, so the agent keeps it. |
+| `cleared` | The project isn't in the new workspace, so the agent was disconnected from it, and its `wiro` connection was deleted. `notes` holds `The agent's Wiro project belongs to another workspace, so the agent was disconnected from it. Pick a project of its new workspace so the agent can run models again.` |
+| `failed` | The project isn't in the new workspace and could not be disconnected: the agent still runs its models with it, on that workspace's wallet. `notes` holds `The agent still runs its models with a project of another workspace, so that workspace's spend limits and Model Access rules still apply to it. Check the agent's Wiro project: it should be a project of its new workspace.` |
 
 ## **POST** /Team/TransferProject
 

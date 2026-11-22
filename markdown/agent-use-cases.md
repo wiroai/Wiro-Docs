@@ -171,9 +171,9 @@ A richer variant of white-label chat: besides replying with text, the agent **ge
 
 **Shape:**
 
-- One deployed agent whose Wiro project is set to your project (see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)), or that has the `wiro` connector connected to it (see [The Wiro connector](/docs/agent-connectors#the-wiro-connector)). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
+- One deployed agent whose Wiro project is set to your project (see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project). The agent runs models with that project's key from its skills, or with the tools of the `wiro` connector (see [The Wiro connector](/docs/agent-connectors#the-wiro-connector)); only the runs its skills start reach the live feed (step 6).
 - One `sessionkey` per end user (Pattern 2 above): the same agent instance serves everyone; each user's chat and media history is isolated by session.
-- A single WebSocket connection carries three things at once: the streaming chat reply, the per-turn token-usage report, and discovery of any model runs the agent launches.
+- A single WebSocket connection carries three things at once: the streaming chat reply, the per-turn token-usage report, and discovery of the model runs the agent's skills launch.
 
 **End-to-end sequence an integrator replicates:**
 
@@ -182,7 +182,7 @@ A richer variant of white-label chat: besides replying with text, the agent **ge
 3. **(Optional) name the session**: `POST /UserAgent/Message/RenameSession` seeds a titled, empty session that shows up immediately in `Message/Sessions`.
 4. **Send a message**: `POST /UserAgent/Message/Send` with the user's `sessionkey`. Subscribe `{ "type": "agent_info", "agenttoken": "<agenttoken-from-send>" }` and stream `agent_start → agent_output × N → agent_end`.
 5. **Patch token usage**: ~250-500 ms after `agent_end`, an `agent_usage_report` frame delivers the turn's token counts, `tokencost`, and `remainingcredits`; splice them onto the message by `messageguid`.
-6. **Collect generated media**: when the agent runs a model, an `agent_wiroai_runtask` frame arrives on the same `agenttoken` with a `socketaccesstoken`. Subscribe to it with `{ "type": "task_info", "tasktoken": "<socketaccesstoken>" }` and stream `task_queue → task_start → task_output → task_postprocess_end`; the final frame carries the output media URLs. See [Agent WebSocket → Model runs the agent triggers](/docs/agent-websocket#model-runs-the-agent-triggers).
+6. **Collect generated media**: when a skill of the agent runs a model, an `agent_wiroai_runtask` frame arrives on the same `agenttoken` with a `socketaccesstoken`. Subscribe to it with `{ "type": "task_info", "tasktoken": "<socketaccesstoken>" }` and stream `task_queue → task_start → task_output → task_postprocess_end`; the final frame carries the output media URLs. A model the agent runs with the `wiro` connector's tools sends no such frame: its outputs go back to the agent as the tool's answer, and reach your users in what the agent replies or sends. See [Agent WebSocket → Model runs the agent triggers](/docs/agent-websocket#model-runs-the-agent-triggers).
 7. **Manage sessions**: list with `Message/Sessions`, rename with `Message/RenameSession`, clear/forget with `Message/DeleteSession` (`rotate: true` to wipe the agent's memory of the thread).
 
 Either deployment shape works: run **one** media agent and separate users by `sessionkey`, or deploy **separate** agents per workspace/customer. Both use the exact same socket and messaging surface.

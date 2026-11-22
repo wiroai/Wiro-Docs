@@ -213,7 +213,7 @@ Response:
       "channel": "twilio",
       "callsid": "CAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
       "callerInfo": { "number": "+15551234567", "country": "US" },
-      "callerProfile": "Returning caller — last asked about pricing.",
+      "callerProfile": "Returning caller, last asked about pricing.",
       "status": "realtime_session",
       "endReason": "wiro_completed",
       "durationSeconds": 137,

@@ -96,7 +96,7 @@ Open a WebSocket to the returned `wsUrl` and send the `session_start` JSON frame
 The example below boots a working voice call end-to-end: it acquires the mic, mounts an `AudioWorklet` that emits 24 kHz Int16 PCM, opens the WebSocket, presents the token, handles every server frame the bridge actually sends, and plays the agent's audio back through `AudioContext`. Drop it into a page paired with the worklet at `audio-processor.js` shown below.
 
 ```javascript
-// ===== voice-client.js — runs in the browser =====
+// ===== voice-client.js: runs in the browser =====
 
 // 1. POST /UserAgent/Realtime/WebStart from YOUR backend, then pass the
 //    correlationId / wsUrl / sessionToken / cancelToken down to the page.
@@ -168,14 +168,14 @@ ws.addEventListener("message", async (event) => {
     case "resume":       // new agent utterance starting after `clear`.
       interruptActive = false;
       break;
-    case "session_end":  // terminal — read msg.reason / msg.message / msg.error
+    case "session_end":  // terminal: read msg.reason / msg.message / msg.error
       onEnded?.(msg.reason, msg.message || msg.error);
       try { ws.close(); } catch {}
       break;
   }
 });
 
-// 3. Mic capture pipeline — AudioWorkletNode posts 200ms Int16 PCM chunks
+// 3. Mic capture pipeline: AudioWorkletNode posts 200ms Int16 PCM chunks
 //    that we frame as `<correlationId>|<binary>` and ship over the socket.
 let micStream, workletNode;
 async function startMicCapture() {
@@ -199,7 +199,7 @@ async function startMicCapture() {
 
 // 4. UI hooks
 function muteMic(on) {
-  // Mute is purely client-side — toggle the mic track. The bridge has no
+  // Mute is purely client-side: toggle the mic track. The bridge has no
   // server-side mute handler.
   micStream?.getAudioTracks().forEach((t) => (t.enabled = !on));
 }
@@ -208,7 +208,7 @@ function endCall() { ws.send(JSON.stringify({ type: "end" })); }
 ```
 
 ```javascript
-// ===== audio-processor.js — served from your origin, registered above =====
+// ===== audio-processor.js: served from your origin, registered above =====
 class PCM24kProcessor extends AudioWorkletProcessor {
   constructor() { super(); this.buffer = new Float32Array(0); }
   process(inputs) {

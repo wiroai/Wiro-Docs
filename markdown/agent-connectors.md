@@ -558,7 +558,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorList" \
 | `status` | See the table below. |
 | `connectedat`, `updatedat` | When the connection last connected, and its last change (Unix seconds). |
 | `tokenexpiresat`, `refreshtokenexpiresat` | Sign-in connections: when the access token and the refresh token expire, or `null`. Wiro refreshes the access token on its own. |
-| `scope` | The scopes the vendor granted, as it sent them. |
+| `scope` | The scopes the vendor granted, as it sent them. For a sign-in on a vendor's own MCP server whose token answer names none, the scopes Wiro asked for. |
 | `accounts` | The account selection, `{ <picker key>: [ids] }`. |
 | `wiroprojectid` | The Wiro connector only: the agent's own Wiro project, the one the connector acts with, as a string, or `null` when the agent has none. See [The Wiro connector](#the-wiro-connector). |
 | `savedvariables` | The names of the values saved for this connection, sorted. Use them to mark fields as saved; their values are never shown. |
@@ -698,6 +698,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetAccounts" \
 | `This connector's accounts cannot be listed yet.` | The connector's account lists aren't available right now. Try again later. |
 | `The sign-in for this connector expired or was revoked, so it has to be connected again. Ask the agent's operator to reconnect it.` | The sign-in could not be refreshed, and the connection is now `reauth`. Or the vendor's own MCP server refused the connection's sign-in (HTTP 401 or 403) as Wiro listed the candidates: the connection's `status` doesn't change. Either way, start a new sign-in with [ConnectorConnect](#connect-with-a-sign-in), then list the accounts again. |
 | `The token is being refreshed. Try again in a moment.` | A refresh was under way. |
+| `The token could not be refreshed right now. Try again in a moment.` | Refreshing the sign-in failed for now, and its token has already expired. Try again shortly. |
+| The vendor's own sentence | The vendor refused to list the accounts. A saved value or token in the sentence reads `[redacted]`; a refusal with no sentence reads `The connector could not complete the request.` |
 
 ### TikTok Ads: sign in, then pick advertisers
 
@@ -776,7 +778,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetAccounts" \
       "updatedat": 1795390520,
       "tokenexpiresat": 1795476800,
       "refreshtokenexpiresat": null,
-      "scope": null,
+      "scope": "mcp:tt4b",
       "accounts": { "advertisers": ["7301234567890123456"] },
       "wiroprojectid": null,
       "savedvariables": [],
@@ -868,7 +870,7 @@ The agent gets these tools of the Wiro MCP server, and no others:
 | `run_model` | `wiro__run_model` | Runs a model. |
 | `get_task` | `wiro__get_task` | Reads a task's status and outputs. |
 | `wait_for_task` | `wiro__wait_for_task` | Keeps waiting for a task without starting another run. |
-| `list_tasks` | `wiro__list_tasks` | Lists earlier tasks. |
+| `list_tasks` | `wiro__list_tasks` | Lists recent model tasks of the workspace that owns the agent's project: every project in it, and runs started on wiro.ai. |
 | `cancel_task` | `wiro__cancel_task` | Cancels a queued task. |
 | `kill_task` | `wiro__kill_task` | Stops a queued or running task. |
 | `upload_file` | `wiro__upload_file` | Uploads a file from a public URL, for use as a model input. |
@@ -876,6 +878,8 @@ The agent gets these tools of the Wiro MCP server, and no others:
 | `get_playbook` | `wiro__get_playbook` | Reads a step-by-step guide. Read only. |
 
 The list can't be widened. Whatever the connector's catalog row says, Wiro gives the agent no other tool of the server, and also refuses any tool whose name has one of these words in it: `agent`, `workflow`, `billing`, `account`, `project`, `studio`, `credential`, `oauth`, `skill`, `spend`, `limit`, `access`, `wallet`, `team`, `organization`, `coupon`, `invoice`, `payment`, `key` or `user`. `tools` on [Detail](#post-agentconnectordetail) lists only the tools the agent gets.
+
+**What the task tools reach.** `list_tasks`, `get_task`, `cancel_task` and `kill_task` work on the tasks of the whole workspace that owns the agent's Wiro project, not only on the runs the agent started. `list_tasks` lists that workspace's recent model tasks with their outputs, from every project in it and from runs started on wiro.ai, and `get_task` reads any of them by its id. `cancel_task` and `kill_task` can stop any of them, and also any other task the project's creator could stop: that person's own tasks in any workspace, and the tasks of every team they are a member of. So connect the `wiro` connector only to an agent whose users may see that workspace's work. When several agents share one project, such as one agent for each of your customers, each of them can list, read and stop the others' runs.
 
 ### Connecting it
 
@@ -930,12 +934,16 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
 - The project must be one you created, or any project of a team you are an admin of, and in the agent's workspace: a personal agent takes one of its owner's personal projects, a team agent one of its team's projects. The request must come from the agent's workspace too.
 - The connector follows the agent's project: a project bound later with `CredentialProjectBind` or another `ConnectorConnect` is the one its tools use after the restart. [ConnectorList](#post-useragentconnectorlist) shows the agent's current project as `wiroprojectid`, a string.
 - An agent left with no Wiro project keeps the connection, but gets no `wiro` tools until a project is bound again, and `wiroprojectid` reads `null`.
-- The agent's [Wiro API path list](/docs/agent-overview#post-useragentupdatesettings) (`wiroapiallowedpaths`) limits the Wiro API calls its skills make with the agent's own Wiro project; it doesn't apply to this connector's tools, which the list above fixes.
+- The agent's [Wiro API path list](/docs/agent-overview#post-useragentupdatesettings) (`wiroapiallowedpaths`) limits the Wiro API calls its skills make with the agent's own Wiro project; it doesn't apply to this connector's tools, which the list above fixes. They reach further than the default path list, which has `Task/Detail` but not `Task/List`, `Task/Cancel` or `Task/Kill`.
 - In chat, the agent proposes a `project` card for it, which binds the project the same way: see [Project: Wiro AI Models](/docs/agent-chat-integration#project-wiro-ai-models).
 
 ### Moving the agent to another workspace
 
-When the agent moves to a workspace its Wiro project isn't in, with [`Team/TransferAgent`](/docs/organizations-managing-teams#transferring-agents) or because its team or organization was deleted, Wiro disconnects the project from the agent and deletes the agent's `wiro` connection, before the agent restarts. The agent's activity log shows both: `Disconnected: wiro` (`AGENT_CREDENTIAL_REMOVED`) and `Connector disconnected: wiro` (`CONNECTOR_DISCONNECTED`, with `summary.reason` `"workspace"`). Bind a project of the new workspace, then connect the connector again.
+When the agent moves to a workspace its Wiro project isn't in, with [`Team/TransferAgent`](/docs/organizations-managing-teams#transferring-agents) or because its team or organization was deleted, Wiro disconnects the project from the agent and deletes the agent's `wiro` connection, before the agent restarts.
+
+The same happens without a move when the team that owns the agent's Wiro project, or that team's organization, is deleted. The team's projects then go to their creators' personal workspaces, so an agent of another workspace that ran with one of them is disconnected from it and restarted too. Only a personal agent of the project's creator keeps it.
+
+Either way, the agent's activity log shows both: `Disconnected: wiro` (`AGENT_CREDENTIAL_REMOVED`) and `Connector disconnected: wiro` (`CONNECTOR_DISCONNECTED`, with `summary.reason` `"workspace"`). To give the agent a project again, connect the connector with a project of the agent's workspace: that binds the project to the agent too.
 
 ## Errors
 

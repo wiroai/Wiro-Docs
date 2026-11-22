@@ -49,6 +49,8 @@ Complete API documentation for the Wiro AI platform: run AI models through a uni
 43. [Team Billing & Spending](#team-billing--spending)
 44. [Team API Access](#team-api-access)
 45. [Telegram Channel](#telegram-channel)
+46. [Twilio Voice Channel](#twilio-voice-channel)
+47. [Web Voice Channel](#web-voice-channel)
 
 ---
 
@@ -14514,7 +14516,7 @@ On success, the message status changes to `agent_cancel` in the database.
 
 ## Setup From Chat
 
-An agent can help the people who run it set it up in the chat: turn a skill on or off, connect a connector with its key or its vendor's sign-in, disconnect one, create or change a scheduled task, create or change a custom skill, add to one or undo its last change, or change its time zone. The agent never changes its own setup and never sees a key. It proposes the change as a **setup card**: Wiro checks the card against the agent's current setup and stores it on the message that asked for it, where it shows as a `setup` block in that message's `timeline[]`. Nothing changes until an agent admin (the owner, or an admin of the agent's team) approves the card.
+An agent can help the people who run it set it up in the chat: turn a skill on or off, connect a connector (with its key, its vendor's sign-in or, for the `wiro` connector, a Wiro project), disconnect one, create or change a scheduled task, create or change a custom skill, add to one or undo its last change, or change its time zone. The agent never changes its own setup and never sees a key. It proposes the change as a **setup card**: Wiro checks the card against the agent's current setup and stores it on the message that asked for it, where it shows as a `setup` block in that message's `timeline[]`. Nothing changes until an agent admin (the owner, or an admin of the agent's team) approves the card.
 
 Where cards can be proposed and approved is the agent's `chatsetup` setting. Set it with [`UpdateSettings`](/docs/agent-overview#post-useragentupdatesettings) or at [`Deploy`](/docs/agent-overview#post-useragentdeploy), and read it back as `chatSetup` on [`UserAgent/Detail`](/docs/agent-overview#post-useragentdetail):
 
@@ -14572,7 +14574,7 @@ A pending `connect` card's block also has `next`, beside `setup`: one entry `{ c
 |-------|------|-------------|
 | `v` | `number` | Card format version, `1`. |
 | `id` | `string` | The card's id: 12 lower-case letters and digits. Send it as `cardid` to [`SetupCardApply`](#post-useragentmessagesetupcardapply). |
-| `kind` | `string` | `add` (turn on a skill), `remove` (turn one off), `connect` (connect a connector, with its key or its sign-in), `disconnect` (disconnect a connector), `schedule` (a scheduled task), `skill` (a custom skill) or `timezone`. |
+| `kind` | `string` | `add` (turn on a skill), `remove` (turn one off), `connect` (connect a connector: with its key, its sign-in or a Wiro project), `disconnect` (disconnect a connector), `schedule` (a scheduled task), `skill` (a custom skill) or `timezone`. |
 | `action` | `string` | `schedule`: `create`, `update`, `pause`, `resume` or `delete`. `skill`: `create`, `update`, `append` (add text to the end), `revert` (undo the last change), `disable` or `enable`; see [Changing a custom skill](#setup-skill-cards). Absent on `add`, `remove`, `connect`, `disconnect` and `timezone` cards. |
 | `connector` | `string` | `connect` and `disconnect` only. The connector's `slug`, as [`POST /AgentConnector/List`](/docs/agent-connectors#post-agentconnectorlist) lists it, for example `serper`. A card names only connectors of the catalog, never a channel or a credential, and never holds a key's value. |
 | `key` | `string` | `add`, `remove`, `schedule` and `skill` only. On `add` and `remove`: the name of one skill (`util-<name>`) as [`POST /Skills/List`](/docs/agent-skills#post-skillslist) lists it, up to 64 characters, for example `util-weather`; see [Adding and removing skills](#setup-add-remove-cards). On `schedule` and `skill`: the scheduled task's key (`cs-cron-<name>`) or the custom skill's key (`cs-<name>`). |
@@ -15602,7 +15604,7 @@ Frames flow in two directions. `↓` = server → client, `↑` = client → ser
 | ↓ | `agent_error` | Terminal failure event. `message` is a plain string: the turn's coded failure message, the same text `response` holds (see [Failed turns](/docs/agent-messaging#failed-turns)). Emits at most once. |
 | ↓ | `agent_cancel` | Terminal cancel event. Fires **only** when an already-active message is aborted mid-stream (via `Message/Cancel` or upstream abort). Cancels against a still-queued message do **not** broadcast this event, so check `Message/Detail` for those. Emits at most once. |
 | ↓ | `agent_usage_report` | Post-terminal usage/billing frame. Fires once, ~250-500 ms after a successful `agent_end`, on the same `agenttoken`. Carries the final token counts, `model`, `tokencost`, and `remainingcredits` for the message identified by `messageguid`. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns); follow those on the [run stream](#following-an-agents-background-runs). |
-| ↓ | `agent_wiroai_runtask` | Model-run discovery frame. Fires whenever the agent itself launches a Wiro model run during a turn (e.g. generating an image or video for a skill or through the `wiro` connector). Arrives on the `agenttoken` of the turn that launched the run, carrying the new task's `socketaccesstoken` so you can subscribe to that run's `task_*` lifecycle and collect its outputs. See [Model runs the agent triggers](#model-runs-the-agent-triggers). |
+| ↓ | `agent_wiroai_runtask` | Model-run discovery frame. Fires whenever a skill of the agent launches a Wiro model run during a turn (e.g. generating an image or video). Runs made with the `wiro` connector's tools don't send it. Arrives on the `agenttoken` of the turn that launched the run, carrying the new task's `socketaccesstoken` so you can subscribe to that run's `task_*` lifecycle and collect its outputs. See [Model runs the agent triggers](#model-runs-the-agent-triggers). |
 | ↑ | `agent_session_subscribe` | Follow a session with the `sessiontoken` from `Message/History`. See [Following a session](#following-a-session). |
 | ↓ | `agent_session_subscribed` | Session follow acknowledged. |
 | ↓ | `agent_message_inserted` | A message was added to a followed session between turns (a scheduled report, files sent after an answer, the result of background work). Carries the `sessiontoken` and the new row in `message`. |
@@ -15612,7 +15614,7 @@ Frames flow in two directions. `↓` = server → client, `↑` = client → ser
 | ↓ | `agent_run_start` | A background run started: a Scheduled Task, a sub-agent, or another run with no chat message. Once per run. |
 | ↓ | `agent_run_block` | One step of an open background run changed. Carries one public block with `text: null`. |
 | ↓ | `agent_run_end` | A background run ended, with `ok`, `reason`, `durationms`, and `endedat`. Once per run. |
-| ↓ | `agent_run_model_start` | The agent started a Wiro model run, in a chat turn or a background run. Once per model run. |
+| ↓ | `agent_run_model_start` | A skill of the agent started a Wiro model run, in a chat turn or a background run. Once per model run. |
 | ↓ | `agent_run_model_end` | A model run the agent started ended, with `ok`, `outcome`, `durationms`, and `endedat`. Once per model run. |
 | ↑ | `agent_run_unsubscribe` | Stop following an agent's runs. |
 | ↓ | `agent_run_unsubscribed` | Run stream follow stopped. |
@@ -15929,7 +15931,7 @@ It is **not** emitted for:
 
 ### Model runs the agent triggers
 
-When the agent **itself** kicks off a Wiro model run during a turn (for example generating an image or a video for a skill, or through the `wiro` connector), the bridge emits an `agent_wiroai_runtask` discovery frame. It hands you the new model run's `socketaccesstoken` so you can subscribe to that run and stream its progress and final media outputs. This is how a chat product surfaces a "live activity feed" of the media the agent is producing.
+When the agent **itself** kicks off a Wiro model run during a turn from a skill, which calls the Wiro API with the agent's own Wiro project key (for example to generate an image or a video, such as the videos `util-video-creator` makes), the bridge emits an `agent_wiroai_runtask` discovery frame. It hands you the new model run's `socketaccesstoken` so you can subscribe to that run and stream its progress and final media outputs. This is how a chat product surfaces a "live activity feed" of the media the agent is producing. A model the agent runs with the [`wiro` connector](/docs/agent-connectors#the-wiro-connector)'s tools sends no `agent_wiroai_runtask` and no run stream frame, although it uses the same key: its outputs go back to the agent as the tool's answer, and reach your users only in what the agent replies or sends.
 
 ```json
 {
@@ -15962,7 +15964,7 @@ When the agent **itself** kicks off a Wiro model run during a turn (for example 
 
 **Then pivot to the task socket for outputs.** Take `message.socketaccesstoken` and subscribe to the standard model-run WebSocket exactly as documented in [WebSocket](/docs/websocket): send `{ "type": "task_info", "tasktoken": "<socketaccesstoken>" }` and stream `task_queue → task_start → task_output → task_postprocess_end`. The final `task_postprocess_end` carries the output array (media URLs). The model-run `task_*` events are **only** delivered on the task's own `socketaccesstoken` channel. They are never re-broadcast on the agent channel.
 
-> **Only fires for agent-initiated runs.** `agent_wiroai_runtask` is emitted when the *agent* calls a model mid-turn. Model runs you launch yourself with `POST /Run` (your own `x-api-key`) do not produce this frame, because you already hold their `socketaccesstoken` from the `/Run` response. It fires only for model runs the agent starts while answering your `Message/Send` turn. To see every model run the agent starts, Scheduled Tasks included, follow its [run stream](#following-an-agents-background-runs) (`agent_run_model_start` and `agent_run_model_end`).
+> **Only fires for agent-initiated runs.** `agent_wiroai_runtask` is emitted when the *agent* calls a model mid-turn. Model runs you launch yourself with `POST /Run` (your own `x-api-key`) do not produce this frame, because you already hold their `socketaccesstoken` from the `/Run` response. It fires only for model runs the agent starts while answering your `Message/Send` turn. To see every model run the agent's skills start, Scheduled Tasks included, follow its [run stream](#following-an-agents-background-runs) (`agent_run_model_start` and `agent_run_model_end`). Neither shows the runs made with the `wiro` connector's tools.
 
 ### Following a session
 
@@ -16023,7 +16025,7 @@ Each message added to that session afterwards arrives as an `agent_message_inser
 
 ### Following an agent's background runs
 
-Some of an agent's work never shows up as a chat turn: its Scheduled Tasks, the sub-agents it starts to work on something in the background, and other runs that have no chat message, such as a reply on a connected Telegram, Slack or Discord channel. The run stream lets you follow them live: when each run starts, each step it takes, and when it ends. It also reports every Wiro model run the agent starts, in chat turns too, from start to end.
+Some of an agent's work never shows up as a chat turn: its Scheduled Tasks, the sub-agents it starts to work on something in the background, and other runs that have no chat message, such as a reply on a connected Telegram, Slack or Discord channel. The run stream lets you follow them live: when each run starts, each step it takes, and when it ends. It also reports, from start to end, every Wiro model run the agent's skills start, in chat turns too. Runs made with the [`wiro` connector](/docs/agent-connectors#the-wiro-connector)'s tools aren't on it.
 
 The stream carries labels only. Reasoning and answer text never appear on it (a block's `text` is always `null`), and a tool step shows only its label, its status and the two closed-list words a timeline tool block has.
 
@@ -16152,7 +16154,7 @@ Each event carries `type`, `useragentguid`, `message`, and `result`. `result` is
 | `agent_run_model_start` | `modelref`, `runref`, `sessionkey`, `slugowner`, `slugproject`, `categories`, `startedat` | The agent started a Wiro model run. Once per model run. |
 | `agent_run_model_end` | `modelref`, `ok`, `outcome`, `durationms`, `endedat` | That model run ended. Once per model run. |
 
-`agent_run_start`, `agent_run_block`, and `agent_run_end` cover only runs that have no chat message. A chat turn you start with `Message/Send` streams on its `agenttoken` and never shows up here. `agent_run_model_start` and `agent_run_model_end` cover every Wiro model run the agent starts, chat turns included.
+`agent_run_start`, `agent_run_block`, and `agent_run_end` cover only runs that have no chat message. A chat turn you start with `Message/Send` streams on its `agenttoken` and never shows up here. `agent_run_model_start` and `agent_run_model_end` cover every Wiro model run the agent's skills start, chat turns included, and none made with the `wiro` connector's tools.
 
 A model run can start before its run's `agent_run_start` reaches you, and in rare cases a block can too: treat either one as the run being open.
 
@@ -16430,7 +16432,7 @@ agent_queue  →  agent_start  →  (agent_timeline_delta | agent_output) × N  
 
 `agent_queue` is **not** a WebSocket frame: it's the `status` returned synchronously in the `Message/Send` response (and reflected by `agent_subscribed` if you subscribe while the message is still queued). Timeline and provisional answer events can interleave between start and terminal status. On the failure path, `agent_error` or `agent_cancel` takes the place of `agent_end`, and **no** `agent_usage_report` follows. `Message/Detail` is authoritative for the final persisted timeline.
 
-[`agent_wiroai_runtask`](#model-runs-the-agent-triggers) is **not** part of this linear order: it fires out-of-band (zero or more times per turn, whenever the agent launches a model run) on the same `agenttoken` as the turn's other frames.
+[`agent_wiroai_runtask`](#model-runs-the-agent-triggers) is **not** part of this linear order: it fires out-of-band (zero or more times per turn, whenever a skill of the agent launches a model run) on the same `agenttoken` as the turn's other frames.
 
 ## Code Examples
 
@@ -18017,7 +18019,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorList" \
 | `status` | See the table below. |
 | `connectedat`, `updatedat` | When the connection last connected, and its last change (Unix seconds). |
 | `tokenexpiresat`, `refreshtokenexpiresat` | Sign-in connections: when the access token and the refresh token expire, or `null`. Wiro refreshes the access token on its own. |
-| `scope` | The scopes the vendor granted, as it sent them. |
+| `scope` | The scopes the vendor granted, as it sent them. For a sign-in on a vendor's own MCP server whose token answer names none, the scopes Wiro asked for. |
 | `accounts` | The account selection, `{ <picker key>: [ids] }`. |
 | `wiroprojectid` | The Wiro connector only: the agent's own Wiro project, the one the connector acts with, as a string, or `null` when the agent has none. See [The Wiro connector](#the-wiro-connector). |
 | `savedvariables` | The names of the values saved for this connection, sorted. Use them to mark fields as saved; their values are never shown. |
@@ -18157,6 +18159,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetAccounts" \
 | `This connector's accounts cannot be listed yet.` | The connector's account lists aren't available right now. Try again later. |
 | `The sign-in for this connector expired or was revoked, so it has to be connected again. Ask the agent's operator to reconnect it.` | The sign-in could not be refreshed, and the connection is now `reauth`. Or the vendor's own MCP server refused the connection's sign-in (HTTP 401 or 403) as Wiro listed the candidates: the connection's `status` doesn't change. Either way, start a new sign-in with [ConnectorConnect](#connect-with-a-sign-in), then list the accounts again. |
 | `The token is being refreshed. Try again in a moment.` | A refresh was under way. |
+| `The token could not be refreshed right now. Try again in a moment.` | Refreshing the sign-in failed for now, and its token has already expired. Try again shortly. |
+| The vendor's own sentence | The vendor refused to list the accounts. A saved value or token in the sentence reads `[redacted]`; a refusal with no sentence reads `The connector could not complete the request.` |
 
 ### TikTok Ads: sign in, then pick advertisers
 
@@ -18235,7 +18239,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetAccounts" \
       "updatedat": 1795390520,
       "tokenexpiresat": 1795476800,
       "refreshtokenexpiresat": null,
-      "scope": null,
+      "scope": "mcp:tt4b",
       "accounts": { "advertisers": ["7301234567890123456"] },
       "wiroprojectid": null,
       "savedvariables": [],
@@ -18327,7 +18331,7 @@ The agent gets these tools of the Wiro MCP server, and no others:
 | `run_model` | `wiro__run_model` | Runs a model. |
 | `get_task` | `wiro__get_task` | Reads a task's status and outputs. |
 | `wait_for_task` | `wiro__wait_for_task` | Keeps waiting for a task without starting another run. |
-| `list_tasks` | `wiro__list_tasks` | Lists earlier tasks. |
+| `list_tasks` | `wiro__list_tasks` | Lists recent model tasks of the workspace that owns the agent's project: every project in it, and runs started on wiro.ai. |
 | `cancel_task` | `wiro__cancel_task` | Cancels a queued task. |
 | `kill_task` | `wiro__kill_task` | Stops a queued or running task. |
 | `upload_file` | `wiro__upload_file` | Uploads a file from a public URL, for use as a model input. |
@@ -18335,6 +18339,8 @@ The agent gets these tools of the Wiro MCP server, and no others:
 | `get_playbook` | `wiro__get_playbook` | Reads a step-by-step guide. Read only. |
 
 The list can't be widened. Whatever the connector's catalog row says, Wiro gives the agent no other tool of the server, and also refuses any tool whose name has one of these words in it: `agent`, `workflow`, `billing`, `account`, `project`, `studio`, `credential`, `oauth`, `skill`, `spend`, `limit`, `access`, `wallet`, `team`, `organization`, `coupon`, `invoice`, `payment`, `key` or `user`. `tools` on [Detail](#post-agentconnectordetail) lists only the tools the agent gets.
+
+**What the task tools reach.** `list_tasks`, `get_task`, `cancel_task` and `kill_task` work on the tasks of the whole workspace that owns the agent's Wiro project, not only on the runs the agent started. `list_tasks` lists that workspace's recent model tasks with their outputs, from every project in it and from runs started on wiro.ai, and `get_task` reads any of them by its id. `cancel_task` and `kill_task` can stop any of them, and also any other task the project's creator could stop: that person's own tasks in any workspace, and the tasks of every team they are a member of. So connect the `wiro` connector only to an agent whose users may see that workspace's work. When several agents share one project, such as one agent for each of your customers, each of them can list, read and stop the others' runs.
 
 ### Connecting it
 
@@ -18389,12 +18395,16 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
 - The project must be one you created, or any project of a team you are an admin of, and in the agent's workspace: a personal agent takes one of its owner's personal projects, a team agent one of its team's projects. The request must come from the agent's workspace too.
 - The connector follows the agent's project: a project bound later with `CredentialProjectBind` or another `ConnectorConnect` is the one its tools use after the restart. [ConnectorList](#post-useragentconnectorlist) shows the agent's current project as `wiroprojectid`, a string.
 - An agent left with no Wiro project keeps the connection, but gets no `wiro` tools until a project is bound again, and `wiroprojectid` reads `null`.
-- The agent's [Wiro API path list](/docs/agent-overview#post-useragentupdatesettings) (`wiroapiallowedpaths`) limits the Wiro API calls its skills make with the agent's own Wiro project; it doesn't apply to this connector's tools, which the list above fixes.
+- The agent's [Wiro API path list](/docs/agent-overview#post-useragentupdatesettings) (`wiroapiallowedpaths`) limits the Wiro API calls its skills make with the agent's own Wiro project; it doesn't apply to this connector's tools, which the list above fixes. They reach further than the default path list, which has `Task/Detail` but not `Task/List`, `Task/Cancel` or `Task/Kill`.
 - In chat, the agent proposes a `project` card for it, which binds the project the same way: see [Project: Wiro AI Models](/docs/agent-chat-integration#project-wiro-ai-models).
 
 ### Moving the agent to another workspace
 
-When the agent moves to a workspace its Wiro project isn't in, with [`Team/TransferAgent`](/docs/organizations-managing-teams#transferring-agents) or because its team or organization was deleted, Wiro disconnects the project from the agent and deletes the agent's `wiro` connection, before the agent restarts. The agent's activity log shows both: `Disconnected: wiro` (`AGENT_CREDENTIAL_REMOVED`) and `Connector disconnected: wiro` (`CONNECTOR_DISCONNECTED`, with `summary.reason` `"workspace"`). Bind a project of the new workspace, then connect the connector again.
+When the agent moves to a workspace its Wiro project isn't in, with [`Team/TransferAgent`](/docs/organizations-managing-teams#transferring-agents) or because its team or organization was deleted, Wiro disconnects the project from the agent and deletes the agent's `wiro` connection, before the agent restarts.
+
+The same happens without a move when the team that owns the agent's Wiro project, or that team's organization, is deleted. The team's projects then go to their creators' personal workspaces, so an agent of another workspace that ran with one of them is disconnected from it and restarted too. Only a personal agent of the project's creator keeps it.
+
+Either way, the agent's activity log shows both: `Disconnected: wiro` (`AGENT_CREDENTIAL_REMOVED`) and `Connector disconnected: wiro` (`CONNECTOR_DISCONNECTED`, with `summary.reason` `"workspace"`). To give the agent a project again, connect the connector with a project of the agent's workspace: that binds the project to the agent too.
 
 ## Errors
 
@@ -19504,7 +19514,7 @@ Wiro cleans the agent's text before it reaches you, in the blocks, in `response`
 
 ### Replies the API answers itself
 
-Some messages are answered by Wiro itself, with no agent turn: a `yes` that applies a card or gets the card listing, a `yes` while a sign-in `connect` card waits, a key typed as the reply while the latest reply has one pending `connect` card and it is a `key` card with one secret field, and the others listed in [Chats Without Cards](#chats-without-cards). `Message/Send` then answers at once with `status: "agent_end"`, `agenttoken: null`, the answer in `response` and the outcome in `setupresult`:
+Some messages are answered by Wiro itself, with no agent turn: a `yes` that applies a card or gets the card listing, a `yes` while a sign-in or project `connect` card waits, a key typed as the reply while the latest reply has one pending `connect` card and it is a `key` card with one secret field, and the others listed in [Chats Without Cards](#chats-without-cards). `Message/Send` then answers at once with `status: "agent_end"`, `agenttoken: null`, the answer in `response` and the outcome in `setupresult`:
 
 ```json
 {
@@ -22836,8 +22846,8 @@ A `token_usage` event records the token spend and credit deduction for one bille
 | `AGENT_INSTRUCTION_ADDED`, `AGENT_INSTRUCTION_UPDATED`, `AGENT_INSTRUCTION_RENAMED`, `AGENT_INSTRUCTION_DELETED`, `AGENT_INSTRUCTION_REVERTED` | `Custom skill added: cs-brand-voice`, `Scheduled task updated: cs-cron-blog-scanner (text, schedule 0 9 * * 1)`, `Custom skill renamed: cs-brand-voice to cs-house-style`, `Scheduled task deleted: cs-cron-blog-scanner`, `Custom skill reverted to its preset: cs-brand-voice` |
 | `AGENT_SKILLS_UPDATED` | `Skills updated: util-web-channel off` |
 | `AGENT_CREDENTIAL_SAVED` | `Connector setting saved: wiro.apikey` |
-| `AGENT_CREDENTIAL_REMOVED` | `Disconnected: wiro` (the agent's Wiro project was disconnected because the agent moved to a workspace the project isn't in) |
-| `CONNECTOR_CONNECTED`, `CONNECTOR_DISCONNECTED` | `Connector connected: serper`, `Connector disconnected: serper` (see [Agent Connectors](/docs/agent-connectors)). When the agent moves to a workspace its Wiro project isn't in, Wiro writes `Connector disconnected: wiro` with `summary.reason` `"workspace"` next to the `AGENT_CREDENTIAL_REMOVED` row (see [Moving the agent to another workspace](/docs/agent-connectors#moving-the-agent-to-another-workspace)) |
+| `AGENT_CREDENTIAL_REMOVED` | `Disconnected: wiro` (the agent's Wiro project was disconnected because the agent moved to a workspace the project isn't in, or because the project's team or organization was deleted) |
+| `CONNECTOR_CONNECTED`, `CONNECTOR_DISCONNECTED` | `Connector connected: serper`, `Connector disconnected: serper` (see [Agent Connectors](/docs/agent-connectors)). When the agent moves to a workspace its Wiro project isn't in, or its Wiro project's team or organization is deleted, Wiro writes `Connector disconnected: wiro` with `summary.reason` `"workspace"` next to the `AGENT_CREDENTIAL_REMOVED` row (see [Moving the agent to another workspace](/docs/agent-connectors#moving-the-agent-to-another-workspace)) |
 | `CONNECTOR_ACCOUNTS_SET` | `Connector accounts set: facebook-pages` |
 | `CONNECTOR_REAUTH` | `Connector needs to be connected again: facebook-pages` (written by Wiro when a sign-in expired or was revoked) |
 | `AGENT_PLAN_STARTED`, `AGENT_PLAN_RENEWED`, `AGENT_PLAN_CANCELLED`, `AGENT_PLAN_RESUMED` | `Starter plan started: $5.00 charged`, `Starter plan renewed: $5.00 charged`, `Plan cancelled, ends 2026-06-01`, `Plan cancellation undone` |
@@ -23498,9 +23508,9 @@ A richer variant of white-label chat: besides replying with text, the agent **ge
 
 **Shape:**
 
-- One deployed agent whose Wiro project is set to your project (see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)), or that has the `wiro` connector connected to it (see [The Wiro connector](/docs/agent-connectors#the-wiro-connector)). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
+- One deployed agent whose Wiro project is set to your project (see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project). The agent runs models with that project's key from its skills, or with the tools of the `wiro` connector (see [The Wiro connector](/docs/agent-connectors#the-wiro-connector)); only the runs its skills start reach the live feed (step 6).
 - One `sessionkey` per end user (Pattern 2 above): the same agent instance serves everyone; each user's chat and media history is isolated by session.
-- A single WebSocket connection carries three things at once: the streaming chat reply, the per-turn token-usage report, and discovery of any model runs the agent launches.
+- A single WebSocket connection carries three things at once: the streaming chat reply, the per-turn token-usage report, and discovery of the model runs the agent's skills launch.
 
 **End-to-end sequence an integrator replicates:**
 
@@ -23509,7 +23519,7 @@ A richer variant of white-label chat: besides replying with text, the agent **ge
 3. **(Optional) name the session**: `POST /UserAgent/Message/RenameSession` seeds a titled, empty session that shows up immediately in `Message/Sessions`.
 4. **Send a message**: `POST /UserAgent/Message/Send` with the user's `sessionkey`. Subscribe `{ "type": "agent_info", "agenttoken": "<agenttoken-from-send>" }` and stream `agent_start → agent_output × N → agent_end`.
 5. **Patch token usage**: ~250-500 ms after `agent_end`, an `agent_usage_report` frame delivers the turn's token counts, `tokencost`, and `remainingcredits`; splice them onto the message by `messageguid`.
-6. **Collect generated media**: when the agent runs a model, an `agent_wiroai_runtask` frame arrives on the same `agenttoken` with a `socketaccesstoken`. Subscribe to it with `{ "type": "task_info", "tasktoken": "<socketaccesstoken>" }` and stream `task_queue → task_start → task_output → task_postprocess_end`; the final frame carries the output media URLs. See [Agent WebSocket → Model runs the agent triggers](/docs/agent-websocket#model-runs-the-agent-triggers).
+6. **Collect generated media**: when a skill of the agent runs a model, an `agent_wiroai_runtask` frame arrives on the same `agenttoken` with a `socketaccesstoken`. Subscribe to it with `{ "type": "task_info", "tasktoken": "<socketaccesstoken>" }` and stream `task_queue → task_start → task_output → task_postprocess_end`; the final frame carries the output media URLs. A model the agent runs with the `wiro` connector's tools sends no such frame: its outputs go back to the agent as the tool's answer, and reach your users in what the agent replies or sends. See [Agent WebSocket → Model runs the agent triggers](/docs/agent-websocket#model-runs-the-agent-triggers).
 7. **Manage sessions**: list with `Message/Sessions`, rename with `Message/RenameSession`, clear/forget with `Message/DeleteSession` (`rotate: true` to wipe the agent's memory of the thread).
 
 Either deployment shape works: run **one** media agent and separate users by `sessionkey`, or deploy **separate** agents per workspace/customer. Both use the exact same socket and messaging surface.
@@ -24050,8 +24060,17 @@ When an agent is transferred:
 - Its chat history moves with it
 - The agent is restarted with the new context
 - Future billing is charged to the new workspace's wallet
-- When the agent's Wiro project isn't in the new workspace, the agent is disconnected from it, and its [`wiro` connector](/docs/agent-connectors#moving-the-agent-to-another-workspace) is disconnected too: the answer's `wiroproject` reads `"cleared"`, and its `notes` hold `The agent's Wiro project belongs to another workspace, so the agent was disconnected from it. Pick a project of its new workspace so the agent can run models again.`
+- When the agent's Wiro project isn't in the new workspace, the agent is disconnected from it, and its [`wiro` connector](/docs/agent-connectors#moving-the-agent-to-another-workspace) is disconnected too (see `wiroproject` below)
 - [Take Control](/docs/agent-overview#take-control) stays off for an agent that has been in a team after it moves back to a personal workspace, until its owner [resets its browser](/docs/agent-overview#resetting-the-browser): the browser goes with it, signed in wherever the team's chats signed in
+
+The answer's `wiroproject` says what happened to the agent's Wiro project, the project its model runs are paid from, and `notes` lists sentences to show the person who moved it:
+
+| `wiroproject` | Meaning |
+|---------------|---------|
+| `none` | The agent has no Wiro project, or its key belongs to no project any more. |
+| `kept` | The project is in the new workspace, so the agent keeps it. |
+| `cleared` | The project isn't in the new workspace, so the agent was disconnected from it, and its `wiro` connection was deleted. `notes` holds `The agent's Wiro project belongs to another workspace, so the agent was disconnected from it. Pick a project of its new workspace so the agent can run models again.` |
+| `failed` | The project isn't in the new workspace and could not be disconnected: the agent still runs its models with it, on that workspace's wallet. `notes` holds `The agent still runs its models with a project of another workspace, so that workspace's spend limits and Model Access rules still apply to it. Check the agent's Wiro project: it should be a project of its new workspace.` |
 
 ## **POST** /Team/TransferProject
 
@@ -24441,17 +24460,53 @@ Connect your agent to a Telegram bot as an optional extra messaging channel.
 
 ## Overview
 
-Telegram is **optional** on every Wiro agent. Web chat and the Messaging API
-remain available without any external-channel setup. Telegram remains disabled
-until both `bottoken` and `allowedusers` are configured, then activates
-automatically.
+Telegram is **optional** on every Wiro agent. By default your agents already support two built-in messaging channels out of the box:
+
+- **Web chat**: chat with the agent directly from the [wiro.ai dashboard](https://wiro.ai/panel/agents) with no extra setup.
+- **Messaging API**: your own application sends and receives messages programmatically via [Agent Messaging](/docs/agent-messaging), with real-time streaming over [Agent WebSocket](/docs/agent-websocket) or HTTP callbacks via [Agent Webhooks](/docs/agent-webhooks).
+
+Adding a Telegram bot gives you a third, complementary channel, useful when you want to:
+
+- Push **operator notifications** (campaign alerts, new leads, error reports) to a private chat or team group on your phone.
+- Give **off-dashboard access** to team members who don't log into wiro.ai but still want to message the agent.
+- Pipe **scheduled status reports** from scheduled tasks into a shared Telegram channel.
+
+You can skip this integration entirely: agents keep working through web chat
+and the API regardless. Telegram activates automatically only after both
+`bottoken` and `allowedusers` are configured.
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| Bot Token | Available | Single Bot Token from BotFather. |
+
+## Prerequisites
+
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
+- **A Telegram account**.
 
 ## Setup
 
-1. Create a bot with [@BotFather](https://t.me/BotFather) and copy its Bot
-   Token.
-2. Collect each approved operator's immutable numeric Telegram user ID.
-3. Save the activation credentials in one request:
+### Step 1: Create a Telegram bot
+
+1. In Telegram, start a chat with [@BotFather](https://t.me/BotFather).
+2. Send `/newbot`.
+3. Choose a display name and a username (must end in `bot`, e.g. `@mycompany_agent_bot`).
+4. BotFather returns a **Bot Token** like `123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11`. Copy it.
+
+### Step 2: Collect allowed user IDs
+
+Each allowed user must message the bot first.
+
+1. User sends any message to the bot.
+2. Open `https://api.telegram.org/bot<BOT_TOKEN>/getUpdates` in a browser.
+3. Find the `message.from.id` value in the response: that's the Telegram user ID (numeric).
+
+Alternative: each user can DM [@userinfobot](https://t.me/userinfobot) in Telegram to get their own ID.
+
+### Step 3: Save Telegram credentials on the UserAgent
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
@@ -24463,12 +24518,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
       {
         "credentialkey": "telegram",
         "fieldname": "bottoken",
-        "fieldvalue": "123456:ABC-DEF..."
+        "fieldvalue": "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
       },
       {
         "credentialkey": "telegram",
         "fieldname": "allowedusers",
-        "fieldvalue": ["123456789"]
+        "fieldvalue": ["123456789", "987654321"]
       },
       {
         "credentialkey": "telegram",
@@ -24484,28 +24539,689 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-Send `allowedusers` and `groups` as native JSON arrays. `groups` is optional.
-For a new agent, place the complete Telegram group in `credentials`. Deploy
-does not accept a chat-mode field; change Chat Mode afterward with
-`POST /UserAgent/UpdateSettings`.
+Send `allowedusers` and `groups` as native JSON arrays. `groups` is optional;
+omit it when the bot should be usable only in direct messages.
+
+If you are deploying a new agent, place the complete `telegram` group in
+`credentials`. Do not send an `enabledchannels` switch or chat-mode field to
+`POST /UserAgent/Deploy`; change Chat Mode after deployment when needed.
+
+### Step 4: Verify the applied state
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+Confirm that `enabledChannels` contains `"telegram"` and the Telegram row in
+`communicationChannels` reports `enabled: true`, `configured: true`, and an
+empty `missingfields` array.
 
 ## Credential Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `bottoken` | string | BotFather token. |
-| `allowedusers` | string[] | Immutable Telegram user IDs allowed to use direct messages. |
-| `groups` | object[] | Optional rows shaped as `{ "chatid": "-100...", "allowedusers": ["..."] }`. |
+| `bottoken` | string | BotFather token (`<bot_id>:<secret>`). |
+| `allowedusers` | string[] | Array of Telegram user IDs (numeric strings) allowed to interact. Messages from IDs outside this list are ignored. |
+| `groups` | object[] | Optional room allowlist. Each row is `{ "chatid": "-100...", "allowedusers": ["..."] }`. Group/supergroup IDs must be negative numeric strings. |
 
-`teamsessionmode: "private"` isolates each approved direct-message operator and
-each team member's Wiro web-chat history; `"collaborative"` shares both scopes.
-Group conversations remain group-scoped.
+### Chat Mode
+
+`teamsessionmode` is the agent's single Chat Mode setting, not a Telegram
+credential. Set it after deployment with `POST /UserAgent/UpdateSettings`.
+The same value also controls team members' Wiro web-chat history.
+
+| Mode | Behavior |
+|------|----------|
+| `private` | Each allowed direct-message user has an isolated conversation with the agent. Personal deployments and team detachments use this default. |
+| `collaborative` | Approved direct-message users share one conversation. Team deployments and transfers use this default. |
+
+Group conversations are always scoped to their own group and do not merge into
+the shared direct-message conversation.
 
 ## Access Behavior
 
-- Direct messages are accepted only from top-level `allowedusers`.
-- Group messages require an explicitly allowed negative chat ID, a
-  room-approved user ID, and a mention of the bot.
-- Usernames and display names are never authorization values.
-- Clearing either `bottoken` or `allowedusers` with `CredentialUpsert` disables
-  Telegram; completing both reactivates it.
+- Direct messages are accepted only from IDs in the top-level `allowedusers`.
+- Group messages are accepted only in configured `groups[].chatid` rooms and
+  only from that room's `allowedusers`.
+- Group turns must mention the bot.
+- Usernames and display names are never accepted as authorization values.
+- Telegram is optional. Clear either `bottoken` or `allowedusers` with
+  `CredentialUpsert` to disable it; completing both fields reactivates it.
+
+## Troubleshooting
+
+- **Bot doesn't respond:** Verify `bottoken` is correct and the sender's Telegram user ID is in `allowedusers`.
+- **"Unauthorized" (401) from Telegram API:** BotFather regenerated the token, invalidating the old one. Create a new token and update.
+- **Rate limits:** Telegram bots are limited to ~30 messages/second globally. For burst broadcasts, plan around this.
+- **Bot works in DMs but not a group:** Add the negative group chat ID and the sender's immutable user ID to the same `groups[]` row, then mention the bot.
+- **Collaborative mode confusion:** Call `UserAgent/UpdateSettings` with `teamsessionmode: "collaborative"`.
+
+## Related
+
+- [Agent Credentials](/docs/agent-credentials)
+- [Agent Overview](/docs/agent-overview)
+- [Agent Skills](/docs/agent-skills)
+- [Telegram Bot API docs](https://core.telegram.org/bots/api)
+
+---
+
+# Twilio Voice Channel
+
+Connect inbound phone calls (PSTN) to a Wiro agent. Used by the [Voice Receptionist](https://wiro.ai/agents/voice-receptionist) agent and any custom agent that needs to answer real phone calls.
+
+## Overview
+
+Turn on the Twilio Voice channel, the `util-twilio-channel` skill, on a useragent and Wiro turns on the voice rules it needs (`util-voice-receptionist` + `util-voice-call-prep`), so you don't need to enable them separately. On an agent that doesn't have it yet, turn it on with [`SkillsApply`](/docs/agent-overview#post-useragentskillsapply), or name it in Deploy's `skills`:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440002",
+    "skills": { "util-twilio-channel": true }
+  }'
+```
+
+**Skill:** `util-twilio-channel`, the phone channel. Its `docs_url` in [`Skills/List`](/docs/agent-skills#post-skillslist) is this page, `integration-twiliovoice-skills`.
+
+**Credential:** `twilio-voice`, the Account SID, Auth Token and phone numbers below.
+
+**Agents that typically enable this integration:**
+
+- [Voice Receptionist](https://wiro.ai/agents/voice-receptionist) (phone-receptionist for SMBs)
+- Custom agents that handle inbound calls
+
+> **Twilio bills you separately** on your Twilio account (per inbound minute + per number rental + per TTS character when hold uses TTS). Wiro doesn't proxy Twilio billing.
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| API Key (Account SID + Auth Token) | Available | Twilio Live Credentials. Wiro auto-configures each number's `VoiceUrl` on save. |
+
+## Webhook auto-configuration
+
+You don't touch the Twilio Console's webhook fields manually. When you save this credential through `POST /UserAgent/CredentialUpsert` (or the panel), Wiro uses your Account SID + Auth Token to auto-configure each phone number's `VoiceUrl` and `StatusCallback`. No separate "Setup webhooks" step.
+
+> **Important:** the number's **Configure with** mode in the Twilio Console must be `Webhook, TwiML Bin, Function, Studio Flow, Proxy Service` (Twilio's default). Wiro does **not** drive `TwiML App` or `SIP Trunk` routing, so flip the number back to *Webhook* in the Twilio Console first if it's set to one of those.
+
+## Prerequisites
+
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (Voice Receptionist preset or any custom agent with `util-twilio-channel` on), see [Agent Overview](/docs/agent-overview).
+- **A Twilio account** with at least one purchased phone number.
+
+## Setup
+
+### Step 1: Get your Twilio Live Credentials
+
+1. [Twilio Console → Account → Keys & Credentials → API keys & tokens](https://console.twilio.com/us1/account/keys-credentials/api-keys).
+2. In the **Live credentials** section at the top of the page, copy:
+   - **Account SID**: 34 chars, starts with `AC`.
+   - **Auth Token**: click *Show* to reveal. 32-char secret.
+
+> **Don't confuse with API Keys.** The lower part of the same page lists *API Keys*, which are a different mechanism Wiro doesn't use. Use the Live Auth Token specifically. An API Key Secret pasted here will silently fail every call.
+
+### Step 2: Buy or import phone numbers
+
+[Twilio Console → Phone Numbers → Active numbers](https://console.twilio.com/us1/develop/phone-numbers/manage/incoming) → **Buy a number**. Pick a number with **Voice** capability (toll-free, local, or international as desired).
+
+Numbers must be in **E.164** format when you save them to Wiro:
+
+- Starts with `+`
+- Country code first (no leading `0`)
+- Digits only: no spaces, dashes, or parentheses
+- Max 15 digits total
+
+**Examples:** `+14155551234` (US), `+447911123456` (UK), `+905551234567` (Turkey), `+5511900000000` (Brazil).
+
+### Step 3: Save credentials to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "twilio-voice", "fieldname": "accountsid",      "fieldvalue": "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" },
+      { "credentialkey": "twilio-voice", "fieldname": "authtoken",       "fieldvalue": "your-32-character-auth-token" },
+      { "credentialkey": "twilio-voice", "parentfield": "phonenumbers", "ordinal": 0, "fieldname": "value", "fieldvalue": "+14155551234" },
+      { "credentialkey": "twilio-voice", "fieldname": "maxcallseconds",  "fieldvalue": "600" },
+      { "credentialkey": "twilio-voice", "fieldname": "holdstrategy",    "fieldvalue": "text_then_music" },
+      { "credentialkey": "twilio-voice", "fieldname": "holdtext",        "fieldvalue": "Please hold while we connect you to our assistant." },
+      { "credentialkey": "twilio-voice", "fieldname": "holdvoice",       "fieldvalue": "Polly.Joanna-Neural" }
+    ]
+  }'
+```
+
+Or save through the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Connectors** tab → **Channels → Twilio Voice**. The panel saves the card, and the same save sets up the number webhooks.
+
+### Step 4: Verify webhook configuration
+
+After saving credentials, the response includes:
+
+- `twilioWebhooksUpdated`: numbers whose `VoiceUrl` was successfully written.
+- `twilioWebhookSkipped`: a single reason string, returned instead of `twilioWebhooksUpdated` when the `VoiceUrl` step was skipped (e.g. *no matching IncomingPhoneNumber on Twilio account*).
+- `twilioWebhooksFailed`: Twilio API errors per number, if any.
+- `twilioWebhookError`: present **instead of** the three fields above when the entire auto-webhook flow throws (e.g. Twilio API outage, invalid Account SID format, network error). Holds a single error string. Treat as "no numbers were configured this round; retry the save".
+
+You can also confirm in the Twilio Console: open the number → **Voice Configuration** → **A call comes in** should show:
+
+- **Configure with** → *Webhook, TwiML Bin, Function, Studio Flow, Proxy Service*
+- **Webhook URL** → a Wiro voice handler URL
+- **HTTP** → *POST*
+
+### Step 5: Start the agent and place a test call
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+Once the agent is in status `4` (running), dial your Twilio number from any phone. You should hear the configured hold experience for ~5-8 seconds, then the agent's greeting.
+
+## Credential Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `accountsid` | string | Yes | Twilio Account SID: 34 chars starting with `AC`. |
+| `authtoken` | string (secret) | Yes | Twilio Live Auth Token: 32-char secret. Stored encrypted at rest. |
+| `phonenumbers` | string array | Yes | E.164-formatted phone numbers this agent will answer. All numbers share the same agent settings (hold media, persona, skills). |
+| `maxcallseconds` | number | No | Hard cap per call in seconds. Default `600` (10 min). When reached, the call is force-ended and the caller hears a fallback message. Twilio still bills for the full duration up to this cap. |
+| `whitelistedcallers` | string array | No | E.164-formatted caller-ID allowlist. **Non-empty** → only listed numbers reach the agent (others get a busy signal). **Empty** → all callers accepted (production default). Use to add only your own number while testing in production. |
+| `holdstrategy` | enum | No | What the caller hears during the ~5-8 sec window it takes the agent to connect. Options: `none`, `text`, `audio`, `music`, `audio_then_music`, `text_then_music`. *"X + background music"* options are the most polished. |
+| `holdtext` | string | Conditional | Required when `holdstrategy` ∈ {`text`, `text_then_music`}. TTS text: keep to 1 sentence (~5-8s spoken). Hard cap 3000 chars. Supports SSML tags (`<break>`, `<prosody>`, `<say-as>`). |
+| `holdvoice` | enum | Conditional | TTS voice for `holdtext`. Empty string (`""`) = use Twilio account default. 20 named voices available (AWS Polly Neural / Generative + Google Chirp3-HD), each tied to a single language: `Polly.Joanna-Neural` (en-US), `Polly.Burcu-Neural` (tr-TR), `Polly.Lea-Neural` (fr-FR), etc. Generative tier is most human-like but priced higher per character. |
+| `holdaudio` | file (MP3/WAV) | Conditional | Required when `holdstrategy` ∈ {`audio`, `audio_then_music`}. Short greeting (5-15 s recommended), mono, max 10 MB. |
+| `holdmusic` | file (MP3/WAV) | Conditional | Required when `holdstrategy` ∈ {`music`, `audio_then_music`, `text_then_music`}. Background music that loops while the caller waits. Mono, max 10 MB. 30-60 s sweet spot. **Use royalty-free music**, since you are responsible for licensing. |
+
+> **Twilio cannot mix speech over music simultaneously**: for a voice-over-music intro, pre-mix both into a single audio file and use `holdstrategy: audio` (or `audio_then_music` if you also want the loop after).
+
+## Credentials schema (as returned by `POST /UserAgent/Detail`)
+
+```json
+"twilio-voice": {
+  "_connected": true,
+  "optional": false,
+  "extra": false,
+  "accountsid": "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "authtoken": "••••••••",
+  "phonenumbers": ["+14155551234"],
+  "maxcallseconds": 600,
+  "whitelistedcallers": [],
+  "holdstrategy": "text_then_music",
+  "holdtext": "Please hold while we connect you to our assistant.",
+  "holdvoice": "Polly.Joanna-Neural",
+  "holdaudio": null,
+  "holdmusic": "https://cdn.wiro.ai/uploads/.../music.mp3"
+}
+```
+
+## Pairing With Connectors
+
+Pair this channel with connectors that give the agent what the call needs (see [Agent Connectors](/docs/agent-connectors)):
+
+- [Google Calendar](https://wiro.ai/connectors/google-calendar) (`google-calendar`): read availability and draft appointments during the call.
+- [HubSpot](https://wiro.ai/connectors/hubspot) (`hubspot`): match the caller's phone number against CRM contacts and log call outcomes.
+- [Brevo](https://wiro.ai/connectors/brevo) (`brevo`), [SendGrid](https://wiro.ai/connectors/sendgrid) (`sendgrid`) or [Mailchimp](https://wiro.ai/connectors/mailchimp) (`mailchimp`): draft post-call confirmation or follow-up emails.
+
+The Voice Receptionist template comes with this channel and the voice rules, and suggests the Brevo and HubSpot connectors. See [Agent Use Cases](/docs/agent-use-cases) for the full template.
+
+## Troubleshooting
+
+- **All calls fail with signature error:** You probably pasted an *API Key Secret* instead of the live *Auth Token*. Re-paste from the **Live credentials** section of the Twilio Console.
+- **Number isn't in `twilioWebhooksUpdated`:** The number isn't on the Twilio account whose Account SID you provided. Either buy the number on this account, or import it from the source account. The skip reason `no matching IncomingPhoneNumber on Twilio account` confirms this.
+- **Caller hears Twilio's default voicemail:** The number's *Configure with* is set to *TwiML App* or *SIP Trunk*. Flip it back to *Webhook* in the Twilio Console, then re-save credentials in Wiro to re-write `VoiceUrl`.
+- **Calls cut off at exactly N seconds:** That's `maxcallseconds`. Raise it for longer use cases.
+- **Caller hears that the call has to end, then the line drops:** A [spend limit](/docs/spend-limits) was reached, or the balance of the wallet that pays for the call's audio ran out, during the call. The agent finishes the reply it is giving, a short notice plays, and the call ends. [Call History](#call-history) shows `endReason` `spend_limit` or `balance`.
+- **Hold music plays forever, agent never speaks:** The agent failed to start the realtime conversation. Check `POST /UserAgent/Logs` for errors.
+- **Caller hears your fallback message but no agent:** `maxcallseconds` was reached before the agent connected, or the agent crashed mid-call. Check `POST /UserAgent/Logs`.
+- **Whitelisted caller still gets busy signal:** Ensure E.164 format. Twilio normalizes inbound numbers, so if your test phone presents itself as `4155551234` instead of `+14155551234`, the allowlist won't match. Add both forms while testing.
+- **Rotated the Auth Token in Twilio Console:** Re-paste the new token in Wiro and save again. The credential save also re-runs the webhook setup.
+
+## Call History
+
+Retrieve the last N realtime voice sessions for a useragent, regardless of which channel they came in on.
+
+### POST /UserAgent/TwilioCallHistory/List
+
+> **Despite the Twilio-named path, this endpoint returns both Twilio and Web Channel sessions.** Both are stored as agent messages (`metadata.type` starts with `realtime_session` in either case), so a single feed is enough to audit every voice exchange the agent had.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/TwilioCallHistory/List" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "limit": 50
+  }'
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Useragent instance guid. Owner / team-member access only. |
+| `limit` | number | No | Max sessions to return. Default `50`, hard-capped at `200`. Sorted newest-first by message id. |
+
+Response:
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "data": [
+    {
+      "messageguid": "5d6e7f80-9a1b-4c2d-8e3f-4a5b6c7d8e01",
+      "agenttoken": "8a5b9e2f-4d3c-4a01-9c2e-1b6d4e7a9c5d",
+      "channel": "twilio",
+      "callsid": "CAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "callerInfo": { "number": "+15551234567", "country": "US" },
+      "callerProfile": "Returning caller, last asked about pricing.",
+      "status": "realtime_session",
+      "endReason": "wiro_completed",
+      "durationSeconds": 137,
+      "modelSlug": "gpt-realtime-mini",
+      "startedAt": 1730473321000,
+      "endedAt":   1730473458000
+    },
+    {
+      "messageguid": "0f2a1c3d-9e8b-4c5a-bf42-3a7b6e1d0c8f",
+      "agenttoken": "1e7d3b9a-5c2f-4d6b-8e0a-2f4c7b5d9e1a",
+      "channel": "web",
+      "callsid": "voice-call-9d2d4b6e3f6b4c1a8a7e1f5a0b2c3d4e",
+      "callerInfo": { "page_url": "https://example.com/contact", "display_identifier": "+15551234567" },
+      "callerProfile": null,
+      "status": "realtime_session",
+      "endReason": "browser_disconnect",
+      "durationSeconds": 42,
+      "modelSlug": "gpt-realtime-mini",
+      "startedAt": 1730463668000,
+      "endedAt":   1730463710000
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `messageguid` | string | The guid of the message that records this session. Use it with `POST /UserAgent/Message/Detail` to fetch the full transcript metadata. |
+| `agenttoken` | string | The per-message agent token. Use it on `Message/Detail` / `Message/Cancel` like any other agent message. |
+| `channel` | `"twilio" \| "web"` | Source channel. Determines the `callerInfo` shape and whether `callsid` is a Twilio Call SID or a Web session id. |
+| `callsid` | string \| null | Twilio Call SID (`channel: "twilio"`) or internal `voice-call-<id>` session id (`channel: "web"`). |
+| `callerInfo` | object | Channel-specific. Twilio: `{ number, country }` (E.164 phone + ISO-2 country). Web: `{ page_url, display_identifier? }`, where `display_identifier` is omitted unless the embedding page validated an identifier (`session_metadata.display_identifier` whose whole-string match passes the allowlist). |
+| `callerProfile` | string \| null | Free-text summary of the caller that the agent writes before the call. `null` until it is ready, and on rejected calls. |
+| `status` | string | Mirrors the message's `metadata.type` verbatim. Values: `realtime_session_incoming` (call accepted, prep running), `realtime_session_active` (audio bridge live), `realtime_session_rejected` (rejected before audio, e.g. concurrent-limit), or **`realtime_session`** (no suffix: final/completed). The bare `realtime_session` is the only value that means "ended cleanly". It is **not** the string `"completed"`. |
+| `endReason` | string \| null | Set on completed (`realtime_session`) rows only. One of: `wiro_completed` (graceful end), `wiro_cancelled`, `wiro_disconnect`, `wiro_error`, `max_duration` (the call reached its maximum length, `maxcallseconds` on Twilio), `spend_limit` (a [spend limit](/docs/spend-limits) was reached during the call), `balance` (the balance of the wallet that pays for the call ran out), `browser_disconnect` (Web only), `twilio_disconnect` (Twilio only). Rejected rows leave `endReason: null` and instead carry `metadata.reason` (`concurrent_limit`, `agent_prep_timeout`, `realtime_ws_open_failed`, `realtime_stream_timeout`). Fetch it via `Message/Detail`. |
+| `durationSeconds` | number \| null | Wall-clock duration. `null` while in-progress. |
+| `modelSlug` | string \| null | Realtime model used (e.g. `gpt-realtime-mini`). |
+| `startedAt` / `endedAt` | number \| null | Unix epoch ms. `endedAt` stays `null` while the call is in-progress or rejected. |
+
+> **Live call audio is billed to the agent's Wiro project** (its `wiro` credential, see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)): the voice cost is charged to the wallet of the workspace that owns that project. It is **not** charged to the agent's platform credit pool and writes **no** `POST /UserAgent/TransactionList` row. The agent's text turns around the call (the prep turn that briefs the voice model before the voice session starts, and the post-call turn where the agent summarizes and acts on the call) are billed as normal token deducts (`type: "deduct"`, `action: "tokens"`) and show up in TransactionList. Audit call-audio cost from that project's usage; TransactionList accounts only for those text turns.
+
+## Related
+
+- [Web Voice](/docs/integration-webvoice-skills): browser-embedded voice for the same agent, shares this page's [Call History](#call-history) feed.
+- [Agent Credentials](/docs/agent-credentials)
+- [Agent Skills](/docs/agent-skills): toggle skills on/off, configure preferences and crons
+- [Agent Use Cases](/docs/agent-use-cases): Voice Receptionist preset
+- [Agent Connectors](/docs/agent-connectors): Google Calendar for inbound voice booking, HubSpot for caller identification and CRM logging
+- [Twilio Voice docs](https://www.twilio.com/docs/voice)
+
+---
+
+# Web Voice Channel
+
+Embed a real-time voice conversation with a Wiro agent into your own browser app. Used by the [Voice Receptionist](https://wiro.ai/agents/voice-receptionist) and [Voice Sales Rep](https://wiro.ai/agents/voice-sales-rep) preset agents, and by any custom agent that needs an "Open mic" button on a website.
+
+## Overview
+
+Toggle `util-web-channel` on a useragent and a single REST call (`POST /UserAgent/Realtime/WebStart`) returns everything the browser needs to open an authenticated WebSocket and stream microphone audio straight to the agent. The same agent can also pick up phone calls via [Twilio Voice](/docs/integration-twiliovoice-skills): the two channels share the same realtime runtime and end up in the same [Call History](/docs/integration-twiliovoice-skills#call-history).
+
+**Skill that powers this channel:**
+
+- `util-web-channel`: browser voice channel. Bundled on the Voice Receptionist and Voice Sales Rep presets; toggle it on for any other agent via `POST /UserAgent/SkillsApply`.
+
+**Agents that typically enable this channel:**
+
+- [Voice Receptionist](https://wiro.ai/agents/voice-receptionist): phone + browser receptionist.
+- [Voice Sales Rep](https://wiro.ai/agents/voice-sales-rep): outbound sales rep with an "Open mic" CTA.
+- Custom agents that need a voice button on a website or web app.
+
+**Web channel or Twilio channel**? Pick by where the caller comes from:
+
+| Channel | Caller comes from | When to use |
+|---------|-------------------|-------------|
+| Web (this page) | Browser mic on **your** site | "Open mic" button on a product / support / sales page. No phone number, no per-minute Twilio bill. |
+| [Twilio](/docs/integration-twiliovoice-skills) | Inbound PSTN phone call | A real phone number ringing. Twilio bills per inbound minute. |
+
+> No third-party billing on this channel. The live call audio is billed to the agent's Wiro project (its `wiro` credential, see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)), against the wallet of the workspace that owns it. It is **not** charged to the agent's platform credit pool. The voice-prep turn and the post-call text turn are billed as normal token deducts (`action: "tokens"`) on [`POST /UserAgent/TransactionList`](/docs/agent-transactions#tx-transactionlist).
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| Bearer auth (wiro.ai dashboard session) | Available | Requests must come from wiro.ai. From your own site, call `WebStart` from your backend with an API key. |
+| `x-api-key` (project API key) | Available | No Origin check. Use this when proxying through your own backend, or when embedding the voice button in a non-Wiro origin. |
+
+## Prerequisites
+
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** in `status: 4` (Running), see [Agent Overview](/docs/agent-overview). Voice Receptionist / Voice Sales Rep presets work out of the box; for custom agents, enable `util-web-channel` via `POST /UserAgent/SkillsApply`.
+- **A browser that can capture microphone audio** at 24 kHz mono PCM (every evergreen browser via `getUserMedia` + Web Audio).
+
+## Setup
+
+### Step 1: Start a session with `POST /UserAgent/Realtime/WebStart`
+
+Issues two opaque, one-time handles, both valid until `expiresAt` (5 minutes after issue): a `sessionToken` the browser presents to the WebSocket on first connect, and a `cancelToken` for `Realtime/Cancel`. No API key ever needs to reach the browser.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Realtime/WebStart" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "session_metadata": {
+      "page_url": "https://yourapp.com/agents/sales-rep",
+      "display_identifier": "Acme Inc."
+    }
+  }'
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Useragent instance guid. Must be an agent you deployed (for a team agent, call with that team's project key or workspace, or remain an active member of the team), must be in `status: 4` (Running), and must have `util-web-channel` enabled. |
+| `session_metadata` | object | No | Optional caller context surfaced to the agent + later to [Call History](/docs/integration-twiliovoice-skills#call-history). |
+| `session_metadata.page_url` | string | No | The page URL the caller opened the mic from. Up to 2048 chars. Echoed back as `callerInfo.page_url`. |
+| `session_metadata.display_identifier` | string | No | Operator-supplied display name (e.g. logged-in customer name, account name). 1-100 chars matching `^[\p{L}\p{N} @._\-'+]+$` (Unicode letters / numbers / spaces / `@ . _ - ' +`). The check is **whole-string**: any character outside the allowlist (newlines, tabs, ampersands, backticks, `$`, etc.) silently rejects the entire field (`callerInfo.display_identifier` ends up `null`). Pre-sanitize on your side if you accept arbitrary input. |
+
+Response:
+
+```json
+{
+  "result": true,
+  "correlationId": "voice_3fK9xQ2LmVb7TzR1pWc8NdYa",
+  "wsUrl": "wss://socket.wiro.ai/v1/AgentRealtime/Web",
+  "sessionToken": "<opaque one-time session handle>",
+  "cancelToken": "<opaque one-time cancel handle>",
+  "expiresAt": 1748212800000,
+  "estimatedReadyMs": 8000
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `correlationId` | Random public identifier for this session. Use it as the audio frame prefix (Step 2); server audio frames and the `Realtime/Cancel` response carry it too. |
+| `wsUrl` | Environment-specific WebSocket URL: pass it back to the browser verbatim, don't hardcode the host. Production lives at `wss://socket.wiro.ai/v1/AgentRealtime/Web`. |
+| `sessionToken` | Opaque one-time handle, valid until `expiresAt`; don't parse it. Send it as the **first** WebSocket message (`{ type: "session_start", sessionToken }`); it works only once. |
+| `cancelToken` | Opaque one-time handle for `Realtime/Cancel` (Step 3), valid until `expiresAt`. Only the user who called `WebStart` can use it. |
+| `expiresAt` | Expiry of both handles, in ms since epoch (5 minutes after issue). After this point, call `WebStart` again for fresh handles. |
+| `estimatedReadyMs` | Approximate time (ms) until the agent will be ready to speak after WS connect. The real "ready" signal is the `{ type: "ready" }` frame on the WebSocket. |
+
+> The endpoint also gets the agent ready for the call, so it can answer as soon as the browser connects. If the browser never connects (mic permission denied, user changed their mind), call `Realtime/Cancel` to release the session right away.
+
+### Step 2: Connect the WebSocket
+
+Open a WebSocket to the returned `wsUrl` and send the `session_start` JSON frame **within 10 seconds**. After that, frame microphone audio as 24 kHz mono PCM int16 with a `<correlationId>|` text prefix. **Server-sent binary audio frames use the same prefix shape, so you must strip it before feeding the bytes to Web Audio.**
+
+The example below boots a working voice call end-to-end: it acquires the mic, mounts an `AudioWorklet` that emits 24 kHz Int16 PCM, opens the WebSocket, presents the token, handles every server frame the bridge actually sends, and plays the agent's audio back through `AudioContext`. Drop it into a page paired with the worklet at `audio-processor.js` shown below.
+
+```javascript
+// ===== voice-client.js: runs in the browser =====
+
+// 1. POST /UserAgent/Realtime/WebStart from YOUR backend, then pass the
+//    correlationId / wsUrl / sessionToken / cancelToken down to the page.
+//    Never expose your Wiro API key to the page.
+const { correlationId, wsUrl, sessionToken, cancelToken } = await fetch("/api/voice/start").then((r) => r.json());
+
+const audioCtx = new AudioContext({ sampleRate: 24000 });
+await audioCtx.audioWorklet.addModule("/audio-processor.js");
+let playbackCursor = 0;
+const scheduledNodes = new Set();
+let interruptActive = false;
+
+function playPcmInt16(pcm) {
+  // pcm: Int16Array, 24kHz mono. Convert to Float32 [-1, 1] and schedule.
+  const f32 = new Float32Array(pcm.length);
+  for (let i = 0; i < pcm.length; i++) f32[i] = pcm[i] / 32768;
+  const buf = audioCtx.createBuffer(1, f32.length, 24000);
+  buf.copyToChannel(f32, 0);
+  const node = audioCtx.createBufferSource();
+  node.buffer = buf;
+  node.connect(audioCtx.destination);
+  const startAt = playbackCursor < audioCtx.currentTime ? audioCtx.currentTime : playbackCursor;
+  scheduledNodes.add(node);
+  node.onended = () => scheduledNodes.delete(node);
+  node.start(startAt);
+  playbackCursor = startAt + buf.duration;
+}
+
+function flushPlayback() {
+  // Used on `clear` (barge-in): cancel everything still pending.
+  for (const node of scheduledNodes) { try { node.stop(); } catch {} }
+  scheduledNodes.clear();
+  playbackCursor = audioCtx.currentTime;
+}
+
+// 2. Open the WebSocket and present the token as the first message.
+const ws = new WebSocket(wsUrl);
+ws.binaryType = "arraybuffer";
+
+ws.addEventListener("open", () => {
+  ws.send(JSON.stringify({ type: "session_start", sessionToken }));
+});
+
+ws.addEventListener("message", async (event) => {
+  if (event.data instanceof ArrayBuffer) {
+    // Binary frame: <correlationId>|<pcm-int16-24khz-mono>. STRIP the prefix.
+    if (interruptActive) return;
+    const u8 = new Uint8Array(event.data);
+    const pipe = u8.indexOf(0x7c); // '|'
+    if (pipe < 0) return;
+    const pcmBytes = u8.subarray(pipe + 1);
+    const pcm = new Int16Array(pcmBytes.buffer, pcmBytes.byteOffset, pcmBytes.byteLength / 2);
+    playPcmInt16(pcm);
+    return;
+  }
+  // Text frame: control / transcript JSON.
+  const msg = JSON.parse(event.data);
+  switch (msg.type) {
+    case "connecting":   onConnecting?.(); break;
+    case "ready":        await startMicCapture(); break;
+    case "transcript":
+      // { role: "user"|"ai", text: "...", ts: <epoch ms> }
+      appendTranscript(msg.role, msg.text, msg.ts);
+      break;
+    case "clear":        // barge-in: drop the agent's pending audio.
+      flushPlayback();
+      interruptActive = true;
+      break;
+    case "resume":       // new agent utterance starting after `clear`.
+      interruptActive = false;
+      break;
+    case "session_end":  // terminal: read msg.reason / msg.message / msg.error
+      onEnded?.(msg.reason, msg.message || msg.error);
+      try { ws.close(); } catch {}
+      break;
+  }
+});
+
+// 3. Mic capture pipeline: AudioWorkletNode posts 200ms Int16 PCM chunks
+//    that we frame as `<correlationId>|<binary>` and ship over the socket.
+let micStream, workletNode;
+async function startMicCapture() {
+  micStream = await navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 24000 },
+  });
+  const source = audioCtx.createMediaStreamSource(micStream);
+  workletNode = new AudioWorkletNode(audioCtx, "pcm-24k-processor");
+  source.connect(workletNode);
+
+  const sessionMarker = new TextEncoder().encode(correlationId);
+  workletNode.port.onmessage = (e) => {
+    const pcmBytes = new Uint8Array(e.data); // ArrayBuffer of Int16 samples
+    const frame = new Uint8Array(sessionMarker.length + 1 + pcmBytes.byteLength);
+    frame.set(sessionMarker, 0);
+    frame[sessionMarker.length] = 0x7c; // '|'
+    frame.set(pcmBytes, sessionMarker.length + 1);
+    if (ws.readyState === WebSocket.OPEN) ws.send(frame);
+  };
+}
+
+// 4. UI hooks
+function muteMic(on) {
+  // Mute is purely client-side: toggle the mic track. The bridge has no
+  // server-side mute handler.
+  micStream?.getAudioTracks().forEach((t) => (t.enabled = !on));
+}
+function bargeIn() { ws.send(JSON.stringify({ type: "interrupt" })); }
+function endCall() { ws.send(JSON.stringify({ type: "end" })); }
+```
+
+```javascript
+// ===== audio-processor.js: served from your origin, registered above =====
+class PCM24kProcessor extends AudioWorkletProcessor {
+  constructor() { super(); this.buffer = new Float32Array(0); }
+  process(inputs) {
+    const input = inputs[0]?.[0];
+    if (!input) return true;
+    const merged = new Float32Array(this.buffer.length + input.length);
+    merged.set(this.buffer);
+    merged.set(input, this.buffer.length);
+    this.buffer = merged;
+    // Ship 200ms (4800 samples @ 24kHz) chunks to the main thread.
+    while (this.buffer.length >= 4800) {
+      const chunk = this.buffer.slice(0, 4800);
+      this.buffer = this.buffer.slice(4800);
+      const i16 = new Int16Array(chunk.length);
+      for (let i = 0; i < chunk.length; i++) {
+        const s = Math.max(-1, Math.min(1, chunk[i]));
+        i16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+      }
+      this.port.postMessage(i16.buffer, [i16.buffer]);
+    }
+    return true;
+  }
+}
+registerProcessor("pcm-24k-processor", PCM24kProcessor);
+```
+
+> **Sample rate trick.** Browsers treat `getUserMedia({audio:{sampleRate:24000}})` as a hint, not a guarantee, and most capture at 48 kHz. The `AudioContext({sampleRate: 24000})` wrapper does the resampling for you on the `MediaStreamSource → AudioWorkletNode` graph, so the worklet always sees 24 kHz Float32 input. If you create the context at any other rate you'll ship the wrong sample rate and the agent will sound chipmunked or slowed.
+
+### Step 3 (optional): Cancel a stale session with `POST /UserAgent/Realtime/Cancel`
+
+If the browser can't progress past `WebStart` (mic permission denied, user navigated away, tab crashed), call `Realtime/Cancel` to release the session right away; otherwise it is released after about 5 minutes. Send the `cancelToken` from `WebStart`, authenticated as the user who called `WebStart`; each cancel handle works once.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Realtime/Cancel" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "cancelToken": "CANCEL_TOKEN_FROM_WEBSTART"
+  }'
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `cancelToken` | string | Yes | The `cancelToken` returned by `WebStart`. One-time, valid until `expiresAt`; only the user who called `WebStart` can use it. |
+
+Response:
+
+```json
+{ "result": true, "correlationId": "voice_3fK9xQ2LmVb7TzR1pWc8NdYa", "cancelled": true }
+```
+
+| HTTP | Error | When |
+|------|-------|------|
+| 400 | `cancelToken required` | `cancelToken` is missing. |
+| 401 | `invalid token` | Unknown, already used or expired handle. |
+| 403 | `access denied` | The handle was issued to another user. |
+
+> No-op when the session has already ended. The endpoint always returns `cancelled: true` on success, and there's no separate "already cleaned" signal. Reusing a cancel handle returns `invalid token`.
+
+## WebSocket Protocol
+
+The browser bridge lives at `wss://<env>/v1/AgentRealtime/Web`.
+
+### First message (text frame)
+
+```json
+{ "type": "session_start", "sessionToken": "<sessionToken-from-WebStart>" }
+```
+
+Must arrive within 10 seconds of the WebSocket `open` event. Late or malformed → the server closes the socket with no further messages. The handle works once and only until `expiresAt`; an unknown, used or expired handle closes the socket the same way. The URL carries no session identifier.
+
+### Audio frames (binary, both directions)
+
+| Field | Format |
+|-------|--------|
+| Audio | PCM int16, 24 kHz, mono. |
+| Frame | `<correlationId>\|<binary-pcm>`: UTF-8 text prefix (the `correlationId` returned by `WebStart`) + `\|` (0x7C) separator + raw PCM bytes. Same shape as the [Realtime Voice Conversation](/docs/realtime-voice-conversation#realtime-audio-format) channel. **Both directions** use this prefix: when you receive a binary frame from the server you must locate the first `0x7C` byte and slice everything after it as `Int16Array`. |
+
+The bridge transcodes server-side if a downstream model needs a different sample rate, so you always send 24 kHz from the browser.
+
+### Browser → server control frames (text)
+
+| Body | Effect |
+|------|--------|
+| `{ "type": "interrupt" }` | Cuts the agent mid-sentence (barge-in). Use this when the user starts speaking again before the agent finishes. The bridge confirms with a `clear` frame back. |
+| `{ "type": "end" }` | Graceful disconnect: the bridge flushes its buffers, emits a final transcript + `session_end` frame, then closes. |
+
+> **Mute is client-side, not a server frame.** The bridge has no `mute` handler, so toggle the mic `MediaStreamTrack.enabled = false` (or stop posting audio frames from your worklet) instead. Sending `{type:"mute"}` is silently ignored.
+
+### Server → browser frames
+
+| Body / type | Notes |
+|-------------|-------|
+| `{ "type": "connecting" }` | Sent right after the bridge accepts your `session_start`. Handshake is in progress; the realtime model is being warmed up. UI can show a "connecting" state. |
+| `{ "type": "ready" }` | Agent prep + model session are live; start the mic-capture pipeline and send audio frames from this point on. |
+| `{ "type": "transcript", "role": "user"\|"ai", "text": "…", "ts": <epoch-ms> }` | Live transcript pair, same content that goes into the operator panel chat. **Note the field name is `text` (not `content`) and the agent role is `"ai"` (not `"agent"`).** `ts` is server time in ms since epoch. |
+| `{ "type": "clear" }` | Barge-in confirmation: the bridge has discarded the agent utterance still in flight. Drop every `AudioBufferSourceNode` you've already scheduled and stop appending new audio until you see `resume`. |
+| `{ "type": "resume" }` | A new agent utterance is starting after a `clear`. Resume normal binary-frame playback. |
+| Binary frame | Agent audio chunk: `<correlationId>\|<int16-pcm-24khz-mono>`. Strip the prefix and feed the PCM tail to Web Audio. |
+| `{ "type": "session_end", "reason": "...", "message"?: "..." }` | Terminal frame, immediately followed by a clean `ws.close(1000, …)`. **All errors and graceful ends arrive here**. There is no separate `error` frame. `reason` is `rejected` (the call could not start or was turned away), `spend_limit` (a [spend limit](/docs/spend-limits) was reached during the call), `balance` (the balance ran out during the call) or `ended` (any other end; [Call History](/docs/integration-twiliovoice-skills#call-history) has the detail in `endReason`). `message`, when present, is a short sentence you can show. With `spend_limit` and `balance` the bridge lets the reply that is playing finish first and sends no `message`, so show your own text. |
+
+### Session lifetime
+
+- The `sessionToken` handle is valid for **300 seconds** from issue (until `expiresAt`) and works once, so the browser must send `session_start` before then. To connect again, call `WebStart` for fresh handles, since there's no in-band refresh.
+- Once the bridge accepts your `session_start` frame, the 5-minute release timer no longer applies to the call. Live call audio is billed to the agent's Wiro project; the time before the browser connects carries no audio charge.
+
+## Rate Limits
+
+- **60 sessions / hour per operator** (fixed window).
+- Sessions that fail to start are not counted.
+- **Origin check** (Bearer auth only): browser requests must come from wiro.ai. API-key requests have no Origin check.
+
+## Common Errors
+
+| HTTP | Error code | Message | When |
+|------|------------|---------|------|
+| 200  | none       | `useragentguid required` | Missing useragent reference. |
+| 403  | `95`       | `useragent-not-found`    | The guid doesn't exist (note: returned as **403**, not 404). |
+| 403  | `96`       | `useragent-access-denied`| Caller didn't deploy the useragent. |
+| 200  | none       | `This agent belongs to a team. Switch to the team context to access it.` | Team agent called from a personal workspace or personal project key by a caller who is no longer a member of the agent's team. |
+| 200  | none       | `This agent belongs to a different team.` | Team agent called from another team's workspace or project key by a caller who is no longer a member of the agent's team. |
+| 200  | none       | `Agent is not running`   | Useragent is not in `status: 4`. Start it via `POST /UserAgent/Start` first. |
+| 200  | none       | `util-web-channel not enabled` | Toggle `util-web-channel` via `POST /UserAgent/SkillsApply` (custom agents) or pick a preset that bundles it (Voice Receptionist / Voice Sales Rep). |
+| 403  | none       | `Web voice from this origin needs an API key.` | Bearer auth call with an Origin outside the Wiro allow-list. Either switch to API-key auth or call from an allow-listed origin. |
+| 429  | none       | `Rate limit: max N web voice sessions per hour` | Operator burned through the per-hour cap. Wait for the fixed-window expiry. |
+| 500  | none       | `internal error`         | Unexpected backend failure: check `POST /UserAgent/Logs` for context. |
+
+## Session Handles
+
+`sessionToken` and `cancelToken` are opaque, random and single-use, valid until `expiresAt`. Nothing readable travels in a handle or in the WebSocket URL. Call `WebStart` from your own backend with your API key, and pass only the handles to the browser.
+
+## Related
+
+- [Twilio Voice](/docs/integration-twiliovoice-skills): pair the same agent with a real phone number for inbound PSTN calls. Both channels surface in the same [Call History](/docs/integration-twiliovoice-skills#call-history) feed.
+- [Realtime Voice Conversation](/docs/realtime-voice-conversation): the underlying model-level realtime protocol (used by `wiro.ai/models/openai/gpt-realtime-mini`, etc.). Web Channel is the agent-aware wrapper around it.
+- [Agent Overview](/docs/agent-overview): useragent statuses, token-based credit metering, and the rest of the agent surface.
+- [Agent Skills](/docs/agent-skills): toggling `util-web-channel` on any agent.
+- [Agent Use Cases: Voice Receptionist](/docs/agent-use-cases), the preset that ships Web + Twilio channels on by default.

@@ -288,7 +288,7 @@ Wiro cleans the agent's text before it reaches you, in the blocks, in `response`
 
 ### Replies the API answers itself
 
-Some messages are answered by Wiro itself, with no agent turn: a `yes` that applies a card or gets the card listing, a `yes` while a sign-in `connect` card waits, a key typed as the reply while the latest reply has one pending `connect` card and it is a `key` card with one secret field, and the others listed in [Chats Without Cards](#chats-without-cards). `Message/Send` then answers at once with `status: "agent_end"`, `agenttoken: null`, the answer in `response` and the outcome in `setupresult`:
+Some messages are answered by Wiro itself, with no agent turn: a `yes` that applies a card or gets the card listing, a `yes` while a sign-in or project `connect` card waits, a key typed as the reply while the latest reply has one pending `connect` card and it is a `key` card with one secret field, and the others listed in [Chats Without Cards](#chats-without-cards). `Message/Send` then answers at once with `status: "agent_end"`, `agenttoken: null`, the answer in `response` and the outcome in `setupresult`:
 
 ```json
 {
