@@ -25029,7 +25029,7 @@ call 1 / content 1: answer     → Final answer text
 → If &quot;agent_error&quot;/&quot;agent_cancel&quot;: handle accordingly
 </code></pre>
 <h3 id="3-webhook-callback">3. Webhook Callback</h3>
-<p>Pass a <code>callbackurl</code> when sending the message. The system will POST the final result to your URL when the agent finishes (up to 3 retry attempts):</p>
+<p>Pass a <code>callbackurl</code> when sending the message. The system will POST the final result to your URL when the agent finishes (up to 3 tries in all, 2 seconds apart; any 2xx answer counts as delivered; see <a href="/docs/agent-webhooks">Agent Webhooks</a>):</p>
 <pre><code class="language-json">{
   &quot;messageguid&quot;: &quot;c3d4e5f6-a7b8-9012-cdef-345678901234&quot;,
   &quot;status&quot;: &quot;agent_end&quot;,
@@ -27505,9 +27505,10 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
 <h1>Agent Webhooks</h1>
 <p class="section-subtitle">Receive agent response notifications via HTTP callbacks.</p>
 <h2 id="how-it-works">How It Works</h2>
-<p>When you send a message to an agent via <code>POST /UserAgent/Message/Send</code>, include a <code>callbackurl</code> parameter. Once the agent finishes processing on the bridge, Wiro sends a POST request to your URL with the result. Callbacks fire on <code>agent_end</code> (success), <code>agent_error</code> (failure during processing), and <code>agent_cancel</code> <strong>only when the abort hits the bridge mid-flight</strong>. Messages cancelled while still queued (status <code>agent_queue</code>, before the bridge picks them up) are marked <code>agent_cancel</code> in the database but <strong>do not fire a webhook</strong>, because there was no processing attempt to report on. See the "When the cancel webhook fires" note below for the full decision table.</p>
+<p>When you send a message to an agent via <code>POST /UserAgent/Message/Send</code>, include a <code>callbackurl</code> parameter. Once the agent's turn ends, Wiro sends a POST request to your URL with the result. Callbacks fire on <code>agent_end</code> (success), <code>agent_error</code> (failure during processing), and <code>agent_cancel</code> <strong>only when a turn that had started is stopped</strong>. Messages cancelled while still queued (status <code>agent_queue</code>, before the agent starts on them) are marked <code>agent_cancel</code> in the database but <strong>do not fire a webhook</strong>, because there was no processing attempt to report on. See the "When the cancel webhook fires" note below for the full decision table.</p>
 <p>This lets you build fully asynchronous workflows: fire a message and let your backend handle the response whenever it arrives, without polling or maintaining a WebSocket connection.</p>
-<p>A setup reply that Wiro handles itself, such as a <code>yes</code> that applies a setup card, runs no agent turn: Wiro posts its result to the <code>callbackurl</code> right away, with <code>status: "agent_end"</code>. Its <code>metadata</code> holds <code>type: "setup_result"</code>, <code>cards</code> (the ids of the cards it acted on) and, when the answer leaves connectors to connect, <code>next</code>: <code>[{ connector, title, mode, cardid?, messageguid? }]</code>, as in <code>setupresult</code>. See <a href="/docs/agent-messaging#handled-setup-replies">Replies Wiro handles itself</a>.</p>
+<p>A setup reply that Wiro handles itself, such as a <code>yes</code> that applies a setup card, runs no agent turn: Wiro posts its result to the <code>callbackurl</code> right away, with <code>status: "agent_end"</code>. Its <code>metadata</code> holds <code>type: "setup_result"</code>, <code>cards</code> (the ids of the cards it acted on) and <code>via</code> (<code>"api"</code> for a message sent with a project API key, <code>"web"</code> otherwise). It also holds <code>next</code> when the answer leaves connectors to connect (<code>[{ connector, title, mode, cardid?, messageguid? }]</code>, as in <code>setupresult</code>), <code>listed</code> and <code>listedfrom</code> for a <a href="/docs/agent-messaging#setup-card-listing">card listing</a> (the ids of the cards it showed and the <code>guid</code> of the message they are on), and <code>teamguid</code> when the message was sent in a team's workspace. See <a href="/docs/agent-messaging#handled-setup-replies">Replies Wiro handles itself</a>.</p>
+<p>An unknown or disabled slash command that Wiro answers itself, such as <code>/status</code>, is posted the same way, right away and with <code>status: "agent_end"</code>. Its <code>metadata</code> holds <code>type: "setup_result"</code>, <code>cards: []</code>, <code>command</code> (the command's name, such as <code>"status"</code>), <code>via</code> and, in a team's workspace, <code>teamguid</code>. See <a href="/docs/agent-messaging#unknown-or-disabled-commands">Unknown or disabled commands</a>.</p>
 <blockquote>
 <p><strong>Results that arrive later.</strong> When the agent moves longer work to the background, its turn ends with a short line saying the result will follow, and that line is what your <code>callbackurl</code> receives (<code>status: "agent_end"</code>). The result is added to the session later as a separate message and doesn't call the <code>callbackurl</code>. Read it with <a href="/docs/agent-messaging#post-useragentmessagehistory"><code>Message/History</code></a>, or follow the session on the <a href="/docs/agent-websocket#following-a-session">Agent WebSocket</a>.</p>
 </blockquote>
@@ -27568,7 +27569,7 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
 </code></pre>
 <blockquote>
 <p>The <code>response</code> and <code>debugoutput</code> fields hold <code>[REQUEST_CANCELLED] Request cancelled.</code>; use <code>status === "agent_cancel"</code> as the signal.</p>
-<p><strong>When the cancel webhook fires:</strong> <code>agent_cancel</code> is delivered <strong>only when the agent bridge catches an <code>AbortError</code></strong> during active processing, i.e. the message had already started on the agent side and was aborted mid-flight (via <code>POST /UserAgent/Message/Cancel</code> or an upstream timeout). For messages cancelled <strong>before</strong> they reach the bridge (still queued, or an instant <code>Message/Cancel</code> that beats dispatching), the message is marked <code>agent_cancel</code> in the database and returned as such in <code>POST /UserAgent/Message/Detail</code>, but <strong>no webhook is fired</strong>, because there was no processing attempt to report on. Use <code>POST /UserAgent/Message/Detail</code> (checking <code>status === "agent_cancel"</code>) as the canonical source of truth for cancellation; WebSocket subscribers receive the <code>agent_cancel</code> event only on active-processing aborts (same condition as the webhook). Treat the webhook as a best-effort "processing was interrupted" signal.</p>
+<p><strong>When the cancel webhook fires:</strong> <code>agent_cancel</code> is delivered <strong>only when the turn had already started and was stopped while it ran</strong> (by <code>POST /UserAgent/Message/Cancel</code> or a timeout). For messages cancelled <strong>before</strong> the agent starts on them (still queued, or an instant <code>Message/Cancel</code> that beats dispatching), the message is marked <code>agent_cancel</code> in the database and returned as such in <code>POST /UserAgent/Message/Detail</code>, but <strong>no webhook is fired</strong>, because there was no processing attempt to report on. Use <code>POST /UserAgent/Message/Detail</code> (checking <code>status === "agent_cancel"</code>) as the canonical source of truth for cancellation; WebSocket subscribers receive the <code>agent_cancel</code> event only on active-processing aborts (same condition as the webhook). Treat the webhook as a best-effort "processing was interrupted" signal.</p>
 </blockquote>
 <h3 id="field-reference">Field Reference</h3>
 <div class="docs-param-table">
@@ -27637,7 +27638,7 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
 <tr>
 <td><code>type</code></td>
 <td>string</td>
-<td>Always <code>"progressGenerate"</code>.</td>
+<td><code>"progressGenerate"</code> for an agent turn. A reply Wiro handles itself has <code>"setup_result"</code> instead, with the keys described under <a href="#how-it-works">How It Works</a>.</td>
 </tr>
 <tr>
 <td><code>task</code></td>
@@ -27672,7 +27673,7 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
 <tr>
 <td><code>tokenCount</code></td>
 <td>number</td>
-<td>Number of answer chunks received by the bridge. Use the message's billing columns for authoritative model tokens.</td>
+<td>Number of answer chunks streamed for the turn. Use the message's billing columns for authoritative model tokens.</td>
 </tr>
 <tr>
 <td><code>wordCount</code></td>
@@ -27728,8 +27729,8 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
 <ul>
 <li>First attempt is immediate when the agent finishes</li>
 <li>2-second delay between retries</li>
-<li>Your endpoint must return <strong>HTTP 200</strong> to acknowledge receipt</li>
-<li>Any non-200 response triggers a retry</li>
+<li>Any <strong>2xx</strong> answer counts as delivered</li>
+<li>Any other answer, a redirect (3xx) included, or no answer, is tried again</li>
 <li>After 3 failed attempts, the webhook is abandoned and the failure is logged server-side</li>
 </ul>
 <p>The message result is always persisted in the database regardless of webhook delivery. You can retrieve it at any time via <code>POST /UserAgent/Message/Detail</code>.</p>
@@ -27739,7 +27740,7 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
 <li>Always use <strong>HTTPS</strong> endpoints in production</li>
 <li>Use a public address. Wiro doesn't call a <code>callbackurl</code> whose host is, or resolves to, a private, loopback or link-local address; that message gets no webhook, and its result stays readable with <code>Message/Detail</code></li>
 <li>Validate the payload structure before processing</li>
-<li>Consider returning 200 immediately and processing the payload asynchronously to avoid timeouts</li>
+<li>Consider answering with a 2xx at once and processing the payload asynchronously to avoid timeouts</li>
 </ul>
 <h2 id="code-examples">Code Examples</h2>
 <h3 id="webhook-receiver-nodejs-express">Webhook Receiver: Node.js (Express)</h3>

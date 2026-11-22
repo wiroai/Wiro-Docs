@@ -1220,9 +1220,9 @@ The agent's live Screen is not on this socket: it has its own, wss://socket.wiro
 
 ### Agent Webhooks
 
-Include `callbackurl` in Message/Send (a public http(s) address; a host that is or resolves to a private, loopback or link-local address gets no webhook). Wiro POSTs when agent finishes (a setup reply Wiro handles itself runs no turn and posts right away with `status: "agent_end"`):
+Include `callbackurl` in Message/Send (a public http(s) address; a host that is or resolves to a private, loopback or link-local address gets no webhook). Wiro POSTs when agent finishes (a setup reply Wiro handles itself, or an unknown or disabled slash command, runs no turn and posts right away with `status: "agent_end"`; its `metadata` is `{ type: "setup_result", via, cards, next?, listed?, listedfrom?, teamguid? }`, or for a command `{ type: "setup_result", via, cards: [], command, teamguid? }`; `via` is `"api"` for a project API key, `"web"` otherwise):
 `{ messageguid, status, content, response, debugoutput, metadata: { raw, answer, speed, wordCount, ... }, endedat }`
-For cancel, and for an error that cut the turn off (such as `[TURN_INTERRUPTED]`): `metadata` is `{}`; a turn that ended with a coded failure (such as `[SPEND_LIMIT_REACHED]`) posts the usual progressGenerate metadata with the coded text in `raw` and `answer`, so read the outcome from `status` and `response`. Retry: 3 attempts, 2s delay. Must return HTTP 200.
+For cancel, and for an error that cut the turn off (such as `[TURN_INTERRUPTED]`): `metadata` is `{}`; a turn that ended with a coded failure (such as `[SPEND_LIMIT_REACHED]`) posts the usual progressGenerate metadata with the coded text in `raw` and `answer`, so read the outcome from `status` and `response`. Retry: 3 tries in all, 2s apart; any 2xx answer counts as delivered, and any other answer (a 3xx redirect included) or no answer is tried again.
 Webhooks do not embed timeline blocks; fetch Message/Detail by `messageguid` for authoritative `timeline[]`.
 
 ### Connectors

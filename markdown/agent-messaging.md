@@ -1326,7 +1326,7 @@ POST /UserAgent/Message/Detail { "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb" 
 
 ### 3. Webhook Callback
 
-Pass a `callbackurl` when sending the message. The system will POST the final result to your URL when the agent finishes (up to 3 retry attempts):
+Pass a `callbackurl` when sending the message. The system will POST the final result to your URL when the agent finishes (up to 3 tries in all, 2 seconds apart; any 2xx answer counts as delivered; see [Agent Webhooks](/docs/agent-webhooks)):
 
 ```json
 {
