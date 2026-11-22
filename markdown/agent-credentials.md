@@ -443,3 +443,105 @@ If you're building a product on top of Wiro agents for your own customers:
 4. **Verify** with `POST /UserAgent/Detail` (`credentials`, `setuprequired`) and `POST /UserAgent/ConnectorList` (each connector's `status`).
 
 When the agent proposes a change in a chat, apply it with the same calls and record it on its setup card with `SetupCardApply`: see [Agent Chat Integration](/docs/agent-chat-integration).
+
+## Code Examples
+
+### Channels (curl)
+
+```bash
+# Connect Telegram: every required field in one call turns the channel on
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "telegram", "fieldname": "bottoken",     "fieldvalue": "123456:ABC-DEF1234ghIkl" },
+      { "credentialkey": "telegram", "fieldname": "allowedusers", "fieldvalue": ["123456789"] }
+    ]
+  }'
+
+# Set the agent's support email (a setting its skills read)
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "var-support-email", "fieldname": "value", "fieldvalue": "support@example.com" }
+    ]
+  }'
+
+# Read a credential's history
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialFieldHistory" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "useragentguid": "your-useragent-guid", "credentialkey": "telegram" }'
+```
+
+### Wiro project (curl)
+
+```bash
+# Bind the Wiro project the agent runs models with (projectid from POST /Project/List)
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialProjectBind" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "useragentguid": "your-useragent-guid", "projectid": "4821" }'
+
+# Connectors (Shopify, Google Ads, Serper, ...) are not credentials:
+# connect them with POST /UserAgent/ConnectorConnect (see Agent Connectors).
+```
+
+### Python
+
+```python
+import requests
+
+API = "https://api.wiro.ai/v1"
+headers = {"x-api-key": "YOUR_API_KEY", "Content-Type": "application/json"}
+guid = "your-useragent-guid"
+
+# Telegram: every required field in one call turns the channel on
+res = requests.post(f"{API}/UserAgent/CredentialUpsert", headers=headers, json={
+    "useragentguid": guid,
+    "fields": [
+        {"credentialkey": "telegram", "fieldname": "bottoken", "fieldvalue": "123456:ABC-DEF1234ghIkl"},
+        {"credentialkey": "telegram", "fieldname": "allowedusers", "fieldvalue": ["123456789"]},
+    ],
+}).json()
+print(res["result"], res.get("applied"), res["errors"])
+
+# The Wiro project the agent runs models with
+bind = requests.post(f"{API}/UserAgent/CredentialProjectBind", headers=headers,
+                     json={"useragentguid": guid, "projectid": "4821"}).json()
+print(bind.get("project"), bind.get("restart"))
+
+# Which channels are on now
+detail = requests.post(f"{API}/UserAgent/Detail", headers=headers, json={"guid": guid}).json()
+print(detail["useragents"][0].get("enabledChannels"))
+```
+
+### Node.js
+
+```javascript
+const API = 'https://api.wiro.ai/v1';
+const headers = { 'x-api-key': 'YOUR_API_KEY', 'Content-Type': 'application/json' };
+const guid = 'your-useragent-guid';
+
+const post = (path, body) =>
+  fetch(`${API}${path}`, { method: 'POST', headers, body: JSON.stringify(body) }).then((r) => r.json());
+
+// Telegram: every required field in one call turns the channel on
+const saved = await post('/UserAgent/CredentialUpsert', {
+  useragentguid: guid,
+  fields: [
+    { credentialkey: 'telegram', fieldname: 'bottoken', fieldvalue: '123456:ABC-DEF1234ghIkl' },
+    { credentialkey: 'telegram', fieldname: 'allowedusers', fieldvalue: ['123456789'] },
+  ],
+});
+console.log(saved.result, saved.applied, saved.errors);
+
+// The Wiro project the agent runs models with
+const bind = await post('/UserAgent/CredentialProjectBind', { useragentguid: guid, projectid: '4821' });
+console.log(bind.project, bind.restart);
+```
