@@ -308,7 +308,7 @@ Some messages are answered by Wiro itself, with no agent turn: a `yes` that appl
 }
 ```
 
-Show `response` as the reply, as plain text. There is nothing to follow on the WebSocket. In `Message/History` the row reads `status: "agent_end"`, `metadata: { "type": "setup_result" }` and an empty `timeline`. These replies use no credits, and Wiro gives them while the agent is stopped or restarting too: see [Messages during a restart](#messages-during-a-restart) for which ones.
+Show `response` as the reply, as plain text. There is nothing to follow on the WebSocket. In `Message/History` the row reads `status: "agent_end"`, `metadata: { "type": "setup_result" }` and an empty `timeline`. When the answer leaves connectors to connect, `metadata` also keeps its `next`, and a card listing keeps `listed` and `listedfrom` there: see [Replies Wiro handles itself](/docs/agent-messaging#handled-setup-replies). These replies use no credits, and Wiro gives them while the agent is stopped or restarting too: see [Messages during a restart](#messages-during-a-restart) for which ones.
 
 Wiro also answers a slash command the agent doesn't run, such as `/status`, or one of its commands that is turned off, while the agent is running. It uses no credits, even when the agent has none left, and the answer has no `setupresult`:
 
