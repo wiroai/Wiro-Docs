@@ -4,11 +4,9 @@ Connect inbound phone calls (PSTN) to a Wiro agent. Used by the [Voice Reception
 
 ## Overview
 
-Toggle `int-twilio-channel` on a useragent and Wiro auto-enables the bundled voice rules (`util-voice-receptionist` + `util-voice-call-prep`) via the registry's `depends_on` chain, so you don't need to enable them separately.
+Turn on the Twilio Voice channel on a useragent and Wiro turns on the voice rules it needs (`util-voice-receptionist` + `util-voice-call-prep`), so you don't need to enable them separately.
 
-**Skills that use this credential:**
-
-- `int-twilio-channel`: Twilio Voice channel.
+**Credential:** `twilio-voice`, the Account SID, Auth Token and phone numbers below.
 
 **Agents that typically enable this integration:**
 
@@ -32,7 +30,7 @@ You don't touch the Twilio Console's webhook fields manually. When you save this
 ## Prerequisites
 
 - **A Wiro API key** (see [Authentication](/docs/authentication)).
-- **A deployed agent** (Voice Receptionist preset or any custom agent with `int-twilio-channel` enabled), see [Agent Overview](/docs/agent-overview).
+- **A deployed agent** (Voice Receptionist preset or any custom agent with the Twilio Voice channel), see [Agent Overview](/docs/agent-overview).
 - **A Twilio account** with at least one purchased phone number.
 
 ## Setup
@@ -144,15 +142,15 @@ Once the agent is in status `4` (running), dial your Twilio number from any phon
 }
 ```
 
-## Pairing With Other Skills
+## Pairing With Connectors
 
-Pair this channel with skills that supply the conversation behavior:
+Pair this channel with connectors that give the agent what the call needs (see [Agent Connectors](/docs/agent-connectors)):
 
-- [`int-google-calendar`](/docs/integration-google-calendar-skills): read availability + draft appointments during the call.
-- [`int-hubspot-crm`](/docs/integration-hubspot-skills): match caller phone number against CRM contacts and log call outcomes.
-- [`int-brevo-email`](/docs/integration-brevo-skills) / [`int-sendgrid-email`](/docs/integration-sendgrid-skills) / [`int-mailchimp-email`](/docs/integration-mailchimp-skills): draft post-call confirmation or follow-up emails.
+- [Google Calendar](https://wiro.ai/connectors/google-calendar) (`google-calendar`): read availability and draft appointments during the call.
+- [HubSpot](https://wiro.ai/connectors/hubspot) (`hubspot`): match the caller's phone number against CRM contacts and log call outcomes.
+- [Brevo](https://wiro.ai/connectors/brevo) (`brevo`), [SendGrid](https://wiro.ai/connectors/sendgrid) (`sendgrid`) or [Mailchimp](https://wiro.ai/connectors/mailchimp) (`mailchimp`): draft post-call confirmation or follow-up emails.
 
-The Voice Receptionist preset bundles this channel together with the voice rules and Brevo/HubSpot credentials by default. See [Agent Use Cases](/docs/agent-use-cases) for the full preset.
+The Voice Receptionist template comes with this channel and the voice rules, and suggests the Brevo and HubSpot connectors. See [Agent Use Cases](/docs/agent-use-cases) for the full template.
 
 ## Troubleshooting
 
@@ -242,14 +240,13 @@ Response:
 | `modelSlug` | string \| null | Realtime model used (e.g. `gpt-realtime-mini`). |
 | `startedAt` / `endedAt` | number \| null | Unix epoch ms. `endedAt` stays `null` while the call is in-progress or rejected. |
 
-> **Live call audio is billed through the [`int-wiro-aimodels`](/docs/agent-credentials) skill, the Wiro AI Models connector, against your own Wiro wallet**: you bring your own Wiro API key, and the voice cost is charged to the wallet of the workspace that owns that key. It is **not** charged to the agent's platform credit pool and writes **no** `POST /UserAgent/TransactionList` row. The agent's text turns around the call (the prep turn that briefs the voice model before the voice session starts, and the post-call turn where the agent summarizes and acts on the call) are billed as normal token deducts (`type: "deduct"`, `action: "tokens"`) and show up in TransactionList. Audit call-audio cost from your Wiro AI Models usage (the workspace wallet behind your `wiro` key); TransactionList accounts only for those text turns.
+> **Live call audio is billed to the agent's Wiro project** (its `wiro` credential, see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)): the voice cost is charged to the wallet of the workspace that owns that project. It is **not** charged to the agent's platform credit pool and writes **no** `POST /UserAgent/TransactionList` row. The agent's text turns around the call (the prep turn that briefs the voice model before the voice session starts, and the post-call turn where the agent summarizes and acts on the call) are billed as normal token deducts (`type: "deduct"`, `action: "tokens"`) and show up in TransactionList. Audit call-audio cost from that project's usage; TransactionList accounts only for those text turns.
 
 ## Related
 
 - [Web Voice](/docs/integration-webvoice-skills): browser-embedded voice for the same agent, shares this page's [Call History](#call-history) feed.
-- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Credentials](/docs/agent-credentials)
 - [Agent Skills](/docs/agent-skills): toggle skills on/off, configure preferences and crons
 - [Agent Use Cases](/docs/agent-use-cases): Voice Receptionist preset
-- [Google Calendar Skills](/docs/integration-google-calendar-skills): pair for inbound voice booking
-- [HubSpot Skills](/docs/integration-hubspot-skills): caller identification + CRM logging
+- [Agent Connectors](/docs/agent-connectors): Google Calendar for inbound voice booking, HubSpot for caller identification and CRM logging
 - [Twilio Voice docs](https://www.twilio.com/docs/voice)

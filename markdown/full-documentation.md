@@ -38,25 +38,17 @@ Complete API documentation for the Wiro AI platform: run AI models through a uni
 32. [Agent WebSocket](#agent-websocket)
 33. [Agent Webhooks](#agent-webhooks)
 34. [Agent Connectors](#agent-connectors)
-35. [Agent Credentials & OAuth](#agent-credentials--oauth)
+35. [Agent Credentials](#agent-credentials)
 36. [Agent Chat Integration](#agent-chat-integration)
 37. [Agent Skills](#agent-skills)
 38. [Agent Transactions](#agent-transactions)
 39. [Agent Logs](#agent-logs)
 40. [Agent Use Cases](#agent-use-cases)
-41. [Meta Ads Integration](#meta-ads-integration)
-42. [TikTok Ads Integration](#tiktok-ads-integration)
-43. [Facebook Page Integration](#facebook-page-integration)
-44. [Instagram Integration](#instagram-integration)
-45. [Shopify Integration](#shopify-integration)
-46. [WooCommerce Integration](#woocommerce-integration)
-47. [Reddit Integration](#reddit-integration)
-48. [Google Business Profile Integration](#google-business-profile-integration)
-49. [Organizations & Teams](#organizations--teams)
-50. [Managing Teams](#managing-teams)
-51. [Team Billing & Spending](#team-billing--spending)
-52. [Team API Access](#team-api-access)
-53. [Telegram Integration](#telegram-integration)
+41. [Organizations & Teams](#organizations--teams)
+42. [Managing Teams](#managing-teams)
+43. [Team Billing & Spending](#team-billing--spending)
+44. [Team API Access](#team-api-access)
+45. [Telegram Integration](#telegram-integration)
 
 ---
 
@@ -7849,7 +7841,7 @@ Common questions about using the Wiro API.
 
 **Can I watch my agent work?** Yes. In the Wiro panel, the people who manage an agent can open its Screen beside the chat and watch its computer live (on a team agent, while its Chat Mode is Collaborative). The owner of a personal agent that has never been in a team, or whose browser was reset after it last left one, can also take control and use the keyboard and mouse, for example to sign in to a site for the agent. Products built on the API can show the same Screen, and Take Control, in their own app and decide which of their users see it; the agent's `screen` setting turns it off for everyone. See [Screen and Take Control](/docs/agent-overview#screen-and-take-control) and [Screen and Take Control in Your App](/docs/agent-chat-integration#screen-and-take-control-in-your-app).
 
-**How do I connect third-party services to an agent?** Agents connect to services like Twitter, Instagram, Google Ads, and HubSpot via OAuth or API keys. Use `POST /UserAgentOAuth/OAuthConnect` with the provider's `credentialkey` to initiate OAuth flows, or set API keys via `/UserAgent/CredentialUpsert`. See [Agent Credentials & OAuth](/docs/agent-credentials). You can also ask the agent in its chat: it proposes a setup card, and an agent admin approves it and gives the key, which the agent never sees. See [Setup From Chat](/docs/agent-messaging#setup-from-chat).
+**How do I connect third-party services to an agent?** Agents connect to services like X, Instagram, Google Ads, and HubSpot through connectors, with your customer's own API keys or the vendor's sign-in. Browse them with `POST /AgentConnector/List` and connect one with `POST /UserAgent/ConnectorConnect`. See [Agent Connectors](/docs/agent-connectors). You can also ask the agent in its chat: it proposes a setup card, and an agent admin approves it and gives the key, which the agent never sees. See [Setup From Chat](/docs/agent-messaging#setup-from-chat).
 
 **What happens when I delete my account?** Your account is closed right away and its API keys stop working. Its subscriptions stop renewing and end with their current billing period, without a refund. A renewal invoice that is still unpaid is cancelled. Its automatic top-ups stop. 30 days later, or later if something still needs it, such as an active subscription, we permanently delete its data, including your files, tasks, projects and API keys. Until then, write to [support@wiro.ai](mailto:support@wiro.ai) if you want it restored. We keep records the law requires, such as payment and invoice records. See [Data Deletion](https://wiro.ai/agreement/data-deletion) for details.
 
@@ -9193,7 +9185,7 @@ A wallet plan renews every 30 days, and a plan paid by card in the Wiro dashboar
 
 ### What a Plan Includes
 
-Every skill and connector works on every plan. Turning a skill on or off with [`SkillsApply`](#post-useragentskillsapply) is free: the plan's price and credits stay as they are. The work a skill does still uses credits, since its replies and scheduled tasks are agent turns billed by tokens like any other. A skill that runs Wiro models, such as `int-wiro-aimodels` or `util-video-creator`, pays for those runs from the wallet of the Wiro project you connect to the agent.
+Every skill and connector works on every plan. Turning a skill on or off with [`SkillsApply`](#post-useragentskillsapply) is free: the plan's price and credits stay as they are. The work a skill does still uses credits, since its replies and scheduled tasks are agent turns billed by tokens like any other. A skill that runs Wiro models, such as `util-video-creator`, pays for those runs from the wallet of the Wiro project you connect to the agent. Connectors are included too: connecting one never changes the plan's price (see [Agent Connectors](/docs/agent-connectors)).
 
 ### Disk Space
 
@@ -9258,7 +9250,7 @@ Cache-read and cache-write categories are charged only when the selected model r
 
 When the credit pool is exhausted, [`POST /UserAgent/Message/Send`](/docs/agent-messaging#post-useragentmessagesend) and [`POST /UserAgent/Start`](#post-useragentstart) refuse with an `Agent has no remaining credits…` error plus an `agentbalance` snapshot; renew the subscription or buy an extra credit pack to continue.
 
-> **Voice realtime audio is billed separately.** Live voice-call audio (for `util-voice-receptionist` agents) is **not** charged to the platform credit pool. It is billed to the operator's own Wiro wallet through the `int-wiro-aimodels` skill, the Wiro AI Models connector (you bring your own Wiro API key). The voice-prep turn before the call and the post-call text turn are billed as normal token deducts.
+> **Voice realtime audio is billed separately.** Live voice-call audio (for `util-voice-receptionist` agents) is **not** charged to the platform credit pool. It is billed to the wallet of the agent's Wiro project (the `wiro` credential, see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)). The voice-prep turn before the call and the post-call text turn are billed as normal token deducts.
 
 ### Live Pricing Preview
 
@@ -9270,7 +9262,7 @@ Deploying and running an agent follows this flow:
 
 1. **Browse**: call `POST /Agent/List` to discover available agents in the catalog
 2. **Deploy**: call `POST /UserAgent/Deploy` with `useprepaid: true` and `tier` (`"starter"`, `"pro"` or `"max"`). The plan's price is debited from your prepaid wallet immediately and a 30-day subscription row is created.
-3. **Configure**: set integration and optional Telegram, Slack, or Discord credentials with `POST /UserAgent/CredentialUpsert` or the OAuth flow, connect the Wiro project the agent runs models with using `POST /UserAgent/CredentialProjectBind`, and set preferences with `POST /UserAgent/CustomSkillUpsert`. An agent admin can also approve the setup cards the agent proposes in its chat (see [Setup From Chat](/docs/agent-messaging#setup-from-chat)). See [Agent Credentials](/docs/agent-credentials) for details
+3. **Configure**: connect the services the agent works with through [Agent Connectors](/docs/agent-connectors) (`POST /UserAgent/ConnectorConnect`), set optional Telegram, Slack, or Discord credentials with `POST /UserAgent/CredentialUpsert`, connect the Wiro project the agent runs models with using `POST /UserAgent/CredentialProjectBind`, and set preferences with `POST /UserAgent/CustomSkillUpsert`. An agent admin can also approve the setup cards the agent proposes in its chat (see [Setup From Chat](/docs/agent-messaging#setup-from-chat)). See [Agent Credentials](/docs/agent-credentials) for details
 4. **Start**: the prepaid Deploy already queued the agent, and Wiro starts it. Call `POST /UserAgent/Start` only for a stopped (status `0`) or errored (status `5`) agent
 5. **Running**: the agent starts and becomes available for conversation
 6. **Chat**: send messages via `POST /UserAgent/Message/Send`. See [Agent Messaging](/docs/agent-messaging) for the full messaging API
@@ -9295,9 +9287,9 @@ When you mutate an agent's configuration while it is **starting** (status `3`) o
 
 This means you can update credentials, toggle skills, or change a custom skill on a running agent without manually stopping and starting it.
 
-These calls restart a starting or running agent when they change something: `CredentialUpsert` (except the sign-in case below), `CredentialFileUpload`, `CredentialProjectBind` (when the project changes), an OAuth sign-in, direct `OAuthConnect` probe or `SetPickerAccounts` save that completes a connection, `OAuthDisconnect` (when it removes a token or the connection was complete), `SkillsApply`, `SkillToggle`, `CustomSkillUpsert` (a new custom skill or scheduled task, a new `interval`, an `enabled` change, or a change to `cs-approval-policy`), `CustomSkillRename`, `CustomSkillDelete`, `CustomSkillRevert`, `UpdateSettings` (a new time zone, Chat Mode, model, slash-command list or Wiro API path list, or turning `chatsetup` on or off), `Update` (a changed `title`, or a body that names no field), and a setup card applied from chat (see [Setup From Chat](/docs/agent-messaging#setup-from-chat)). [`ResetBrowser`](#post-useragentresetbrowser) restarts a starting or running agent every time: the browser is reset as the agent starts again. A restart takes about a minute. A change saved while a restart is still stopping or queued loads with that restart instead of starting another one.
+These calls restart a starting or running agent when they change something: `CredentialUpsert`, `CredentialFileUpload`, `CredentialProjectBind` (when the project changes), the connector calls `ConnectorConnect`, `ConnectorSetAccounts` and `ConnectorDisconnect` and a connector's sign-in when it comes back (see [Agent Connectors](/docs/agent-connectors#restarts)), `SkillsApply`, `SkillToggle`, `CustomSkillUpsert` (a new custom skill or scheduled task, a new `interval`, an `enabled` change, or a change to `cs-approval-policy`), `CustomSkillRename`, `CustomSkillDelete`, `CustomSkillRevert`, `UpdateSettings` (a new time zone, Chat Mode, model, slash-command list or Wiro API path list, or turning `chatsetup` on or off), `Update` (a changed `title`, or a body that names no field), and a setup card applied from chat (see [Setup From Chat](/docs/agent-messaging#setup-from-chat)). [`ResetBrowser`](#post-useragentresetbrowser) restarts a starting or running agent every time: the browser is reset as the agent starts again. A restart takes about a minute. A change saved while a restart is still stopping or queued loads with that restart instead of starting another one.
 
-**Sign-in connectors restart the agent once, when the connection is complete.** A connection is complete when its mode has a token and, for a credential with an account picker, at least one account is saved. Saving own-mode app keys, a System User token or `authmethod` with `CredentialUpsert` for a sign-in credential (one with an `oauth_provider`) that isn't connected before or after the save restarts nothing. A first sign-in or token check that leaves accounts to pick restarts nothing, and the `SetPickerAccounts` save restarts the agent once. One with nothing to pick (X, TikTok, LinkedIn, HubSpot, Mailchimp, Reddit, Shopify, an Instagram Login, or a Google account with a single YouTube channel) restarts it when it finishes. A reconnect that keeps the saved accounts restarts it at the sign-in, so the agent loads the new token. Saving the same accounts again restarts nothing, and a failed token check restarts the agent only when it cleared a connection that was complete. While nothing that is on uses the credential, a connection restarts nothing: turning on the connector that uses it restarts the agent once, with the connection. A direct `OAuthConnect` and `SetPickerAccounts` answer `restart` (`"scheduled"` or `"none"`), and `flow.restart` in `OAuthStatus` says what the sign-in did.
+**Connectors restart the agent when the connection changes.** A connect that saves new values or tokens, a new account selection and a disconnect of a connected connector answer `restart: "scheduled"` on a running agent; the same values sent again answer `applied: 0` and restart nothing. A sign-in restarts the agent when it comes back to your `redirecturl` with `connector_connected=true`.
 
 A change to only the text or description of an existing custom skill or scheduled task, through `CustomSkillUpsert` or a setup card, reaches a running agent right away, without a restart. These never restart a running agent: a plan change, a credit pack, a renewal or a cancellation, moving `chatsetup` between `"all"` and `"webchat"`, a `screen` change through `UpdateSettings`, and a description, categories or cover edit through `Update`.
 
@@ -9597,84 +9589,64 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
           "openai/gpt-5.6-luna": { "input_per_1m": 25, "output_per_1m": 150, "cached_input_per_1m": 2.5, "cache_write_per_1m": 31.25, "selectable": true, "label": "GPT-5.6 Luna", "tier": "cheap" }
         }
       },
-      "skills": ["int-instagram-post", "int-wiro-aimodels"],
+      "skills": ["util-social-posting-common", "util-anti-ai-human-copy"],
       "skillsmeta": {
-        "int-instagram-post": {
-          "name": "int-instagram-post",
-          "title": "Instagram Post",
-          "icon": "https://wiro.ai/images/icons/skills/instagram.svg",
-          "brand_color": "#e4405f",
+        "util-social-posting-common": {
+          "name": "util-social-posting-common",
+          "title": "Social Posting Common Rules",
+          "icon": "lni lni-share-2",
+          "brand_color": "#3b82f6",
           "brand_text_color": "#ffffff",
           "brand_logo_filter": "brightness(0) invert(1)",
-          "category": "int",
-          "docs_url": "integration-instagram-skills",
-          "credential_key": "instagram",
-          "requires_credentials": true,
-          "user_invocable": true,
-          "deprecated": false,
-          "replacement": null,
-          "description": "Post carousel feed and multi-story via Meta Graph API."
-        },
-        "int-wiro-aimodels": {
-          "name": "int-wiro-aimodels",
-          "title": "Wiro AI Models",
-          "icon": "https://wiro.ai/images/icons/skills/wiro.svg",
-          "brand_color": "#00d9a3",
-          "brand_text_color": "#ffffff",
-          "brand_logo_filter": "brightness(0) invert(1)",
-          "category": "int",
+          "category": "util",
           "docs_url": "",
-          "credential_key": "wiro",
-          "requires_credentials": true,
+          "credential_key": null,
+          "requires_credentials": false,
           "user_invocable": true,
           "deprecated": false,
           "replacement": null,
-          "description": "Universal access to every AI model on Wiro: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more."
+          "description": "Shared social manager rules: multi-platform posting orchestration, aspect ratio enforcement, caption compliance. Comes with content scanning and a Scheduled Task for Google Drive assets."
+        },
+        "util-anti-ai-human-copy": {
+          "name": "util-anti-ai-human-copy",
+          "title": "Anti-AI Human Copy",
+          "icon": "lni lni-spellcheck",
+          "brand_color": "#6366f1",
+          "brand_text_color": "#ffffff",
+          "brand_logo_filter": "brightness(0) invert(1)",
+          "category": "util",
+          "docs_url": "",
+          "credential_key": null,
+          "requires_credentials": false,
+          "user_invocable": true,
+          "deprecated": false,
+          "replacement": null,
+          "description": "Tone and craftsmanship rules for content-producing agents: banned generic words, sentence rhythm, copula/filler discipline, read-aloud test."
         }
       },
       "credentials": {
-        "instagram": {
-          "optional": false,
+        "telegram": {
+          "optional": true,
           "extra": false,
-          "_editable": { "appid": true, "appsecret": true, "systemusertoken": true, "accountId": false, "igusername": false },
+          "_editable": { "bottoken": true, "allowedusers": true, "groups": true },
           "_schema": {
-            "title": "Instagram",
-            "icon": "https://wiro.ai/images/icons/skills/instagram.svg",
-            "brand_color": "#e4405f",
+            "title": "Telegram",
+            "icon": "https://wiro.ai/images/icons/skills/telegram.svg",
+            "brand_color": "#24a1de",
             "brand_text_color": "#ffffff",
-            "brand_logo_filter": "none",
-            "docs_url": "integration-instagram-skills",
-            "credential_mode": "hybrid",
-            "connection_modes": ["api_key", "own", "wiro"],
-            "default_connection_mode": "api_key",
-            "mode_badges": { "api_key": "Recommended", "own": "Advanced" },
-            "wiro_connect_pending": true,
-            "channel": null,
-            "oauth_provider": {
-              "auth_method_value": "wiro",
-              "connect_endpoint": "/UserAgentOAuth/OAuthConnect",
-              "disconnect_endpoint": "/UserAgentOAuth/OAuthDisconnect",
-              "status_endpoint": "/UserAgentOAuth/OAuthStatus",
-              "username_field": "igusername",
-              "direct_probe": {
-                "mode": "api_key",
-                "token_field": "systemusertoken",
-                "public_account_fields": ["id", "name"]
-              },
-              "account_picker": {
-                "enabled": true,
-                "multi_select": true,
-                "set_endpoint": "/UserAgentOAuth/SetPickerAccounts",
-                "item_value_field": "accountId",
-                "item_label_field": "igusername"
-              }
+            "brand_logo_filter": "brightness(0) invert(1)",
+            "docs_url": "integration-telegram-skills",
+            "credential_mode": "api_key",
+            "channel": {
+              "id": "telegram",
+              "plugin": "telegram",
+              "required_fields": ["bottoken", "allowedusers"],
+              "capabilities": { "direct": true, "rooms": true, "threads": true, "roles": false, "command_menu": true }
             },
             "fields": [
-              { "key": "appid", "label": "App ID", "type": "text", "required": true, "only_in_modes": ["own"], "pattern": "^[0-9]+$", "oauth_managed": true },
-              { "key": "appsecret", "label": "App Secret", "type": "password", "required": true, "show_toggle": true, "only_in_modes": ["own"], "oauth_managed": true },
-              { "key": "systemusertoken", "label": "System User Token", "type": "password", "required": true, "show_toggle": true, "only_in_modes": ["api_key"] },
-              { "key": "accountId", "label": "Instagram Account ID", "type": "text", "required": true, "readonly_when_connected": true, "pattern": "^[0-9]+$", "auto_filled_by_oauth": true },
-              { "key": "igusername", "label": "Connected Account", "type": "text", "required": false, "readonly_when_connected": true, "auto_filled_by_oauth": true }
+              { "key": "bottoken", "label": "Telegram Bot Token", "type": "password", "required": true, "show_toggle": true },
+              { "key": "allowedusers", "label": "Allowed Telegram DM User IDs", "type": "string-array", "required": true },
+              { "key": "groups", "label": "Allowed Telegram Groups", "type": "object-array", "required": false }
             ]
           }
         }
@@ -9698,28 +9670,23 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
 
 | Flag | Type | Meaning |
 |------|------|---------|
-| `_connected` | boolean | **Connection readiness indicator.** `true` when Wiro has a validated OAuth or hybrid direct connection and every required picker field (`customerid`, `merchantid`, `channelid`, ad-account, page ID, Instagram account ID, etc.) is populated. Plain API-key and service-account providers that do not write `connectedat` can remain `false`; use `setuprequired` to determine overall setup readiness. |
-| `optional` | boolean | `true` when the template marks this credential as not required for the agent to run. Agents can start even if `optional: true` credentials are empty. On a custom build, each skill's own connector reads `false`, and a connector it lists in `additional_credential_keys` reads `true`, unless another skill on the agent has that connector as its own. A credential nothing on the agent asks for, such as one whose app keys or token were saved before its connector was added, or that stayed after its connector was removed, reads `true`, with `extra: false`. |
+| `_connected` | boolean | **Connection readiness indicator** for a credential whose setup writes a connection time. Plain value credentials, such as the channels, can remain `false`; use `setuprequired` to determine overall setup readiness. A connector's state is its `status` on [`ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist). |
+| `optional` | boolean | `true` when the template marks this credential as not required for the agent to run. Agents can start even if `optional: true` credentials are empty. A credential nothing on the agent asks for reads `true`, with `extra: false`. |
 | `extra` | boolean | `true` when the template groups the credential under "extra integrations" in the UI (disabled by default until the user opts into the skill). |
-| `_editable` | object | Map of `fieldname → true\|false` over the registry schema: `false` for a field the caller can't write (filled by the connection flow, platform-managed, or computed). |
-| `_schema` | object | Inlined registry descriptor: `{ title, icon, brand_color, brand_text_color, brand_logo_filter, docs_url, credential_mode, connection_modes[], default_connection_mode, mode_badges, wiro_connect_pending, channel, oauth_provider, fields[] }`, where `channel` describes a communication channel's connector and is `null` on any other. Lets a UI render the form without a separate `Credentials/Detail` round-trip. |
+| `_editable` | object | Map of `fieldname → true\|false` over the registry schema: `false` for a field the caller can't write (platform-managed or computed). |
+| `_schema` | object | Inlined registry descriptor: `{ title, icon, brand_color, brand_text_color, brand_logo_filter, docs_url, credential_mode, channel, fields[] }`, where `channel` describes a communication channel and is `null` or absent on any other credential. Lets a UI render the form without a separate `Credentials/Detail` round-trip. Other keys are for Wiro's own panel: ignore them. |
 
 **Field redaction in responses:**
 
-- **Saved secrets read as a mask.** A field of type `password` or `fileinput-base64` (an API key, token or password, or an uploaded key file or service account JSON) reads `"••••••••"`, eight `•` characters, once a value is saved on the agent, and `""` while none is. So does such a key in a list's entries, such as `firebase.accounts[].serviceaccountjson` and `adjust.apps[].apptoken`. This holds for every caller, the agent's owner and team admins included. A saved secret can't be read back with an API key, only replaced: send its new value with `CredentialUpsert`. A write that sends the mask back keeps the saved value (see [Field-level write rules](/docs/agent-credentials#field-level-write-rules)). `_connected`, `_filled` and `_required_missing` still count what is saved, and the agent receives the values as before. Other values, such as IDs, names, URLs and selections, show as saved, and so does `credentials.wiro.apikey`, the agent's project key. For a saved Google service account file, the agent's owner and team admins also get `_service_account_email` in the connector's group, which names the account by its email (see [Credential object shape](#credential-object-shape)).
-- `fieldstatus: "oauth_session"` fields (`accesstoken`, `refreshtoken`, `tokenexpiresat`, `pageAccessToken`, etc.) are always stripped from every response.
-- Schema fields marked `runtime_excluded: true`, such as the Instagram and
-  Facebook Pages `systemusertoken`, never reach the agent. A saved one reads as
-  the mask, like every saved secret.
-- `fieldstatus: "platform"` fields (Wiro-managed fields, such as Reddit's three approval flags `developerprofileverified`, `dataapiaccessapproved` and `commercialwrittenapproval`) are stripped from every API response. `credentials.wiro.apikey` and `credentials.calendarific.apikey` are operator-supplied user-input fields and appear in the response with `fieldstatus: "user"` like any other API-key credential: `calendarific.apikey` reads as the mask once saved, and `wiro.apikey` shows as saved.
-- `fieldstatus: "oauth_app"` fields (`clientid` / `clientsecret`, `appid` / `appsecret`) are stripped from Detail responses, even after an own-mode OAuth setup writes them. History writes redact `clientsecret` to `[REDACTED]`.
-- A value the agent template holds on a secret field (one Wiro stores encrypted, such as a key, token, password or service account, or an `oauth_managed` OAuth app key) is not returned: the field reads empty, and a list entry keeps its place with an empty value, until you save your own. The agent still runs with the template's value, and the card's `_filled` and `_required_missing` count it. Values you save yourself come back to the agent's owner and team admins, each secret as the mask.
+- **Saved secrets read as a mask.** A field of type `password` (a bot token, an auth token or a password) reads `"••••••••"`, eight `•` characters, once a value is saved on the agent, and `""` while none is. This holds for every caller, the agent's owner and team admins included. A saved secret can't be read back with an API key, only replaced: send its new value with `CredentialUpsert`. A write that sends the mask back keeps the saved value (see [Field-level write rules](/docs/agent-credentials#field-level-write-rules)). `_connected`, `_filled` and `_required_missing` still count what is saved, and the agent receives the values as before. Other values, such as IDs, names, URLs and selections, show as saved, and so does `credentials.wiro.apikey`, the agent's project key.
+- `fieldstatus: "platform"` fields (Wiro-managed fields) are stripped from every API response. `credentials.wiro.apikey` is an operator-supplied user-input field and appears in the response with `fieldstatus: "user"`, as saved.
+- A value the agent template holds on a secret field (one Wiro stores encrypted, such as a token or password) is not returned: the field reads empty until you save your own. The agent still runs with the template's value, and the card's `_filled` and `_required_missing` count it. Values you save yourself come back to the agent's owner and team admins, each secret as the mask.
 - Sentinel rows `_isoptional` / `_isextra`: never appear as fields; they're folded into the `optional` and `extra` flags above.
 
-A plain member of the agent's team gets the same answer with each saved value replaced by `[present]` and each saved secret by the mask, apart from display-only values such as `igusername` and the `authmethod` switch, which show as saved.
+A plain member of the agent's team gets the same answer with each saved value replaced by `[present]` and each saved secret by the mask.
 
-**Communication channel fields** are returned separately from skill and
-integration credentials:
+**Communication channel fields** are returned separately from the other
+credentials:
 
 | Field | Type | Meaning |
 |-------|------|---------|
@@ -9807,21 +9774,20 @@ for the channel contract.
 {
   "custom": true,
   "title": "My Custom Sales Agent",
-  "description": "Watches inbound emails and posts a summary to Slack each morning.",
+  "description": "Researches leads and posts a summary to Telegram each morning.",
   "useprepaid": true,
   "tier": "pro",
   "skills": {
-    "int-gmail-check":    true,
-    "int-wiro-aimodels": true
+    "util-chat-markdown-reporting": true,
+    "util-anti-ai-human-copy":      true
   },
   "credentials": {
-    "gmail":    { "account": "agent@company.com", "apppassword": "xxxx xxxx xxxx xxxx" },
     "telegram": { "bottoken": "123456:ABC-DEF...", "allowedusers": ["123456789"] }
   }
 }
 ```
 
-> **Custom builds use the same plans.** There is no marketplace template behind a custom agent, and the skills you pick don't change the price: a custom build pays the plan you pass in `tier`, like a template deploy. [`POST /UserAgent/PricingPreview`](#post-useragentpricingpreview) with `draft: true` resolves the skill set (with `depends_on`) and lists the plans before you call Deploy. Full walkthrough: [Agent Builder](/docs/agent-builder).
+> **Custom builds use the same plans.** There is no marketplace template behind a custom agent, and the skills you pick don't change the price. Connectors are connected after Deploy with [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect): a custom build pays the plan you pass in `tier`, like a template deploy. [`POST /UserAgent/PricingPreview`](#post-useragentpricingpreview) with `draft: true` resolves the skill set (with `depends_on`) and lists the plans before you call Deploy. Full walkthrough: [Agent Builder](/docs/agent-builder).
 
 ##### Template deploy vs custom build: what differs server-side
 
@@ -9832,7 +9798,7 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
 | Linked marketplace template | Snapshotted from the resolved template | None: no template back-reference |
 | `categories` | Cloned from the agent template | `null` (custom agents have no marketplace categories) |
 | `cover` | Cloned from `agent.cover` automatically | Optional: pass `cover` in the body if you want one |
-| Bundled scheduled tasks | Cloned from the template's preset custom skills | Materialized from the standalone cron registry based on the enabled skill set |
+| Bundled scheduled tasks | Cloned from the template's preset custom skills | Materialized from the standalone cron registry |
 | Onboarding placeholders | None: the template ships its own preset strategies | One invocation-only `cs-my-custom-strategy` and one scheduled `cs-cron-my-scheduled-task` are seeded so the panel always has something to render under "Custom Skills" / "Scheduled Tasks" |
 | Platform-managed credentials | Set up by Wiro | Set up by Wiro |
 | Marketplace run counter | Bumped by 1 | Not touched (custom agents have no template to count against) |
@@ -9853,18 +9819,18 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
       "description": null,
       "tier": "starter",
       "credentials": {
-        "instagram": {
+        "telegram": {
           "_connected": false,
-          "optional": false,
+          "optional": true,
           "extra": false,
-          "_editable": { "appid": true, "appsecret": true, "systemusertoken": true, "accountId": false, "igusername": false },
-          "_schema": { "title": "Instagram", "credential_mode": "hybrid", "connection_modes": ["api_key", "own", "wiro"], "default_connection_mode": "api_key", "fields": [ "..." ] },
-          "authmethod": "",
-          "igusername": "",
-          "connectedat": ""
+          "_editable": { "bottoken": true, "allowedusers": true, "groups": true },
+          "_schema": { "title": "Telegram", "credential_mode": "api_key", "channel": { "id": "telegram", "required_fields": ["bottoken", "allowedusers"] }, "fields": [ "..." ] },
+          "bottoken": "",
+          "allowedusers": [],
+          "groups": []
         }
       },
-      "skills": ["int-instagram-post", "int-wiro-aimodels"],
+      "skills": ["util-social-posting-common", "util-anti-ai-human-copy"],
       "customskills": [],
       "scheduledskills": [],
       "monthlycredits": 500,
@@ -9942,10 +9908,10 @@ The Deploy response reflects the same composed shape you get from `UserAgent/Det
 
 Next steps for the API integration flow:
 
-1. Inspect `credentials` in the Deploy response (or call `POST /UserAgent/Detail`) to see each provider's fields, the `optional` / `extra` flags, the registry-driven `_schema`, and the `_connected` OAuth status.
-2. Call `POST /UserAgent/CredentialUpsert` per provider (or in bulk via the `fields[]` array) to write API keys, bot tokens, WordPress credentials, etc. For OAuth providers (Meta, Google Ads, HubSpot, …) use the unified `/UserAgentOAuth/OAuthConnect` flow with `credentialkey` (see [Agent Credentials & OAuth](/docs/agent-credentials)). To connect the Wiro project the agent runs models with, call `POST /UserAgent/CredentialProjectBind`.
+1. Inspect `credentials` in the Deploy response (or call `POST /UserAgent/Detail`) to see each credential's fields, the `optional` / `extra` flags and the registry-driven `_schema`.
+2. Connect the services the agent works with through [Agent Connectors](/docs/agent-connectors): `POST /UserAgent/ConnectorConnect` with a connector's fields, or its vendor's sign-in. Call `POST /UserAgent/CredentialUpsert` for channels and settings (bot tokens, the support email), and `POST /UserAgent/CredentialProjectBind` to connect the Wiro project the agent runs models with.
 3. Call `POST /UserAgent/CustomSkillUpsert` per skill to customize strategy text or cron intervals, if the template exposes any.
-4. Once every non-optional connector is set up, `setuprequired` reads `false`. The start doesn't wait for it: the prepaid Deploy already queued the agent, Wiro starts it from the queue (`2` → `3` (Starting) → `4` (Running)), and a running agent restarts to pick up each connector you save.
+4. Once every non-optional credential is set up, `setuprequired` reads `false`. The start doesn't wait for it: the prepaid Deploy already queued the agent, Wiro starts it from the queue (`2` → `3` (Starting) → `4` (Running)), and a running agent restarts to pick up each connector you connect.
 5. If you want to re-launch a stopped agent (status `0`) or recover an errored one (status `5`), call `POST /UserAgent/Start` explicitly.
 
 ##### Idempotency: duplicate Deploy guard
@@ -10037,7 +10003,7 @@ Lists all agent instances deployed under your account.
           "max":     { "priceUsd": 100, "credits": 10000 }
         }
       },
-      "enabledSkills": ["int-instagram-post", "int-twitterx-post", "int-wiro-aimodels"],
+      "enabledSkills": ["util-social-posting-common", "util-anti-ai-human-copy", "util-chat-markdown-reporting"],
       "tokenRates": {
         "default_model": "openai/gpt-5.6-sol",
         "fallback_rate": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25 },
@@ -10107,106 +10073,6 @@ Retrieves full details for a single deployed agent instance, including subscript
       "enabledChannels": [],
       "teamsessionmode": "private",
       "credentials": {
-        "instagram": {
-          "_connected": true,
-          "optional": false,
-          "extra": false,
-          "_editable": {
-            "appid": true,
-            "appsecret": true,
-            "systemusertoken": true,
-            "accountId": false,
-            "igusername": false
-          },
-          "_schema": {
-            "title": "Instagram",
-            "icon": "https://wiro.ai/images/icons/skills/instagram.svg",
-            "brand_color": "#e4405f",
-            "brand_text_color": "#ffffff",
-            "brand_logo_filter": "none",
-            "docs_url": "integration-instagram-skills",
-            "credential_mode": "hybrid",
-            "connection_modes": ["api_key", "own", "wiro"],
-            "default_connection_mode": "api_key",
-            "mode_badges": {
-              "api_key": "Recommended",
-              "own": "Advanced"
-            },
-            "wiro_connect_pending": true,
-            "channel": null,
-            "oauth_provider": {
-              "auth_method_value": "wiro",
-              "connect_endpoint": "/UserAgentOAuth/OAuthConnect",
-              "disconnect_endpoint": "/UserAgentOAuth/OAuthDisconnect",
-              "status_endpoint": "/UserAgentOAuth/OAuthStatus",
-              "direct_probe": {
-                "mode": "api_key",
-                "token_field": "systemusertoken",
-                "public_account_fields": ["id", "name"]
-              },
-              "account_picker": {
-                "enabled": true,
-                "multi_select": true,
-                "set_endpoint": "/UserAgentOAuth/SetPickerAccounts",
-                "item_value_field": "accountId",
-                "item_label_field": "igusername"
-              }
-            },
-            "fields": [
-              {
-                "key": "appid",
-                "label": "App ID",
-                "type": "text",
-                "required": true,
-                "only_in_modes": ["own"],
-                "pattern": "^[0-9]+$",
-                "oauth_managed": true
-              },
-              {
-                "key": "appsecret",
-                "label": "App Secret",
-                "type": "password",
-                "required": true,
-                "show_toggle": true,
-                "only_in_modes": ["own"],
-                "oauth_managed": true
-              },
-              {
-                "key": "systemusertoken",
-                "label": "System User Token",
-                "type": "password",
-                "required": true,
-                "show_toggle": true,
-                "only_in_modes": ["api_key"]
-              },
-              {
-                "key": "accountId",
-                "label": "Instagram Account ID",
-                "type": "text",
-                "required": true,
-                "readonly_when_connected": true,
-                "pattern": "^[0-9]+$",
-                "auto_filled_by_oauth": true
-              },
-              {
-                "key": "igusername",
-                "label": "Connected Account",
-                "type": "text",
-                "required": false,
-                "readonly_when_connected": true,
-                "auto_filled_by_oauth": true
-              }
-            ]
-          },
-          "_required_missing": false,
-          "_filled": true,
-          "authmethod": "api_key",
-          "systemusertoken": "••••••••",
-          "accountId": "17841400000000000",
-          "igusername": "mybrand",
-          "connectedat": "2026-05-01T12:00:00.000Z",
-          "tokenexpiresat": ""
-        },
         "telegram": {
           "_connected": false,
           "optional": true,
@@ -10269,58 +10135,6 @@ Retrieves full details for a single deployed agent instance, including subscript
           "bottoken": "",
           "allowedusers": [],
           "groups": []
-        },
-        "wordpress": {
-          "_connected": false,
-          "optional": false,
-          "extra": false,
-          "_editable": {
-            "url":         true,
-            "user":        true,
-            "apppassword": true
-          },
-          "_schema": {
-            "title": "WordPress",
-            "icon": "https://wiro.ai/images/icons/skills/wordpress.svg",
-            "brand_color": "#21759b",
-            "brand_text_color": "#ffffff",
-            "brand_logo_filter": "brightness(0) invert(1)",
-            "docs_url": "integration-wordpress-skills",
-            "credential_mode": "api_key",
-            "connection_modes": [],
-            "default_connection_mode": null,
-            "mode_badges": {},
-            "wiro_connect_pending": false,
-            "channel": null,
-            "oauth_provider": null,
-            "fields": [
-              {
-                "key": "url",
-                "label": "WordPress URL",
-                "type": "url",
-                "required": true,
-                "placeholder": "https://yourdomain.com"
-              },
-              {
-                "key": "user",
-                "label": "Username",
-                "type": "text",
-                "required": true
-              },
-              {
-                "key": "apppassword",
-                "label": "App Password",
-                "type": "password",
-                "required": true,
-                "show_toggle": true
-              }
-            ]
-          },
-          "_required_missing": true,
-          "_filled": false,
-          "url": "",
-          "user": "",
-          "apppassword": ""
         }
       },
       "customskills": [
@@ -10369,58 +10183,58 @@ Retrieves full details for a single deployed agent instance, including subscript
         }
       ],
       "skills": [
-        { "name": "int-instagram-post", "enabled": true, "_edited": false, "_user_created": false },
-        { "name": "int-twitterx-post",  "enabled": true, "_edited": true,  "_user_created": false },
-        { "name": "int-wiro-aimodels", "enabled": true, "_edited": false, "_user_created": false }
+        { "name": "util-social-posting-common",   "enabled": true, "_edited": false, "_user_created": false },
+        { "name": "util-anti-ai-human-copy",      "enabled": true, "_edited": true,  "_user_created": false },
+        { "name": "util-chat-markdown-reporting", "enabled": true, "_edited": false, "_user_created": false }
       ],
       "skillsmeta": {
-        "int-instagram-post": {
-          "name": "int-instagram-post",
-          "title": "Instagram Post",
-          "icon": "https://wiro.ai/images/icons/skills/instagram.svg",
-          "brand_color": "#e4405f",
+        "util-social-posting-common": {
+          "name": "util-social-posting-common",
+          "title": "Social Posting Common Rules",
+          "icon": "lni lni-share-2",
+          "brand_color": "#3b82f6",
           "brand_text_color": "#ffffff",
           "brand_logo_filter": "brightness(0) invert(1)",
-          "category": "int",
-          "docs_url": "integration-instagram-skills",
-          "credential_key": "instagram",
-          "requires_credentials": true,
-          "user_invocable": true,
-          "deprecated": false,
-          "replacement": null,
-          "description": "Post carousel feed and multi-story via Meta Graph API."
-        },
-        "int-twitterx-post": {
-          "name": "int-twitterx-post",
-          "title": "Twitter / X Post",
-          "icon": "https://wiro.ai/images/icons/skills/twitterx.svg",
-          "brand_color": "#000000",
-          "brand_text_color": "#ffffff",
-          "brand_logo_filter": "brightness(0) invert(1)",
-          "category": "int",
-          "docs_url": "integration-twitter-skills",
-          "credential_key": "twitter",
-          "requires_credentials": true,
-          "user_invocable": true,
-          "deprecated": false,
-          "replacement": null,
-          "description": "Post single tweets or threads with mixed media via TwitterX API v2."
-        },
-        "int-wiro-aimodels": {
-          "name": "int-wiro-aimodels",
-          "title": "Wiro AI Models",
-          "icon": "https://wiro.ai/images/icons/skills/wiro.svg",
-          "brand_color": "#00d9a3",
-          "brand_text_color": "#ffffff",
-          "brand_logo_filter": "brightness(0) invert(1)",
-          "category": "int",
+          "category": "util",
           "docs_url": "",
-          "credential_key": "wiro",
-          "requires_credentials": true,
+          "credential_key": null,
+          "requires_credentials": false,
           "user_invocable": true,
           "deprecated": false,
           "replacement": null,
-          "description": "Universal access to every AI model on Wiro: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more."
+          "description": "Shared social manager rules: multi-platform posting orchestration, aspect ratio enforcement, caption compliance. Comes with content scanning and a Scheduled Task for Google Drive assets."
+        },
+        "util-anti-ai-human-copy": {
+          "name": "util-anti-ai-human-copy",
+          "title": "Anti-AI Human Copy",
+          "icon": "lni lni-spellcheck",
+          "brand_color": "#6366f1",
+          "brand_text_color": "#ffffff",
+          "brand_logo_filter": "brightness(0) invert(1)",
+          "category": "util",
+          "docs_url": "",
+          "credential_key": null,
+          "requires_credentials": false,
+          "user_invocable": true,
+          "deprecated": false,
+          "replacement": null,
+          "description": "Tone and craftsmanship rules for content-producing agents: banned generic words, sentence rhythm, copula/filler discipline, read-aloud test."
+        },
+        "util-chat-markdown-reporting": {
+          "name": "util-chat-markdown-reporting",
+          "title": "Chat Markdown Reporting",
+          "icon": "lni lni-message-3-text",
+          "brand_color": "#14b8a6",
+          "brand_text_color": "#ffffff",
+          "brand_logo_filter": "brightness(0) invert(1)",
+          "category": "util",
+          "docs_url": "",
+          "credential_key": null,
+          "requires_credentials": false,
+          "user_invocable": true,
+          "deprecated": false,
+          "replacement": null,
+          "description": "Structured markdown report format for the chat channel (Telegram / web chat / API chat): tables, code blocks for readability, character limits, split logic. Channel-agnostic."
         }
       },
       "monthlycredits": 3000,
@@ -10561,7 +10375,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `credentials` | `object` | Per-provider credential map keyed by credential name (`instagram`, `telegram`, `wordpress`, …). Each provider object carries its saved field values, every saved secret read as the mask `"••••••••"`, plus a fixed metadata header (see "Credential object shape" below). |
 | `customskills` | `array` | Composed list of preset strategies and **non-cron** custom skills (writable instructions). Each entry: `{ key, description, value, enabled, interval: null, _source, _editable, _edited, _user_created? }`. `_source` ∈ `"preset-strategy"` \| `"user-created"`. |
 | `scheduledskills` | `array` | Composed list of **cron** skills (`cs-cron-*`). Same shape as `customskills` plus `interval` (cron expression). `_source` ∈ `"skill-bundle"` (preset cron) \| `"user-created"`. |
-| `skills` | `array<object>` | Currently-enabled integration skills. Each entry: `{ name, enabled: true, _edited, _user_created }`. Toggle via `SkillsApply` (single-skill or batch). Note: object array (not string array). |
+| `skills` | `array<object>` | Currently-enabled Skills (`util-*`). Each entry: `{ name, enabled: true, _edited, _user_created }`. Toggle via `SkillsApply` (single-skill or batch). Note: object array (not string array). |
 | `skillsmeta` | `object` | Inline registry snapshot keyed by skill name: `title`, `icon`, `brand_color`, `category`, `docs_url`, `credential_key`, `requires_credentials`, `user_invocable`, `description`. Lets the panel render skill chips without a `Skills/List` round-trip. |
 | `communicationChannels` | `array` | Every external channel with this agent's state: `id`, `title`, `credentialkey`, `required_fields`, `capabilities`, `schema`, `enabled`, `configured` and `missingfields`. Also on the `Deploy` and `Update` responses; not on `MyAgents` / `PinnedAgents` rows. |
 | `enabledChannels` | `array<string>` | The ids of the channels in `communicationChannels` that are enabled. Same endpoints. |
@@ -10581,17 +10395,16 @@ Every provider entry under `credentials.<key>` carries:
 
 | Sub-field | Type | Description |
 |-----------|------|-------------|
-| `_connected` | `boolean` | Connection-readiness flag. `true` when Wiro has a validated OAuth or hybrid direct credential and every required picker field is populated. Plain API-key and service-account providers can remain `false`; for those use `_required_missing` or inspect the field values directly. |
-| `optional` | `boolean` | `true` when the agent template marks this credential as optional (the agent can run without it; the dependent skill just won't fire). `false` for required credentials. On a custom build, each skill's own connector reads `false`, and a connector it lists in `additional_credential_keys` reads `true`, unless another skill on the agent has that connector as its own. A credential nothing on the agent asks for, such as one whose app keys or token were saved before its connector was added, or that stayed after its connector was removed, reads `true`, with `extra: false`. |
+| `_connected` | `boolean` | Connection-readiness flag for a credential whose setup writes a connection time. Plain value credentials, such as the channels, can remain `false`; for those use `_required_missing` or inspect the field values directly. A connector's state is its `status` on [`ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist). |
+| `optional` | `boolean` | `true` when the agent template marks this credential as optional (the agent can run without it). `false` for required credentials. A credential nothing on the agent asks for reads `true`, with `extra: false`. |
 | `extra` | `boolean` | `true` when this credential surfaces in the "alternative" / secondary group on the panel (rare; most credentials are primary). |
-| `_editable` | `object` | Per-field edit map: `{ fieldname: true\|false }`. `false` means the field is read-only (managed by OAuth, platform-managed, or computed). The frontend uses this to disable inputs. |
-| `_schema` | `object` | Inline registry descriptor: `title`, `icon`, `brand_color`, `docs_url`, `credential_mode` (`oauth`, `api_key`, `hybrid`, etc.), `connection_modes`, `default_connection_mode`, `mode_badges`, `channel` (a communication channel's connector; `null` on any other), `oauth_provider`, plus a `fields[]` array describing every input the form should render. Lets the panel build connector cards without a separate `Credentials/Detail` round-trip. |
-| `_required_missing` | `boolean` | `true` when this connector is required (`optional: false`) and a required field you fill in is still empty. Drives the "needs attention" bullet on each connector card and the aggregate count badge on the Connectors tab. Always `false` on an optional connector. A list field counts as empty while its rows hold nothing but a choice or a switch, such as a default platform on an otherwise blank row. A value the agent template holds counts as filled, even on a secret field that reads empty here. |
-| `_filled` | `boolean` | `true` when the connector holds what the agent needs: its OAuth connection is made, or at least one field holds a value and no required field you fill in is empty. A value the agent template holds counts, even on a secret field that reads empty here. For `setuprequired`, an API-key connector counts only the values saved on this agent; see [Setup Required](/docs/agent-credentials#setup-required-state). |
-| `connectedat` | `string\|null` | OAuth and hybrid providers: ISO timestamp of the last successful connection. |
+| `_editable` | `object` | Per-field edit map: `{ fieldname: true\|false }`. `false` means the field is read-only (platform-managed or computed). The frontend uses this to disable inputs. |
+| `_schema` | `object` | Inline registry descriptor: `title`, `icon`, `brand_color`, `docs_url`, `credential_mode`, `channel` (on the external chat channels) and `fields[]`. Other keys are for Wiro's own panel: ignore them. |
+| `_required_missing` | `boolean` | `true` when this credential is required (`optional: false`) and a required field you fill in is still empty. Drives the "needs attention" bullet on each credential card and the aggregate count badge in the agent's settings. Always `false` on an optional credential. A list field counts as empty while its rows hold nothing but a choice or a switch, such as a default platform on an otherwise blank row. A value the agent template holds counts as filled, even on a secret field that reads empty here. |
+| `_filled` | `boolean` | `true` when the credential holds what the agent needs: at least one field holds a value and no required field you fill in is empty. A value the agent template holds counts, even on a secret field that reads empty here. For `setuprequired`, a credential counts only the values saved on this agent; see [Setup Required](/docs/agent-credentials#setup-required-state). |
+| `connectedat` | `string\|null` | Credentials whose setup writes one: ISO timestamp of the last successful connection. |
 | `tokenexpiresat` | `string\|null` | ISO timestamp when the current token expires, or an empty value when the provider reports no fixed expiry. |
-| `_service_account_email` | `object` | Only on a connector with a Google service account file (`google-drive`, `google-play`, `google-calendar` and `firebase`), and only for the agent's owner and team admins. The file itself reads as the mask, so this names the service account it belongs to: its email, the address a Drive folder, the Play Console or a calendar is shared with. `{ "serviceaccountjson": "agent@acme-project.iam.gserviceaccount.com" }` for a file of the connector itself, and for Firebase `{ "accounts": [{ "serviceaccountjson": "push@acme-project.iam.gserviceaccount.com" }] }`, one item per entry of `accounts`, in its order. A value is `""` when nothing is saved or the file doesn't read as a service account key. Nothing else of the file is returned. It can't be written: leave it out of what you send back, since a field name that starts with `_` is refused. |
-| `<fieldname>` | `string\|number\|boolean\|array` | The field value as you (or the OAuth callback) saved it, returned to the agent's owner and team admins. A saved secret (a `password` or `fileinput-base64` field, or such a key in a list's entries) reads `"••••••••"` instead, for every caller, and one with nothing saved reads `""`. Field types match `_schema.fields[].type`. Never returned: OAuth tokens (`oauth_session`), OAuth app keys (`clientid` / `clientsecret`, `appid` / `appsecret`), Wiro-managed fields, and a value the agent template holds on a field Wiro stores encrypted or on an `oauth_managed` field: such a field reads empty until you save your own. |
+| `<fieldname>` | `string\|number\|boolean\|array` | The field value as you saved it, returned to the agent's owner and team admins. A saved secret (a `password` or `fileinput-base64` field, or such a key in a list's entries) reads `"••••••••"` instead, for every caller, and one with nothing saved reads `""`. Field types match `_schema.fields[].type`. Never returned: Wiro-managed fields, and a value the agent template holds on a field Wiro stores encrypted: such a field reads empty until you save your own. |
 
 ##### Subscription object
 
@@ -10633,14 +10446,15 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 >
 > | What you want to change | Use |
 > |-------------------------|-----|
-> | Provider credentials (API keys, OAuth settings) | [`POST /UserAgent/CredentialUpsert`](#post-useragentcredentialupsert) |
+> | Connect, list or disconnect the services the agent works with | [Agent Connectors](/docs/agent-connectors): [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect) · [`ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist) · [`ConnectorDisconnect`](/docs/agent-connectors#post-useragentconnectordisconnect) |
+> | Channel and setting credentials (bot tokens, the support email) | [`POST /UserAgent/CredentialUpsert`](#post-useragentcredentialupsert) |
 > | The Wiro project the agent runs models with | [`POST /UserAgent/CredentialProjectBind`](#post-useragentcredentialprojectbind) |
 > | Upload a credential `fileinput` field (multipart, e.g. Twilio voice MP3) | [`POST /UserAgent/CredentialFileUpload`](#post-useragentcredentialfileupload) |
 > | Custom skill values (strategy text, cron intervals, enabled flag) | [`POST /UserAgent/CustomSkillUpsert`](#post-useragentcustomskillupsert) |
 > | Rename a user-created custom skill (key + optional description) | [`POST /UserAgent/CustomSkillRename`](#post-useragentcustomskillrename) |
 > | Browse alternative templates for a custom skill | [`POST /UserAgent/CustomSkillAlternatives`](#post-useragentcustomskillalternatives) |
 > | Delete a user-created scheduled task | [`POST /UserAgent/CustomSkillDelete`](#post-useragentcustomskilldelete) |
-> | Toggle one or more integration skills on/off | [`POST /UserAgent/SkillsApply`](#post-useragentskillsapply) |
+> | Turn one or more Skills on or off | [`POST /UserAgent/SkillsApply`](#post-useragentskillsapply) |
 > | Change the plan (Starter, Pro or Max) | [`POST /UserAgent/UpgradeTier`](#post-useragentupgradetier) |
 > | Upload a cover image (multipart) | [`POST /UserAgent/Cover`](#post-useragentcover) |
 > | Per-agent settings: time zone, Chat Mode, models, slash commands, Wiro API paths, Setup From Chat and Screen | [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) |
@@ -10650,7 +10464,7 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 > | Show the agent's live Screen, and Take Control, in your own app | [`POST /UserAgent/Realtime/ScreenInfo`](#post-useragentrealtimescreeninfo) · [`ScreenStart`](#post-useragentrealtimescreenstart) |
 > | Soft-delete a useragent | [`POST /UserAgent/Delete`](#post-useragentdelete) |
 
-> **Note:** `CredentialUpsert` and `CredentialProjectBind` save connector fields **but do not transition `status: 6` on their own**. After setting up the missing connectors, call `POST /UserAgent/Update` once (any scalar body works, even just `{ "guid": "<useragent-guid>" }`) to trigger the `setuprequired` re-check; that's the call that flips `status: 6 → 0` (Stopped) so the next `Start` succeeds.
+> **Note:** `CredentialUpsert` and `CredentialProjectBind` save credential fields **but do not transition `status: 6` on their own**. After setting up the missing credentials, call `POST /UserAgent/Update` once (any scalar body works, even just `{ "guid": "<useragent-guid>" }`) to trigger the `setuprequired` re-check; that's the call that flips `status: 6 → 0` (Stopped) so the next `Start` succeeds.
 
 ##### Response
 
@@ -10745,7 +10559,7 @@ Writes per-agent preference toggles that are not credentials and not skill rows.
 | `voiceprepmodel` | string\|null | No | Same rules as `chatmodel`, applied to the **voice-call prep** turn (context assembled before a realtime call). |
 | `voicepostcallmodel` | string\|null | No | Same rules as `chatmodel`, applied to the **post-call summary** turn after a realtime voice call ends. |
 | `enabledcommands` | string[] | No | Allowlist of in-chat **slash commands** the agent exposes, as an array of command keys **without** the leading slash (e.g. `["agent_help", "new_session", "agent_status"]`). Validated against the command catalog: an unknown key is rejected with `invalid-command-selection`, a non-array value with `invalid-command-list`. Order is preserved and duplicates are removed. An empty array `[]` is valid and **hides the slash-command menu** entirely. Omit the field to leave the current allowlist untouched. |
-| `wiroapiallowedpaths` | string[]\|null | No | Limits the agent's own calls to the Wiro API, the ones it makes with its Wiro project key (for example through `int-wiro-aimodels`), to the endpoints you list. Each rule is a method in capitals (`GET`, `POST`, `PUT`, `PATCH`, `DELETE` or `HEAD`), one space and a `/v1` path, such as `"POST /v1/Task/Detail"`. A `*` stands for exactly one whole path segment: `"POST /v1/Run/*/*"` allows every model run, while `"POST /v1/Run/x*"` is invalid. Up to 64 rules of at most 200 characters each; duplicates are removed and the order is kept. Calls to endpoints that no rule matches are refused. `[]` refuses every call, model runs included; `null` removes your list, and the agent goes back to the default list. An invalid rule, or a value that isn't an array, is rejected with `invalid-wiro-api-path-rule`, and nothing in the request is saved. Omit the field to keep the current list. An agent with no list of its own uses the default list: `POST /v1/Run/*/*`, `POST /v1/Task/Detail`, `POST /v1/Tool/List`, `POST /v1/Tool/Detail`, `POST /v1/Tool/UploadModelPostImage`, `POST /v1/Tool/GenerateModelPostImage`, `GET /v1/Tool/GenerateModelPostImage` and `POST /v1/UserAgent/Message/UploadAsset`. If a custom skill of yours calls another endpoint, send a list that includes it. |
+| `wiroapiallowedpaths` | string[]\|null | No | Limits the agent's own calls to the Wiro API, the ones it makes with its Wiro project key (for example to run models for its skills), to the endpoints you list. Each rule is a method in capitals (`GET`, `POST`, `PUT`, `PATCH`, `DELETE` or `HEAD`), one space and a `/v1` path, such as `"POST /v1/Task/Detail"`. A `*` stands for exactly one whole path segment: `"POST /v1/Run/*/*"` allows every model run, while `"POST /v1/Run/x*"` is invalid. Up to 64 rules of at most 200 characters each; duplicates are removed and the order is kept. Calls to endpoints that no rule matches are refused. `[]` refuses every call, model runs included; `null` removes your list, and the agent goes back to the default list. An invalid rule, or a value that isn't an array, is rejected with `invalid-wiro-api-path-rule`, and nothing in the request is saved. Omit the field to keep the current list. An agent with no list of its own uses the default list: `POST /v1/Run/*/*`, `POST /v1/Task/Detail`, `POST /v1/Tool/List`, `POST /v1/Tool/Detail`, `POST /v1/Tool/UploadModelPostImage`, `POST /v1/Tool/GenerateModelPostImage`, `GET /v1/Tool/GenerateModelPostImage` and `POST /v1/UserAgent/Message/UploadAsset`. If a custom skill of yours calls another endpoint, send a list that includes it. |
 | `chatsetup` | string\|null | No | Setup From Chat: where people can change the agent's setup by approving setup cards in chat. `"all"` (the default): in the Wiro web chat and in messages sent with a project API key, such as from your backend or an MCP client. `"webchat"`: only in the Wiro web chat on wiro.ai. `"off"`: never from chat; the agent says that an agent admin makes the change in the agent's settings. `null` goes back to `"all"`, and any other value is rejected with `chatsetup must be off, webchat or all`. Agents that your customers or many people talk to usually choose `"webchat"` or `"off"`; see [Setup From Chat](/docs/agent-messaging#setup-from-chat). Read it back as `chatSetup` on [`UserAgent/Detail`](#post-useragentdetail). |
 | `screen` | string\|null | No | Screen: whether the agent's [Screen](#screen-and-take-control) opens, in the Wiro panel and in your own app through [`ScreenStart`](#post-useragentrealtimescreenstart) with a project API key. The people who manage the agent (its owner and the team's admins) watch its computer live, and the owner of a personal agent that has never been in a team, or whose browser was reset after it last left one, can take control of it. `"on"` (the default) or `"off"`. `"off"` closes it for everyone, watching and Take Control alike, in the panel and in your app, and also closes screens that are open, a Take Control session included, within about half a minute. On a team agent whose Chat Mode is `"private"` the screen stays closed to the team whatever this says. `null` goes back to `"on"`, and any other value is rejected with `screen must be on or off`. It never restarts the agent. Read it back as `screen` on [`UserAgent/Detail`](#post-useragentdetail). |
 
@@ -11010,7 +10824,9 @@ If you already have a hosted URL, use `POST /UserAgent/Update` with `cover: "<ur
 
 Writes one or more credential fields for one or multiple providers in a single call.
 
-If the agent is **starting** or **running**, an upsert that changes a saved value triggers an automatic restart. Fields of a sign-in credential (one with an `oauth_provider`) that isn't connected before or after the save, such as own-mode app keys or a System User token saved before the sign-in or token check, restart nothing: the connection that follows restarts the agent once (see [Automatic Restart](#automatic-restart)).
+If the agent is **starting** or **running**, an upsert that changes a saved value triggers an automatic restart (see [Automatic Restart](#automatic-restart)).
+
+`CredentialUpsert` writes the agent's credentials: the Telegram, Slack and Discord channels, Twilio Voice, the Wiro project's key and settings such as the support email (see [Agent Credentials](/docs/agent-credentials)). The services the agent works with are connectors: connect them with [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect).
 
 Telegram, Slack, and Discord are optional credential groups. A channel appears
 in `enabledChannels` automatically when all of its catalog `required_fields`
@@ -11026,11 +10842,11 @@ Each field row:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `credentialkey` | string | The provider key: e.g. `"instagram"`, `"google-ads"`, `"wordpress"`, `"telegram"`. Must match one of the credentials declared in `credentials` on `/UserAgent/Detail`. |
-| `fieldname` | string | Field inside that credential: e.g. `"apikey"`, `"clientid"`, `"bottoken"`. Must not start with `_` (reserved for internal sentinels such as `_isoptional`, `_isextra`). |
+| `credentialkey` | string | The credential key: e.g. `"telegram"`, `"slack"`, `"twilio-voice"`, `"var-support-email"`. Must match one of the credentials declared in `credentials` on `/UserAgent/Detail`, or a channel from `POST /Skills/List` → `channels[]`. |
+| `fieldname` | string | Field inside that credential: e.g. `"bottoken"`, `"allowedusers"`, `"accountsid"`. Must not start with `_` (reserved for internal sentinels such as `_isoptional`, `_isextra`). |
 | `fieldvalue` | string \| number \| array | The value to write. An empty string clears an optional single-value field; send `[]` to clear a list field. Clearing a required field fails validation, except on Telegram, Slack and Discord, where it disables the channel. |
-| `fieldstatus` | string | **Server-managed: ignored from the request body for API callers.** The value is derived from the registry / OAuth flow on the server side (e.g. `user` for hand-edited fields, `oauth_session` for tokens written by the OAuth callback, `oauth_app` for app credentials, etc.). Do not set this field. It is stripped before any write. |
-| `parentfield` | string | Optional. The key of a list field (e.g. `"accounts"` for `firebase.accounts[]`) when the row sets one field of a single entry in that list. A list inside the entry, such as its `apps`, is sent whole as that field's `fieldvalue`. |
+| `fieldstatus` | string | **Server-managed: ignored from the request body for API callers.** The server derives it from the registry (`user` for the values you save). Do not set this field. It is stripped before any write. |
+| `parentfield` | string | Optional. The key of a list field (e.g. `"groups"` for Telegram's `groups[]`) when the row sets one field of a single entry in that list. |
 | `ordinal` | number | Optional. Array index inside `parentfield`. Defaults to `0`. |
 
 ##### Request
@@ -11042,9 +10858,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -d '{
     "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
     "fields": [
-      { "credentialkey": "wordpress", "fieldname": "url",         "fieldvalue": "https://myblog.com" },
-      { "credentialkey": "wordpress", "fieldname": "user",        "fieldvalue": "admin" },
-      { "credentialkey": "wordpress", "fieldname": "apppassword", "fieldvalue": "abcd efgh ijkl mnop" }
+      { "credentialkey": "telegram", "fieldname": "bottoken",     "fieldvalue": "123456:ABC-DEF1234ghIkl" },
+      { "credentialkey": "telegram", "fieldname": "allowedusers", "fieldvalue": ["123456789"] }
     ]
   }'
 ```
@@ -11055,7 +10870,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 { "result": true, "applied": 3, "errors": [] }
 ```
 
-`applied` is the number of rows saved without an error; a row sent with its current value still counts. A secret sent as `"••••••••"`, the mask `UserAgent/Detail` shows for a saved one, keeps the saved value and isn't counted (see [Field-level write rules](/docs/agent-credentials#field-level-write-rules)). Every row is validated before anything is written. If any row fails validation (for example a reserved fieldname, a Wiro-managed field or an OAuth token field), the whole request is rejected and nothing is saved: the response has `result: false`, one `errors` entry per invalid row, and no `applied`. If a save fails after validation has passed, the other rows are still saved and the response has `result: false`, the `applied` count, and each failed row in `errors`. Re-sending the same request is safe.
+`applied` is the number of rows saved without an error; a row sent with its current value still counts. A secret sent as `"••••••••"`, the mask `UserAgent/Detail` shows for a saved one, keeps the saved value and isn't counted (see [Field-level write rules](/docs/agent-credentials#field-level-write-rules)). Every row is validated before anything is written. If any row fails validation (for example a reserved fieldname or a Wiro-managed field), the whole request is rejected and nothing is saved: the response has `result: false`, one `errors` entry per invalid row, and no `applied`. If a save fails after validation has passed, the other rows are still saved and the response has `result: false`, the `applied` count, and each failed row in `errors`. Re-sending the same request is safe.
 
 > **Twilio Voice: extra response fields.** When any `twilio-voice` field is touched, `CredentialUpsert` also auto-configures each Twilio phone number's `VoiceUrl` and surfaces the result on the response:
 >
@@ -11066,11 +10881,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 > | `twilioWebhooksFailed` | `object[]` | One `{ phoneNumber, error }` entry per number whose update Twilio rejected. |
 > | `twilioWebhookError` | `string` | Top-level message when the entire VoiceUrl-rewrite flow failed (auth error, network outage). The credential rows are still saved. Only the auto-configuration step failed. |
 >
-> Treat all four fields as best-effort: the credential write itself never depends on Twilio's API call succeeding. See [Twilio Voice Integration](/docs/integration-twiliovoice-skills) for the full lifecycle.
+> Treat all four fields as best-effort: the credential write itself never depends on Twilio's API call succeeding. See [Twilio Voice Channel](/docs/integration-twiliovoice-skills) for the full lifecycle.
 
 #### **POST** /UserAgent/CredentialProjectBind
 
-Connects an agent's Wiro AI Models connector (`int-wiro-aimodels`, the `wiro` key under `credentials`) to one of your Wiro projects. You name the project, and Wiro saves that project's API key on the agent. The agent's model runs are paid from the wallet of the workspace that owns the project.
+Connects the agent's Wiro project (the `wiro` key under `credentials`) to one of your Wiro projects. You name the project, and Wiro saves that project's API key on the agent. The agent's model runs are paid from the wallet of the workspace that owns the project.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -11468,14 +11283,14 @@ Reverts a custom skill to either (a) the agent template's preset default or (b) 
 #### **POST** /UserAgent/CredentialFieldHistory
 
 Returns the per-field write history for one credential group on a useragent. Sensitive values are redacted at read time as a belt-and-suspenders guard:
-- `oauth_session` fields (access / refresh tokens) **never** appear in history at all. They're stripped before persisting.
-- `clientsecret` and similar `oauth_app` secret fields are stored as `[REDACTED]` in history rows (the live value stays server-side, and `UserAgent/Detail` doesn't return it either).
+
+- A saved secret, such as a bot token or an auth token, never comes back as its value.
 - Wiro-managed credentials return an empty `entries[]`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid |
-| `credentialkey` | string | Yes | Provider key (e.g. `"instagram"`, `"wordpress"`) |
+| `credentialkey` | string | Yes | Credential key (e.g. `"telegram"`, `"twilio-voice"`) |
 | `startdate` | number | No | UTC epoch seconds: return entries on/after this time |
 | `enddate` | number | No | UTC epoch seconds: return entries on/before this time |
 
@@ -11489,9 +11304,9 @@ Returns the per-field write history for one credential group on a useragent. Sen
     {
       "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
       "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-      "credentialkey": "instagram",
-      "fieldname": "igusername",
-      "fieldvalue": "myaccount",
+      "credentialkey": "telegram",
+      "fieldname": "allowedusers",
+      "fieldvalue": ["123456789"],
       "fieldstatus": "user",
       "parentfield": null,
       "ordinal": 0,
@@ -11507,28 +11322,6 @@ Returns the per-field write history for one credential group on a useragent. Sen
         "avatarinitials": "AL"
       },
       "changedat": 1714694410
-    },
-    {
-      "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-      "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-      "credentialkey": "instagram",
-      "fieldname": "clientsecret",
-      "fieldvalue": "[REDACTED]",
-      "fieldstatus": "oauth_app",
-      "parentfield": null,
-      "ordinal": 0,
-      "operation": "upsert",
-      "changedby": "ada-uuid",
-      "changedby_user": {
-        "uuid": "ada-uuid",
-        "firstname": "Ada",
-        "lastname": "Lovelace",
-        "email": "ada@example.com",
-        "username": "ada",
-        "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
-        "avatarinitials": "AL"
-      },
-      "changedat": 1714600000
     }
   ]
 }
@@ -11567,9 +11360,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
     "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
     "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000",
     "skills": {
-      "int-instagram-post": true,
-      "int-twitterx-post":  true,
-      "int-reddit-post":     false
+      "util-social-posting-common": true,
+      "util-anti-ai-human-copy":    true,
+      "util-diagram":               false
     }
   }'
 ```
@@ -11601,7 +11394,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
     "stripeProrationApplied": false,
     "prepaidWalletDelta": null,
     "usedCreditsUsd": 0,
-    "enabledSkills": ["int-instagram-post", "int-twitterx-post", "int-wiro-aimodels"]
+    "enabledSkills": ["util-social-posting-common", "util-anti-ai-human-copy", "util-chat-markdown-reporting"]
   }
 }
 ```
@@ -11649,7 +11442,7 @@ Two body shapes:
 {
   "draft": true,
   "tier": "pro",
-  "skills": ["int-instagram-post", "int-wiro-aimodels"]
+  "skills": ["util-social-posting-common", "util-anti-ai-human-copy"]
 }
 ```
 
@@ -11660,8 +11453,8 @@ Two body shapes:
   "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
   "tier": "max",
   "skillOverrides": {
-    "int-instagram-post": true,
-    "int-reddit-post":    false
+    "util-social-posting-common": true,
+    "util-diagram":               false
   }
 }
 ```
@@ -11669,7 +11462,7 @@ Two body shapes:
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `draft` | boolean | A | When `true`, no useragent lookup happens; Wiro resolves the `skills` array directly. Used by Build Your Agent. |
-| `skills` | array<string> | A | Draft mode only: the proposed enabled skill set. |
+| `skills` | `array<string>` | A | Draft mode only: the proposed enabled skill set. |
 | `useragentguid` | string | B | Required for non-draft previews. |
 | `skillOverrides` | object | No | Override the persisted state with `{ skillname: boolean }` for the preview. Omit for "current state" preview. |
 | `tier` | string | No | `"starter"`, `"pro"` or `"max"`: the plan to preview. Defaults to the agent's plan, or Starter in a draft. The response lists all three plans under `tiers`. |
@@ -11686,11 +11479,11 @@ A Pro agent on a wallet plan, previewing Max with 15 days left of 30:
   "totalPriceUsd": 100,
   "totalMonthlyCredits": 10000,
   "skillBreakdown": [
-    { "skill": "int-instagram-post", "priceUsd": 0, "credits": 0, "billing_model": "tokens" },
-    { "skill": "int-wiro-aimodels",  "priceUsd": 0, "credits": 0, "billing_model": "tokens" }
+    { "skill": "util-social-posting-common", "priceUsd": 0, "credits": 0, "billing_model": "tokens" },
+    { "skill": "util-anti-ai-human-copy",    "priceUsd": 0, "credits": 0, "billing_model": "tokens" }
   ],
-  "enabledSkills": ["int-instagram-post", "int-wiro-aimodels"],
-  "directSkills":  ["int-instagram-post"],
+  "enabledSkills": ["util-social-posting-common", "util-anti-ai-human-copy"],
+  "directSkills":  ["util-social-posting-common"],
   "tiers": {
     "starter": { "priceUsd": 5,   "credits": 500 },
     "pro":     { "priceUsd": 30,  "credits": 3000 },
@@ -11805,6 +11598,7 @@ Starts a stopped agent instance. The agent is moved to Queued (status `2`) and t
 > `useragents` is always returned (empty array on Start) because Start returns the standard agent response shape. Only `result` and `errors` carry the outcome here.
 
 Start will fail (returns `{ "result": false, "errors": [...] }`) if:
+
 - The agent is already running or queued
 - The agent is currently stopping
 - Setup is incomplete (status `6`)
@@ -11916,11 +11710,10 @@ Poll every 30 seconds or more.
       "ts": "2026-05-03T14:00:01.000Z",
       "kind": "tool_completed",
       "tool": "exec",
-      "title": "Posted carousel: \"Brand voice teaser\"",
+      "title": "Drew a diagram: \"Onboarding flow\"",
       "summary": {
-        "skill": "int-instagram-post",
-        "action": "create",
-        "permalink": "https://www.instagram.com/p/CXY..."
+        "skill": "util-diagram",
+        "action": "create"
       },
       "durationMs": 2480,
       "ok": true,
@@ -12197,7 +11990,7 @@ No request body fields are required: the workspace of your API key's project sco
           "max":     { "priceUsd": 100, "credits": 10000 }
         }
       },
-      "enabledSkills": ["int-instagram-post", "int-twitterx-post", "int-wiro-aimodels"],
+      "enabledSkills": ["util-social-posting-common", "util-anti-ai-human-copy", "util-chat-markdown-reporting"],
       "tokenRates": {
         "default_model": "openai/gpt-5.6-sol",
         "fallback_rate": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25 },
@@ -12924,7 +12717,7 @@ Agent-specific errors you may encounter:
 | A Model Access refusal (code `92`), such as `This agent can't use openai/gpt-5-6-sol. Model Access rules decide which models can run.` | `Message/Send` with a `model` that the agent's own [Model Access](/docs/model-access) rule blocks, or `UpdateSettings` with such a model override. Nothing runs and nothing is charged |
 | `Message not found` | `Detail` / `Cancel` with invalid messageguid |
 | `Message cannot be cancelled (status: {status})` | `Cancel` on a message that's already in a terminal state |
-| `Invalid redirect URL` | OAuth `Connect` with non-HTTPS URL |
+| `Invalid redirect URL` | [`ConnectorConnect`](/docs/agent-connectors#the-redirect-url) with a `redirecturl` that isn't https (or http on localhost) |
 | `Pack key required` | `CreateExtraCreditCheckout` without `pack` |
 | `Could not retrieve wallet balance` | Wallet service lookup failed while checking balance |
 | `runstream-unavailable` | `RunStreamToken` while following runs live is not available. Try again later |
@@ -12977,7 +12770,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
     "title": "Inbox Watcher",
     "useprepaid": true,
     "tier": "pro",
-    "skills": { "int-gmail-check": true, "int-wiro-aimodels": true }
+    "skills": { "util-chat-markdown-reporting": true, "util-anti-ai-human-copy": true }
   }'
 
 # Preview a plan change before you make it
@@ -13025,15 +12818,14 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{"guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321"}'
 
-# Update credentials on a running agent (triggers automatic restart)
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+# Connect a connector on a running agent (triggers automatic restart)
+curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-    "fields": [
-      { "credentialkey": "instagram", "fieldname": "authmethod", "fieldvalue": "wiro" }
-    ]
+    "slug": "serper",
+    "values": { "apikey": "YOUR_SERPER_API_KEY" }
   }'
 
 # Stop an agent
@@ -13083,15 +12875,14 @@ deploy = requests.post(
 instance_guid = deploy["useragents"][0]["guid"]
 print(f"Deployed: {instance_guid}")
 
-# Update credentials
+# Connect a connector (see Agent Connectors)
 requests.post(
-    "https://api.wiro.ai/v1/UserAgent/CredentialUpsert",
+    "https://api.wiro.ai/v1/UserAgent/ConnectorConnect",
     headers=headers,
     json={
         "useragentguid": instance_guid,
-        "fields": [
-            { "credentialkey": "instagram", "fieldname": "authmethod", "fieldvalue": "wiro" }
-        ]
+        "slug": "serper",
+        "values": { "apikey": "YOUR_SERPER_API_KEY" }
     }
 )
 
@@ -13193,14 +12984,13 @@ async function main() {
   const instanceGuid = deploy.data.useragents[0].guid;
   console.log('Deployed:', instanceGuid);
 
-  // Update credentials
+  // Connect a connector (see Agent Connectors)
   await axios.post(
-    'https://api.wiro.ai/v1/UserAgent/CredentialUpsert',
+    'https://api.wiro.ai/v1/UserAgent/ConnectorConnect',
     {
       useragentguid: instanceGuid,
-      fields: [
-        { credentialkey: 'instagram', fieldname: 'authmethod', fieldvalue: 'wiro' }
-      ]
+      slug: 'serper',
+      values: { apikey: 'YOUR_SERPER_API_KEY' }
     },
     { headers }
   );
@@ -13442,7 +13232,8 @@ print(response.body);
 
 - [Agent Builder](/docs/agent-builder): Build custom agents from scratch (`custom: true`) with live pricing previews and skill picker
 - [Agent Skills](/docs/agent-skills): Configure preferences, scheduled tasks, and skill toggles. Includes the registry browser endpoints (`Skills/List`, `Skills/Detail`, `Skills/Capabilities`)
-- [Agent Credentials](/docs/agent-credentials): Integration catalog hub with 20+ dedicated per-provider setup guides (Meta Ads, Facebook, Instagram, LinkedIn, Twitter, and more) plus the registry endpoints (`Credentials/List`, `Credentials/Detail`)
+- [Agent Connectors](/docs/agent-connectors): The connector catalog and every call to connect the services an agent works with (`AgentConnector/List`, `ConnectorConnect`, sign-ins, account pickers)
+- [Agent Credentials](/docs/agent-credentials): Channels, the Wiro project and settings, plus the registry endpoints (`Credentials/List`, `Credentials/Detail`)
 - [Agent Messaging](/docs/agent-messaging): Send messages and receive responses from running agents
 - [Agent Chat Integration](/docs/agent-chat-integration): Build your own chat for an agent, with setup cards, connections, restarts and the agent's live Screen
 - [Agent WebSocket](/docs/agent-websocket): Real-time response streaming
@@ -13455,7 +13246,7 @@ print(response.body);
 
 # Agent Builder
 
-Build a custom agent from scratch: no marketplace template required. Pick your own skill set and a plan, and deploy in one call.
+Build a custom agent from scratch: no marketplace template required. Pick your own skill set and a plan, deploy in one call, then connect the services it works with.
 
 ## Overview
 
@@ -13464,9 +13255,9 @@ Wiro's agent runtime supports two deploy paths:
 | Path | When to use | Endpoint |
 |------|-------------|----------|
 | **Template deploy** | The marketplace already has an agent that does what you need (Instagram Manager, Push Notifications, App Review Support, …). You inherit the template's default skill set + configuration. | `POST /UserAgent/Deploy` with `agentguid` |
-| **Custom build** | You want a unique skill combination: for example a custom support bot that watches Gmail, publishes a daily digest to WordPress, and uses Wiro's image generator. No marketplace template fits. | `POST /UserAgent/Deploy` with `custom: true` |
+| **Custom build** | You want a unique combination: for example a research writer that searches the web with Serper, drafts posts on WordPress and reports to Telegram. No marketplace template fits. | `POST /UserAgent/Deploy` with `custom: true` |
 
-The two paths produce the **same useragent shape** at the end (same `customskills`, `scheduledskills`, `credentials`, `subscription`, `tokenRates`, etc.). The only differences are:
+The two paths produce the **same useragent shape** at the end (same `customskills`, `scheduledskills`, `credentials`, `subscription`, `tokenRates`, etc.), and both connect the services they work with the same way, after Deploy, through [Agent Connectors](/docs/agent-connectors). The only differences are:
 
 | Aspect | Template deploy | Custom build |
 |--------|-----------------|--------------|
@@ -13480,22 +13271,22 @@ Both paths are sold on the same three plans, Starter at $5, Pro at $30 and Max a
 
 ## Step 1: Browse Available Skills
 
-Custom builds start from the **skill registry**, the catalogue of every skill the platform supports. Browse it with [`POST /Skills/List`](/docs/agent-skills#post-skillslist) and inspect details with [`POST /Skills/Detail`](/docs/agent-skills#post-skillsdetail).
+Custom builds start from the **skill registry**, the catalogue of every Skill the platform supports: rule sets, playbooks and keyless tools such as weather and diagrams. Browse it with [`POST /Skills/List`](/docs/agent-skills#post-skillslist) and inspect details with [`POST /Skills/Detail`](/docs/agent-skills#post-skillsdetail). The outside services the agent works with are connectors, which you pick from the [connector catalog](#step-1c-pick-the-connectors) and connect after Deploy.
 
 Both endpoints are **public, so no authentication is required.**
 
 ```bash
-# Browse all integration skills
+# Browse every Skill
 curl -X POST "https://api.wiro.ai/v1/Skills/List" \
   -H "Content-Type: application/json" \
-  -d '{ "category": "int" }'
+  -d '{ "category": "util" }'
 ```
 
 Pick the skill names you want to enable. Each skill descriptor tells you:
 
 - `name`: the canonical skill key you'll send in `skills` / `skillOverrides`
-- `category`: `int` (integration with a third-party service) or `util` (utility, no credential to connect)
-- `credential_key`: which credential the skill needs (`null` for `util` or platform-managed skills)
+- `category`: `util`, for every registry skill
+- `credential_key`: which credential the skill needs, or `null` (most skills need none)
 - `requires_credentials`: boolean, whether the user must supply a credential before the skill can run
 - `depends_on`: array of skill names that must also be enabled (Wiro auto-enables transitive deps)
 - `conflicts_with`: array of skill names that cannot coexist with this one
@@ -13548,6 +13339,18 @@ separate enablement parameter: pass a complete channel group in Deploy's
 all `required_fields` are complete. Channels do not add skills or change agent
 pricing.
 
+## Step 1c: Pick the Connectors
+
+The services the agent works with are connectors from the public catalog: [`POST /AgentConnector/List`](/docs/agent-connectors#post-agentconnectorlist), no API key needed. Each row shows its Connect fields (`credentialfields`), whether it signs in with the vendor (`authtype` `provider-oauth` or `oauth`), its account pickers and its tools.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/AgentConnector/List" \
+  -H "Content-Type: application/json" \
+  -d '{ "search": "wordpress" }'
+```
+
+Connectors are not part of Deploy and don't change the price: you connect them to the deployed agent in [Step 3b](#step-3b-connect-the-connectors).
+
 ## Step 2: Preview the Build
 
 Before you commit, resolve the proposed skill set and see the plans with [`POST /UserAgent/PricingPreview`](/docs/agent-overview#post-useragentpricingpreview). The **draft** mode runs without touching any DB state.
@@ -13559,7 +13362,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
   -d '{
     "draft": true,
     "tier": "pro",
-    "skills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels"]
+    "skills": ["util-anti-ai-human-copy", "util-chat-markdown-reporting"]
   }'
 ```
 
@@ -13573,12 +13376,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
   "totalPriceUsd": 30,
   "totalMonthlyCredits": 3000,
   "skillBreakdown": [
-    { "skill": "int-gmail-check",     "priceUsd": 0, "credits": 0, "billing_model": "tokens" },
-    { "skill": "int-wordpress-post",  "priceUsd": 0, "credits": 0, "billing_model": "tokens" },
-    { "skill": "int-wiro-aimodels",   "priceUsd": 0, "credits": 0, "billing_model": "tokens" }
+    { "skill": "util-anti-ai-human-copy",      "priceUsd": 0, "credits": 0, "billing_model": "tokens" },
+    { "skill": "util-chat-markdown-reporting", "priceUsd": 0, "credits": 0, "billing_model": "tokens" }
   ],
-  "enabledSkills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels"],
-  "directSkills":  ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels"],
+  "enabledSkills": ["util-anti-ai-human-copy", "util-chat-markdown-reporting"],
+  "directSkills":  ["util-anti-ai-human-copy", "util-chat-markdown-reporting"],
   "tokenRates": {
     "default_model": "openai/gpt-5.6-sol",
     "fallback_rate": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25 },
@@ -13624,17 +13426,15 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "custom": true,
-    "title": "Inbox Watcher",
-    "description": "Watches inbound Gmail and forwards a summary to Telegram every 4 hours.",
+    "title": "Research Writer",
+    "description": "Researches a topic with Serper every Monday, drafts a WordPress post and reports to Telegram.",
     "useprepaid": true,
     "tier": "pro",
     "skills": {
-      "int-gmail-check":    true,
-      "int-wordpress-post":  true,
-      "int-wiro-aimodels": true
+      "util-anti-ai-human-copy":      true,
+      "util-chat-markdown-reporting": true
     },
     "credentials": {
-      "gmail":    { "account": "agent@company.com", "apppassword": "xxxx xxxx xxxx xxxx" },
       "telegram": {
         "bottoken": "123456:ABC-DEF...",
         "allowedusers": ["123456789"]
@@ -13642,12 +13442,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
     },
     "customskills": [
       {
-        "key": "cs-cron-summarize-inbox",
-        "value": "Every 4 hours, scan all unread Gmail messages from the past 4 hours, summarize each in 1 sentence, and post the digest to Telegram.",
-        "interval": "0 */4 * * *",
+        "key": "cs-cron-weekly-research",
+        "value": "Every Monday, research this week's topic with serper__web_search, write a 600-word article, save it as a WordPress draft with the WordPress connector's tools (wordpress__*), and post the draft link to Telegram.",
+        "interval": "0 9 * * 1",
         "enabled": true,
         "_user_created": true,
-        "description": "Inbox summary digest"
+        "description": "Weekly research and draft"
       }
     ]
   }'
@@ -13663,8 +13463,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
     {
       "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
       "agentguid": null,
-      "title": "Inbox Watcher",
-      "description": "Watches inbound Gmail and forwards a summary to Telegram every 4 hours.",
+      "title": "Research Writer",
+      "description": "Researches a topic with Serper every Monday, drafts a WordPress post and reports to Telegram.",
       "tier": "pro",
       "status": 2,
       "setuprequired": false,
@@ -13690,13 +13490,13 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
         "voicePrepModel": "openai/gpt-5.4-mini",
         "voicePostcallModel": "openai/gpt-5.4"
       },
-      "skills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels"],
+      "skills": ["util-anti-ai-human-copy", "util-chat-markdown-reporting"],
       "customskills": [],
       "scheduledskills": [
         {
-          "key": "cs-cron-summarize-inbox",
-          "value": "Every 4 hours, scan all unread Gmail messages from the past 4 hours, summarize each in 1 sentence, and post the digest to Telegram.",
-          "interval": "0 */4 * * *",
+          "key": "cs-cron-weekly-research",
+          "value": "Every Monday, research this week's topic with serper__web_search, write a 600-word article, save it as a WordPress draft with the WordPress connector's tools (wordpress__*), and post the draft link to Telegram.",
+          "interval": "0 9 * * 1",
           "enabled": true,
           "_source": "user-created",
           "_editable": true,
@@ -13709,12 +13509,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
       "enabledChannels": ["telegram"],
       "teamsessionmode": "private",
       "credentials": {
-        "gmail":    { "_connected": false, "optional": false, "extra": false, "account": "agent@company.com", "apppassword": "••••••••" },
         "telegram": { "_connected": false, "optional": false, "extra": false, "bottoken": "••••••••", "allowedusers": ["123456789"] }
       },
       "agent": {
         "custom": true,
-        "title": "Inbox Watcher",
+        "title": "Research Writer",
         "tiers": {
           "starter": { "priceUsd": 5,   "credits": 500 },
           "pro":     { "priceUsd": 30,  "credits": 3000 },
@@ -13743,7 +13542,33 @@ Notes on the response:
 - `scheduledskills` already contains the cron from the Deploy body. Deploy stores each `customskills` key in its full form, as `CustomSkillUpsert` does: a bare slug with an `interval` becomes `cs-cron-<slug>`, one without becomes `cs-<slug>`, and a key that isn't a slug fails the deploy before anything is created or charged.
 - `status: 2` means Deploy auto-queued the instance because `useprepaid: true` provisioned a subscription in the same call. Wiro starts the agent from the queue; you do **not** need to call `POST /UserAgent/Start` after a prepaid deploy.
 - Communication-channel credentials are validated independently from `skills`. Every channel group present in `credentials` must contain all of its `required_fields` or Deploy fails without leaving a partial agent behind.
-- The Gmail app password and the Telegram bot token you sent come back as `"••••••••"`: like `UserAgent/Detail`, the response shows a saved secret only as the mask.
+- The Telegram bot token you sent comes back as `"••••••••"`: like `UserAgent/Detail`, the response shows a saved secret only as the mask.
+
+## Step 3b: Connect the Connectors
+
+Connect each service to the new agent with [`POST /UserAgent/ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect), with your customer's own credentials. Serper and WordPress take fields:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "slug": "serper",
+    "values": { "apikey": "YOUR_SERPER_API_KEY" }
+  }'
+
+curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "slug": "wordpress",
+    "values": { "url": "https://blog.example.com", "user": "admin", "apppassword": "xxxx xxxx xxxx xxxx" }
+  }'
+```
+
+Each answers `status: "connected"` and restarts the running agent, which then has the connector's tools (`serper__web_search`, `wordpress__*`) that the scheduled task above names. A connector that signs in with its vendor answers an `authorizeUrl` instead: see [Connect with a sign-in](/docs/agent-connectors#connect-with-a-sign-in). Check every connection with [`POST /UserAgent/ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist).
 
 ## Step 4: Refine Skills After Deploy
 
@@ -13759,7 +13584,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
     "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
     "idempotencyKey": "550e8400-e29b-41d4-a716-446655440001",
     "skills": {
-      "int-instagram-post": true
+      "util-weather": true
     }
   }'
 ```
@@ -13791,7 +13616,7 @@ The response confirms the skill set and the restart:
     "stripeProrationApplied": false,
     "prepaidWalletDelta": null,
     "usedCreditsUsd": 0,
-    "enabledSkills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels", "int-instagram-post"]
+    "enabledSkills": ["util-anti-ai-human-copy", "util-chat-markdown-reporting", "util-weather"]
   }
 }
 ```
@@ -13810,11 +13635,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
     "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
     "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000",
     "skills": {
-      "int-gmail-check":     true,
-      "int-wordpress-post":  true,
-      "int-wiro-aimodels":  true,
-      "int-instagram-post":  true,
-      "int-metaads-manage":  false
+      "util-anti-ai-human-copy":      true,
+      "util-chat-markdown-reporting": true,
+      "util-weather":                 true,
+      "util-diagram":                 false
     }
   }'
 ```
@@ -13823,31 +13647,34 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
 
 ## Common Recipes
 
-### A. Email-driven Telegram digest
+Each recipe is a Deploy body, followed by the connectors to connect once the agent exists.
+
+### A. Telegram news digest
 
 ```json
 {
   "custom": true,
-  "title": "Email Digest Bot",
+  "title": "News Digest Bot",
   "useprepaid": true,
   "tier": "starter",
-  "skills": { "int-gmail-check": true, "int-wordpress-post": true },
+  "skills": { "util-chat-markdown-reporting": true },
   "credentials": {
-    "gmail":    { "account": "agent@company.com", "apppassword": "xxxx xxxx xxxx xxxx" },
     "telegram": { "bottoken": "123456:ABC-DEF...", "allowedusers": ["123456789"] }
   },
   "customskills": [
     {
-      "key": "cs-cron-email-digest",
-      "value": "Twice a day, summarize unread Gmail messages in one Telegram message.",
+      "key": "cs-cron-news-digest",
+      "value": "Twice a day, search the news about our market with serper__web_search and post a five-line summary to Telegram.",
       "interval": "0 9,17 * * *",
       "enabled": true,
       "_user_created": true,
-      "description": "Daily email digest"
+      "description": "Daily news digest"
     }
   ]
 }
 ```
+
+Then connect `serper` with its API key.
 
 ### B. WordPress publisher with weekly research
 
@@ -13857,9 +13684,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   "title": "Blog Research & Publish",
   "useprepaid": true,
   "tier": "pro",
-  "skills": { "int-wordpress-post": true, "int-wiro-aimodels": true },
+  "skills": { "util-anti-ai-human-copy": true },
   "credentials": {
-    "wordpress":   { "url": "https://blog.example.com", "user": "admin", "apppassword": "xxxx xxxx xxxx xxxx" },
     "var-website": { "urls": "[{\"websitename\":\"Wired\",\"url\":\"https://www.wired.com/feed/rss\"}]" }
   },
   "customskills": [
@@ -13870,7 +13696,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
     },
     {
       "key": "cs-cron-weekly-blog",
-      "value": "Every Monday morning, scan the websites listed under your var-website credential, draft one 600-word article, and publish to WordPress as a draft.",
+      "value": "Every Monday morning, scan the websites listed under your var-website credential, draft one 600-word article, and save it as a WordPress draft with the WordPress connector's tools.",
       "interval": "0 9 * * 1",
       "enabled": true,
       "_user_created": true,
@@ -13879,6 +13705,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   ]
 }
 ```
+
+Then connect `wordpress` with its site address, user name and application password.
 
 ### C. Multi-channel social poster
 
@@ -13889,17 +13717,14 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   "useprepaid": true,
   "tier": "pro",
   "skills": {
-    "int-twitterx-post":   true,
-    "int-instagram-post":  true,
-    "int-linkedin-post":   true,
-    "int-facebookpage-post": true,
-    "int-wiro-aimodels":  true
+    "util-social-posting-common": true,
+    "util-anti-ai-human-copy":    true
   },
   "credentials": {}
 }
 ```
 
-OAuth providers are connected later via `POST /UserAgentOAuth/OAuthConnect` with the provider's `credentialkey` (see [Agent Credentials](/docs/agent-credentials)).
+Then connect `twitter`, `instagram`, `linkedin` and `facebook-pages`. Each signs in with its vendor, with an app of your own: [`ConnectorConnect`](/docs/agent-connectors#connect-with-a-sign-in) answers an `authorizeUrl` for your customer to open, and the Pages or accounts to post to are picked afterwards with [account pickers](/docs/agent-connectors#account-pickers).
 
 ## Subscription & Billing for Custom Builds
 
@@ -13922,8 +13747,9 @@ Turning a skill on or off never changes the subscription: the plan's price and c
 
 ## What's Next
 
-- [Agent Skills](/docs/agent-skills): Discover the skill registry, browse credentials per skill, and configure preferences + scheduled tasks
-- [Agent Credentials](/docs/agent-credentials): Connect OAuth providers and set API-key credentials
+- [Agent Connectors](/docs/agent-connectors): Connect the services the agent works with
+- [Agent Skills](/docs/agent-skills): Discover the skill registry and configure preferences + scheduled tasks
+- [Agent Credentials](/docs/agent-credentials): Channels, the Wiro project and settings
 - [Agent Messaging](/docs/agent-messaging): Chat with your custom agent
 - [Agent Transactions](/docs/agent-transactions): Audit credit deductions, renewals, and grants
 
@@ -14226,7 +14052,7 @@ Only the fields below are returned in browser-facing REST and WebSocket timeline
 | `text` | `string\|null` | Safe public text for `reasoning` and `answer`; `null` for tool and setup blocks. Reasoning text is an OpenAI GPT-5 provider summary, not raw chain-of-thought. |
 | `toollabel` | `string` | Tool blocks only. Safe display label for the tool. Arguments and results are never included. |
 | `toolstatus` | `string` | Tool blocks only. `requested` while the step runs, then `completed` or `error`. |
-| `toolintegration` | `string\|null` | Tool blocks only. The connector the step works in, as its `key` from [`POST /Credentials/List`](/docs/agent-credentials#post-credentialslist), for example `shopify`. `null` when the step doesn't work in a connector. See [Tool integration and action values](#tool-integration-and-action-values). |
+| `toolintegration` | `string\|null` | Tool blocks only. The connector the step works in, as its `slug` in the [connector catalog](/docs/agent-connectors#post-agentconnectorlist), for example `shopify`. `null` when the step doesn't work in a connector. See [Tool integration and action values](#tool-integration-and-action-values). |
 | `toolaction` | `string\|null` | Tool blocks only. What the step does, for example `screenshot` or `click`. `null` when no word fits the step, and always `null` when `toolintegration` is set. See [Tool integration and action values](#tool-integration-and-action-values). |
 | `setup` | `object` | Setup blocks only. The change the agent proposes and its state; see [The setup block](#setup-blocks). |
 | `phase` | `string` | `stream`, `end`, or `error` for this block. A block still at `stream` closes when its turn ends with `agent_error` or `agent_cancel`, and normally a few seconds after `agent_end`. |
@@ -14242,7 +14068,7 @@ Do not compare `version` across different blocks. Keep a map keyed by `blockid`,
 
 `toolintegration` and `toolaction` say which connector a tool step works in and what the step does, so your app can show "Working in Shopify" or "Taking a screenshot" instead of only the tool's name. Each holds a word from a closed list or `null`, never free text, a host, a URL, a path, or an argument.
 
-`toolintegration` is the `key` of the connector the step works in, as [`POST /Credentials/List`](/docs/agent-credentials#post-credentialslist) lists it: `adapty`, `adjust`, `apollo`, `apple-appstore`, `brevo`, `calendarific`, `dataforseo`, `facebook-pages`, `firebase`, `ga4`, `gmail`, `google-ads`, `google-business`, `google-calendar`, `google-drive`, `google-merchant-center`, `google-play`, `google-search-console`, `hubspot`, `instagram`, `keepa`, `lemlist`, `linkedin`, `mailchimp`, `meta-ads`, `reddit`, `revenuecat`, `roasit`, `sendgrid`, `serper`, `shopify`, `telegram`, `tiktok`, `tiktok-ads`, `twitter`, `wiro`, `woocommerce`, `wordpress`, or `youtube`.
+`toolintegration` is the `slug` of the connector the step works in, as [`POST /AgentConnector/List`](/docs/agent-connectors#post-agentconnectorlist) lists it, such as `shopify`, `google-ads` or `serper`, or `telegram` for the Telegram channel and `wiro` for Wiro's own tools. Name it in your app by the connector's `title`.
 
 `toolaction` is one of these words:
 
@@ -14684,7 +14510,7 @@ On success, the message status changes to `agent_cancel` in the database.
 
 ## Setup From Chat
 
-An agent can help the people who run it set it up in the chat: add or remove a connector or skill, save a key for a connector or remove it, connect a connector that uses a sign-in, create or change a scheduled task, create or change a custom skill, add to one or undo its last change, or change its time zone. The agent never changes its own setup and never sees a key. It proposes the change as a **setup card**: Wiro checks the card against the agent's current setup and stores it on the message that asked for it, where it shows as a `setup` block in that message's `timeline[]`. Nothing changes until an agent admin (the owner, or an admin of the agent's team) approves the card.
+An agent can help the people who run it set it up in the chat: turn a skill on or off, connect a connector with its key or disconnect it, create or change a scheduled task, create or change a custom skill, add to one or undo its last change, or change its time zone. The agent never changes its own setup and never sees a key. It proposes the change as a **setup card**: Wiro checks the card against the agent's current setup and stores it on the message that asked for it, where it shows as a `setup` block in that message's `timeline[]`. Nothing changes until an agent admin (the owner, or an admin of the agent's team) approves the card.
 
 Where cards can be proposed and approved is the agent's `chatsetup` setting. Set it with [`UpdateSettings`](/docs/agent-overview#post-useragentupdatesettings) or at [`Deploy`](/docs/agent-overview#post-useragentdeploy), and read it back as `chatSetup` on [`UserAgent/Detail`](/docs/agent-overview#post-useragentdetail):
 
@@ -14706,10 +14532,10 @@ Messages from Telegram, Slack or Discord never get or approve a card, whatever t
 
 A setup block has `type: "setup"`, `text: null` and a `setup` object with the proposed change and its state. Setup blocks sort after every other block of the turn, in the order the agent proposed them, and their `phase` is always `end`. A message holds at most three. The card's `status` changes when someone approves or dismisses it. A pending card's block has `version` `1`; once the card is applied, dismissed or failed, its block has `version` `2` with the new `status`, so keep the copy with the higher `version` whichever arrives first. Clients still subscribed to the message's `agenttoken` get the new block as an `agent_timeline_delta`, and [Message/Detail](#post-useragentmessagedetail) and [Message/History](#post-useragentmessagehistory) always return the current state.
 
-A pending `connect` card's block also has `next`, beside `setup`: one entry `{ connector, title, mode }` for the card's own connector, in the shape of an `add` card's `needs`, so a chat in your own product can show its own Connect button. It is gone from the block once the card is applied, dismissed or failed. A `connect` card stored before `next` existed may have none. It still gets one while a pending `add` card on the same message names its connector in `needs`. An `add` card's block has no `next`: its `needs` lists what it brings.
+A pending `connect` card's block also has `next`, beside `setup`: one entry `{ connector, title, mode }` for the card's own connector, in the shape of an `add` card's `needs`, so a chat in your own product can show its own Connect button. It is gone from the block once the card is applied, dismissed or failed. A `connect` card stored before `next` existed may have none. An `add` card's block has no `next`: its `needs` lists what it needs.
 
 ```json
-"next": [{ "connector": "serper", "title": "Serper Web Search", "mode": "key" }]
+"next": [{ "connector": "serper", "title": "Serper", "mode": "key" }]
 ```
 
 ```json
@@ -14742,17 +14568,17 @@ A pending `connect` card's block also has `next`, beside `setup`: one entry `{ c
 |-------|------|-------------|
 | `v` | `number` | Card format version, `1`. |
 | `id` | `string` | The card's id: 12 lower-case letters and digits. Send it as `cardid` to [`SetupCardApply`](#post-useragentmessagesetupcardapply). |
-| `kind` | `string` | `add` (turn on a connector or skill), `remove` (turn one off), `connect` (connect a connector: save its key, or confirm a sign-in made on the card), `disconnect` (remove a connector's saved key), `schedule` (a scheduled task), `skill` (a custom skill) or `timezone`. |
+| `kind` | `string` | `add` (turn on a skill), `remove` (turn one off), `connect` (connect a connector with its key), `disconnect` (disconnect a connector), `schedule` (a scheduled task), `skill` (a custom skill) or `timezone`. |
 | `action` | `string` | `schedule`: `create`, `update`, `pause`, `resume` or `delete`. `skill`: `create`, `update`, `append` (add text to the end), `revert` (undo the last change), `disable` or `enable`; see [Changing a custom skill](#setup-skill-cards). Absent on `add`, `remove`, `connect`, `disconnect` and `timezone` cards. |
-| `connector` | `string` | `connect` and `disconnect` only. The connector's `key`, as [`POST /Credentials/List`](/docs/agent-credentials#post-credentialslist) lists it, for example `serper`. A card never holds a key's value. |
-| `key` | `string` | `add`, `remove`, `schedule` and `skill` only. On `add` and `remove`: the name of one connector (`int-<name>`) or skill (`util-<name>`) as [`POST /Skills/List`](/docs/agent-skills#post-skillslist) lists it, up to 64 characters, for example `int-brevo-email`; see [Adding and removing connectors and skills](#setup-add-remove-cards). On `schedule` and `skill`: the scheduled task's key (`cs-cron-<name>`) or the custom skill's key (`cs-<name>`). |
+| `connector` | `string` | `connect` and `disconnect` only. The connector's `slug`, as [`POST /AgentConnector/List`](/docs/agent-connectors#post-agentconnectorlist) lists it, for example `serper`, or a credential's key, such as `telegram`. A card never holds a key's value. |
+| `key` | `string` | `add`, `remove`, `schedule` and `skill` only. On `add` and `remove`: the name of one skill (`util-<name>`) as [`POST /Skills/List`](/docs/agent-skills#post-skillslist) lists it, up to 64 characters, for example `util-weather`; see [Adding and removing skills](#setup-add-remove-cards). On `schedule` and `skill`: the scheduled task's key (`cs-cron-<name>`) or the custom skill's key (`cs-<name>`). |
 | `title` | `string` | Optional. One line, up to 80 characters. |
 | `cron` | `string` | `schedule` only: always on `create`, optional on `update`. A 5-field cron in the agent's time zone. A task set up from chat runs at most once an hour. |
 | `instructions` | `string` | `schedule` and `skill` only. On `create` and `update`: the full text of the task or skill, up to 20,000 characters. On `append`: only the text to add, up to 20,000 characters. On `revert`: the text the skill goes back to, which Wiro takes from the skill's history; the agent never writes it. |
 | `before` | `string` | `skill` cards with `update`, `append` or `revert` only. The skill's text when Wiro checked the card, written by Wiro, never by the agent. Show it as the text before the change; see [Changing a custom skill](#setup-skill-cards). It can be absent on older cards. |
-| `with` | `string[]` | `add` and `remove` only, written by Wiro, never by the agent. The other connectors and skills the card turns on (`add`) or off (`remove`) together with `key`, by name, sorted, at most 12. |
+| `with` | `string[]` | `add` and `remove` only, written by Wiro, never by the agent. The other skills the card turns on (`add`) or off (`remove`) together with `key`, by name, sorted, at most 12. |
 | `pauses` / `resumes` | `string[]` | `add` and `remove` only, written by Wiro. The scheduled tasks (`cs-cron-<name>`) that pause, or run again, with this change, at most 20 each. |
-| `needs` | `object[]` | `add` only, written by Wiro. The connectors the change brings that aren't connected yet, at most 3, each `{ connector, title, mode }`: `connector` is the connector's `key`, as a `connect` card names it, `title` is its name, and `mode` says how it is connected: `key` (with a key pasted in the chat or entered on its `connect` card), `signin` (with a sign-in through Wiro's app, on its `connect` card), `appkeys` (with the person's own app keys and then a sign-in, on its `connect` card), `token` (with a token Wiro checks, such as a Meta System User token, on its `connect` card) or `page` (set up outside the chat, with the credential endpoints or on the agent page: no card connects it). Read a mode you don't know as `page`. |
+| `needs` | `object[]` | `add` only, written by Wiro. What the change needs that isn't connected yet, at most 3, each `{ connector, title, mode }`: `connector` is its key, as a `connect` card names it, `title` is its name, and `mode` says how it is connected: `key` (with a key pasted in the chat or entered on its `connect` card) or `page` (set up outside the chat, in the agent's settings or with the [Agent Connectors](/docs/agent-connectors) calls: no card connects it). Read a mode you don't know as `page`. |
 | `timezone` | `string` | `timezone` only. The proposed IANA time zone, for example `Europe/Istanbul`. |
 | `note` | `string` | Optional. The agent's one-line note about the change, up to 300 characters. |
 | `status` | `string` | `pending`, `applied`, `dismissed` or `failed`. Absent means `pending`. |
@@ -14798,144 +14624,63 @@ End every post with three questions readers ask, each with a two-sentence answer
 
 Wiro applies a card that has `before` only while the skill still holds that text. When the skill's text no longer matches `before` as the card is applied, for example because someone edited the skill on the agent page after the card was made, nothing changes and the card fails with `This skill changed after the card was made. Ask the agent again.`
 
-### Adding and removing connectors and skills
+### Adding and removing skills
 
-An `add` card turns on one connector (`int-<name>`) or skill (`util-<name>`) that the agent doesn't have, and a `remove` card turns off one it has, as the agent page does. `key` holds its name as [`POST /Skills/List`](/docs/agent-skills#post-skillslist) lists it, one name per card. A change costs nothing: every plan includes every connector and skill, so the plan's price and credits stay the same. Cards work on agents deployed from a template and on custom builds, and once a card is applied, the agent restarts to load the change.
+An `add` card turns on one skill (`util-<name>`) that the agent doesn't have, and a `remove` card turns off one it has, as the agent page does. `key` holds its name as [`POST /Skills/List`](/docs/agent-skills#post-skillslist) lists it, one name per card. A change costs nothing: every plan includes every skill, so the plan's price and credits stay the same. Cards work on agents deployed from a template and on custom builds, and once a card is applied, the agent restarts to load the change. Connectors are not turned on or off: a connected connector is on, and a [`disconnect` card](#setup-disconnect-cards) disconnects it.
 
 A change can turn on or off more than its `key`, so Wiro works out the rest and writes it on the card, and the person who approves sees the whole change. The agent never writes these fields: a proposal that sends them has them dropped.
 
-- **`with`**: on an `add`, the connectors and skills `key` depends on (`depends_on` in Skills/List) that aren't on yet, which are turned on with it. On a `remove`, the linked partners the agent page turns off together with it (removing `util-video-creator` also turns off `util-motion-effects`), and the supporting parts (`user_invocable: false`) that nothing left on still needs.
-- **`pauses`** and **`resumes`**: the scheduled tasks that stop running, or run again, because a connector or skill they use goes off or comes back on. A paused task keeps its text and schedule.
-- **`needs`**: on an `add`, the connectors it brings that aren't connected yet. A connector with `mode` `key`, `signin`, `appkeys` or `token` gets a `connect` card, as below. One with `page` is set up outside the chat: no card connects it.
+- **`with`**: on an `add`, the skills `key` depends on (`depends_on` in Skills/List) that aren't on yet, which are turned on with it. On a `remove`, the linked partners the agent page turns off together with it (removing `util-video-creator` also turns off `util-motion-effects`), and the supporting parts (`user_invocable: false`) that nothing left on still needs.
+- **`pauses`** and **`resumes`**: the scheduled tasks that stop running, or run again, because a skill they use goes off or comes back on. A paused task keeps its text and schedule.
+- **`needs`**: on an `add`, what the change needs that isn't connected yet. Something with `mode` `key` gets a `connect` card, as below. One with `page` is set up outside the chat: no card connects it.
 
-Read a missing list as empty. An `add` card for Brevo Email, which brings two skills it depends on and the Brevo connector:
+Read a missing list as empty. An `add` card for Video Creator, which brings the skills that come with it:
 
 ```json
 {
   "v": 1,
   "id": "m5t8c2w6r3pe",
   "kind": "add",
-  "key": "int-brevo-email",
-  "with": ["util-anti-ai-human-copy", "util-chat-markdown-reporting"],
-  "needs": [{ "connector": "brevo", "title": "Brevo", "mode": "key" }],
+  "key": "util-video-creator",
+  "with": ["util-motion-effects", "util-video-docs", "util-video-shots"],
   "requestedby": "ada-uuid",
   "createdat": 1743350406
 }
 ```
 
-A `remove` card keeps a connector's saved key, as turning a connector off on the agent page does, so adding it back later needs no new key. To remove the key too, use a [`disconnect` card](#setup-disconnect-cards).
+**An `add` card that needs a key.** When an `add` card's `needs` names something with `mode: "key"`, Wiro adds a `connect` card for it to the same reply, right after the `add` card, so the person sees both cards at once, when the reply has room for it (a reply holds at most three) and no pending `connect` card for it yet. The `add` card goes first: until it is applied, applying the `connect` card changes nothing and answers `Apply card <N> first: it turns on <Title>.`, where `<N>` is the `add` card's number on the reply. In a typed chat, a `yes` applies the `add` card as it does any card other than `connect` (see [Approving a setup card](#approving-setup-cards)), and Wiro's answer ends by asking for the key: `Next: paste your <Title> key as your reply.` The `add` card can also take the key itself; see [Adding and connecting in one step](#setup-add-and-connect). Something set up outside the chat (`mode: "page"`) gets no `connect` card: once the `add` card is applied, Wiro's answer says `Connect <Title> in the agent's settings.`, and its `next` lists it with `mode: "page"` and no card.
 
-**Adding a connector that takes a key.** When an `add` card's `needs` names a connector with `mode: "key"`, Wiro adds a `connect` card for that connector to the same reply, right after the `add` card, so the person sees both cards at once. It leaves the `connect` card out when the reply already has a pending `connect` card for that connector, or has no room for another card (a reply holds at most three). A reply keeps one pending `connect` card per connector, so a `connect` card the agent proposes for that connector afterwards isn't stored again. Wiro checks the `connect` card against the agent's setup as it will be once the `add` card is applied, since the connector isn't on yet. The `add` card goes first: until it is applied, applying the `connect` card changes nothing and answers `Apply card <N> first: it turns on <Title>.`, where `<N>` is the `add` card's number on the reply, and the `connect` card stays pending. In a typed chat, a `yes` applies the `add` card as it does any card other than `connect` (see [Approving a setup card](#approving-setup-cards)). Wiro's answer then ends by asking for the key, naming the connector by its `title` in `needs`: `Next: paste your <Title> key as your reply.` When the agent restarts to load the `add` card, that line goes on with `Send it now and it loads with this same restart.` The key pasted as the next reply applies the `connect` card. The key doesn't have to wait for the restart the `add` card started: Wiro saves it right away, whether it is pasted as the reply or entered on the `connect` card. A key saved while the agent is still stopping or queued for that restart loads with it, so adding and connecting the connector takes one restart; a key saved once the agent is starting or running again restarts it once more. The `add` card can also take the key itself and apply both cards in one step; see [Adding and connecting in one step](#setup-add-and-connect). A connector set up outside the chat (`mode: "page"`) gets no `connect` card: once the `add` card is applied, Wiro's answer says `Connect <Title> in the agent's settings.`, naming each such connector by its `title` in `needs`, and its `next` lists the connector with `mode: "page"` and no card. A connector that uses a sign-in gets one too; see [Connecting a sign-in connector](#setup-signin-cards).
-
-Wiro checks an `add` or `remove` card when the agent proposes it and again when it is applied, and works out `with`, `pauses`, `resumes` and `needs` again. When the agent's connectors or skills changed in between, so that the card would now turn on more than it shows or turn off something else, nothing changes and the card fails with `This agent's connectors or skills changed after the card was made. Ask the agent again.` A dependency in `with` that was turned on in the meantime is not a change. An `add` card whose `key` itself was turned on in the meantime fails with `<Title> is already on.`, and a `remove` card whose `key` was turned off fails with `<Title> is not on this agent.`
+Wiro checks an `add` or `remove` card when the agent proposes it and again when it is applied, and works out `with`, `pauses`, `resumes` and `needs` again. When the agent's skills changed in between, so that the card would now turn on more than it shows or turn off something else, nothing changes and the card fails with `This agent's connectors or skills changed after the card was made. Ask the agent again.` A dependency in `with` that was turned on in the meantime is not a change. An `add` card whose `key` itself was turned on in the meantime fails with `<Title> is already on.`, and a `remove` card whose `key` was turned off fails with `<Title> is not on this agent.`
 
 Wiro refuses an `add` or `remove` card with one plain sentence when:
 
-- the name isn't a connector or skill Wiro has, or the `add` names one Wiro no longer offers (the sentence names its replacement when there is one);
-- it names a channel (Telegram, Slack or Discord), which is connected in the agent's settings, or a connector's key, such as `brevo`, instead of the name that uses it, such as `int-brevo-email`;
+- the name isn't a skill Wiro has, or the `add` names one Wiro no longer offers (the sentence names its replacement when there is one);
+- it names a channel (Telegram, Slack or Discord) or a connector, which are connected in the agent's settings;
 - it names a custom skill (`cs-<name>`), which a `skill` card turns on and off;
-- it names a supporting part (`user_invocable: false`), which comes with the connectors and skills that need it and isn't turned on or off by itself;
+- it names a supporting part (`user_invocable: false`), which comes with the skills that need it and isn't turned on or off by itself;
 - nothing would change: the `add` names one that is already on, or the `remove` one the agent doesn't have;
-- it would change too much at once for a chat card: more than 12 connectors and skills in `with`, or more than 20 scheduled tasks in `pauses` or `resumes`. The sentence reads `<Title> changes too many connectors, skills or scheduled tasks at once for a chat card. Change it in the agent's settings.`;
-- two connectors or skills that can't be on together (`conflicts_with`) would both be on;
-- the `remove` would take away something that connectors or skills staying on need: remove those first, or keep it;
-- voice calls would be left without a channel: with `util-voice-receptionist` on, Twilio Voice Channel (`int-twilio-channel`) or Web Voice Channel (`util-web-channel`) must be on.
+- it would change too much at once for a chat card: more than 12 skills in `with`, or more than 20 scheduled tasks in `pauses` or `resumes`. The sentence reads `<Title> changes too many connectors, skills or scheduled tasks at once for a chat card. Change it in the agent's settings.`;
+- two skills that can't be on together (`conflicts_with`) would both be on;
+- the `remove` would take away something that skills staying on need: remove those first, or keep it;
+- voice calls would be left without a channel: with `util-voice-receptionist` on, the Twilio Voice or the Web Voice channel (`util-web-channel`) must be on.
 
 A card refused as the agent proposes it is never stored. A card refused as it is applied changes nothing and fails, with the sentence in `error`.
 
 ### Adding and connecting in one step
 
-An `add` card can take a key itself when its `needs` names a connector with `mode: "key"` and the same reply has a pending `connect` card for that connector, such as the one Wiro adds right after the `add` card. Wiro then applies the `add` card and, right after it, the `connect` card with the key, so both load with one restart.
+An `add` card can take a key itself when its `needs` names something with `mode: "key"` and the same reply has a pending `connect` card for it. Send the `add` card's id to [`SetupCardApply`](#post-useragentmessagesetupcardapply) with the key in `values`, as you would send it with the `connect` card. Wiro checks the values first: when a value is refused, nothing is applied and both cards stay pending. When they pass, Wiro applies the `add` card and, right after it, the `connect` card, so both load with one restart. `setup` is the `add` card after the call, `summary` names both changes, and `paired` holds the `connect` card's outcome as `[{ setup, result, error }]`.
 
-**With SetupCardApply.** Send the `add` card's id to [`SetupCardApply`](#post-useragentmessagesetupcardapply) with the key in `values`, as you would send it with the `connect` card:
+When the `add` card fails as it is applied, no key is saved: the `connect` card stays pending, and its `error` in `paired` reads `<Connector title> is not connected: <Title> was not added.` When the `add` card has no pending `connect` card to take the key, Wiro answers `This card takes no key. Apply it without one.`, and when more than one has, `This card brings more than one key. Apply it, then add each key on its own card.` In both cases nothing changes and the card stays pending.
 
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
-    "cardid": "q4n7s1v8b2xd",
-    "action": "apply",
-    "values": { "apikey": "YOUR_SERPER_API_KEY" }
-  }'
-```
+**In messages sent with a project API key.** When the only pending cards of the agent's latest reply are an `add` card and its `connect` card, and the key is all that is needed, the [card listing](#setup-card-listing) ends by offering the key as the reply, and once Wiro has listed the `add` card, the key pasted as the reply applies both cards at once. A key sent before Wiro has listed the `add` card saves nothing: the stored message reads `[key removed]` in its place, and Wiro answers with the listing.
 
-Wiro checks the values first, as applying the `connect` card would, against the connector as it will be once the `add` card is applied. When a value is refused, nothing is applied: both cards stay pending, and `errors[0].message` is the `connect` card's sentence, such as `Serper API Key must be at least 20 characters`. When the values pass, Wiro applies both cards and marks each one `applied`, and clients subscribed to the message's `agenttoken` get both new blocks. `setup` is the `add` card after the call, `summary` names both changes, and `paired` holds the `connect` card:
+### Connecting a connector outside the chat
 
-```json
-{
-  "result": true,
-  "errors": [],
-  "setup": {
-    "v": 1,
-    "id": "q4n7s1v8b2xd",
-    "kind": "add",
-    "key": "int-serper-search",
-    "needs": [{ "connector": "serper", "title": "Serper Web Search", "mode": "key" }],
-    "requestedby": "ada-uuid",
-    "createdat": 1743350406,
-    "status": "applied",
-    "actedat": 1743350460,
-    "actedby": "ada-uuid"
-  },
-  "restarting": true,
-  "summary": "Serper Web Search added. Serper Web Search connected.",
-  "paired": [
-    {
-      "setup": {
-        "v": 1,
-        "id": "h6w3k9p2m5tc",
-        "kind": "connect",
-        "connector": "serper",
-        "requestedby": "ada-uuid",
-        "createdat": 1743350406,
-        "status": "applied",
-        "actedat": 1743350460,
-        "actedby": "ada-uuid"
-      },
-      "result": true,
-      "error": null
-    }
-  ]
-}
-```
-
-Send every field the connector needs. A connector with more than one field, such as WooCommerce, WordPress or Gmail, is connected only once all its required fields are saved. When `values` hold only some of them, Wiro still applies the `add` card, and the `connect` card saves the fields it got and stays pending: `result` is `true`, `summary` names only the `add` card, and `paired[0]` has `result: false` and the `error` `Saved <fields> for <Connector>. Still needed: <fields>.` Send the missing fields with the `connect` card to finish it.
-
-When the `add` card fails as it is applied, for example with `Serper Web Search is already on.`, no key is saved. The `connect` card stays pending, and its `error` in `paired` reads `<Connector title> is not connected: <Title> was not added.` When the `add` card has no pending `connect` card to take the key, for example because its connector uses a sign-in or its `connect` card was turned down, Wiro answers `This card takes no key. Apply it without one.` When more than one of its connectors has a pending `connect` card, it answers `This card brings more than one key. Apply it, then add each key on its own card.` In both cases nothing changes and the card stays pending.
-
-**In messages sent with a project API key.** When the only pending cards of the agent's latest reply are an `add` card and its `connect` card, and the key is all that connector needs, the [card listing](#setup-card-listing) ends by offering the key as the reply:
-
-```text
-The agent proposes this setup change. Nothing is applied yet.
-
-Card 1: Add Serper Web Search (connector).
-Still to connect: Serper Web Search.
-
-Reply with your Serper Web Search key to add Serper Web Search and connect it at once, "yes" to add it now and give the key later, or "no" to turn it down.
-```
-
-Once Wiro has listed the `add` card, the key pasted as the reply applies both cards at once. Wiro reads the key from the reply by the same rules as in [Keys in chat](#keys-in-chat) and answers `✅ Applied: Serper Web Search added. Serper Web Search connected.`, followed by `Your agent is restarting to load the change. Continue in about a minute.` when the agent restarts. `setupresult.applied` holds both cards' ids, and the stored message reads `[key saved to Serper Web Search]` in the key's place. A key the check refuses applies neither card, and Wiro answers `⚠️ Not saved: <reason>. Paste the key again as your reply.` A `yes` after the listing applies the `add` card alone, and Wiro's answer ends by asking for the key with the `Next:` line. A key sent before Wiro has listed the `add` card saves nothing, since the person hasn't seen the change yet: the stored message reads `[key removed]` in its place, and Wiro answers with the listing. Send the key again after it. In the Wiro web chat, typed replies keep the two steps of [adding a connector that takes a key](#setup-add-remove-cards). A connector that needs more than its key, such as WooCommerce, WordPress or Gmail, keeps the usual listing: a `yes` applies the `add` card, and its fields go on the `connect` card, in the web chat or as SetupCardApply `values`. To add and connect it at once, send all of its fields as `values` with the `add` card, as above. While the `add` card waits, a key typed as the reply saves nothing.
-
-### Connecting a sign-in connector
-
-A sign-in connector is one with an `oauth_provider` in [`POST /Credentials/List`](/docs/agent-credentials#post-credentialslist), such as Google Analytics 4, Facebook or HubSpot. Its `mode` in `needs` says how its card connects it: `appkeys` takes the person's own app keys and then runs the sign-in, `token` takes a token and has Wiro check it (a Meta System User token, or Shopify's Client ID and Secret), and `signin` runs the sign-in with Wiro's app. Wiro adds its `connect` card to the reply with the `add` card that brings it, as for a key, and the agent can propose one for a sign-in connector that is on but not connected.
-
-The card connects the connector with the endpoints and rules of your own integration: [`CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert) for the app keys or the token, [`OAuthConnect`](/docs/agent-credentials#post-useragentoauthoauthconnect) for the sign-in or the check, [`OAuthStatus`](/docs/agent-credentials#post-useragentoauthoauthstatus) for the accounts it listed and [`SetPickerAccounts`](/docs/agent-credentials#post-useragentoauthsetpickeraccounts) for the ones picked. In the Wiro web chat the card does this for an agent admin; the agent never sees a key, a token or an account list, and a value typed into the chat is never saved to the connector.
-
-Applying a sign-in `connect` card writes nothing. Wiro checks that the connector is connected, marks the card `applied` and answers `summary` `<Title> connected` with `restarting: false`, since the connection already restarted the agent if it needed to. Applied before the connection is complete, the card stays pending, with `errorcode: "not_connected"` and `<Title> is not connected yet. Finish the sign-in on the card first.` Sent with `values`, it stays pending with `errorcode: "signin_values"` and `<Title> connects with its sign-in on the card, not with typed values.` On a `token` card, both say `token check` in place of `sign-in`, such as `<Title> is not connected yet. Finish the token check on the card first.`
-
-**Adding and connecting in one step.** Once the connector of an `add` card's sign-in `connect` card is connected, send the `add` card to [`SetupCardApply`](#post-useragentmessagesetupcardapply) with `signin: true`. Wiro first checks that the connector reads connected as the `add` card will leave it; when it doesn't, nothing is applied (`not_connected`). Then it applies the `add` card, which restarts the agent once, and the `connect` card, and answers as for a key: `summary` `<Add title> added. <Connector title> connected.` and the `connect` card in `paired`. A connection made while nothing on the agent used it restarted nothing, so adding and connecting a sign-in connector this way restarts the agent once. When the `add` card itself fails, the `connect` card stays pending and its `error` in `paired` reads `<Connector title> is connected, but <Add title> was not added.` `signin: true` on an `add` card with no pending sign-in `connect` card answers `signin_no_pair`, `This card has no sign-in to finish. Apply it without one.`, and on one that brings more than one, `signin_many`, `This card brings more than one sign-in. Apply it, then connect each on its own card.` `signin_no_pair` says `token check` in place of `sign-in` when every sign-in connector the `add` card names takes a token, and `signin_many` when every pending sign-in `connect` card it brings does. Without `signin`, the `add` card applies alone, as before, and its `connect` card stays pending.
-
-**In messages sent with a project API key**, the connector is connected outside the chat, in your own product: its sign-in, app keys or token never go through the chat. When a `yes` applies an `add` card whose sign-in `connect` card still waits, Wiro's answer ends with `Next: connect <Title> to finish. Its sign-in, app keys or token are entered outside this chat, never in it.` A `yes` while only `connect` cards wait, one of them for a sign-in connector, applies nothing, starts no agent turn and is answered with `A yes cannot connect <Title>. Its sign-in, app keys or token are entered outside this chat, never in it.`, one line per sign-in card. Both answers name each such card in `setupresult.next`, with the connector's `mode`, `cardid` and `messageguid`: connect it with the endpoints above, then apply the card with [`SetupCardApply`](#post-useragentmessagesetupcardapply). A sign-in `connect` card refused with `not_connected` answers the same entry in `next`. Each mode's calls, with every request and answer, are in [Agent Chat Integration](/docs/agent-chat-integration#connecting-a-connector). In the Wiro web chat the same answers read `Next: connect <Title> with its card in this chat.` and `A yes cannot sign in for you. Connect <Title> with its card in this chat.`
+A connector whose card `mode` is `page` is connected outside the chat: one that signs in with its vendor, needs an app of your own or a token, or has accounts to pick. In the Wiro web chat, the card takes the person to the agent's settings; in your own product, connect it with the [Agent Connectors](/docs/agent-connectors) calls (`ConnectorConnect`, the vendor's sign-in with your `redirecturl`, `ConnectorSetAccounts`). Applying such a card is refused with `<Title> is connected in the agent's settings, not from chat.` while it stays pending: dismiss it once the connector is connected. The agent never sees a key, a token or an account list.
 
 ### Disconnecting a connector
 
-A `disconnect` card removes a connector's saved key, as clearing it on the agent page does. It names the connector in `connector` and never holds a value. Once it is applied, the agent restarts without the connector's key, and skills that use the connector stop until it is connected again. The `int-<name>` connector that uses the key stays turned on: a `remove` card turns it off.
-
-Wiro takes a `disconnect` card only for a connector that meets all three: it is connected now, it is connected with a key (the kind a `connect` card saves), and the agent can run without it (`optional: true` in the `credentials` of [`UserAgent/Detail`](/docs/agent-overview#post-useragentdetail)). A connector turned off with a `remove` card counts too: its key stays saved, and a `disconnect` card can remove it even though nothing on the agent uses it any more. Connectors that use a sign-in (OAuth), channels (Telegram, Slack or Discord), the Wiro project the agent runs models with and connectors the agent needs to start are disconnected outside the chat, with the credential endpoints or on the agent page. A `yes` applies a `disconnect` card as it does any card other than `connect`.
+A `disconnect` card disconnects a connector, as [`ConnectorDisconnect`](/docs/agent-connectors#post-useragentconnectordisconnect) does. It names the connector in `connector` and never holds a value. Once it is applied, the agent restarts without the connector's tools until it is connected again. Wiro takes a `disconnect` card only for a connector that is connected now. Channels (Telegram, Slack or Discord) and the Wiro project the agent runs models with are disconnected outside the chat, with the credential endpoints or on the agent page. A `yes` applies a `disconnect` card as it does any card other than `connect`.
 
 ### Approving a setup card
 
@@ -14953,7 +14698,7 @@ What a `yes` does depends on where it is sent and how many cards are pending (`c
 | One, in a message sent with a project API key | The first `yes` applies nothing: Wiro answers with the card's exact content (the [card listing](#setup-card-listing)). A second `yes` applies that card. |
 | Several | The first `yes` gets the card listing, which numbers the cards. Then reply `yes` and a number, such as `yes 2`, to apply that card, one card per reply. A plain `yes` never applies one of several cards. In the web chat, the card's Apply button works too. |
 
-A number works only for a card Wiro has listed: `yes 2` sent before the listing gets the listing. A message that says more, such as `yes, but at 10`, is an ordinary message for the agent. A reply such as `no` or `cancel` dismisses the pending cards of the latest reply that are less than 30 minutes old, as a `yes` acts only on those, and goes to the agent as usual. A row added to the session between turns, such as a scheduled task's report, becomes the latest reply, so a `yes` or `no` sent after it finds no cards. While the agent isn't running, Wiro answers such a reply itself when it turned cards down: `The setup change was turned down.` or `The <N> setup changes were turned down.`, with the cards' ids in `setupresult.dismissed`. A `connect` card needs its key or its sign-in, so a `yes` never applies one: when only `connect` cards for keys are pending, `yes` is an ordinary message, and when one of them is for a sign-in connector, Wiro answers the `yes` itself and says the connector is connected outside the chat (see [Connecting a sign-in connector](#setup-signin-cards)).
+A number works only for a card Wiro has listed: `yes 2` sent before the listing gets the listing. A message that says more, such as `yes, but at 10`, is an ordinary message for the agent. A reply such as `no` or `cancel` dismisses the pending cards of the latest reply that are less than 30 minutes old, as a `yes` acts only on those, and goes to the agent as usual. A row added to the session between turns, such as a scheduled task's report, becomes the latest reply, so a `yes` or `no` sent after it finds no cards. While the agent isn't running, Wiro answers such a reply itself when it turned cards down: `The setup change was turned down.` or `The <N> setup changes were turned down.`, with the cards' ids in `setupresult.dismissed`. A `connect` card needs its key, so a `yes` never applies one: when only `connect` cards are pending, `yes` is an ordinary message.
 
 Wiro applies the stored card, checked again against the agent's current setup, never anything written in the reply. A card is applied at most once. When a `connect` card is applied, the other `connect` cards for the same connector still pending on the same person's messages in that chat from the last 7 days are marked `applied` too. `setup` and `setupresult` name only the card you acted on; History and Detail show the others. Only an agent admin can apply a card: a reply from anyone else changes nothing and gets `Only an agent admin can apply setup changes.` When a change needs a restart, the agent restarts to load it: continue the chat in about a minute. Replies Wiro handles itself don't have to wait for it; see [Replies Wiro handles itself](#handled-setup-replies). Cards that restart a starting or running agent: `add`, `remove`, `connect`, `disconnect` and `timezone` cards, a `schedule` or `skill` card that creates one, a `schedule` card that changes the `cron`, and `pause`, `resume`, `delete`, `disable` and `enable` cards. A card that changes only the text of a custom skill or scheduled task (`append`, `revert`, or an `update` that keeps the schedule) reaches a running agent without a restart, and `restarting` is `false`; if the agent can't take the new text, Wiro restarts it instead.
 
@@ -14971,9 +14716,9 @@ Instructions:
 Reply "yes" to apply exactly this change, or "no" to turn it down.
 ```
 
-An `append` card's first line reads `Card 1: Add to custom skill <key>.`, followed by only the text it adds. A `revert` card's first line reads `Card 1: Undo the last change to custom skill <key>.`, followed by the text it restores. A `disconnect` card has one line: `Card 1: Disconnect <Connector> (its saved key is removed).`
+An `append` card's first line reads `Card 1: Add to custom skill <key>.`, followed by only the text it adds. A `revert` card's first line reads `Card 1: Undo the last change to custom skill <key>.`, followed by the text it restores. A `disconnect` card has one line: `Card 1: Disconnect <Connector>.`
 
-An `add` or `remove` card names what it changes by title, never by key. Its first line is `Card 1: Add <Title> (connector).`, `Card 1: Add <Title> (skill).`, `Card 1: Remove <Title> (connector).` or `Card 1: Remove <Title> (skill).`, and only the lines that apply follow it: `Also turns on: <titles>.`, `Also turns off: <titles>.`, `Scheduled tasks that pause: <titles>.`, `Scheduled tasks that run again: <titles>.`, `Still to connect: <titles>.`, and `Its saved key stays saved.` for a connector removed while its key is saved. A `connect` card isn't listed: it waits for its key. When a message sent with a project API key gets the listing while the only pending cards are an `add` card and its `connect` card, and the key is all that connector needs, the listing's last line offers the key as the reply instead: `Reply with your <Connector title> key to add <Title> and connect it at once, "yes" to add it now and give the key later, or "no" to turn it down.` A connector that needs more keeps the usual last line. See [Adding and connecting in one step](#setup-add-and-connect).
+An `add` or `remove` card names what it changes by title, never by key. Its first line is `Card 1: Add <Title> (skill).` or `Card 1: Remove <Title> (skill).`, and only the lines that apply follow it: `Also turns on: <titles>.`, `Also turns off: <titles>.`, `Scheduled tasks that pause: <titles>.`, `Scheduled tasks that run again: <titles>.` and `Still to connect: <titles>.` A `connect` card isn't listed: it waits for its key. When a message sent with a project API key gets the listing while the only pending cards are an `add` card and its `connect` card, and the key is all that is needed, the listing's last line offers the key as the reply instead: `Reply with your <Connector title> key to add <Title> and connect it at once, "yes" to add it now and give the key later, or "no" to turn it down.` See [Adding and connecting in one step](#setup-add-and-connect).
 
 With several cards, it starts with `The agent proposes these setup changes. Nothing is applied yet.` and ends with `To apply one, reply "yes" and its number, such as "yes 1", one card per reply. Reply "no" to turn them all down.` Show this text, as it is, to the person who approves. The listing is a reply Wiro handles itself (see [below](#handled-setup-replies)), and its `setupresult` lists no card.
 
@@ -14981,13 +14726,13 @@ With several cards, it starts with `The agent proposes these setup changes. Noth
 
 While setup from chat is on for a message, Wiro keeps keys out of the agent's conversation:
 
-- **A key as the reply.** When the agent's latest reply has one pending `connect` card and its connector takes one key (or has one required key field still empty), an agent admin can paste the key as the reply, a text message of up to 2,000 characters with no attachments. Wiro reads the key for that card only while its connector is on the agent, or a pending `add` card on the same reply names it in `needs` with `mode: "key"`; otherwise the key is only removed, as in any other message. Wiro takes the reply as the key when it is in that connector's own key format, when the whole message is one key-like word, or when the key follows a word such as `key` or `token` (`my key is ...`). A sentence that only holds an id, a URL, an email address or a plain word is an ordinary message, and the card stays pending. While the connector is on the agent, Wiro saves the key to it and marks the card applied. The key never reaches the agent, and the stored message reads `[key saved to <Connector title>]` in its place. A key in another service's format is not saved, and when the connector needs more fields, the card stays pending and Wiro's answer names them; see [Wiro's answers](#setup-reply-lines). A sign-in connector's `connect` card never takes a key from the reply. While a pending `add` card still brings the connector, the key is read for its card but not saved, since the `add` card goes first: Wiro answers `⚠️ Not saved: Apply card <N> first: it turns on <Title>. Paste the key again as your reply.`, the stored message reads `[key removed]` in its place, and both cards stay pending. The one exception is a message sent with a project API key when the only pending cards are that `connect` card and the `add` card that brings its connector, and the key is all that connector needs: once Wiro has listed the `add` card, the key applies both cards, and a key sent before that gets the listing. See [Adding and connecting in one step](#setup-add-and-connect).
+- **A key as the reply.** When the agent's latest reply has one pending `connect` card and its connector takes one key (or has one required key field still empty), an agent admin can paste the key as the reply, a text message of up to 2,000 characters with no attachments. Wiro takes the reply as the key when it is in that connector's own key format, when the whole message is one key-like word, or when the key follows a word such as `key` or `token` (`my key is ...`). A sentence that only holds an id, a URL, an email address or a plain word is an ordinary message, and the card stays pending. Wiro saves the key to the connector and marks the card applied. The key never reaches the agent, and the stored message reads `[key saved to <Connector title>]` in its place. A key in another service's format is not saved; see [Wiro's answers](#setup-reply-lines). While a pending `add` card still has to go first, the key is read for its card but not saved: Wiro answers `⚠️ Not saved: Apply card <N> first: it turns on <Title>. Paste the key again as your reply.`, the stored message reads `[key removed]` in its place, and both cards stay pending. The one exception is a message sent with a project API key when the only pending cards are that `connect` card and its `add` card, and the key is all that is needed: once Wiro has listed the `add` card, the key applies both cards, and a key sent before that gets the listing. See [Adding and connecting in one step](#setup-add-and-connect).
 - **Keys in other messages.** Wiro removes clear keys: a key format Wiro knows for a provider or connector, and a key written after a word such as `key`, `token`, `secret` or `password`. The stored text and the text the agent gets hold `[key removed]` in their place, and Send returns `contentmasked: true` with that text in `content`. The agent can then propose a `connect` card. Other ids, such as Google Sheet and Drive ids, commit hashes and order numbers, reach the agent unchanged. While a `connect` card of the latest reply waits for its key, every key-like word in any other text message of up to 2,000 characters is removed without being saved.
-- From your own backend, save keys with [`POST /UserAgent/CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert) instead of sending them in a message. An MCP client saves them with its `set_agent_credentials` tool.
+- From your own backend, connect a connector with [`POST /UserAgent/ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect), or save a channel's key with [`POST /UserAgent/CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert), instead of sending them in a message.
 
 ### Replies Wiro handles itself
 
-When Wiro handles a message itself (a `yes` that applies a card or gets the [card listing](#setup-card-listing), a key pasted as the reply, a reply refused because the sender isn't an agent admin, a `yes` while a sign-in `connect` card waits, or a `no` that turned cards down while the agent isn't running), no agent turn runs and no credits are used, even when the agent has no credits left. Wiro does this whatever the agent's status, so these replies also work while the agent is stopped or restarting. [`Message/Send`](#post-useragentmessagesend) answers at once with the result:
+When Wiro handles a message itself (a `yes` that applies a card or gets the [card listing](#setup-card-listing), a key pasted as the reply, a reply refused because the sender isn't an agent admin, or a `no` that turned cards down while the agent isn't running), no agent turn runs and no credits are used, even when the agent has no credits left. Wiro does this whatever the agent's status, so these replies also work while the agent is stopped or restarting. [`Message/Send`](#post-useragentmessagesend) answers at once with the result:
 
 ```json
 {
@@ -15025,15 +14770,12 @@ The lines Wiro writes in `response`:
 
 | Line | When |
 |------|------|
-| `✅ Applied: <summary>.` | The card was applied. The summary says what changed, such as `Scheduled task Morning summary created`, `Custom skill Weekly report updated` (also for an `append` card), `Custom skill Weekly report restored`, `Custom skill Weekly report turned off`, `Time zone set to Europe/Istanbul`, `<Connector> connected`, `<Connector> disconnected`, `Brevo Email added` or `Weather removed`. An `add` card applied together with its `connect` card's key names both, as in `✅ Applied: Serper Web Search added. Serper Web Search connected.` An `add` card that brings a connector set up outside the chat, or a sign-in connector with no pending `connect` card on the reply, goes on with `Connect <Title> in the agent's settings.`, naming each such connector by its `title` in `needs`. |
-| `⚠️ Not applied: <reason>` | The change failed. The card's `status` is now `failed`, with the same reason in `error`. For example, `This skill changed after the card was made. Ask the agent again.` means the skill's text changed after an `update`, `append` or `revert` card was made. `<Title> is not on this agent: add it first, then connect it.` means a `connect` card's connector comes with a connector that isn't on, `<Title>`, and no pending `add` card on the reply turns it on, for example because that `add` card failed or was turned down. When more than one connector brings it, the sentence names them all and reads `add one first`. |
+| `✅ Applied: <summary>.` | The card was applied. The summary says what changed, such as `Scheduled task Morning summary created`, `Custom skill Weekly report updated` (also for an `append` card), `Custom skill Weekly report restored`, `Custom skill Weekly report turned off`, `Time zone set to Europe/Istanbul`, `<Connector> connected`, `<Connector> disconnected`, `Weather added` or `Weather removed`. An `add` card applied together with its `connect` card's key names both. An `add` card that needs something set up outside the chat goes on with `Connect <Title> in the agent's settings.` |
+| `⚠️ Not applied: <reason>` | The change failed. The card's `status` is now `failed`, with the same reason in `error`. For example, `This skill changed after the card was made. Ask the agent again.` means the skill's text changed after an `update`, `append` or `revert` card was made. |
 | `Your agent is restarting to load the change. Continue in about a minute.` or `Your agent is restarting to load the change.` | The change restarts the agent, or loads with a restart already under way, such as the one an `add` card started. The shorter line comes when the answer ends with a `Next:` line, which follows it. |
 | `1 more setup change is still pending.` or `<N> more setup changes are still pending.` | Other cards of the same reply still wait. Reply `yes` and a card's number to apply the next one. |
-| `Next: paste your <Title> key as your reply.` or `<N> connector cards still need their keys: add each key on its card.` | `connect` cards of the same reply still wait for their keys, such as the `connect` card that came with an `add` card just applied. A sign-in `connect` card is never counted. A `connect` card whose connector still waits for an `add` card that failed or was turned down isn't counted. When one card is counted, the `Next:` line ends the answer. `<Title>` is the connector's `title` in the `needs` of an `add` card on the same reply, or, when no `add` card names it, the connector's name in the agent's setup, such as `Serper Web Search`. When the answer says the agent is restarting, the line goes on with `Send it now and it loads with this same restart.`, since a key saved while the agent is still stopping or queued for that restart loads with it. |
-| `Next: connect <Title> to finish. Its sign-in, app keys or token are entered outside this chat, never in it.` or `Next: connect <Title> with its card in this chat.` | A `yes` applied an `add` card whose sign-in `connect` card still waits. In a message sent with a project API key, the connector is connected outside the chat, and `setupresult.next` names its card; in the Wiro web chat, the card connects it. See [Connecting a sign-in connector](#setup-signin-cards). |
-| `A yes cannot connect <Title>. Its sign-in, app keys or token are entered outside this chat, never in it.` or `A yes cannot sign in for you. Connect <Title> with its card in this chat.` | A `yes` while only `connect` cards wait, one of them for a sign-in connector. Nothing is applied and no agent turn runs. One line per sign-in card; key cards waiting with them keep their `Next:` line. In a message sent with a project API key, `setupresult.next` names the cards. |
-| `Saved <fields> for <Connector>. Still needed: <fields>.` | The pasted key was saved, and the connector needs more fields. The card stays pending: add the rest on the card, or with [`CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert). When Wiro can't name the missing fields, the second sentence reads `It is not connected yet: finish it in the agent's settings.` |
-| `⚠️ Not saved: <reason>. Paste the key again as your reply.` | The pasted key was refused, for example because it is too short. Nothing was saved and the card stays pending. When the key was for an `add` card and its `connect` card, neither is applied. |
+| `Next: paste your <Title> key as your reply.` or `<N> connector cards still need their keys: add each key on its card.` | `connect` cards of the same reply still wait for their keys, such as the `connect` card that came with an `add` card just applied. When one card is counted, the `Next:` line ends the answer. `<Title>` is the connector's title. When the answer says the agent is restarting, the `Next:` line goes on with `Send it now and it loads with this same restart.` |
+| `⚠️ Not saved: <reason>. Paste the key again as your reply.` | The pasted key was refused, for example because the vendor refused it. Nothing was saved and the card stays pending. When the key was for an `add` card and its `connect` card, neither is applied. |
 | `⚠️ Not saved: <Title> is still waiting. Reply "yes" to add it, or "no" to turn it down.` | In a chat over a project API key, a key came for an `add` card and its `connect` card after the `connect` card was applied, turned down or settled elsewhere. Nothing was saved, and the `add` card still waits for a `yes` or a `no`. |
 | `That does not look like a <Connector> key, so it was not saved. Paste the <Connector> key as your reply.` | The reply holds a key in another service's format, while the latest reply's only pending `connect` card is for a connector that takes a key and is already on the agent. It comes whoever sent the key. Nothing was saved, the stored message reads `[key removed]` in its place, and the card stays pending. When Wiro knows the format, the sentence names it, such as `(it looks like <kind>)`. Before a name that starts with a vowel, `a` becomes `an`, as in `an Apollo key`. While the connector isn't on the agent yet, as while the `add` card that brings it still waits, such a key is only removed, as in any other message. |
 | `This setup change is being applied right now. Try again in a moment.` | Someone is applying the same card at this moment, or, for an `add` or `remove` card, another change to the agent's connectors and skills is going through. The card is still pending. |
@@ -15045,7 +14787,7 @@ The lines Wiro writes in `response`:
 
 ## **POST** /UserAgent/Message/SetupCardApply
 
-Applies or dismisses one setup card, or applies an `add` card together with its `connect` card when the key comes with it or its sign-in is done; the card's buttons in the Wiro web chat call it too. Wiro applies the stored card, checked again against the agent's current setup. See [Setup From Chat](#setup-from-chat).
+Applies or dismisses one setup card, or applies an `add` card together with its `connect` card when the key comes with it; the card's buttons in the Wiro web chat call it too. Wiro applies the stored card, checked again against the agent's current setup. See [Setup From Chat](#setup-from-chat).
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -15053,8 +14795,7 @@ Applies or dismisses one setup card, or applies an `add` card together with its 
 | `messageguid` | string | Yes | The message that holds the card: the row whose `timeline[]` has the `setup` block. |
 | `cardid` | string | Yes | The card's `setup.id`. |
 | `action` | string | Yes | `"apply"` or `"dismiss"`. |
-| `values` | object | No | `connect` cards, and `add` cards that bring a connector with a pending `connect` card: `{ "<fieldname>": "<value>" }` for the connector's fields, as [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail) lists them. Only text, password, URL and email fields, up to 4,096 characters each. On an `add` card they are the values of its `connect` card, and Wiro applies both cards in one step. Send every field the connector needs: with only some of them, the `add` card is applied and the `connect` card saves those fields and stays pending. See [Adding and connecting in one step](#setup-add-and-connect). Wiro saves them to the connector; they are never returned and never reach the agent. |
-| `signin` | boolean | No | `true`, with `action: "apply"`, on an `add` card whose sign-in `connect` card's connector is now connected: Wiro applies both cards in one step. Never with `values` (`Send values or signin, not both.`). See [Connecting a sign-in connector](#setup-signin-cards). |
+| `values` | object | No | `connect` cards, and `add` cards whose `needs` has a pending `connect` card: `{ "<fieldname>": "<value>" }` for the connector's fields, as its `credentialfields` on [`POST /AgentConnector/Detail`](/docs/agent-connectors#post-agentconnectordetail) list them (or a credential's `credential_schema`). Text values, up to 4,096 characters each. On an `add` card they are the values of its `connect` card, and Wiro applies both cards in one step. See [Adding and connecting in one step](#setup-add-and-connect). Wiro saves them to the connector; they are never returned and never reach the agent. |
 
 **Permission**: applying needs an agent admin (the owner, or an admin of the agent's team). Any member who can see the chat can dismiss. The message must be one you can read with [Message/History](#post-useragentmessagehistory) (in private Chat Mode, your own messages), and the card must be pending: an applied or dismissed card is never applied again.
 
@@ -15102,29 +14843,21 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
 |-------|------|-------------|
 | `setup` | `object\|null` | The card after the action, in the same shape as a [setup block](#setup-blocks)'s `setup`. `null` when the call is refused before the card is read: a missing parameter, an agent or message the caller can't reach, Setup From Chat off, a reply still being written, a caller who isn't an agent admin, a card someone else is applying at that moment, or a card that isn't there. |
 | `restarting` | `boolean` | `true` when the agent restarts to load the change. Continue the chat in about a minute. |
-| `summary` | `string` | A short English phrase that says what changed, such as `Scheduled task Morning summary created` or `Brevo Email added`. An `add` card applied with its `connect` card names both: `Serper Web Search added. Serper Web Search connected.` Empty when nothing was applied. |
-| `paired` | `object[]` | Only when `values` or `signin: true` are sent with a pending `add` card: its `connect` card after the call, as `[{ setup, result, error }]`. `setup` has the same shape as above, `result` is `true` when the card was applied with the key, and `error` is `null` or the sentence that says why not, such as `Saved <fields> for <Connector>. Still needed: <fields>.` when `values` held only some of the connector's fields. Empty when there is no single `connect` card to take the key. See [Adding and connecting in one step](#setup-add-and-connect). |
-| `errorcode` | `string` | Why a sign-in `connect` card, or an `add` card sent with `signin: true`, wasn't applied: `not_connected`, `signin_values`, `signin_no_pair` or `signin_many`. Absent otherwise. |
-| `next` | `object[]` | Only when the call leaves connectors to connect: `[{ connector, title, mode, cardid?, messageguid? }]`. An `add` card applied, alone, with `values` or with `signin: true`, lists its connectors that aren't connected yet, without the one its `connect` card connected in the same call. A sign-in `connect` card refused with `not_connected` or `signin_values` lists its own connector and card. A `connect` card for a connector set up outside the chat lists it with `mode: "page"`. `cardid` and `messageguid` name the pending `connect` card that records the connection once it is made; a `page` entry has neither. Absent on the other refusals and on a dismissal. |
+| `summary` | `string` | A short English phrase that says what changed, such as `Scheduled task Morning summary created` or `Weather added`. An `add` card applied with its `connect` card names both. Empty when nothing was applied. |
+| `paired` | `object[]` | Only when `values` are sent with a pending `add` card: its `connect` card after the call, as `[{ setup, result, error }]`. `setup` has the same shape as above, `result` is `true` when the card was applied with the key, and `error` is `null` or the sentence that says why not. Empty when there is no single `connect` card to take the key. |
+| `next` | `object[]` | Only when the call leaves something to connect: `[{ connector, title, mode, cardid?, messageguid? }]`. An `add` card applied, alone or with `values`, lists what it needs that isn't connected yet, without the one its `connect` card connected in the same call. A `connect` card for a connector set up outside the chat lists it with `mode: "page"`. |
 
 | Error | When |
 |-------|------|
 | `Setup from chat is off for this agent.` | `chatsetup` is `"off"`, or the call is sent with a project API key and `chatsetup` is `"webchat"`. |
 | `Wait until the agent finishes this reply, then apply it.` | `action` is `"apply"` while the reply that holds the card is still being written. `"dismiss"` works at any time. |
 | `Only an agent admin can apply setup changes.` | The caller can see the chat but isn't an agent admin. |
-| `Saved <fields> for <Connector>. Still needed: <fields>.` | A `connect` card's `values` were saved, and the connector needs more fields. The card stays pending and `restarting` can be `true`. Send the missing fields with the same card to finish it. Sent with an `add` card, the `add` card is applied, `result` is `true`, and this sentence is `paired[0].error` instead. |
 | `The change could not be applied. Try again in a moment.` | The change failed on Wiro's side. The card's `status` is now `failed`. |
 | `This skill changed after the card was made. Ask the agent again.` | An `update`, `append` or `revert` card whose skill text no longer matches its `before`: someone changed the skill after the card was made. Nothing changed, and the card's `status` is now `failed`. |
-| `This agent's connectors or skills changed after the card was made. Ask the agent again.` | An `add` or `remove` card whose change no longer matches the agent's connectors and skills: it would turn on more than it shows, or turn off something else. Nothing changed, and the card's `status` is now `failed`. |
-| `Apply card <N> first: it turns on <Title>.` | A `connect` card whose connector comes with an `add` card on the same message that isn't applied yet. Nothing is saved and the card stays pending: apply the `add` card first, or send the values with the `add` card to apply both. |
-| `<Title> is not on this agent: add it first, then connect it.` | A `connect` card whose connector comes with a connector that isn't on, `<Title>`, when no pending `add` card on the message turns it on, for example because that `add` card failed or was turned down. Nothing is saved, and the card's `status` is now `failed`. When more than one connector brings it, the sentence names them all and reads `add one first`. |
+| `This agent's connectors or skills changed after the card was made. Ask the agent again.` | An `add` or `remove` card whose change no longer matches the agent's skills: it would turn on more than it shows, or turn off something else. Nothing changed, and the card's `status` is now `failed`. |
+| `Apply card <N> first: it turns on <Title>.` | A `connect` card that comes with an `add` card on the same message that isn't applied yet. Nothing is saved and the card stays pending: apply the `add` card first, or send the values with the `add` card to apply both. |
 | `This card takes no key. Apply it without one.` | `values` sent with an `add` card that has no pending `connect` card to take them. Nothing changed and the card stays pending. |
-| `This card brings more than one key. Apply it, then add each key on its own card.` | `values` sent with an `add` card that brings more than one connector with a pending `connect` card. Nothing changed and the card stays pending. |
-| `<Title> is not connected yet. Finish the sign-in on the card first.` | `errorcode: "not_connected"`. A sign-in `connect` card, or an `add` card sent with `signin: true`, whose connector isn't connected yet. Nothing changed and the cards stay pending. For a `token` connector: `<Title> is not connected yet. Finish the token check on the card first.` On a `connect` card, `next` names its connector and the card. |
-| `<Title> connects with its sign-in on the card, not with typed values.` | `errorcode: "signin_values"`. `values` sent with a sign-in `connect` card. The card stays pending. For a `token` connector: `<Title> connects with its token check on the card, not with typed values.` |
-| `This card has no sign-in to finish. Apply it without one.` | `errorcode: "signin_no_pair"`. `signin: true` on an `add` card with no pending sign-in `connect` card. Nothing changed. When every sign-in connector the card names takes a token: `This card has no token check to finish. Apply it without one.` |
-| `This card brings more than one sign-in. Apply it, then connect each on its own card.` | `errorcode: "signin_many"`. `signin: true` on an `add` card that brings more than one sign-in connector with a pending `connect` card. Nothing changed. When each of those cards is a `token` card: `This card brings more than one token check. Apply it, then connect each on its own card.` |
-| `Send values or signin, not both.` | Both were sent with the same call. |
+| `This card brings more than one key. Apply it, then add each key on its own card.` | `values` sent with an `add` card that has more than one pending `connect` card. Nothing changed and the card stays pending. |
 | `<Title> is connected in the agent's settings, not from chat.` | A `connect` card whose connector is set up outside the chat. Nothing changed, the card stays pending, and `next` lists the connector with `mode: "page"`. |
 | Another sentence in `errors[0].message` | The message or card wasn't found, the card is no longer pending, a value was refused (nothing is saved and the card stays pending; on an `add` card, neither card is applied), or the change no longer fits the agent's setup. When the change itself fails, the card's `status` becomes `failed` with the sentence in `error`. |
 
@@ -15818,7 +15551,7 @@ Frames flow in two directions. `↓` = server → client, `↑` = client → ser
 | ↓ | `agent_error` | Terminal failure event. `message` is a plain string: the turn's coded failure message, the same text `response` holds (see [Failed turns](/docs/agent-messaging#failed-turns)). Emits at most once. |
 | ↓ | `agent_cancel` | Terminal cancel event. Fires **only** when an already-active message is aborted mid-stream (via `Message/Cancel` or upstream abort). Cancels against a still-queued message do **not** broadcast this event, so check `Message/Detail` for those. Emits at most once. |
 | ↓ | `agent_usage_report` | Post-terminal usage/billing frame. Fires once, ~250-500 ms after a successful `agent_end`, on the same `agenttoken`. Carries the final token counts, `model`, `tokencost`, and `remainingcredits` for the message identified by `messageguid`. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns); follow those on the [run stream](#following-an-agents-background-runs). |
-| ↓ | `agent_wiroai_runtask` | Model-run discovery frame. Fires whenever the agent itself launches a Wiro model run during a turn (e.g. generating an image or video via `int-wiro-aimodels`). Arrives on the `agenttoken` of the turn that launched the run, carrying the new task's `socketaccesstoken` so you can subscribe to that run's `task_*` lifecycle and collect its outputs. See [Model runs the agent triggers](#model-runs-the-agent-triggers). |
+| ↓ | `agent_wiroai_runtask` | Model-run discovery frame. Fires whenever the agent itself launches a Wiro model run during a turn (e.g. generating an image or video for a skill or through the `wiro` connector). Arrives on the `agenttoken` of the turn that launched the run, carrying the new task's `socketaccesstoken` so you can subscribe to that run's `task_*` lifecycle and collect its outputs. See [Model runs the agent triggers](#model-runs-the-agent-triggers). |
 | ↑ | `agent_session_subscribe` | Follow a session with the `sessiontoken` from `Message/History`. See [Following a session](#following-a-session). |
 | ↓ | `agent_session_subscribed` | Session follow acknowledged. |
 | ↓ | `agent_message_inserted` | A message was added to a followed session between turns (a scheduled report, files sent after an answer, the result of background work). Carries the `sessiontoken` and the new row in `message`. |
@@ -15991,7 +15724,7 @@ When the agent proposes a setup change, a `setup` block arrives the same way. It
 
 Tool blocks carry two closed-list words:
 
-- `toolintegration` names the connector the step works in, as its `key` from [`POST /Credentials/List`](/docs/agent-credentials#post-credentialslist): `adapty`, `adjust`, `apollo`, `apple-appstore`, `brevo`, `calendarific`, `dataforseo`, `facebook-pages`, `firebase`, `ga4`, `gmail`, `google-ads`, `google-business`, `google-calendar`, `google-drive`, `google-merchant-center`, `google-play`, `google-search-console`, `hubspot`, `instagram`, `keepa`, `lemlist`, `linkedin`, `mailchimp`, `meta-ads`, `reddit`, `revenuecat`, `roasit`, `sendgrid`, `serper`, `shopify`, `telegram`, `tiktok`, `tiktok-ads`, `twitter`, `wiro`, `woocommerce`, `wordpress`, or `youtube`.
+- `toolintegration` names the connector the step works in, as its `slug` from [`POST /AgentConnector/List`](/docs/agent-connectors#post-agentconnectorlist), such as `shopify`, `google-ads` or `serper`, or `telegram` for the Telegram channel and `wiro` for Wiro's own tools. Name it in your app by the connector's `title`.
 - `toolaction` names what the step does: `screenshot`, `open-page`, `read-page`, `click`, `type`, `press-key`, `wait`, `upload`, `download`, `read-file`, or `edit-media`.
 
 Each is `null` when no word fits, and a block never has both. The words come with the block's first update, and every later update of the block carries them. A later update can carry a different word if the step changed, so read them from the newest version of the block. A block whose step is rewritten and no longer fits a word keeps its last word. Treat a value you don't know like `null`; [Agent Messaging](/docs/agent-messaging#tool-integration-and-action-values) says what each word means.
@@ -16145,7 +15878,7 @@ It is **not** emitted for:
 
 ### Model runs the agent triggers
 
-When the agent **itself** kicks off a Wiro model run during a turn (for example generating an image or a video through the `int-wiro-aimodels` skill), the bridge emits an `agent_wiroai_runtask` discovery frame. It hands you the new model run's `socketaccesstoken` so you can subscribe to that run and stream its progress and final media outputs. This is how a chat product surfaces a "live activity feed" of the media the agent is producing.
+When the agent **itself** kicks off a Wiro model run during a turn (for example generating an image or a video for a skill, or through the `wiro` connector), the bridge emits an `agent_wiroai_runtask` discovery frame. It hands you the new model run's `socketaccesstoken` so you can subscribe to that run and stream its progress and final media outputs. This is how a chat product surfaces a "live activity feed" of the media the agent is producing.
 
 ```json
 {
@@ -18337,7 +18070,7 @@ When the agent is back up, every `connected` connection whose connector is still
 
 - `readonly: true` tools only read. `destructive: true` tools can change or delete something at the vendor.
 - A tool acts with the connection's own credentials and, where the connector has pickers, only on the selected accounts.
-- To tell the agent when and how to use the tools, write a [Custom Skill](/docs/agent-skills#custom-skills) that names them, such as: "Before you write an article, research the topic with `serper__web_search` and cite the top three results."
+- To tell the agent when and how to use the tools, write a [Custom Skill](/docs/agent-skills#using-connectors-in-skills) that names them, such as: "Before you write an article, research the topic with `serper__web_search` and cite the top three results."
 - A scheduled task of an agent template that works with a connector stays off until that connector is connected.
 - A disconnected connector's tools are gone after the restart. A `reauth` connection's tools answer that it must be connected again, in words your customer can read: they name no Wiro place or link.
 
@@ -18730,41 +18463,41 @@ Future<void> main() async {
 
 ---
 
-# Agent Credentials & OAuth
+# Agent Credentials
 
-Configure third-party service connections for your agent instances. Browse the platform's credential registry, set API keys, direct machine credentials, or OAuth, and audit credential edits over time.
+The values an agent keeps as credentials: its Telegram, Slack and Discord channels, its Twilio Voice phone line, the Wiro project it runs models with, and settings such as its support email and website. Read the credential registry, save values and audit their history. Connectors to outside services are on [Agent Connectors](/docs/agent-connectors).
 
 ## Overview
 
-Wiro agents connect to external services (social platforms, ad networks,
-email tools, CRMs) through three credential methods:
+A credential is a set of values an agent keeps for something it is, rather than a service it works with:
 
-1. **API Key credentials**: set directly via `POST /UserAgent/CredentialUpsert` (bulk field upsert per provider).
-2. **OAuth credentials**: redirect-based authorization via `POST /UserAgentOAuth/OAuthConnect`, where Wiro handles token exchange server-side.
-3. **Hybrid direct credentials**: save a machine credential, call
-   `OAuthConnect` for server-side validation/discovery, then finalize any
-   account picker without exposing provider tokens to the browser.
+| Credential | Key | What it is |
+|------------|-----|------------|
+| Telegram, Slack, Discord | `telegram`, `slack`, `discord` | The agent's own external chat channels. See [Communication Channels](#communication-channels). |
+| Twilio Voice | `twilio-voice` | The phone line the agent answers. See [Twilio Voice Channel](/docs/integration-twiliovoice-skills). |
+| Wiro project | `wiro` | The project whose wallet pays for the Wiro model runs the agent makes, such as video and voice. See [The agent's Wiro project](#the-agents-wiro-project). |
+| Settings | `var-support-email`, `var-website` | Values the agent's skills read: the support email it gives customers, and its website addresses. |
 
-> **From the agent's chat.** With [Setup From Chat](/docs/agent-messaging#setup-from-chat) on, the agent can propose a `connect` card, and an agent admin pastes the key as the reply or enters it on the card. Wiro saves it to the connector, and the agent never sees it. A connector that uses a sign-in gets a `connect` card too: in the Wiro web chat the card takes its app keys or token and runs its sign-in with the endpoints below (see [Connecting a sign-in connector](/docs/agent-messaging#setup-signin-cards)). A connector set up only outside the chat gets no `connect` card. To run these steps from a chat in your own product, see [Agent Chat Integration](/docs/agent-chat-integration).
+The services an agent works with (Google Ads, Shopify, HubSpot, Serper and the rest) are **connectors**, not credentials: browse, connect and disconnect them with the calls on [Agent Connectors](/docs/agent-connectors). `CredentialUpsert` doesn't take a connector's values.
 
-Each external service is documented as its own **integration page** with the complete setup walkthrough, API reference, troubleshooting, and multi-tenant architecture notes. Use the catalog below to jump to the one you need.
+> **From the agent's chat.** With [Setup From Chat](/docs/agent-messaging#setup-from-chat) on, the agent can propose a `connect` card for a credential that takes a key, and an agent admin pastes the key as the reply or enters it on the card. Wiro saves it, and the agent never sees it. To run these steps from a chat in your own product, see [Agent Chat Integration](/docs/agent-chat-integration).
 
 **Read & write paths at a glance:**
 
 | Operation | Endpoint |
 |-----------|----------|
-| Browse all credentials in the registry | [`POST /Credentials/List`](#post-credentialslist) (public) |
+| Browse every credential in the registry | [`POST /Credentials/List`](#post-credentialslist) (public) |
 | Inspect a single credential schema | [`POST /Credentials/Detail`](#post-credentialsdetail) (public) |
 | Find the credential a skill needs | [`POST /Skills/CredentialSchema`](/docs/agent-skills#post-skillscredentialschema) (public) |
 | Write one or more credential fields | [`POST /UserAgent/CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert) |
 | Save a key from the agent's chat | A `connect` card: the key pasted as the reply, or [`POST /UserAgent/Message/SetupCardApply`](/docs/agent-messaging#post-useragentmessagesetupcardapply) with `values` |
-| Connect a sign-in connector from the agent's chat | Its `connect` card once the sign-in is done: [`POST /UserAgent/Message/SetupCardApply`](/docs/agent-messaging#post-useragentmessagesetupcardapply), with `signin: true` on the `add` card that brings it |
 | Connect the agent's Wiro project by its id | [`POST /UserAgent/CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) |
 | Discover external communication channels | [`POST /Skills/List`](/docs/agent-skills#post-skillslist) → `channels[]` (public) |
 | Connect or disable an external channel | [`POST /UserAgent/CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert) |
 | Read version history of a credential | [`POST /UserAgent/CredentialFieldHistory`](/docs/agent-overview#post-useragentcredentialfieldhistory) |
+| Connect a service the agent works with | [Agent Connectors](/docs/agent-connectors) |
 
-> Read responses from `POST /UserAgent/Detail` expose the composed `credentials` tree (each provider with its `_connected` / `optional` / `extra` / `_editable` / `_schema` flags), the `customskills[]` array, the `scheduledskills[]` array (scheduled tasks), the `skills[]` array of enabled skill names, the `tokenRates` + `agentModel` objects, and the flat credit fields (`monthlycredits`, `extracredits`, `usedcredits`, `remainingcredits`, `creditperiod`, `creditsyncat`) as **top-level fields** on the useragent object. `POST /UserAgent/MyAgents` rows carry `tokenRates`, `agentModel` and the credit fields, without the composed children. See [Agent Overview](/docs/agent-overview) for the full endpoint catalog.
+> Read responses from `POST /UserAgent/Detail` expose the composed `credentials` tree (each credential with its `_connected` / `optional` / `extra` / `_editable` / `_schema` flags), the `customskills[]` array, the `scheduledskills[]` array (scheduled tasks), the `skills[]` array of enabled skill names, the `tokenRates` + `agentModel` objects, and the flat credit fields (`monthlycredits`, `extracredits`, `usedcredits`, `remainingcredits`, `creditperiod`, `creditsyncat`) as **top-level fields** on the useragent object. `POST /UserAgent/MyAgents` rows carry `tokenRates`, `agentModel` and the credit fields, without the composed children. See [Agent Overview](/docs/agent-overview) for the full endpoint catalog.
 
 ## Communication Channels
 
@@ -18850,18 +18583,18 @@ rooms are rejected, and room messages must mention the bot. To disable a
 channel, clear at least one of its `required_fields` with `CredentialUpsert`.
 Completing the required fields again reactivates it automatically.
 
+
 ## Credential Registry Endpoints
 
-These endpoints are **public, so no authentication is required**. They return data straight from the credential registry, which is useful when you want to render a "Connect this provider" form without a deployed useragent (e.g. inside an onboarding wizard).
+These endpoints are **public, so no authentication is required**. They return data straight from the credential registry, which is useful when you want to render a credential's form without a deployed useragent (e.g. inside an onboarding wizard).
 
 ### **POST** /Credentials/List
 
-Lists all credentials in the registry.
+Lists every credential in the registry: the channels, Twilio Voice, the Wiro project, the settings, and platform entries (`sys-*`) that Wiro fills in itself.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `credential_mode` | string | No | Filter by mode: `"oauth"`, `"sa"` (service account), `"api_key"`, `"multi_api_key"`, `"hybrid"` (OAuth plus a direct/API-key mode), `"imap_credentials"`, `"jwt_sa"`, `"rule_only"`. |
-| `wiro_connect_pending` | boolean | No | Filter by the "Wiro mode coming soon" flag: credentials whose Wiro-shared OAuth client is still awaiting provider review (currently `facebook-pages`, `instagram`, `google-ads`, `google-merchant-center`, `youtube`, `ga4`, `linkedin`, `tiktok`, and `meta-ads`). Facebook Pages, Instagram, and Meta Ads remain usable through their ready customer-owned System User and/or OAuth alternatives. |
+| `credential_mode` | string | No | Filter by mode, such as `"api_key"` (values typed in) or `"static"` (settings). |
 
 ##### Response
 
@@ -18869,136 +18602,65 @@ Lists all credentials in the registry.
 {
   "result": true,
   "errors": [],
-  "total": 22,
+  "total": 13,
   "credentials": [
     {
-      "key": "instagram",
-      "title": "Instagram",
-      "icon": "/images/icons/skills/instagram.svg",
-      "brand_color": "#e4405f",
+      "key": "telegram",
+      "title": "Telegram",
+      "icon": "/images/icons/skills/telegram.svg",
+      "brand_color": "#24a1de",
       "brand_text_color": "#ffffff",
-      "brand_logo_filter": "none",
-      "docs_url": "integration-instagram-skills",
-      "credential_mode": "hybrid",
-      "connection_modes": ["api_key", "own", "wiro"],
-      "default_connection_mode": "api_key",
-      "mode_badges": {
-        "api_key": "Recommended",
-        "own": "Advanced"
+      "brand_logo_filter": "brightness(0) invert(1)",
+      "docs_url": "integration-telegram-skills",
+      "credential_mode": "api_key",
+      "channel": {
+        "id": "telegram",
+        "required_fields": ["bottoken", "allowedusers"],
+        "capabilities": { "direct": true, "rooms": true, "threads": true, "roles": false, "command_menu": true }
       },
-      "wiro_connect_pending": true,
       "credential_schema": [
         {
-          "key": "appid",
-          "type": "text",
-          "label": "App ID",
-          "required": true,
-          "pattern": "^[0-9]+$",
-          "help": "<ol><li>Go to Meta for Developers → My Apps</li><li>Create App → Other → Business</li><li>Copy the App ID from the dashboard</li><li>Add Product → Facebook Login → Set Up</li><li>Add OAuth Redirect URI: https://api.wiro.ai/v1/UserAgentOAuth/IGCallback</li></ol>",
-          "oauth_managed": true,
-          "only_in_modes": ["own"]
-        },
-        {
-          "key": "appsecret",
+          "key": "bottoken",
           "type": "password",
-          "label": "App Secret",
-          "required": true,
-          "show_toggle": true,
-          "help": "<ol><li>Meta for Developers → select your app</li><li>App Settings → Basic</li><li>Click Show next to App Secret and copy</li></ol>",
-          "oauth_managed": true,
-          "only_in_modes": ["own"]
-        },
-        {
-          "key": "systemusertoken",
-          "type": "password",
-          "label": "System User Token",
+          "label": "Telegram Bot Token",
           "required": true,
           "encrypted": true,
           "show_toggle": true,
-          "runtime_excluded": true,
-          "only_in_modes": ["api_key"]
+          "help": "<ol><li>Open Telegram and start a chat with the official @BotFather account.</li><li>Send /newbot, choose the bot's display name and a username ending in bot.</li><li>Copy the token returned by BotFather.</li></ol>"
         },
         {
-          "key": "accountId",
-          "type": "text",
-          "label": "Instagram Account ID",
-          "required": true,
-          "pattern": "^[0-9]+$",
-          "auto_filled_by_oauth": true,
-          "readonly_when_connected": true
-        },
-        {
-          "key": "igusername",
-          "type": "text",
-          "label": "Connected Account",
-          "required": false,
-          "auto_filled_by_oauth": true,
-          "readonly_when_connected": true
+          "key": "allowedusers",
+          "type": "string-array",
+          "label": "Allowed Telegram DM User IDs",
+          "required": true
         }
-      ],
-      "oauth_provider": {
-        "auth_method_value": "wiro",
-        "connect_endpoint": "/UserAgentOAuth/OAuthConnect",
-        "disconnect_endpoint": "/UserAgentOAuth/OAuthDisconnect",
-        "status_endpoint": "/UserAgentOAuth/OAuthStatus",
-        "connect_button_label": "Connect with Instagram",
-        "connect_button_icon": "/images/icons/skills/instagram.svg",
-        "connect_button_brand_color": "#e4405f",
-        "connect_button_text_color": "#ffffff",
-        "connect_button_logo_filter": "none",
-        "username_field": "igusername",
-        "return_query_param": "ig_connected",
-        "return_error_param": "ig_error",
-        "return_error_detail_param": "ig_error_detail",
-        "direct_probe": {
-          "mode": "api_key",
-          "mode_label": "System User Token",
-          "token_field": "systemusertoken",
-          "required_fields": ["systemusertoken"],
-          "public_account_fields": ["id", "name"]
-        },
-        "account_picker": {
-          "enabled": true,
-          "multi_select": true,
-          "set_endpoint": "/UserAgentOAuth/SetPickerAccounts",
-          "item_value_field": "accountId",
-          "item_label_field": "igusername",
-          "item_noun": "Account",
-          "item_noun_plural": "Accounts",
-          "item_fields_to_save": ["accountId", "igusername"]
-        },
-        "extra_step": null
-      },
-      "used_by_skills": ["int-instagram-post"]
+      ]
     }
   ]
 }
 ```
 
+The example shows one entry, shortened. Keys this table doesn't list are for Wiro's own panel: ignore them.
+
 | Field | Type | Description |
 |-------|------|-------------|
 | `key` | `string` | Canonical credential key. Use this in `CredentialUpsert.fields[].credentialkey`. |
-| `title` | `string` | Display label shown on connector cards. |
-| `icon` | `string` | Path or URL to the brand icon (relative paths absolutized server-side). |
-| `brand_color` / `brand_text_color` / `brand_logo_filter` | `string\|null` | Brand colours and CSS filter for icon rendering, the same shape as on skill registry entries. |
-| `docs_url` | `string\|null` | Slug of the integration page on this docs site. Frontends prefix with `/docs/`. |
-| `credential_mode` | `string` | One of `"oauth"`, `"sa"` (service account), `"api_key"`, `"multi_api_key"`, `"hybrid"` (OAuth plus a direct/API-key mode), `"imap_credentials"`, `"jwt_sa"`, `"rule_only"`. |
-| `connection_modes` | `array<string>` | The auth modes the credential supports: for example `["wiro", "own"]` for OAuth, `["api_key"]` for API-key credentials, `["sa"]` for service accounts, or `["api_key", "own", "wiro"]` for the Meta hybrids. Drives the auth-method picker in the panel. |
-| `default_connection_mode` | `string\|null` | The mode the Wiro dashboard selects for a new, disconnected credential (`"api_key"` System User mode for Facebook Pages, Instagram, and Meta Ads). `OAuthConnect` does not read it: send `authmethod` yourself. |
-| `mode_badges` | `object` | Optional labels shown beside auth modes, such as `{ "api_key": "Recommended", "own": "Advanced" }`. |
-| `wiro_connect_pending` | `boolean` | When `true`, Wiro's shared OAuth client is awaiting provider review. Currently set on 9 credentials: `facebook-pages`, `instagram`, `google-ads`, `google-merchant-center`, `youtube`, `ga4`, `linkedin`, `tiktok`, and `meta-ads`. Ready alternative modes remain usable; Facebook Pages, Instagram, and Meta Ads expose customer-owned System User and/or OAuth paths. The flag does not strip or hide schema fields. |
+| `title` | `string` | Display label for the credential's card. |
+| `icon` | `string` | Path or URL to the icon (relative paths absolutized server-side). |
+| `brand_color` / `brand_text_color` / `brand_logo_filter` | `string\|null` | Colours and CSS filter for rendering the icon, the same shape as on skill registry entries. |
+| `docs_url` | `string\|null` | Slug of the page about it on this docs site, when it has one. Frontends prefix it with `/docs/`. |
+| `credential_mode` | `string` | `"api_key"` for values typed in (the channels, Twilio Voice, the Wiro project) or `"static"` for settings. |
+| `channel` | `object?` | Only on the external chat channels: their `id`, the `required_fields` that turn them on, and `capabilities`. See [Communication Channels](#communication-channels). |
 | `credential_schema` | `array<field>` | Per-field schema describing the credential form. Each entry is a `field` object (see below). |
-| `oauth_provider` | `object\|null` | OAuth wiring (endpoints, button styling, picker config) when `credential_mode` includes OAuth. `null` for non-OAuth credentials. See below. |
-| `used_by_skills` | `array<string>` | Skill names that consume this credential, useful for "which skills will this connection enable?" hints. |
 
 **`credential_schema[]` field object:**
 
 | Sub-field | Type | Description |
 |-----------|------|-------------|
 | `key` | `string` | Field name (the `fieldname` you send to `CredentialUpsert`). |
-| `type` | `string` | Input type: `"text"`, `"password"`, `"select"`, `"boolean"`, `"string-array"`, `"object-array"`, `"fileinput"` (public asset, written via `CredentialFileUpload` multipart), `"fileinput-base64"` (secret sent inline via `CredentialUpsert`), or `"custom"`. |
+| `type` | `string` | Input type: `"text"`, `"password"`, `"email"`, `"number"`, `"textarea"`, `"select"`, `"boolean"`, `"string-array"`, `"object-array"`, `"fileinput"` (a public file, written with `CredentialFileUpload`), or `"custom"` (such as the Wiro project picker). |
 | `label` | `string` | Display label for the form input. |
-| `required` | `boolean` | Whether the field must be filled before the agent can use the integration. |
+| `required` | `boolean` | Whether the field must be filled before the credential counts as set up. |
 | `placeholder` | `string?` | Placeholder text for the input. |
 | `pattern` | `string?` | Regex the value must satisfy. |
 | `maxlength` / `minlength` | `number?` | Length constraints. |
@@ -19006,39 +18668,10 @@ Lists all credentials in the registry.
 | `default` | `string?` | Default value applied when the user hasn't set anything yet. |
 | `help` | `string?` | HTML help text rendered under the input. |
 | `show_toggle` | `boolean?` | For `type: "password"`, render a "show / hide" toggle. |
-| `oauth_managed` | `boolean?` | `true` for OAuth app keys (`clientid` / `clientsecret`, `appid` / `appsecret`, …). You supply them in the modes listed in `only_in_modes` (`own`; Shopify also `api_key`); they are stored as `oauth_app` and left out of Detail responses. |
-| `auto_filled_by_oauth` | `boolean?` | `true` when the provider connection flow writes the value (e.g. `igusername` from OAuth or direct discovery). |
-| `server_managed` | `boolean?` | `true` when a picker endpoint writes the value (e.g. Meta Ads `pagemappings`). `CredentialUpsert` rejects writes to it, as it does for `auto_filled_by_oauth` fields. |
-| `readonly_when_connected` | `boolean?` | `true` when the field becomes read-only after a successful OAuth connection. |
-| `only_in_modes` | `array<string>?` | When set (e.g. `["own"]`), the field only appears in the listed `authmethod` mode. |
-| `runtime_excluded` | `boolean?` | `true` when a setup secret is used only by Wiro's server and must never enter the agent runtime. The Instagram and Facebook Pages System User tokens use this flag. |
-| `platform_managed` | `boolean?` | `true` when Wiro fills the value server-side, so you can't supply it, such as Reddit's three approval flags. These fields are never returned. `CredentialUpsert` rejects writes to these fields with `<Field label> is managed by the platform`, and Deploy drops them. |
-| `item_schema` / `item_type` | `object?` | For array-of-object fields: describes the per-entry shape (e.g. `apple-appstore.apps[].{appname, appid}`). |
+| `encrypted` | `boolean?` | `true` for a secret: it is stored encrypted and read back as the mask. |
+| `item_schema` / `item_type` | `object?` | For array-of-object fields: describes the per-entry shape (e.g. Telegram `groups[].{chatid, allowedusers}`). |
 
-**`oauth_provider` object** (present when `credential_mode` includes OAuth):
-
-| Sub-field | Type | Description |
-|-----------|------|-------------|
-| `auth_method_value` | `string` | The provider's default OAuth `authmethod` value. It is `"wiro"` only for credentials that offer a Wiro-managed app; customer-owned-only providers use `"own"`. |
-| `connect_endpoint` / `disconnect_endpoint` / `status_endpoint` | `string` | The OAuth endpoints under `/UserAgentOAuth/...` that drive the connect / disconnect / status flow for this provider. Today every OAuth credential resolves to the unified `/UserAgentOAuth/OAuthConnect`, `/UserAgentOAuth/OAuthDisconnect`, `/UserAgentOAuth/OAuthStatus` endpoints. The field is kept on the schema for forward-compat with future per-provider overrides. |
-| `connect_button_label` / `connect_button_icon` / `connect_button_brand_color` / `connect_button_text_color` / `connect_button_logo_filter` | `string` | Branding for the "Connect with X" button. |
-| `username_field` | `string` | The credential field that holds the connected account name (e.g. `"igusername"`, `"channelname"`). |
-| `return_query_param` / `return_error_param` / `return_error_detail_param` | `string` | Names of this provider's result parameters on your `redirecturl`: `return_query_param` carries `true` on success and `return_error_param` the error code on failure. `return_error_detail_param` is only a reserved name: Merchant Center is the one credential that sends a detail parameter (`mc_error_detail`, with `mc_error=no_accounts`). |
-| `account_picker` | `object\|null` | When non-null, the connection flow includes an account / page / channel picker after OAuth or direct discovery. Key fields: `set_endpoint` (always `/UserAgentOAuth/SetPickerAccounts`), `trigger_param` (the redirect parameter that carries the list, such as `gads_accounts`), `url_item_fields` (maps each `accounts[]` key to a field of the list items, such as `{ "customerid": "id" }`), `multi_select` (`true` when 1+ entries can be picked, `false` for exactly one), `item_value_field` / `item_label_field` (which entry keys identify and label each account in the response), `item_noun` / `item_noun_plural` (what one item and several items are called, in Title Case, such as `Property` / `Properties` for GA4 or `Ad Account` / `Ad Accounts` for Meta Ads; `next` has its own, such as `Page` / `Pages`), `item_fields_to_save` (the fields each entry in the `accounts` body carries; only `item_value_field` is required), and optional `next` for a chained picker. `next.discover_endpoint` is `/UserAgentOAuth/DiscoverPickerItems`; its `key`, parent/item fields, `set_endpoint`, and `persist_field` define the grouped child-selection request and stored result. Meta Ads uses this for ad account → Facebook Pages, and Google Business Profile for account → locations. |
-| `direct_probe` | `object\|null` | Registry contract for a non-redirect mode: identifies the mode and its token field, validates it server-side, discovers selectable accounts, and declares which public account fields may be returned. |
-| `extra_step` | `object\|null` | Reserved for providers with a third onboarding step beyond OAuth + picker (currently null for every provider). |
-
-**`fieldstatus` values**. Note: this is **not** part of the registry schema; it's the classification the server stamps onto each stored credential field when it's written. It controls who can see the value:
-
-| Value | Who writes it | Visible to API caller? |
-|-------|---------------|------------------------|
-| `user` | API callers + UI users | Yes |
-| `oauth_app` | API callers + UI users (own mode; Shopify also `api_key`) | **Partly**: stripped from Detail responses. In history, secret fields such as `clientsecret` / `appsecret` are redacted to `[REDACTED]`; `clientid` / `appid` are not redacted |
-| `oauth_session` | OAuth callback (server-only) | **No**: always stripped from responses |
-| `oauth_picker` | OAuth callback / `Set*` picker endpoints | Yes |
-| `platform` | Wiro internal | **No**: always stripped from responses |
-| `computed` | Server-derived | Yes |
-| `control` | API callers, UI users and the connection flow (the `authmethod` switch) | Yes |
+**`fieldstatus`**. Not part of the registry schema: the server stamps it onto each stored field when it is written. Values you save are `user` and come back in responses (a secret as the mask). `platform` fields are Wiro's own: you can't write them, and they never come back.
 
 ### **POST** /Credentials/Detail
 
@@ -19046,201 +18679,41 @@ Returns a single credential entry by key.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `key` | string | Yes | Canonical credential key (e.g. `"instagram"`, `"google-ads"`, `"telegram"`). |
+| `key` | string | Yes | Canonical credential key (e.g. `"telegram"`, `"twilio-voice"`, `"wiro"`). |
 
 ##### Response
 
-Returns the **same full credential entry** as a row from `Credentials/List`: every field listed in the table above is present. Example for `key: "instagram"`:
+Returns the **same entry** as a row from `Credentials/List` (shortened here):
 
 ```json
 {
   "result": true,
   "errors": [],
   "credential": {
-    "key": "instagram",
-    "title": "Instagram",
-    "icon": "/images/icons/skills/instagram.svg",
-    "brand_color": "#e4405f",
-    "brand_text_color": "#ffffff",
-    "brand_logo_filter": "none",
-    "docs_url": "integration-instagram-skills",
-    "credential_mode": "hybrid",
-    "connection_modes": ["api_key", "own", "wiro"],
-    "default_connection_mode": "api_key",
-    "mode_badges": {
-      "api_key": "Recommended",
-      "own": "Advanced"
-    },
-    "wiro_connect_pending": true,
+    "key": "twilio-voice",
+    "title": "Twilio Voice",
+    "icon": "/images/icons/skills/twilio.svg",
+    "credential_mode": "api_key",
     "credential_schema": [
-      {
-        "key": "appid",
-        "type": "text",
-        "label": "App ID",
-        "required": true,
-        "pattern": "^[0-9]+$",
-        "help": "Meta for Developers → My Apps → Create App → copy App ID.",
-        "oauth_managed": true,
-        "only_in_modes": ["own"]
-      },
-      {
-        "key": "appsecret",
-        "type": "password",
-        "label": "App Secret",
-        "required": true,
-        "show_toggle": true,
-        "help": "Meta for Developers → App Settings → Basic → Show next to App Secret.",
-        "oauth_managed": true,
-        "only_in_modes": ["own"]
-      },
-      {
-        "key": "systemusertoken",
-        "type": "password",
-        "label": "System User Token",
-        "required": true,
-        "encrypted": true,
-        "show_toggle": true,
-        "runtime_excluded": true,
-        "only_in_modes": ["api_key"]
-      },
-      {
-        "key": "accountId",
-        "type": "text",
-        "label": "Instagram Account ID",
-        "required": true,
-        "pattern": "^[0-9]+$",
-        "auto_filled_by_oauth": true,
-        "readonly_when_connected": true
-      },
-      {
-        "key": "igusername",
-        "type": "text",
-        "label": "Connected Account",
-        "required": false,
-        "auto_filled_by_oauth": true,
-        "readonly_when_connected": true
-      }
-    ],
-    "oauth_provider": {
-      "auth_method_value": "wiro",
-      "connect_endpoint": "/UserAgentOAuth/OAuthConnect",
-      "disconnect_endpoint": "/UserAgentOAuth/OAuthDisconnect",
-      "status_endpoint": "/UserAgentOAuth/OAuthStatus",
-      "connect_button_label": "Connect with Instagram",
-      "connect_button_icon": "/images/icons/skills/instagram.svg",
-      "connect_button_brand_color": "#e4405f",
-      "connect_button_text_color": "#ffffff",
-      "connect_button_logo_filter": "none",
-      "username_field": "igusername",
-      "return_query_param": "ig_connected",
-      "return_error_param": "ig_error",
-      "return_error_detail_param": "ig_error_detail",
-      "direct_probe": {
-        "mode": "api_key",
-        "mode_label": "System User Token",
-        "token_field": "systemusertoken",
-        "required_fields": ["systemusertoken"],
-        "public_account_fields": ["id", "name"]
-      },
-      "account_picker": {
-        "enabled": true,
-        "multi_select": true,
-        "set_endpoint": "/UserAgentOAuth/SetPickerAccounts",
-        "item_value_field": "accountId",
-        "item_label_field": "igusername",
-        "item_noun": "Account",
-        "item_noun_plural": "Accounts",
-        "item_fields_to_save": ["accountId", "igusername"]
-      },
-      "extra_step": null
-    },
-    "used_by_skills": ["int-instagram-post"]
+      { "key": "accountsid", "type": "text", "label": "Account SID", "required": true, "encrypted": true },
+      { "key": "authtoken", "type": "password", "label": "Auth Token", "required": true, "encrypted": true },
+      { "key": "phonenumbers", "type": "string-array", "label": "Phone numbers", "required": true },
+      { "key": "maxcallseconds", "type": "number", "label": "Max call duration (seconds)", "required": false }
+    ]
   }
 }
 ```
 
-Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not found: <key>" }] }` if the key is unknown.
+Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not found: <key>" }] }` if the key is unknown, a connector's key included: a connector is read with [`POST /AgentConnector/Detail`](/docs/agent-connectors#post-agentconnectordetail).
 
-## Integration Catalog
+## The Agent's Wiro Project
 
-### OAuth Integrations
-
-| Integration | Auth Modes | Setup Guide |
-|-------------|------------|-------------|
-| Meta Ads | Own OAuth + System User token; Wiro-owned OAuth deferred until Advanced Access | [Meta Ads Skills](/docs/integration-metaads-skills) |
-| TikTok Ads | Wiro only (TikTok for Business; authorization lasts 30 days, reconnect to renew) | [TikTok Ads Skills](/docs/integration-tiktokads-skills) |
-| Shopify | Expiring offline OAuth + refresh token, or same-org client credentials (`expires_in: 86399`) | [Shopify Skills](/docs/integration-shopify-skills) |
-| Reddit | Unavailable pending Reddit Data API approval and Wiro's written commercial contract | [Reddit Skills](/docs/integration-reddit-skills) |
-| Facebook Page | System User token (recommended) + Own OAuth (advanced); Wiro mode coming soon | [Facebook Page Skills](/docs/integration-facebook-skills) |
-| Instagram | System User token (recommended) + Own Instagram OAuth (advanced); Wiro mode coming soon | [Instagram Skills](/docs/integration-instagram-skills) |
-| LinkedIn | Own only (Wiro mode coming soon) | [LinkedIn Skills](/docs/integration-linkedin-skills) |
-| Twitter / X | Wiro + Own | [Twitter Skills](/docs/integration-twitter-skills) |
-| TikTok | Own only (Wiro mode coming soon) | [TikTok Skills](/docs/integration-tiktok-skills) |
-| Google Ads | Own only (Wiro mode coming soon) | [Google Ads Skills](/docs/integration-googleads-skills) |
-| YouTube | Own only (Wiro mode coming soon) | [YouTube Skills](/docs/integration-youtube-skills) (shares Google OAuth client with Google Ads) |
-| Google Analytics 4 | Own only (Wiro mode coming soon) | [Google Analytics 4 Skills](/docs/integration-ga4-skills) (shares Google OAuth client with Google Ads) |
-| Google Search Console | Own only (Wiro mode coming soon) | [Google Search Console Skills](/docs/integration-searchconsole-skills) (shares Google OAuth client with Google Analytics 4) |
-| Merchant Center | Own only (Wiro mode coming soon) | [Merchant Center Skills](/docs/integration-merchantcenter-skills) (shares Google OAuth client with Google Ads) |
-| Google Business Profile | Own only (your Google Cloud project, approved for Business Profile API access) | [Google Business Profile Skills](/docs/integration-googlebusiness-skills) |
-| HubSpot | Wiro + Own | [HubSpot Skills](/docs/integration-hubspot-skills) |
-| Mailchimp | Wiro + Own + API Key | [Mailchimp Skills](/docs/integration-mailchimp-skills) |
-
-> **Google OAuth is shared across 5 APIs.** Google Ads, YouTube, Google Analytics 4, Merchant Center and Google Search Console can all be authorized through one of your own OAuth clients (one Google Cloud project, one OAuth 2.0 Client ID, multiple API scopes), or you can set up separate ones per product. Wiro's shared client for "wiro" mode is coming soon. Google Business Profile is not part of that shared client: it is own mode only, and the Google Cloud project behind your OAuth client must be approved for Business Profile API access.
-
-### Service Account Integrations
-
-| Integration | Setup Guide |
-|-------------|-------------|
-| Google Drive | [Google Drive Skills](/docs/integration-googledrive-skills) |
-| Google Calendar | [Google Calendar Skills](/docs/integration-google-calendar-skills) |
-| Google Play | [Google Play Skills](/docs/integration-googleplay-skills) |
-
-> **Meta Platforms availability:** Meta Ads, Facebook Pages, and Instagram all
-> offer customer-owned Business Manager System User connections now. Meta Ads
-> and Facebook Pages also offer customer-owned Facebook OAuth; Instagram offers
-> customer-owned Instagram Login OAuth. Their Wiro-shared OAuth modes remain
-> pending provider review.
-
-### API Key Integrations
-
-| Integration | Setup Guide |
-|-------------|-------------|
-| Serper Web Search | [Serper Web Search Skills](/docs/integration-serper-search-skills) |
-| Gmail | [Gmail Skills](/docs/integration-gmail-skills) |
-| Telegram | [Telegram Skills](/docs/integration-telegram-skills) |
-| Firebase | [Firebase Skills](/docs/integration-firebase-skills) |
-| WordPress | [WordPress Skills](/docs/integration-wordpress-skills) |
-| Shopify (same-organization client ID + secret) | [Shopify Skills](/docs/integration-shopify-skills) |
-| WooCommerce | [WooCommerce Skills](/docs/integration-woocommerce-skills) |
-| Meta Ads (System User token) | [Meta Ads Skills](/docs/integration-metaads-skills) |
-| Facebook Pages (System User token) | [Facebook Page Skills](/docs/integration-facebook-skills) |
-| Instagram (System User token) | [Instagram Skills](/docs/integration-instagram-skills) |
-| App Store Connect | [App Store Skills](/docs/integration-appstore-skills) |
-| Apollo | [Apollo Skills](/docs/integration-apollo-skills) |
-| Lemlist | [Lemlist Skills](/docs/integration-lemlist-skills) |
-| Roasit | [Roasit Skills](/docs/integration-roasit-skills) |
-| DataForSEO | [DataForSEO Skills](/docs/integration-dataforseo-skills) |
-| Keepa | [Keepa Skills](/docs/integration-keepa-skills) |
-| RevenueCat | [RevenueCat Skills](/docs/integration-revenuecat-skills) |
-| Adapty | [Adapty Skills](/docs/integration-adapty-skills) |
-| Brevo | [Brevo Skills](/docs/integration-brevo-skills) |
-| SendGrid | [SendGrid Skills](/docs/integration-sendgrid-skills) |
-| Twilio Voice | [Twilio Voice](/docs/integration-twiliovoice-skills) |
-| Wiro AI Models | See [Using Wiro AI Models from Your Agent](/docs/agent-skills#using-wiro-ai-models-from-your-agent) |
-| Calendarific | See [Calendarific in your agent](#calendarific-in-your-agent) |
-
-## Wiro AI Models & Calendarific (User-Provided)
-
-Two integrations are **user-input credentials** that ship in agent templates but require you (or your end users) to supply the key before the skill runs. They appear in `POST /UserAgent/Detail` `credentials[]` and accept writes via `POST /UserAgent/CredentialUpsert` like any other API-key integration.
-
-### Wiro AI Models: `wiro` credential
-
-The `int-wiro-aimodels` skill lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) using **one of your Wiro projects**. Each generated asset is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
+The `wiro` credential is the Wiro project an agent runs Wiro AI models with: the skills that make video or images, and the live audio of its voice calls. Each run is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
 
 - **Credential key:** `wiro`
 - **Field:** `apikey` (label "Wiro Project"; single field, type `custom:wiro-project-picker` in the registry; the dashboard renders it as a project picker).
-- **No secret to supply.** Only the project is needed. Request signing for the agent's internal Wiro calls is handled automatically: Wiro derives the project's signing secret server-side from the key you pick, so there is no `apisecret` (or similar) field to paste.
-- **Setup in the dashboard:** open the agent's **Connectors** tab and pick a project, or create one on the [Projects page](https://wiro.ai/panel/project).
+- **No secret to supply.** Only the project is needed. Request signing for the agent's own Wiro calls is handled automatically, so there is no `apisecret` (or similar) field to paste.
+- **Setup in the dashboard:** open the agent's settings and pick a project, or create one on the [Projects page](https://wiro.ai/panel/project).
 - **Setup through the API:** take the project's `id` from `POST /Project/List` and call [`POST /UserAgent/CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind). A request made with a project API key can leave `projectid` out to bind that key's own project:
 
 ```bash
@@ -19257,29 +18730,7 @@ The response names the project and says what happened to the agent: `{ "result":
 
 > **Don't confuse `credentials.wiro.apikey` with your operator-level Wiro API key.** `credentials.wiro.apikey` is the project key the agent uses to run Wiro models. The `x-api-key` header you send to Wiro endpoints from your own backend is your operator key, which authenticates your request (see [Authentication](/docs/authentication)). They are the same key only when you bind the project of the key you call with.
 
-Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, TikTok Ads, Google Ads) ship with `int-wiro-aimodels: true` enabled. The agent starts without a Wiro project and runs Wiro models once one is connected. Where the template marks this connector required (`optional: false`), `UserAgent/Detail` reads `setuprequired: true` until then.
-
-### Calendarific in your agent
-
-The `int-calendarific` skill discovers global holidays and observances across 230+ countries via the [Calendarific](https://calendarific.com/) API. The free tier (1,000 calls/month) covers most agent use cases.
-
-- **Credential key:** `calendarific`
-- **Field:** `apikey` (`type: "password"`, encrypted at rest)
-- **Setup:**
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "fields": [
-      { "credentialkey": "calendarific", "fieldname": "apikey", "fieldvalue": "your_calendarific_api_key" }
-    ]
-  }'
-```
-
-Templates that scan global holidays (App Event Manager, Push Notification Manager, Meta Ads, TikTok Ads, Google Ads) ship with `int-calendarific: true` and mark this connector optional (`optional: true`), so `setuprequired` doesn't wait for it. The agent starts without a key, and its holiday lookups need one.
+The [Wiro connector](/docs/agent-connectors#the-wiro-connector), which gives the agent Wiro's own tools, takes its project when you connect it.
 
 ## Platform-Managed Credentials
 
@@ -19288,6 +18739,7 @@ Some credential fields are **managed by Wiro**. You don't provide them, and they
 - The chat model your agent runs on is set up by Wiro. Pick the model with `UserAgent/UpdateSettings`; there is no key to supply.
 
 `CredentialUpsert` rejects writes to these fields with `<Field label> is managed by the platform`, and Deploy drops them from `credentials`.
+
 
 ## Auditing Credential Changes: `CredentialFieldHistory`
 
@@ -19299,7 +18751,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialFieldHistory" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-    "credentialkey": "instagram"
+    "credentialkey": "telegram"
   }'
 ```
 
@@ -19313,9 +18765,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialFieldHistory" \
     {
       "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
       "useragentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-      "credentialkey": "instagram",
-      "fieldname": "igusername",
-      "fieldvalue": "myaccount",
+      "credentialkey": "telegram",
+      "fieldname": "allowedusers",
+      "fieldvalue": ["123456789"],
       "fieldstatus": "user",
       "parentfield": null,
       "ordinal": 0,
@@ -19331,28 +18783,6 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialFieldHistory" \
         "avatarinitials": "AL"
       },
       "changedat": 1714694410
-    },
-    {
-      "guid": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
-      "useragentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-      "credentialkey": "instagram",
-      "fieldname": "clientsecret",
-      "fieldvalue": "[REDACTED]",
-      "fieldstatus": "oauth_app",
-      "parentfield": null,
-      "ordinal": 0,
-      "operation": "upsert",
-      "changedby": "ada-uuid",
-      "changedby_user": {
-        "uuid": "ada-uuid",
-        "firstname": "Ada",
-        "lastname": "Lovelace",
-        "email": "ada@example.com",
-        "username": "ada",
-        "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
-        "avatarinitials": "AL"
-      },
-      "changedat": 1714600000
     }
   ]
 }
@@ -19363,19 +18793,19 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialFieldHistory" \
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid |
-| `credentialkey` | string | Yes | Provider key (e.g. `"instagram"`, `"wordpress"`) |
+| `credentialkey` | string | Yes | Credential key (e.g. `"telegram"`, `"twilio-voice"`) |
 | `startdate` | number | No | UTC epoch seconds: return entries on/after this time |
 | `enddate` | number | No | UTC epoch seconds: return entries on/before this time |
 
-> **Sensitive values are redacted in history.** `oauth_session` rows (access/refresh tokens) **never** appear in history at all (they're stripped before persisting). `clientsecret` is stored as `[REDACTED]` in history rows; the live secret stays server-side. `POST /UserAgent/Detail` returns the current values of the fields you can see, each saved secret as `"••••••••"`; `CredentialFieldHistory` only shows the audit trail.
+> **Secrets stay out of the history's answers.** A saved secret such as a bot token or an auth token comes back as `"••••••••"`, in `POST /UserAgent/Detail` as in the history. `CredentialFieldHistory` only shows the audit trail.
 
-## Setting API Key Credentials
+## Setting Credentials
 
-Use `POST /UserAgent/CredentialUpsert` with a flat `fields[]` array. Each field row carries `{credentialkey, fieldname, fieldvalue}`. Each integration page documents the exact field names and shape. The Wiro project an agent runs models with has its own route, [`POST /UserAgent/CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind), which takes the project's `id`.
+Use `POST /UserAgent/CredentialUpsert` with a flat `fields[]` array. Each field row carries `{credentialkey, fieldname, fieldvalue}`. The Wiro project an agent runs models with has its own route, [`POST /UserAgent/CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind), which takes the project's `id`.
 
 ### Bulk upsert pattern
 
-`/UserAgent/CredentialUpsert` takes an array of field rows in one request. Only the fields you send are written; other credential groups and other fields inside the same group are untouched. The Wiro Dashboard follows this pattern exactly: each connector card sends a single `CredentialUpsert` call with its group's fields.
+`/UserAgent/CredentialUpsert` takes an array of field rows in one request. Only the fields you send are written; other credential groups and other fields inside the same group are untouched. The Wiro Dashboard follows this pattern exactly: each credential card sends a single `CredentialUpsert` call with its group's fields.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
@@ -19384,31 +18814,28 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -d '{
     "useragentguid": "your-useragent-guid",
     "fields": [
-      { "credentialkey": "gmail", "fieldname": "account",     "fieldvalue": "agent@company.com" },
-      { "credentialkey": "gmail", "fieldname": "apppassword", "fieldvalue": "xxxx xxxx xxxx xxxx" }
+      { "credentialkey": "telegram", "fieldname": "bottoken",     "fieldvalue": "123456:ABC-DEF..." },
+      { "credentialkey": "telegram", "fieldname": "allowedusers", "fieldvalue": ["123456789"] }
     ]
   }'
 ```
 
-Response: `{ "result": true, "applied": 2, "errors": [] }`. `applied` is the count of fields saved without an error (a field sent with its current value still counts; a secret sent back as the mask isn't counted, see below). All fields are validated before any is written: if one fails validation (for example a reserved fieldname prefixed with `_`), the whole request is rejected and nothing is saved; `result` is `false` and `errors` lists every invalid field. If a save fails after validation has passed, the other fields are still saved and each failed field is listed in `errors` with `result: false`. A starting or running agent restarts to apply the new values when the call changes a saved value. Saving only fields of a sign-in credential that isn't connected before or after the save, such as own-mode app keys, a System User token or `authmethod` before the sign-in or token check, restarts nothing: the connection that follows restarts the agent once.
+Response: `{ "result": true, "applied": 2, "errors": [] }`. `applied` is the count of fields saved without an error (a field sent with its current value still counts; a secret sent back as the mask isn't counted, see below). All fields are validated before any is written: if one fails validation (for example a reserved fieldname prefixed with `_`), the whole request is rejected and nothing is saved; `result` is `false` and `errors` lists every invalid field. If a save fails after validation has passed, the other fields are still saved and each failed field is listed in `errors` with `result: false`. A starting or running agent restarts to apply the new values when the call changes a saved value.
 
 ### Field-level write rules
 
-- **`fieldstatus` is assigned by the server.** Any `fieldstatus` you send is ignored: a field that already exists keeps its stored status, and a new field gets the status its registry schema implies. That is why own-mode app keys (`clientid` / `clientsecret`, `appid` / `appsecret`, …) and the `authmethod` switch can be written here. Fields that the connection flow fills in (schema flag `auto_filled_by_oauth` or `server_managed`, such as account and page selections) are rejected with `<Field label> is managed by the connection flow` in `errors[]`; set them through the OAuth and picker endpoints. OAuth tokens are written by Wiro's OAuth callback flow, not by your API.
-- **Wiro-managed fields and OAuth tokens are rejected.** You can't write a field whose status is `platform` or `oauth_session`. A `platform` field fails with `<Field label> is managed by the platform` and an `oauth_session` field with `<Field label> is managed by the connection flow`; a field with no schema label is named `<credentialkey>.<fieldname>` instead. As with any invalid field, the whole request is rejected and nothing is saved.
-  - `platform`: fields Wiro manages, such as Reddit's approval flags that Wiro sets after its own review (`developerprofileverified`, `dataapiaccessapproved`, `commercialwrittenapproval`).
-  - `oauth_session`: the token fields `accesstoken`, `refreshtoken`, `connectedat`, `tokenexpiresat` and `refreshtokenexpiresat`, on any credential and in any letter case. They have no schema label, so the message reads, for example, `reddit.accesstoken is managed by the connection flow`.
-  - These fields are rejected whatever status is stored. For any other field, the rejection check uses the schema's status when the registry schema declares it as a top-level field, even if a different status is stored, and the stored status otherwise; the write is rejected when that status is `platform` or `oauth_session`.
+- **`fieldstatus` is assigned by the server.** Any `fieldstatus` you send is ignored: a field that already exists keeps its stored status, and a new field gets the status its registry schema implies.
+- **Wiro-managed fields are rejected.** You can't write a field whose status is `platform`: it fails with `<Field label> is managed by the platform` (a field with no schema label is named `<credentialkey>.<fieldname>` instead). As with any invalid field, the whole request is rejected and nothing is saved.
 - **Reserved fieldnames are rejected.** Any `fieldname` starting with `_` (e.g. `_isoptional`, `_isextra`) is a sentinel used by the template itself and cannot be set by API callers.
-- **A secret sent back as the mask keeps its saved value.** `UserAgent/Detail` shows a saved secret (a `password` or `fileinput-base64` field) as `"••••••••"`. A row whose `fieldvalue` is that mask, with or without spaces around it, keeps what is saved: it isn't written, isn't counted in `applied` and restarts nothing. So a card sent back as Detail showed it changes only the fields you edited, unless a list in it has two saved entries with the same values (see below). To change a secret, send its new value. In a list sent whole, such as `firebase.accounts` or `adjust.apps`, an entry whose secret is the mask keeps the secret of the saved entry with the same values in its other fields (lists inside the entry don't count). When no single saved entry matches, because you changed one of those values or two saved entries share them, the request is refused with `<Key label> in <List label> #<n> stands for a saved value, but this entry matches no single saved one. Enter the <Key label> again` and nothing is saved: send that entry's secret itself. The mask with other text beside it is refused too, with `<Field label> holds "••••••••", which stands for a saved value. Clear it and enter the full value`.
-- **Whitespace around a value is trimmed.** Text, password, email, URL and number values, and each entry of a list of strings, are saved without the spaces, tabs or line breaks around them and are validated after trimming, so a client ID pasted with a trailing newline is accepted. Spaces inside a value are kept (an app password with spaces keeps them), and multi-line text, selections, booleans, files and nested rows are saved as sent. The same applies to inline Deploy credentials.
-- Standard integration credential groups must be declared by the agent template. Communication-channel credentials are the exception: every useragent may create the channel groups published in `POST /Skills/List` → `channels[]`, using `CredentialUpsert` or inline Deploy credentials.
-- **Nested arrays** (`firebase.accounts[].apps[]`, `google-drive.folders[]`, `apple-appstore.apps[]`, etc.) are supported via the optional `parentfield` (the list field's key, e.g. `"accounts"`) and `ordinal` (array index) on each field row. An array `fieldvalue` (with no `parentfield`) replaces the whole stored list, so send the complete desired list. Per-row writes (a sub-field sent with `parentfield` and `ordinal`) change only that entry; indices you don't send are kept. To clear an optional top-level list (e.g. `google-drive.folders`, `apple-appstore.apps`), send `[]` as that field's `fieldvalue` with no `parentfield`. A nested list such as `firebase.accounts[].apps[]` is always sent whole: inside the parent `accounts` list, or as that entry's `apps` row (`parentfield: "accounts"` plus the entry's `ordinal`); `firebase.accounts` itself is required and can't be cleared.
+- **A secret sent back as the mask keeps its saved value.** `UserAgent/Detail` shows a saved secret (a `password` field) as `"••••••••"`. A row whose `fieldvalue` is that mask, with or without spaces around it, keeps what is saved: it isn't written, isn't counted in `applied` and restarts nothing. So a card sent back as Detail showed it changes only the fields you edited. To change a secret, send its new value. The mask with other text beside it is refused, with `<Field label> holds "••••••••", which stands for a saved value. Clear it and enter the full value`.
+- **Whitespace around a value is trimmed.** Text, password, email, URL and number values, and each entry of a list of strings, are saved without the spaces, tabs or line breaks around them and are validated after trimming, so a token pasted with a trailing newline is accepted. Spaces inside a value are kept, and multi-line text, selections, booleans, files and nested rows are saved as sent. The same applies to inline Deploy credentials.
+- Credential groups other than the channels must be declared by the agent template. Communication-channel credentials are the exception: every useragent may create the channel groups published in `POST /Skills/List` → `channels[]`, using `CredentialUpsert` or inline Deploy credentials.
+- **Lists** (Telegram `groups[]`, Slack `channels[]`, Discord `guilds[]`, Twilio `phonenumbers[]`) are sent as JSON arrays. An array `fieldvalue` (with no `parentfield`) replaces the whole stored list, so send the complete desired list. Per-row writes (a sub-field sent with `parentfield`, the list field's key, and `ordinal`, the array index) change only that entry; indices you don't send are kept. To clear an optional list, send `[]` as that field's `fieldvalue` with no `parentfield`.
 - Use `POST /UserAgent/Detail` to inspect which fields each credential exposes, and the `_connected` / `optional` / `extra` flags that describe its readiness state.
 
 ### Prepaid deploy: inline setup supported (with limitations)
 
-If you call `POST /UserAgent/Deploy` with `useprepaid: true`, you may pass `credentials`, `customskills` (or the equivalent key `customskills`), and `skills` at the **top level of the Deploy body**. The server saves them on the new agent in the same call (one-shot deploy + initial setup).
+If you call `POST /UserAgent/Deploy` with `useprepaid: true`, you may pass `credentials`, `customskills`, and `skills` at the **top level of the Deploy body**. The server saves them on the new agent in the same call (one-shot deploy + initial setup). Connectors aren't part of Deploy: connect them once the agent exists, with [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect).
 
 **Deploy body `credentials` rules:**
 
@@ -19416,8 +18843,8 @@ If you call `POST /UserAgent/Deploy` with `useprepaid: true`, you may pass `cred
 - Registry-declared `string-array` and `object-array` fields are accepted as native JSON arrays. This includes channel allowlists (`allowedusers`, Telegram `groups`, Slack `channels`, Discord `guilds`).
 - Fieldnames starting with `_` are reserved and ignored.
 - Each field's `fieldstatus` is assigned by the server, exactly as for `CredentialUpsert`.
-- Deploy never saves a `platform` or `oauth_session` field sent in `credentials`, such as one of Reddit's approval flags or `accesstoken`. This applies whether `credentials` is sent as an object or as a JSON string. In a communication-channel group (Telegram, Slack, Discord), such a field fails Deploy before the agent is created. In any other group, the field is dropped and Deploy continues.
-- A secret sent as the mask, `"••••••••"`, isn't saved: a new agent has no saved value for it to keep. In a communication-channel group (Telegram, Slack, Discord), the mask is refused with `<Field label> holds "••••••••", which stands for a saved value. Clear it and enter the full value`, and Deploy fails before the agent is created. In a list, such as `firebase.accounts`, an entry whose secret is the mask takes it only from a saved entry with the same values, and a new agent has none, so that list isn't saved. `UserAgent/Detail` never returns a saved secret, so to copy one agent's setup to another, send each secret's value.
+- Deploy never saves a `platform` field sent in `credentials`. In a communication-channel group (Telegram, Slack, Discord), such a field fails Deploy before the agent is created. In any other group, the field is dropped and Deploy continues.
+- A secret sent as the mask, `"••••••••"`, isn't saved: a new agent has no saved value for it to keep. In a communication-channel group (Telegram, Slack, Discord), the mask is refused with `<Field label> holds "••••••••", which stands for a saved value. Clear it and enter the full value`, and Deploy fails before the agent is created. `UserAgent/Detail` never returns a saved secret, so to copy one agent's setup to another, send each secret's value.
 - If `credentials` includes a communication-channel group, all of that channel's `required_fields` must be present. A missing or invalid activation credential fails Deploy instead of creating a partially configured channel.
 
 **Deploy body `customskills` semantics:**
@@ -19427,836 +18854,35 @@ If you call `POST /UserAgent/Deploy` with `useprepaid: true`, you may pass `cred
 - The request body accepts a single top-level `customskills` array; server-side values are merged onto any existing preset rows for the same key.
 - Up to 50 entries per Deploy. A longer list is refused before anything is created or charged; add the rest with `CustomSkillUpsert` once the agent is deployed.
 
-If you skip these keys in Deploy entirely, the instance is created empty and you set credentials/skills later with `CredentialUpsert`, `CredentialProjectBind`, `CustomSkillUpsert`, and `SkillsApply`.
-
-## OAuth Authorization Flow
-
-For services that require user authorization, Wiro implements a full OAuth redirect flow. Your end users interact only with your app and the provider's consent screen, which shows your app's name in own mode and Wiro's in Wiro mode. A callback that cannot be matched to your flow, `missing_params`, or `session_expired` more than 24 hours after `OAuthConnect`, ends instead on a plain page of the API's own, `https://api.wiro.ai/v1/UserAgentOAuth/SignInNotFinished`, which names no brand and links nowhere: it says the sign-in could not be finished and shows the error code.
-
-> The `redirecturl` you pass to `OAuthConnect` is **your own URL**: any https page you control, or `http://localhost` / `http://127.0.0.1` for development. After authorization, users are redirected back to your app with status query parameters and, for credentials with an account picker, the list of accounts to show in your own UI (see [Callback success & error parameters](#callback-success-error-parameters)).
-
-### Generic flow
-
-```
-Your App (Frontend)           Your Backend              Wiro API              Provider
-       |                            |                       |                      |
-  (1)  | "Connect X" click          |                       |                      |
-       |--------------------------->|                       |                      |
-  (2)  |                            |  POST OAuthConnect -> |                      |
-       |                            |  { useragentguid,     |                      |
-       |                            |    credentialkey,     |                      |
-       |                            |    redirecturl,       |                      |
-       |                            |    authmethod }       |                      |
-  (3)  |                            |<-- { authorizeUrl }   |                      |
-  (4)  |<--- redirect to authorizeUrl -------------------------------------------->|
-  (5)  |                            |                       |<-- User clicks Allow |
-  (6)  |                            |  (invisible callback) |                      |
-       |                            |  Wiro exchanges code  |<---------------------|
-       |                            |  for tokens, saves    |                      |
-  (7)  |<------- 302 to YOUR redirecturl --------------------------------------->  |
-       |   ?<prefix>_connected=true&...  or  ?<prefix>_error=<code>                |
-  (8)  | User picks accounts        |                       |                      |
-       |--------------------------->|                       |                      |
-  (9)  |                            |  SetPickerAccounts -> |                      |
- (10)  |                            |  OAuthStatus -------> |                      |
-```
-
-Steps 8 and 9 apply to credentials with an account picker; Meta Ads and Google Business Profile add a second picker step with `DiscoverPickerItems`. Call the Wiro endpoints (steps 2, 9 and 10) from your backend with your API key, not from the browser.
-
-Each `OAuthConnect` call starts a sign-in, or a token check in a direct mode, and answers its `flowid`. The accounts it lists stay on Wiro's server for 15 minutes, for the account that started it: [`OAuthStatus`](#post-useragentoauthoauthstatus) returns them as `candidates` until they are saved, so your backend can read them without the redirect. The connection restarts a starting or running agent once, when it is complete: at the account save for a credential with an account picker, at the end of the sign-in or token check otherwise. See [Automatic Restart](/docs/agent-overview#automatic-restart).
-
-Google sign-ins (Google Ads, Google Analytics 4, Google Business Profile, Merchant Center and YouTube) always open Google's account chooser and then its consent screen (`prompt=select_account consent`), so the person picks the Google account to connect even when the browser is already signed in to one, and Google issues a refresh token each time.
-
-### Auth Methods: `"wiro"` vs `"own"`
-
-|  | `"wiro"` | `"own"` |
-|--|---------|---------|
-| **OAuth app credentials** | Wiro's pre-configured app | Your own app on the provider's developer portal |
-| **Setup required** | None: just call Connect | Create an app on the provider, save its keys with `CredentialUpsert`, and register Wiro's callback URL |
-| **Consent screen branding** | Shows "Wiro" as the app name | Shows **your app name** |
-| **Redirect after auth** | To your `redirecturl` | To your `redirecturl` |
-| **User sees wiro.ai?** | No | No |
-| **Token management** | Automatic by Wiro | Automatic by Wiro |
-| **Best for** | Quick setup when available | Custom branding or bypassing review processes |
-
-### Own Mode = 2-Step API Flow
-
-Own mode requires two sequential calls before initiating OAuth:
-
-```bash
-# Step 1: Save your provider app credentials + authmethod via CredentialUpsert
-#
-# NOTE: `clientid` / `clientsecret` are own-mode app fields. The server stores
-# them as fieldstatus="oauth_app" (any fieldstatus you send is ignored) and
-# leaves them out of Detail responses. Field names vary by provider, e.g.
-# `appid` / `appsecret` or `clientkey`: check `POST /Credentials/Detail` for
-# this credential's fields and its `connection_modes`.
-
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "fields": [
-      { "credentialkey": "twitter", "fieldname": "clientid",     "fieldvalue": "YOUR_CLIENT_ID" },
-      { "credentialkey": "twitter", "fieldname": "clientsecret", "fieldvalue": "YOUR_CLIENT_SECRET" },
-      { "credentialkey": "twitter", "fieldname": "authmethod",   "fieldvalue": "own" }
-    ]
-  }'
-
-# Step 2: Initiate OAuth
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "twitter",
-    "redirecturl": "https://your-app.com/callback",
-    "authmethod": "own"
-  }'
-```
-
-For credentials whose `connection_modes` includes an enabled `"wiro"` mode, you can skip Step 1 and call Step 2 with `authmethod: "wiro"`. Omitting `authmethod` uses that credential's registry default. Wiro mode is still pending for Google Ads, Google Analytics 4, Merchant Center, YouTube, TikTok, LinkedIn, Facebook Page, Instagram and Meta Ads, and it is their default, so always send `"own"` (or `"api_key"` where offered) for them. Shopify and Reddit default to `"own"`, and Shopify also accepts `"api_key"` (Client ID + Secret, exchanged server-side with no browser redirect). TikTok Ads accepts only `"wiro"`. Google Business Profile accepts only `"own"`, so always send it.
-
-### Callback URL pattern (own mode)
-
-Register this URL in your OAuth app settings on the provider's developer portal:
-
-```
-https://api.wiro.ai/v1/UserAgentOAuth/{Provider}Callback
-```
-
-Provider-specific paths: `XCallback`, `TikTokCallback`, `IGCallback`, `FBCallback`, `LICallback`, `GAdsCallback`, `MetaAdsCallback`, `MCCallback`, `YTCallback`, `GA4Callback`, `GBPCallback`, `HubSpotCallback`, `MailchimpCallback`, `ShopifyCallback`, `RedditCallback`. TikTok Ads uses `TikTokAdsCallback`, but it is Wiro-managed only, so there is no app of your own to register it in. [`OAuthStatus`](#post-useragentoauthoauthstatus) returns the exact URL to register for each credential as `redirecturi`.
-
-### Callback success & error parameters
-
-| Provider | Success Params | Error Param |
-|----------|---------------|-------------|
-| Twitter / X | `x_connected=true&x_username=...` | `x_error=...` |
-| TikTok | `tiktok_connected=true&tiktok_username=...` | `tiktok_error=...` |
-| Instagram | `ig_connected=true&ig_username=...` | `ig_error=...` |
-| Facebook Pages | `fb_connected=true&fb_pages=[...]` | `fb_error=...` |
-| LinkedIn | `li_connected=true&li_name=...` | `li_error=...` |
-| Google Ads | `gads_connected=true&gads_accounts=[...]` | `gads_error=...` |
-| Meta Ads | `metaads_connected=true&metaads_accounts=[...]` | `metaads_error=...` |
-| TikTok Ads | `tiktokads_connected=true&tiktokads_advertisers=[...]` | `tiktokads_error=...` |
-| Merchant Center | `mc_connected=true&mc_accounts=[...]` | `mc_error=...` (+ `mc_error_detail=...` with `no_accounts`) |
-| YouTube | `yt_connected=true&yt_channels=[...]` | `yt_error=...` |
-| GA4 | `ga4_connected=true&ga4_properties=[...]` | `ga4_error=...` |
-| Google Search Console | `gsc_connected=true&gsc_sites=[...]` | `gsc_error=...` |
-| Google Business Profile | `gbp_connected=true&gbp_accounts=[...]` | `gbp_error=...` |
-| HubSpot | `hubspot_connected=true&hubspot_portal=...&hubspot_name=...` | `hubspot_error=...` |
-| Mailchimp | `mailchimp_connected=true&mailchimp_account=...` | `mailchimp_error=...` |
-| Shopify | `shopify_connected=true&shopify_shop=...&shopify_name=...` | `shopify_error=...` |
-| Reddit | `reddit_connected=true&reddit_username=...` | `reddit_error=...` |
-
-> `mc_error_detail` is the only detail parameter. It comes with `mc_error=no_accounts` when Google answered the Merchant Center account list with an error, and holds Google's error status or code, such as `PERMISSION_DENIED` or `403`, never the message.
-
-> **Picker lists:** `fb_pages`, `gads_accounts`, `metaads_accounts`, `tiktokads_advertisers`, `mc_accounts`, `yt_channels`, `ga4_properties` and `gbp_accounts` are always present on success and hold at least one item. When the provider lists nothing to pick, Wiro saves nothing and the callback sends `<prefix>_error=no_accounts` instead (`fb_error=no_pages` for Facebook Pages). For example, the Google user has no Google Ads account, YouTube channel or GA4 property, or the Google Ads developer token is missing or not approved. [Picker data from the redirect](#picker-data-from-the-redirect) lists the fields of each item.
-
-> **Empty values are left out:** Wiro never sends a parameter with an empty value. `x_username`, `tiktok_username`, `ig_username`, `li_name`, `hubspot_portal`, `hubspot_name`, `mailchimp_account`, `shopify_shop` and `shopify_name` come from a profile lookup after the token exchange. When that lookup fails, the parameter is missing but `<prefix>_connected=true` is still sent, so read these with a fallback. `reddit_username` is always present on success: if Wiro cannot read the Reddit account, the callback returns `reddit_error=developer_profile_mismatch` instead.
-
-> **List size:** some lists hold only the provider's first page: Google Business Profile up to 20 accounts, Merchant Center up to 100 accounts, GA4 the properties of up to 200 accounts, YouTube up to 50 channels, and Facebook Pages through Facebook Login the first page Meta returns (25 Pages by default). Meta Ads and TikTok Ads list up to 500 and send `too_many_ad_accounts` or `account_list_too_large` above that. Google Ads lists every customer the user can access directly. A list of more than 2,000 accounts on any credential fails with `account_list_too_large`, and nothing is saved. The list travels in the query string, and each item adds about 90 to 110 bytes, so 200 ad accounts make a URL of about 20 KB. Make sure the server behind your `redirecturl` accepts URLs that long; many servers refuse them with their default limits.
-
-Common error codes across providers:
-
-| Code | Meaning |
-|------|---------|
-| `missing_params` | The callback was opened without an OAuth `state`. Wiro cannot tell which flow it belongs to, so the browser goes to the API's own neutral page, `https://api.wiro.ai/v1/UserAgentOAuth/SignInNotFinished`, with this code instead of to your app. Start a new flow with `OAuthConnect`. |
-| `authorization_denied` | The user cancelled, the provider returned an error or no authorization code, or (Meta Dev Mode) the user is not in App Roles. |
-| `session_expired` | More than 15 minutes passed between `OAuthConnect` and the callback. The browser returns to your `redirecturl` with this code; call `OAuthConnect` again. After 24 hours, or when the `state` is unknown, it goes to the same neutral page as `missing_params` instead. A callback that the browser repeats after a completed one (for example when the provider's Continue button is clicked twice) is not an error: it lands where the first one did. |
-| `flow_replaced` | A newer sign-in or token check for the same agent and credential replaced this sign-in, whoever started it. Wiro saves nothing from it, and the newer one still works. |
-| `token_exchange_failed` | The provider returned no usable token for the authorization code, for example because the saved Client/App Secret is wrong. |
-| `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before the provider returned. A wrong `useragentguid` never gets this far: `OAuthConnect` refuses it with `User agent not found or unauthorized`. |
-| `<Provider> credentials not configured` | Agent's `credentials.<provider>` block is empty (typically `authmethod: "own"` but `clientid` / `clientsecret` missing). Returned in `errors[]` of `OAuthConnect` itself, not as a redirect-URL `*_error` code. Fix with `POST /UserAgent/CredentialUpsert`. |
-| `internal_error` | Unexpected server error. When it happens before the callback has read its flow, the browser goes to the same neutral page as `missing_params`. |
-
-Provider-specific codes:
-
-| Code | Provider | Meaning |
-|------|----------|---------|
-| `no_accounts` | Google Ads, Meta Ads, TikTok Ads, Merchant Center, YouTube, GA4, Google Business Profile | Sign-in worked, but the provider listed nothing the user can pick, and Wiro saved nothing. For Meta Ads this means no active ad account with both `ADVERTISE` and `ANALYZE` tasks; for Google Ads it also covers a missing or refused developer token. Merchant Center may add `mc_error_detail`. Fix the cause and call `OAuthConnect` again. |
-| `no_pages` | Facebook | OAuth succeeded but the user administers no Pages. |
-| `long_lived_exchange_failed` | Meta Ads | Meta did not return a long-lived token with an expiry. |
-| `required_meta_scopes_missing` | Meta Ads | Meta reported the token as invalid, or without every required permission. |
-| `meta_token_expired` | Meta Ads | The token or its data access has expired. |
-| `meta_app_mismatch` | Meta Ads | The token belongs to a different Meta app than the saved App ID. |
-| `too_many_ad_accounts` | Meta Ads | Meta returned more than 500 ad accounts. |
-| `account_list_too_large` | TikTok Ads, and any credential with an account picker | TikTok returned more than 500 advertisers, or the provider listed more than 2,000 accounts to pick from. Nothing is saved. |
-| `invalid_signature` | Shopify | The callback `hmac` is missing or does not match the one computed with the app's Client Secret. Nothing is saved. |
-| `invalid_shop` | Shopify | The callback `shop` is not the `shopdomain` saved on the agent. Nothing is saved. |
-| `developer_profile_mismatch` | Reddit | The Reddit account that approved access is not the saved `developerprofileusername`, or Wiro could not read that account. Nothing is saved. |
-
-Treat any other code like `internal_error`.
-
-> `useragent_not_found` appears only in redirect URLs, when the agent went away during the flow. A `useragentguid` that doesn't exist or isn't yours is refused in the JSON response of `OAuthConnect`, `OAuthStatus`, `OAuthDisconnect`, `DiscoverPickerItems` and `SetPickerAccounts` with `"User agent not found or unauthorized"`.
-
-## Generic OAuth Endpoints
-
-All OAuth integrations share five unified endpoints. The provider is selected via a `credentialkey` body parameter (e.g. `"google-ads"`, `"twitter"`, `"facebook-pages"`):
-
-| Endpoint | Purpose |
-|----------|---------|
-| `POST /UserAgentOAuth/OAuthConnect` | Start OAuth and return an authorize URL, or run a registry-declared direct credential probe and return discovered accounts. |
-| `POST /UserAgentOAuth/OAuthStatus` | Check whether a provider is connected and which accounts are selected, follow a sign-in or token check under way, and read the accounts it listed. |
-| `POST /UserAgentOAuth/OAuthDisconnect` | Clear stored credentials + tokens. |
-| `POST /UserAgentOAuth/DiscoverPickerItems` | Discover grouped child resources for a registry-declared chained picker after its parent accounts are selected. |
-| `POST /UserAgentOAuth/SetPickerAccounts` | Save the user's account selection after OAuth or direct discovery. |
-
-> Each provider's own callback URL (`XCallback`, `IGCallback`, `GAdsCallback`, etc.) is still per-provider because external OAuth platforms redirect to fixed URLs. Only the five endpoints above are unified.
-
-> Discover the full list via [`POST /Credentials/List`](#post-credentialslist). Any entry with a non-null `oauth_provider` can use these endpoints; hybrid credentials may offer OAuth and a direct probe. The `oauth_provider` block declares exact endpoint paths, supported direct mode, and picker contract.
-
-### POST /UserAgentOAuth/OAuthConnect
-
-For OAuth mode, Wiro generates the provider authorize URL and a state token.
-Your frontend redirects the user to `authorizeUrl`; after consent, the provider
-returns to Wiro's registry-declared callback and Wiro redirects the browser to
-your `redirecturl`. For direct modes such as Meta Ads, Facebook Pages, or
-Instagram System User tokens and Shopify client credentials, this endpoint
-validates or exchanges the already-saved credential server-side and returns
-without a browser redirect.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Agent instance GUID. |
-| `credentialkey` | string | Yes | Credential key with an `oauth_provider` block (for example `"google-ads"`, `"twitter"`, `"meta-ads"`, `"facebook-pages"`, `"instagram"`, or `"shopify"`). |
-| `redirecturl` | string | OAuth only | Your page that the browser returns to after OAuth: any https URL you control, or `http://localhost` / `http://127.0.0.1` in development. Direct probes do not use it. |
-| `authmethod` | string | No | One value from the credential's `connection_modes`, such as `"wiro"`, `"own"`, or `"api_key"`. Omission uses `oauth_provider.auth_method_value`. |
-
-> **Your `redirecturl`.** Use any https URL you control; plain http works only on `localhost` and `127.0.0.1` (any port). Wiro adds its parameters to the end of the URL, after `?`, or after `&` when the URL already has a query string, and keeps your own parameters. The redirect does not carry `useragentguid` or `credentialkey`, so put your own context (for example your customer ID) in the query string. Do not use a `#fragment`, because the parameters would land inside it. Values are URL-encoded, and empty values are left out. Success and every error code return to this URL, except a callback without a known `state` or one more than 24 hours after `OAuthConnect`, which ends on the API's own neutral page, `https://api.wiro.ai/v1/UserAgentOAuth/SignInNotFinished`.
-
-> Starting an OAuth flow for a credential that holds a System User token (Meta Ads, Facebook Pages, Instagram) or a Mailchimp API key clears that secret, and the connection and account selection made with it, right away, before the user consents. This also happens if the user then cancels, or if the call fails later, for example because your app keys are not saved.
-
-##### Response
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&redirect_uri=...&scope=...&response_type=code&state=...",
-  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19"
-}
-```
-
-`flowid` names this sign-in: 32 lowercase hex characters. A new sign-in or token check for the same agent and credential replaces it, whoever starts it; an `OAuthConnect` that Wiro refuses before it starts one, such as one with an invalid `redirecturl`, leaves it as it is. Follow the sign-in with [`OAuthStatus`](#post-useragentoauthoauthstatus), and send the `flowid` with [`SetPickerAccounts`](#post-useragentoauthsetpickeraccounts) when you save accounts from its list.
-
-Direct probes return `{ "result": true, "errors": [], "accounts": [...], "flowid": "...", "account": "...", "restart": "none" }` and no `authorizeUrl`. Meta Ads, Facebook Pages and Instagram return `{ id, name }` entries to pick from; Shopify has no picker, so it returns an empty `accounts` array and is connected right away. First save the mode's fields together with `authmethod: "api_key"` through `CredentialUpsert`, then call `OAuthConnect` with the same `authmethod`; without the saved `authmethod` the probe fails with `direct_token_missing`. Each direct call that finds the saved fields clears the credential's earlier connection and account selection before it checks them with the provider, so save the selection again afterwards. A failed probe returns `result: false`, a general message in `errors[]` and an `errorcode` that names the cause, such as `direct_token_missing`, `direct_token_invalid`, `no_accounts`, `no_pages`, `provider_rejected_request` or `provider_timeout`; each integration page lists its codes. The check has a `flowid` like a sign-in, and a failed answer carries it too. `account` names who the token belongs to when the provider says so, such as a Meta System User's name or the Shopify store's name, and is empty otherwise. `restart` is `"scheduled"` when the check restarted the agent, else `"none"`: a check that leaves accounts to pick restarts nothing, and the account save does.
-
-##### Common errors
-
-| Error message | Cause |
-|---------------|-------|
-| `Request parameter [<name>] required` | `useragentguid` or `credentialkey` is missing, or `redirecturl` is missing in an OAuth mode. |
-| `Unknown OAuth credential: <key>` | `credentialkey` not in registry, or not OAuth-enabled. |
-| `Credential is not configured for the generic OAuth dispatcher: <key>` | This credential does not support OAuth. |
-| `Unsupported connection mode for <Provider>` | `authmethod` is not in the credential's `connection_modes`, for example `"own"` for TikTok Ads or `"wiro"` for Shopify and Reddit. |
-| `Invalid redirect URL` | `redirecturl` is not an https URL, or uses http on a host other than `localhost` / `127.0.0.1`. |
-| `<Provider> credentials not configured` | `authmethod: "own"` but `clientid`/`clientsecret` not saved yet. |
-| `Sign-in with the platform's app is not enabled for <Provider>` | `authmethod` is `"wiro"`, or left out where Wiro mode is the default, but that credential's Wiro mode is still pending (`wiro_connect_pending: true`). Use another mode from its `connection_modes`, such as `"own"`. |
-| `<Field> is required` / `Invalid <Field>` | A saved field the provider's consent page needs is missing or malformed: Shopify's `Shop Domain` (`<shop>.myshopify.com`) or Reddit's `Developer Profile Username`. Save it with `CredentialUpsert`. |
-| `The platform must verify ...` | Reddit only: one of the three approval flags Wiro sets after its review is not set yet. You can't set them yourself. |
-| `Invalid provider authorization URL` | The provider's consent URL could not be built from the saved fields. |
-| Direct credential validation message | The saved direct credential fields failed the registry-declared exchange/probe, or no required account was assigned. Read `errorcode` for the cause. |
-| `User agent not found or unauthorized` | `useragentguid` doesn't exist or doesn't belong to the caller. |
-
-Mailchimp's `api_key` mode needs no `OAuthConnect` call: save `apikey` and `authmethod: "api_key"` with `CredentialUpsert`. Sending `authmethod: "api_key"` to `OAuthConnect` for Mailchimp starts a Wiro-mode OAuth flow.
-
-### POST /UserAgentOAuth/OAuthStatus
-
-Returns whether the credential is connected and lists every account/property/page selected via the picker. Use this to render an "Already connected: N accounts selected" UI. It also says how the credential connects, and follows the sign-in or token check under way with the accounts it listed.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Agent instance GUID. |
-| `credentialkey` | string | Yes | OAuth credential key. |
-| `flowid` | string | No | The `flowid` your `OAuthConnect` returned. It filters nothing: the answer always describes the current sign-in or check, so compare `flow.flowid` with yours to tell whether a newer one replaced it. |
-
-##### Response
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "connected": true,
-  "accounts": [
-    { "id": "1234567890", "name": "Acme Corp" },
-    { "id": "0987654321", "name": "Acme Subsidiary" }
-  ],
-  "connectedat": "2026-05-25T12:00:00Z",
-  "tokenexpiresat": "2026-05-25T13:00:00Z",
-  "authmethod": "own",
-  "redirecturi": "https://api.wiro.ai/v1/UserAgentOAuth/GAdsCallback",
-  "appkeyssaved": true,
-  "tokensaved": false,
-  "flow": {
-    "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
-    "mine": true,
-    "mode": "own",
-    "status": "saved",
-    "account": "",
-    "errorcode": "",
-    "errordetail": "",
-    "restart": "scheduled",
-    "expiresat": 1779711270
-  }
-}
-```
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `connected` | `boolean` | `true` when the active mode has a validated secret, the access token has not passed `tokenexpiresat`, and, for picker credentials, at least one account is selected. Second-step picks (Meta Ads Pages, Business Profile locations) don't count; `pickersteps` shows them. Wiro renews tokens while the agent runs, so a stopped agent can read `false` once its token expires (about an hour after the last renewal for Google, 30 minutes for HubSpot) and reads `true` again after it starts. If the agent cannot start yet, for example in Setup Required, connect again with `OAuthConnect` in the same mode; the saved accounts stay selected. `_connected` in `UserAgent/Detail` ignores the expiry. Mailchimp's API key mode always reads `false` here. |
-| `accounts` | `array<{id, name}>` | Picker credentials: one entry per selected account, Page or property, `[]` until something is saved. Credentials without a picker (X, TikTok, LinkedIn, HubSpot, Mailchimp, Reddit, Shopify): one entry while `connected` is `true`, with the connected account's display name in both `id` and `name` (for example the X username or the Shopify store name), and `[]` otherwise. |
-| `connectedat` | `string` | ISO timestamp of the last successful Connect. Automatic token refreshes do not change it. |
-| `tokenexpiresat` | `string` | ISO timestamp when the current access token expires. Empty for providers without a fixed expiry (e.g. Mailchimp). |
-| `authmethod` | `string` | The saved connection mode, such as `"own"` or `"api_key"`. Empty when none is saved. |
-| `redirecturi` | `string` | The callback URL to register in your own app for own mode, for this credential, such as `https://api.wiro.ai/v1/UserAgentOAuth/GA4Callback`. |
-| `appkeyssaved` | `boolean` | `true` when every required own-mode app key is saved on this agent, such as `clientid` and `clientsecret`, or `appid` and `appsecret`. `false` for a credential without own mode. |
-| `tokensaved` | `boolean` | `true` when every field of the credential's direct mode is saved, such as a Meta `systemusertoken`, or Shopify's `shopdomain`, `clientid` and `clientsecret`. `false` for a credential without a direct mode. |
-| `flow` | `object` | The sign-in or token check of this agent and credential, while there is one; see below. Absent when there is none. |
-| `candidates` | `array<{id, name}>` | The accounts the current sign-in or token check listed, only for the account that started it and only while `flow.status` is `candidates`. Save the ones to use with [`SetPickerAccounts`](#post-useragentoauthsetpickeraccounts). |
-
-Meta Ads and Google Business Profile also return their second picker step: `pickersteps.pages` and `pagemappings` (Meta Ads), `pickersteps.locations` and `locationmappings` (Google Business Profile). `optional` is `true` for Meta Ads Pages, which an agent can do without, and `false` for Business Profile locations. `configured` is `true` once at least one item is saved, and `groups` has one entry per selected account with its saved items:
-
-```json
-"pickersteps": {
-  "pages": {
-    "pickerkey": "pages",
-    "optional": true,
-    "configured": true,
-    "groups": [
-      {
-        "parent": { "adaccountid": "123456789", "adaccountname": "Acme Ads" },
-        "items": [ { "pageid": "111222333", "pagename": "Acme" } ]
-      }
-    ]
-  }
-},
-"pagemappings": [
-  { "adaccountid": "123456789", "adaccountname": "Acme Ads", "pageid": "111222333", "pagename": "Acme" }
-]
-```
-
-`flow` follows one sign-in or token check, which `OAuthConnect` starts for one agent and credential. A new sign-in or token check for them replaces it, whoever starts it. While a sign-in waits for the pick, `connected` is still `false` and the list is in `candidates`:
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "connected": false,
-  "accounts": [],
-  "connectedat": "2026-05-25T12:00:00Z",
-  "tokenexpiresat": "2026-05-25T13:00:00Z",
-  "authmethod": "own",
-  "redirecturi": "https://api.wiro.ai/v1/UserAgentOAuth/GA4Callback",
-  "appkeyssaved": true,
-  "tokensaved": false,
-  "flow": {
-    "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
-    "mine": true,
-    "mode": "own",
-    "status": "candidates",
-    "account": "",
-    "errorcode": "",
-    "errordetail": "",
-    "restart": "none",
-    "expiresat": 1779711300
-  },
-  "candidates": [
-    { "id": "123456789", "name": "Acme Web" },
-    { "id": "987654321", "name": "Acme App" }
-  ]
-}
-```
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `flowid` | `string` | 32 lowercase hex characters, as `OAuthConnect` returned it. |
-| `mine` | `boolean` | `true` when the caller started it. For anyone else, `flow` holds only `mine: false`, `status` and `expiresat`. |
-| `mode` | `string` | The `authmethod` it runs in: `wiro`, `own` or `api_key`. |
-| `status` | `string` | `waiting`: the sign-in started and the provider hasn't sent the person back yet. `candidates`: the accounts are listed and none is saved yet. `connected`: finished, with nothing to pick. `saved`: the accounts were saved, and the list is used up. `failed`: see `errorcode`. |
-| `account` | `string` | Who signed in, when Wiro knows it: the X or TikTok username, the HubSpot portal, the Instagram username, the Shopify store, a Meta System User's name, or the name of the Facebook user after a Facebook or Meta Ads sign-in in own mode. Empty otherwise, for example after a Google sign-in. |
-| `errorcode` | `string` | With `status: "failed"`, the code the redirect carried (see [Callback success & error parameters](#callback-success-error-parameters)) or the token check's `errorcode`. Empty otherwise. |
-| `errordetail` | `string` | With `failed`, Merchant Center's `mc_error_detail` when there is one. Empty otherwise. |
-| `restart` | `string` | What the step that ended it did to the agent: `scheduled` (it restarted the agent) or `none`. |
-| `expiresat` | `number` | Unix seconds when it ends: 15 minutes after `OAuthConnect`, or 15 minutes after the accounts were listed. After that, `flow` is absent. |
-
-The list belongs to the Wiro account whose request started the sign-in or check (with an API key, the account the key belongs to). Another person who manages the agent, such as another admin of a team agent, sees that a sign-in is under way, but gets no `candidates` and can't save from it. `OAuthStatus` never returns a token, an app secret, the OAuth `state` or the authorize URL.
-
-> **Multi-account picker fields are JSON arrays.** Picker fields like
-> `customerid` (Google Ads), `adaccountid` (Meta Ads), `advertiserid` (TikTok Ads), `merchantid` (Merchant
-> Center), `channelid` (YouTube), `propertyid` (GA4), `accountid` (Google Business Profile), `pageid` (Facebook
-> Pages), and direct Instagram's `accountId` are stored as JSON arrays when
-> `account_picker.multi_select === true`. Instagram Login OAuth also stores its
-> single authorized account as a one-entry array.
-
-### POST /UserAgentOAuth/DiscoverPickerItems
-
-Discover child resources for a chained picker. Two credentials have a chained flow: in Meta Ads, ad accounts are the parents and eligible Facebook Pages are returned under each account; in Google Business Profile, Business Profile accounts are the parents and their locations are returned under each account. Without `parents`, Wiro discovers for the root accounts already saved. With `parents`, it discovers for accounts of the current sign-in's list before they are saved, so one `SetPickerAccounts` call can save both steps (see [Both steps in one call](#both-steps-in-one-call)). Wiro reads the active credential server-side; clients never send or receive access tokens.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Agent instance GUID. |
-| `credentialkey` | string | Yes | Credential key with `account_picker.next` configured. Currently `"meta-ads"` or `"google-business"`. |
-| `pickerkey` | string | Yes | The chained picker key from the registry. Meta Ads uses `"pages"`; Google Business Profile uses `"locations"`. |
-| `parents` | string[] | No | Root account IDs from the current sign-in's or check's list (`candidates`), before they are saved: at most 50 Meta ad accounts or 20 Business Profile accounts. Only the account that started the sign-in can send them. |
-| `flowid` | string | No | With `parents`: the `flowid` from `OAuthConnect`. When sent, it must be the current one. |
-
-##### Example: discover Meta Ads Pages
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/DiscoverPickerItems" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "meta-ads",
-    "pickerkey": "pages"
-  }'
-```
-
-##### Response
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "pickerkey": "pages",
-  "groups": [
-    {
-      "parent": {
-        "adaccountid": "123456789",
-        "adaccountname": "Acme Ads"
-      },
-      "items": [
-        { "pageid": "111222333", "pagename": "Acme" }
-      ]
-    }
-  ]
-}
-```
-
-Each group corresponds to one selected parent account. A group may carry
-`errorcode` and an empty `items` array when discovery failed safely for that
-parent. Successful candidates are cached for the registry-declared selection
-window (five minutes for Meta Ads and Google Business Profile). Call `SetPickerAccounts` with `pickerkey`
-and one `selections[]` entry for every successful parent before that window
-expires. A discovery with `parents` is kept for exactly those accounts and that sign-in: save them as the root accounts in the same call.
-
-A group's `errorcode` is a short code such as `too_many_pages` (more than 500 Pages for one ad account), `provider_rejected_request`, `provider_timeout` or `provider_request_failed`. Business Profile returns at most the first 100 locations of each account.
-
-##### Common errors
-
-| Error message | Cause |
-|---------------|-------|
-| `Request parameter [<name>] required` | `useragentguid`, `credentialkey` or `pickerkey` is missing. |
-| `Unknown credential picker` | `credentialkey` and `pickerkey` do not name a chained picker. |
-| `User agent not found or unauthorized` | `useragentguid` doesn't exist or doesn't belong to the caller. |
-| `<Provider> account not connected` | Without `parents`: no parent account is saved yet, or `OAuthStatus` would report `connected: false`, for example because the access token expired while the agent was stopped. For an expired token, start the agent, or connect again with `OAuthConnect` in the same mode if it cannot start yet: the saved accounts stay selected. With `parents`: the sign-in's token is no longer saved in its mode, for example because `authmethod` changed. |
-| `Too many parent accounts selected for picker discovery` | `errorcode: "too_many_parents"`. More than 50 Meta ad accounts or more than 20 Business Profile accounts are selected, or sent in `parents`. |
-| `parents must be a non-empty array of account ids` | `parents` was sent empty, or not as an array. |
-| The sentences of `flow_expired`, `flow_other_person`, `flow_replaced`, `flow_failed`, `flow_waiting` and `not_listed` | With `parents`, as for [`SetPickerAccounts`](#post-useragentoauthsetpickeraccounts), with the same `errorcode`: no list is open, another account started it, `flowid` isn't the current one, the sign-in failed, the sign-in hasn't come back yet, or a parent isn't on the list. |
-| `The account list could not be read. Try again in a moment.` | With `parents`: a temporary failure. Try again. |
-| `Picker candidate limit exceeded` | Discovery found more than 2,000 items across all groups. |
-| `Picker candidates could not be secured for selection` / `Picker discovery failed` | Temporary failure. Try again. |
-
-### POST /UserAgentOAuth/SetPickerAccounts
-
-Save either the root account selection after an OAuth callback or direct discovery, or a chained child-resource selection after `DiscoverPickerItems`. Clients never supply access tokens. Wiro saves root accounts only from the list the sign-in or token check gave, and chained picks only from `DiscoverPickerItems`.
-
-**Accounts come from the sign-in's list.** Every sign-in and token check keeps the accounts it listed on Wiro's server for 15 minutes ([`OAuthStatus`](#post-useragentoauthoauthstatus) returns them as `candidates`), and `SetPickerAccounts` saves root accounts only from that list, for every picker:
-
-- **Who.** Only the account that called `OAuthConnect`. Another admin of a team agent can't save from someone else's sign-in; they connect again themselves.
-- **Which list.** The current one. A newer sign-in or token check for the same agent and credential replaces it. Send its `flowid` to save from the sign-in you showed: a different one is refused with `flow_replaced`.
-- **Which accounts.** Only IDs on the list. Wiro saves the name the list gives each account, never a name from the request.
-- **How often.** Once. The first successful save uses the list up (`flow.status` reads `saved`). To pick other accounts later, call `OAuthConnect` again and save from the new list.
-
-The registry declares each provider's picker shape. Multi-select pickers
-(Google Ads, Meta Ads, TikTok Ads, Merchant Center, YouTube, GA4, Google Business Profile, Facebook Pages, and direct
-Instagram) accept one or more entries.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Agent instance GUID. |
-| `credentialkey` | string | Yes | Credential key with an `account_picker` defined. |
-| `accountids` | array | Root picker: this or `accounts` | The IDs of the accounts to save, as strings, taken from the list (`candidates`, or `id` in the redirect's list). |
-| `accounts` | array | Root picker: this or `accountids` | One or more account objects with the per-credential keys (see table below). Wiro reads only the ID key of each; the name comes from the list. |
-| `flowid` | string | No | The `flowid` from `OAuthConnect`. When sent, it must be the current sign-in's or check's, or the save is refused with `flow_replaced`. |
-| `pickerkey` | string | Chained picker | Chained picker key returned by `DiscoverPickerItems`. Sent with `accountids` or `accounts`, the second step is saved together with the root accounts; see [Both steps in one call](#both-steps-in-one-call). |
-| `selections` | array | Chained picker only | One `{ parentvalue, items }` entry for every parent that `DiscoverPickerItems` returned without `errorcode`. Send each item exactly as discovered, ID and name (for example `{ pageid, pagename }`); an item whose name differs is rejected. Leave out parents that came back with `errorcode`; they keep the items saved before. An empty `items` array selects nothing for that parent: no Pages for a Meta Ads ad account, no locations for a Google Business Profile account. Each entry can name its items by ID in `itemids` instead of `items`, for example `{ "parentvalue": "123456789", "itemids": ["111222333"] }`. A successful save uses up the discovery result, so call `DiscoverPickerItems` again before the next change. |
-
-##### Picker data from the redirect
-
-Each list parameter is a URL-encoded JSON array. Your query parser has already decoded it, so parse the value once with `JSON.parse`; decoding it a second time breaks names that contain `%`. IDs arrive without provider prefixes such as `customers/`, `act_` or `properties/`. Send each chosen item's `id` in `accountids`, or copy the item into the `accounts[]` keys of `SetPickerAccounts`:
-
-| Credential | List | Item fields | `accounts[]` entry |
-|------------|------|-------------|--------------------|
-| `google-ads` | `gads_accounts` | `id`, `name`, `status` | `{ customerid: id, customerdescriptivename: name }` |
-| `meta-ads` | `metaads_accounts` | `id`, `name` | `{ adaccountid: id, adaccountname: name }` |
-| `tiktok-ads` | `tiktokads_advertisers` | `id`, `name` | `{ advertiserid: id, advertisername: name }` |
-| `google-merchant-center` | `mc_accounts` | `id`, `name`, `websiteUrl` | `{ merchantid: id, accountname: name }` |
-| `youtube` | `yt_channels` | `id`, `title`, `customUrl`, `subscriberCount` | `{ channelid: id, channeltitle: title }` |
-| `ga4` | `ga4_properties` | `id`, `displayName`, `account`, `propertyType` | `{ propertyid: id, propertydisplayname: displayName }` |
-| `google-business` | `gbp_accounts` | `id`, `name` | `{ accountid: id, accountname: name }` |
-| `facebook-pages` | `fb_pages` | `id`, `name` | `{ pageid: id, fbpagename: name }` |
-
-Merchant Center's `name` can be empty and its `websiteUrl` is always empty, so label those accounts with their ID when needed. In `candidates`, such an account's name is its ID. Each integration page describes the other fields. In System User mode there is no redirect: `OAuthConnect` returns `{ id, name }` items in `accounts` for Meta Ads (`{ adaccountid: id, adaccountname: name }`), Facebook Pages (`{ pageid: id, fbpagename: name }`) and Instagram (`{ accountId: id, igusername: name }`). Instagram Login in own mode has no list: Wiro saves the authorized account itself. `POST /Credentials/Detail` carries the same mapping: `oauth_provider.account_picker.trigger_param` names the list parameter, and `url_item_fields` maps each `accounts[]` key to an item field.
-
-##### Per-credential `accounts[]` shape
-
-| Credential | Keys per entry | Notes |
-|------------|----------------|-------|
-| `google-ads` | `customerid`, `customerdescriptivename` | `customerid` is 10 digits; dashes/letters stripped server-side. |
-| `meta-ads` | `adaccountid`, `adaccountname` | `act_` prefix stripped server-side. |
-| `tiktok-ads` | `advertiserid`, `advertisername` | Numeric advertiser ID; non-digits stripped server-side. Each call replaces the previous selection. |
-| `google-merchant-center` | `merchantid`, `accountname` | |
-| `youtube` | `channelid`, `channeltitle` | |
-| `ga4` | `propertyid`, `propertydisplayname` | |
-| `google-business` | `accountid`, `accountname` | Numeric account ID; non-digits stripped server-side. Locations are chosen afterwards with the chained `"locations"` picker. |
-| `facebook-pages` | `pageid`, `fbpagename` | One or more Pages from the latest OAuth or System User discovery result. |
-| `instagram` | `accountId`, `igusername` | One or more accounts from direct System User discovery. Customer-owned Instagram OAuth does not use this picker and writes one authorized account directly. |
-
-The first key is required in every entry, and the same ID twice is refused. Wiro takes each account's name from the list, so the name key can be left out, and a name you send is not read.
-
-##### Example: Google Ads multi-select
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "google-ads",
-    "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
-    "accountids": ["1234567890", "0987654321"]
-  }'
-```
-
-The `accounts` objects work too, for example `"accounts": [{ "customerid": "1234567890" }, { "customerid": "0987654321" }]`.
-
-##### Response
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "accounts": [
-    { "id": "1234567890", "name": "Acme Corp" },
-    { "id": "0987654321", "name": "Acme Subsidiary" }
-  ],
-  "restart": "scheduled"
-}
-```
-
-`accounts` are the saved accounts, with the names from the list. `restart` is `"scheduled"` when the save restarted the agent, else `"none"`. The save that completes a connection restarts a starting or running agent once, and a save that changes nothing, such as the same accounts again, restarts nothing. See [Automatic Restart](/docs/agent-overview#automatic-restart).
-
-##### Example: save Meta Ads Page mappings
-
-Call this after `DiscoverPickerItems` and include every successful parent once:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "meta-ads",
-    "pickerkey": "pages",
-    "selections": [
-      {
-        "parentvalue": "123456789",
-        "items": [
-          { "pageid": "111222333", "pagename": "Acme" }
-        ]
-      }
-    ]
-  }'
-```
-
-The response includes `pickerkey: "pages"`, the persisted, flat
-`pagemappings[]` list and `restart`. Sending an empty `items` array skips Pages for that ad
-account; Meta Ads reporting and other non-Page operations remain available.
-
-Google Business Profile uses the same chained shape with `pickerkey: "locations"`,
-`{ locationid, locationtitle }` items, and a `locationmappings[]` list in the
-response (see [Google Business Profile → Connect through the API](/docs/integration-googlebusiness-skills#connect-through-the-api)).
-
-Saving the root accounts again, from a new sign-in's list, replaces the selection. Pages or locations already chosen for accounts that stay selected are kept, those of removed accounts are dropped, and an open `DiscoverPickerItems` result is discarded, so discover again before saving the second step.
-
-##### Both steps in one call
-
-Saving the accounts, then the Pages or locations, in two calls can restart a running agent twice. To save both in one call, so it restarts once:
-
-1. Call `DiscoverPickerItems` with `parents`, the chosen root IDs from the sign-in's list, and its `flowid`.
-2. Call `SetPickerAccounts` with the same IDs in `accountids`, the `flowid`, `pickerkey`, and `selections` for every parent that discovery returned without `errorcode`.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "meta-ads",
-    "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
-    "accountids": ["123456789", "234567890"],
-    "pickerkey": "pages",
-    "selections": [
-      { "parentvalue": "123456789", "itemids": ["111222333"] },
-      { "parentvalue": "234567890", "itemids": [] }
-    ]
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "accounts": [
-    { "id": "123456789", "name": "Acme Ads" },
-    { "id": "234567890", "name": "Acme Retail" }
-  ],
-  "pickerkey": "pages",
-  "pagemappings": [
-    { "adaccountid": "123456789", "adaccountname": "Acme Ads", "pageid": "111222333", "pagename": "Acme" }
-  ],
-  "restart": "scheduled"
-}
-```
-
-Wiro writes the accounts and the mappings in one save. The discovery must be the one made with `parents` equal to `accountids`, for this sign-in, in the last five minutes; otherwise nothing is saved and the call answers `next_expired`, `The list of pages expired. Load it again.` (`locations` for Business Profile): call `DiscoverPickerItems` with `parents` again. Business Profile needs at least one location across the accounts; with none, the call answers `next_required`, `Choose at least one location to finish.` Meta Ads Pages stay optional. Later changes to the Pages or locations of saved accounts use the second step alone, as above.
-
-##### Common errors
-
-A refusal of the list rules also answers `errorcode`, as named below. The wording of its message depends on whether the list came from a sign-in or a token check. With no list, the mode saved in `authmethod` decides, and with none saved, the credential's default mode: a token check for Facebook Pages, Instagram and Meta Ads, a sign-in for the others. The table shows a sign-in's; a token check's reads, for example, `The token check expired. Check the token again to choose the accounts.`
-
-| Error message | Cause |
-|---------------|-------|
-| `The sign-in expired. Sign in again to choose the accounts.` | `errorcode: "flow_expired"`. No list is open for this agent and credential: no sign-in or check was started, it was more than 15 minutes ago, a save already used its list, or the credential was disconnected. Call `OAuthConnect` again. |
-| `Another admin started this sign-in. Sign in again to choose the accounts yourself.` | `errorcode: "flow_other_person"`. Another account started the current sign-in or check. |
-| `A newer sign-in replaced this one. Sign in again.` | `errorcode: "flow_replaced"`. The `flowid` you sent isn't the current one. |
-| `The sign-in did not finish. Sign in again.` | `errorcode: "flow_failed"`. The current sign-in or check failed; `flow.errorcode` in `OAuthStatus` says why. |
-| `The sign-in is not finished yet. Finish it, then choose the accounts.` | `errorcode: "flow_waiting"`. The current sign-in hasn't come back from the provider yet, so it has no list. Finish it, then save. A new `OAuthConnect` would replace it. Only a sign-in waits, so this message has no token check wording. |
-| `Choose accounts from the list the sign-in returned.` | `errorcode: "not_listed"`. An ID isn't on the list. |
-| `The account list could not be read. Try again in a moment.` | A temporary failure. Try again. |
-| `accountids must be a non-empty array` / `Each account id must be text` | `accountids` is empty, or holds something other than strings and numbers. |
-| `accounts must be a non-empty array` | Neither `accountids` nor a non-empty `accounts` was sent. |
-| `Each account selection must be an object` | An `accounts[]` entry is not an object. |
-| `Each account selection must include <field>` | An entry has no ID in the credential's ID field, such as `customerid`. |
-| `Duplicate account selection: <id>` | Two entries have the same ID after cleanup (for example `123-456-7890` and `1234567890`). |
-| `Single-select picker requires exactly one account; got <N>` | Single-select credential received multiple entries. |
-| `<Provider> account not connected` | A root save whose list is open but whose sign-in left no token in its mode, for example because `authmethod` was changed after the sign-in. A chained step alone returns it when no parent account is saved or the access token has expired. For an expired token, start the agent, or connect again with `OAuthConnect` in the same mode if it cannot start yet, then call `DiscoverPickerItems` again. |
-| `No pending <Provider> connection. Please reconnect via OAuthConnect.` | Facebook Pages or System User Instagram: the list is open, but the Page tokens found with it are no longer on the server. Call `OAuthConnect` again. |
-| `Selected <field> not found in pending list: <value>` | Facebook Pages or System User Instagram: an account on the list has no Page token. Call `OAuthConnect` again. |
-| `Credential does not support account picker: <key>` | `credentialkey` doesn't have an `account_picker` (e.g. Twitter / TikTok / HubSpot). |
-| `selections must be an array` | `pickerkey` was sent without a `selections` array. |
-| `Unknown credential picker` | `pickerkey` is not this credential's chained picker. |
-| `Each selection must contain parentvalue and items` | A `selections[]` entry is not `{ parentvalue, items: [...] }`. |
-| `Selected parent is not available` | `parentvalue` is not a selected account, appears twice, or came back from discovery with `errorcode`. |
-| `Selected picker item is invalid` / `Selected picker item is not available` | An item is not an object, was not discovered for that parent, has a different name, or appears twice. |
-| `Picker candidates expired. Discover them again.` | Chained picker candidates expired or the parent connection changed. Call `DiscoverPickerItems` again. |
-| `The list of <items> expired. Load it again.` | `errorcode: "next_expired"`. Both steps in one call, but the second step's discovery wasn't made with `parents` for these accounts and this sign-in, or more than five minutes ago. Call `DiscoverPickerItems` with `parents` again. |
-| `Choose at least one <item> to finish.` | `errorcode: "next_required"`. Both steps in one call for Google Business Profile with no location chosen. |
-| `selections must include every available parent exactly once` | Chained picker request omitted or duplicated a successfully discovered parent. |
-| `Selected parent is no longer available` | The root selection changed while saving. Call `DiscoverPickerItems` again. |
-
-### POST /UserAgentOAuth/OAuthDisconnect
-
-Clears the credential's connection: tokens, `authmethod`, picker selections,
-auto-filled values and the credential's other saved fields, such as LinkedIn's
-`organizationid`, Shopify's `shopdomain` and Reddit's `developerprofileusername`;
-save them again before you reconnect. Reddit's approval flags are cleared too,
-so a Reddit reconnect waits until Wiro sets them again. Customer-owned OAuth app
-keys (`clientid`, `clientsecret`, `appid`, `appsecret`, TikTok's `clientkey`,
-Google Ads' `developertoken`) are kept for reconnection, also in Shopify's
-Client ID + Secret mode. An alternative API-key field is kept while
-disconnecting OAuth, but disconnecting that direct mode itself clears its
-secret, such as Meta `systemusertoken` or Mailchimp `apikey`. Because
-`authmethod` is cleared, send it again with the next `OAuthConnect` (and save it
-again for a direct mode). A starting or running agent restarts when the disconnect removes a token, such as the ones a sign-in saved or a System User token, or when the connection was complete. A disconnect that removes no token from a credential that wasn't connected, such as one with only its own app keys saved, restarts nothing.
-
-For providers that publish a token-revocation endpoint (currently X, TikTok, TikTok Ads and Reddit), Wiro also calls the provider's revoke endpoint for OAuth connections as a non-critical best-effort step. Other providers only clear local credentials; the token remains valid on the provider side until it expires.
-
-A disconnect also ends a sign-in or token check under way for the credential: its account list is dropped, so `SetPickerAccounts` can't save from it.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Agent instance GUID. |
-| `credentialkey` | string | Yes | OAuth credential key. |
-
-##### Response
-
-```json
-{
-  "result": true,
-  "errors": []
-}
-```
-
-### Token lifecycle
-
-Wiro maintains renewable provider connections automatically while the agent is
-running. Direct Meta System User connections have no generic refresh contract:
-regenerate and reconnect an expiring or invalidated token. There is no
-customer-facing token-refresh endpoint or manual refresh action.
-
-Use `POST /UserAgentOAuth/OAuthStatus` to monitor the connection. Wiro renews tokens only while the agent runs and when it starts, so a stopped agent reports `connected: false` once its last access token has expired, although the authorization is still valid (for example about an hour after the last renewal for Google, 30 minutes for HubSpot). Start the agent and check again. `DiscoverPickerItems` and the second-step `SetPickerAccounts` need a current token too. If the agent cannot start yet, for example while it is still in [Setup Required](#setup-required-state), connect again with `OAuthConnect` in the same mode instead. Wiro stores the fresh token and keeps the saved accounts selected; run `DiscoverPickerItems` again before the second-step save. If `connected` stays `false` while the agent runs, or the provider revokes a connection that cannot be renewed, reconnect through `POST /UserAgentOAuth/OAuthConnect`. Provider-specific exceptions are documented in each integration guide.
-
-## Web UI Behaviors (Wiro Dashboard)
-
-The Wiro Dashboard uses the same API. To match its behavior in your own integration:
-
-- **Per-group save**: Save each credential group with its own `POST /UserAgent/CredentialUpsert` call that sends only that group's `fields[]`.
-- **Own mode in two steps**: In own mode, first save `appid`/`appsecret` and `authmethod: "own"` with `CredentialUpsert`, then call `POST /UserAgentOAuth/OAuthConnect` with `authmethod: "own"`.
-- **Recommended Meta direct mode**: Facebook Pages, Instagram, and Meta Ads default to a System User token. Save `authmethod: "api_key"` and `systemusertoken` with `CredentialUpsert`, call `OAuthConnect`, then finish the account selection with `SetPickerAccounts`.
-- **Same-tab redirect**: Open `authorizeUrl` in the same tab, not in a popup, to avoid third-party cookie issues.
-- **No manual token refresh**: Wiro maintains supported connections automatically; reconnect with `OAuthConnect` when authorization is required.
-- **AI Setup Guide**: On a connector that isn't set up yet, the Dashboard shows a **Copy the AI Setup Guide** link under the form. It opens a ready-to-paste prompt for AI assistants that goes through every connector field the agent needs. Useful for API users building their own configuration UIs. See the per-integration help texts for equivalent guidance.
-- **Registry-backed validation**: Wiro validates declared types, patterns, lengths, URLs, enum values, and provider response contracts before persisting or connecting credentials. The provider remains authoritative for permissions and asset access.
-- **Platform-managed credentials are hidden**: groups whose fields are all managed by Wiro are omitted from `POST /UserAgent/Detail` responses. They're set up by Wiro and can't be set by customers.
+If you skip these keys in Deploy entirely, the instance is created empty and you set credentials and skills later with `CredentialUpsert`, `CredentialProjectBind`, `CustomSkillUpsert`, and `SkillsApply`.
 
 ## Setup Required State
 
 Every fresh Deploy starts in **Setup Required** state (`status: 6`). While an agent is at `status: 6`, `Start` refuses it with `Agent setup is not complete. Please finish setting up your connectors before starting.`
 
-API deploys must always pass `useprepaid: true`. The server provisions the prepaid subscription inline and moves the agent to `status: 2` (Queued) whatever its connectors hold, and Wiro then starts it, so no `Start` call is needed. A connector the agent requires may still be incomplete while it runs: `UserAgent/Detail` reads `setuprequired: true` until every required connector is set up, and a running agent restarts to pick up each connector you save.
+API deploys must always pass `useprepaid: true`. The server provisions the prepaid subscription inline and moves the agent to `status: 2` (Queued) whatever its credentials hold, and Wiro then starts it, so no `Start` call is needed. A credential the agent requires may still be incomplete while it runs: `UserAgent/Detail` reads `setuprequired: true` until every required credential is set up, and a running agent restarts to pick up each value you save.
 
-Saving a connector doesn't move the agent out of `status: 6`, whether with `CredentialUpsert`, `CredentialProjectBind` or an OAuth connection. After the last one, call `POST /UserAgent/Update` once with `{ "guid": "<useragent-guid>" }`: that call moves the agent to `status: 0` (Stopped) once every required connector is set up, so `Start` can launch it. `Start` doesn't read `setuprequired` on a stopped (`status: 0`) or errored (`status: 5`) agent.
+Saving a credential doesn't move the agent out of `status: 6`, whether with `CredentialUpsert` or `CredentialProjectBind`. After the last one, call `POST /UserAgent/Update` once with `{ "guid": "<useragent-guid>" }`: that call moves the agent to `status: 0` (Stopped) once every required credential is set up, so `Start` can launch it. `Start` doesn't read `setuprequired` on a stopped (`status: 0`) or errored (`status: 5`) agent.
 
-`setuprequired` in `UserAgent/Detail` is `true` while the agent is at `status: 6` or any non-optional credential is still incomplete; on `UserAgent/MyAgents` rows it follows `status: 6` alone. The server treats a credential as complete when either:
-
-- **OAuth and hybrid connection credentials**: `_connected: true` (the active
-  mode has a validated runtime token **and** every required picker field is
-  populated), or
-- **API-key credentials**: at least one field saved on this agent with `fieldstatus: "user"` has a non-empty value (any one user-writable field filled in makes the credential count as "entered"; there is no deeper per-field validation). A value the agent template holds doesn't count here, though it counts toward the card's `_filled` and `_required_missing`.
-
-The two branches are checked together: `setuprequired` stays `true` until every required credential passes one of them.
+`setuprequired` in `UserAgent/Detail` is `true` while the agent is at `status: 6` or any non-optional credential is still incomplete; on `UserAgent/MyAgents` rows it follows `status: 6` alone. A credential counts as complete when at least one field saved on this agent with `fieldstatus: "user"` has a non-empty value (any one user-writable field filled in makes the credential count as "entered"; there is no deeper per-field validation). A value the agent template holds doesn't count here, though it counts toward the card's `_filled` and `_required_missing`.
 
 ## Security
 
-- **OAuth access and refresh tokens are stored server-side** and are never returned by the customer-facing credential endpoints. A token you save yourself, such as a System User token or a bot token, isn't returned either: `UserAgent/Detail` shows it as `"••••••••"`, as it shows every saved secret (see [Credential object shape](/docs/agent-overview#credential-object-shape)). A saved Google service account file reads as the mask too, and only its account's email is named beside it, as `_service_account_email`, for the agent's owner and team admins.
-- **`oauth_session` fields are always stripped** from Detail, `MyAgents`, and `CredentialUpsert` responses: `accesstoken`, `refreshtoken`, `pageAccessToken` and any similar token rows never leave the server. `OAuthStatus` returns only the `connectedat` and `tokenexpiresat` timestamps, never a token.
-- **`platform` fields are always stripped** from responses. In practice this affects Reddit's three approval flags and every other Wiro-managed field. `credentials.wiro.apikey` and `credentials.calendarific.apikey` are user-supplied and appear in the response: `wiro.apikey` as saved, and `calendarific.apikey` as the mask once saved.
-- **`oauth_app` fields (`clientid` / `clientsecret`, `appid` / `appsecret`) are stripped from Detail responses**, even after an OAuth "own mode" setup writes them. The append-only credential history redacts `clientsecret` to `[REDACTED]` and always redacts `oauth_session` rows.
-- **`fieldstatus` is server-assigned.** A `fieldstatus` sent to `CredentialUpsert` is ignored; the server assigns the status itself.
-  - Fields that the connection flow fills in, OAuth tokens included, are rejected with `<Field label> is managed by the connection flow` in `errors[]`. A token field has no schema label, so it is named `<credentialkey>.<fieldname>`.
-  - Wiro-managed (`platform`) fields are rejected with `<Field label> is managed by the platform`.
-  - A request that fails validation saves nothing, and Deploy never saves either kind of field from its `credentials` body.
-- The `redirecturl` receives only connection status parameters: no tokens, no secrets.
-- OAuth state parameters use a 15-minute TTL cache to prevent replay attacks.
-- Redirect URLs must be https, on any host you control (or http on localhost/127.0.0.1 for development).
-- Every sign-in and token check keeps the accounts it listed on the server for 15 minutes, as `{id, name}` pairs, and gives them only to the account that started it. The Page access tokens found during Facebook Page and Instagram discovery never leave the server.
+- **A secret you save is never returned.** A bot token or an auth token reads as `"••••••••"` in `UserAgent/Detail`, as every saved secret does (see [Credential object shape](/docs/agent-overview#credential-object-shape)).
+- **`platform` fields are always stripped** from responses. `credentials.wiro.apikey` is user-supplied and appears in the response as saved.
+- **`fieldstatus` is server-assigned.** A `fieldstatus` sent to `CredentialUpsert` is ignored; the server assigns the status itself. Wiro-managed (`platform`) fields are rejected with `<Field label> is managed by the platform`. A request that fails validation saves nothing, and Deploy never saves such a field from its `credentials` body.
+- Connector values and sign-in tokens are kept apart from credentials, encrypted, and never returned either: see [Agent Connectors](/docs/agent-connectors).
 
 ## For Third-Party Developers
 
-If you're building a product on top of Wiro agents and need your customers to connect their own accounts:
+If you're building a product on top of Wiro agents for your own customers:
 
-1. **Deploy** an agent instance per customer via `POST /UserAgent/Deploy`.
-2. **Connect**: for `own` or a direct mode, first save that mode's fields and
-   `authmethod` with `POST /UserAgent/CredentialUpsert` (Wiro mode needs no app
-   keys). Then call `POST /UserAgentOAuth/OAuthConnect` with the same
-   `authmethod`. For OAuth, pass a `redirecturl` on your own site: any https
-   page you control, or `http://localhost` / `http://127.0.0.1` while you develop.
-3. **OAuth branch**: when `authorizeUrl` is returned, send the customer's
-   browser there. Wiro brings it back to your `redirecturl` with
-   `<prefix>_connected=true` and, for picker credentials, the account list, or
-   with `<prefix>_error=<code>`. Your backend can also follow the sign-in with
-   `OAuthStatus` and read the list there, as `candidates`.
-4. **Direct branch**: when `accounts` is returned, there is no redirect; the
-   list is in the response.
-5. **Pick**: show the list in your own UI and save the choice with
-   `POST /UserAgentOAuth/SetPickerAccounts` (see
-   [Account picker in your own UI](#account-picker-in-your-own-ui)).
-6. **Verify**: call `POST /UserAgentOAuth/OAuthStatus` and check `connected`,
-   `accounts` and, for a second picker step, `pickersteps`.
+1. **Deploy** an agent instance per customer via `POST /UserAgent/Deploy`, with any channel groups in `credentials`.
+2. **Connect the services it works with** through [Agent Connectors](/docs/agent-connectors): your customer's own API keys, or the vendor's sign-in with a `redirecturl` on your own site, so the consent screen names your product.
+3. **Set the channels and settings** your customer wants with `CredentialUpsert`, and the Wiro project with `CredentialProjectBind`.
+4. **Verify** with `POST /UserAgent/Detail` (`credentials`, `setuprequired`) and `POST /UserAgent/ConnectorList` (each connector's `status`).
 
-`<prefix>_connected=true` means the provider authorized Wiro. A picker credential is ready only after `SetPickerAccounts` saves at least one account; until then `OAuthStatus` reports `connected: false`, and Facebook Pages stores nothing at all before that call. Two cases differ: when the Google user has exactly one YouTube channel, Wiro saves that channel during the callback, and a reconnect in the same mode keeps the earlier selection until you save a new one, so `OAuthStatus` may already show the old accounts.
-
-The Google Ads, Meta Ads, TikTok Ads, Facebook, Instagram, Google Business Profile, X, TikTok, LinkedIn, HubSpot and Mailchimp pages include a **Multi-Tenant Architecture** section with notes for running one agent per customer, such as token isolation, consent screen branding and provider rate limits.
-
-When the agent proposes a connection in a chat, connect it with these same calls, then record it on its setup card with `SetupCardApply`: see [Agent Chat Integration](/docs/agent-chat-integration#connecting-a-connector).
-
-### Account picker in your own UI
-
-Google Ads, Meta Ads, TikTok Ads, Merchant Center, YouTube, GA4, Google Business Profile, Facebook Pages and System User Instagram ask the customer to pick accounts. You build that picker in your own app:
-
-1. **Read the list.** On success the redirect carries it in one parameter:
-   `gads_accounts`, `metaads_accounts`, `tiktokads_advertisers`, `mc_accounts`,
-   `yt_channels`, `ga4_properties`, `gbp_accounts` or `fb_pages` (see
-   [Callback success & error parameters](#callback-success-error-parameters)).
-   It is a JSON array that your query parser has already decoded, so parse it
-   once with `JSON.parse`. In System User mode the list is in the
-   `OAuthConnect` response instead. Either way, `OAuthStatus` returns it as
-   `candidates` for 15 minutes, to the account that started the sign-in.
-2. **Show it.** Every item has an `id` and a name;
-   [Picker data from the redirect](#picker-data-from-the-redirect) lists each
-   credential's item fields and the keys to save them under.
-3. **Save the choice.** Send the chosen IDs in `accountids`, or the items in
-   `accounts[]`, to [`SetPickerAccounts`](#post-useragentoauthsetpickeraccounts)
-   from the same Wiro account and within 15 minutes. Every picker accepts
-   several items, and each list can be saved once.
-4. **Second step.** For Meta Ads Pages (optional) and Business Profile
-   locations, call
-   [`DiscoverPickerItems`](#post-useragentoauthdiscoverpickeritems), show the
-   groups, and save the choice with `SetPickerAccounts`, `pickerkey` and
-   `selections[]` within five minutes. To save both steps in one call,
-   discover with `parents` before the first save (see
-   [Both steps in one call](#both-steps-in-one-call)).
-5. **Nothing to pick.** When the provider lists nothing, the redirect carries
-   `<prefix>_error=no_accounts` (`fb_error=no_pages` for Facebook Pages) and
-   Wiro saves nothing. Show the reason and let the customer connect again.
-
-Wiro sends the list in that redirect or response, and `OAuthStatus` returns it as `candidates` for 15 minutes. After that, `OAuthStatus` shows only the saved selection. To offer changes later, run `OAuthConnect` again and save from the new list: a list that was saved once, or is older than 15 minutes, can't be saved from.
-
-### Handling the OAuth redirect in your app
-
-```javascript
-app.get('/settings/integrations', (req, res) => {
-  // req.query values are already URL-decoded: parse each list once, without decodeURIComponent.
-  if (req.query.x_connected === 'true') {
-    return res.redirect(`/dashboard?connected=twitter&username=${encodeURIComponent(req.query.x_username || '')}`)
-  }
-
-  if (req.query.metaads_connected === 'true') {
-    const accounts = JSON.parse(req.query.metaads_accounts || '[]') // [{ id, name }]
-    return res.redirect(`/dashboard/meta-ads?accounts=${encodeURIComponent(JSON.stringify(accounts))}`)
-  }
-
-  if (req.query.fb_connected === 'true') {
-    const pages = JSON.parse(req.query.fb_pages || '[]') // [{ id, name }]
-    // Facebook always requires SetPickerAccounts to finalize, within 15 minutes
-    return res.redirect(`/dashboard/facebook?pick=${encodeURIComponent(JSON.stringify(pages))}`)
-  }
-
-  if (req.query.gads_connected === 'true') {
-    const customers = JSON.parse(req.query.gads_accounts || '[]') // [{ id, name, status }]
-    return res.redirect(`/dashboard/google-ads?pick=${encodeURIComponent(JSON.stringify(customers))}`)
-  }
-
-  // For example gads_error=no_accounts: the Google user has no Google Ads account to pick
-  const errKey = Object.keys(req.query).find((k) => k.endsWith('_error'))
-  if (errKey) {
-    return res.redirect(`/dashboard?error=${errKey}&reason=${encodeURIComponent(req.query[errKey])}`)
-  }
-
-  res.redirect('/dashboard')
-})
-
-// After the customer picks, save the choice from your backend within 15 minutes of the sign-in:
-async function saveGoogleAdsPick(useragentguid, picked) {
-  const res = await fetch('https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.WIRO_API_KEY },
-    body: JSON.stringify({
-      useragentguid,
-      credentialkey: 'google-ads',
-      accountids: picked.map((c) => c.id),
-    }),
-  })
-  return res.json() // { result, errors, accounts: [{ id, name }], restart }
-}
-```
+When the agent proposes a change in a chat, apply it with the same calls and record it on its setup card with `SetupCardApply`: see [Agent Chat Integration](/docs/agent-chat-integration).
 
 ---
 
@@ -20268,23 +18894,23 @@ Build your own chat for a Wiro agent, setup from chat included: every call, ever
 
 This guide is for products that put a Wiro agent behind their own interface. Your users talk to the agent in your app. Your backend calls the API with your project API key, and your app shows the agent's answers, its setup cards and the connect steps with your own design. Your users never leave your product.
 
-It covers the whole cycle in order: sending messages and showing answers, the setup cards the agent proposes, applying them, connecting each kind of connector, restarts, errors, chats without cards, the agent's live Screen and Take Control in your app, security, five worked examples and a checklist. Every request and answer is shown as JSON, so the guide can also be handed to a coding assistant that builds the integration for you.
+It covers the whole cycle in order: sending messages and showing answers, the setup cards the agent proposes, applying them, connecting connectors, restarts, errors, chats without cards, the agent's live Screen and Take Control in your app, security, two worked examples and a checklist. Every request and answer is shown as JSON, so the guide can also be handed to a coding assistant that builds the integration for you.
 
 ### What setup from chat is
 
-An agent can help the people who manage it set it up in the chat. Asked to post on Facebook, report website traffic every Monday or search the web, it can propose the change itself: turn on a connector or skill, connect a connector, create or change a scheduled task or a custom skill, or change its time zone.
+An agent can help the people who manage it set it up in the chat. Asked to report website traffic every Monday, draw a diagram or search the web, it can propose the change itself: turn on a skill, connect a connector, create or change a scheduled task or a custom skill, or change its time zone.
 
 The agent never changes its own setup and never sees a key. It proposes the change as a **setup card**. Wiro checks the card against the agent's current setup and stores it on the message that asked for it, where it shows as a `setup` block in that message's `timeline[]`. Nothing changes until an agent admin applies the card. Wiro then applies the stored card, checked again against the agent as it is at that moment, and never anything written in the chat.
 
 ### Your product shows everything
 
-Wiro's answers in a chat sent with a project API key name no site, page or link. When something still has to be connected, the answer says so in a plain sentence and returns the same information as data, the `next` array, so your product shows its own Connect button. Keys, app keys and tokens go into your own forms and reach Wiro through the API, never through the chat. The provider's consent screen, when a connector uses one, shows your app's name when you connect it with your own app keys, and the browser comes back to a page on your own site.
+Wiro's answers in a chat sent with a project API key name no site, page or link. When something still has to be connected, the answer says so in a plain sentence and returns the same information as data, the `next` array, so your product shows its own Connect button. Keys, app keys and tokens go into your own forms and reach Wiro through the API, never through the chat. A vendor's consent screen, when a connector signs in, names your product, and the browser comes back to a page on your own site (see [Who your customer sees](/docs/agent-connectors#who-your-customer-sees)).
 
 A few fields are for your backend, not for your users: every message row and every card names your API key's owner as the person who sent, asked or applied (see [API key](#api-key)), and the tokens and ids are your own references. Show your users your own names and words.
 
-Connector titles name their vendors, such as Google Analytics 4 or WordPress. The connector the agent runs AI models with, key `wiro`, is titled `Wiro AI Models`, and so is its skill `int-wiro-aimodels` in `Skills/List`. That title comes wherever the API names it: in `needs` and `next[].title`, in the card listing and in `summary`, for every change that brings it, such as adding Video Creator or a voice channel. An agent that runs models through it can also write its public links in an answer, such as a model's page on wiro.ai or an output file on cdn1.wiro.ai. Your product may show its own label for the connector key `wiro`, as for any title the API gives.
+Connector titles name their vendors, such as Google Analytics 4 or WordPress. Two things carry Wiro's name: the agent's Wiro project (the credential `wiro`, which pays for the models its skills run, such as Video Creator's or a voice channel's) and the `wiro` connector, which gives the agent Wiro's own tools. That name comes wherever the API names them, in the card listing and in `summary` too. An agent that runs models can also write their public links in an answer, such as a model's page on wiro.ai or an output file on cdn1.wiro.ai. Your product may show its own label for them, as for any title the API gives.
 
-A connector that signs in with Wiro's own app (mode `signin`, such as X, HubSpot, Mailchimp and TikTok Ads) shows that app's name on the provider's consent screen, so a product that wants its own name there connects with its own app keys, where the connector offers them (`own` in its `connection_modes`, see [Modes](#modes)). Every sign-in passes through its redirect URI on the API host (`redirecturi` in `OAuthStatus`), as registered with the provider, before the browser comes back to your `redirecturl`.
+A connector that signs in is connected on your own settings screen with the [Agent Connectors](/docs/agent-connectors) calls: `ConnectorConnect` gives the vendor's sign-in address, and the browser comes back to your `redirecturl` through one callback on the API host. With your API key, the consent screen names your organization, or the app of your own a connector signs in with.
 
 ### The flow at a glance
 
@@ -20294,8 +18920,9 @@ Your user types           Your backend                     Wiro
 "Report our traffic"  ->  Message/Send ------------------>  agent turn runs
                           WebSocket or Message/Detail <---  timeline: answer + setup blocks
 Your app shows the card
-User presses Connect  ->  CredentialUpsert / OAuthConnect -> sign-in, token check or key
-                          OAuthStatus / SetPickerAccounts
+User presses Connect  ->  SetupCardApply with the key, or
+                          ConnectorConnect -------------->  key saved, or the vendor's sign-in
+                          ConnectorList / ConnectorSetAccounts
 User presses Apply    ->  Message/SetupCardApply -------->  change applied, agent restarts
 Your app shows "Restarting", then the agent answers again
 ```
@@ -20356,7 +18983,7 @@ With `"webchat"` or `"off"`, the agent proposes no card in your chat and tells p
 
 Applying a card needs an agent admin: the agent's owner, or an admin of the agent's team. With your API key, that is the key's owner, so every apply your backend sends counts as that person's approval. Dismissing a card needs only that the caller can see the chat.
 
-Because of this, decide in your own product who may approve a change: show the Apply button, and pass a typed approval on to Wiro, only for the people allowed to change that agent. Wiro reads many words as an approval, not only `yes`, and a key pasted while a `key` connect card is the only `connect` card waiting can be saved to it when its connector is on the agent or a pending `add` card on the same reply brings it: [Typed replies](#typed-replies) has the whole list. When people who must not change the agent talk to it through your app, set `chatsetup` to `"off"` for that agent and change its setup from your own settings screens instead. That is the safe choice for any agent that several of your users share.
+Because of this, decide in your own product who may approve a change: show the Apply button, and pass a typed approval on to Wiro, only for the people allowed to change that agent. Wiro reads many words as an approval, not only `yes`, and a key pasted while a `key` connect card is the only `connect` card waiting can be saved to it: [Typed replies](#typed-replies) has the whole list. When people who must not change the agent talk to it through your app, set `chatsetup` to `"off"` for that agent and change its setup from your own settings screens instead. That is the safe choice for any agent that several of your users share.
 
 ## Messages and Answers
 
@@ -20505,7 +19132,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/History" \
       {
         "guid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
         "content": "Can you report our website traffic every Monday?",
-        "response": "I can do that once Google Analytics 4 is on and connected. Approve the card below and connect your Google Analytics account.",
+        "response": "I can do that once Google Analytics 4 is connected. Connect it in the agent's settings, then I will set up the weekly report.",
         "status": "agent_end"
       }
     ],
@@ -20516,7 +19143,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/History" \
 }
 ```
 
-The row is shortened here; the GA4 example in [Worked Examples](#worked-examples) shows a whole one as `Message/Detail` returns it. Page back with `before` (the oldest `guid` you have) while `hasmore` is `true`. A session holds four kinds of row:
+The row is shortened here; a whole one has the fields of a [`Message/Detail`](/docs/agent-messaging#post-useragentmessagedetail) answer. Page back with `before` (the oldest `guid` you have) while `hasmore` is `true`. A session holds four kinds of row:
 
 | Row | How you know it | What your UI shows |
 |-----|-----------------|--------------------|
@@ -20542,7 +19169,7 @@ A reply is an ordered list of blocks. Keep a map keyed by `blockid`, keep a bloc
 
 Setup blocks have `callindex: 1000000`, so they sort after the reply's other blocks, in the order the agent proposed them, at most three per message. Skip a block whose `type` you don't know. The block fields are listed in [Public timeline block fields](/docs/agent-messaging#public-timeline-block-fields).
 
-Wiro cleans the agent's text before it reaches you, in the blocks, in `response` and in every event: a link to a private address or into the agent's own system reads `[link removed]`, and a path inside the agent's system reads `[private detail removed]`. A turn in which the agent wrote nothing, older ones included, can read `No response from agent.` Show these as they are, or your own words. Public links stay as written, the Wiro AI Models links of [Your product shows everything](#your-product-shows-everything) included.
+Wiro cleans the agent's text before it reaches you, in the blocks, in `response` and in every event: a link to a private address or into the agent's own system reads `[link removed]`, and a path inside the agent's system reads `[private detail removed]`. A turn in which the agent wrote nothing, older ones included, can read `No response from agent.` Show these as they are, or your own words. Public links stay as written, the Wiro model links of [Your product shows everything](#your-product-shows-everything) included.
 
 ### Replies the API answers itself
 
@@ -20625,7 +19252,7 @@ A setup block has the usual block fields, `type: "setup"`, `text: null` and a `s
 | `version` | `1` while the card is pending, `2` once it is applied, dismissed or failed. Keep the copy with the higher version. |
 | `startedat` | When the agent proposed the card (Unix seconds). |
 | `updatedat` | When the card last changed. |
-| `next` | Only on a pending `connect` card: how its own connector connects, as one entry `{ connector, title, mode }`. It is gone once the card is applied, dismissed or failed. See [Your Own Connect Button](#your-own-connect-button). An `add` card's block has no `next`: its `setup.needs` lists what it brings. A card stored before `next` existed may have none. It still gets one while a pending `add` card on the same message names its connector in `needs`. Without one, name its connector by `credentials.<connector>._schema.title` of `UserAgent/Detail` and send the person to your settings screen for it. |
+| `next` | Only on a pending `connect` card: how its own connector connects, as one entry `{ connector, title, mode }`. It is gone once the card is applied, dismissed or failed. See [Your Own Connect Button](#your-own-connect-button). An `add` card's block has no `next`: its `setup.needs` lists what it needs. A card stored before `next` existed may have none: name its connector by its `title` from [`AgentConnector/Detail`](/docs/agent-connectors#post-agentconnectordetail) and send the person to your settings screen for it. |
 
 ### Card fields
 
@@ -20635,15 +19262,15 @@ A setup block has the usual block fields, `type: "setup"`, `text: null` and a `s
 | `id` | all | The card's id: 12 lower-case letters and digits. Send it as `cardid` to `SetupCardApply`. |
 | `kind` | all | `add`, `remove`, `connect`, `disconnect`, `schedule`, `skill` or `timezone`. Skip a card whose `kind` you don't know. |
 | `action` | `schedule`, `skill` | `schedule`: `create`, `update`, `pause`, `resume` or `delete`. `skill`: `create`, `update`, `append` (add text to the end), `revert` (undo the last change), `disable` or `enable`. |
-| `key` | `add`, `remove`, `schedule`, `skill` | `add` and `remove`: the connector (`int-<name>`) or skill (`util-<name>`) as [`POST /Skills/List`](/docs/agent-skills#post-skillslist) names it. `schedule`: the task's key (`cs-cron-<name>`). `skill`: the custom skill's key (`cs-<name>`). |
-| `connector` | `connect`, `disconnect` | The connector's key as [`POST /Credentials/List`](/docs/agent-credentials#post-credentialslist) lists it, such as `serper`. A card never holds a key's value. |
+| `key` | `add`, `remove`, `schedule`, `skill` | `add` and `remove`: the skill (`util-<name>`) as [`POST /Skills/List`](/docs/agent-skills#post-skillslist) names it. `schedule`: the task's key (`cs-cron-<name>`). `skill`: the custom skill's key (`cs-<name>`). |
+| `connector` | `connect`, `disconnect` | The connector's slug as [`POST /AgentConnector/List`](/docs/agent-connectors#post-agentconnectorlist) lists it, such as `serper`, or a credential's key, such as `telegram`. A card never holds a key's value. |
 | `title` | `schedule`, `skill` | Optional. One line, up to 80 characters. |
 | `cron` | `schedule` | Five fields, in the agent's time zone. Always on `create`, optional on `update`. A task set up from chat runs at most once an hour. |
 | `instructions` | `schedule`, `skill` | `create` and `update`: the full text. `append`: only the text to add. `revert`: the text it restores. Up to 20,000 characters on what the agent writes. |
 | `before` | `skill` (`update`, `append`, `revert`) | The skill's text when Wiro checked the card. Show it next to the text after the change: for `append`, that is `before` without the spaces and line breaks at its end, a blank line, then `instructions`. Can be absent on older cards. |
-| `with` | `add`, `remove` | Other connectors and skills turned on (`add`) or off (`remove`) together with `key`, by name, sorted, at most 12. Written by Wiro. An `add` names only the ones still off on this agent, so the same `key` can bring a different list, or none, on another agent. |
+| `with` | `add`, `remove` | Other skills turned on (`add`) or off (`remove`) together with `key`, by name, sorted, at most 12. Written by Wiro. An `add` names only the ones still off on this agent, so the same `key` can bring a different list, or none, on another agent. |
 | `pauses`, `resumes` | `add`, `remove` | Scheduled tasks (`cs-cron-<name>`) that stop, or run again, with this change, at most 20 each. Written by Wiro. Name each by the `description` of its entry in `scheduledskills` of `UserAgent/Detail`, or by its key in words. |
-| `needs` | `add` | The connectors the change brings that aren't connected yet, at most 3, each `{ connector, title, mode }`. `title` can be absent: then use the connector's key. Written by Wiro. See [Modes](#modes). |
+| `needs` | `add` | What the change needs that isn't connected yet, at most 3, each `{ connector, title, mode }`. `title` can be absent: then use the connector's key. Written by Wiro. See [Modes](#modes). |
 | `timezone` | `timezone` | The proposed IANA time zone, such as `Europe/Istanbul`. |
 | `note` | all | Optional. The agent's one-line note on the change, up to 300 characters. |
 | `status` | all | Absent while pending, then `applied`, `dismissed` or `failed`. |
@@ -20656,38 +19283,36 @@ Fields that don't apply to a card's kind are absent, and a missing list reads as
 
 ### Every kind
 
-`add` turns on a connector or skill. This one turns on Brevo Email, two skills it depends on, and brings the Brevo connector, which still needs its key:
+`add` turns on a skill. This one turns on Video Creator and the skills that come with it:
 
 ```json
 {
   "v": 1,
   "id": "m5t8c2w6r3pe",
   "kind": "add",
-  "key": "int-brevo-email",
-  "with": ["util-anti-ai-human-copy", "util-chat-markdown-reporting"],
-  "needs": [{ "connector": "brevo", "title": "Brevo", "mode": "key" }],
+  "key": "util-video-creator",
+  "with": ["util-motion-effects", "util-video-docs", "util-video-shots"],
   "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
   "createdat": 1794654811
 }
 ```
 
-When `needs` names a connector with `mode` `key`, `signin`, `appkeys` or `token`, Wiro stores a `connect` card for it on the same message, right after the `add` card, when the message has room for it (three cards at most) and no pending `connect` card for that connector yet. Show the two as one card: see [Buttons](#buttons).
+When `needs` names something with `mode` `key`, Wiro stores a `connect` card for it on the same message, right after the `add` card, when the message has room for it (three cards at most) and no pending `connect` card for it yet. Show the two as one card: see [Buttons](#buttons).
 
-`remove` turns one off. Its saved key stays saved:
+`remove` turns one off:
 
 ```json
 {
   "v": 1,
   "id": "w2c8n5q1x7rd",
   "kind": "remove",
-  "key": "int-brevo-email",
-  "pauses": ["cs-cron-newsletter-digest"],
+  "key": "util-weather",
   "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
   "createdat": 1794654811
 }
 ```
 
-`connect` connects a connector that is on, or the one an `add` card on the same message brings:
+`connect` connects a connector the agent doesn't have connected yet, by its catalog slug:
 
 ```json
 {
@@ -20700,14 +19325,14 @@ When `needs` names a connector with `mode` `key`, `signin`, `appkeys` or `token`
 }
 ```
 
-`disconnect` removes a connector's saved key. Wiro takes it only for a connector that is connected with a key and that the agent can run without:
+`disconnect` disconnects a connected connector:
 
 ```json
 {
   "v": 1,
   "id": "b7k1m4t9w2zs",
   "kind": "disconnect",
-  "connector": "brevo",
+  "connector": "serper",
   "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
   "createdat": 1794654811
 }
@@ -20792,7 +19417,7 @@ The full rules of each kind, such as what `with`, `pauses` and `before` mean, ar
 | Dismissed | `status: "dismissed"` | Turned down. Nothing changed. |
 | Failed | `status: "failed"` | Wiro tried to apply it and couldn't: `error` says why. Nothing changed, with one exception: a `disconnect` card fails with `<Title> is disconnected in the agent's settings.` when the connector still reads connected after the agent's own key was removed, because the agent's template holds one too. That removal stays, and `restarting` in the answer says whether the agent restarts for it. |
 
-Two more states exist only in your interface, between a click and the answer: **applying** (your call is under way), and **refused**, when `SetupCardApply` answers `result: false` and the card is still pending, for example a key that is too short or a sign-in that isn't finished. A refused card keeps its buttons. While the agent restarts after a change, show the card as applied with a **restarting** note; see [Restarts](#restarts).
+Two more states exist only in your interface, between a click and the answer: **applying** (your call is under way), and **refused**, when `SetupCardApply` answers `result: false` and the card is still pending, for example a key the vendor refused. A refused card keeps its buttons. While the agent restarts after a change, show the card as applied with a **restarting** note; see [Restarts](#restarts).
 
 Applying a `connect` card also marks the same person's other `connect` cards for that connector applied, when they are still pending on other messages of the same chat from the last 7 days. Their blocks come again on their own `agenttoken`s, and History shows them applied.
 
@@ -20800,10 +19425,10 @@ Applying a `connect` card also marks the same person's other `connect` cards for
 
 | Kind | Title line | Body | Buttons |
 |------|-----------|------|---------|
-| `add` | "Add `<title>`", the `title` of `key` in `Skills/List` | `with` as "Also turns on", `pauses` and `resumes`, and each entry of `needs` with its connect step | Apply, Dismiss; Connect for each connector in `needs` that has a `connect` card |
-| `remove` | "Remove `<title>`" | `with` as "Also turns off", `pauses` and `resumes`. Say that a saved key stays saved. | Apply, Dismiss |
-| `connect` | "Connect `<next[0].title>`" | By `next[0].mode`: a form for `key`, your Connect step for `signin`, `appkeys` and `token`, a link to your settings screen for `page` | Save for `key`; Connect, which runs your flow and then applies the card, for the sign-in modes; none for `page`; and Dismiss |
-| `disconnect` | "Disconnect `<title>`", the connector's title from `UserAgent/Detail` (`credentials.<connector>._schema.title`) | Say that its saved key is removed and the skills that use it stop until it is connected again | Disconnect, Dismiss |
+| `add` | "Add `<title>`", the `title` of `key` in `Skills/List` | `with` as "Also turns on", `pauses` and `resumes`, and each entry of `needs` with its connect step | Apply, Dismiss; Connect for each entry of `needs` that has a `connect` card |
+| `remove` | "Remove `<title>`" | `with` as "Also turns off", `pauses` and `resumes` | Apply, Dismiss |
+| `connect` | "Connect `<next[0].title>`" | By `next[0].mode`: a form with the connector's fields for `key`, a link to your settings screen for `page` | Save for `key`; none for `page`; and Dismiss |
+| `disconnect` | "Disconnect `<title>`", the connector's `title` from [`ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist) | Say that the connection is removed and the agent loses the connector's tools until it is connected again | Disconnect, Dismiss |
 | `schedule` | "Create", "Change", "Pause", "Resume" or "Delete" scheduled task `<title or key>` | The schedule in words, in the agent's time zone, and `instructions` | Apply, Dismiss |
 | `skill` | "Create", "Change", "Add to", "Undo the last change to", "Turn off" or "Turn on" custom skill `<title or key>` | `instructions`; for `update`, `append` and `revert`, `before` next to the text after the change | Apply, Dismiss |
 | `timezone` | "Set the time zone to `<timezone>`" | The current zone, `timezone` on `UserAgent/Detail` (`null` means UTC) | Apply, Dismiss |
@@ -20817,7 +19442,7 @@ Show `note`, when there is one, under the title.
 | Pending, reply still being written | The card | Apply disabled while the message's `status` is `agent_queue`, `agent_start` or `agent_output`; Dismiss works |
 | Pending | The card | All enabled |
 | Applying | The card with a spinner | Disabled |
-| Refused | `errors[0].message` under the card; for `errorcode: "not_connected"`, the Connect step again | Enabled |
+| Refused | `errors[0].message` under the card | Enabled |
 | Applied | "Applied", and `summary` from the answer when you have it | None |
 | Applied, agent restarting | "Applied" and "Restarting, about a minute" until the agent runs again | None |
 | Dismissed | "Turned down" | None |
@@ -20827,14 +19452,10 @@ Show `note`, when there is one, under the title.
 
 - **Apply**: `SetupCardApply` with `action: "apply"`.
 - **Dismiss**: `SetupCardApply` with `action: "dismiss"`. When you dismiss an `add` card, dismiss its `connect` cards too: they can't connect anything without it.
-- **An `add` card with a `connect` card**: the `connect` cards on the same message whose `connector` is in the `add` card's `needs` belong to it. Show them inside the `add` card, with one button that does both:
-    - `mode` `key`: show the connector's fields and an **Add and connect** button: `SetupCardApply` on the `add` card with `values`.
-    - `mode` `signin`, `appkeys` or `token`: show a **Connect** button that runs your connection flow, then **Add**: `SetupCardApply` on the `add` card with `signin: true`.
-    - Either way, offer **Add now, connect later** too: `SetupCardApply` on the `add` card alone. Its answer's `next` then names the `connect` card to finish later.
-    - `values` go with the add card's one `key` card, and `signin: true` with its one sign-in card. With two `key` cards it takes no `values`, and with two sign-in cards no `signin: true`: offer **Add** alone, then each `connect` card's own button.
-- **A `connect` card alone**: `mode` `key` shows the fields and **Save** (`SetupCardApply` with `values`). A sign-in mode shows **Connect**, which runs your connection flow, then calls `SetupCardApply` on the card. `mode` `page` shows a link to your settings screen: applying it is refused.
+- **An `add` card with a `connect` card**: the `connect` cards on the same message whose `connector` is in the `add` card's `needs` belong to it. Show them inside the `add` card. For a `key` card, show its fields and an **Add and connect** button: `SetupCardApply` on the `add` card with `values`. Offer **Add now, connect later** too: `SetupCardApply` on the `add` card alone, whose answer's `next` then names the `connect` card to finish later. With two `key` cards, the `add` card takes no `values`: offer **Add** alone, then each `connect` card's own button.
+- **A `connect` card alone**: `mode` `key` shows the fields and **Save** (`SetupCardApply` with `values`). `mode` `page` shows a link to your settings screen: applying it is refused.
 
-A connector with `mode` `page` gets no `connect` card with its `add` card, and no card can connect it: its setup happens in your settings screens. See [Page](#page-set-up-outside-the-chat).
+A connector with `mode` `page`, such as one that signs in with its vendor, gets no `connect` card with an `add` card, and no card can connect it: its setup happens in your settings screens. See [Page](#page-set-up-outside-the-chat).
 
 ## Applying and Dismissing
 
@@ -20848,8 +19469,7 @@ A connector with `mode` `page` gets no `connect` card with its `add` card, and n
 | `messageguid` | string | Yes | The message that holds the card: the row whose `timeline[]` has the setup block. |
 | `cardid` | string | Yes | The card's `setup.id`. |
 | `action` | string | Yes | `"apply"` or `"dismiss"`. |
-| `values` | object | No | `{ "<fieldname>": "<value>" }`. On a `connect` card for a key connector: its fields. On an `add` card whose `connect` card takes a key: that card's fields, and Wiro applies both cards in one step. Only `text`, `password`, `url` and `email` fields, up to 4,096 characters each, named as [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail) lists them in `credential_schema`. Saved to the connector, never returned and never shown to the agent. |
-| `signin` | boolean | No | `true` with `action: "apply"` on an `add` card whose sign-in `connect` card's connector you have just connected: Wiro applies both cards in one step. Never together with `values`. |
+| `values` | object | No | `{ "<fieldname>": "<value>" }`. On a `connect` card for a `key` connector: its fields, named as the connector's `credentialfields` list them on [`AgentConnector/Detail`](/docs/agent-connectors#post-agentconnectordetail), or a credential's `credential_schema`. On an `add` card whose `connect` card takes a key: that card's fields, and Wiro applies both cards in one step. Text values, up to 4,096 characters each. Saved to the connector, never returned and never shown to the agent. |
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
@@ -20895,14 +19515,13 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
 | `errors` | `[{ code, message, time }]`. `message` is one plain sentence you can show as it is. |
 | `setup` | The card after the call: still pending after a refusal, `applied`, `dismissed` or `failed` otherwise. `null` when the call was refused before the card was read: a missing parameter, an agent or message your key can't reach, setup from chat off, a reply still running, code `97`, a card someone is applying at that moment, or a card that isn't there. |
 | `restarting` | `true` when the agent restarts to load the change. See [Restarts](#restarts). It can be `true` with `result: false` too, when the call changed part of the setup before it was refused or failed: some fields saved while others are still needed, or the failed `disconnect` of [Card states](#card-states). |
-| `summary` | A short phrase that says what changed, such as `Scheduled task Weekly traffic report created` or `Serper Web Search added. Serper Web Search connected.`. Empty when nothing was applied. |
-| `paired` | Only when `values` or `signin: true` came with an `add` card: its `connect` card after the call, `[{ setup, result, error }]`. `result` is `true` when that card was applied too, and `error` is `null` or the sentence that says why not. `[]` when the `add` card has no single `connect` card to take them. |
+| `summary` | A short phrase that says what changed, such as `Scheduled task Weekly traffic report created` or `Serper connected.`. Empty when nothing was applied. |
+| `paired` | Only when `values` came with an `add` card: its `connect` card after the call, `[{ setup, result, error }]`. `result` is `true` when that card was applied too, and `error` is `null` or the sentence that says why not. `[]` when the `add` card has no single `connect` card to take them. |
 | `next` | Only when something is left to connect: `[{ connector, title, mode, cardid?, messageguid? }]`. See [Your Own Connect Button](#your-own-connect-button). |
-| `errorcode` | Only on the refusals of a sign-in `connect` card, or of an `add` card sent with `signin: true`: `not_connected`, `signin_values`, `signin_no_pair` or `signin_many`. See [Errors](#setupcardapply-refusals). |
 
 Dismissing answers the card with `status: "dismissed"`, `restarting: false` and an empty `summary`.
 
-Everyone subscribed to the turn's `agenttoken` gets the card's new block as an `agent_timeline_delta`, and so does the `connect` card applied with an `add` card. Update your copy from the answer's `setup` right away, and from the block when it arrives.
+Everyone subscribed to the turn's `agenttoken` gets the card's new block as an `agent_timeline_delta`, and so does a `connect` card applied with an `add` card. Update your copy from the answer's `setup` right away, and from the block when it arrives.
 
 ### Who may call it
 
@@ -20918,30 +19537,22 @@ With your project API key, a call acts as the key's owner, and works when all of
 
 ## Connecting a Connector
 
-### Modes
+A connector connects with the [Agent Connectors](/docs/agent-connectors) calls, the same ones your settings screens use. A setup card only records it: a `connect` card names the connector by its slug, and its `next` entry says how it connects in `mode`.
 
-Each entry of `needs` and of `next` says how its connector connects in `mode`:
+### Modes
 
 | `mode` | How it connects | Your UI | Calls |
 |--------|-----------------|---------|-------|
 | `key` | A key, or a few fields, typed by the person | A form with the connector's fields | `SetupCardApply` with `values` |
-| `appkeys` | The person's own app keys, then the provider's sign-in | A form for the app keys, the redirect URI to register, then a Connect button | `CredentialUpsert`, `OAuthConnect` (`own`), `OAuthStatus`, `SetPickerAccounts`, then `SetupCardApply` |
-| `token` | A token Wiro checks on the server, such as a Meta System User token | A form for the token, then the accounts to pick when the check lists some | `CredentialUpsert`, `OAuthConnect` (`api_key`), `SetPickerAccounts` when there are accounts to pick, then `SetupCardApply` |
-| `signin` | The provider's sign-in with Wiro's own app | A Connect button | `OAuthConnect` (`wiro`), `OAuthStatus`, `SetPickerAccounts` when there are accounts to pick, then `SetupCardApply` |
-| `page` | Anything else: service account files, lists, the Wiro project of Wiro AI Models | A link to your settings screen for that connector | The credential endpoints, with no card |
+| `page` | Anything else: a vendor's sign-in, an app of your own, a token, account pickers, the agent's Wiro project | A link to your settings screen for that connector | The [Agent Connectors](/docs/agent-connectors) calls, or the [credential](/docs/agent-credentials) endpoints for a channel or the Wiro project, with no card |
 
-Read a mode you don't know as `page`. `mode` is the connector's usual way. A connector can offer others, listed in `connection_modes` of `POST /Credentials/Detail` by their `authmethod`: `wiro` is `signin`, `own` is `appkeys` and `api_key` is `token`. Any of them that connects the connector lets its card apply. `wiro` stays listed while `wiro_connect_pending` is `true`, and until that flag is `false`, `OAuthConnect` refuses it with `Sign-in with the platform's app is not enabled for <Title>`: don't offer it then. Each mode below uses one example connector, and the same calls work for every connector of that mode.
+Read a mode you don't know as `page`.
 
-The fields of a connector are in [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail) (`credential_schema`), which needs no API key, and in `credentials.<connector>._schema.fields` of `UserAgent/Detail`. Which of them a form shows:
+The fields of a connector are its `credentialfields` on [`POST /AgentConnector/Detail`](/docs/agent-connectors#post-agentconnectordetail), which needs no API key: show each `required` one, masked when it is `secret`.
 
-- `appkeys`, `token` and `signin`: the fields whose `only_in_modes` is absent or names the mode's `authmethod`, leaving out the ones marked `auto_filled_by_oauth`, `server_managed` or `platform_managed`, and any that isn't a `text`, `password`, `url` or `email` input. Every required one goes on the form: LinkedIn's app keys come with its organization ID, and Shopify's token check needs the shop domain besides the client ID and secret. For `token`, `oauth_provider.direct_probe.required_fields` names the fields the check reads.
-- `key`: the `text`, `password`, `url` and `email` fields, `required` marking the ones the connector needs.
+### Key: Serper
 
-### Key: Serper Web Search
-
-A key connector takes its fields as `values`. Serper Web Search has one field, `apikey` (label "Serper API Key", at least 20 characters).
-
-**With its `add` card, in one step.** Send the key with the `add` card that brings the connector. Wiro checks the key first, against the connector as the `add` card will leave it: a refused key applies nothing, and both cards stay pending. Otherwise both cards are applied, with one restart:
+A key connector takes its fields as `values` on its `connect` card. Serper has one field, `apikey` (label "Serper API Key"). Wiro connects it as [`ConnectorConnect`](/docs/agent-connectors#connect-with-fields) does, with the same checks, and the agent never sees the key:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
@@ -20950,94 +19561,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
   -d '{
     "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
     "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
-    "cardid": "q4n7s1v8b2xd",
+    "cardid": "h6w3k9p2m5tc",
     "action": "apply",
     "values": { "apikey": "THE_SERPER_API_KEY" }
   }'
-```
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "setup": {
-    "v": 1,
-    "id": "q4n7s1v8b2xd",
-    "kind": "add",
-    "key": "int-serper-search",
-    "needs": [{ "connector": "serper", "title": "Serper Web Search", "mode": "key" }],
-    "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
-    "createdat": 1794654811,
-    "status": "applied",
-    "actedat": 1794654870,
-    "actedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
-  },
-  "restarting": true,
-  "summary": "Serper Web Search added. Serper Web Search connected.",
-  "paired": [
-    {
-      "setup": {
-        "v": 1,
-        "id": "h6w3k9p2m5tc",
-        "kind": "connect",
-        "connector": "serper",
-        "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
-        "createdat": 1794654811,
-        "status": "applied",
-        "actedat": 1794654870,
-        "actedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
-      },
-      "result": true,
-      "error": null
-    }
-  ]
-}
-```
-
-A key that is too short:
-
-```json
-{
-  "result": false,
-  "errors": [{ "code": 0, "message": "Serper API Key must be at least 20 characters", "time": 1794654870 }],
-  "setup": {
-    "v": 1,
-    "id": "q4n7s1v8b2xd",
-    "kind": "add",
-    "key": "int-serper-search",
-    "needs": [{ "connector": "serper", "title": "Serper Web Search", "mode": "key" }],
-    "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
-    "createdat": 1794654811
-  },
-  "restarting": false,
-  "summary": "",
-  "paired": [
-    {
-      "setup": {
-        "v": 1,
-        "id": "h6w3k9p2m5tc",
-        "kind": "connect",
-        "connector": "serper",
-        "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
-        "createdat": 1794654811
-      },
-      "result": false,
-      "error": "Serper API Key must be at least 20 characters"
-    }
-  ]
-}
-```
-
-**On its `connect` card.** When the connector is already on, or its `add` card was applied without the key, send the fields with the `connect` card:
-
-```json
-{
-  "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-  "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
-  "cardid": "h6w3k9p2m5tc",
-  "action": "apply",
-  "values": { "apikey": "THE_SERPER_API_KEY" }
-}
 ```
 
 ```json
@@ -21056,396 +19583,17 @@ A key that is too short:
     "actedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
   },
   "restarting": true,
-  "summary": "Serper Web Search connected"
+  "summary": "Serper connected."
 }
 ```
 
-A `connect` card sent before its `add` card is applied changes nothing and answers `Apply card 1 first: it turns on Serper Web Search.`. A connector with several fields, such as WordPress, is connected once all its required fields are saved: with only some of them, the fields you sent are saved, the card stays pending, and the answer is `result: false` with `Saved <fields> for <Connector>. Still needed: <fields>.`. Send the rest with the same card. The same values sent with the `add` card still apply the `add` card: the answer is `result: true`, `summary` names only the add, `paired[0]` has `result: false` and that sentence, and `next` names the `connect` card to finish. A save of some fields can restart the agent, so `restarting` can be `true` on either answer.
-
-### Own app keys: Google Analytics 4
-
-The person connects with their own Google Cloud OAuth client, so Google's consent screen shows their app's name. The steps, for a pending `add` card for `int-ga4-analytics` and its `connect` card for `ga4`:
-
-**1. Read what the form needs.** `OAuthStatus` returns the redirect URI to register in the app and whether app keys are saved already:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "credentialkey": "ga4" }'
-```
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "connected": false,
-  "accounts": [],
-  "connectedat": "",
-  "tokenexpiresat": "",
-  "authmethod": "",
-  "redirecturi": "https://api.wiro.ai/v1/UserAgentOAuth/GA4Callback",
-  "appkeyssaved": false,
-  "tokensaved": false
-}
-```
-
-Show a form with the app's fields (`clientid` and `clientsecret` for Google, listed in `credential_schema` with `only_in_modes: ["own"]`) and the `redirecturi` to copy into the app's authorized redirect URIs. When `appkeyssaved` is `true`, the keys are saved already: offer to use them or replace them. Saved app keys are never returned.
-
-**2. Save the app keys** with [`CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert), with `authmethod: "own"`. Saving app keys restarts nothing. In this flow the connection restarts nothing either, since nothing on the agent uses Google Analytics 4 until the `add` card is applied, and that apply restarts the agent once (step 8).
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-    "fields": [
-      { "credentialkey": "ga4", "fieldname": "clientid", "fieldvalue": "1234567890-abc.apps.googleusercontent.com" },
-      { "credentialkey": "ga4", "fieldname": "clientsecret", "fieldvalue": "GOCSPX-THE_CLIENT_SECRET" },
-      { "credentialkey": "ga4", "fieldname": "authmethod", "fieldvalue": "own" }
-    ]
-  }'
-```
-
-```json
-{ "result": true, "applied": 3, "errors": [] }
-```
-
-**3. Start the sign-in** with [`OAuthConnect`](/docs/agent-credentials#post-useragentoauthoauthconnect), and your own page as `redirecturl`: any https URL you control, or `http://localhost` while you develop. The browser comes back to it with no `useragentguid` in the query, so put your own reference in it:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-    "credentialkey": "ga4",
-    "authmethod": "own",
-    "redirecturl": "https://app.example.com/connect/done?ref=conn_8812"
-  }'
-```
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?client_id=1234567890-abc.apps.googleusercontent.com&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FGA4Callback&scope=...&response_type=code&state=...&access_type=offline&prompt=select_account+consent",
-  "flowid": "9d2c41e07ab35f8e6c1d0b9a87f6e5d4"
-}
-```
-
-Keep `flowid`: it names this sign-in. A new `OAuthConnect` for the same agent and connector replaces it.
-
-**4. Send the browser to `authorizeUrl`.** Either redirect the tab, or open a popup from the click handler and let your return page tell the opener (for example with `postMessage`) and close itself. Google shows its account chooser and then the consent screen.
-
-**5. Read the return.** The browser comes back to your `redirecturl`, with the result added to the query:
-
-```text
-https://app.example.com/connect/done?ref=conn_8812&ga4_connected=true&ga4_properties=%5B%7B%22id%22%3A%22123456789%22%2C%22displayName%22%3A%22Acme%20Web%22%2C%22account%22%3A%22Acme%22%2C%22propertyType%22%3A%22PROPERTY_TYPE_ORDINARY%22%7D%2C%7B%22id%22%3A%22987654321%22%2C%22displayName%22%3A%22Acme%20App%22%2C%22account%22%3A%22Acme%22%2C%22propertyType%22%3A%22PROPERTY_TYPE_ORDINARY%22%7D%5D
-```
-
-On failure it carries `ga4_error=<code>` instead; see [Return codes](#return-codes-on-your-redirect-url). Each connector has its own prefix (`ga4_`, `x_`, `fb_` and so on), listed in [Callback success and error parameters](/docs/agent-credentials#callback-success-error-parameters).
-
-**6. Read the accounts to pick** from your backend with `OAuthStatus`, called as in step 1. This also works when you didn't read the return, such as after a popup:
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "connected": false,
-  "accounts": [],
-  "connectedat": "2026-11-14T11:14:50.000Z",
-  "tokenexpiresat": "2026-11-14T12:14:50.000Z",
-  "authmethod": "own",
-  "redirecturi": "https://api.wiro.ai/v1/UserAgentOAuth/GA4Callback",
-  "appkeyssaved": true,
-  "tokensaved": false,
-  "flow": {
-    "flowid": "9d2c41e07ab35f8e6c1d0b9a87f6e5d4",
-    "mine": true,
-    "mode": "own",
-    "status": "candidates",
-    "account": "",
-    "errorcode": "",
-    "errordetail": "",
-    "restart": "none",
-    "expiresat": 1794655790
-  },
-  "candidates": [
-    { "id": "123456789", "name": "Acme Web" },
-    { "id": "987654321", "name": "Acme App" }
-  ]
-}
-```
-
-`flow` is the agent's current sign-in or token check for this connector, whoever started it: `OAuthStatus` takes no `flowid`, so compare `flow.flowid` with the one you kept. Another `flowid` means a newer sign-in replaced yours. To anyone but the person who started it, `flow` holds only `mine`, `status` and `expiresat`, such as `{ "mine": false, "status": "candidates", "expiresat": 1794655790 }`, and `candidates` is absent. `flow.status` is `waiting` until the person comes back, then `candidates` (accounts to pick), `connected` (nothing to pick), `saved` (the accounts were saved and the list is used up), or `failed` with `flow.errorcode`. A flow lives 15 minutes from `OAuthConnect`, or 15 minutes from the moment its accounts were listed; after that `flow` is absent. Poll every two seconds or so while you wait. Show `candidates` as a list with checkboxes.
-
-**7. Save the accounts picked** with [`SetPickerAccounts`](/docs/agent-credentials#post-useragentoauthsetpickeraccounts), the `flowid` and their ids, within 15 minutes of the sign-in:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-    "credentialkey": "ga4",
-    "flowid": "9d2c41e07ab35f8e6c1d0b9a87f6e5d4",
-    "accountids": ["123456789"]
-  }'
-```
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "accounts": [{ "id": "123456789", "name": "Acme Web" }],
-  "restart": "none"
-}
-```
-
-The connector is now connected. `restart` is `"none"` because nothing on the agent uses Google Analytics 4 until the `add` card is applied.
-
-Two connectors have a second step after the accounts: Meta Ads (its Facebook Pages, optional) and Google Business Profile (its locations, required). Discover the items with [`DiscoverPickerItems`](/docs/agent-credentials#post-useragentoauthdiscoverpickeritems), sending the picked ids as `parents` and the sign-in's `flowid`, then save both steps in one `SetPickerAccounts` call with `accountids`, `pickerkey` and `selections`. For a Google Business Profile sign-in:
-
-```json
-{
-  "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-  "credentialkey": "google-business",
-  "pickerkey": "locations",
-  "flowid": "7f3e2d1c0b9a88776655443322110ffe",
-  "parents": ["112233445566778899001"]
-}
-```
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "pickerkey": "locations",
-  "groups": [
-    {
-      "parent": { "accountid": "112233445566778899001", "accountname": "Acme Bakery" },
-      "items": [
-        { "locationid": "9876543210987654321", "locationtitle": "Acme Bakery Downtown" },
-        { "locationid": "1234567890123456789", "locationtitle": "Acme Bakery Riverside" }
-      ]
-    }
-  ]
-}
-```
-
-```json
-{
-  "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-  "credentialkey": "google-business",
-  "flowid": "7f3e2d1c0b9a88776655443322110ffe",
-  "accountids": ["112233445566778899001"],
-  "pickerkey": "locations",
-  "selections": [{ "parentvalue": "112233445566778899001", "itemids": ["9876543210987654321"] }]
-}
-```
-
-A group whose items couldn't be listed comes with `items: []` and an `errorcode` of its own, such as `provider_timeout`: show it, and leave that account out of `selections`. See [Both steps in one call](/docs/agent-credentials#both-steps-in-one-call) for the rules of that save.
-
-**8. Apply the cards.** Send the `add` card with `signin: true`. Wiro checks that the connector reads connected, then applies the `add` card, which restarts the agent once, and its `connect` card:
-
-```json
-{
-  "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-  "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
-  "cardid": "71xb9zrcd1sb",
-  "action": "apply",
-  "signin": true
-}
-```
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "setup": {
-    "v": 1,
-    "id": "71xb9zrcd1sb",
-    "kind": "add",
-    "key": "int-ga4-analytics",
-    "needs": [{ "connector": "ga4", "title": "Google Analytics 4", "mode": "appkeys" }],
-    "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
-    "createdat": 1794654811,
-    "status": "applied",
-    "actedat": 1794654960,
-    "actedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
-  },
-  "restarting": true,
-  "summary": "Google Analytics 4 added. Google Analytics 4 connected.",
-  "paired": [
-    {
-      "setup": {
-        "v": 1,
-        "id": "ljehd9inazm4",
-        "kind": "connect",
-        "connector": "ga4",
-        "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
-        "createdat": 1794654811,
-        "status": "applied",
-        "actedat": 1794654960,
-        "actedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
-      },
-      "result": true,
-      "error": null
-    }
-  ]
-}
-```
-
-When the `add` card was applied earlier on its own, apply the `connect` card instead, with no `values`. It writes nothing: it records that the connector is connected, and answers `summary: "Google Analytics 4 connected"` with `restarting: false`, since the connection itself restarted the agent.
-
-### Token: Facebook Pages
-
-The person pastes a Meta Business System User token, Wiro checks it on the server and lists the Pages it can post to, and the person picks them. There is no browser redirect. For a pending `add` card for `int-facebookpage-post` and its `connect` card for `facebook-pages`:
-
-**1. Save the token** with `authmethod: "api_key"`. This restarts nothing.
-
-```json
-{
-  "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-  "fields": [
-    { "credentialkey": "facebook-pages", "fieldname": "authmethod", "fieldvalue": "api_key" },
-    { "credentialkey": "facebook-pages", "fieldname": "systemusertoken", "fieldvalue": "THE_SYSTEM_USER_TOKEN" }
-  ]
-}
-```
-
-```json
-{ "result": true, "applied": 2, "errors": [] }
-```
-
-**2. Check it** with `OAuthConnect` and the same `authmethod`, and no `redirecturl`:
-
-```json
-{
-  "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-  "credentialkey": "facebook-pages",
-  "authmethod": "api_key"
-}
-```
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
-  "accounts": [
-    { "id": "1029384756", "name": "Acme" },
-    { "id": "5647382910", "name": "Acme Outlet" }
-  ],
-  "account": "Acme Marketing System User",
-  "restart": "none"
-}
-```
-
-`accounts` are the Pages to pick, and `account` names who the token belongs to. A refused check answers `result: false` with `errorcode`, such as `direct_token_invalid` or `no_pages`; see [Token check codes](#token-check-codes).
-
-**3. Save the Pages picked:**
-
-```json
-{
-  "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-  "credentialkey": "facebook-pages",
-  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
-  "accountids": ["1029384756"]
-}
-```
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "accounts": [{ "id": "1029384756", "name": "Acme" }],
-  "restart": "none"
-}
-```
-
-**4. Apply the cards:** the `add` card with `signin: true`, as for Google Analytics 4. The answer's `summary` reads `Facebook Page Post added. Facebook connected.` The token never reaches the agent, and the Page tokens Wiro finds with it never leave the server.
-
-### Sign-in: X with Wiro's app
-
-A `signin` connector connects with Wiro's own app, so there are no app keys to collect: one button. The provider's consent screen then names Wiro's app, not yours. To show your own brand there, connect the same connector with your own app keys instead (`authmethod: "own"`, as in [Own app keys](#own-app-keys-google-analytics-4)), where the connector offers it in `connection_modes`: a product whose users never see Wiro's name does that wherever it can, and shows its own label for Wiro AI Models (see [Your product shows everything](#your-product-shows-everything)). For a pending `add` card for `int-twitterx-post` and its `connect` card for `twitter`:
-
-**1. Start the sign-in:**
-
-```json
-{
-  "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-  "credentialkey": "twitter",
-  "authmethod": "wiro",
-  "redirecturl": "https://app.example.com/connect/done?ref=conn_8813"
-}
-```
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "authorizeUrl": "https://x.com/i/oauth2/authorize?client_id=...&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FXCallback&scope=...&response_type=code&state=...&code_challenge=...&code_challenge_method=S256",
-  "flowid": "e1a2b3c4d5e6f708192a3b4c5d6e7f80"
-}
-```
-
-**2. Send the browser to `authorizeUrl`.** The person approves on X and comes back to your page:
-
-```text
-https://app.example.com/connect/done?ref=conn_8813&x_connected=true&x_username=acmeco
-```
-
-**3. Check the connection** with `OAuthStatus`. X has no accounts to pick, so the sign-in connects it:
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "connected": true,
-  "accounts": [{ "id": "acmeco", "name": "acmeco" }],
-  "connectedat": "2026-11-14T11:15:25.000Z",
-  "tokenexpiresat": "2026-11-14T13:15:25.000Z",
-  "authmethod": "wiro",
-  "redirecturi": "https://api.wiro.ai/v1/UserAgentOAuth/XCallback",
-  "appkeyssaved": false,
-  "tokensaved": false,
-  "flow": {
-    "flowid": "e1a2b3c4d5e6f708192a3b4c5d6e7f80",
-    "mine": true,
-    "mode": "wiro",
-    "status": "connected",
-    "account": "acmeco",
-    "errorcode": "",
-    "errordetail": "",
-    "restart": "none",
-    "expiresat": 1794655802
-  }
-}
-```
-
-**4. Apply the cards:** the `add` card with `signin: true`. `summary` reads `Twitter / X Post added. Twitter / X connected.`
+A value Wiro refuses (a required field missing, a format that doesn't fit, or a key the vendor refused) saves nothing: the answer is `result: false` with the sentence, and the card stays pending for the person to try again.
 
 ### Page: set up outside the chat
 
-A connector with `mode` `page`, such as Google Drive with its service account file, gets no `connect` card with its `add` card, and no card can connect it. When its `add` card is applied, `summary` goes on with `Connect Google Drive in the agent's settings`, and `next` lists it with `mode: "page"` and no `cardid`. The agent can still propose a `connect` card for it on its own: that block's `next` reads `mode: "page"`, and applying the card is refused with `Google Drive is connected in the agent's settings, not from chat.` while it stays pending. Show such a card as a link to your settings screen, with Dismiss. Send the person to your own settings screen for that connector, which saves it with the credential endpoints, as its integration page shows:
+A connector with `mode` `page`, such as Google Analytics 4 with its sign-in or Google Drive with its service account file, gets no `connect` card with an `add` card, and no card can connect it. The agent can still propose a `connect` card for it on its own: that block's `next` reads `mode: "page"`, and applying the card is refused with `Google Drive is connected in the agent's settings, not from chat.` while it stays pending. Show such a card as a link to your settings screen, with Dismiss.
 
-```json
-{
-  "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-  "fields": [
-    { "credentialkey": "google-drive", "fieldname": "serviceaccountjson", "fieldvalue": "BASE64_OF_THE_SERVICE_ACCOUNT_JSON" }
-  ]
-}
-```
-
-```json
-{ "result": true, "applied": 1, "errors": [] }
-```
-
-There is no card to apply afterwards. The save restarts a running agent once, so it loads the connector, but its answer doesn't say so: see [Showing a restart](#showing-a-restart). Files go through [`CredentialFileUpload`](/docs/agent-overview#post-useragentcredentialfileupload), and the Wiro AI Models connector, the Wiro project the agent runs models with, through [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind), whose answer says in `restart` whether the agent restarts.
+On that screen, connect it with the Agent Connectors calls: [fields](/docs/agent-connectors#connect-with-fields), a [key instead of a sign-in](/docs/agent-connectors#connect-with-a-key-instead-of-a-sign-in), or the vendor's [sign-in](/docs/agent-connectors#connect-with-a-sign-in) with a `redirecturl` on your own site, then its [account pickers](/docs/agent-connectors#account-pickers). Each answers `restart` (or `connector_connected=true` on your page after a sign-in): see [Showing a restart](#showing-a-restart). There is no card to apply afterwards. A channel or the agent's Wiro project is saved with [`CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert) or [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind).
 
 ## Your Own Connect Button
 
@@ -21456,8 +19604,8 @@ There is no card to apply afterwards. The save restarts a running agent once, so
 | Where | When | Entries |
 |-------|------|---------|
 | A setup block | On a pending `connect` card | One entry, its own connector: `{ connector, title, mode }`. No `cardid`: it is the block's own card. |
-| `SetupCardApply` answer | An `add` card applied, alone, with `values` or with `signin: true`, that leaves connectors not connected; a sign-in `connect` card refused with `not_connected` or `signin_values`; a `connect` card for a `page` connector | `{ connector, title, mode, cardid?, messageguid? }` |
-| `setupresult.next` in a `Message/Send` answer | A `yes` that applied a card: the reply's `key` connect cards still waiting for their key, the sign-in `connect` cards of the `add` card it applied, and each connector that `add` card brings with no card to connect it. A `yes` while only `connect` cards wait, one of them a sign-in card: the waiting `connect` cards. A key typed for an `add` card and its `connect` card: the other connectors that `add` card brings. | Same |
+| `SetupCardApply` answer | An `add` card applied, alone or with `values`, that leaves something not connected; a `connect` card for a `page` connector | `{ connector, title, mode, cardid?, messageguid? }` |
+| `setupresult.next` in a `Message/Send` answer | A `yes` that applied a card: the reply's `key` connect cards still waiting for their key, and each connector the applied `add` card needs with no card to connect it. A key typed for an `add` card and its `connect` card: the other connectors that `add` card needs. | Same |
 | `metadata.next` in the webhook | The same answers as `setupresult.next`, posted to the message's `callbackurl` | Same |
 
 `next` is absent when nothing is left to connect: never an empty array.
@@ -21466,57 +19614,41 @@ There is no card to apply afterwards. The save restarts a running agent once, so
 
 | Field | Description |
 |-------|-------------|
-| `connector` | The connector's key, as `needs[].connector` and a `connect` card's `connector` name it. |
-| `title` | Its name, one line, up to 80 characters. Use it on the button: "Connect Google Analytics 4". |
-| `mode` | `key`, `signin`, `appkeys`, `token` or `page`. See [Modes](#modes). |
+| `connector` | The connector's slug, as `needs[].connector` and a `connect` card's `connector` name it. |
+| `title` | Its name, one line, up to 80 characters. Use it on the button: "Connect Serper". |
+| `mode` | `key` or `page`. See [Modes](#modes). |
 | `cardid` | The pending `connect` card that records the connection once it is made. Never on `page` entries. |
 | `messageguid` | The message that card is on. Present exactly when `cardid` is, and only in answers. |
 
 ### From next to a button
 
 ```javascript
-// For each entry of next, show one button that runs the mode's flow,
-// then applies the card that records the connection.
+// For each entry of next, show one button.
 // own: for an entry of a block's next, that block's card and message.
 async function connectFromNext(entry, useragentguid, own) {
   const cardid = entry.cardid || (own && own.cardid);
   const messageguid = entry.messageguid || (own && own.messageguid);
-  if (entry.mode === "page") {
-    return openSettingsScreen(entry.connector); // your own screen; no card to apply
-  }
   if (entry.mode === "key") {
-    const values = await askForFields(entry.connector); // your form, never the chat
-    if (!cardid) return saveWithCredentialUpsert(entry.connector, values); // no card records it
+    const values = await askForFields(entry.connector); // your form, from AgentConnector/Detail credentialfields
+    if (!cardid) return connectorConnect({ useragentguid, slug: entry.connector, values }); // no card records it
     return setupCardApply({ useragentguid, messageguid, cardid, action: "apply", values });
   }
-  // signin, appkeys, token: run the connection, then record it on its card when there is one.
-  await runConnection(entry.connector, entry.mode); // OAuthConnect and the rest
-  if (!cardid) return;
-  return setupCardApply({ useragentguid, messageguid, cardid, action: "apply" });
+  // page, or a mode you don't know: your own settings screen runs ConnectorConnect,
+  // the sign-in and the account pickers. No card to apply.
+  return openSettingsScreen(entry.connector);
 }
 
 // A pending connect card's block, on its Message/Detail or History row:
 // connectFromNext(block.next[0], useragentguid, { cardid: block.setup.id, messageguid: row.guid });
 ```
 
-A block's `next` names no card because the card is the block's own: pass its `setup.id` and the row's `guid`, as the last line shows. An entry of an answer with no `cardid` and a mode other than `page` has no card left to record it, for example because its `connect` card was turned down: connect it the same way, with `CredentialUpsert` for a key, and there is nothing to apply. When the answer to a sign-in `connect` card is `errorcode: "not_connected"` with `next`, the connection isn't finished: run the flow again from that entry.
+A block's `next` names no card because the card is the block's own: pass its `setup.id` and the row's `guid`, as the last line shows. An entry of an answer with no `cardid` has no card left to record it, for example because its `connect` card was turned down: connect it with [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect), and there is nothing to apply.
 
 ## Errors and What to Show
 
-Every refusal comes as `result: false` with one plain sentence in `errors[0].message`. Show it as it is, or your own words for its code, and match codes, not sentences, in your code: sentences can change. A few sentences speak of the card's own sign-in or button, such as `Finish the sign-in on the card first.`: in your product, that is your Connect step.
+Every refusal comes as `result: false` with one plain sentence in `errors[0].message`. Show it as it is, or your own words for it, and don't branch your code on sentences: they can change.
 
 ### SetupCardApply refusals
-
-| `errorcode` | Sentence | What to do |
-|-------------|----------|------------|
-| `not_connected` | `<Title> is not connected yet. Finish the sign-in on the card first.` | Run the Connect step, then apply again. The card stays pending. On a `connect` card, `next` names it. |
-| `signin_values` | `<Title> connects with its sign-in on the card, not with typed values.` | Don't send `values` to a sign-in `connect` card: connect it, then apply with no `values`. |
-| `signin_no_pair` | `This card has no sign-in to finish. Apply it without one.` | The `add` card has no pending sign-in `connect` card. Apply it without `signin`. |
-| `signin_many` | `This card brings more than one sign-in. Apply it, then connect each on its own card.` | Apply the `add` card alone, then connect each connector and apply its own `connect` card. |
-
-For a `token` connector, such as Facebook, Instagram, Meta Ads or Shopify, each of these sentences says `token check` where it says `sign-in`: `Facebook connects with its token check on the card, not with typed values.`
-
-Refusals with no `errorcode`:
 
 | Sentence | What to do |
 |----------|------------|
@@ -21527,76 +19659,20 @@ Refusals with no `errorcode`:
 | `Wait until the agent finishes this reply, then apply it.` | Enable Apply once the reply ends. |
 | `This setup card was not found.` | Wrong `messageguid` or `cardid`, or a message the key's owner can't see. |
 | `This card was already applied.`, `This card was already dismissed.`, `This card was already failed.` | Show the card from `setup` in its state. |
-| `This card is being applied. Try again in a moment.`, `The card could not be applied right now. Try again in a moment.`, `Another change to this agent's connectors or skills is being applied. Try again in a moment.` | Someone is acting on this card, or on the agent's connectors and skills, right now. Let the person try again after a few seconds. |
+| `This card is being applied. Try again in a moment.`, `The card could not be applied right now. Try again in a moment.` | Someone is acting on this card, or on the agent's setup, right now. Let the person try again after a few seconds. |
 | `Apply card <N> first: it turns on <Title>.` | Apply the `add` card first, or send the key with the `add` card. |
-| `Send values or signin, not both.` | Send one of them. |
 | `This card takes no key. Apply it without one.`, `This card brings more than one key. Apply it, then add each key on its own card.` | `values` on an `add` card that can't take them. |
-| `<Connector> needs its key.` | `values` held no field with a value. |
-| `<Connector> takes only its own fields from a chat card.`, `<Label> must be text.`, `<Label> is too long.` | A field name the connector doesn't have, a value that isn't text, or one over 4,096 characters. Nothing was saved. |
-| `Saved <fields> for <Connector>. Still needed: <fields>.` | Send the missing fields with the same card. |
-| `Saved <fields> for <Connector>. It is not connected yet: finish it in the agent's settings.` | The fields are saved, and the connector still doesn't read connected: finish it in your settings screen for it. |
-| A field's sentence, such as `Serper API Key must be at least 20 characters` | Show it next to the field. Nothing was saved. |
+| A field's sentence, such as `Serper API Key is required.`, or the vendor's own refusal | Show it next to the field. Nothing was saved. |
 | `<Title> is connected in the agent's settings, not from chat.` | A `page` connector: `next` names it with `mode: "page"`. |
-| `<Connector> is not connected: <Add> was not added.`, `<Title> is connected, but <Add> was not added.` | In `paired[0].error`, the first with `values` and the second with `signin: true`, when the `add` card failed: its `connect` card stays pending. When the `add` card's change waits for another change instead, both cards stay pending, and `paired[0].error` reads `Another change to this agent's connectors or skills is being applied. Try again in a moment.`, as `errors[0].message` does. |
 | `The setup card could not be applied. Try again.` | Something went wrong. Read the card again with `Message/Detail` before you offer to try again. |
 
 These refusals carry `code` `0`, except the rights refusal, whose `code` is `97`. Check what you can before you call: that the reply has ended, that `chatSetup` is `"all"`, and that the card is pending in your copy.
 
-A card that fails as it is applied gets `status: "failed"` and its sentence in `setup.error`, and the answer is `result: false` with the same sentence. The usual ones are `This agent's connectors or skills changed after the card was made. Ask the agent again.`, `This skill changed after the card was made. Ask the agent again.`, `<Title> is disconnected in the agent's settings.` and `The change could not be applied. Try again in a moment.`, when Wiro couldn't make the change. Show it on the card. A failed card can't be applied again: the person asks the agent for a new one.
+A card that fails as it is applied gets `status: "failed"` and its sentence in `setup.error`, and the answer is `result: false` with the same sentence. The usual ones are `This agent's connectors or skills changed after the card was made. Ask the agent again.`, `This skill changed after the card was made. Ask the agent again.` and `The change could not be applied. Try again in a moment.`, when Wiro couldn't make the change. Show it on the card. A failed card can't be applied again: the person asks the agent for a new one.
 
-### Account list codes
+### Connector refusals and sign-in returns
 
-`SetPickerAccounts` and `DiscoverPickerItems` answer these in `errorcode`, with a sentence in `errors[0].message` that speaks of a sign-in or of a token check, as the list came from one or the other. `not_listed`, for example, reads `Choose accounts from the list the sign-in returned.` or `Choose accounts from the list the token check returned.` The sentences are listed under [`SetPickerAccounts`](/docs/agent-credentials#post-useragentoauthsetpickeraccounts).
-
-| `errorcode` | Meaning | What to show |
-|-------------|---------|--------------|
-| `flow_expired` | No account list is open: no sign-in or check was started, it was over 15 minutes ago, a save already used its list, or the connector was disconnected. | "The connection timed out", and the Connect button again. |
-| `flow_other_person` | Another account started the current sign-in or check. | The Connect button again. |
-| `flow_replaced` | The `flowid` you sent isn't the current one: a newer sign-in or check replaced it. | Use the newer one, or connect again. |
-| `flow_failed` | The current sign-in or check failed. `OAuthStatus` shows why in `flow.errorcode`. | The reason, and the Connect button. |
-| `flow_waiting` | The sign-in hasn't come back from the provider yet, so there is no list. | Keep waiting for the person to finish; don't start a new sign-in, which would replace it. |
-| `not_listed` | An id you sent isn't on the list the sign-in or check returned. | Pick again from `candidates`. |
-| `next_expired` | Both steps in one call, but the second step's discovery is missing or more than five minutes old. | Call `DiscoverPickerItems` with `parents` again. |
-| `next_required` | Both steps in one call for Google Business Profile with no location picked. | Ask for at least one location. |
-| `too_many_parents` | More than 50 Meta ad accounts, or more than 20 Business Profile accounts, for the second step. | Ask the person to pick fewer. |
-
-### OAuthConnect refusals
-
-Before it starts a sign-in, `OAuthConnect` can refuse with one of these sentences. Nothing starts then, and a sign-in already under way stays as it is.
-
-| Sentence | What to do |
-|----------|------------|
-| `Request parameter [redirecturl] required`, `Invalid redirect URL` | Send an https `redirecturl` you control, or an http one on `localhost` or `127.0.0.1` while you develop. |
-| `<Title> credentials not configured` | The app keys of `authmethod: "own"` aren't saved: save them with `CredentialUpsert` first. |
-| `Unsupported connection mode for <Title>` | `authmethod` isn't in the connector's `connection_modes`. |
-| `Sign-in with the platform's app is not enabled for <Title>` | `authmethod: "wiro"`, sent or taken as the default, while the connector's `wiro_connect_pending` is `true`: use `own` or `api_key`. |
-| `<Field> is required`, `Invalid <Field>` | A saved field the sign-in needs is missing or malformed, such as Shopify's shop domain: save it with `CredentialUpsert`. |
-| `User agent not found or unauthorized` | Your key's owner can't manage this agent. |
-
-Reddit also refuses until Wiro has set the approvals it reviews, with sentences such as `The platform must verify Reddit Data API approval for this app before connecting.`
-
-### Return codes on your redirect URL
-
-After a sign-in, the browser comes back to your `redirecturl` with `<prefix>_error=<code>` when it failed:
-
-| Code | What to show |
-|------|--------------|
-| `authorization_denied` | The person cancelled, or the provider refused. Offer to connect again. |
-| `session_expired` | More than 15 minutes passed. Connect again. |
-| `flow_replaced` | A newer sign-in replaced this one. Nothing was saved. |
-| `token_exchange_failed` | The provider gave no usable token, for example because the app's client secret is wrong. Check the app keys. |
-| `no_accounts`, `no_pages` | The sign-in worked, but there is nothing to pick. Say what to create first, such as a GA4 property. |
-| `account_list_too_large` | More than 2,000 accounts to pick from. Connect with a login that sees fewer. |
-| `useragent_not_found` | Before the sign-in came back, the agent was deleted, or the person who started the sign-in, your key's owner, could no longer manage it. Nothing was saved. |
-| `internal_error`, or any other code | Something went wrong. Offer to connect again. |
-
-Some connectors add their own codes, listed on their integration pages and in [Callback success and error parameters](/docs/agent-credentials#callback-success-error-parameters), and Merchant Center can add `mc_error_detail` with the provider's status, such as `PERMISSION_DENIED`.
-
-A callback that can't be matched to a sign-in, because it came without its `state` or more than 24 hours after `OAuthConnect`, can't return to your page. It ends on a plain page of the API's own, `/v1/UserAgentOAuth/SignInNotFinished` on the API's host, which names no brand and links nowhere: it says the sign-in could not be finished and the window can be closed, and shows the code (`missing_params`, `session_expired` or `internal_error`). Your return page hears nothing then, so when a popup doesn't report back, read `OAuthStatus` and offer to connect again.
-
-### Token check codes
-
-A token check that fails answers `OAuthConnect` with `result: false`, a sentence, `flowid`, `errorcode` and `restart`, such as `direct_token_missing` (the token or `authmethod: "api_key"` isn't saved), `direct_token_invalid`, `no_accounts`, `no_pages`, `too_many_pages`, `account_list_too_large`, `direct_picker_unavailable`, `provider_rejected_request`, `provider_request_failed` or `provider_timeout`. Show the sentence, and let the person paste a new token. `restart` is `"scheduled"` when the failed check removed a connection the agent was using. Each integration page lists its codes.
+The calls your settings screens make answer their own refusals, and a sign-in returns to your `redirecturl` with `connector_connected=true` or `connector_error=<code>`. Both lists, with what to show, are on Agent Connectors: [Errors](/docs/agent-connectors#errors) and [The callback and your redirect URL](/docs/agent-connectors#the-callback-and-your-redirect-url).
 
 ## Restarts
 
@@ -21606,9 +19682,8 @@ An agent loads its setup when it starts, so most changes restart it:
 
 - `add`, `remove`, `connect` (a key saved), `disconnect` and `timezone` cards, a `schedule` or `skill` card that creates one, a `schedule` card that changes `cron`, and `pause`, `resume`, `delete`, `disable` and `enable` cards.
 - A card that changes only the text of a custom skill or scheduled task (`append`, `revert`, or an `update` that keeps the schedule) reaches a running agent without a restart.
-- A sign-in `connect` card writes nothing: the connection restarted the agent if it needed to, so its apply answers `restarting: false`.
-- One change, one restart. An `add` card applied with its key, or with `signin: true`, restarts the agent once for both cards, and a change made while a restart is still stopping or queued loads with that restart.
-- A connection made with a sign-in, app keys or a token check while nothing on the agent uses the connector restarts nothing, which is why connecting first and then applying the `add` card with `signin: true` restarts the agent once. Fields saved with `CredentialUpsert` for a connector that has no sign-in, a `key` connector or a `page` one such as Google Drive, restart a starting or running agent whenever a saved value changes, whether or not anything on the agent uses the connector.
+- One change, one restart. An `add` card applied with its key restarts the agent once for both cards, and a change made while a restart is still stopping or queued loads with that restart.
+- A connector connected on your settings screen restarts a starting or running agent when the connection changes something: `ConnectorConnect`, `ConnectorSetAccounts` and `ConnectorDisconnect` answer `restart: "scheduled"` then, and a sign-in returns `connector_connected=true` once the agent is restarting.
 - An agent that is stopped doesn't start: it loads the change when it next starts, and `restarting` is `false`.
 
 `restarting` in the `SetupCardApply` answer and in `setupresult` says whether this change restarts the agent.
@@ -21635,11 +19710,10 @@ Each call says it in its own field:
 | Call | Says the agent restarts with |
 |------|------------------------------|
 | `SetupCardApply`, and `Message/Send` in `setupresult` | `restarting: true` |
-| `OAuthConnect` (a token check), `SetPickerAccounts`, `CredentialProjectBind` | `restart: "scheduled"` |
-| `OAuthStatus`, after a sign-in came back | `flow.restart: "scheduled"` |
-| `CredentialUpsert`, `UpdateSettings` | Nothing. After a save that can restart the agent, such as a connector's key or fields, or `chatsetup` changed from or to `"off"`, poll `UserAgent/Detail` the same way. |
+| `ConnectorConnect`, `ConnectorSetAccounts`, `ConnectorDisconnect`, `CredentialProjectBind` | `restart: "scheduled"` |
+| A sign-in that came back to your `redirecturl` | `connector_connected=true` |
+| `CredentialUpsert`, `UpdateSettings` | Nothing. After a save that can restart the agent, such as a channel's fields, or `chatsetup` changed from or to `"off"`, poll `UserAgent/Detail` the same way. |
 
-So when a sign-in `connect` card's connector is on already, the connection itself restarts the agent through these calls, and the card's apply then answers `restarting: false`.
 
 ### Messages during a restart
 
@@ -21655,8 +19729,8 @@ While the agent isn't running, `Message/Send` answers `result: false` with `agen
 
 Before this refusal, Wiro still answers the replies it handles itself:
 
-- A `yes` that lists or applies a card other than a `connect` card, and a `yes` while a sign-in `connect` card waits.
-- A key for a `key` connect card that is the only `connect` card waiting, while its connector is on the agent or a pending `add` card on the same reply brings it. Another service's key is answered too, whoever sends it, once that card's connector is on the agent, and nothing is saved: `That does not look like a <Title> key (it looks like <kind>), so it was not saved. Paste the <Title> key as your reply.` The part in brackets comes only when Wiro knows the kind, and before a title that starts with a vowel, `a` becomes `an`, as in `an Apollo key`. While the connector isn't on the agent yet, as while the `add` card that brings it still waits, another service's key is only taken out, and the message gets the refusal.
+- A `yes` that lists or applies a card other than a `connect` card.
+- A key for a `key` connect card that is the only `connect` card waiting. Another service's key is answered too, whoever sends it, and nothing is saved: `That does not look like a <Title> key (it looks like <kind>), so it was not saved. Paste the <Title> key as your reply.` The part in brackets comes only when Wiro knows the kind, and before a title that starts with a vowel, `a` becomes `an`, as in `an Apollo key`.
 - Such a `yes`, or a key for the waiting `key` card, from a sender who isn't an agent admin, answered `Only an agent admin can apply setup changes.`
 - A `no` that turned pending cards down, answered `The setup change was turned down.` or `The <N> setup changes were turned down.`
 
@@ -21670,8 +19744,8 @@ Your chat can work with text alone, or people may type `yes` even where you show
 
 - **Approve.** A message that is only an approval, such as `yes`, `ok`, `approve`, `go ahead`, `evet` or `👍`, acts on the pending cards of the agent's latest reply in the same `sessionkey`, when they are less than 30 minutes old. In a chat sent with your API key, the first approval applies nothing: Wiro answers with the card listing, the exact content of the cards. A second one applies the one card listed. With several cards, `yes 2` applies card 2 once the listing has shown it, one card per reply.
 - **Turn down.** A message that is only a refusal, such as `no` or `cancel`, dismisses the pending cards of the latest reply that are less than 30 minutes old, then goes to the agent as a normal message. Older cards aren't dismissed, and the `no` goes to the agent all the same. While the agent isn't running, Wiro answers it itself: `The setup change was turned down.`, or `The <N> setup changes were turned down.` for several cards. Anyone who can write in the chat can turn cards down.
-- **A key as the reply.** When the latest reply has one pending `connect` card for a key connector, a key pasted as the reply can be saved to it with your key owner's rights. Wiro reads the key for that card only while its connector is on the agent or a pending `add` card on the same reply brings it; otherwise the key is only taken out, as in any other message. While the connector is on the agent, the key is saved, and the message is stored as `[key saved to <Connector title>]`. While a pending `add` card still brings the connector, the key is read for its card but not saved, since the `add` card goes first: Wiro answers `⚠️ Not saved: Apply card <N> first: it turns on <Title>. Paste the key again as your reply.`, the message is stored with `[key removed]` in its place, and both cards stay pending. The one exception is a chat sent with your API key when the only pending cards are an `add` card and its `connect` card, and the key is all the connector needs: the key typed after the listing applies both cards at once. A key typed before that listing saves nothing: the message is stored with `[key removed]` in its place, and Wiro answers with the listing.
-- A `yes` never applies a `connect` card: a key or a sign-in connects it.
+- **A key as the reply.** When the latest reply has one pending `connect` card for a key connector, a key pasted as the reply can be saved to it with your key owner's rights: the key is saved, and the message is stored as `[key saved to <Connector title>]`. While a pending `add` card on the same reply still has to go first, the key is read for its card but not saved: Wiro answers `⚠️ Not saved: Apply card <N> first: it turns on <Title>. Paste the key again as your reply.`, the message is stored with `[key removed]` in its place, and both cards stay pending. The one exception is a chat sent with your API key when the only pending cards are an `add` card and its `connect` card, and the key is all the connector needs: the key typed after the listing applies both cards at once. A key typed before that listing saves nothing: the message is stored with `[key removed]` in its place, and Wiro answers with the listing.
+- A `yes` never applies a `connect` card: a key, or your settings screen, connects it.
 
 The latest reply is the newest row of the session, other than the replies Wiro answers itself and model switches. A row added between turns counts, such as a scheduled task's report written into that session: once it comes, a `yes` or `no` typed after it finds no cards. Your buttons still act on those cards, since `SetupCardApply` takes a pending card by its `messageguid` and `cardid`, at any age.
 
@@ -21697,7 +19771,7 @@ The first `yes` in a chat sent with your API key gets the listing:
   "messageguid": "e5f6a7b8-c9d0-1234-ef56-789012345678",
   "agenttoken": null,
   "status": "agent_end",
-  "response": "The agent proposes this setup change. Nothing is applied yet.\n\nCard 1: Add Google Analytics 4 (connector).\nStill to connect: Google Analytics 4.\n\nReply \"yes\" to apply exactly this change, or \"no\" to turn it down.",
+  "response": "The agent proposes this setup change. Nothing is applied yet.\n\nCard 1: Add Weather (skill).\n\nReply \"yes\" to apply exactly this change, or \"no\" to turn it down.",
   "content": "yes",
   "setupresult": { "applied": [], "dismissed": [], "failed": [], "restarting": false }
 }
@@ -21715,7 +19789,7 @@ Show `response` as it is. Its lines are described in [The card listing](/docs/ag
 | `restarting` | `true` when the agent restarts to load the change. |
 | `next` | Only when the answer leaves connectors to connect: `[{ connector, title, mode, cardid?, messageguid? }]`, as in [Your Own Connect Button](#your-own-connect-button). |
 
-The second `yes`, which applies an `add` card whose sign-in `connect` card still waits:
+The second `yes` applies the card:
 
 ```json
 {
@@ -21724,27 +19798,18 @@ The second `yes`, which applies an `add` card whose sign-in `connect` card still
   "messageguid": "f6a7b8c9-d0e1-2345-f678-901234567890",
   "agenttoken": null,
   "status": "agent_end",
-  "response": "✅ Applied: Google Analytics 4 added.\nYour agent is restarting to load the change.\nNext: connect Google Analytics 4 to finish. Its sign-in, app keys or token are entered outside this chat, never in it.",
+  "response": "✅ Applied: Weather added.\nYour agent is restarting to load the change. Continue in about a minute.",
   "content": "yes",
   "setupresult": {
     "applied": ["71xb9zrcd1sb"],
     "dismissed": [],
     "failed": [],
-    "restarting": true,
-    "next": [
-      {
-        "connector": "ga4",
-        "title": "Google Analytics 4",
-        "mode": "appkeys",
-        "cardid": "ljehd9inazm4",
-        "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234"
-      }
-    ]
+    "restarting": true
   }
 }
 ```
 
-Show `response`, and under it a "Connect Google Analytics 4" button built from `next`. A `yes` while only `connect` cards wait, one of them a sign-in card, applies nothing and answers `A yes cannot connect <Title>. Its sign-in, app keys or token are entered outside this chat, never in it.`, with the cards in `setupresult.next`. A webhook posted for these replies carries the same list in `metadata.next`.
+Show `response`. When something is left to connect, `setupresult.next` lists it: build your Connect buttons from it, as in [Your Own Connect Button](#your-own-connect-button). A webhook posted for these replies carries the same list in `metadata.next`.
 
 ### The answer lines
 
@@ -21752,7 +19817,7 @@ Wiro writes these lines in `response`, always in English. They name no site, pag
 
 | Line | When |
 |------|------|
-| `✅ Applied: <summary>.` | A card was applied. An `add` card that brings a `page` connector, or a sign-in connector with no `connect` card on the message, goes on with `Connect <Title> in the agent's settings.` |
+| `✅ Applied: <summary>.` | A card was applied. An `add` card that needs a `page` connector goes on with `Connect <Title> in the agent's settings.` |
 | `⚠️ Not applied: <reason>` | The change failed. |
 | `1 more setup change is still pending.`, `<N> more setup changes are still pending.` | A `yes` applied one card while other cards of the reply wait. |
 | `<N> connector cards still need their keys: add each key on its card.` | Several `key` connect cards wait. |
@@ -21760,11 +19825,8 @@ Wiro writes these lines in `response`, always in English. They name no site, pag
 | `This setup change is being applied right now. Try again in a moment.` | Another call is applying the card. |
 | `Your agent is restarting to load the change. Continue in about a minute.` | The change restarts the agent (shorter when a `Next:` line follows). |
 | `Next: paste your <Title> key as your reply.` | A key `connect` card waits for its key. While the agent restarts, it goes on with `Send it now and it loads with this same restart.` |
-| `Next: connect <Title> to finish. Its sign-in, app keys or token are entered outside this chat, never in it.` | An `add` card was applied and its sign-in `connect` card waits. |
-| `A yes cannot connect <Title>. Its sign-in, app keys or token are entered outside this chat, never in it.` | A `yes` while only `connect` cards wait, one of them a sign-in card. |
-| `Saved <fields> for <Connector>. Still needed: <fields>.` | A key was saved and the connector needs more fields. |
 | `⚠️ Not saved: <reason>. Paste the key again as your reply.` | The key was refused. Nothing was saved. |
-| `That does not look like a <Title> key (it looks like <kind>), so it was not saved. Paste the <Title> key as your reply.` | The key pasted is another service's, and the only `connect` card waiting is a `key` connect card whose connector is on the agent. It comes whoever sent the key. The part in brackets is there only when Wiro knows the kind. Before a title that starts with a vowel, `a` becomes `an`, as in `an Apollo key`. |
+| `That does not look like a <Title> key (it looks like <kind>), so it was not saved. Paste the <Title> key as your reply.` | The key pasted is another service's, and the only `connect` card waiting is a `key` connect card. It comes whoever sent the key. The part in brackets is there only when Wiro knows the kind. Before a title that starts with a vowel, `a` becomes `an`, as in `an Apollo key`. |
 | `⚠️ Not saved: <Add title> is still waiting. Reply "yes" to add it, or "no" to turn it down.` | A key typed for an `add` card whose `connect` card no longer waits. |
 | `This card is older than 30 minutes. Use the card's button, or ask the agent again.` | The card turned 30 minutes old while the reply was read. In your product, offer your own button, or ask the agent again. |
 | `Only an agent admin can apply setup changes.` | The sender can't apply changes. |
@@ -22571,397 +20633,38 @@ The rows never say which of your users watched or took control. Keep that in you
 
 ## Security Rules
 
-- **Keys never go into chat messages.** Collect keys, app keys and tokens in your own forms and send them with `SetupCardApply` `values` or `CredentialUpsert`. The agent never sees them. While setup from chat is on for a message, Wiro takes clear keys out of it before it is stored or reaches the agent: each one reads `[key removed]` in the stored text and in the text the agent gets, and Send answers `contentmasked: true` with that text in `content`. A key pasted as the reply while a `key` connect card is the only `connect` card waiting can be saved to its connector, when that connector is on the agent or a pending `add` card on the same reply brings it, and is then stored as `[key saved to <Connector title>]`. This runs only while setup from chat is on for the message, so treat it as a safety net, never as a way to send keys. See [Keys in chat](/docs/agent-messaging#keys-in-chat).
-- **Saved secrets read as a mask.** `UserAgent/Detail` shows every saved `password` or `fileinput-base64` field as `"••••••••"`, for every caller, and returns no OAuth token and no OAuth app key at all. Show "Saved" instead of a value, and let people replace a secret, not read it.
-- **The mask sent back keeps the saved value.** A field sent to `CredentialUpsert` as `"••••••••"` isn't written, so a form saved as Detail showed it changes only the fields edited. In a list sent whole, such as `firebase.accounts`, an entry whose secret is the mask keeps the secret of the saved entry with the same values in its other fields. When no single saved entry matches, because those values changed or two saved entries share them, the request is refused and nothing is saved: send that entry's secret again. See [Field-level write rules](/docs/agent-credentials#field-level-write-rules).
-- **Which service account a key file is.** A saved Google service account file (Google Drive, Google Play and Google Calendar's `serviceaccountjson`, and each Firebase account's) reads as the mask too. So that you can show which account it is, the address people share a Drive folder, the Play Console or a calendar with, the agent's owner and team admins get `_service_account_email` in that connector's group of `credentials`, in `UserAgent/Detail` and in the `Deploy` and `Update` answers: `"_service_account_email": { "serviceaccountjson": "agent@acme-project.iam.gserviceaccount.com" }`, or for Firebase `"_service_account_email": { "accounts": [{ "serviceaccountjson": "push@acme-project.iam.gserviceaccount.com" }] }`, one item per account in the list's order. A value is `""` when nothing is saved or the file doesn't read as a service account key. Only the account's address leaves the file. Leave the key out of what you send back: field names that start with `_` are refused.
+- **Keys never go into chat messages.** Collect keys, app keys and tokens in your own forms and send them with `SetupCardApply` `values` or [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect). The agent never sees them. While setup from chat is on for a message, Wiro takes clear keys out of it before it is stored or reaches the agent: each one reads `[key removed]` in the stored text and in the text the agent gets, and Send answers `contentmasked: true` with that text in `content`. A key pasted as the reply while a `key` connect card is the only `connect` card waiting can be saved to its connector, and is then stored as `[key saved to <Connector title>]`. This runs only while setup from chat is on for the message, so treat it as a safety net, never as a way to send keys. See [Keys in chat](/docs/agent-messaging#keys-in-chat).
+- **Saved secrets read as a mask.** `UserAgent/Detail` shows every saved `password` field of a credential as `"••••••••"`, for every caller, and no answer ever returns a connector's values or tokens: [`ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist) names the saved fields in `savedvariables`, never their values. Show "Saved" instead of a value, and let people replace a secret, not read it.
+- **The mask sent back keeps the saved value.** A field sent to `CredentialUpsert` as `"••••••••"` isn't written, so a form saved as Detail showed it changes only the fields edited. A connector field you leave out of `ConnectorConnect` keeps its saved value the same way. See [Field-level write rules](/docs/agent-credentials#field-level-write-rules).
 - **Approvals act with your key's rights.** Show Apply only to the people allowed to change the agent, hold back everyone else's typed approvals (see [Typed replies](#typed-replies)), check that a `messageguid` belongs to the session of the person who clicked, and use `chatsetup: "off"` for agents whose users must not change them.
 - **Your key's owner stays in your backend.** Message rows carry your key owner's `uuid` and `user` (name, email, avatar), and cards its `uuid`, whoever of your users wrote: show your own names instead.
 - **Your API key stays on your server.** Your app calls your backend, and your backend calls Wiro. A browser holds at most the `agenttoken` and `sessiontoken` of its own person's chats, and the one-time `screenToken` of a screen you chose to show that person.
 - **The Screen shows the whole agent.** An agent's Screen shows the work of all of its chats, and Take Control reaches every site its browser is signed in to. Ask for a ticket only for the users you allow to see that agent, and for `control: true` only for the users you allow to use it. Turn the Screen off with `screen: "off"` on agents whose users must not see each other's work (see [Decide who sees it](#decide-who-sees-it)).
 - **A screen ticket is for one socket.** Each `screenToken` works once, within 60 seconds: hand it to one page, keep it out of URLs and logs, and get a new one for every socket.
-- **Sign-ins come back to your page.** The `redirecturl` receives only status parameters and the accounts to pick, never a token or a secret. A callback that can't be matched to a sign-in ends on the API's own neutral page instead (see [Return codes](#return-codes-on-your-redirect-url)).
+- **Sign-ins come back to your page.** The `redirecturl` receives only `connector_connected=true` or `connector_error=<code>`, never a token or a secret. A callback that can't be matched to a sign-in ends on the API's own neutral page instead (see [The callback and your redirect URL](/docs/agent-connectors#the-callback-and-your-redirect-url)).
 
 ## Worked Examples
 
-The first four examples start with a person's message in your chat and end with the change applied, and the fifth shows the agent's Screen with Take Control. Each one starts from the same agent as it was before any of them: Chat Markdown Reporting is on, and none of the examples' connectors are. The ids are the same throughout: the agent `f8e7d6c5-b4a3-2190-fedc-ba0987654321`, and `5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f`, your key owner's account, on every message and card. The agent's own words vary from turn to turn.
+The first example starts with a person's message in your chat and ends with the connector connected, and the second shows the agent's Screen with Take Control. The agent has Chat Markdown Reporting on, and no connector connected. The ids are the same throughout: the agent `f8e7d6c5-b4a3-2190-fedc-ba0987654321`, and `5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f`, your key owner's account, on every message and card. The agent's own words vary from turn to turn.
 
-### Google Analytics 4 with your own app keys
+### Serper with a key
 
-**1. The person asks.** `Message/Send` with `{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "sessionkey": "customer-42", "message": "Can you report our website traffic every Monday?" }` answers `{ "result": true, "errors": [], "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234", "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb", "status": "agent_queue" }`.
+**1. The person asks** "Search the web for our competitors' prices." Serper isn't connected, so the reply holds a `connect` card `h6w3k9p2m5tc` for `serper`, whose block is the one in [Block fields](#block-fields).
 
-**2. The reply ends.** `Message/Detail` with `{ "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234" }`:
+**2. Your app shows** "Connect Serper" with one field, "Serper API Key", from `credentialfields` of [`AgentConnector/Detail`](/docs/agent-connectors#post-agentconnectordetail), and a **Save** button.
 
-```json
-{
-  "result": true,
-  "errors": [],
-  "data": {
-    "guid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
-    "uuid": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
-    "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
-    "user": {
-      "uuid": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
-      "firstname": "Ada",
-      "lastname": "Lovelace",
-      "email": "ada@example.com",
-      "username": "ada",
-      "avatar": "",
-      "avatarinitials": "AL"
-    },
-    "sessionkey": "customer-42",
-    "content": "Can you report our website traffic every Monday?",
-    "response": "I can do that once Google Analytics 4 is on and connected. Approve the card below and connect your Google Analytics account.",
-    "debugoutput": "I can do that once Google Analytics 4 is on and connected. Approve the card below and connect your Google Analytics account.",
-    "timeline": [
-      {
-        "blockid": "c0:i0",
-        "callindex": 0,
-        "contentindex": 0,
-        "type": "answer",
-        "text": "I can do that once Google Analytics 4 is on and connected. Approve the card below and connect your Google Analytics account.",
-        "phase": "end",
-        "version": 4,
-        "startedat": 1794654805,
-        "updatedat": 1794654811
-      },
-      {
-        "blockid": "s:71xb9zrcd1sb",
-        "type": "setup",
-        "callindex": 1000000,
-        "contentindex": 0,
-        "text": null,
-        "setup": {
-          "v": 1,
-          "id": "71xb9zrcd1sb",
-          "kind": "add",
-          "key": "int-ga4-analytics",
-          "needs": [{ "connector": "ga4", "title": "Google Analytics 4", "mode": "appkeys" }],
-          "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
-          "createdat": 1794654811
-        },
-        "phase": "end",
-        "version": 1,
-        "startedat": 1794654811,
-        "updatedat": 1794654811
-      },
-      {
-        "blockid": "s:ljehd9inazm4",
-        "type": "setup",
-        "callindex": 1000000,
-        "contentindex": 1,
-        "text": null,
-        "setup": {
-          "v": 1,
-          "id": "ljehd9inazm4",
-          "kind": "connect",
-          "connector": "ga4",
-          "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
-          "createdat": 1794654811
-        },
-        "phase": "end",
-        "version": 1,
-        "startedat": 1794654811,
-        "updatedat": 1794654811,
-        "next": [{ "connector": "ga4", "title": "Google Analytics 4", "mode": "appkeys" }]
-      }
-    ],
-    "status": "agent_end",
-    "metadata": {
-      "type": "progressGenerate",
-      "task": "Generate",
-      "speed": "21.0",
-      "speedType": "words/s",
-      "elapsedTime": "6.2s",
-      "tokenCount": 38,
-      "wordCount": 23
-    },
-    "attachments": [],
-    "deletestatus": 0,
-    "createdat": 1794654804,
-    "startedat": 1794654805,
-    "endedat": 1794654811,
-    "inputtokens": 4210,
-    "outputtokens": 160,
-    "cachereadtokens": 3072,
-    "cachewritetokens": 0,
-    "totaltokens": 7442,
-    "model": "openai/gpt-5.6-sol",
-    "tokencost": 4,
-    "processedms": 6200
-  }
-}
-```
+**3. The person pastes the key and presses Save.** Your backend sends the card with `values: { "apikey": "..." }`; the answer is in [Key](#key-serper). The agent restarts once and has `serper__web_search`.
 
-The row's `uuid` and `user` are your key owner's, whoever of your users wrote the message: show your own name for the sender. The fields of the row are described in [`Message/Detail`](/docs/agent-messaging#post-useragentmessagedetail).
-
-**3. Your app shows one card**, "Add Google Analytics 4", with a "Connect Google Analytics 4" step: the Client ID and Client Secret fields and the redirect URI from `OAuthStatus`, and an Add button that waits for the connection. The `connect` card is drawn inside the `add` card, not on its own.
-
-**4. The person connects.** Your backend runs the calls of [Own app keys](#own-app-keys-google-analytics-4), compact here:
+**In a chat without cards**, the person pastes the key as the reply:
 
 ```text
-OAuthStatus        { "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "credentialkey": "ga4" }
-                -> { "result": true, "errors": [], "connected": false, "accounts": [], "connectedat": "", "tokenexpiresat": "", "authmethod": "", "redirecturi": "https://api.wiro.ai/v1/UserAgentOAuth/GA4Callback", "appkeyssaved": false, "tokensaved": false }
-CredentialUpsert   { "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "fields": [{ "credentialkey": "ga4", "fieldname": "clientid", "fieldvalue": "1234567890-abc.apps.googleusercontent.com" }, { "credentialkey": "ga4", "fieldname": "clientsecret", "fieldvalue": "GOCSPX-THE_CLIENT_SECRET" }, { "credentialkey": "ga4", "fieldname": "authmethod", "fieldvalue": "own" }] }
-                -> { "result": true, "applied": 3, "errors": [] }
-OAuthConnect       { "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "credentialkey": "ga4", "authmethod": "own", "redirecturl": "https://app.example.com/connect/done?ref=conn_8812" }
-                -> { "result": true, "errors": [], "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?...", "flowid": "9d2c41e07ab35f8e6c1d0b9a87f6e5d4" }
-(browser)          Google account chooser and consent, then back to /connect/done?ref=conn_8812&ga4_connected=true&ga4_properties=[...]
-OAuthStatus        { "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "credentialkey": "ga4" }
-                -> { ..., "flow": { "flowid": "9d2c41e07ab35f8e6c1d0b9a87f6e5d4", "mine": true, "mode": "own", "status": "candidates", ... }, "candidates": [{ "id": "123456789", "name": "Acme Web" }, { "id": "987654321", "name": "Acme App" }] }
-SetPickerAccounts  { "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "credentialkey": "ga4", "flowid": "9d2c41e07ab35f8e6c1d0b9a87f6e5d4", "accountids": ["123456789"] }
-                -> { "result": true, "errors": [], "accounts": [{ "id": "123456789", "name": "Acme Web" }], "restart": "none" }
-```
-
-**5. The person presses Add.** `SetupCardApply` with `{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234", "cardid": "71xb9zrcd1sb", "action": "apply", "signin": true }` answers as shown in [step 8](#own-app-keys-google-analytics-4): both cards `applied`, `summary` `Google Analytics 4 added. Google Analytics 4 connected.` and `restarting: true`.
-
-**6. The agent restarts.** Your app shows "Restarting" and polls `UserAgent/Detail` until `status` is `4`. The person then asks again, and the agent proposes the scheduled task: a `schedule` card that your Apply button applies with `SetupCardApply`, as in [Applying and Dismissing](#applying-and-dismissing). Each Monday's report then comes as a message added between turns, in the agent's most recent session: see [Load a conversation](#load-a-conversation).
-
-If the person typed `yes` instead of pressing Add, the first `yes` gets the listing and the second applies the `add` card alone; see [setupresult and next](#setupresult-and-next). Its `next` names the `connect` card: after the connection, apply it with `{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234", "cardid": "ljehd9inazm4", "action": "apply" }`. Applied before the connection, it answers:
-
-```json
-{
-  "result": false,
-  "errors": [{ "code": 0, "message": "Google Analytics 4 is not connected yet. Finish the sign-in on the card first.", "time": 1794654845 }],
-  "setup": {
-    "v": 1,
-    "id": "ljehd9inazm4",
-    "kind": "connect",
-    "connector": "ga4",
-    "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
-    "createdat": 1794654811
-  },
-  "restarting": false,
-  "summary": "",
-  "errorcode": "not_connected",
-  "next": [
-    {
-      "connector": "ga4",
-      "title": "Google Analytics 4",
-      "mode": "appkeys",
-      "cardid": "ljehd9inazm4",
-      "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234"
-    }
-  ]
-}
-```
-
-and after it:
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "setup": {
-    "v": 1,
-    "id": "ljehd9inazm4",
-    "kind": "connect",
-    "connector": "ga4",
-    "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
-    "createdat": 1794654811,
-    "status": "applied",
-    "actedat": 1794655020,
-    "actedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
-  },
-  "restarting": false,
-  "summary": "Google Analytics 4 connected"
-}
-```
-
-That way restarts the agent twice: once for the `add` card, and once when the connection completes.
-
-### Facebook Pages with a token
-
-**1. The person asks** "Post our weekly offer on our Facebook Page." The reply's timeline ends with two setup blocks:
-
-```json
-[
-  {
-    "blockid": "s:z9n62skddnwz",
-    "type": "setup",
-    "callindex": 1000000,
-    "contentindex": 0,
-    "text": null,
-    "setup": {
-      "v": 1,
-      "id": "z9n62skddnwz",
-      "kind": "add",
-      "key": "int-facebookpage-post",
-      "with": ["util-anti-ai-human-copy", "util-social-posting-common"],
-      "needs": [{ "connector": "facebook-pages", "title": "Facebook", "mode": "token" }],
-      "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
-      "createdat": 1794654811
-    },
-    "phase": "end",
-    "version": 1,
-    "startedat": 1794654811,
-    "updatedat": 1794654811
-  },
-  {
-    "blockid": "s:02e5m6mt4ktl",
-    "type": "setup",
-    "callindex": 1000000,
-    "contentindex": 1,
-    "text": null,
-    "setup": {
-      "v": 1,
-      "id": "02e5m6mt4ktl",
-      "kind": "connect",
-      "connector": "facebook-pages",
-      "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
-      "createdat": 1794654811
-    },
-    "phase": "end",
-    "version": 1,
-    "startedat": 1794654811,
-    "updatedat": 1794654811,
-    "next": [{ "connector": "facebook-pages", "title": "Facebook", "mode": "token" }]
-  }
-]
-```
-
-**2. Your app shows** "Add Facebook Page Post", "Also turns on: Anti-AI Human Copy, Social Posting Common Rules", and a "Connect Facebook" step with a System User token field. Titles come from `Skills/List`.
-
-**3. The person pastes the token and presses Connect:**
-
-```text
-CredentialUpsert   { "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "fields": [{ "credentialkey": "facebook-pages", "fieldname": "authmethod", "fieldvalue": "api_key" }, { "credentialkey": "facebook-pages", "fieldname": "systemusertoken", "fieldvalue": "THE_SYSTEM_USER_TOKEN" }] }
-                -> { "result": true, "applied": 2, "errors": [] }
-OAuthConnect       { "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "credentialkey": "facebook-pages", "authmethod": "api_key" }
-                -> { "result": true, "errors": [], "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19", "accounts": [{ "id": "1029384756", "name": "Acme" }, { "id": "5647382910", "name": "Acme Outlet" }], "account": "Acme Marketing System User", "restart": "none" }
-```
-
-**4. The person picks the Acme Page and presses Add:**
-
-```text
-SetPickerAccounts  { "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "credentialkey": "facebook-pages", "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19", "accountids": ["1029384756"] }
-                -> { "result": true, "errors": [], "accounts": [{ "id": "1029384756", "name": "Acme" }], "restart": "none" }
-SetupCardApply     { "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234", "cardid": "z9n62skddnwz", "action": "apply", "signin": true }
-```
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "setup": {
-    "v": 1,
-    "id": "z9n62skddnwz",
-    "kind": "add",
-    "key": "int-facebookpage-post",
-    "with": ["util-anti-ai-human-copy", "util-social-posting-common"],
-    "needs": [{ "connector": "facebook-pages", "title": "Facebook", "mode": "token" }],
-    "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
-    "createdat": 1794654811,
-    "status": "applied",
-    "actedat": 1794654990,
-    "actedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
-  },
-  "restarting": true,
-  "summary": "Facebook Page Post added. Facebook connected.",
-  "paired": [
-    {
-      "setup": {
-        "v": 1,
-        "id": "02e5m6mt4ktl",
-        "kind": "connect",
-        "connector": "facebook-pages",
-        "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
-        "createdat": 1794654811,
-        "status": "applied",
-        "actedat": 1794654990,
-        "actedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
-      },
-      "result": true,
-      "error": null
-    }
-  ]
-}
-```
-
-Had the person pressed Add before the Pages were saved, the answer would be `result: false`, `errorcode: "not_connected"` and `Facebook is not connected yet. Finish the token check on the card first.`, with both cards still pending and that sentence in `paired[0].error`.
-
-**5. The agent restarts once**, and the person's next message reaches it with Facebook connected.
-
-### X with Wiro's app
-
-**1. The person asks** "Post this thread on X for us." The reply holds an `add` card for `int-twitterx-post`, with `with: ["util-anti-ai-human-copy", "util-social-posting-common"]` and `needs: [{ "connector": "twitter", "title": "Twitter / X", "mode": "signin" }]`, and a `connect` card for `twitter` whose block carries `next: [{ "connector": "twitter", "title": "Twitter / X", "mode": "signin" }]`.
-
-**2. Your app shows** "Add Twitter / X Post" with a "Connect Twitter / X" button. No form: X connects with Wiro's app.
-
-**3. The person presses Connect:**
-
-```text
-OAuthConnect       { "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "credentialkey": "twitter", "authmethod": "wiro", "redirecturl": "https://app.example.com/connect/done?ref=conn_8813" }
-                -> { "result": true, "errors": [], "authorizeUrl": "https://x.com/i/oauth2/authorize?...", "flowid": "e1a2b3c4d5e6f708192a3b4c5d6e7f80" }
-(browser)          X consent screen, then back to /connect/done?ref=conn_8813&x_connected=true&x_username=acmeco
-OAuthStatus        { "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "credentialkey": "twitter" }
-                -> { "result": true, "errors": [], "connected": true, "accounts": [{ "id": "acmeco", "name": "acmeco" }], ..., "flow": { "flowid": "e1a2b3c4d5e6f708192a3b4c5d6e7f80", "mine": true, "mode": "wiro", "status": "connected", "account": "acmeco", "errorcode": "", "errordetail": "", "restart": "none", "expiresat": 1794655802 } }
-```
-
-**4. The person presses Add.** `SetupCardApply` on `add` card `r8k2v6n4p1wa` with `signin: true`:
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "setup": {
-    "v": 1,
-    "id": "r8k2v6n4p1wa",
-    "kind": "add",
-    "key": "int-twitterx-post",
-    "with": ["util-anti-ai-human-copy", "util-social-posting-common"],
-    "needs": [{ "connector": "twitter", "title": "Twitter / X", "mode": "signin" }],
-    "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
-    "createdat": 1794654811,
-    "status": "applied",
-    "actedat": 1794655010,
-    "actedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
-  },
-  "restarting": true,
-  "summary": "Twitter / X Post added. Twitter / X connected.",
-  "paired": [
-    {
-      "setup": {
-        "v": 1,
-        "id": "t3m9x5c7b2qe",
-        "kind": "connect",
-        "connector": "twitter",
-        "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
-        "createdat": 1794654811,
-        "status": "applied",
-        "actedat": 1794655010,
-        "actedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
-      },
-      "result": true,
-      "error": null
-    }
-  ]
-}
-```
-
-X's consent screen named Wiro's app. To show your own app there, save your X app's `clientid` and `clientsecret` with `authmethod: "own"`, register `https://api.wiro.ai/v1/UserAgentOAuth/XCallback` in your X app, and start the sign-in with `authmethod: "own"`. The cards apply the same way.
-
-### Serper Web Search with a key
-
-**1. The person asks** "Search the web for our competitors' prices." The reply holds an `add` card `q4n7s1v8b2xd` for `int-serper-search` with `needs: [{ "connector": "serper", "title": "Serper Web Search", "mode": "key" }]`, and a `connect` card `h6w3k9p2m5tc` for `serper`, whose block is the one in [Block fields](#block-fields).
-
-**2. Your app shows** "Add Serper Web Search" with one field, "Serper API Key", from `Credentials/Detail`, and an **Add and connect** button.
-
-**3. The person pastes the key and presses the button.** Your backend sends the `add` card with `values: { "apikey": "..." }`; the answer, and the one for a key that is too short, are in [Key](#key-serper-web-search). The agent restarts once and can search the web.
-
-**In a chat without cards**, the same takes two replies:
-
-```text
-Message/Send  "yes"
-           -> response: "The agent proposes this setup change. Nothing is applied yet.\n\nCard 1: Add Serper Web Search (connector).\nStill to connect: Serper Web Search.\n\nReply with your Serper Web Search key to add Serper Web Search and connect it at once, \"yes\" to add it now and give the key later, or \"no\" to turn it down."
-              setupresult: { "applied": [], "dismissed": [], "failed": [], "restarting": false }
 Message/Send  "<the Serper API key>"
-           -> content: "[key saved to Serper Web Search]"
-              response: "✅ Applied: Serper Web Search added. Serper Web Search connected.\nYour agent is restarting to load the change. Continue in about a minute."
-              setupresult: { "applied": ["q4n7s1v8b2xd", "h6w3k9p2m5tc"], "dismissed": [], "failed": [], "restarting": true }
+           -> content: "[key saved to Serper]"
+              response: "✅ Applied: Serper connected.\nYour agent is restarting to load the change. Continue in about a minute."
+              setupresult: { "applied": ["h6w3k9p2m5tc"], "dismissed": [], "failed": [], "restarting": true }
 ```
 
-A second `yes` instead of the key applies the `add` card alone and answers `Next: paste your Serper Web Search key as your reply. Send it now and it loads with this same restart.`, with the `connect` card in `setupresult.next`. Even here, a form is safer than the chat: send the key from it with `SetupCardApply` `values`.
+Even here, a form is safer than the chat: send the key from it with `SetupCardApply` `values`.
 
 ### The Screen with Take Control
 
@@ -23030,14 +20733,13 @@ Each row also carries `user`, your key owner's account, left out here. The rows 
 - Replies Wiro answers itself (`agenttoken: null`, `status: "agent_end"`) show `response` as plain text.
 - Setup cards show the right title, body and buttons for their kind and state, `add` cards together with their `connect` cards.
 - Apply waits for the reply to finish; Apply and Dismiss call `SetupCardApply`, and the card updates from the answer's `setup` (which can be `null`) and from later `version` 2 blocks.
-- Each connector mode has its flow and its form fields: `key` (fields as `values`), `appkeys` (`CredentialUpsert`, `OAuthConnect` with `own`, the return page, `OAuthStatus`, `SetPickerAccounts`), `token` (`CredentialUpsert`, `OAuthConnect` with `api_key`, `SetPickerAccounts`), `signin` (`OAuthConnect` with `wiro`), and `page` (your settings screens).
-- After connecting, the `add` card is applied with `signin: true` (one restart), or the `connect` card is applied.
+- Each connector mode has its flow: `key` (the connector's fields as `values` on its card) and `page` (your settings screens, with the [Agent Connectors](/docs/agent-connectors) calls: fields, a key, the vendor's sign-in and account pickers).
 - `next` from blocks, `SetupCardApply` answers, `setupresult` and webhooks turns into your own Connect buttons.
-- Every `result: false` shows its sentence or your own words; code branches on `errorcode`, `flow.status` and the return codes, never on sentences.
-- Every restart signal (`restarting`, `restart`, `flow.restart`, and the saves that answer none) shows a restarting line until `UserAgent/Detail` reads `status: 4`, and the poll stops at `0`, `5` or `6`; Send refusals during a restart are shown as they are.
+- Every `result: false` shows its sentence or your own words; code branches on codes and statuses, never on sentences.
+- Every restart signal (`restarting`, `restart`, `connector_connected=true`, and the saves that answer none) shows a restarting line until `UserAgent/Detail` reads `status: 4`, and the poll stops at `0`, `5` or `6`; Send refusals during a restart are shown as they are.
 - Typed approvals and pasted keys from people who must not change the agent never reach Wiro.
 - Keys never go into chat messages; secrets show as "Saved", and the mask sent back is left alone.
-- Your `redirecturl` page handles `<prefix>_connected=true` and `<prefix>_error=<code>`, inside a popup or as a full page, and a popup that never reports back is checked with `OAuthStatus`.
+- Your `redirecturl` page handles `connector_connected=true` and `connector_error=<code>`, inside a popup or as a full page, and confirms with `ConnectorList`.
 - Your product decides who may watch each agent's Screen and who may take control, and agents whose users must not see each other's work have `screen` set to `"off"`.
 - The Screen: `ScreenInfo` before the button, a fresh `ScreenStart` from your backend for every socket, `screen_start` as the socket's first frame, and noVNC 1.7.0 created after `screen_ready` and fed only the binary frames, with `resizeSession` off, no clipboard and a way out of the keyboard in control.
 - Take Control opens a new socket while the view stays until it is granted; Hand Back closes it with `1000` and opens a view; a countdown runs before `idleSeconds`; every end of control opens a view, `screen_off` and `agent_stopped` close the screen, and a dropped connection is retried once.
@@ -23048,16 +20750,17 @@ Each row also carries `user`, your key owner's account, left out here. The rows 
 - [Agent Messaging](/docs/agent-messaging): every messaging endpoint, and the full rules of [Setup From Chat](/docs/agent-messaging#setup-from-chat).
 - [Agent WebSocket](/docs/agent-websocket): live events.
 - [Agent Webhooks](/docs/agent-webhooks): the callback payload.
-- [Agent Credentials & OAuth](/docs/agent-credentials): every credential and OAuth endpoint in detail.
+- [Agent Connectors](/docs/agent-connectors): the connector catalog, connecting, sign-ins, account pickers and disconnecting.
+- [Agent Credentials](/docs/agent-credentials): channels, the Wiro project and settings.
 - [Agent Overview](/docs/agent-overview): Deploy, Detail, UpdateSettings and restarts.
 - [Screen and Take Control](/docs/agent-overview#screen-and-take-control): the agent's Screen in the Wiro panel, with its rules, limits and log rows, and the [`ScreenInfo`](/docs/agent-overview#post-useragentrealtimescreeninfo) and [`ScreenStart`](/docs/agent-overview#post-useragentrealtimescreenstart) reference.
-- The integration pages, such as [Google Analytics 4](/docs/integration-ga4-skills), [Facebook Page](/docs/integration-facebook-skills), [Twitter / X](/docs/integration-twitter-skills) and [Serper Web Search](/docs/integration-serper-search-skills): each connector's own setup.
+- Each connector's own page, such as `https://wiro.ai/connectors/serper`: its fields, setup steps and tools.
 
 ---
 
 # Agent Skills
 
-Configure agent behavior with editable preferences, scheduled automation tasks, and skill toggles. Browse the platform's skill registry and inspect every skill's capabilities and credential requirements.
+Configure agent behavior with editable preferences, scheduled automation tasks, and skill toggles. Browse the platform's skill registry and inspect what each skill does. The services an agent works with are connectors: see [Agent Connectors](/docs/agent-connectors).
 
 **Read & write paths at a glance:**
 
@@ -23073,19 +20776,21 @@ Configure agent behavior with editable preferences, scheduled automation tasks, 
 | Delete a user-created scheduled task | [`POST /UserAgent/CustomSkillDelete`](/docs/agent-overview#post-useragentcustomskilldelete) |
 | Read version history of a custom skill | [`POST /UserAgent/CustomSkillHistory`](/docs/agent-overview#post-useragentcustomskillhistory) |
 | Revert a custom skill to preset / a historical version | [`POST /UserAgent/CustomSkillRevert`](/docs/agent-overview#post-useragentcustomskillrevert) |
-| Toggle one or more integration skills (the top-level `skills` array, e.g. `int-instagram-post`) on/off | [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply) |
+| Turn one or more Skills (the top-level `skills` array, e.g. `util-weather`) on or off | [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply) |
 | Preview a skill set or a plan change without saving it | [`POST /UserAgent/PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) |
+| Connect a service the agent works with (Shopify, Google Ads, Serper, ...) | [Agent Connectors](/docs/agent-connectors) |
 
-> Read responses from `POST /UserAgent/Detail` expose the composed `customskills[]` array (preference skills + non-cron user-created skills), the `scheduledskills[]` array (scheduled tasks), and the `skills[]` array as top-level fields on the useragent object. `skills[]` is an **object array**: each entry is `{ name, enabled, _edited?, _user_created? }` (e.g. `[{ "name": "int-instagram-post", "enabled": true }, { "name": "int-wiro-aimodels", "enabled": true }]`).
+> Read responses from `POST /UserAgent/Detail` expose the composed `customskills[]` array (preference skills + non-cron user-created skills), the `scheduledskills[]` array (scheduled tasks), and the `skills[]` array as top-level fields on the useragent object. `skills[]` is an **object array**: each entry is `{ name, enabled, _edited?, _user_created? }` (e.g. `[{ "name": "util-weather", "enabled": true }, { "name": "util-diagram", "enabled": true }]`).
 
 ## Skill Registry vs Custom Skills
 
-Two concepts share the word "skill" in the agent system. Keep them straight:
+Two concepts share the word "skill" in the agent system, and connectors give them their tools. Keep them straight:
 
 | Concept | What it is | Where it lives | API surface |
 |---------|------------|----------------|-------------|
-| **Registry skills** | Platform-shipped capabilities: Wiro defines them, they have credential requirements and runtime tools, and every plan includes them. Examples: `int-instagram-post`, `int-gmail-check`, `int-wordpress-post`, `int-wiro-aimodels`. | Wiro's skill registry. | `POST /Skills/List` / `POST /Skills/Detail` (read), `POST /UserAgent/SkillsApply` (toggle on/off per useragent). |
-| **Custom skills** | User-editable preference text (`cs-content-tone`) or scheduled tasks (`cs-cron-blog-scanner`) that live ON a useragent. They reference registry skills (e.g. a scheduled task calls into `int-wordpress-post`) but are scoped to one instance. | Per useragent on the Wiro platform. | `POST /UserAgent/CustomSkillUpsert` / `POST /UserAgent/CustomSkillRename` / `POST /UserAgent/CustomSkillDelete` / `POST /UserAgent/CustomSkillHistory` / `POST /UserAgent/CustomSkillRevert`. |
+| **Registry skills** | Platform-shipped Skills (`util-*`): rule sets, playbooks and tools that need no outside account, such as `util-weather`, `util-diagram` and `util-video-creator`. Wiro defines them, and every plan includes them. | Wiro's skill registry. | `POST /Skills/List` / `POST /Skills/Detail` (read), `POST /UserAgent/SkillsApply` (toggle on/off per useragent). |
+| **Custom skills** | User-editable preference text (`cs-content-tone`) or scheduled tasks (`cs-cron-blog-scanner`) that live ON a useragent. They can use the tools of the agent's connectors (e.g. a scheduled task drafts posts with `wordpress__*`) but are scoped to one instance. | Per useragent on the Wiro platform. | `POST /UserAgent/CustomSkillUpsert` / `POST /UserAgent/CustomSkillRename` / `POST /UserAgent/CustomSkillDelete` / `POST /UserAgent/CustomSkillHistory` / `POST /UserAgent/CustomSkillRevert`. |
+| **Connectors** | The outside services an agent works with (Shopify, Google Ads, HubSpot, Serper, ...), connected with your customer's own credentials. Each gives the agent tools named `<slug>__<tool>`. | Per useragent. | [Agent Connectors](/docs/agent-connectors) |
 
 The rest of this page documents both: the registry endpoints first (so you can discover what's possible), then the per-useragent endpoints (so you can configure them).
 
@@ -23099,12 +20804,11 @@ Lists all skills in the registry.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `category` | string | No | Filter by `"int"` (integration with a third-party service) or `"util"` (utility, no credential to connect: rule sets, playbooks, and keyless tools such as weather and diagrams). |
+| `category` | string | No | Filter by category. Every registry skill is `"util"`: rule sets, playbooks, and keyless tools such as weather and diagrams. |
 | `capability` | string | No | Filter by capability key (see [`POST /Skills/Capabilities`](#post-skillscapabilities) for the closed-set vocabulary). |
 | `user_invocable` | boolean | No | When `true`, only return skills end users can call directly through chat (filters out plumbing skills wired by the runtime). |
 | `requires_credentials` | boolean | No | Filter by whether the skill requires a credential. |
-| `wiro_connect_pending` | boolean | No | Filter by the "Wiro mode coming soon" flag: integrations whose Wiro-shared OAuth client is still awaiting provider review (currently 9 user-facing credentials: `facebook-pages`, `instagram`, `google-ads`, `google-merchant-center`, `youtube`, `ga4`, `linkedin`, `tiktok`, and `meta-ads`). Facebook Pages, Instagram, and Meta Ads remain usable through their customer-owned System User and/or OAuth alternatives. When `true`, only pending skills are returned; when `false`, only ready-to-use skills. The flag is read off the credential, not the skill. |
-| `name_in` | array<string> | No | Restrict the response to a specific list of skill names. |
+| `name_in` | `array<string>` | No | Restrict the response to a specific list of skill names. |
 
 ##### Response
 
@@ -23112,22 +20816,22 @@ Lists all skills in the registry.
 {
   "result": true,
   "errors": [],
-  "total": 45,
+  "total": 17,
   "skills": [
     {
-      "name": "int-instagram-post",
-      "category": "int",
+      "name": "util-weather",
+      "category": "util",
       "version": "1.0.0",
-      "title": "Instagram Post",
-      "description": "Post carousel feed and multi-story via Meta Graph API.",
-      "icon": "/images/icons/skills/instagram.svg",
-      "brand_color": "#e4405f",
+      "title": "Weather",
+      "description": "Current weather and a 9-day forecast for any place (temperature, rain, wind, UV) from MET Norway's open forecast data, with the place found on OpenStreetMap. No key needed.",
+      "icon": "lni lni-cloud-sun",
+      "brand_color": "#0ea5e9",
       "brand_text_color": "#ffffff",
       "brand_logo_filter": "brightness(0) invert(1)",
-      "docs_url": "integration-instagram-skills",
-      "requires_credentials": true,
-      "credential_key": "instagram",
-      "capabilities": ["social_publishing"],
+      "docs_url": "",
+      "requires_credentials": false,
+      "credential_key": null,
+      "capabilities": ["weather_lookup"],
       "depends_on": [],
       "conflicts_with": [],
       "user_invocable": true,
@@ -23165,23 +20869,23 @@ Lists all skills in the registry.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `name` | `string` | Canonical skill key, **including the registry prefix** (`int-*` for integration skills, `util-*` for utility skills). Use this exact value in `SkillsApply` and `Deploy.body.skills`. |
-| `category` | `string` | `"int"` (third-party integration) or `"util"` (utility, no credential to connect: rule sets, playbooks, and keyless tools such as weather and diagrams). |
+| `name` | `string` | Canonical skill key, **including the registry prefix** `util-`. Use this exact value in `SkillsApply` and `Deploy.body.skills`. |
+| `category` | `string` | `"util"`: rule sets, playbooks, and keyless tools such as weather and diagrams. |
 | `version` | `string` | Semver for the registry entry. Bumped when the skill's tool surface changes. |
 | `title` | `string` | Display name shown on chips / filters / cards. |
 | `description` | `string` | One-line summary used on marketing surfaces. |
-| `icon` | `string` | Path or URL to the brand icon (relative paths are absolutized to `https://wiro.ai/...` on the wire). Utility skills carry a LineIcons class name instead, such as `lni lni-cloud-sun`. |
+| `icon` | `string` | A LineIcons class name, such as `lni lni-cloud-sun`, or a path or URL to an icon (relative paths are absolutized to `https://wiro.ai/...` on the wire). |
 | `brand_color` | `string\|null` | Brand background colour (hex) for chips and cards. |
 | `brand_text_color` | `string\|null` | Foreground colour to render on top of `brand_color`. |
 | `brand_logo_filter` | `string\|null` | CSS `filter` value applied to monochrome SVG icons (e.g. `"brightness(0) invert(1)"`) so the same source SVG renders correctly on light and dark brand colours. |
-| `docs_url` | `string\|null` | Slug or path of the integration page on this docs site. Frontends prefix with `/docs/` when rendering. |
+| `docs_url` | `string\|null` | Slug or path of a page about the skill on this docs site, when it has one. Frontends prefix with `/docs/` when rendering. |
 | `requires_credentials` | `boolean` | `true` when the skill needs a credential the operator must supply (effectively `true` whenever `credential_key` names a credential you supply). |
-| `credential_key` | `string\|null` | The provider this skill needs (`"instagram"`, `"google-ads"`, `"wiro"`, `"calendarific"`, …). `null` for `util` skills and skills whose credential Wiro manages. Use [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail) to inspect the schema. |
-| `additional_credential_keys` | `array<string>` | **Optional: only present when the skill writes secondary credentials.** App-store / Google-Play review skills include `["var-support-email"]` for the support-email variable bag; most skills omit this field entirely. |
+| `credential_key` | `string\|null` | The credential this skill needs, when it needs one (see [Agent Credentials](/docs/agent-credentials)); [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail) shows its schema. `null` for skills that need none. |
+| `additional_credential_keys` | `array<string>` | **Optional: only present when the skill reads further credentials,** such as `["var-support-email"]` for the support-email setting; most skills omit this field entirely. |
 | `capabilities` | `array<string>` | High-level snake_case capability tags from the closed vocabulary returned by [`POST /Skills/Capabilities`](#post-skillscapabilities). Drives the "Find skills that can: ___" picker. |
 | `depends_on` | `array<string>` | Other skill names that must be enabled. Wiro auto-enables transitive deps when you toggle the parent skill on. |
 | `conflicts_with` | `array<string>` | Mutually-exclusive skill names. `SkillsApply` rejects toggle batches that would enable two conflicting skills. |
-| `user_invocable` | `boolean` | `true` when end users can call the skill via chat. Most user-facing skills (including `int-wiro-aimodels` and `int-calendarific`) are `true`; `false` marks supporting parts that come with another skill, such as `util-video-shots` and `util-video-docs`, which come with `util-video-creator`. |
+| `user_invocable` | `boolean` | `true` when end users can call the skill via chat. `false` marks supporting parts that come with another skill, such as `util-video-shots` and `util-video-docs`, which come with `util-video-creator`. |
 | `deprecated` | `boolean` | `true` for skills slated for removal, and `replacement` (if any) names the migration target. |
 | `replacement` | `string\|null` | When `deprecated: true`, the registry-recommended successor skill name. |
 | `pricing` | `object` | `{ monthly_price_weight_usd, monthly_credits_weight, billing_model }`. Every plan includes every skill, so both weights are `0` (see below). |
@@ -23201,19 +20905,10 @@ complete. Channels are not skills and do not affect pricing.
 |-----------|------|-------------|
 | `monthly_price_weight_usd` | `number` | Always `0`: a skill adds nothing to the agent's price. |
 | `monthly_credits_weight` | `number` | Always `0`: a skill adds nothing to the agent's monthly credits. |
-| `billing_model` | `string` | Always `"tokens"`. Per-turn conversation cost is token-metered at the agent's per-model `tokenRates` (credits per 1M input / output / cached-input tokens). See [token billing in the Agent Overview](/docs/agent-overview#token-billing). Voice skills bill realtime audio to the operator's own Wiro wallet through `int-wiro-aimodels`, the Wiro AI Models connector (your own Wiro API key); the voice-prep and post-call text turns are normal token deducts. |
+| `billing_model` | `string` | Always `"tokens"`. Per-turn conversation cost is token-metered at the agent's per-model `tokenRates` (credits per 1M input / output / cached-input tokens). See [token billing in the Agent Overview](/docs/agent-overview#token-billing). Voice skills bill realtime audio to the wallet of the agent's Wiro project (the `wiro` credential); the voice-prep and post-call text turns are normal token deducts. |
 
 > **Every plan includes every skill.** An agent's price and monthly credits come from its plan (Starter, Pro or Max), never from its skills, so turning a skill on or off changes neither. See [Pricing Model](/docs/agent-overview#pricing-model-plans-credits-token-billing).
 
-> **Optional filter `wiro_connect_pending`.** When you query with
-> `wiro_connect_pending: true` you get every skill whose connecting
-> integration's Wiro-shared OAuth client is awaiting App Review, currently
-> `int-instagram-post`, `int-facebookpage-post`, `int-linkedin-post`,
-> `int-tiktok-post`, `int-metaads-manage`, the Google OAuth skills listed
-> above, and paired `util-*` helpers. Facebook Pages, Instagram, and Meta Ads
-> already expose customer-owned System User and/or OAuth alternatives. The flag
-> itself lives on the credential entry under
-> [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail).
 
 ### **POST** /Skills/Detail
 
@@ -23221,7 +20916,7 @@ Returns a single skill by name.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `name` | string | Yes | Canonical skill name **with prefix** (e.g. `"int-instagram-post"`, `"util-social-posting-common"`). Registry-only: `cs-*` and `cs-cron-*` user-level customskills are not exposed here. |
+| `name` | string | Yes | Canonical skill name **with prefix** (e.g. `"util-weather"`, `"util-social-posting-common"`). Registry-only: `cs-*` and `cs-cron-*` user-level customskills are not exposed here. |
 
 ##### Response
 
@@ -23230,19 +20925,19 @@ Returns a single skill by name.
   "result": true,
   "errors": [],
   "skill": {
-    "name": "int-instagram-post",
-    "category": "int",
+    "name": "util-weather",
+    "category": "util",
     "version": "1.0.0",
-    "title": "Instagram Post",
-    "description": "Post carousel feed and multi-story via Meta Graph API.",
-    "icon": "/images/icons/skills/instagram.svg",
-    "brand_color": "#e4405f",
+    "title": "Weather",
+    "description": "Current weather and a 9-day forecast for any place (temperature, rain, wind, UV) from MET Norway's open forecast data, with the place found on OpenStreetMap. No key needed.",
+    "icon": "lni lni-cloud-sun",
+    "brand_color": "#0ea5e9",
     "brand_text_color": "#ffffff",
     "brand_logo_filter": "brightness(0) invert(1)",
-    "docs_url": "integration-instagram-skills",
-    "requires_credentials": true,
-    "credential_key": "instagram",
-    "capabilities": ["social_publishing"],
+    "docs_url": "",
+    "requires_credentials": false,
+    "credential_key": null,
+    "capabilities": ["weather_lookup"],
     "depends_on": [],
     "conflicts_with": [],
     "user_invocable": true,
@@ -23261,120 +20956,15 @@ Returns the **full registry entry**: same shape as a row from `Skills/List`. The
 
 ### **POST** /Skills/CredentialSchema
 
-Convenience endpoint: returns the credential entry for a given skill name in one call. Useful when you've discovered a skill via `Skills/List` and want to render the credential form without a separate `Credentials/Detail` round-trip.
+Convenience endpoint: returns the credential entry a skill needs, in one call. Useful when you've discovered a skill via `Skills/List` and want to render its credential form without a separate `Credentials/Detail` round-trip.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `name` | string | Yes | Skill name (with the registry prefix, e.g. `"int-instagram-post"`). |
+| `name` | string | Yes | Skill name, with the registry prefix. |
 
 ##### Response
 
-```json
-{
-  "result": true,
-  "errors": [],
-  "credential": {
-    "key": "instagram",
-    "title": "Instagram",
-    "icon": "/images/icons/skills/instagram.svg",
-    "brand_color": "#e4405f",
-    "brand_text_color": "#ffffff",
-    "brand_logo_filter": "none",
-    "docs_url": "integration-instagram-skills",
-    "credential_mode": "hybrid",
-    "connection_modes": ["api_key", "own", "wiro"],
-    "default_connection_mode": "api_key",
-    "mode_badges": {
-      "api_key": "Recommended",
-      "own": "Advanced"
-    },
-    "wiro_connect_pending": true,
-    "credential_schema": [
-      {
-        "key": "appid",
-        "type": "text",
-        "label": "App ID",
-        "required": true,
-        "pattern": "^[0-9]+$",
-        "help": "<ol><li>Go to Meta for Developers → My Apps</li><li>Create App → Other → Business</li><li>Copy the App ID from the dashboard</li><li>Add Product → Facebook Login → Set Up</li><li>Add OAuth Redirect URI: https://api.wiro.ai/v1/UserAgentOAuth/IGCallback</li></ol>",
-        "oauth_managed": true,
-        "only_in_modes": ["own"]
-      },
-      {
-        "key": "appsecret",
-        "type": "password",
-        "label": "App Secret",
-        "required": true,
-        "show_toggle": true,
-        "help": "<ol><li>Meta for Developers → select your app</li><li>App Settings → Basic</li><li>Show next to App Secret and copy</li></ol>",
-        "oauth_managed": true,
-        "only_in_modes": ["own"]
-      },
-      {
-        "key": "systemusertoken",
-        "type": "password",
-        "label": "System User Token",
-        "required": true,
-        "encrypted": true,
-        "show_toggle": true,
-        "runtime_excluded": true,
-        "only_in_modes": ["api_key"]
-      },
-      {
-        "key": "accountId",
-        "type": "text",
-        "label": "Instagram Account ID",
-        "required": true,
-        "pattern": "^[0-9]+$",
-        "auto_filled_by_oauth": true,
-        "readonly_when_connected": true
-      },
-      {
-        "key": "igusername",
-        "type": "text",
-        "label": "Connected Account",
-        "required": false,
-        "auto_filled_by_oauth": true,
-        "readonly_when_connected": true
-      }
-    ],
-    "oauth_provider": {
-      "auth_method_value": "wiro",
-      "connect_endpoint": "/UserAgentOAuth/OAuthConnect",
-      "disconnect_endpoint": "/UserAgentOAuth/OAuthDisconnect",
-      "status_endpoint": "/UserAgentOAuth/OAuthStatus",
-      "connect_button_label": "Connect with Instagram",
-      "connect_button_icon": "/images/icons/skills/instagram.svg",
-      "connect_button_brand_color": "#e4405f",
-      "connect_button_text_color": "#ffffff",
-      "connect_button_logo_filter": "none",
-      "username_field": "igusername",
-      "return_query_param": "ig_connected",
-      "return_error_param": "ig_error",
-      "return_error_detail_param": "ig_error_detail",
-      "direct_probe": {
-        "mode": "api_key",
-        "mode_label": "System User Token",
-        "token_field": "systemusertoken",
-        "required_fields": ["systemusertoken"],
-        "public_account_fields": ["id", "name"]
-      },
-      "account_picker": {
-        "enabled": true,
-        "multi_select": true,
-        "set_endpoint": "/UserAgentOAuth/SetPickerAccounts",
-        "item_value_field": "accountId",
-        "item_label_field": "igusername",
-        "item_fields_to_save": ["accountId", "igusername"]
-      },
-      "extra_step": null
-    },
-    "used_by_skills": ["int-instagram-post"]
-  }
-}
-```
-
-Returns the **full registry credential entry**: same shape as a row from [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail). Returns `{ "result": false, "errors": [{ "code": 404, "message": "No credential associated with skill: <name>" }] }` if the skill exists but has `credential_key: null` (`util` / platform-managed) or if the skill is unknown.
+`{ "result": true, "errors": [], "credential": { ... } }`, where `credential` is the **full registry credential entry**: the same shape as [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail). A skill that needs no credential (most skills: check `requires_credentials` first) answers `{ "result": false, "errors": [{ "code": 404, "message": "No credential associated with skill: <name>" }] }`. A service the agent works with is a connector, not a skill's credential: read its fields with [`POST /AgentConnector/Detail`](/docs/agent-connectors#post-agentconnectordetail).
 
 ### **POST** /Skills/Capabilities
 
@@ -23491,9 +21081,9 @@ Once you've deployed a useragent, its current custom skills live under `customsk
     }
   ],
   "skills": [
-    { "name": "int-instagram-post", "enabled": true },
-    { "name": "int-googleads-manage", "enabled": false },
-    { "name": "int-wiro-aimodels", "enabled": true }
+    { "name": "util-social-posting-common", "enabled": true },
+    { "name": "util-weather", "enabled": false },
+    { "name": "util-chat-markdown-reporting", "enabled": true }
   ]
 }
 ```
@@ -23507,8 +21097,8 @@ Once you've deployed a useragent, its current custom skills live under `customsk
 | `description` | string | Human-readable description. **Writable only on user-created rows.** Sending a *different* `description` for a preset strategy or a skill-bundled cron is rejected with `customskill-preset-description-not-editable`; sending the current one back unchanged is ignored. |
 | `enabled` | boolean | Whether the skill is active. **Writable for both strategies (`cs-*`) and crons (`cs-cron-*`)**. A disabled strategy is suppressed end-to-end (kept in the merged `customskills[]` so it still appears in the list, but the agent never loads it). |
 | `interval` | string \| null | Cron expression for scheduled execution, or `null` for preference skills. Writable on scheduled tasks; ignored on preferences. |
-| `_source` | string | `preset-strategy` (editable preference), `skill-bundle` (cron owned by an integration skill), or `user-created` (cron added via `CustomSkillUpsert`). |
-| `_editable` | boolean | Convenience flag: `true` for preset strategies and user-created rows (you can write `value`), `false` for skill-bundled crons (you can only write `enabled` / `interval`). |
+| `_source` | string | `preset-strategy` (editable preference), `skill-bundle` (a scheduled task that comes with the agent template), or `user-created` (cron added via `CustomSkillUpsert`). |
+| `_editable` | boolean | Convenience flag: `true` for preset strategies and user-created rows (you can write `value`), `false` for template scheduled tasks (you can only write `enabled` / `interval`). |
 | `_user_created` | boolean | Present (and `true`) only on `_source: "user-created"` rows. Omitted on preset strategies and skill-bundled crons. |
 
 ### Understanding `_source`
@@ -23516,7 +21106,7 @@ Once you've deployed a useragent, its current custom skills live under `customsk
 Agent responses merge three sources into a single set of custom-skill rows:
 
 1. **Preset strategies** (`_source: "preset-strategy"`): preferences defined by the agent preset (e.g. `cs-content-tone`, `cs-ad-strategy`). You can write `value`.
-2. **Bundled crons** (`_source: "skill-bundle"`): cron tasks shipped inside a specific integration skill. Automatically materialized when the integration is enabled. You can write `interval` and `enabled`, but **not** `value` (the skill owns the cron instruction text).
+2. **Bundled crons** (`_source: "skill-bundle"`): scheduled tasks that come with the agent template, such as a daily performance report. A task that works with a connector stays off until that connector is connected. You can write `interval` and `enabled`, but **not** `value` (the template owns the task's instruction text).
 3. **User-created rows** (`_source: "user-created"`): entries added via `POST /UserAgent/CustomSkillUpsert`. You can write all fields. Crons are flagged via `interval` (or an explicit `cs-cron-` prefix), not `usercreated`.
 
 ## Updating Preference Skills
@@ -23764,9 +21354,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillRevert" \
 
 The response carries the post-revert state (`current_value`, `current_interval`, `current_enabled`) so the UI can refresh without a full `Detail` round-trip.
 
-## Toggling Integration Skills
+## Turning Skills On and Off
 
-The top-level `skills[]` array on `UserAgent/Detail` lists every integration skill on the instance as an **object array**: `[{ name, enabled, _edited?, _user_created? }, ...]`. `enabled: false` entries are still returned (so a UI can show disabled rows); filter on `enabled: true` to get only the active set. Example: `[{ "name": "int-instagram-post", "enabled": true }, { "name": "int-googleads-manage", "enabled": false }, { "name": "int-wiro-aimodels", "enabled": true }]`. To enable or disable several skills in one shot, use **`POST /UserAgent/SkillsApply`**. Even when you only want to flip a single skill, send it as a one-entry `skills` map. The endpoint:
+The top-level `skills[]` array on `UserAgent/Detail` lists every Skill on the instance as an **object array**: `[{ name, enabled, _edited?, _user_created? }, ...]`. `enabled: false` entries are still returned (so a UI can show disabled rows); filter on `enabled: true` to get only the active set. Example: `[{ "name": "util-weather", "enabled": true }, { "name": "util-diagram", "enabled": false }]`. To enable or disable several skills in one shot, use **`POST /UserAgent/SkillsApply`**. Even when you only want to flip a single skill, send it as a one-entry `skills` map. Connectors are not in this list: a connected connector is on (see [Agent Connectors](/docs/agent-connectors)). The endpoint:
 
 1. Triggers exactly **one agent restart** after the new skill set lands.
 2. Uses **idempotency**: concurrent calls or client retries can't apply the change twice.
@@ -23784,7 +21374,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
     "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
     "idempotencyKey": "550e8400-e29b-41d4-a716-446655440001",
     "skills": {
-      "int-instagram-post": true
+      "util-weather": true
     }
   }'
 ```
@@ -23799,9 +21389,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
     "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
     "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000",
     "skills": {
-      "int-instagram-post": true,
-      "int-twitterx-post":  true,
-      "int-wordpress-post":  false
+      "util-weather": true,
+      "util-diagram": true,
+      "util-anti-ai-human-copy": false
     }
   }'
 ```
@@ -23810,7 +21400,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
 
 > **Template deploys too.** `SkillsApply` works on agents deployed from a marketplace template as well as on custom builds. On a template agent, a skill you change overrides the template for that skill only; later template updates still reach every skill you never changed.
 
-> **Bundled crons follow the integration toggle.** When you disable an integration skill (e.g. `int-instagram-post`), every bundled cron it owns (`_source: "skill-bundle"`) is hidden from the top-level `customskills` / `scheduledskills` lists until the integration is re-enabled, so you don't need to touch them individually.
+> **Scheduled tasks follow their connectors.** A template's scheduled task that works with a connector, such as a daily Google Ads report, stays off while that connector isn't connected, and turns on when it is. You don't need to touch it on its own.
 
 ## Preview a Skill Change
 
@@ -23823,8 +21413,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
   -d '{
     "useragentguid": "your-useragent-guid",
     "skillOverrides": {
-      "int-twitterx-post": true,
-      "int-wordpress-post": false
+      "util-weather": true,
+      "util-diagram": false
     }
   }'
 ```
@@ -23838,7 +21428,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
   -d '{
     "draft": true,
     "tier": "starter",
-    "skills": ["int-gmail-check", "int-wordpress-post"]
+    "skills": ["util-weather", "util-diagram"]
   }'
 ```
 
@@ -23931,7 +21521,7 @@ All three requests succeed independently. The agent restarts once: the server co
 
 ## Available Skills by Agent
 
-> **Integration setup guides:** Every skill below that needs a third-party connection links to a dedicated integration page with the full OAuth / API key walkthrough, required scopes or permissions, callback URL, troubleshooting, and multi-tenant architecture notes. See the [Integration Catalog](/docs/agent-credentials#integration-catalog) for the full list.
+> **Connectors:** the services these agents work with (Google Ads, Meta Ads, WordPress, Brevo and the rest) are connectors, each connected with your own credentials. See [Agent Connectors](/docs/agent-connectors), and each connector's page at `https://wiro.ai/connectors/{slug}`.
 
 > **Discovery is canonical.** Skill keys evolve as agent templates are updated. To see the exact keys for a specific agent instance, always fetch `POST /UserAgent/Detail` first. The top-level `customskills` / `scheduledskills` arrays are the source of truth. The tables below reflect current intended keys; `CustomSkillUpsert` silently accepts keys that exist on the instance and returns `skill-not-found` for unknown keys without altering other state.
 
@@ -24005,70 +21595,30 @@ Each scheduled task reads its paired preference skill at runtime. The mechanism:
 
 1. `POST /UserAgent/CustomSkillUpsert` writes your preference `value` for key `content-tone` (stored as `cs-content-tone`).
 2. When the agent starts, each `customskills` / `scheduledskills` row becomes a skill named by its key: a preference skill with key `cs-content-tone` becomes the skill `cs-content-tone`, and a scheduled task with key `cs-cron-social-content-scanner` becomes `cs-cron-social-content-scanner`.
-3. The scheduled task's `value` (shipped in the integration skill, not user-editable) references its paired preference by its skill name, `cs-<preference-key>`, for example:
-   ```
-   0. Read the cs-content-tone skill first — follow ALL its rules.
-   1. ...
-   ```
+3. The scheduled task's `value` (shipped with the agent template, not user-editable) references its paired preference by its skill name, `cs-<preference-key>`, for example: `0. Read the cs-content-tone skill first and follow all its rules. 1. ...`
 4. At each cron tick, the agent LLM reads `cs-content-tone`, applies your instructions, then executes the scan/report/dispatch workflow.
 
 > **Slug normalization:** the `<slug>` in `cs-<slug>` / `cs-cron-<slug>` is the raw key lowercased with any run of non-alphanumeric characters replaced by a single `-` (leading/trailing dashes trimmed). Template keys already follow this shape so the slug matches 1:1.
 
 This means **your editable preference becomes the single place to customize agent behavior** (brand voice, target audience, content sources, holiday markets, etc.), and the bundled scheduled task is a thin orchestration layer that defers to your preference.
 
-### Skill → Integration Mapping
+### Using Connectors in Skills
 
-Skills that depend on third-party credentials. Follow the linked integration page for provider setup, OAuth walkthrough, and troubleshooting.
+A connected connector gives the agent its tools, named `<slug>__<tool>`, such as `serper__web_search` or `bluesky__create_post`. A template's scheduled tasks call them by these names, and your own custom skills can too: tell the agent which tools to use and when, for example "Research the topic with `serper__web_search` before you write." See [What the Agent Gets](/docs/agent-connectors#what-the-agent-gets).
 
-| Skill | Credential Key | Integration Guide |
-|-------|----------------|-------------------|
-| `int-metaads-manage` | `meta-ads` (System User or OAuth) | [Meta Ads Skills](/docs/integration-metaads-skills) |
-| `int-tiktok-ads` | `tiktok-ads` (Wiro OAuth) | [TikTok Ads Skills](/docs/integration-tiktokads-skills) |
-| `int-facebookpage-post` | `facebook-pages` (System User or OAuth) | [Facebook Page Skills](/docs/integration-facebook-skills) |
-| `int-instagram-post` | `instagram` (System User or Instagram OAuth) | [Instagram Skills](/docs/integration-instagram-skills) |
-| `int-linkedin-post` | `linkedin` (OAuth) | [LinkedIn Skills](/docs/integration-linkedin-skills) |
-| `int-twitterx-post` | `twitter` (OAuth) | [Twitter / X Skills](/docs/integration-twitter-skills) |
-| `int-tiktok-post` | `tiktok` (OAuth) | [TikTok Skills](/docs/integration-tiktok-skills) |
-| `int-youtube-manage` | `youtube` (OAuth) | [YouTube Skills](/docs/integration-youtube-skills) |
-| `int-googleads-manage` | `google-ads` (OAuth) | [Google Ads Skills](/docs/integration-googleads-skills) |
-| `int-merchant-center` | `google-merchant-center` (OAuth) | [Merchant Center Skills](/docs/integration-merchantcenter-skills) |
-| `int-ga4-analytics` | `ga4` (OAuth) | [GA4 Skills](/docs/integration-ga4-skills) |
-| `int-google-business-reviews` | `google-business` (Own OAuth) | [Google Business Profile Skills](/docs/integration-googlebusiness-skills) |
-| `int-hubspot-crm` | `hubspot` (OAuth) | [HubSpot Skills](/docs/integration-hubspot-skills) |
-| `int-mailchimp-email` | `mailchimp` (OAuth or API key) | [Mailchimp Skills](/docs/integration-mailchimp-skills) |
-| `int-google-drive` | `google-drive` (Service Account) | [Google Drive Skills](/docs/integration-googledrive-skills) |
-| `int-google-calendar` | `google-calendar` (Service Account) | [Google Calendar Skills](/docs/integration-google-calendar-skills) |
-| `int-gmail-check` | `gmail` (App Password) | [Gmail Skills](/docs/integration-gmail-skills) |
-| `int-firebase-push` | `firebase` (Service Account) | [Firebase Skills](/docs/integration-firebase-skills) |
-| `int-wordpress-post` | `wordpress` (App Password) | [WordPress Skills](/docs/integration-wordpress-skills) |
-| `int-roasit-attribution` | `roasit` (API token) | [Roasit Skills](/docs/integration-roasit-skills) |
-| `int-search-console` | `google-search-console` (OAuth, your own Google Cloud client) | [Google Search Console Skills](/docs/integration-searchconsole-skills) |
-| `int-dataforseo` | `dataforseo` (API login and password) | [DataForSEO Skills](/docs/integration-dataforseo-skills) |
-| `int-keepa` | `keepa` (API key) | [Keepa Skills](/docs/integration-keepa-skills) |
-| `int-revenuecat` | `revenuecat` (secret API key) | [RevenueCat Skills](/docs/integration-revenuecat-skills) |
-| `int-adapty` | `adapty` (secret API key) | [Adapty Skills](/docs/integration-adapty-skills) |
-| `int-brevo-email` | `brevo` (API key) | [Brevo Skills](/docs/integration-brevo-skills) |
-| `int-sendgrid-email` | `sendgrid` (API key) | [SendGrid Skills](/docs/integration-sendgrid-skills) |
-| `int-appstore-reviews`, `int-appstore-metadata`, `int-appstore-events` | `apple-appstore` (JWT / Service Account) | [App Store Skills](/docs/integration-appstore-skills) |
-| `int-googleplay-reviews`, `int-googleplay-metadata` | `google-play` (Service Account) | [Google Play Skills](/docs/integration-googleplay-skills) |
-| `int-googleplay-events` | `google-play-apps` (Service Account, separate per-app registry) | [Google Play Skills](/docs/integration-googleplay-skills) |
-| `int-apollo-sales` | `apollo` (API key) | [Apollo Skills](/docs/integration-apollo-skills) |
-| `int-lemlist-outreach` | `lemlist` (API key) | [Lemlist Skills](/docs/integration-lemlist-skills) |
-| `int-twilio-channel` | `twilio-voice` (API key) | [Twilio Voice](/docs/integration-twiliovoice-skills) |
-| `int-wiro-aimodels` | `wiro` (the Wiro project the agent runs models with) | See [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent) |
-| `int-calendarific` | `calendarific` (API key) | [Calendarific in your agent](/docs/agent-credentials#calendarific-in-your-agent) |
+A template's scheduled task that needs a connector stays off until that connector is connected, so connect the ones a template works with after you deploy it: [`POST /UserAgent/ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect).
 
-Agents can optionally forward operator notifications to a Telegram bot via the `telegram` credential (see [Telegram Skills](/docs/integration-telegram-skills)). This is never required; every agent remains fully usable over web chat and the [Messaging API](/docs/agent-messaging) without a bot configured.
+Agents can optionally forward operator notifications to a Telegram bot via the `telegram` credential (see [Telegram Channel](/docs/integration-telegram-skills)). This is never required; every agent remains fully usable over web chat and the [Messaging API](/docs/agent-messaging) without a bot configured.
 
 ### Utility Skills
 
-`util-*` skills need no credential. Most are rule sets that come with an integration skill as one of its `depends_on`. These three can be added to any agent with [`SkillsApply`](#toggling-integration-skills), on any plan and at no charge:
+`util-*` skills need no outside account. Most are rule sets that come with an agent template. These three can be added to any agent with [`SkillsApply`](#turning-skills-on-and-off), on any plan and at no charge:
 
 | Skill | What it adds |
 |-------|--------------|
 | `util-weather` | Current weather and a 9-day forecast for any place: temperature, rain, wind and UV from MET Norway's open forecast data, with the place found on OpenStreetMap. |
 | `util-diagram` | Flowcharts, architecture and sequence diagrams, state machines, data models, mind maps, timelines, Gantt plans and concept drawings as PNG images with an editable SVG copy, checked for overlapping or cut-off text. |
-| `util-video-creator` | The Video Creator's playbook: finished videos with voice-over, music and captions from a website or web app (behind a login too), an app-store listing, a document, an article or product photos; 16:9 or 9:16, up to 3 minutes. It brings `util-video-shots`, `util-video-docs`, `util-motion-effects` and `int-wiro-aimodels` with it, so the agent needs your Wiro project key, which pays the video's model runs (see [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent)). `util-motion-effects` and `util-video-creator` always come together, whichever one you turn on. |
+| `util-video-creator` | The Video Creator's playbook: finished videos with voice-over, music and captions from a website or web app (behind a login too), an app-store listing, a document, an article or product photos; 16:9 or 9:16, up to 3 minutes. It brings `util-video-shots`, `util-video-docs` and `util-motion-effects` with it, and runs the video's models with the agent's Wiro project, which pays for them (see [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent)). `util-motion-effects` and `util-video-creator` always come together, whichever one you turn on. |
 
 `POST /Skills/List` with `{ "category": "util" }` returns every utility skill.
 
@@ -24076,13 +21626,12 @@ Agents can optionally forward operator notifications to a Telegram bot via the `
 
 ## Using Wiro AI Models from Your Agent
 
-`int-wiro-aimodels` lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) while it works. When it's enabled on an agent:
+An agent runs Wiro's own AI models (image, video, audio and LLM generation, cover images, model discovery) two ways:
 
-- `credentials.wiro.apikey` is **operator-supplied**: pick or create a Wiro project at [wiro.ai/panel/project](https://wiro.ai/panel/project) and connect it on the agent's **Connectors** tab, or through the API with `POST /UserAgent/CredentialProjectBind`. Each generated asset is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
-- The agent can run Wiro models only when `int-wiro-aimodels` is enabled **and** a `wiro.apikey` value has been written.
-- `int-wiro-aimodels` is marked `user_invocable: true` in the registry: end-user messages can trigger it directly, and other skills / scheduled tasks invoke it internally when they need to generate content.
+- **With its Wiro project.** Skills such as `util-video-creator` and the voice skills run their models with the agent's Wiro project, the `wiro` credential. Pick or create a project at [wiro.ai/panel/project](https://wiro.ai/panel/project) and connect it in the agent's settings, or through the API with `POST /UserAgent/CredentialProjectBind`. Each run is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project). See [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project).
+- **With the Wiro connector.** The `wiro` connector gives the agent Wiro's own tools (`wiro__*`) for any model, billed to the project you connect it with. See [The Wiro connector](/docs/agent-connectors#the-wiro-connector).
 
-Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, TikTok Ads, Google Ads) ship with `int-wiro-aimodels: true`. Templates that don't need AI generation (App Review Support, Lead Generation Manager) ship with `int-wiro-aimodels: false`. Either way, the agent starts without a Wiro project. Where the template marks this connector required, `UserAgent/Detail` reads `setuprequired: true` until one is connected. `projectid` in the call below comes from `POST /Project/List`; see [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) for the response and errors.
+The agent starts without a Wiro project. Where the template marks the project required (`optional: false`), `UserAgent/Detail` reads `setuprequired: true` until it is connected.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialProjectBind" \
@@ -24094,16 +21643,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialProjectBind" \
   }'
 ```
 
-To verify the skill is active on a deployed agent:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-# The top-level skills[] array should contain { "name": "int-wiro-aimodels", "enabled": true }
-# credentials.wiro.apikey holds the project's key once the project is connected
-```
+`credentials.wiro.apikey` on `POST /UserAgent/Detail` holds the project's key once the project is connected.
 
 ### Project key vs operator key
 
@@ -24128,7 +21668,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
 - Unknown skill keys return `skill-not-found` in the `errors[]` without altering other state.
 - To clear a cron schedule, call `CustomSkillUpsert` with `enabled: false`. Setting `interval: ""` or `null` also clears it.
 - A schedule must be one the agent can run, written as five fields, `minute hour day month weekday`, such as `0 9 * * 1-5`. A schedule the agent can't run, or one whose date never comes, such as 30 February, is refused and nothing is saved. The error says what is wrong and what to write, for example `This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.`
-- Integration toggles (top-level `skills[]`) are a separate endpoint (see [Toggling Integration Skills](#toggling-integration-skills) and [`SkillsApply`](/docs/agent-overview#post-useragentskillsapply)).
+- Skill toggles (top-level `skills[]`) are a separate endpoint (see [Turning Skills On and Off](#turning-skills-on-and-off) and [`SkillsApply`](/docs/agent-overview#post-useragentskillsapply)).
 
 ### What happens when Wiro updates an agent template
 
@@ -24137,7 +21677,7 @@ Skills occasionally evolve on Wiro's side: new preset strategies, new bundled cr
 | Row type | Behavior on template update |
 |----------|----------------------------|
 | Preset strategy (`_source: "preset-strategy"`) | Your `value` is **preserved** (rows with `useredited: true`). New placeholder structure in the template appears only on fresh deploys. |
-| Skill-bundled cron (`_source: "skill-bundle"`) | The `value` (cron instructions) is **re-materialized** from the new skill. Your custom `interval` and `enabled` are preserved when `useredited: true`. |
+| Skill-bundled cron (`_source: "skill-bundle"`) | The `value` (cron instructions) is **re-materialized** from the new template. Your custom `interval` and `enabled` are preserved when `useredited: true`. |
 | New preset strategy upstream | Added to your instance with the template's default `value`. |
 | Preset strategy removed upstream | Removed from your instance on the next reconciliation. |
 | User-created cron | Always preserved. |
@@ -24648,7 +22188,7 @@ A `token_usage` event records the token spend and credit deduction for one bille
 
 > **Nested vs flat token fields.** The activity-log `token_usage` event nests its counts in **camelCase** under `tokens.{input, output, cacheRead, cacheWrite, total}`. `input` is uncached input and `total` is the exact sum of all four components. This is distinct from the **flat, lowercase** columns on message rows (`inputtokens`, `outputtokens`, `cachereadtokens`, …). Same underlying data, different shape.
 
-> **Credits vs. wallet.** An agent's own credits are spent once per LLM turn: each `token_usage` event is one billed turn, and its `tokencost` is in credits (100 credits = $1). A Wiro model the agent runs, for example through `int-wiro-aimodels`, is billed separately: Wiro charges it to the wallet of the workspace that owns the agent's Wiro API key at the model's usual price, passed through unchanged. That run shows up as an ordinary `tool_completed` event with no credit figure; its cost is the task's `totalcost` (see [Billing & Cost](/docs/tasks#task-billing)).
+> **Credits vs. wallet.** An agent's own credits are spent once per LLM turn: each `token_usage` event is one billed turn, and its `tokencost` is in credits (100 credits = $1). A Wiro model the agent runs, for example for its video skill or through the `wiro` connector, is billed separately: Wiro charges it to the wallet of the workspace that owns the agent's Wiro API key at the model's usual price, passed through unchanged. That run shows up as an ordinary `tool_completed` event with no credit figure; its cost is the task's `totalcost` (see [Billing & Cost](/docs/tasks#task-billing)).
 
 ### Who-did-what rows
 
@@ -24684,10 +22224,12 @@ A `token_usage` event records the token spend and credit deduction for one bille
 | `AGENT_SETTINGS_UPDATED` | `Agent settings updated: timezone Europe/Istanbul`, `Agent settings updated: screen off` |
 | `AGENT_TRANSFERRED` | `Agent moved to a team workspace`, `Agent moved to the personal workspace`; the system's rows when the agent's team or organization is deleted read `Agent moved to the personal workspace: its team was deleted` and `Agent moved to the personal workspace: its organization was deleted` |
 | `AGENT_INSTRUCTION_ADDED`, `AGENT_INSTRUCTION_UPDATED`, `AGENT_INSTRUCTION_RENAMED`, `AGENT_INSTRUCTION_DELETED`, `AGENT_INSTRUCTION_REVERTED` | `Custom skill added: cs-brand-voice`, `Scheduled task updated: cs-cron-blog-scanner (text, schedule 0 9 * * 1)`, `Custom skill renamed: cs-brand-voice to cs-house-style`, `Scheduled task deleted: cs-cron-blog-scanner`, `Custom skill reverted to its preset: cs-brand-voice` |
-| `AGENT_SKILLS_UPDATED` | `Connectors updated: int-gmail-check on`, `Skills updated: util-web-channel off`, `Connectors and skills updated: int-gmail-check on, util-web-channel off` |
+| `AGENT_SKILLS_UPDATED` | `Skills updated: util-web-channel off` |
 | `AGENT_CREDENTIAL_SAVED` | `Connector setting saved: wiro.apikey` |
-| `AGENT_CREDENTIAL_REMOVED` | `Disconnected: serper` (a disconnect card from chat removed the connector's saved key) |
-| `AGENT_OAUTH_CONNECT_STARTED`, `AGENT_OAUTH_CONNECTED`, `AGENT_OAUTH_DISCONNECTED` | `Connection started: instagram (own)`, `Connected: instagram`, `Disconnected: instagram` |
+| `AGENT_CREDENTIAL_REMOVED` | `Disconnected: telegram` (a disconnect card from chat removed a credential's saved key) |
+| `CONNECTOR_CONNECTED`, `CONNECTOR_DISCONNECTED` | `Connector connected: serper`, `Connector disconnected: serper` (see [Agent Connectors](/docs/agent-connectors)) |
+| `CONNECTOR_ACCOUNTS_SET` | `Connector accounts set: facebook-pages` |
+| `CONNECTOR_REAUTH` | `Connector needs to be connected again: facebook-pages` (written by Wiro when a sign-in expired or was revoked) |
 | `AGENT_PLAN_STARTED`, `AGENT_PLAN_RENEWED`, `AGENT_PLAN_CANCELLED`, `AGENT_PLAN_RESUMED` | `Starter plan started: $5.00 charged`, `Starter plan renewed: $5.00 charged`, `Plan cancelled, ends 2026-06-01`, `Plan cancellation undone` |
 | `AGENT_TIER_UPGRADED` | `Plan upgraded from Starter to Pro; $12.50 charged` |
 | `AGENT_PLAN_CHANGE_SCHEDULED`, `AGENT_PLAN_CHANGE_CANCELLED` | `Plan change scheduled: Pro to Starter on 2026-06-01`, `Scheduled plan change cancelled: stays on Pro` |
@@ -25268,7 +22810,7 @@ Build a fully branded chat experience with no Wiro UI visible to your users.
 The deploy flow has three stages: Deploy, Setup (only when the agent has connectors to set up), and Start.
 
 1. **Deploy** an agent via `POST /UserAgent/Deploy`: returns `useragents[0].guid` and starts the instance in `status: 6` (setup-required). A prepaid Deploy then queues it (`status: 2`) once its subscription is provisioned. Send `"chatsetup": "off"` too, so your users' messages can't change the agent's setup; make setup changes from your own backend.
-2. **Setup** the connectors (only if the agent template requires them) via one or more `POST /UserAgent/CredentialUpsert` calls, `POST /UserAgent/CredentialProjectBind` for the Wiro project, and the matching OAuth flows (see [Agent Credentials & OAuth](/docs/agent-credentials)). These calls don't change `status`: on an agent still at `status: 6`, call `POST /UserAgent/Update` with `{ "guid": "<useragent-guid>" }` after the last one and check `setuprequired` on its response. While it's `true`, the agent cannot start. Once all required connectors are set up, that call flips `setuprequired` to `false` and `status` to `0`. For Pattern 2 (knowledge-base / chat-only agents) there are no connectors to set up, so this stage is skipped and the agent is ready to start right after Deploy.
+2. **Setup** the connectors and credentials (only if the agent template needs them): connect the services it works with through [Agent Connectors](/docs/agent-connectors) (`POST /UserAgent/ConnectorConnect`, with fields or the vendor's sign-in), and save channels with `POST /UserAgent/CredentialUpsert` and the Wiro project with `POST /UserAgent/CredentialProjectBind` (see [Agent Credentials](/docs/agent-credentials)). These calls don't change `status`: on an agent still at `status: 6`, call `POST /UserAgent/Update` with `{ "guid": "<useragent-guid>" }` after the last one and check `setuprequired` on its response. While it's `true`, the agent cannot start. Once all required connectors are set up, that call flips `setuprequired` to `false` and `status` to `0`. For Pattern 2 (knowledge-base / chat-only agents) there are no connectors to set up, so this stage is skipped and the agent is ready to start right after Deploy.
 3. **Start**: a prepaid Deploy already queued the agent, and it goes through `status: 3` (starting) → `status: 4` (running). Call `POST /UserAgent/Start` when it is stopped (`status: 0`, for example after `Update` moved it out of `status: 6`) or errored (`status: 5`).
 4. Build your own chat UI.
 5. Send messages via `POST /UserAgent/Message/Send`.
@@ -25346,7 +22888,7 @@ A richer variant of white-label chat: besides replying with text, the agent **ge
 
 **Shape:**
 
-- One deployed agent that has the `int-wiro-aimodels` skill enabled, with its Wiro AI Models connector set to your Wiro project (see [Agent Credentials](/docs/agent-credentials#wiro-ai-models-wiro-credential)). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
+- One deployed agent whose Wiro project is set to your project (see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)), or that has the `wiro` connector connected to it (see [The Wiro connector](/docs/agent-connectors#the-wiro-connector)). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
 - One `sessionkey` per end user (Pattern 2 above): the same agent instance serves everyone; each user's chat and media history is isolated by session.
 - A single WebSocket connection carries three things at once: the streaming chat reply, the per-turn token-usage report, and discovery of any model runs the agent launches.
 
@@ -25407,7 +22949,7 @@ Wiro provides pre-built agent templates you can deploy immediately. Each agent s
 | **[App Event Manager](https://wiro.ai/agents/app-event-manager)** | Scan global holidays, suggest and create App Store + Google Play in-app events | App Store Connect (JWT), Google Play (service account), Calendarific (API key) |
 | **[Push Notification Manager](https://wiro.ai/agents/push-notification-manager)** | Craft locale- and timezone-aware push notifications, queue dispatch | Firebase (service account JSON per app), Calendarific (API key) |
 | **[Voice Receptionist](https://wiro.ai/agents/voice-receptionist)** | Answer phone calls 24/7 with a real-time AI receptionist: recognises callers from CRM, books from your calendar, drafts CRM notes + follow-up emails, streams a live transcript to chat | Twilio Voice (Account SID, Auth Token, phone number) for inbound phone; HubSpot (optional, caller recognition); Google Calendar (optional, slot lookup); Google Drive (optional); Brevo or HubSpot (any one, optional, follow-up email drafts); Telegram bot (optional, operator approvals) |
-| **[Video Creator](https://wiro.ai/agents/video-creator)** | Turn a website, web app, store listing, document or product photos into a share-ready video with real screens, voice-over, music and captions | Wiro project (the video's model runs are billed to its wallet); [YouTube](/docs/integration-youtube-skills) and [Instagram](/docs/integration-instagram-skills) (optional, to publish finished videos); Telegram bot (optional) |
+| **[Video Creator](https://wiro.ai/agents/video-creator)** | Turn a website, web app, store listing, document or product photos into a share-ready video with real screens, voice-over, music and captions | Wiro project (the video's model runs are billed to its wallet); the [YouTube](https://wiro.ai/connectors/youtube) and [Instagram](https://wiro.ai/connectors/instagram) connectors (optional, to publish finished videos); Telegram bot (optional) |
 
 > The list above matches the agent templates currently deployed in production. The exact set evolves over time as new templates ship, so fetch `POST /Agent/List` for the live catalog. Each agent's full marketing page lives at `https://wiro.ai/agents/{slug}` (linked in the first column).
 
@@ -25442,14 +22984,15 @@ deploy = requests.post(
 )
 useragent_guid = deploy.json()["useragents"][0]["guid"]
 
-# Connect Twitter via the unified OAuth flow
+# Connect X with your own X app (see Agent Connectors)
 connect = requests.post(
-    "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect",
+    "https://api.wiro.ai/v1/UserAgent/ConnectorConnect",
     headers=headers,
     json={
         "useragentguid": useragent_guid,
-        "credentialkey": "twitter",
-        "redirecturl": "https://your-app.com/settings?connected=twitter"
+        "slug": "twitter",
+        "values": {"clientid": "YOUR_X_CLIENT_ID", "clientsecret": "YOUR_X_CLIENT_SECRET"},
+        "redirecturl": "https://your-app.com/settings?slug=twitter"
     }
 )
 authorize_url = connect.json()["authorizeUrl"]
@@ -25483,4485 +23026,6 @@ print(message.json())
 
 Browse available agents and their capabilities via [POST /Agent/List](/docs/agent-overview#post-agentlist) or in the [Wiro dashboard](https://wiro.ai/agents).
 
-
----
-
-# Meta Ads Integration
-
-Connect your agent to Meta's advertising platform to manage campaigns, ad sets, creatives, and performance insights across Facebook and Instagram ads.
-
-## Overview
-
-The Meta Ads integration powers the `int-metaads-manage` skill: creating and managing campaigns, pulling insights, managing creatives, and analyzing ad account data through direct Meta Graph / Marketing API v26 calls.
-
-**Skills that use this integration:**
-
-- `int-metaads-manage`: Campaign / ad set / creative CRUD, insights reporting, direct Graph API v26 operations
-- `util-ads-manager-common`: Shared ads helpers (works alongside `int-metaads-manage` and `int-googleads-manage`)
-
-**Agents that typically enable this integration:**
-
-- Meta Ads Manager
-- Any custom agent that needs paid-media capabilities on Meta
-
-## Availability
-
-| Path | Status | Notes |
-|------|--------|-------|
-| Wiro-owned approved-app OAuth | Pending provider approval | Not available yet. `OAuthConnect` with `"wiro"`, or with no `authmethod`, returns `Sign-in with the platform's app is not enabled for Meta Ads` while Wiro's Meta app waits for App Review and Advanced Access. |
-| `"own"` | Available now | You create your own Meta Developer App and connect it to Wiro. No App Review required when Development Mode + App Roles is used. |
-| `"api_key"` | Available now (recommended) | Paste a Business Manager System User token. No browser OAuth redirect and no App ID or App Secret is submitted to Wiro. Choose **Never** for token expiration when Meta offers it. |
-
-> **There is no app-less Meta “machine key.”** A System User token is the closest machine-to-machine option: it removes the browser OAuth flow and recurring human sign-in, but Meta generates it for a System User through a Business Portfolio and a Meta Business app. The app, System User, ad accounts, Pages, and permissions remain customer-owned.
-
-Today the two enabled modes are the recommended token-only System User path and customer-owned OAuth. Once Wiro's approved app has Advanced Access, a Wiro-owned OAuth option can be enabled without removing either customer-owned path.
-
-## Prerequisites
-
-- **A Wiro API key**: see [Authentication](/docs/authentication) for how to issue keys and sign requests.
-- **A deployed agent**: see [Agent Overview](/docs/agent-overview) and call `POST /UserAgent/Deploy` first. You need the returned `useragents[0].guid` for every step below.
-- **A Meta Business account** ([business.facebook.com](https://business.facebook.com/)).
-- **For the currently enabled customer-owned paths, a Meta Developer account and Business app** ([developers.facebook.com](https://developers.facebook.com/)). The future Wiro-owned OAuth path will not require each customer to create an app.
-- **For OAuth mode:** an HTTPS return URL that your backend controls. Meta's callback is the fixed Wiro URL shown below; `redirecturl` is where Wiro sends the browser after processing that callback. `http://localhost` and `http://127.0.0.1` are accepted for local development only.
-
-## Recommended: System User token (no browser OAuth)
-
-Use this path for a stable server-to-server connection owned by the customer's
-Business Portfolio.
-
-1. Open [**Meta Business Settings → Users → System Users**](https://business.facebook.com/latest/settings/system_users), then create or select a System User.
-2. Assign each required ad account with both `ADVERTISE` and `ANALYZE` tasks. For Page-backed creatives, also assign the relevant Facebook Pages.
-3. Generate a token for the Business app used by that System User. Choose **Never** under **Set expiration** when Meta offers it; some businesses are required to use an expiring token.
-4. Grant `ads_management`, `ads_read`, and `business_management`. For Page discovery and Page-backed creatives, also grant `pages_show_list`, `pages_read_engagement`, and `pages_manage_ads`.
-5. Save only the connection mode and token to Wiro:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "fields": [
-      { "credentialkey": "meta-ads", "fieldname": "authmethod", "fieldvalue": "api_key" },
-      { "credentialkey": "meta-ads", "fieldname": "systemusertoken", "fieldvalue": "YOUR_SYSTEM_USER_ACCESS_TOKEN" }
-    ]
-  }'
-```
-
-6. Ask Wiro to validate the token and discover assigned ad accounts:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "meta-ads",
-    "authmethod": "api_key"
-  }'
-```
-
-Wiro validates the token against Meta and returns only active ad accounts whose
-effective `user_tasks` contain both `ADVERTISE` and `ANALYZE`. The token is
-encrypted at rest, and this answer never repeats it. Once saved, it reads
-`"••••••••"` on `UserAgent/Detail`, like every saved secret. Wiro does not require or store an App ID/App Secret for this direct mode.
-
-7. Persist one or more returned ad accounts with
-   `POST /UserAgentOAuth/SetPickerAccounts` as shown in Step 10. API clients
-   must perform this request even when only one account is returned.
-8. Optionally discover and select Page mappings with
-   `POST /UserAgentOAuth/DiscoverPickerItems`, then save them through the
-   chained `SetPickerAccounts` shape shown in Step 10b. To save the ad accounts
-   and their Pages in one call, discover the Pages first, as the end of Step 10b
-   shows.
-
-## Customer-owned app OAuth
-
-### Step 1: Create a Meta Developer App
-
-1. Go to [developers.facebook.com/apps](https://developers.facebook.com/apps) and click **Create app**.
-2. Choose **"Other"** as the use case, then **"Business"** as the app type.
-3. Set an **App display name** (this is what your end users see on the consent screen, so use your company or product name, not "Wiro").
-4. Enter an **App contact email**.
-5. Select the **Meta Business Account** that owns the ad accounts you plan to manage, then click **Create app**.
-
-You're now on the app dashboard. The app is in **Development Mode** by default. Leave it there. Development Mode is exactly what lets you skip App Review.
-
-### Step 2: Add the Marketing API product
-
-1. From the app dashboard, click **Add product**.
-2. Find **"Marketing API"** and click **Set up**.
-3. No further configuration is required inside Marketing API itself: adding the product unlocks the `ads_*` permissions.
-
-### Step 3: Add "Facebook Login for Business" and register the redirect URI
-
-Meta Ads OAuth uses Facebook Login under the hood.
-
-1. Click **Add product** again.
-2. Find **"Facebook Login for Business"** and click **Set up**.
-3. Left sidebar: **Facebook Login for Business → Settings**.
-4. Scroll to **Valid OAuth Redirect URIs** and add exactly:
-
-   ```
-   https://api.wiro.ai/v1/UserAgentOAuth/MetaAdsCallback
-   ```
-
-5. **Save changes** at the bottom.
-
-> This is the single most common place where own-mode setups fail. The redirect URI must be exact: HTTPS, no trailing slash, same capitalization.
-
-### Step 4: Note the required permissions
-
-Wiro requests these exact scopes during OAuth:
-
-```
-ads_management,ads_read,business_management,pages_show_list,pages_read_engagement,pages_manage_ads
-```
-
-| Permission | Why Wiro requests it |
-|------------|----------------------|
-| `ads_management` | Create, update, and pause campaigns, ad sets, and ads. |
-| `ads_read` | Read insights, performance metrics, and account metadata. |
-| `business_management` | Discover and validate Business-managed assets used by the full management workflow. |
-| `pages_show_list` | Discover Pages available to the connected principal for each selected ad account. |
-| `pages_read_engagement` | Read page-level engagement metrics that some creative types reference. |
-| `pages_manage_ads` | Use an assigned Page in Page-backed ad creatives. |
-
-These permissions normally require App Review/Advanced Access for a multi-tenant Live Mode app. In a customer-owned app's Development Mode they work without App Review for Facebook users listed under that app's Roles. This is a testing/customer-owned fallback and does not make Wiro's future one-click shared-app path live; that path waits for Wiro's app to receive Advanced Access.
-
-### Step 5: Copy your App ID and App Secret
-
-**App settings → Basic** → copy the **App ID**, click **Show** next to **App Secret** and copy that too.
-
-### Step 6: Add the users who will connect as Testers (only if they're not you)
-
-- Connecting your own Facebook account? You're already the app Admin; skip this step.
-- Connecting a different Facebook account (typical for SaaS customers)? Go to **App Roles → Roles → Add People** and invite them as **Testers** or **Developers**. They accept at [facebook.com/settings → Business Integrations](https://www.facebook.com/settings?tab=business_tools).
-
-Users not listed in App Roles will be blocked at the consent screen in Development Mode.
-
-### Step 7: Save your Meta App credentials to Wiro
-
-Push the `appid` and `appsecret` into the agent's `meta-ads` credential group. Wiro merges credential updates per group: fields you don't send are preserved, and credentials from other groups are untouched.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "fields": [
-      { "credentialkey": "meta-ads", "fieldname": "appid", "fieldvalue": "YOUR_META_APP_ID" },
-      { "credentialkey": "meta-ads", "fieldname": "appsecret", "fieldvalue": "YOUR_META_APP_SECRET" },
-      { "credentialkey": "meta-ads", "fieldname": "authmethod", "fieldvalue": "own" }
-    ]
-  }'
-```
-
-Successful response:
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "applied": 3
-}
-```
-
-> **Credentials sent at Deploy:** Deploy saves `appid`, `appsecret` and `authmethod` sent in the `meta-ads` group of its `credentials` body when they pass validation, but it doesn't report a result for each field. Call this step anyway and check its response before initiating OAuth.
-
-> **Only user-writable fields are accepted.** `appid` and `appsecret` are user-writable in the `meta-ads` credential. Fields the connection flow fills in (the ad account and the selected Facebook Pages) are rejected with `<Field label> is managed by the connection flow` in `errors[]`, and nothing in that request is saved. `appid` and `appsecret` are not returned by `POST /UserAgent/Detail`, so check `result` and `errors[]` on the `CredentialUpsert` response to confirm the write.
-
-### Step 8: Initiate OAuth
-
-Start the flow with `authmethod: "own"` so Wiro uses your customer-owned `appid` and `appsecret`.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "meta-ads",
-    "redirecturl": "https://your-app.com/settings/integrations",
-    "authmethod": "own"
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "authorizeUrl": "https://www.facebook.com/v26.0/dialog/oauth?client_id=...&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FMetaAdsCallback&state=...&scope=ads_management%2Cads_read%2Cbusiness_management%2Cpages_show_list%2Cpages_read_engagement%2Cpages_manage_ads",
-  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
-  "errors": []
-}
-```
-
-Redirect the user's browser to `authorizeUrl`. Full-page redirect is recommended over a popup, because some browsers block third-party cookies in popups, breaking the OAuth session.
-
-> **State TTL:** Wiro caches the OAuth state for **15 minutes**. If the user takes longer to complete consent, the callback returns `metaads_error=session_expired` and you must call `OAuthConnect` again.
-
-### Step 9: Handle the callback
-
-After the user consents, Meta sends them back to Wiro's callback URL. Wiro exchanges the code for a long-lived token, verifies its App ID, expiry, data-access expiry, and required scopes through `debug_token`, then fetches the user's eligible ad accounts. It writes the token into the agent's config and redirects the user to **your** `redirecturl` with query parameters.
-
-**Success URL** looks like:
-
-```
-https://your-app.com/settings/integrations?metaads_connected=true&metaads_accounts=%5B%7B%22id%22%3A%22123456789%22%2C%22name%22%3A%22My%20Ad%20Account%22%7D%5D
-```
-
-- `metaads_accounts` is `encodeURIComponent(JSON.stringify([...]))`. Your query parser decodes it, so parse it once with `JSON.parse`.
-- Each array element: `{ id, name }`.
-- The `id` has the `act_` prefix stripped by Wiro.
-- Only ad accounts with `account_status === 1` and effective `user_tasks` containing both `ADVERTISE` and `ANALYZE` are included. Read-only `ANALYZE` accounts are excluded because this skill supports mutations.
-- The list always holds at least one account. When no ad account qualifies, the redirect carries `metaads_error=no_accounts` instead, and nothing is saved.
-
-Parse in the browser:
-
-```javascript
-const params = new URLSearchParams(window.location.search);
-
-if (params.get("metaads_connected") === "true") {
-  // URLSearchParams has already decoded the value, so don't call decodeURIComponent on it.
-  const accounts = JSON.parse(params.get("metaads_accounts") || "[]");
-  if (accounts.length === 1) {
-    // One ad account: SetPickerAccounts is still required.
-    await setAdAccount({ adaccountid: accounts[0].id, adaccountname: accounts[0].name });
-  } else {
-    presentAccountPicker(accounts);
-  }
-} else if (params.get("metaads_error")) {
-  // For example no_accounts: no active ad account with ADVERTISE and ANALYZE tasks.
-  handleError(params.get("metaads_error"));
-}
-```
-
-### Step 10: Persist the ad account selection
-
-Persist one or more discovered ad accounts. This is **required** for the
-connection to become active. The Wiro dashboard auto-selects a sole result and
-opens a multi-select picker when several accounts are returned; API clients
-must always call this endpoint explicitly.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "meta-ads",
-    "accounts": [
-      { "adaccountid": "123456789", "adaccountname": "My Ad Account" }
-    ]
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "accounts": [
-    { "id": "123456789", "name": "My Ad Account" }
-  ],
-  "restart": "scheduled",
-  "errors": []
-}
-```
-
-Behavior:
-
-- Pass the ad account ID **without** the `act_` prefix. If you include it, Wiro strips it automatically.
-- `adaccountname` is optional: Wiro saves the name from its list, which `OAuthStatus` responses and dashboards show.
-- Pass multiple `{ adaccountid, adaccountname }` entries to authorize the agent against several ad accounts at once.
-- A save replaces the previous selection. Wiro saves only ad accounts from the list of this token check or sign-in, from the same Wiro account within 15 minutes, and the first save uses the list up: to change the ad accounts later, connect again (step 6 of the System User path, or Step 8) and save from the new list. Page mappings are kept only for ad accounts that stay selected, so run Step 10b again for ad accounts you add.
-- If the agent was running (status `3` or `4`), Wiro marks it `status: 1` and restarts it after the stop cycle, so the agent uses the new ad account. No manual Start needed.
-
-### Step 10b: Discover and select Facebook Pages (optional)
-
-After the ad-account selection is saved, discover Pages that Meta reports as
-promotable for each selected account:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/DiscoverPickerItems" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "meta-ads",
-    "pickerkey": "pages"
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "pickerkey": "pages",
-  "groups": [
-    {
-      "parent": {
-        "adaccountid": "123456789",
-        "adaccountname": "My Ad Account"
-      },
-      "items": [
-        { "pageid": "111222333", "pagename": "My Facebook Page" }
-      ]
-    }
-  ],
-  "errors": []
-}
-```
-
-Save the selected Pages within five minutes. Include every parent returned
-without an `errorcode` exactly once, and copy `pageid` and `pagename` exactly as
-discovered; an empty `items` array means no Page is selected for that ad
-account:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "meta-ads",
-    "pickerkey": "pages",
-    "selections": [
-      {
-        "parentvalue": "123456789",
-        "items": [
-          { "pageid": "111222333", "pagename": "My Facebook Page" }
-        ]
-      }
-    ]
-  }'
-```
-
-The dashboard runs this chained flow automatically after ad-account selection.
-It auto-selects the only Page when there is exactly one candidate; otherwise it
-shows Pages grouped by ad account and permits multiple selections. The Page
-step is optional, so reporting and non-Page operations remain available when
-no Page is selected.
-
-**Ad accounts and Pages in one call.** Steps 10 and 10b can restart a running agent twice. To restart it once, skip Step 10: call `DiscoverPickerItems` with the chosen ad accounts in `parents` and the `flowid` of the token check or sign-in, then save both with one `SetPickerAccounts` call that sends `accountids`, `flowid`, `pickerkey` and `selections`, with each parent's Pages in `itemids` or `items`. Both calls must name the same ad accounts within five minutes, or the save answers `next_expired` and you discover again. See [Both steps in one call](/docs/agent-credentials#both-steps-in-one-call).
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/DiscoverPickerItems" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "meta-ads",
-    "pickerkey": "pages",
-    "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
-    "parents": ["123456789"]
-  }'
-
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "meta-ads",
-    "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
-    "accountids": ["123456789"],
-    "pickerkey": "pages",
-    "selections": [
-      { "parentvalue": "123456789", "itemids": ["111222333"] }
-    ]
-  }'
-```
-
-### Step 11: Verify the connection
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "meta-ads"
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "connected": true,
-  "accounts": [
-    { "id": "123456789", "name": "My Ad Account" }
-  ],
-  "pagemappings": [
-    {
-      "adaccountid": "123456789",
-      "adaccountname": "My Ad Account",
-      "pageid": "111222333",
-      "pagename": "My Facebook Page"
-    }
-  ],
-  "pickersteps": {
-    "pages": {
-      "pickerkey": "pages",
-      "optional": true,
-      "configured": true,
-      "groups": [
-        {
-          "parent": {
-            "adaccountid": "123456789",
-            "adaccountname": "My Ad Account"
-          },
-          "items": [
-            { "pageid": "111222333", "pagename": "My Facebook Page" }
-          ]
-        }
-      ]
-    }
-  },
-  "connectedat": "2026-04-17T12:00:00.000Z",
-  "tokenexpiresat": "2026-06-16T12:00:00.000Z",
-  "errors": []
-}
-```
-
-Field notes:
-
-- OAuth mode requires `authmethod: "own"` and an access token. Direct mode
-  requires `authmethod: "api_key"`, a validated `systemusertoken`, and a
-  successful probe marker; it does not require App ID or App Secret. Both modes
-  require at least one selected ad account before `connected` becomes `true`.
-- `accounts[]` carries one entry per selected ad account (`id` = `adaccountid` without `act_` prefix, `name` = `adaccountname`). Empty `name` strings appear when no `adaccountname` was supplied in Step 10.
-- `pickersteps.pages.groups[]` and `pagemappings[]` expose the saved Page
-  selections without any access token.
-- `tokenexpiresat` comes from Meta's OAuth token response. It is empty for the
-  token-only System User mode because Wiro stores the supplied token unchanged.
-  If an expiring System User token is used, the operator must replace it before
-  Meta invalidates it.
-- Meta User OAuth has no generic refresh-token contract. When a `wiro` or `own` User token expires or is invalidated, reconnect through the browser.
-
-### Step 12: Start the agent if it's not running
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-`Start` doesn't wait for every connector. `setuprequired: true` on `POST /UserAgent/Detail` means another connector the agent requires is still missing, and the agent starts all the same. Only an agent still at `status: 6` is refused: call `POST /UserAgent/Update` on it first. See [Agent Credentials: Setup Required](/docs/agent-credentials#setup-required-state).
-
-Agents already running when you connected Meta Ads restart automatically.
-
-## How Meta Ads uses selected Pages
-
-Meta Ads has no scalar/default `pageid`. Step 10b persists account-scoped
-`pagemappings`, and the runtime exposes each selected ad account with its own
-`pages[]` list.
-
-- Zero Pages: only Page-backed creative creation is unavailable; reporting and
-  other account operations continue.
-- One Page under the target ad account: the agent uses it automatically.
-- Multiple Pages: the agent requires an explicit Page ID/name in the request or
-  asks the operator which Page to use. It never picks the first Page or borrows
-  a Page from another ad account.
-
-Before creating the creative, the skill verifies the chosen Page through Meta.
-The connected person or System User must still have the required Page task and
-the Page must be usable with the resolved ad account.
-
-If you need organic posting (writing posts directly to a Facebook Page rather
-than running ads), that's a separate integration (see the
-[Facebook Page integration](/docs/integration-facebook-skills)). The
-`int-facebookpage-post` skill uses the `facebook-pages` credential group, not
-`meta-ads`.
-
-## API Reference
-
-All endpoints require Wiro authentication: see [Authentication](/docs/authentication) for `x-api-key` + optional signature headers.
-
-### POST /UserAgentOAuth/OAuthConnect
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Agent instance GUID. |
-| `credentialkey` | string | Yes | `"meta-ads"`. |
-| `redirecturl` | string | OAuth only | Any HTTPS URL you control (or `http://localhost` / `http://127.0.0.1` for dev) where users return after consent. Direct System User token validation does not use this field. |
-| `authmethod` | string | No | `"api_key"` for the recommended System User token mode or `"own"` for advanced customer-owned app OAuth. Always send it: without it the request runs in Wiro mode and fails with `Sign-in with the platform's app is not enabled for Meta Ads`. |
-
-OAuth response: `{ result, authorizeUrl, flowid, errors }`. Direct System User token response: `{ result, accounts: [{id, name}], flowid, account, restart, errors }` with no `authorizeUrl`, where `account` is the System User's name and `restart` is `"none"` until the ad accounts are saved. A failed direct check returns `{ result: false, errorcode, flowid, errors }`: `no_accounts` (no active ad account with both `ADVERTISE` and `ANALYZE`), `too_many_ad_accounts` (Meta listed more than 500 ad accounts), `direct_token_missing`, `direct_token_invalid`, `provider_rejected_request`, `provider_timeout` or `provider_request_failed`. A check that finds a saved token first clears the saved ad account and Page selection.
-
-If `result: false`, inspect `errors[0].message`. Common messages: `Request parameter [useragentguid] required`, `Request parameter [credentialkey] required`, `Request parameter [redirecturl] required` (OAuth only), `Invalid redirect URL`, `User agent not found or unauthorized`, `Sign-in with the platform's app is not enabled for Meta Ads` (no `authmethod`, or `"wiro"`), `Unsupported connection mode for Meta Ads`, and `Meta Ads credentials not configured` (own mode before `appid` and `appsecret` are saved with `CredentialUpsert`).
-
-### GET /UserAgentOAuth/MetaAdsCallback
-
-Server-side endpoint invoked by Meta. You don't call it. You only handle the final redirect back to your `redirecturl`. The callback path is per-provider: Meta Ads's stays `MetaAdsCallback`.
-
-| Query param | Meaning |
-|-------------|---------|
-| `metaads_connected=true` | OAuth completed successfully. |
-| `metaads_accounts` | URL-encoded JSON array of `{ id, name }` for active ad accounts. Always at least one entry. |
-| `metaads_error=<code>` | OAuth failed. See [Troubleshooting](#troubleshooting). |
-
-### POST /UserAgentOAuth/SetPickerAccounts
-
-The same endpoint persists both picker stages.
-
-Root ad-account selection:
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Agent instance GUID. |
-| `credentialkey` | string | Yes | `"meta-ads"`. |
-| `accounts` | array | Yes | One or more `{ adaccountid, adaccountname }` entries. `adaccountid` must be without the `act_` prefix (prefix stripped automatically if sent); Wiro saves the name from its list as `adaccountname`, the display name shown in dashboards and `OAuthStatus` responses. |
-
-Response: `{ result, accounts: [{id, name}, ...], restart, errors }`. The save that completes the connection restarts a running agent once (`restart: "scheduled"`), and a save that changes nothing restarts nothing.
-
-Chained Page selection, after `DiscoverPickerItems`:
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Agent instance GUID. |
-| `credentialkey` | string | Yes | `"meta-ads"`. |
-| `pickerkey` | string | Yes | `"pages"`. |
-| `selections` | array | Yes | One `{ parentvalue, items }` entry for every discovery group without an `errorcode`. `parentvalue` is the ad account ID; each item carries `pageid` and `pagename` exactly as discovered, or `itemids` holds the Page IDs. Empty `items` is allowed because Pages are optional. |
-
-Response:
-`{ result, pickerkey: "pages", pagemappings: [{adaccountid, adaccountname, pageid, pagename}], restart, errors }`.
-
-Both stages in one call: send `accountids` (or `accounts`), `flowid`, `pickerkey` and `selections` together, after `DiscoverPickerItems` with the same ad accounts in `parents`. Response: `{ result, accounts: [{id, name}, ...], pickerkey: "pages", pagemappings, restart, errors }`.
-
-### POST /UserAgentOAuth/DiscoverPickerItems
-
-Discovers eligible Facebook Pages grouped under the selected ad accounts: the saved ones, or, with `parents` and `flowid`, ad accounts of the current token check's or sign-in's list before they are saved.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Agent instance GUID. |
-| `credentialkey` | string | Yes | `"meta-ads"`. |
-| `pickerkey` | string | Yes | `"pages"`. |
-| `parents` | string[] | No | Ad account IDs from the list of the current token check or sign-in, before they are saved (at most 50). |
-| `flowid` | string | No | With `parents`: the `flowid` from `OAuthConnect`. |
-
-Response:
-`{ result, pickerkey: "pages", groups: [{parent: {adaccountid, adaccountname}, items: [{pageid, pagename}], errorcode?}], errors }`.
-Wiro keeps the active token server-side and caches only secret-free candidates
-for five minutes. Call the chained `SetPickerAccounts` shape before they expire.
-
-Discovery covers at most 50 selected ad accounts and 2,000 Pages in total; above that the call fails with `Too many parent accounts selected for picker discovery` or `Picker candidate limit exceeded`. An ad account with more than 500 Pages comes back with `errorcode: "too_many_pages"`. Leave groups that carry an `errorcode` out of `selections` (their saved Pages stay as they are), and copy `pageid` and `pagename` from the response unchanged. Otherwise `SetPickerAccounts` returns `Selected parent is not available` or `Selected picker item is not available`.
-
-### POST /UserAgentOAuth/OAuthStatus
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Agent instance GUID. |
-| `credentialkey` | string | Yes | `"meta-ads"`. |
-
-Response fields:
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `connected` | boolean | `true` when the selected customer-owned mode has a validated credential and at least one selected ad account. **Note:** this reflects connection completion, not readiness of unrelated required credentials. Use `setuprequired` from `POST /UserAgent/Detail` for whole-agent readiness. |
-| `accounts` | array | One `{ id, name }` per selected ad account (`id` = `adaccountid` without `act_` prefix, `name` = `adaccountname`). |
-| `pagemappings` | array | Flat, account-scoped Page mappings. Each entry contains `adaccountid`, optional `adaccountname`, `pageid`, and `pagename`. |
-| `pickersteps.pages` | object | Grouped Page status for UI rendering: `{ pickerkey, optional, configured, groups[] }`. |
-| `connectedat` | string | ISO timestamp of connection. |
-| `tokenexpiresat` | string | ISO expiry for OAuth tokens. Empty for direct System User mode because Wiro stores the supplied token unchanged. |
-
-### POST /UserAgentOAuth/OAuthDisconnect
-
-Body: `{ useragentguid, credentialkey: "meta-ads" }`. Clears the active token,
-probe marker, ad-account selection, and Page mappings. Customer-owned OAuth App
-ID/App Secret values are preserved for reconnect; direct mode's
-`systemusertoken` is cleared. This endpoint clears Wiro's copy, so
-administrators should also revoke the app or token in Meta Business Settings
-when immediate provider-side invalidation is required.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthDisconnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "meta-ads"
-  }'
-```
-
-Response: `{ "result": true, "errors": [] }`. A starting or running agent restarts when the disconnect removes a token or the connection was complete. Otherwise, for example with only the app keys saved, it restarts nothing.
-
-### Token lifecycle
-
-Wiro does not exchange or renew a direct System User token. Prefer **Never**
-expiration when Meta offers it; otherwise generate a replacement and reconnect
-before the token expires. User OAuth connections must be reconnected after Meta
-expires or invalidates them. Raw tokens and App Secrets are never exposed to the
-agent model.
-
-## Using the Skill
-
-Enable `int-metaads-manage` on the agent via `POST /UserAgent/SkillsApply` (see [Agent Skills → Toggling Integration Skills](/docs/agent-skills#toggling-integration-skills)). Adjust the cron of the built-in `cs-cron-metaads-performance-reporter` task (Meta Ads Manager) with `enabled` and `interval` only. The task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "skillkey": "cs-cron-metaads-performance-reporter",
-    "enabled": true,
-    "interval": "0 9 * * *"
-  }'
-```
-
-To change **what** the reporter includes (thresholds, reporting preferences, holiday markets), edit the paired preference skill `ad-strategy` instead (see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preference-skills)).
-
-## Troubleshooting
-
-| Error code | Meaning | What to do |
-|------------|---------|------------|
-| `missing_params` | The callback was opened without an OAuth `state`. This error ends on the API's own neutral page, not on your app. | Don't open the callback URL directly. Start a new flow from Step 8. |
-| `session_expired` | More than 15 minutes elapsed between `OAuthConnect` and the consent return. | Call `OAuthConnect` again to refresh the state. |
-| `flow_replaced` | A newer sign-in or token check for the same agent and credential replaced this sign-in, whoever started it, so nothing from it was saved. | Use the newer sign-in or check, or start again with `OAuthConnect`. |
-| `authorization_denied` | User clicked Cancel, or Facebook returned `error=access_denied`. In Development Mode this also happens when the user isn't listed under App Roles. | Add the user as a Tester (Step 6), have them accept, retry. |
-| `token_exchange_failed` | Facebook rejected the token exchange. Usually wrong App Secret, revoked app, or redirect URI mismatch. | Re-copy the App Secret from Settings → Basic, verify the redirect URI exactly matches, retry. |
-| `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before Meta returned. | Start again with `OAuthConnect` for an existing agent. |
-| `Meta Ads credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `appid` / `appsecret` are missing. | Call `POST /UserAgent/CredentialUpsert` to add `meta-ads.appid` and `meta-ads.appsecret`, then retry `OAuthConnect`. |
-| `required_meta_scopes_missing` | Meta's `debug_token` check reported the token as invalid, or without every scope listed in Step 4. | Grant the listed scopes to the app/token and reconnect. |
-| `long_lived_exchange_failed` | Meta did not return a long-lived token with an expiry for this authorization. | Start a new flow from Step 8. If it keeps happening, contact Wiro support. |
-| `too_many_ad_accounts` | Meta listed more than 500 ad accounts for this user or System User. | Connect with a user or System User that has access to fewer ad accounts. |
-| `meta_app_mismatch` | The token was issued to a different Meta App ID. | Generate or authorize the token with the same app whose App ID and Secret were saved. |
-| `meta_token_expired` | The OAuth token or its data-access window has expired. | Reconnect customer-owned OAuth. Direct mode does not use `debug_token`; replace a rejected/expired System User token in Business Settings. |
-| `no_accounts` | No active account has both `ADVERTISE` and `ANALYZE` tasks. | Assign the connected principal those tasks on an active ad account in Business Settings, then reconnect. |
-| `Picker candidates expired. Discover them again.` | More than five minutes elapsed after Page discovery, or the parent account connection changed. | Call `DiscoverPickerItems` again, then resubmit the Page selection. |
-| `The list of pages expired. Load it again.` | `errorcode: "next_expired"`: ad accounts and Pages were saved in one call, but the Pages weren't discovered with `parents` for those ad accounts, from this sign-in, in the last five minutes. | Call `DiscoverPickerItems` with `parents` again, then save. |
-| `selections must include every available parent exactly once` | The Page selection omitted or duplicated a successful ad-account group. | Include one `selections[]` entry per successful `groups[]` entry; use `items: []` to select no Page for a parent. |
-| `internal_error` | Unexpected server error during callback processing. | Retry once. If it persists, contact Wiro support with the timestamp and your `useragentguid`. |
-
-### "App not verified" warning on consent
-
-Facebook shows a yellow banner in Development Mode. This is expected and **not a blocker**: users listed under App Roles can click Continue and finish authorization. Users outside App Roles are hard-blocked.
-
-### `connected: false` after completing OAuth
-
-`OAuthStatus` returns `connected: true` only when the selected mode has a validated credential and at least one ad account was saved. If you skipped Step 10 (`SetPickerAccounts`), `connected` remains `false`. If account selection is complete but the status is still false, check the callback or direct-probe error and reconnect.
-
-### Token keeps expiring
-
-User OAuth and System User tokens do not have the same lifecycle:
-
-- **User OAuth (`wiro` / `own`)**: reconnect through the browser after expiry or invalidation.
-- **System User (`api_key`)**: choose **Never** expiration when Meta permits it. If Meta requires an expiring token, generate a replacement and reconnect before expiry. Wiro does not renew or exchange it.
-
-## Multi-Tenant Architecture
-
-For SaaS products connecting many customers' Meta Ads accounts through a single Wiro-powered backend:
-
-1. **Recommended today:** use one System User token per customer-owned Business Portfolio when that operating model fits. Customer-owned OAuth remains available for interactive user authorization; Wiro-owned OAuth is not available yet.
-2. **One Wiro agent instance per customer.** Call `POST /UserAgent/Deploy` during onboarding, then complete the recommended direct steps or the advanced OAuth flow for that customer's `useragentguid`.
-3. **Tokens are isolated per agent instance.** Customer A's Meta token is never visible to Customer B, because they live under different `useragentguid` values.
-4. **Consent branding follows the selected path.** Customer-owned OAuth shows the customer's app; the future simple path shows Wiro's reviewed app.
-5. **Customer-owned Development Mode:** add each connecting user to that app's Roles. Multi-tenant use outside app roles requires the appropriate App Review/Advanced Access; do not treat Development Mode as production approval.
-6. **Rate limits are per app, not per customer.** The Marketing API tier (Development → Standard → Advanced) governs aggregate call volume. See Meta's [Rate Limiting](https://developers.facebook.com/docs/graph-api/overview/rate-limiting) docs.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials): integration catalog hub and generic OAuth reference.
-- [Agent Overview](/docs/agent-overview): deploying, starting, and lifecycle.
-- [Agent Skills](/docs/agent-skills): configuring `int-metaads-manage` and scheduled runs.
-- [Google Ads integration](/docs/integration-googleads-skills): for cross-platform paid campaigns.
-- [TikTok Ads integration](/docs/integration-tiktokads-skills): for cross-platform paid campaigns.
-
----
-
-# TikTok Ads Integration
-
-Connect your agent to TikTok's advertising platform to report on and manage campaigns, ad groups, ads, audiences, and creatives through TikTok's official TikTok for Business MCP server.
-
-## Overview
-
-The TikTok Ads integration powers the `int-tiktok-ads` skill (TikTok Ads Manager). The agent works through TikTok's official **TikTok for Business MCP server** (Model Context Protocol), which exposes TikTok API for Business v1.3 capabilities as tools: reporting, campaign / ad group / ad management, Upgraded Smart+, audiences, creatives, Spark Ads, and TikTok's own diagnosis tools.
-
-This integration covers **advertising only**. It does not post organic videos to a TikTok profile. That is the separate [TikTok integration](/docs/integration-tiktok-skills), which uses its own `tiktok` credential.
-
-**Skills that use this integration:**
-
-- `int-tiktok-ads`: Reporting, campaign / ad group / ad management, Upgraded Smart+ and GMV Max, audiences, creatives, Spark Ads, and diagnosis
-- `util-ads-manager-common` and `util-ads-playbook`: Shared ads helpers (approval flow, recommendations queue, daily report template, kill / scale / test playbook), also used by the Meta Ads and Google Ads skills
-
-**Agents that typically enable this integration:**
-
-- TikTok Ads Manager (prebuilt; `int-tiktok-ads` is on by default)
-- Any Custom Build agent that needs paid-media capabilities on TikTok
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| `"wiro"` | Available | One-click connect through Wiro's TikTok for Business app. You don't create a developer app, request an API key, or go through app review. |
-| `"own"` | Available | Your own client for the TikTok for Business MCP server, registered once with TikTok's dynamic client registration. The consent screen names your app instead of Wiro AI. There is no client secret: the connection uses PKCE. See "Connect with your own client" below. |
-| Pasted token | Not offered | TikTok Ads has no `"api_key"` mode. `OAuthConnect` rejects any other `authmethod` with `Unsupported connection mode for TikTok Ads`. |
-
-> **Authorization lasts 30 days.** TikTok ends every TikTok for Business authorization 30 days after it is granted, and refreshing the access token does not extend it. Reconnect with the same TikTok for Business account to renew it (see "The 30-day authorization" below).
-
-## Prerequisites
-
-- **A TikTok for Business account with access to at least one advertiser** (ad account), for example through TikTok Ads Manager or membership in a Business Center. For the agent to make changes, not just report, that account needs a role on the advertiser that allows campaign management.
-- **An agent with `int-tiktok-ads` enabled**: TikTok Ads Manager has it on by default. On any other agent, enable it with `POST /UserAgent/SkillsApply` (see "Using the Skill" below).
-- **For API integrations only:** a Wiro API key ([Authentication](/docs/authentication)), a deployed agent ([Agent Overview](/docs/agent-overview)) and its `useragentguid`, and an HTTPS return URL that your backend controls. `http://localhost` and `http://127.0.0.1` are accepted for local development only.
-
-## Connect in the Wiro dashboard
-
-1. Open your agent, go to **Connectors**, and find the **TikTok Ads** card.
-2. Click **Connect TikTok for Business**.
-3. Sign in to TikTok for Business and approve the consent screen. It names the app **Wiro AI** and asks for the `mcp:tt4b` permission scope.
-4. Back in Wiro, pick the advertisers the agent may manage. You can select several; when your account has exactly one advertiser, it is selected for you.
-5. Wiro saves the selection and restarts the agent if it was running, so the agent picks up the new connection.
-
-## Connect with your own client
-
-Use this when the people who connect should see your app's name on TikTok's consent screen instead of Wiro AI. One client serves all of your agents.
-
-### Step 1: Register a client once
-
-TikTok's MCP server registers public clients on request. Use your app name and Wiro's redirect URI:
-
-```bash
-curl -X POST "https://business-api.tiktok.com/open_mcp/tt-ads-mcp-flat/oauth/register" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "client_name": "Your App Name",
-    "redirect_uris": ["https://api.wiro.ai/v1/UserAgentOAuth/TikTokAdsCallback"],
-    "token_endpoint_auth_method": "none"
-  }'
-```
-
-The response holds a `client_id` and no secret. Keep the `client_id`.
-
-### Step 2: Save the client ID to Wiro
-
-In the dashboard, switch the **TikTok Ads** card to your own app, paste the **Client ID** and save. With the API:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "fields": [
-      { "credentialkey": "tiktok-ads", "fieldname": "clientid",   "fieldvalue": "YOUR_CLIENT_ID" },
-      { "credentialkey": "tiktok-ads", "fieldname": "authmethod", "fieldvalue": "own" }
-    ]
-  }'
-```
-
-### Step 3: Connect
-
-Start the connection with `"authmethod": "own"`:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "tiktok-ads",
-    "redirecturl": "https://your-app.com/settings/integrations",
-    "authmethod": "own"
-  }'
-```
-
-Everything after sign-in works as in the Wiro app: you pick the advertisers, tokens refresh on their own, and the 30-day authorization applies the same way.
-
-## The 30-day authorization
-
-- TikTok ends every TikTok for Business authorization **30 days** after it is granted. Refreshing the access token does not extend it; this is TikTok's rule, not a Wiro setting.
-- To renew, reconnect with the same TikTok for Business account: click **Disconnect** on the TikTok Ads card, then **Connect TikTok for Business** again and confirm the advertisers. A different TikTok for Business account may see different advertisers.
-- From 7 days before the end, the daily performance report opens its Risk Flags & Account Health section with the end date and a reconnect reminder. When you chat with the agent in that window, it mentions the end date once at the top of its reply.
-- After the authorization ends, the daily performance report sends a one-line notice that TikTok Ads reporting stopped and asks you to reconnect. The other TikTok Ads scheduled tasks stay quiet until you reconnect.
-- Expiry does not pause your ads. Campaigns keep delivering in TikTok; only the agent loses access.
-- The short-lived access tokens (about 24 hours) are renewed by Wiro automatically. You never see or handle a TikTok token.
-
-## Advertiser selection
-
-- The agent works only on the advertisers you selected when you connected. Any request for another advertiser is refused.
-- To change the selection, click **Disconnect** on the TikTok Ads card, then connect again and pick the advertisers you want.
-- Until at least one advertiser is selected, the TikTok Ads card reads `_connected: false`, and an agent that requires TikTok Ads (such as TikTok Ads Manager) reads `setuprequired: true` on `UserAgent/Detail`.
-
-## What the agent can do
-
-| Area | What the agent does |
-|------|---------------------|
-| Reporting | Account, campaign, ad group, and ad metrics (spend, impressions, clicks, CTR, CPC, CPM, conversions, cost per conversion, ROAS, video views and watch time); age, gender, and country breakdowns; placement (TikTok, Pangle, Global App Bundle) and device platform breakdowns; asynchronous reports for long date ranges; Upgraded Smart+ creative reports; GMV Max reports. |
-| Campaign management | Create and update campaigns, ad groups, and ads; pause, enable, or delete them; change budgets and schedules; copy campaigns; run split tests; set up automated rules; manage search negative keywords. |
-| Upgraded Smart+ and GMV Max | Create, update, and change the status of Upgraded Smart+ campaigns. Update and report on existing GMV Max campaigns. |
-| Audiences | Custom and lookalike audiences, saved audiences, audience size estimates, and audience insights. |
-| Creatives | Upload images and videos by URL, choose music, generate creatives with Wiro AI models (when the Wiro AI Models skill is set up), check creative fatigue, run video fix tasks, and preview ads. |
-| Spark Ads | Promote posts from your own TikTok account linked to the advertiser, or authorize a creator's post with the Spark Ads code the creator sends you. |
-| Placement control | Pangle block lists and inventory filters. |
-| Diagnosis | TikTok's own diagnosis tools for delivery and performance issues (no spend, low spend, high CPA, creative fatigue). |
-| Ad comments | Reply to or hide comments on ads, and manage blocked words. |
-
-## What the agent cannot do
-
-These operations are not available through this integration, by design. When you ask for one, the agent tells you it is not available instead of trying another way.
-
-- **Business Center administration.**
-- **Billing, payments, balances, invoices, or fund transfers.** TikTok charges ad spend to the advertiser's own payment method; handle billing in TikTok Ads Manager.
-- **Downloading lead data.** Lead generation campaigns can be reported on (cost per lead) and paused.
-- **TikTok One (Creator Marketplace).**
-- **Catalogs.**
-- **Pixel and event configuration.**
-- **Reach & Frequency purchases.**
-- **Creating GMV Max campaigns.** TikTok starts them delivering as soon as they are created, so create them in TikTok Ads Manager; the agent can then report on them and apply approved updates.
-- **Customer-file audiences.** They need an audience file upload; create them in TikTok Ads Manager.
-- **Organic posting to a TikTok profile.** Use the [TikTok integration](/docs/integration-tiktok-skills).
-
-## Safety and approvals
-
-- **Every change goes through the agent's approval policy** (the `approval-policy` custom skill). By default the agent describes the change (object, IDs, old and new value, reason) and waits for your approval. Reads (reports, lookups, previews) never need approval.
-- **New objects start paused.** Campaigns, ad groups, ads, Upgraded Smart+ campaigns, and campaign copies are always created paused. Turning one on is a separate change that needs its own approval.
-- **Deletes happen only when you ask.** Campaigns, ad groups, ads, audiences, creative assets, blocked words, ad comments, and search negative keywords can be deleted on request, after approval. Deleting cannot be undone. The agent never deletes on its own; when it recommends stopping something, it pauses it.
-- **Rejected changes are not retried.** If TikTok rejects a change, the agent reports TikTok's message and request ID and stops.
-- **Scheduled tasks only read from TikTok.** They put proposed changes into the recommendations queue; a change runs only after you approve it in chat (for example `apply 1`).
-- **Budgets are in the advertiser's currency, not cents.** The agent confirms the currency before changing a budget and states it in the approval request. TikTok requires a new budget to be at least 105% of what has already been spent and does not accept budget changes between 23:55 and 00:00 advertiser time.
-- **Rate limits.** TikTok allows most tools 3 requests per second per tool for each TikTok for Business user; a few, such as asynchronous report creation and campaign copies, have lower limits per app. When TikTok rate-limits a report or lookup, the agent backs off and retries; a rate-limited change is reported and not retried.
-- **No secrets in chat.** The agent never asks for a TikTok password or token. The only code you paste is a Spark Ads authorization code.
-
-## Scheduled tasks
-
-TikTok Ads Manager ships with these scheduled tasks. Times use the agent's time zone.
-
-| Task | Skill key | Default schedule | What it does |
-|------|-----------|------------------|--------------|
-| Daily performance report | `cs-cron-tiktokads-performance-reporter` | `0 9 * * *` (daily 09:00) | Account, campaign, placement, device, country, and ad-level performance for the last 7 days, anomaly checks, and recommendations. Carries the 30-day reconnect reminder and the expiry notice. |
-| Weekly audience & account health scan | `cs-cron-tiktokads-audience-scanner` | `0 10 * * 1` (Mondays 10:00) | Age, gender, and placement breakdowns, creative health, custom audience status, rejected or stuck ads, audience fatigue, and new targeting ideas. |
-| Drive creative scanner | `cs-cron-tiktokads-drive-scanner` | `0 10 * * *` (daily 10:00) | Looks for new creative folders in Google Drive and proposes TikTok campaigns for them. Runs daily; does nothing until Google Drive is connected and has creative folders. |
-| Holiday campaign planner | `cs-cron-tiktokads-holiday-planner` | `0 10 * * 3` (Wednesdays 10:00) | Scans upcoming holidays from the holiday calendar (Calendarific) and suggests seasonal campaigns. Does nothing until Calendarific is connected. |
-
-Shared ads tasks also cover TikTok Ads: the nightly `cs-cron-ads-recommendation-cleanup` expires stale recommendations, and the optional Adjust creative ROAS report (`cs-cron-adjust-creative-roas-reporter`) cross-checks TikTok spend when Adjust is connected.
-
-To change **what** the tasks look for, edit these custom skills (stored as `cs-<key>`) rather than the tasks:
-
-- `tiktok-ads-strategy`: TikTok-specific knobs for tracking quality gates, kill thresholds, placement strategy, Spark Ads and Smart+ rules.
-- `ad-strategy`: cross-platform KPI thresholds, shared with Meta Ads and Google Ads.
-- `approval-policy`: which changes wait for approval.
-
-## Multiple advertisers
-
-- Scheduled tasks run once per selected advertiser. Each report is headed with the advertiser's name and ID and uses that advertiser's currency and time zone.
-- In chat, name the advertiser when more than one is selected; otherwise the agent asks which one to use. A single request or change never mixes advertisers.
-- The 30-day reminder appears in each advertiser's daily report; the expiry notice is sent once for the whole connection.
-
-## Connect through the API
-
-Use this flow when you build your own settings screen on top of Wiro agents. Every request is authenticated as described in [Authentication](/docs/authentication).
-
-### Step 1: Start the connection
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "tiktok-ads",
-    "redirecturl": "https://your-app.com/settings/integrations"
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "authorizeUrl": "https://business-api.tiktok.com/portal/mcp-tt4b-authorize?client_id=...&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FTikTokAdsCallback&scope=mcp%3Att4b&response_type=code&state=...&code_challenge=...&code_challenge_method=S256&resource=...",
-  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19"
-}
-```
-
-Redirect the user's browser to `authorizeUrl` with a full-page redirect rather than a popup. Wiro adds the PKCE challenge itself, so you never handle a code verifier or client secret. `authmethod` can be omitted: `"wiro"` is the default and the only accepted value.
-
-> **State TTL:** Wiro keeps the OAuth state for **15 minutes**. If the user takes longer on TikTok's consent screen, the connection fails with `tiktokads_error=session_expired` and you must call `OAuthConnect` again.
-
-### Step 2: Handle the return
-
-After the user approves, TikTok sends them to Wiro's callback (`https://api.wiro.ai/v1/UserAgentOAuth/TikTokAdsCallback`). Wiro exchanges the code, lists the advertisers the TikTok for Business user can access, stores the tokens server-side, and redirects the browser to your `redirecturl`.
-
-**Success URL** looks like:
-
-```
-https://your-app.com/settings/integrations?tiktokads_connected=true&tiktokads_advertisers=%5B%7B%22id%22%3A%227012345678901234567%22%2C%22name%22%3A%22Brand%20X%22%7D%5D
-```
-
-- `tiktokads_advertisers` is `encodeURIComponent(JSON.stringify([...]))`.
-- Each element is `{ id, name }`: `id` is the numeric advertiser ID as a string, `name` is the advertiser name.
-- The list is never empty on success. When no advertiser can be listed, the callback returns `tiktokads_error=no_accounts` instead.
-- On a first connection (or after `OAuthDisconnect`), nothing is selected yet: the connection becomes active only after Step 3, even when a single advertiser is returned. Reconnecting without `OAuthDisconnect` keeps the previous selection.
-
-Parse in the browser:
-
-```javascript
-const params = new URLSearchParams(window.location.search);
-
-if (params.get("tiktokads_connected") === "true") {
-  const advertisers = JSON.parse(params.get("tiktokads_advertisers") || "[]");
-  if (advertisers.length === 1) {
-    await saveAdvertisers(advertisers);
-  } else {
-    presentAdvertiserPicker(advertisers);
-  }
-} else if (params.get("tiktokads_error")) {
-  handleError(params.get("tiktokads_error"));
-}
-```
-
-### Step 3: Save the advertiser selection
-
-This call is **required**. The Wiro dashboard selects a sole advertiser automatically, but API clients must always send the selection themselves.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "tiktok-ads",
-    "accounts": [
-      { "advertiserid": "7012345678901234567", "advertisername": "Brand X" }
-    ]
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "accounts": [
-    { "id": "7012345678901234567", "name": "Brand X" }
-  ],
-  "restart": "scheduled"
-}
-```
-
-Behavior:
-
-- Send one or more `{ advertiserid, advertisername }` entries picked from `tiktokads_advertisers` (`id` becomes `advertiserid`, `name` becomes `advertisername`). Non-digits in `advertiserid` are stripped server-side.
-- A save replaces the previous selection. Wiro saves only advertisers from this sign-in's list, under the names it lists, when the call comes from the same Wiro account within 15 minutes. The first save uses the list up: to change the selection later, connect again. See [SetPickerAccounts](/docs/agent-credentials#post-useragentoauthsetpickeraccounts).
-- If the agent was running, Wiro restarts it so it picks up the selection. No manual Start needed.
-
-### Step 4: Verify the connection
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "tiktok-ads"
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "connected": true,
-  "accounts": [
-    { "id": "7012345678901234567", "name": "Brand X" }
-  ],
-  "connectedat": "2026-09-26T08:14:00.000Z",
-  "tokenexpiresat": "2026-09-27T08:14:00.000Z"
-}
-```
-
-Field notes:
-
-- `connected` is `true` when the connection has a current access token and at least one advertiser is selected.
-- `connectedat` is when the user authorized. The authorization ends 30 days after this time.
-- `tokenexpiresat` is the expiry of the current access token (about 24 hours), not the end of the 30-day authorization. Wiro renews the access token while the agent is running, so this value moves forward about once a day.
-- If the agent has been stopped for more than a day, `connected` can read `false` until the agent runs again. Starting the agent renews the access token as long as the 30-day authorization has not ended.
-
-### Step 5: Start the agent if it's not running
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-`Start` doesn't wait for every connector. `setuprequired: true` on `POST /UserAgent/Detail` means TikTok Ads or another connector the agent requires is still incomplete, and the agent starts all the same. Only an agent still at `status: 6` is refused: call `POST /UserAgent/Update` on it first. See [Agent Credentials: Setup Required](/docs/agent-credentials#setup-required-state).
-
-Agents already running when you connected TikTok Ads restart automatically.
-
-## Credential fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `advertiserid` | array of strings | Numeric IDs of the selected advertisers. Required. Written by `SetPickerAccounts`. |
-| `advertisername` | array of strings | Names of the selected advertisers, in the same order. Written by `SetPickerAccounts`. |
-
-Both fields are returned by `POST /UserAgent/Detail` and are managed by the connection flow: `POST /UserAgent/CredentialUpsert` rejects writes to them (for example `Advertiser ID is managed by the connection flow`). Access and refresh tokens are stored server-side and are never returned by any endpoint.
-
-## API Reference
-
-All endpoints require Wiro authentication: see [Authentication](/docs/authentication) for `x-api-key` + optional signature headers.
-
-### POST /UserAgentOAuth/OAuthConnect
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Agent instance GUID. |
-| `credentialkey` | string | Yes | `"tiktok-ads"`. |
-| `redirecturl` | string | Yes | HTTPS URL (or `http://localhost` / `http://127.0.0.1` for development) where the browser returns after TikTok. |
-| `authmethod` | string | No | `"wiro"` (the default) or `"own"` for your own client (see "Connect with your own client"). |
-
-Response: `{ result, errors, authorizeUrl, flowid }`. If `result: false`, inspect `errors[0].message`. Common messages: `Request parameter [useragentguid] required`, `Request parameter [credentialkey] required`, `Request parameter [redirecturl] required`, `Invalid redirect URL`, `User agent not found or unauthorized`, `Unsupported connection mode for TikTok Ads`, and `TikTok Ads credentials not configured`.
-
-### GET /UserAgentOAuth/TikTokAdsCallback
-
-Server-side endpoint invoked by TikTok. You don't call it. You only handle the final redirect back to your `redirecturl`. The callback path is per-provider: TikTok Ads's is `TikTokAdsCallback`, separate from the organic TikTok integration's `TikTokCallback`.
-
-| Query param | Meaning |
-|-------------|---------|
-| `tiktokads_connected=true` | Authorization completed. |
-| `tiktokads_advertisers` | URL-encoded JSON array of `{ id, name }` for the advertisers the TikTok for Business user can access. Always at least one entry. |
-| `tiktokads_error=<code>` | The connection failed. See Troubleshooting below. |
-
-### POST /UserAgentOAuth/SetPickerAccounts
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Agent instance GUID. |
-| `credentialkey` | string | Yes | `"tiktok-ads"`. |
-| `accounts` | array | Yes | One or more `{ advertiserid, advertisername }` entries. `advertiserid` is the numeric advertiser ID (non-digits stripped); Wiro saves the name from its list as `advertisername`, the display name shown in dashboards and `OAuthStatus` responses. |
-
-Response: `{ result, errors, accounts: [{id, name}, ...], restart }`. Replaces the previous selection. The save that completes the connection restarts a running agent once (`restart: "scheduled"`), and a save that changes nothing restarts nothing. Returns `The sign-in expired. Sign in again to choose the accounts.` (`errorcode: "flow_expired"`) when no sign-in's list is open: none was started, it was more than 15 minutes ago, or a save already used it. Returns `The sign-in is not finished yet. Finish it, then choose the accounts.` (`errorcode: "flow_waiting"`) when the sign-in started but TikTok hasn't sent the user back yet.
-
-### POST /UserAgentOAuth/OAuthStatus
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Agent instance GUID. |
-| `credentialkey` | string | Yes | `"tiktok-ads"`. |
-
-Response fields:
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `connected` | boolean | `true` when the connection has a current access token and at least one selected advertiser. **Note:** this reflects the TikTok Ads connection only. Use `setuprequired` from `POST /UserAgent/Detail` for whole-agent readiness. |
-| `accounts` | array | One `{ id, name }` per selected advertiser (`id` = `advertiserid`, `name` = `advertisername`). |
-| `connectedat` | string | ISO timestamp of the authorization. The 30-day authorization ends 30 days after it. |
-| `tokenexpiresat` | string | ISO expiry of the current access token (about 24 hours ahead while the agent runs). |
-
-### POST /UserAgentOAuth/OAuthDisconnect
-
-Body: `{ useragentguid, credentialkey: "tiktok-ads" }`. Asks TikTok to revoke the authorization and clears the connection in Wiro: tokens, connection time, and the advertiser selection. The Wiro side is cleared even if TikTok's revoke request fails. An access token TikTok issued earlier may stay valid at TikTok for up to 24 hours, but the agent no longer has it.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthDisconnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "tiktok-ads"
-  }'
-```
-
-Response: `{ "result": true, "errors": [] }`. A starting or running agent restarts when the disconnect removes a token or the connection was complete. Otherwise it restarts nothing.
-
-### Token lifecycle
-
-Wiro renews the 24-hour access token automatically while the agent is running. The authorization behind it lasts 30 days from `connectedat` and cannot be extended by refreshing. To renew it, run the flow again: `OAuthDisconnect`, then `OAuthConnect`, the callback, and `SetPickerAccounts`. There is no customer-facing token-refresh endpoint, and raw tokens are never exposed to the agent model or to API callers.
-
-## Using the Skill
-
-TikTok Ads Manager has `int-tiktok-ads` on by default. On any other agent, enable it via `POST /UserAgent/SkillsApply` (see [Agent Skills → Toggling Integration Skills](/docs/agent-skills#toggling-integration-skills)). Adjust the cron of a bundled task such as the daily performance report with `enabled` and `interval` only. The task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "skillkey": "cs-cron-tiktokads-performance-reporter",
-    "enabled": true,
-    "interval": "0 9 * * *"
-  }'
-```
-
-To change **what** the reports include (tracking quality gates, kill thresholds, placement strategy, Spark Ads and Smart+ rules), edit the preference skill `tiktok-ads-strategy` (stored as `cs-tiktok-ads-strategy`), or `ad-strategy` for cross-platform thresholds (see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preference-skills)).
-
-## Troubleshooting
-
-| Error code | Meaning | What to do |
-|------------|---------|------------|
-| `missing_params` | The callback was opened without an OAuth `state`. | Don't open the callback URL directly. Start a new flow with `OAuthConnect`. |
-| `session_expired` | More than 15 minutes passed between `OAuthConnect` and the return from TikTok. A callback the browser repeats after a completed one is not an error: it lands where the first one did. | Call `OAuthConnect` again. |
-| `flow_replaced` | A newer sign-in for the same agent and credential replaced this one, whoever started it, so nothing from it was saved. | Use the newer sign-in, or start again with `OAuthConnect`. |
-| `authorization_denied` | The user cancelled on TikTok's consent screen, or TikTok returned an error instead of an authorization code. | Start again and approve the consent screen. |
-| `token_exchange_failed` | TikTok did not return a usable access and refresh token for the authorization code. | Start a new flow. If it persists, contact Wiro support. |
-| `no_accounts` | Sign-in worked, but no advertiser could be listed for this TikTok for Business user: the user has no advertiser access, or TikTok's advertiser lookup failed. | Get access to an advertiser in TikTok Ads Manager or Business Center, then connect again. If this user already has advertiser access, try connecting again. |
-| `account_list_too_large` | The TikTok for Business user can access more than 500 advertisers. | Connect with a TikTok for Business user that has access to fewer advertisers. |
-| `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before TikTok returned. | Start again with `OAuthConnect` for an existing agent. |
-| `internal_error` | Unexpected server error during callback processing. | Retry once. If it persists, contact Wiro support with the timestamp and your `useragentguid`. |
-| `Unsupported connection mode for TikTok Ads` | Returned in `OAuthConnect`'s `errors[]` when `authmethod` is anything other than `"wiro"` or `"own"`. | Omit `authmethod`, or send `"wiro"` or `"own"`. |
-| `TikTok Ads credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but no `clientid` is saved. | Save the client ID with `UserAgent/CredentialUpsert` (see "Connect with your own client"), then connect again. |
-| `TikTok Ads credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when TikTok Ads is not available for this account. | Contact Wiro support. |
-| `flow_waiting` | Returned by `SetPickerAccounts` (`The sign-in is not finished yet. Finish it, then choose the accounts.`) while the sign-in has started but TikTok hasn't sent the user back yet, so there is no list to save from. | Let the user finish on TikTok's consent screen, then save the selection. Don't call `OAuthConnect` again meanwhile: it would replace the sign-in under way. |
-| `TikTok Ads account not connected` | Returned by `SetPickerAccounts` when the sign-in's list is open but the sign-in's token is no longer saved. | Run Steps 1-2 again, then save the selection. |
-
-`missing_params` sends the browser to the API's own neutral page, `https://api.wiro.ai/v1/UserAgentOAuth/SignInNotFinished`, because a callback without a `state` has no return address. `session_expired` comes back to your `redirecturl`. It ends on that page only when the callback arrives more than 24 hours after `OAuthConnect` or carries a `state` Wiro never issued.
-
-### "No accounts available" after signing in
-
-Either the TikTok for Business user you signed in with has no advertiser access, or TikTok's advertiser lookup failed. Get access to an advertiser in TikTok Ads Manager or through Business Center membership, then connect again. If this user already has advertiser access, try connecting again.
-
-### The agent says the TikTok Ads connection expired
-
-The 30-day authorization ended. Click **Disconnect** on the TikTok Ads card, then connect again with the same TikTok for Business account and confirm the advertisers. Your campaigns kept running in TikTok in the meantime.
-
-### A change was refused
-
-The action is outside what this integration allows (see "What the agent cannot do"), it targets an advertiser that was not selected, or the TikTok for Business user's role on the advertiser does not allow campaign management. Change roles in TikTok's business settings; change the advertiser selection by disconnecting and connecting again.
-
-### A report metric is rejected by TikTok
-
-Nothing to do. The agent drops the metric TikTok rejected and runs the report again without it.
-
-### `connected: false` after completing the flow
-
-`OAuthStatus` returns `connected: true` only when there is a current access token and at least one advertiser is saved. If you skipped Step 3 (`SetPickerAccounts`), `connected` stays `false`. If the selection is saved, check whether the 30-day authorization has ended (reconnect) or the agent has been stopped for more than a day (start it).
-
-## Multi-Tenant Architecture
-
-For SaaS products connecting many customers' TikTok Ads accounts through a single Wiro-powered backend:
-
-1. **One Wiro agent instance per customer.** Call `POST /UserAgent/Deploy` during onboarding, then run the connection flow for that customer's `useragentguid`. Each customer signs in with their own TikTok for Business account.
-2. **Tokens are isolated per agent instance.** Customer A's TikTok authorization is never visible to Customer B, because they live under different `useragentguid` values.
-3. **The consent screen shows Wiro AI.** There is no customer-owned app mode, so the consent screen cannot be white-labeled.
-4. **Plan for the 30-day renewal.** Every customer has to reconnect every 30 days. Track `connectedat` from `OAuthStatus` and prompt the customer before the 30 days are up.
-5. **Rate limits are mostly per TikTok for Business user.** TikTok allows most tools 3 requests per second per tool for each user; asynchronous report creation and campaign copies have lower per-app limits that all connections share.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials): integration catalog hub and generic OAuth reference.
-- [Agent Overview](/docs/agent-overview): deploying, starting, and lifecycle.
-- [Agent Skills](/docs/agent-skills): configuring `int-tiktok-ads` and scheduled runs.
-- [TikTok integration](/docs/integration-tiktok-skills): organic video posting to a TikTok profile (separate `tiktok` credential).
-- [Meta Ads integration](/docs/integration-metaads-skills): for cross-platform paid campaigns.
-- [Google Ads integration](/docs/integration-googleads-skills): for cross-platform paid campaigns.
-
----
-
-# Facebook Page Integration
-
-Connect your agent to one or more Facebook Pages with a recommended Meta
-System User token or advanced customer-owned OAuth.
-
-## Overview
-
-The Facebook Page integration uses Meta Graph API v26 with a separate
-Page-scoped access token for every selected Page. The recommended direct mode
-accepts a Meta Business Manager System User token, validates it only on Wiro's
-server, discovers its assigned Pages, and derives the selected Page tokens.
-The API never returns the Page tokens, and the System User token never reaches the agent.
-Customer-owned OAuth remains available as an advanced path.
-
-**Skills that use this integration:**
-
-- `int-facebookpage-post`: Publish text, photo, and video posts to a Facebook Page, and read Page and post insights
-
-**Agents that typically enable this integration:**
-
-- Social Manager
-- Any custom agent that needs Facebook Page posting
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| `"api_key"` | **Recommended** | Enter a Business Manager System User token. No App ID, App Secret, or browser redirect is entered in Wiro. |
-| `"own"` | Advanced | Use your own Meta Developer App and browser OAuth. Development Mode works for users assigned an App Role. |
-| `"wiro"` | Coming soon | Wiro's shared Meta App is under review by Meta. |
-
-## Prerequisites
-
-- **A Wiro API key** (see [Authentication](/docs/authentication)).
-- **A deployed agent** (see [Agent Overview](/docs/agent-overview)); keep the `useragents[0].guid`.
-- **A Meta Business account** ([business.facebook.com](https://business.facebook.com/)).
-- **At least one Facebook Page assigned to the connecting principal** with the
-  `CREATE_CONTENT` task. Add `MODERATE` when the agent should add comments, and
-  `ANALYZE` when it should read insights.
-- **Recommended direct mode:** a System User and the Business app used to
-  generate its token.
-- **Advanced OAuth mode:** a Meta Developer account, your own Business app, and
-  an HTTPS callback URL for your backend.
-
-## Recommended Setup: System User Token
-
-This path is selected by default in the Wiro dashboard. It avoids browser OAuth
-and does not require entering an App ID or App Secret in Wiro.
-
-### Step 1: Prepare the System User and Page assets
-
-1. Open [Meta Business Settings → Users → System Users](https://business.facebook.com/latest/settings/system_users).
-2. Create or select a System User.
-3. Assign every Facebook Page the agent may publish to with the
-   `CREATE_CONTENT` task. Also assign `MODERATE` when the agent should add
-   comments, and `ANALYZE` when it should read [insights](#insights).
-4. Select **Generate new token** and choose the Business app used for the
-   integration.
-5. At **Set expiration**, choose **Never** when Meta offers it. Some businesses
-   are required to use an expiring token; reconnect Wiro with a newly generated
-   token before that token expires.
-6. Grant:
-   - `business_management`
-   - `pages_show_list`
-   - `pages_read_engagement`
-   - `pages_manage_posts`
-   - `pages_manage_engagement` when comments are needed
-   - `publish_video` when Page video publishing is needed
-   - `read_insights` (optional) when Page and post insights are needed
-
-If a permission is absent from the token dialog, add the corresponding app use
-case using Meta's
-[use-case permission mapping](https://developers.facebook.com/documentation/development/create-an-app/use-cases-permission-mapping).
-The Business app must not require `appsecret_proof` on every server request,
-because direct mode intentionally does not collect the App Secret.
-
-### Step 2: Save the token
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "fields": [
-      { "credentialkey": "facebook-pages", "fieldname": "authmethod", "fieldvalue": "api_key" },
-      { "credentialkey": "facebook-pages", "fieldname": "systemusertoken", "fieldvalue": "YOUR_SYSTEM_USER_ACCESS_TOKEN" }
-    ]
-  }'
-```
-
-The token is stored encrypted and never reaches the agent. Once saved, it reads
-`"••••••••"` on `UserAgent/Detail`, like every saved secret. To change it,
-save a new token.
-
-### Step 3: Validate the token and discover Pages
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "facebook-pages",
-    "authmethod": "api_key"
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "accounts": [
-    { "id": "123", "name": "Main Page" },
-    { "id": "456", "name": "Regional Page" }
-  ],
-  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
-  "account": "Acme System User",
-  "restart": "none",
-  "errors": []
-}
-```
-
-Only Page IDs and names are returned. Wiro keeps the System User token and all
-derived Page access tokens server-side. A valid token with no assigned Page
-carrying `CREATE_CONTENT` returns an error instead of an empty successful
-connection.
-
-### Step 4: Select one or more Pages
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "facebook-pages",
-    "accounts": [
-      { "pageid": "123", "fbpagename": "Main Page" },
-      { "pageid": "456", "fbpagename": "Regional Page" }
-    ]
-  }'
-```
-
-This finalizes the connection by matching each requested Page against the
-server-side discovery result and storing only its Page-scoped runtime token.
-Call it within 15 minutes of `OAuthConnect`. The dashboard auto-selects a sole
-Page and opens a multi-select Page picker when several are returned. API
-clients must still perform this request explicitly.
-
-### Step 5: Verify the connection
-
-Call `POST /UserAgentOAuth/OAuthStatus` with
-`{ "useragentguid": "...", "credentialkey": "facebook-pages" }`. A successful
-direct connection returns the selected Pages, `connected: true`, and an empty
-`tokenexpiresat`.
-
-## Advanced Setup: Customer-Owned OAuth
-
-This path uses Meta's documented Facebook Login for Business flow.
-
-### Step 1: Create a Meta Developer App
-
-You can reuse a single Meta App for Facebook Page, Instagram, and Meta Ads.
-
-1. [developers.facebook.com/apps](https://developers.facebook.com/apps) → **Create app** → **Other** → **Business**.
-2. Enter an **App display name** (what users see on consent screens), **App contact email**, select your **Business Account**, then **Create app**.
-3. Leave it in **Development Mode**.
-
-### Step 2: Add "Facebook Login for Business" and register the redirect URI
-
-1. **Add product** → **Facebook Login for Business** → **Set up**.
-2. **Facebook Login for Business → Settings**.
-3. Under **Valid OAuth Redirect URIs**, add:
-
-   ```
-   https://api.wiro.ai/v1/UserAgentOAuth/FBCallback
-   ```
-
-4. **Save changes**.
-
-### Step 3: Note the required permissions
-
-Wiro requests these exact scopes:
-
-```
-pages_show_list,pages_manage_posts,publish_video,pages_manage_engagement,pages_read_engagement,pages_read_user_content,pages_manage_metadata,pages_messaging,read_insights
-```
-
-| Permission | Why |
-|------------|-----|
-| `pages_show_list` | Enumerate the Pages the user administers. |
-| `pages_manage_posts` | Publish and manage Page posts and photos. |
-| `publish_video` | Publish videos to a Page. |
-| `pages_manage_engagement` | Add and moderate comments as the Page. |
-| `pages_read_engagement` | Read likes, comments, and shares on the Page's posts. |
-| `pages_read_user_content` | Read user-generated content on the Page (for context). |
-| `pages_manage_metadata` | Webhook subscriptions and Page metadata. |
-| `pages_messaging` | Send and receive messages on behalf of the Page (some skills use this). |
-| `read_insights` | Read Page and post insights (see [Insights](#insights)). |
-
-These work without App Review in Development Mode for any Facebook user in App Roles.
-
-### Step 4: Copy your App ID and App Secret
-
-**App settings → Basic** → copy **App ID** and **App Secret**.
-
-### Step 5: Add other Facebook accounts as Testers (only if needed)
-
-Connecting your own Facebook account? You're the app Admin, so skip this. Connecting a customer's account? Add them under **App Roles → Roles → Add People → Testers**. They accept at [facebook.com/settings → Business Integrations](https://www.facebook.com/settings?tab=business_tools).
-
-### Step 6: Save your Meta App credentials to Wiro
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "fields": [
-      { "credentialkey": "facebook-pages", "fieldname": "appid", "fieldvalue": "YOUR_META_APP_ID" },
-      { "credentialkey": "facebook-pages", "fieldname": "appsecret", "fieldvalue": "YOUR_META_APP_SECRET" },
-      { "credentialkey": "facebook-pages", "fieldname": "authmethod", "fieldvalue": "own" }
-    ]
-  }'
-```
-
-Wiro merges this into only the `facebook-pages` group, and other credentials are untouched.
-
-### Step 7: Initiate OAuth
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "facebook-pages",
-    "redirecturl": "https://your-app.com/settings/integrations",
-    "authmethod": "own"
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "authorizeUrl": "https://www.facebook.com/v26.0/dialog/oauth?client_id=...&redirect_uri=...&scope=pages_show_list%2Cpages_manage_posts%2Cpublish_video%2Cpages_manage_engagement%2Cpages_read_engagement%2Cpages_read_user_content%2Cpages_manage_metadata%2Cpages_messaging%2Cread_insights&auth_type=rerequest&response_type=code&state=...",
-  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
-  "errors": []
-}
-```
-
-Redirect the user's browser to `authorizeUrl`. State has a 15-minute TTL.
-
-### Step 8: Handle the callback and list returned Pages
-
-After consent, Wiro exchanges the code for a user access token, reads the user's Pages **with their page-specific access tokens**, keeps the list server-side, and redirects the user to your `redirecturl`. Wiro reads only the first page of Meta's Page list, so a user with many Pages may not see all of them, and the list does not check the user's task on each Page. System User mode reads up to 500 assigned Pages and lists only Pages with `CREATE_CONTENT`.
-
-**Crucial:** Wiro does **not** auto-select a Page. On a first connection, after `OAuthDisconnect`, or when switching from System User mode, the connection is incomplete until the client calls `SetPickerAccounts`, and `OAuthStatus` returns `connected: false` until then. On a reconnect, the Pages saved earlier stay connected until `SetPickerAccounts` replaces them.
-
-**Success URL:**
-
-```
-https://your-app.com/settings/integrations?fb_connected=true&fb_pages=%5B%7B%22id%22%3A%22123%22%2C%22name%22%3A%22Page%20A%22%7D%2C%7B%22id%22%3A%22456%22%2C%22name%22%3A%22Page%20B%22%7D%5D
-```
-
-Query parameters:
-
-| Param | Meaning |
-|-------|---------|
-| `fb_connected=true` | OAuth completed; credentials are cached server-side awaiting page selection. |
-| `fb_pages` | URL-encoded JSON array `[{ id, name }, ...]` of the Pages Wiro read for this user (the first page of Meta's list). The per-page access tokens stay server-side. The client only receives ID and name. |
-| `fb_error=<code>` | Failure. See [Troubleshooting](#troubleshooting). |
-
-Parse:
-
-```javascript
-const params = new URLSearchParams(window.location.search);
-
-if (params.get("fb_connected") === "true") {
-  // URLSearchParams already decodes the value, so don't call decodeURIComponent on it.
-  const pages = JSON.parse(params.get("fb_pages") || "[]");
-
-  if (pages.length === 0) {
-    // Not expected: the callback returns fb_error=no_pages when no Page can be listed.
-    showError("No Facebook Pages to manage.");
-  } else if (pages.length === 1) {
-    // One Page: SetPickerAccounts is still required.
-    await setPickerAccounts([{ pageid: pages[0].id, fbpagename: pages[0].name }]);
-  } else {
-    presentPagePicker(pages);
-  }
-} else if (params.get("fb_error")) {
-  handleError(params.get("fb_error"));
-}
-```
-
-### Step 9: Persist the page selection (required)
-
-**This step is mandatory.** On a first connection, the connection remains
-incomplete and `OAuthStatus` reports `connected: false` until you call
-`SetPickerAccounts`.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "facebook-pages",
-    "accounts": [
-      { "pageid": "456", "fbpagename": "Page B" }
-    ]
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "accounts": [
-    { "id": "456", "name": "Page B" }
-  ],
-  "restart": "scheduled",
-  "errors": []
-}
-```
-
-Wiro validates every requested Page against the server-side discovery result,
-stores its long-lived Page access token without returning it to the client, and
-restarts a running agent so the new selection takes effect.
-
-If the 15-minute window lapses before you call `SetPickerAccounts`, or an
-earlier call already saved a selection from it, you'll get
-`The sign-in expired. Sign in again to choose the accounts.` with
-`errorcode: "flow_expired"` (the wording depends on whether it was a sign-in
-or a token check). Repeat Step 3 for System User mode or Step 7 for OAuth.
-
-Wiro saves each Page's name from its list (the `name` in `fb_pages` or in the `OAuthConnect` response), so `fbpagename` can be left out, and a name you send is not read. Only the Wiro account that started the sign-in or check can save from its list. The Facebook Pages picker accepts one or more entries: pass multiple `{ pageid, fbpagename }` objects to authorize the agent against several Pages at once.
-
-### Step 10: Verify the connection
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "facebook-pages"
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "connected": true,
-  "accounts": [
-    { "id": "456", "name": "Page B" }
-  ],
-  "connectedat": "2026-04-17T12:00:00.000Z",
-  "tokenexpiresat": "",
-  "errors": []
-}
-```
-
-- `connected: true` requires a validated active mode and at least one saved
-  Page, meaning `SetPickerAccounts` completed successfully.
-- `accounts[]` carries one entry per selected page (`id` = `pageid`, `name` = `fbpagename`).
-- Long-lived Facebook Page tokens have no fixed expiration date. They can still be invalidated when the user changes access, removes permissions, deauthorizes the app, or changes security-sensitive account settings.
-
-### Step 11: Start the agent if it's not running
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-Agents already running at `SetPickerAccounts` time restart automatically to pick up the new credentials.
-
-## API Reference
-
-### POST /UserAgentOAuth/OAuthConnect
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Agent instance GUID. |
-| `credentialkey` | string | Yes | `"facebook-pages"`. |
-| `redirecturl` | string | OAuth only | Any HTTPS URL you control (or `http://localhost` / `http://127.0.0.1` for dev). Direct System User validation does not use it. |
-| `authmethod` | string | No | `"api_key"` for the recommended System User path, `"own"` for customer-owned OAuth, or `"wiro"` when Wiro-managed OAuth becomes available. Send the value explicitly. |
-
-OAuth response: `{ result, authorizeUrl, flowid, errors }`. Direct response:
-`{ result, accounts: [{id, name}], flowid, account, restart, errors }` with no
-`authorizeUrl`, where `account` is the System User's name and `restart` is
-`"none"` until the Pages are saved. A failed direct check returns
-`{ result: false, errorcode, flowid, errors }`. Read `errorcode`,
-because most failures share one message: `no_pages` (no assigned Page with
-`CREATE_CONTENT`), `too_many_pages` (Meta listed more than 500 Pages),
-`direct_token_missing` (no `systemusertoken` saved, or the saved `authmethod` is
-not `"api_key"`), `direct_token_invalid` or `provider_rejected_request` (Meta
-refused the token or the request), `provider_timeout` or
-`provider_request_failed` (Meta did not answer). Other codes mean the check
-could not finish; try again. A check that finds a saved token first clears the
-saved Page selection, so call `SetPickerAccounts` after every successful check.
-
-### GET /UserAgentOAuth/FBCallback
-
-Server-side. Query params appended to your `redirecturl`:
-
-| Param | Meaning |
-|-------|---------|
-| `fb_connected=true` | OAuth completed; pending payload cached awaiting `SetPickerAccounts`. |
-| `fb_pages` | URL-encoded JSON `[{id, name}, ...]` of the Pages Wiro read for this user (the first page of Meta's list). |
-| `fb_error=<code>` | Failure. |
-
-The callback path is per-provider: Facebook's stays `FBCallback`.
-
-### POST /UserAgentOAuth/SetPickerAccounts
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Agent instance GUID. |
-| `credentialkey` | string | Yes | `"facebook-pages"`. |
-| `accounts` | array | Yes | One or more `{ pageid, fbpagename }` entries. The per-page access token is resolved from the latest server-side OAuth or System User discovery result, so don't supply it. |
-
-Response: `{ result, accounts: [{id, name}, ...], restart, errors }`. The save that completes the connection restarts a running agent once (`restart: "scheduled"`), and a save that changes nothing restarts nothing.
-
-> Call within **15 minutes** of the OAuth callback or direct
-> `OAuthConnect` discovery. A successful call uses up that discovery result, so
-> to choose other Pages later, restart the selected connection flow.
-
-### POST /UserAgentOAuth/OAuthStatus
-
-Body: `{ useragentguid, credentialkey: "facebook-pages" }`. Response: `connected` (only `true` after the active mode is validated and at least one Page is selected), `accounts: [{id, name}, ...]` (every selected Page), `connectedat`, and an empty `tokenexpiresat`.
-
-### POST /UserAgentOAuth/OAuthDisconnect
-
-Body: `{ useragentguid, credentialkey: "facebook-pages" }`. Clears the active
-token and Page selection without remote revocation. Direct mode also clears
-`systemusertoken`; customer-owned OAuth App ID and App Secret are preserved for
-reconnection.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthDisconnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "facebook-pages"
-  }'
-```
-
-### Token lifecycle
-
-Selected Pages use long-lived Page tokens with no fixed expiration timestamp.
-Meta can still invalidate them when permissions, asset assignments, app access,
-or account security settings change. In direct mode, an expiring System User
-token must also be regenerated before Meta's stated expiry. If either token is
-invalidated, enter a current System User token or repeat customer-owned OAuth,
-then select the Pages again.
-
-## Using the Skill
-
-Once the Facebook Page is connected, the agent uses
-`int-facebookpage-post` to publish text, photo, and video posts, and to read
-Page and post [insights](#insights). To adjust the
-Social Manager's bundled `cs-cron-social-content-scanner` schedule, call
-`POST /UserAgent/CustomSkillUpsert` with `enabled` and `interval` only:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "skillkey": "cs-cron-social-content-scanner",
-    "enabled": true,
-    "interval": "0 */4 * * *"
-  }'
-```
-
-To change **what** the scheduled task posts (topics, tone, content angle), edit
-the paired preference skill `cs-content-tone` instead (see
-[Agent Skills → Updating Preference Skills](/docs/agent-skills#updating-preference-skills)).
-
-The agent posts an approved draft, or the text, link and media you give it in
-chat. Hashtags, calls to action and links come from the draft, `cs-content-tone`,
-or the agent's preferences; without hashtag rules the agent adds 1 to 3. Facebook
-makes links clickable, so a draft's page link goes into the post.
-
-## Insights
-
-The agent can also read how a connected Page and its posts are doing. Ask in
-chat, for example "How did my last 10 Facebook posts do?" or "Facebook Page
-views and follower change for October". Reading insights posts nothing and
-changes nothing, so it needs no approval. When several Pages are connected,
-name one, or ask for all of them.
-
-| What | The agent reports | Facebook metrics |
-|------|-------------------|------------------|
-| Posts | Views, unique viewers, reactions by type, activity by type (such as comments and shares), and clicks per post | `post_media_view`, `post_total_media_view_unique`, `post_reactions_by_type_total`, `post_activity_by_action_type`, `post_clicks` |
-| The Page over a date range | Views, post engagements, new follows, unfollows, and the follower total on the first and last day | `page_media_view`, `page_post_engagements`, `page_daily_follows_unique`, `page_daily_unfollows_unique`, `page_follows` |
-| Page reach | Unique viewers in the 28 days ending on the range's last day | `page_total_media_view_unique` |
-
-- **Aggregate numbers only.** The agent never reads comment text, commenter
-  names, follower lists, or audience demographics.
-- **Permission.** Page insights need `read_insights` and the `ANALYZE` task on
-  the Page. In System User mode, assign `ANALYZE` (see
-  [Step 1](#recommended-system-user-token)), generate a new token that also
-  grants `read_insights`, save it, and connect again. Customer-owned OAuth
-  requests `read_insights`; a connection made before it was added needs one
-  more sign-in. When the permission is missing, the agent asks you to
-  reconnect with it.
-- **Date range.** Every reply names its date range. Without one, the agent uses
-  the last 28 days ending yesterday. One request covers at most 90 days,
-  Facebook keeps two years, and most Page metrics update once a day.
-- **Limits.** A Page needs at least 100 likes for insights. Page insights don't
-  count Reel interactions, and Facebook has no saves metric for Page posts.
-  Meta retired `page_impressions`, `post_impressions`, and the `page_fans`
-  metrics in 2025; the views metrics above replace them. When Facebook has no
-  number yet, the agent says so instead of showing 0.
-
-## Troubleshooting
-
-| Error code | Meaning | What to do |
-|------------|---------|------------|
-| `missing_params` | The callback was opened without an OAuth `state`. This error ends on the API's own neutral page, not on your app. | Don't open the callback URL directly. Start a new flow from Step 7. |
-| `session_expired` | >15 min between `OAuthConnect` and the callback. | Call `OAuthConnect` again. |
-| `flow_replaced` | A newer sign-in or token check for the same agent and credential replaced this sign-in, whoever started it, so nothing from it was saved. | Use the newer sign-in or check, or start again with `OAuthConnect`. |
-| `authorization_denied` | User cancelled, or not listed in App Roles (Development Mode). | Add as Tester (Step 5), retry. |
-| `token_exchange_failed` | Wrong App Secret or redirect URI mismatch. | Re-copy App Secret; verify redirect URI exactly. |
-| Facebook shows `Invalid Scopes` | The app was set up with use cases and has not added a permission the connection asks for, such as `read_insights`. Facebook shows this only to the app's developers, which in own mode is usually the person connecting. | In the app, open **Use cases → Manage everything on your Page**, add every permission in the scope table above, then connect again. |
-| `no_pages` | User has no administered Facebook Pages. | Ask the user to create/administer a Page first, retry. |
-| `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before Facebook returned. | Start again with `OAuthConnect` for an existing agent. |
-| `Facebook credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `appid` / `appsecret` are missing. | Call `POST /UserAgent/CredentialUpsert` with `facebook-pages.appid` and `facebook-pages.appsecret`, then retry. |
-| `Meta could not validate this System User token` | Direct mode received an invalid token, missing permission, or inaccessible asset. | Generate a current System User token with the documented permissions and Page assignments, save it, and retry. |
-| Valid token but no assigned Facebook Page | The System User has no Page with the `CREATE_CONTENT` task. | Assign the Page in Business Settings and reconnect. |
-| `internal_error` | Unexpected server error. | Retry once. If persistent, contact support. |
-
-### `SetPickerAccounts` returns `flow_expired`
-
-No discovery result is waiting: the 15-minute window expired, a previous `SetPickerAccounts` already used it, or a newer connection replaced it. Repeat Step 3 for System User mode or Step 7 for OAuth. `No pending Facebook connection. Please reconnect via OAuthConnect.` means the same: connect again.
-
-### `SetPickerAccounts` returns `flow_waiting`
-
-The OAuth sign-in of Step 7 hasn't come back yet, so it has no list to save from (`The sign-in is not finished yet. Finish it, then choose the accounts.`). Finish it, then save the Pages it lists. Don't call `OAuthConnect` again in the meantime: a new sign-in replaces the one under way. System User mode never returns this code.
-
-### `SetPickerAccounts` returns `not_listed`
-
-The `pageid` you sent isn't in the latest discovery result (`Choose accounts from the list the token check returned.`, or `Choose accounts from the list the sign-in returned.` after a sign-in). Verify you're parsing `fb_pages` correctly and sending the exact ID string.
-
-### Posts publish but as the wrong author
-
-Check `POST /UserAgent/Detail` and verify `credentials.facebook-pages.pageid` is the Page you intended. If not, connect again (Step 3 or Step 7) and save the right Page from the new list within 15 minutes.
-
-### "App not verified" banner on consent
-
-Expected in Development Mode. Users in App Roles can click Continue.
-
-### The agent says no Facebook Page is connected
-
-The agent has `int-facebookpage-post`, but no Page is connected to it. It asks
-you to connect one instead of posting, and scheduled posting runs do nothing.
-Connect a Page and select it with `SetPickerAccounts` (Step 4, or Step 9 for
-OAuth), then ask again.
-
-### The agent asks you to reconnect for insights
-
-Facebook refused an insights read because the connection lacks `read_insights`
-or the Page's `ANALYZE` task. In System User mode, assign `ANALYZE`, generate a
-new token that also grants `read_insights`, save it with `CredentialUpsert`,
-and repeat Steps 3 and 4. With customer-owned OAuth, connect again (Step 7),
-allow the permission, and select the Pages (Step 9). Publishing keeps working
-in the meantime.
-
-## Multi-Tenant Architecture
-
-1. **One Wiro agent instance per customer.**
-2. **Recommended direct mode:** each customer supplies a System User token from
-   their own Business Portfolio. No browser consent screen or shared Wiro Meta
-   app is involved.
-3. **Advanced OAuth mode:** each customer-owned Meta app controls its own App
-   Roles, review status, and consent branding.
-4. **Every Page token is isolated** per useragent. Customer A's token is never
-   returned to or shared with Customer B.
-5. **Asset tasks must remain current.** Losing `CREATE_CONTENT`, `MODERATE`, or
-   `ANALYZE` access invalidates the corresponding publish, comment, or insights
-   capability. Monitor `OAuthStatus` and require reconnection when it becomes
-   disconnected.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Overview](/docs/agent-overview)
-- [Agent Skills](/docs/agent-skills)
-- [Meta Ads integration](/docs/integration-metaads-skills): separate product; used for paid media, not organic posting.
-- [Instagram integration](/docs/integration-instagram-skills)
-- [Meta for Developers: Pages API](https://developers.facebook.com/docs/pages-api)
-- [Meta for Developers: System User API calls](https://developers.facebook.com/docs/marketing-api/system-users/guides/api-calls/)
-- [Meta for Developers: Page insights](https://developers.facebook.com/docs/graph-api/reference/page/insights)
-
----
-
-# Instagram Integration
-
-Connect your agent to one or more Instagram professional accounts with a
-recommended Meta System User token, or one account through advanced
-customer-owned Instagram OAuth.
-
-## Overview
-
-The Instagram integration supports two official Meta paths. Recommended direct
-mode uses a Business Manager System User and the Facebook Pages linked to
-Instagram Business or Creator accounts. It supports selecting one or more
-discovered professional accounts. Advanced mode uses Instagram API with
-Instagram Login directly, authorizes one account per OAuth connection, and does
-not require a Facebook Page. Both paths keep tokens server-side and publish
-through Graph API v26.
-
-The two token types use different official hosts: System User mode derives a
-Facebook Page access token and publishes through `graph.facebook.com/v26.0`;
-Instagram Login issues an Instagram User access token and publishes through
-`graph.instagram.com/v26.0`. Wiro selects the matching host automatically.
-
-**Skills that use this integration:**
-
-- `int-instagram-post`: Publish feed carousels, Reels, and Stories, and read post and account insights; any agent can also post a finished video as a Reel
-
-**Agents that typically enable this integration:**
-
-- Social Manager
-- Video Creator: to post the videos it makes as Reels. Add `int-instagram-post` with
-  [`SkillsApply`](/docs/agent-skills#toggling-integration-skills); like every skill, it is included in
-  every plan. Video Creator then posts a Reel when the request asks for it or an `Instagram` line in its
-  `video-preferences` says to, and otherwise offers to.
-- Any custom agent that needs Instagram publishing
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| `"api_key"` | **Recommended** | Enter a Business Manager System User token. Wiro discovers eligible linked Instagram professional accounts without browser OAuth. |
-| `"own"` | Advanced | Use your own Meta Business app and Instagram Login OAuth. This path does not require a linked Facebook Page. |
-| `"wiro"` | Coming soon | Wiro's shared Meta App is under review. |
-
-## Prerequisites
-
-- **A Wiro API key** (see [Authentication](/docs/authentication)).
-- **A deployed agent** (see [Agent Overview](/docs/agent-overview)); keep the `useragents[0].guid`.
-- **A Meta Business account** ([business.facebook.com](https://business.facebook.com/)).
-- **One or more Instagram Business or Creator accounts**. Personal accounts cannot use
-  content publishing.
-- **Recommended direct mode:** a System User, the Business app used to generate
-  its token, and a Facebook Page linked to each Instagram professional account
-  you want the agent to use.
-- **Advanced OAuth mode:** a Meta Developer account, an app configured for
-  Instagram Login, and an HTTPS callback URL. A Facebook Page is not required
-  for this mode.
-
-### Preparing the Instagram account
-
-For recommended System User mode:
-
-1. In the Instagram mobile app: **Settings → Account → Switch to Professional Account** → pick **Business** or **Creator**.
-2. In [Meta Business Suite](https://business.facebook.com/): select the Facebook Page that should own the Instagram account → **Settings → Linked accounts → Instagram → Connect account**. Sign in with the Instagram account and grant manage permissions.
-
-Without both steps, Facebook Graph API cannot discover the professional account
-from the System User's assigned Pages.
-
-For advanced Instagram Login OAuth, only step 1 is required. Meta's Instagram
-Login flow accesses the professional account directly and does not require a
-Facebook Page.
-
-## Recommended Setup: System User Token
-
-This is the dashboard's default path. Wiro uses the System User token only on
-the server to discover assigned Pages, find their linked Instagram professional
-accounts, and derive the Page access token required by the Facebook Login form
-of Instagram Content Publishing.
-
-### Step 1: Assign the Page and Instagram assets
-
-1. Complete [Preparing the Instagram account](#preparing-the-instagram-account).
-2. Open [Meta Business Settings → Users → System Users](https://business.facebook.com/latest/settings/system_users).
-3. Create or select a System User.
-4. Assign every linked Facebook Page the agent may use with `CREATE_CONTENT`.
-5. Assign each Instagram account's **Content** task.
-6. Select **Generate new token** and choose the Business app used for this
-   integration.
-7. At **Set expiration**, choose **Never** when Meta offers it. If Meta requires
-   an expiring token for the business, regenerate and reconnect before expiry.
-8. Grant:
-   - `business_management`
-   - `instagram_basic`
-   - `instagram_content_publish`
-   - `pages_show_list`
-   - `pages_read_engagement`
-   - `ads_read`
-   - `ads_management`
-   - `instagram_manage_insights` (optional) when the agent should read
-     [insights](#insights)
-
-Meta's Page-linked publishing contract requires both ads permissions when the
-Page role is granted through Business Manager. `instagram_manage_insights` is
-needed only for insights; a token without it still publishes.
-
-If a permission does not appear, add the matching app use case through Meta's
-[use-case permission mapping](https://developers.facebook.com/documentation/development/create-an-app/use-cases-permission-mapping).
-The Business app must not require `appsecret_proof` on every request because
-direct mode does not collect its App Secret.
-
-### Step 2: Save the token
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "fields": [
-      { "credentialkey": "instagram", "fieldname": "authmethod", "fieldvalue": "api_key" },
-      { "credentialkey": "instagram", "fieldname": "systemusertoken", "fieldvalue": "YOUR_SYSTEM_USER_ACCESS_TOKEN" }
-    ]
-  }'
-```
-
-The System User token is stored encrypted and never reaches the agent. Once
-saved, it reads `"••••••••"` on `UserAgent/Detail`, like every saved secret.
-To change it, save a new token.
-
-### Step 3: Validate and discover Instagram accounts
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "instagram",
-    "authmethod": "api_key"
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "accounts": [
-    { "id": "17841400000000000", "name": "my_brand" }
-  ],
-  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
-  "account": "Acme System User",
-  "restart": "none",
-  "errors": []
-}
-```
-
-Only public IDs and usernames are returned. The System User and derived Page
-tokens stay server-side.
-
-### Step 4: Select the Instagram accounts
-
-Instagram is a multi-select picker in recommended System User mode. Send one or
-more entries from the latest discovery response:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "instagram",
-    "accounts": [
-      { "accountId": "17841400000000000", "igusername": "my_brand" },
-      { "accountId": "17841400000000001", "igusername": "my_second_brand" }
-    ]
-  }'
-```
-
-Call this within 15 minutes of `OAuthConnect`. Wiro matches the selection
-against its server-side discovery result and stores each derived Page-scoped
-runtime token. The dashboard auto-selects a sole result; API clients must still
-call this endpoint explicitly. If several linked professional accounts are
-returned, the dashboard opens a checkbox picker and saves every selected
-account with its own server-side Page token.
-
-### Step 5: Verify the connection
-
-Call `POST /UserAgentOAuth/OAuthStatus` with
-`{ "useragentguid": "...", "credentialkey": "instagram" }`. A successful
-direct connection returns every selected numeric account ID and username in
-`accounts[]`, `connected: true`, and an empty `tokenexpiresat`.
-
-## Advanced Setup: Customer-Owned Instagram OAuth
-
-### Step 1: Create a Meta Developer App
-
-You may reuse a compatible Business app that already has the Instagram product
-configured.
-
-1. [developers.facebook.com/apps](https://developers.facebook.com/apps) → **Create app** → **Other** → **Business**.
-2. App display name, contact email, Business Account → **Create app**.
-3. Leave in **Development Mode**.
-
-### Step 2: Add the "Instagram" product
-
-1. From the app dashboard, **Add product**.
-2. Find **"Instagram"** (not "Instagram Basic Display", which is for personal accounts and is being deprecated).
-3. **Set up**.
-
-### Step 3: Configure the OAuth redirect URI
-
-1. Left sidebar: **Instagram → API setup with Instagram login**.
-2. Scroll to **Business login settings** → **OAuth settings**.
-3. Add to **Valid OAuth Redirect URIs**:
-
-   ```
-   https://api.wiro.ai/v1/UserAgentOAuth/IGCallback
-   ```
-
-4. **Save changes**.
-
-> Note: Instagram OAuth has its own authorize URL at `instagram.com/oauth/authorize` (not `facebook.com/…`), but the redirect URI is still registered inside the Meta Developer App.
-
-### Step 4: Note the required permissions
-
-Wiro requests these exact scopes:
-
-```
-instagram_business_basic,instagram_business_content_publish,instagram_business_manage_messages,instagram_business_manage_comments,instagram_business_manage_insights
-```
-
-| Permission | Why |
-|------------|-----|
-| `instagram_business_basic` | Basic account info, profile data. |
-| `instagram_business_content_publish` | Publish feed, carousel, reel, and story content. |
-| `instagram_business_manage_messages` | Read and reply to DMs (used by some skills). |
-| `instagram_business_manage_comments` | Read, reply, hide, delete comments. |
-| `instagram_business_manage_insights` | Read engagement insights for posts and profile. |
-
-These work without App Review in Development Mode for any Facebook user in App Roles. **No `pages_*` scopes are requested**, since Instagram Login uses its own scope family.
-
-### Step 5: Copy your App ID and App Secret
-
-**App settings → Basic** → copy **App ID**, click **Show** → copy **App Secret**.
-
-### Step 6: Add users as Testers (only if needed)
-
-If the connecting person is not the app Admin, add them under **App Roles →
-Roles → Add People → Testers** and have them accept before starting OAuth.
-
-### Step 7: Save your Meta App credentials to Wiro
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "fields": [
-      { "credentialkey": "instagram", "fieldname": "appid", "fieldvalue": "YOUR_META_APP_ID" },
-      { "credentialkey": "instagram", "fieldname": "appsecret", "fieldvalue": "YOUR_META_APP_SECRET" },
-      { "credentialkey": "instagram", "fieldname": "authmethod", "fieldvalue": "own" }
-    ]
-  }'
-```
-
-### Step 8: Initiate OAuth
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "instagram",
-    "redirecturl": "https://your-app.com/settings/integrations",
-    "authmethod": "own"
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "authorizeUrl": "https://www.instagram.com/oauth/authorize?client_id=...&redirect_uri=...&scope=instagram_business_basic%2Cinstagram_business_content_publish%2Cinstagram_business_manage_messages%2Cinstagram_business_manage_comments%2Cinstagram_business_manage_insights&response_type=code&state=...",
-  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
-  "errors": []
-}
-```
-
-### Step 9: Handle the callback
-
-After consent, Wiro exchanges the code for a short-lived token, upgrades it to a long-lived token via `graph.instagram.com/access_token?grant_type=ig_exchange_token`, fetches the Instagram user info, and redirects the user back.
-
-**Success URL:**
-
-```
-https://your-app.com/settings/integrations?ig_connected=true&ig_username=my_brand
-```
-
-Parse:
-
-```javascript
-const params = new URLSearchParams(window.location.search);
-
-if (params.get("ig_connected") === "true") {
-  const username = params.get("ig_username");
-  showSuccess(username ? `Connected @${username}` : "Instagram connected");
-} else if (params.get("ig_error")) {
-  handleError(params.get("ig_error"));
-}
-```
-
-Advanced Instagram Login OAuth has **no secondary selection step**. The
-authorized Instagram professional account is written directly by the callback
-as a one-entry account/token array, matching the same runtime contract as
-System User mode.
-The `SetPickerAccounts` step applies only to recommended System User mode.
-
-### Step 10: Verify the connection
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "instagram"
-  }'
-```
-
-```json
-{
-  "result": true,
-  "connected": true,
-  "accounts": [
-    { "id": "17841400000000000", "name": "my_brand" }
-  ],
-  "connectedat": "2026-04-17T12:00:00.000Z",
-  "tokenexpiresat": "2026-06-16T12:00:00.000Z",
-  "errors": []
-}
-```
-
-- `connected: true` requires the active mode's validated secret plus the
-  selected or authorized Instagram account.
-- Each `accounts[].id` is a selected numeric Instagram professional account ID.
-- Each `accounts[].name` is its Instagram username without `@`.
-- Recommended System User mode can return multiple entries. Advanced Instagram
-  Login OAuth returns one entry because one account is authorized per consent.
-- `tokenexpiresat` is empty for direct System User mode and approximately 60
-  days for customer-owned Instagram OAuth.
-- **No `refreshtokenexpiresat`**: Instagram does not expose a separate refresh token for this connection.
-
-### Step 11: Start the agent if it's not running
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-## API Reference
-
-### POST /UserAgentOAuth/OAuthConnect
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Agent instance GUID. |
-| `credentialkey` | string | Yes | `"instagram"`. |
-| `redirecturl` | string | OAuth only | Any HTTPS URL you control (or localhost/127.0.0.1 for dev). Direct System User validation does not use it. |
-| `authmethod` | string | No | `"api_key"` for recommended System User mode, `"own"` for customer-owned Instagram OAuth, or `"wiro"` when Wiro-managed OAuth becomes available. Send the value explicitly. |
-
-OAuth response: `{ result, authorizeUrl, flowid, errors }`. Direct response:
-`{ result, accounts: [{id, name}], flowid, account, restart, errors }` with no
-`authorizeUrl`, where `account` is the System User's name and `restart` is
-`"none"` until the accounts are saved. A failed direct check returns
-`{ result: false, errorcode, flowid, errors }`. Read `errorcode`,
-because most failures share one message: `no_accounts` (no assigned Page
-exposes a linked Instagram professional account with `CREATE_CONTENT`),
-`too_many_instagram_accounts` (Meta listed more than 500 Pages),
-`direct_token_missing` (no `systemusertoken` saved, or the saved `authmethod` is
-not `"api_key"`), `direct_token_invalid` or `provider_rejected_request` (Meta
-refused the token or the request), `provider_timeout` or
-`provider_request_failed` (Meta did not answer). Other codes mean the check
-could not finish; try again. A check that finds a saved token first clears the
-saved account selection, so call `SetPickerAccounts` after every successful
-check.
-
-### GET /UserAgentOAuth/IGCallback
-
-Server-side. Query params appended to your `redirecturl`:
-
-| Param | Meaning |
-|-------|---------|
-| `ig_connected=true` | OAuth succeeded. |
-| `ig_username` | Connected Instagram handle (without `@`). |
-| `ig_error=<code>` | Failure. |
-
-The callback path is per-provider: Instagram's stays `IGCallback`.
-
-### POST /UserAgentOAuth/SetPickerAccounts
-
-Used only by direct System User mode after `OAuthConnect` discovery.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Agent instance GUID. |
-| `credentialkey` | string | Yes | `"instagram"`. |
-| `accounts` | array | Yes | One or more `{ accountId, igusername }` entries from the latest discovery response (`accountId` is its `id`; Wiro saves its `name` from the list as `igusername`, so a name you send is not read). Do not supply access tokens. |
-
-Call within 15 minutes of direct discovery. The response contains
-`{ result, accounts: [{id, name}], restart, errors }`. The save that completes
-the connection restarts a running agent once (`restart: "scheduled"`).
-
-### POST /UserAgentOAuth/OAuthStatus
-
-Body: `{ useragentguid, credentialkey: "instagram" }`. Response: `connected`,
-`accounts: [{id, name}]` where `id` is the numeric account ID and `name` is the
-username, `connectedat`, and `tokenexpiresat`.
-
-### POST /UserAgentOAuth/OAuthDisconnect
-
-Body: `{ useragentguid, credentialkey: "instagram" }`. Clears the active token
-and selected account without remote revocation. Direct mode also clears
-`systemusertoken`; customer-owned OAuth App ID and App Secret are preserved for
-reconnection.
-
-### Token lifecycle
-
-Wiro refreshes renewable customer-owned Instagram OAuth tokens while the agent
-is running. Direct mode uses a System User token plus a derived Page token with
-no fixed expiry recorded by Wiro. Meta can still invalidate either token when
-permissions, asset assignments, or account security change; expiring System
-User tokens must be regenerated before Meta's stated expiry. If `OAuthStatus`
-keeps reporting `connected: false` while the agent runs, reconnect using the
-active mode.
-
-## Using the Skill
-
-Once Instagram professional accounts are connected, the agent uses
-`int-instagram-post` to publish feed carousels, reels, and stories, and to read
-their [insights](#insights). A request
-must identify one account when multiple are connected; the agent never guesses
-or publishes to all accounts from an ambiguous instruction. To adjust
-the Social Manager's bundled `cs-cron-social-content-scanner` schedule, call
-`POST /UserAgent/CustomSkillUpsert` with `enabled` and `interval` only:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "skillkey": "cs-cron-social-content-scanner",
-    "enabled": true,
-    "interval": "0 */4 * * *"
-  }'
-```
-
-To change **what** the scheduled task posts (topics, tone, hashtag rules,
-caption style), edit the paired preference skill `cs-content-tone` instead
-(see [Agent Skills → Updating Preference Skills](/docs/agent-skills#updating-preference-skills)).
-
-Hashtags, calls to action and links come from your draft, `cs-content-tone`,
-or the agent's preferences. Without hashtag rules the agent adds 3 to 5 relevant
-hashtags; Instagram allows at most 5 per post. Instead of a drafted post, you
-can give the agent the caption and the images or videos in chat: the first one
-is the cover.
-
-### Posting a video as a Reel
-
-Any agent with `int-instagram-post` and a connected account can post one
-finished video as a Reel, for example a video made by Video Creator. Ask for it
-in chat, and name the account when several are connected.
-
-- **No drafts.** Instagram's API has no draft or private post, so a Reel is
-  public as soon as it is published. The agent posts when your request asks for
-  it, or after you approve; otherwise it waits.
-- **The video.** A vertical (9:16) MP4 of 3 seconds to 15 minutes, up to 300 MB
-  and at most 1920 px wide. A 16:9 video is too wide for a Reel, so Video Creator
-  makes a 9:16 version instead.
-- **The caption.** The hook first, then a few short lines and the call to
-  action. Instagram doesn't make links in a caption clickable, so the call to
-  action points to the link in your profile.
-- **The reply** carries the Reel's link. If publishing fails, the agent checks
-  the account's latest posts first, since the Reel may already be live.
-
-Instagram allows each account 50 posts through the API in 24 hours.
-
-## Insights
-
-The agent can also read how a connected account is doing. Ask in chat, for
-example "How did my last 10 Instagram posts do?" or "Instagram reach and
-follower change for October". Reading insights posts nothing and changes
-nothing, so it needs no approval. When several accounts are connected, name
-one, or ask for all of them.
-
-| What | The agent reports | Instagram metrics |
-|------|-------------------|-------------------|
-| Posts, carousels and Reels | Reach, views, saves, shares, comments, likes, and total interactions per post | `reach`, `views`, `saved`, `shares`, `comments`, `likes`, `total_interactions` |
-| Stories (System User mode only) | Reach, views, shares, and total interactions while the story is live | `reach`, `views`, `shares`, `total_interactions` |
-| The account over a date range | Reach, views, total interactions, and accounts engaged | `reach`, `views`, `total_interactions`, `accounts_engaged` |
-| Followers | Accounts that followed and accounts that unfollowed in the range, and the current follower count | `follows_and_unfollows`, `followers_count` |
-
-- **Aggregate numbers only.** The agent never reads comment text, commenter
-  names, follower lists, or audience demographics.
-- **Permission.** System User mode needs `instagram_manage_insights` on the
-  token: generate a new token that includes it (see
-  [Step 1](#recommended-system-user-token)), save it, and connect again.
-  Instagram Login already requests `instagram_business_manage_insights`. When
-  the permission is missing, the agent asks you to reconnect with it.
-- **Date range.** Every reply names its date range. Without one, the agent uses
-  the last 28 days ending yesterday. Instagram keeps account metrics for 90
-  days and post metrics for up to 2 years, and its numbers can be up to 48
-  hours behind.
-- **Limits.** Story metrics last 24 hours, and Instagram hides story numbers
-  below 5. Follows and unfollows need at least 100 followers. Instagram has no
-  insights for the single photos inside a carousel. When Instagram has no
-  number yet, the agent says so instead of showing 0.
-
-## Troubleshooting
-
-| Error code | Meaning | What to do |
-|------------|---------|------------|
-| `missing_params` | The callback was opened without an OAuth `state`. This error ends on the API's own neutral page, not on your app. | Don't open the callback URL directly. Start a new flow from Step 8. |
-| `session_expired` | >15 min between `OAuthConnect` and callback. | Call `OAuthConnect` again. |
-| `flow_replaced` | A newer sign-in or token check for the same agent and credential replaced this sign-in, whoever started it, so nothing from it was saved. | Use the newer sign-in or check, or start again with `OAuthConnect`. |
-| `authorization_denied` | User cancelled, or not in App Roles (Development Mode). | Add as Tester (Step 6), retry. |
-| `token_exchange_failed` | Wrong App Secret, redirect URI mismatch, or Instagram rejected the authorization code. | Re-copy the App Secret, verify the redirect URI, and retry Instagram Login. |
-| `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before Instagram returned. | Start again with `OAuthConnect` for an existing agent. |
-| `Instagram credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `appid` / `appsecret` are missing. | `POST /UserAgent/CredentialUpsert` with `instagram.appid` and `instagram.appsecret`. |
-| `Meta could not validate this System User token` | Direct mode received an invalid token, missing permission, or inaccessible asset. | Generate a current token with the documented permissions and asset assignments, save it, and retry. |
-| Valid token but no connected Instagram professional account | No assigned Page exposes a linked professional account with `CREATE_CONTENT`. | Link the account to the Page, assign both assets to the System User, and reconnect. |
-| `internal_error` | Unexpected server error. | Retry. If persistent, contact support. |
-
-### No Instagram account found after connecting
-
-In System User mode, `OAuthConnect` returns `errorcode: "no_accounts"` when the account is still Personal, is not linked to an assigned Facebook Page, or the Page lacks `CREATE_CONTENT`. In advanced Instagram OAuth mode, the usual cause is a Personal account or an app-role / permission problem. Follow the mode-specific prerequisites above.
-
-### Publishing fails with "media upload failed"
-
-Common causes:
-
-- Image resolution too low (<320px) or aspect ratio outside Instagram's allowed ranges.
-- Media that does not meet Meta's current format, duration, size, or codec
-  requirements.
-- Instagram account switched back to Personal after connection: the token becomes invalid. Ask the user to switch back to Business and reconnect.
-
-### The agent says no Instagram account is connected
-
-The agent has `int-instagram-post`, but no Instagram account is connected to
-it. It asks you to connect one instead of posting, and scheduled posting runs
-do nothing. Connect an account (in System User mode, select it with
-`SetPickerAccounts` as in Step 4) and ask again.
-
-### The agent asks you to reconnect for insights
-
-Instagram refused an insights read because the connection lacks the insights
-permission. In System User mode, generate a new token that also grants
-`instagram_manage_insights`, save it with `CredentialUpsert`, and repeat Steps
-3 and 4. With Instagram Login, connect again (Step 8) and allow insights
-access. Publishing keeps working in the meantime.
-
-## Multi-Tenant Architecture
-
-1. **One Wiro agent instance per customer.**
-2. **Recommended direct mode:** each customer supplies a System User token from
-   its own Business Portfolio and assigns its own Page plus Instagram assets.
-3. **Advanced OAuth mode:** each customer-owned Meta app controls its own App
-   Roles, review status, and Instagram consent branding.
-4. **Page linkage is mode-specific.** It is mandatory for System User mode but
-   not for Instagram API with Instagram Login.
-5. **Tokens are isolated per useragent** and are never returned to another
-   customer. Access tokens are never returned at all, and a saved System User
-   token reads only as `"••••••••"`.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Overview](/docs/agent-overview)
-- [Agent Skills](/docs/agent-skills)
-- [Facebook Page integration](/docs/integration-facebook-skills): Page linkage is required for System User mode, not Instagram Login OAuth.
-- [Meta Ads integration](/docs/integration-metaads-skills): for Instagram-placement paid ads.
-- [Meta for Developers: Instagram Graph API](https://developers.facebook.com/docs/instagram-api)
-- [Meta for Developers: Content Publishing API comparison](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/content-publishing/)
-- [Meta for Developers: Instagram media insights](https://developers.facebook.com/docs/instagram-platform/reference/instagram-media/insights)
-- [Meta for Developers: Instagram account insights](https://developers.facebook.com/docs/instagram-platform/api-reference/instagram-user/insights)
-
----
-
-# Shopify Integration
-
-Connect a Wiro agent to Shopify's official GraphQL Admin API 2026-07 to manage products, variants, inventory, orders, customers, discounts, collections, and fulfillments.
-
-## Overview
-
-The Shopify integration powers the `int-shopify-manage` skill. It uses only the official GraphQL Admin API pinned to `2026-07`; the REST Admin API, `latest`, `unstable`, and release-candidate schemas are outside the contract.
-
-**Available connection modes:**
-
-| Mode | Status | Best for |
-|------|--------|----------|
-| Client ID + Secret (`"api_key"`) | Available | Server-to-server automation when the Dev Dashboard app and store belong to the same Shopify organization. Tokens report `expires_in: 86399` and are re-exchanged before expiry. |
-| Customer-owned app OAuth (`"own"`) | Available | Apps installed on merchant stores in another organization. Uses an expiring offline access token plus rotating refresh token. |
-
-Wiro does not provide a shared Shopify OAuth app. Both modes use customer-owned credentials.
-
-## Prerequisites
-
-- A deployed Wiro agent with the `int-shopify-manage` skill enabled.
-- A Shopify store and permission to install or create apps.
-- The canonical store hostname, for example `example-store.myshopify.com`. Custom storefront domains are not accepted for Admin API authentication.
-
-## Option A: Client ID + Secret
-
-### 1. Create and install a Dev Dashboard app
-
-In Shopify's Dev Dashboard:
-
-1. Create an app in the same Shopify organization as the target store.
-2. Configure only the Admin API scopes the agent needs.
-3. Release an app version and install it on the store.
-4. Copy the Client ID and Client Secret from the app's **Settings** page.
-
-Product, inventory, order, customer, discount, fulfillment, and location operations require their matching read/write scopes. The app can do only what its granted scopes and the installing staff account permit.
-
-Shopify's client-credentials grant works only when both the app and store belong to the same organization. For a merchant store in another organization, use Option B.
-
-### 2. Save the store and app credentials
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "fields": [
-      { "credentialkey": "shopify", "fieldname": "authmethod", "fieldvalue": "api_key" },
-      { "credentialkey": "shopify", "fieldname": "shopdomain", "fieldvalue": "example-store.myshopify.com" },
-      { "credentialkey": "shopify", "fieldname": "clientid", "fieldvalue": "YOUR_SHOPIFY_CLIENT_ID" },
-      { "credentialkey": "shopify", "fieldname": "clientsecret", "fieldvalue": "YOUR_SHOPIFY_CLIENT_SECRET" }
-    ]
-  }'
-```
-
-### 3. Validate the connection
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "shopify",
-    "authmethod": "api_key"
-  }'
-```
-
-This is a server-side credential exchange and probe, not a browser redirect. Wiro submits the Shopify client-credentials form (`grant_type=client_credentials`, Client ID, and Client Secret) to the canonical shop, receives an access token whose `expires_in` is exactly `86399` seconds, verifies the shop identity, and stores the connection. Running agents re-exchange the client credentials before expiry; the Client Secret is never sent to the GraphQL Admin API.
-
-The response is `{ "result": true, "errors": [], "accounts": [], "flowid": "...", "account": "...", "restart": "scheduled" }`, where `account` is the store's name and `restart` says whether the check restarted a running agent. Shopify has no account picker, so there is nothing to select; `OAuthStatus` then reports `connected: true` with the shop name in `accounts[0]`. If the check fails, the response has `result: false`, a message asking you to check the `myshopify.com` domain, the app's organization and its Admin API scopes, and an `errorcode`. `direct_token_missing` means `authmethod` is not saved as `"api_key"` or one of the three fields is empty. Any other code, such as `provider_rejected_request` or `direct_token_invalid`, means the exchange or the shop check failed, and any earlier Shopify connection on the agent is cleared too.
-
-## Option B: Customer-owned app OAuth
-
-### 1. Configure the Shopify app
-
-Create or select the customer's app in the Shopify Dev Dashboard and add this exact redirect URL:
-
-```text
-https://api.wiro.ai/v1/UserAgentOAuth/ShopifyCallback
-```
-
-The authorization-code grant requests an **expiring offline** token. Wiro's authorize URL asks for these Admin API scopes: `read_products`, `write_products`, `read_inventory`, `write_inventory`, `read_orders`, `write_orders`, `read_customers`, `write_customers`, `read_discounts`, `write_discounts`, `read_publications`, `write_publications`, `read_returns`, `read_merchant_managed_fulfillment_orders`, `write_merchant_managed_fulfillment_orders` and `read_locations`.
-
-Wiro validates the callback before exchanging the code:
-
-- the callback HMAC is computed with the app's Client Secret over every callback query field except `hmac`, sorted by name;
-- comparison is timing-safe, and the callback `state` and canonical `shop` must match the connection that Wiro started;
-- the authorization code is sent only to that shop's `/admin/oauth/access_token` endpoint as `application/x-www-form-urlencoded`, with `expiring=1`.
-
-This callback-query HMAC is not Shopify's webhook-signature format, and it is not computed over the token form body.
-
-### 2. Save app credentials
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "fields": [
-      { "credentialkey": "shopify", "fieldname": "authmethod", "fieldvalue": "own" },
-      { "credentialkey": "shopify", "fieldname": "shopdomain", "fieldvalue": "example-store.myshopify.com" },
-      { "credentialkey": "shopify", "fieldname": "clientid", "fieldvalue": "YOUR_SHOPIFY_CLIENT_ID" },
-      { "credentialkey": "shopify", "fieldname": "clientsecret", "fieldvalue": "YOUR_SHOPIFY_CLIENT_SECRET" }
-    ]
-  }'
-```
-
-### 3. Start OAuth
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "shopify",
-    "authmethod": "own",
-    "redirecturl": "https://your-app.example/settings/integrations"
-  }'
-```
-
-Open the returned `authorizeUrl` in the user's browser. After consent, Wiro exchanges the code for an expiring offline access token and refresh token, records both provider expiry values, reads the shop's ID, name and `myshopify.com` domain through GraphQL, and redirects to your `redirecturl` with `shopify_connected=true&shopify_shop=<shop>.myshopify.com&shopify_name=<shop name>` (the shop parameters are left out when that lookup fails). A failed connection gets `shopify_error=<code>` instead, for example `invalid_signature` (the callback HMAC is missing or does not match), `invalid_shop` (the callback `shop` is not the saved `shopdomain`), `authorization_denied`, `session_expired` or `token_exchange_failed` (also when Shopify's token response has no refresh token or expiry values). Refresh uses `grant_type=refresh_token`; Shopify can rotate both tokens, so Wiro stores each replacement atomically rather than reusing an old refresh token.
-
-## Check or disconnect
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "useragentguid": "your-useragent-guid", "credentialkey": "shopify" }'
-```
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthDisconnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "useragentguid": "your-useragent-guid", "credentialkey": "shopify" }'
-```
-
-Disconnect clears the tokens, the shop name and ID, `shopdomain` and the saved `authmethod`. Wiro does not revoke the token at Shopify. `clientid` and `clientsecret` stay saved. Before you reconnect, save `shopdomain` again, plus `authmethod: "api_key"` for Client ID + Secret. Without `shopdomain`, `OAuthConnect` in `"own"` mode returns `Shop Domain is required`.
-
-## Runtime behavior
-
-- Endpoint: `https://{shop}.myshopify.com/admin/api/2026-07/graphql.json`
-- Authentication: `X-Shopify-Access-Token`
-- Client-credentials tokens report `expires_in: 86399` and are re-exchanged automatically before expiry.
-- Customer-owned OAuth uses expiring offline access and refresh tokens. Wiro refreshes and atomically replaces the pair before the access token expires; reconnect is required if the refresh authorization expires or is revoked.
-- Reads are paginated with GraphQL cursors.
-- Every mutation checks both top-level `errors` and mutation-specific `userErrors`.
-- Products are created as drafts unless publication is explicitly requested.
-- Missing scopes are treated as hard permission boundaries; the agent does not switch authentication methods or attempt a workaround.
-
-## Mutation safety
-
-- **Compare-and-set inventory:** `inventorySetQuantities` includes the last-read quantity for each inventory item/location. A stale comparison stops the write; Wiro re-reads state instead of bypassing the conflict.
-- **Scoped idempotency:** Wiro reuses one stable key only for mutations whose 2026-07 schema documents native idempotency. It does not attach an idempotency directive to arbitrary GraphQL mutations.
-- **Ambiguous outcomes:** timeout, disconnect, throttle, or 5xx after transmission is `unknown`, not an automatic retry. Wiro queries the natural resource key and reconciles remote state first.
-- **Collections:** membership changes use only collection mutations supported by the 2026-07 schema. Deprecated legacy collection add/remove operations are not used.
-- **Protected customer data:** nominal customer scopes may still require Shopify protected-customer-data approval and staff permissions. Wiro requests the minimum fields needed and does not put customer PII, addresses, order details, or payment data into its mutation ledger.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Skills](/docs/agent-skills)
-- [Shopify Admin API access scopes](https://shopify.dev/docs/api/usage/access-scopes)
-- [Shopify client-credentials grant](https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens/client-credentials-grant)
-- [Shopify authorization-code grant](https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens/authorization-code-grant)
-
----
-
-# WooCommerce Integration
-
-Connect a Wiro agent directly to a WooCommerce store with a REST API consumer key and secret.
-
-## Overview
-
-The `int-woocommerce-manage` skill uses WooCommerce's official, current recommended WP REST API namespace, `wc/v3`, to work with products, variations, taxonomy, inventory, orders, refunds, coupons, customers, reports, and supported store settings.
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| Consumer key + consumer secret | Available | Direct HTTPS Basic Authentication. No OAuth app or browser redirect. |
-
-## Prerequisites
-
-- A deployed Wiro agent with the `int-woocommerce-manage` skill enabled.
-- A public HTTPS WooCommerce store with REST API routing enabled.
-- A WordPress user with the minimum permissions needed for the requested operations.
-
-## Setup
-
-### 1. Create a WooCommerce REST API key
-
-In WordPress Admin:
-
-1. Open **WooCommerce → Settings → Advanced → REST API**.
-2. Select **Add key**.
-3. Choose the WordPress user the agent should act as.
-4. Choose **Read/Write** only if the agent must modify the store; otherwise use **Read**.
-5. Generate the key and copy both the consumer key and consumer secret.
-
-### 2. Save credentials
-
-Use the store's public base URL. Keep an existing WordPress subdirectory, but omit `/wp-json/wc/v3`, query strings, fragments, and the trailing slash.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "fields": [
-      { "credentialkey": "woocommerce", "fieldname": "storeurl", "fieldvalue": "https://store.example.com" },
-      { "credentialkey": "woocommerce", "fieldname": "consumerkey", "fieldvalue": "ck_..." },
-      { "credentialkey": "woocommerce", "fieldname": "consumersecret", "fieldvalue": "cs_..." }
-    ]
-  }'
-```
-
-### 3. Start or restart the agent
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-## Credential fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `storeurl` | string | Public HTTPS store URL, without the WooCommerce REST path. |
-| `consumerkey` | secret string | WooCommerce consumer key, normally beginning with `ck_`. |
-| `consumersecret` | secret string | WooCommerce consumer secret, normally beginning with `cs_`. |
-
-## Runtime behavior
-
-- Base endpoint: `{storeurl}/wp-json/wc/v3`
-- Authentication: HTTPS Basic Auth with the consumer key and secret.
-- Credentials are never added to URL query parameters.
-- Collection endpoints use page-number pagination and inspect `X-WP-TotalPages`.
-- The agent reads the current resource before a write and verifies the resource after a successful mutation.
-- Ambiguous create/update outcomes are reconciled by reading remote state before any retry. WooCommerce has no universal idempotency header.
-- Refund amount, currency, line items, restock behavior, and gateway behavior must be explicit; the agent does not infer them.
-
-### Products, inventory, and batch requests
-
-- Product and variation writes use documented fields such as `manage_stock`, `stock_quantity`, `stock_status`, and `backorders`. Wiro does **not** treat `low_stock_amount` as a supported product/variation mutation field.
-- `POST /products/batch` accepts `create`, `update`, and `delete` arrays. It is a convenience batch, not one atomic transaction: inspect every returned array item, and reconcile each item independently.
-- A top-level 2xx response does not mean every batch item succeeded. Do not retry the whole batch after a partial or ambiguous result; retrying confirmed successes can duplicate creates.
-- WooCommerce has no universal idempotency-key header. Wiro uses natural keys such as SKU/slug, records one ledger entry per item, and reads remote state before retrying an uncertain write.
-
-### Settings
-
-- Read groups with `GET /settings`, group options with `GET /settings/{group_id}`, and one option with `GET /settings/{group_id}/{option_id}`.
-- Update one writable option with `PUT /settings/{group_id}/{option_id}`.
-- Batch-update writable options in one group with `POST /settings/{group_id}/batch` and an `update` array. This endpoint does not create or delete arbitrary settings.
-- Payment gateways and shipping zones are separate resources, not generic setting options.
-
-### Errors and rate limits
-
-WooCommerce/WordPress errors use the HTTP status plus a JSON object shaped like `{ code, message, data }`; `data.status` commonly repeats the status. For batch calls, also inspect each returned item.
-
-Core `wc/v3` does not publish one built-in global request quota or standardized rate-limit header contract. A store, host, WAF, reverse proxy, or plugin can still return `429`. When it does, honor `Retry-After` or another explicit reset header if present; otherwise stop and retry later with conservative backoff. Do not copy the optional WooCommerce **Store API** `RateLimit-*` contract onto `wc/v3`.
-
-## Troubleshooting
-
-- **400:** The payload, field, or state transition is invalid. Read the response's `code`, `message`, and `data`; do not infer success from a partially populated object.
-- **401:** The key/secret is invalid, revoked, or belongs to a different store.
-- **403:** The key's WordPress user or permission level cannot access the resource.
-- **404 under `/wp-json/wc/v3`:** The store URL or WordPress subdirectory is wrong, WooCommerce REST routing is unavailable, or permalinks need configuration.
-- **409:** The resource changed or conflicts with current state. Re-read it before deciding whether a new write is appropriate.
-- **429:** A store-specific limiter blocked the request. Follow the headers that store actually returned; `wc/v3` itself does not guarantee `Retry-After`.
-- **5xx or transport timeout after a write:** The outcome is unknown. Reconcile by resource ID or natural key before any retry.
-- **WAF or reverse proxy failures:** Allow authenticated requests to the WooCommerce REST route without redirecting to another hostname.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Skills](/docs/agent-skills)
-- [WooCommerce REST API documentation](https://woocommerce.github.io/woocommerce-rest-api-docs/)
-
----
-
-# Reddit Integration
-
-Technical contract for connecting a Wiro agent to Reddit with a customer-owned Reddit web app. The endpoints remain documented, but the feature is not available until Reddit approves Wiro's commercial use and a written commercial contract is in force.
-
-## Overview
-
-The `int-reddit-post` skill supports:
-
-- connected-user identity;
-- subscribed and contributor subreddits;
-- subreddit rules;
-- text and link submissions;
-- comments and replies;
-- editing or deleting only content authored by the connected Reddit identity.
-
-Voting, private messages, chat, moderation queues, bulk posting, mass cross-posting, scraping, and browser automation are out of scope.
-
-> **Unavailable pending Reddit approval.** Wiro is a commercial product. A checkbox or customer-owned app does not authorize commercial Data API use. Wiro will not enable this integration until Reddit has granted explicit Data API approval for the use case and both parties have completed the required written commercial contract.
-
-## Availability and policy requirements
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| Customer-owned OAuth app (`"own"`) | Unavailable pending Wiro approval/contract | The authorization-code endpoints and callback contract are implemented, but production access remains disabled. |
-| Wiro shared app | Not offered | Each operator supplies and controls its own Reddit app. |
-| Permanent pasted bearer token | Not supported | Access and refresh tokens are managed by the OAuth callback. |
-
-The prerequisites are cumulative:
-
-1. Reddit Data API approval for Wiro's described use case.
-2. Reddit's explicit written commercial approval and completed contract.
-3. A registered developer profile and visible App profile label.
-4. A dedicated app account used only for app functions, not a mixed-use personal account.
-5. A customer-owned Reddit `web app` registered with the Wiro callback.
-
-Three Wiro-managed flags gate the connection: `developerprofileverified`, `dataapiaccessapproved` and `commercialwrittenapproval`. Wiro sets them only after it has reviewed the labeled developer profile, Reddit's Data API approval for this app and Reddit's written commercial approval. You cannot set them: `CredentialUpsert` refuses each one with `<Field label> is managed by the platform`. Until all three are on, `OAuthConnect` returns an error such as `The platform must verify Reddit Data API approval for this app before connecting.` The flags grant no rights and do not replace Reddit's review or the commercial contract.
-
-## Prerequisites
-
-- A deployed Wiro agent with the `int-reddit-post` skill enabled.
-- A dedicated Reddit app account.
-- A customer-owned Reddit app created as type **web app**.
-- A registered Reddit developer profile and App profile label that accurately describes the app and its commercial purpose.
-- Confirmed Reddit Data API approval plus Wiro's written commercial contract with Reddit.
-
-## Technical setup after approval
-
-The requests below describe the hard-cutover API contract for rollout readiness. They do not bypass the availability gate above.
-
-### 1. Create the Reddit web app
-
-Create the app in Reddit's developer settings and use this exact redirect URI:
-
-```text
-https://api.wiro.ai/v1/UserAgentOAuth/RedditCallback
-```
-
-Copy the app's client ID and client secret. The developer profile, App profile label, and dedicated app account must remain attached to this app; do not create duplicate accounts or apps to evade review or limits.
-
-### 2. Save the app credentials and the developer profile
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "fields": [
-      { "credentialkey": "reddit", "fieldname": "authmethod", "fieldvalue": "own" },
-      { "credentialkey": "reddit", "fieldname": "clientid", "fieldvalue": "YOUR_REDDIT_CLIENT_ID" },
-      { "credentialkey": "reddit", "fieldname": "clientsecret", "fieldvalue": "YOUR_REDDIT_CLIENT_SECRET" },
-      { "credentialkey": "reddit", "fieldname": "developerprofileusername", "fieldvalue": "your_app_account" }
-    ]
-  }'
-```
-
-`developerprofileusername` is the dedicated Reddit app account that owns the web app, without the `u/` prefix (3 to 20 letters, digits, `_` or `-`). Without it `OAuthConnect` returns `Developer Profile Username is required`. Do not send the approval flags: Wiro sets them and `CredentialUpsert` refuses them.
-
-### 3. Start OAuth
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "reddit",
-    "authmethod": "own",
-    "redirecturl": "https://your-app.example/settings/integrations"
-  }'
-```
-
-Open the returned `authorizeUrl` in the user's browser. Wiro requests these scopes:
-
-```text
-identity read mysubreddits submit edit history
-```
-
-`history` is used only for bounded recovery: after an ambiguous create/reply outcome, Wiro may inspect at most the connected user's latest 25 submissions/comments to determine whether the write landed. It is not permission for broad history collection.
-
-The flow requests `duration=permanent`, allowing Wiro to refresh the one-hour access token with the callback-managed refresh token. Approve access while signed in to Reddit as the developer profile account. After consent, the browser returns to your `redirecturl` with `reddit_connected=true&reddit_username=<name>`. If the account that approved access is not `developerprofileusername`, or Wiro cannot read it, the redirect carries `reddit_error=developer_profile_mismatch` instead and nothing is saved. Other failures return `reddit_error=<code>`, such as `authorization_denied`, `session_expired` or `token_exchange_failed`. Production OAuth remains blocked until Wiro's approval/contract gate is complete.
-
-## Check or disconnect
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "useragentguid": "your-useragent-guid", "credentialkey": "reddit" }'
-```
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthDisconnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "useragentguid": "your-useragent-guid", "credentialkey": "reddit" }'
-```
-
-Disconnect asks Reddit to revoke the refresh token and clears the connection in Wiro even if that request fails. `clientid` and `clientsecret` stay saved, but `developerprofileusername` and Wiro's three approval flags are cleared too, so save the username again and wait for Wiro to set the flags before you reconnect.
-
-## Runtime safeguards
-
-- Authenticated API calls use `https://oauth.reddit.com`; OAuth token calls use `https://www.reddit.com`.
-- Every request carries the User-Agent `server:<CLIENT_ID>:1.0.0 (by /u/<DEVELOPER_PROFILE_USERNAME>)`, built from the app's client ID and `developerprofileusername`. Wiro does not use a browser/default User-Agent or misidentify the client.
-- The agent reads subreddit rules before a write.
-- One approval covers one concrete subreddit or fullname and one payload. A request to post everywhere is refused.
-- The agent blocks duplicate and near-duplicate submissions and does not fan a single payload out across communities.
-- Edits and deletes require a fresh ownership check against the connected Reddit username.
-- Ambiguous write outcomes are not automatically retried.
-- Recovery reads are bounded to the latest 25 items and require the `history` scope; no scraping or broad history retention is permitted.
-
-## Rate limits
-
-Reddit documents OAuth limits through the response headers:
-
-- `X-Ratelimit-Used`
-- `X-Ratelimit-Remaining`
-- `X-Ratelimit-Reset` (seconds until reset)
-
-The 100 queries-per-minute OAuth-client limit, averaged over a 10-minute window, applies only to clients that Reddit has found eligible for free Data API access. It is not a commercial entitlement. Wiro follows the limits and commercial terms assigned by Reddit; response headers and the executed contract are authoritative. Calls are sequential, and Wiro enters cooldown on HTTP 429 or a Reddit `RATELIMIT` error without retrying before reset.
-
-## Deletion and retention obligations
-
-- Wiro stores only bounded mutation/recovery metadata needed to prevent duplicate writes; it does not build or retain a broad Reddit history dataset.
-- If a Reddit post or comment is deleted, all retained title, body, URL, and related content must be removed. If an account is deleted, retained user IDs and author-identifying references must also be removed.
-- De-identified or anonymized copies of deleted Reddit content are not retained as a workaround.
-- Stored Reddit data is routinely minimized and deletion checks follow Reddit's contract and compliance tooling; Reddit recommends removing stored user data/content within 48 hours.
-- Disconnecting the integration stops new access but does not weaken obligations to honor content/account deletions already received.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Skills](/docs/agent-skills)
-- [Reddit Developer Terms](https://redditinc.com/policies/developer-terms)
-- [Reddit Data API Terms](https://redditinc.com/policies/data-api-terms)
-- [Reddit API rules](https://github.com/reddit-archive/reddit/wiki/API)
-
----
-
-# Roasit Integration
-
-Connect your agent to Roasit mobile attribution: creative, campaign and network ROAS, cohort revenue and retention, iOS SKAdNetwork reports and install reconciliation, read with one read-only API token.
-
-## Overview
-
-[Roasit](https://roasit.com) is a mobile measurement partner (MMP): it attributes app installs to ad networks, pulls ad spend from Meta, Google Ads, TikTok and AppLovin, and joins in-app and ad revenue into install cohorts. This integration lets an agent read those numbers (the same figures the Roasit dashboard's Reports screen shows) and act on them through the ad-platform skills.
-
-**Skills that use this integration:**
-
-- `int-roasit-attribution`: Read-only reports from the Roasit API, covering creative / campaign / network ROAS (`roas_all`, ad-only and in-app-only ROAS, day-N ROAS), installs, spend, CPI, cohort revenue, retention, iOS SKAdNetwork reports, install reconciliation against the stores, and data freshness. Rows carry the ad networks' own campaign / ad ids, so the agent can map a creative back to Google Ads, Meta Ads or TikTok Ads.
-
-**Bundled task:**
-
-- `cs-cron-roasit-creative-roas-reporter` runs daily at 10:30 UTC and reports the last 7 days' creative ROAS per app, pause / scale recommendations for creatives that pass the significance gate, and an attribution audit (network-claimed vs Roasit-attributed installs, network claims vs store installs). Off until the Roasit credential is filled.
-
-**Agents that typically enable this integration:**
-
-- [Google Ads Manager](https://wiro.ai/agents/google-ads-manager), [Meta Ads Manager](https://wiro.ai/agents/meta-ads-manager) and [TikTok Ads Manager](https://wiro.ai/agents/tiktok-ads-manager): MMP-verified ROAS next to the platform's own numbers.
-- Custom app-marketing agents that report on app growth.
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| API Token (Roasit) | Available | One read-only Roasit API token per agent. It sees the apps your Roasit account can see and cannot change anything. No extra charge: like every skill, it is included in every plan. |
-
-## Prerequisites
-
-- **A Wiro API key** (see [Authentication](/docs/authentication)).
-- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
-- **A Roasit account** with at least one app, and its Roasit SDK sending installs.
-
-## Setup
-
-### Step 1: Create a Roasit API token
-
-1. Sign in to [Roasit](https://roasit.com) and open your **Account** page.
-2. Under **API tokens**, give the token a name (for example `Wiro agent`) and click **Create**.
-3. Copy the token. It starts with `roapi_` and is **shown only once**.
-
-> The token is read-only: it can read reports for the apps your Roasit account can see, and nothing else. Revoking it on the Account page cuts the agent off immediately.
-
-### Step 2: Find your Roasit app tokens (optional)
-
-Leave the apps list empty and the agent reports on every app the token can see. To limit it to specific apps, or to give an app the name you use in chat, add one row per app and platform:
-
-1. Open the app in Roasit.
-2. Copy the **App token** shown in the app's header: 12 lowercase hex characters such as `a1b2c3d4e5f6`, the same token the app's Roasit SDK starts with.
-3. Pick the row's **Platform**: iOS, Android, or Web for a web app measured by Roasit's browser SDK and Stripe sales. One app token covers every platform of the app, so an app you run on several gets one row per platform with the same token; the agent filters each row's reports to its platform.
-
-### Step 3: Save the credential to Wiro
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "fields": [
-      { "credentialkey": "roasit", "fieldname": "apitoken", "fieldvalue": "roapi_YOUR_ROASIT_TOKEN" },
-      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 0, "fieldname": "appname",  "fieldvalue": "My Game" },
-      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 0, "fieldname": "platform", "fieldvalue": "ios" },
-      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 0, "fieldname": "apptoken", "fieldvalue": "a1b2c3d4e5f6" },
-      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 0, "fieldname": "storeid",  "fieldvalue": "1234567890" },
-      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 1, "fieldname": "appname",  "fieldvalue": "My Game" },
-      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 1, "fieldname": "platform", "fieldvalue": "android" },
-      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 1, "fieldname": "apptoken", "fieldvalue": "a1b2c3d4e5f6" },
-      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 1, "fieldname": "storeid",  "fieldvalue": "com.example.game" }
-    ]
-  }'
-```
-
-Or fill it in the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Connectors → Roasit**.
-
-### Step 4: Make sure the skill is on
-
-Google Ads Manager, Meta Ads Manager and TikTok Ads Manager agents include `int-roasit-attribution` at no extra charge, so saving the credential is enough. On any other agent, turn it on:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "skills": { "int-roasit-attribution": true },
-    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000"
-  }'
-```
-
-Or flip the toggle in the panel under **Skills** (see [Agent Skills](/docs/agent-skills#toggling-integration-skills)).
-
-### Step 5: Start the agent
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-## Credential Fields
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `apitoken` | string (secret) | Yes | Roasit API token, `roapi_` followed by 43 characters. Encrypted at rest. |
-| `apps[].appname` | string | Yes (per row) | Friendly label the agent uses in chat and reports. |
-| `apps[].platform` | `ios` / `android` / `web` | Yes (per row) | The platform the row reports on. An app on several platforms has one row per platform with the same app token. A `web` row has no SKAN or install reconciliation. |
-| `apps[].apptoken` | string (12 hex characters) | Yes (per row) | The Roasit app token shown in the app's header. |
-| `apps[].storeid` | string | No | The row's Apple ID or Android package name, to join Roasit numbers with your App Store / Google Play integrations. |
-
-## Credentials schema (as returned by `POST /UserAgent/Detail`)
-
-```json
-"roasit": {
-  "_connected": true,
-  "optional": true,
-  "extra": true,
-  "apitoken": "••••••••",
-  "apps": [
-    { "appname": "My Game", "platform": "ios", "apptoken": "a1b2c3d4e5f6", "storeid": "1234567890" },
-    { "appname": "My Game", "platform": "android", "apptoken": "a1b2c3d4e5f6", "storeid": "com.example.game" }
-  ]
-}
-```
-
-`optional` and `extra` are `true` on the ads-manager agents: Roasit is an optional attribution source, and its connector card shows up even before the skill is on.
-
-## What the agent reports
-
-The agent reads Roasit's report API, one app per request, and never recomputes a metric itself, so every number equals the Roasit dashboard's for the same app, dates, grouping, filters and IAP setting.
-
-| Metric | Meaning |
-|--------|---------|
-| `roas_all` | Cohort revenue to date ÷ ad spend. |
-| `roas_ad_all` / `roas_iap_all` | The ad-revenue / in-app-revenue part of it. |
-| `roas_N`, `ret_N`, `arpu_N` | Day-N ROAS, retention and ARPU (mature cohorts only). |
-| `installs`, `network_installs` | Installs Roasit attributed vs. installs the ad networks claim. |
-| `spend`, `cpi`, `impressions`, `clicks` | Paid media, in the report's currency (USD unless the app reports in another one). |
-| `rev_all`, `rev_ad`, `rev_iap` | Cohort revenue to date, total / ads / in-app. |
-
-Breakdowns: day, platform, country, network, campaign, ad group and ad. A "-" (null) value means the dashboard shows none yet (no spend, a cohort not old enough, or a day whose spend is not final) and is never treated as zero.
-
-Creative-level ROAS needs Roasit to pull spend at ad level for that network (**Spend detail** in the Roasit app settings); networks pulled at campaign level are reported at campaign level.
-
-## Billing
-
-Every plan includes the integration, so it changes neither the agent's price nor its credits. As with every agent turn, the reports and the daily task are billed on the LLM tokens they use, from the agent's existing credits.
-
-## Recommendations & approval
-
-The daily task writes `pause_creative_low_roas`, `scale_creative_high_roas` and `attribution_audit` items to the agent's recommendation ledger; nothing changes on an ad platform until you approve an item (`apply 1,3`, `apply all safe`, `skip 2`). Thresholds (minimum spend and installs, the ROAS metric, floor and ceiling, drift and overcount limits) live in the editable `roasit-strategy` custom skill and fall back to `ad-strategy`.
-
-## Troubleshooting
-
-- **401:** The token was revoked or mistyped. Create a new one on Roasit's Account page and save it again.
-- **404 for an app:** The app token is wrong, or the Roasit account behind the token cannot see that app.
-- **Creative ROAS shows "-":** That network's spend is pulled at campaign level in Roasit, so raise Spend detail or read the campaign-level row.
-- **Today's or yesterday's ROAS is missing:** Roasit's nightly spend pull has not finalised the day yet; the report names the excluded days.
-- **Agent says "not connected" with the token filled:** The agent restarts to pick up new credentials; give it a moment after saving, then retry.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Skills](/docs/agent-skills)
-- [Google Ads Integration](/docs/integration-googleads-skills)
-- [Meta Ads Integration](/docs/integration-metaads-skills)
-- [TikTok Ads Integration](/docs/integration-tiktokads-skills)
-
----
-
-# Google Business Profile Integration
-
-Connect your agent to Google Business Profile to read the Google reviews of the locations you choose, draft a reply to each new review, and post the replies you approve.
-
-## Overview
-
-The Google Business Profile integration powers the `int-google-business-reviews` skill (Google Business Reviews). The agent works through Google's Business Profile APIs with an OAuth client from your own Google Cloud project. It reads the reviews of the Business Profile locations you selected, drafts one reply per new review in the reviewer's language, sends the drafts to you, and posts a reply only after you approve it.
-
-**Skills that use this integration:**
-
-- `int-google-business-reviews`: Reads the Google reviews of the selected locations, drafts replies, posts approved replies, and follows Google's moderation of each posted reply.
-
-**Bundled task:**
-
-- `cs-cron-google-review-scanner` runs every 2 hours (`0 */2 * * *`), scans the selected locations for new reviews and sends you the drafted replies. It runs only when Google Business Profile is connected.
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| `"own"` | Available (the only mode) | An OAuth client from your own Google Cloud project. Google must approve that project for Business Profile API access before any call works. |
-| `"wiro"` | Not available | Wiro-managed one-click connect is not available for Google Business Profile. |
-
-> **Google approves the project first.** You request Business Profile API access for your Google Cloud project, and Google reviews requests within 14 days. Until the project is approved, every call to Google fails, and connecting typically ends with "No accounts available". See [Google Cloud setup](#google-cloud-setup).
-
-## Prerequisites
-
-- **A verified Business Profile.** Google asks for a profile that has been verified and active for 60+ days, with the business website listed, before it grants API access.
-- **A Google account that is an owner or manager of the Business Profile.** Request API access with its email, and connect with the Google account that manages the business.
-- **A Google Cloud project approved for Business Profile API access**, with an OAuth client of type Web application (see [Google Cloud setup](#google-cloud-setup)).
-- **An agent with `int-google-business-reviews` enabled**: see [Using the Skill](#using-the-skill).
-- **For API integrations only:** a Wiro API key ([Authentication](/docs/authentication)), a deployed agent ([Agent Overview](/docs/agent-overview)) and its `useragentguid`, and an HTTPS return URL that your backend controls. `http://localhost` and `http://127.0.0.1` are accepted for local development only.
-
-## Google Cloud setup
-
-Do these steps once, in this order, in the Google Cloud project whose OAuth client the agent will use.
-
-### Step 1: Create or pick a project
-
-In the Google Cloud Console, create a project or pick an existing one. Copy its **Project number** from the project dashboard; you need it for the access request in Step 2.
-
-### Step 2: Request Business Profile API access
-
-1. Open Google's [Business Profile API contact form](https://support.google.com/business/contact/api_default) and choose **Application for Basic API Access**.
-2. Apply for the project from Step 1, with an email that is an owner or manager of the Business Profile.
-3. Google asks for a profile that has been verified and active for 60+ days, with the business website listed, and reviews requests within 14 days. See Google's [prerequisites](https://developers.google.com/my-business/content/prereqs) and [FAQ](https://developers.google.com/my-business/content/faq).
-
-### Step 3: Check the approval
-
-Open [IAM & Admin → Quotas](https://console.cloud.google.com/iam-admin/quotas) for the project and look at the requests-per-minute quota of the Business Profile APIs:
-
-- **0 requests per minute**: not approved yet. Every call to Google fails until this changes.
-- **300 requests per minute**: approved. Continue with Step 4.
-
-### Step 4: Enable the APIs
-
-After approval, enable these three APIs in the project:
-
-- [Google My Business API](https://console.cloud.google.com/apis/library/mybusiness.googleapis.com): listed in the API Library only after the project is approved.
-- [My Business Account Management API](https://console.cloud.google.com/apis/library/mybusinessaccountmanagement.googleapis.com)
-- [My Business Business Information API](https://console.cloud.google.com/apis/library/mybusinessbusinessinformation.googleapis.com)
-
-### Step 5: Set the audience
-
-In [Google Auth Platform → Audience](https://console.cloud.google.com/auth/audience):
-
-- Choose **External**.
-- Set the publishing status to **In production**. While the app is in **Testing**, Google expires the refresh token after 7 days ([Google's OAuth 2.0 documentation](https://developers.google.com/identity/protocols/oauth2)), and the agent loses access every week.
-
-When you connect, Google may warn that the app is unverified. It is your own app: continue as the app's owner.
-
-### Step 6: Add the scope
-
-In [Data Access](https://console.cloud.google.com/auth/scopes), add this scope:
-
-```
-https://www.googleapis.com/auth/business.manage
-```
-
-### Step 7: Create the OAuth client
-
-In [Clients](https://console.cloud.google.com/auth/clients), create an OAuth client of type **Web application** and add this **Authorized redirect URI**, exactly as written:
-
-```
-https://api.wiro.ai/v1/UserAgentOAuth/GBPCallback
-```
-
-Copy the **Client ID** and the **Client Secret**.
-
-## Connect in the Wiro dashboard
-
-1. Open your agent, go to **Connectors**, and find the **Google Business Profile** card.
-2. Paste the **OAuth Client ID** and **OAuth Client Secret** from Step 7.
-3. Click **Connect Google Business Profile** and sign in with the Google account that manages the business. If Google warns that the app is unverified, continue as the app's owner.
-4. Choose the Business Profile accounts the agent may use.
-5. Choose the locations. Up to 100 locations per account are listed.
-6. Wiro saves the selection and restarts the agent if it was running.
-
-To change the locations later, use **Manage** on the Google Business Profile card. The agent reads and answers reviews only for the locations you selected.
-
-## What the agent does
-
-- **Reads new reviews** of the selected locations.
-- **Drafts one reply per new review, in the reviewer's language.** When Google shows a translated review, the agent answers the original text.
-- **Follows your review preferences.** Before drafting, it reads the `cs-review-preferences` custom skill: tone, length by rating, contact line, sign-off, and house rules.
-- **Sends the drafts to you**, numbered, in chat and on Telegram if it is connected. Answer in chat:
-  - `ok 1`: approve draft 1
-  - `ok all`: approve every draft
-  - `skip 2`: skip draft 2
-  - `edit 1: <text>` (replace draft 1 with your text)
-- **Posts approved replies** through the Google Business Profile API.
-- **Follows Google's moderation.** Google reviews every reply before it is public: a reply is `PENDING`, then `APPROVED`, or `REJECTED` with a policy violation. The agent tells you about rejected replies.
-- **Edits or deletes a posted reply** only when you ask.
-- **Starts with recent reviews.** The first scan of a location drafts replies only for unanswered reviews from the last 30 days, and reports how many older reviews have no reply.
-- **Escalates instead of answering.** Legal, health, safety and discrimination complaints go to you instead of getting a reply.
-- **Never offers incentives** for reviews, and never shares reviewer details beyond their public first name.
-- **Keeps review content for at most 30 days**, as Google's API policy requires.
-
-## What the agent cannot do
-
-These are outside this integration:
-
-- **Changing business details**: name, hours, address, or photos.
-- **Creating posts.**
-- **Answering Q&A.**
-- **Reporting or removing a review.** The business does that in Google Maps.
-- **Replying for locations you did not select.**
-
-## Approvals
-
-- **Every reply waits for your approval by default**, one approval per reply. The rule lives in the `cs-approval-policy` custom skill.
-- **Why:** Google's Business Profile API [policies](https://developers.google.com/my-business/content/policies) say automated replies need the business's prior, specific and express consent. This is why replies wait for your approval by default.
-- **Auto-approve rules.** You can add an override to `cs-approval-policy`, for example "auto-approve replies to 5-star reviews". Matching replies are then posted without asking, at most 5 per scan unless `cs-review-preferences` sets another number.
-
-## Limits
-
-| Limit | Value |
-|-------|-------|
-| Reply length | At most 4096 bytes. Letters such as ç, ğ, ş and é count as 2 bytes. |
-| Google API quota | 300 requests per minute for the Google Cloud project after approval (0 before). |
-| Business Profile accounts listed | Up to 20. |
-| Locations listed per account | Up to 100. |
-| Automatic replies | At most 5 per scan, unless `cs-review-preferences` sets another number. |
-| Review content kept | At most 30 days. |
-
-## Scheduled task
-
-| Task | Skill key | Default schedule | What it does |
-|------|-----------|------------------|--------------|
-| Review scanner | `cs-cron-google-review-scanner` | `0 */2 * * *` (every 2 hours) | Reads new reviews of the selected locations, drafts replies, and sends them to you for approval; posts the replies an auto-approve rule allows. Runs only when Google Business Profile is connected. |
-
-To change **what** the scanner does, edit the custom skills it reads rather than the task:
-
-- `cs-review-preferences`: tone, length by rating, contact line, sign-off, house rules, and the number of automatic replies per scan.
-- `cs-approval-policy`: which replies wait for your approval.
-
-## Connect through the API
-
-Use this flow when you build your own settings screen on top of Wiro agents. Complete the [Google Cloud setup](#google-cloud-setup) first. Every request is authenticated as described in [Authentication](/docs/authentication).
-
-### Step 1: Save your OAuth client
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "fields": [
-      { "credentialkey": "google-business", "fieldname": "clientid", "fieldvalue": "YOUR_GOOGLE_OAUTH_CLIENT_ID" },
-      { "credentialkey": "google-business", "fieldname": "clientsecret", "fieldvalue": "YOUR_GOOGLE_OAUTH_CLIENT_SECRET" },
-      { "credentialkey": "google-business", "fieldname": "authmethod", "fieldvalue": "own" }
-    ]
-  }'
-```
-
-Response: `{ "result": true, "errors": [], "applied": 3 }`. `clientid` and `clientsecret` are not returned by `POST /UserAgent/Detail`, so check `result` and `errors[]` here.
-
-### Step 2: Start the connection
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "google-business",
-    "redirecturl": "https://your-app.com/settings/integrations",
-    "authmethod": "own"
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FGBPCallback&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fbusiness.manage&state=...&access_type=offline&prompt=select_account+consent",
-  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19"
-}
-```
-
-Redirect the user's browser to `authorizeUrl` with a full-page redirect rather than a popup. Wiro requests the `business.manage` scope with offline access, so Google issues a refresh token. Google asks which Google account to connect, even when the browser is already signed in to one.
-
-Always send `authmethod: "own"`. Without it, or with `"wiro"`, `OAuthConnect` returns `Sign-in with the platform's app is not enabled for Google Business Profile`.
-
-> **State TTL:** Wiro keeps the OAuth state for **15 minutes**. If the user takes longer on Google's consent screen, the connection fails with `gbp_error=session_expired`; call `OAuthConnect` again.
-
-### Step 3: Handle the return
-
-After the user approves, Google sends them to Wiro's callback (`https://api.wiro.ai/v1/UserAgentOAuth/GBPCallback`). Wiro exchanges the code, lists the Business Profile accounts the Google user can access, stores the tokens server-side, and redirects the browser to your `redirecturl`.
-
-**Success URL** looks like:
-
-```
-https://your-app.com/settings/integrations?gbp_connected=true&gbp_accounts=%5B%7B%22id%22%3A%22112233445566778899001%22%2C%22name%22%3A%22Acme%20Bakery%22%7D%5D
-```
-
-- `gbp_accounts` is `encodeURIComponent(JSON.stringify([...]))`.
-- Each element is `{ id, name }`: `id` is the numeric Business Profile account ID as a string, `name` is the account name.
-- The list is never empty on success. When no Business Profile account can be listed, the callback returns `gbp_error=no_accounts` instead; right after setup this usually means Google has not approved the project yet or an API is disabled (see [Troubleshooting](#troubleshooting)).
-- On failure the URL carries only `gbp_error=<code>`.
-
-Parse in the browser:
-
-```javascript
-const params = new URLSearchParams(window.location.search);
-
-if (params.get("gbp_connected") === "true") {
-  const accounts = JSON.parse(params.get("gbp_accounts") || "[]");
-  presentAccountPicker(accounts);
-} else if (params.get("gbp_error")) {
-  handleError(params.get("gbp_error"));
-}
-```
-
-### Step 4: Save the account selection
-
-This call is **required**, even when only one account is returned:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "google-business",
-    "accounts": [
-      { "accountid": "112233445566778899001", "accountname": "Acme Bakery" }
-    ]
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "accounts": [
-    { "id": "112233445566778899001", "name": "Acme Bakery" }
-  ],
-  "restart": "scheduled"
-}
-```
-
-Behavior:
-
-- Send one or more `{ accountid, accountname }` entries picked from `gbp_accounts` (`id` becomes `accountid`, `name` becomes `accountname`). Non-digits in `accountid` are stripped server-side.
-- A save replaces the previous account selection. Locations already chosen for accounts that stay selected are kept; locations of removed accounts are dropped. Wiro saves only accounts from this sign-in's list, under the names it lists, when the call comes from the same Wiro account within 15 minutes. The first save uses the list up: to change the selection later, connect again. See [SetPickerAccounts](/docs/agent-credentials#post-useragentoauthsetpickeraccounts).
-- If the agent was running, Wiro restarts it.
-
-### Step 5: Choose the locations
-
-Discover the locations of the selected accounts:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/DiscoverPickerItems" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "google-business",
-    "pickerkey": "locations"
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "pickerkey": "locations",
-  "groups": [
-    {
-      "parent": {
-        "accountid": "112233445566778899001",
-        "accountname": "Acme Bakery"
-      },
-      "items": [
-        { "locationid": "9876543210987654321", "locationtitle": "Acme Bakery Downtown" },
-        { "locationid": "1234567890123456789", "locationtitle": "Acme Bakery Riverside" }
-      ]
-    }
-  ]
-}
-```
-
-Up to 100 locations per account are listed. A group carries `errorcode` and an empty `items` array when Google did not return the locations of that account. `errorcode` is `provider_rejected_request` when Google refused the call (for example the Google user can't manage that account, or an API is disabled) and `provider_timeout` when Google did not answer within 10 seconds; `provider_request_failed`, `invalid_provider_response`, `response_too_large` and `picker_discovery_failed` cover other failures.
-
-Save the selection within five minutes. Copy `locationid` and `locationtitle` from the discovery response unchanged, and include every group returned without an `errorcode` exactly once; an empty `items` array selects no location for that account. Leave out groups that carry an `errorcode`: sending one fails with `Selected parent is not available`, and the locations already saved for that account stay as they are:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "google-business",
-    "pickerkey": "locations",
-    "selections": [
-      {
-        "parentvalue": "112233445566778899001",
-        "items": [
-          { "locationid": "9876543210987654321", "locationtitle": "Acme Bakery Downtown" }
-        ]
-      }
-    ]
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "pickerkey": "locations",
-  "locationmappings": [
-    {
-      "accountid": "112233445566778899001",
-      "accountname": "Acme Bakery",
-      "locationid": "9876543210987654321",
-      "locationtitle": "Acme Bakery Downtown"
-    }
-  ],
-  "restart": "scheduled"
-}
-```
-
-The dashboard runs this step automatically after the account selection. If the agent was running, Wiro restarts it.
-
-**Accounts and locations in one call.** Steps 4 and 5 can restart a running agent twice. To restart it once, skip the save of Step 4: call `DiscoverPickerItems` with the chosen accounts in `parents` and the `flowid` from `OAuthConnect`, then save both with one `SetPickerAccounts` call that sends `accountids`, `flowid`, `pickerkey` and `selections`, with each account's locations in `itemids` or `items`. Choose at least one location across the accounts, or the save answers `Choose at least one location to finish.` (`errorcode: "next_required"`). Both calls must name the same accounts within five minutes, or the save answers `next_expired` and you discover again. See [Both steps in one call](/docs/agent-credentials#both-steps-in-one-call).
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/DiscoverPickerItems" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "google-business",
-    "pickerkey": "locations",
-    "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
-    "parents": ["112233445566778899001"]
-  }'
-
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "google-business",
-    "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
-    "accountids": ["112233445566778899001"],
-    "pickerkey": "locations",
-    "selections": [
-      { "parentvalue": "112233445566778899001", "itemids": ["9876543210987654321"] }
-    ]
-  }'
-```
-
-### Step 6: Verify the connection
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "google-business"
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "connected": true,
-  "accounts": [
-    { "id": "112233445566778899001", "name": "Acme Bakery" }
-  ],
-  "connectedat": "2026-10-17T09:00:00.000Z",
-  "tokenexpiresat": "2026-10-17T10:00:00.000Z",
-  "pickersteps": {
-    "locations": {
-      "pickerkey": "locations",
-      "optional": false,
-      "configured": true,
-      "groups": [
-        {
-          "parent": {
-            "accountid": "112233445566778899001",
-            "accountname": "Acme Bakery"
-          },
-          "items": [
-            { "locationid": "9876543210987654321", "locationtitle": "Acme Bakery Downtown" }
-          ]
-        }
-      ]
-    }
-  },
-  "locationmappings": [
-    {
-      "accountid": "112233445566778899001",
-      "accountname": "Acme Bakery",
-      "locationid": "9876543210987654321",
-      "locationtitle": "Acme Bakery Downtown"
-    }
-  ]
-}
-```
-
-Field notes:
-
-- `connected` is `true` when the connection has a current access token and at least one account is selected. It does not look at locations: `pickersteps.locations.configured` is `true` once at least one location is selected.
-- `tokenexpiresat` is the expiry of the current access token (about one hour ahead). Wiro renews the access token while the agent is running.
-- `connectedat` is the time of the last successful Connect.
-
-### Step 7: Start the agent if it's not running
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-`Start` doesn't wait for every connector. `setuprequired: true` on `POST /UserAgent/Detail` means a connector the agent requires is still incomplete, and the agent starts all the same. Only an agent still at `status: 6` is refused: call `POST /UserAgent/Update` on it first. See [Agent Credentials: Setup Required](/docs/agent-credentials#setup-required-state).
-
-## Credential fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `clientid` | string | OAuth Client ID of your Google Cloud OAuth client (own mode). Not returned by `POST /UserAgent/Detail`. |
-| `clientsecret` | string (secret) | OAuth Client Secret (own mode). Encrypted at rest; not returned by `POST /UserAgent/Detail`. |
-| `accountid` | array of strings | Numeric IDs of the selected Business Profile accounts. Required. Filled by the connection flow (`SetPickerAccounts`). |
-| `accountname` | array of strings | Names of the selected accounts, in the same order. Filled by the connection flow. |
-| `locationmappings` | array of objects | The selected locations, one `{ accountid, accountname, locationid, locationtitle }` entry per location. Server-managed; written by the location step. |
-
-`POST /UserAgent/CredentialUpsert` rejects writes to `accountid`, `accountname` and `locationmappings` with `<Field label> is managed by the connection flow`. Access and refresh tokens are stored server-side and are never returned by any endpoint.
-
-## API Reference
-
-All endpoints require Wiro authentication: see [Authentication](/docs/authentication) for `x-api-key` + optional signature headers.
-
-### POST /UserAgentOAuth/OAuthConnect
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Agent instance GUID. |
-| `credentialkey` | string | Yes | `"google-business"`. |
-| `redirecturl` | string | Yes | Any HTTPS URL you control (or `http://localhost` / `http://127.0.0.1` for development) where the browser returns after Google. |
-| `authmethod` | string | Yes | `"own"`, the only available mode. |
-
-Response: `{ result, errors, authorizeUrl, flowid }`. If `result: false`, inspect `errors[0].message`. Common messages: `Invalid redirect URL`, `User agent not found or unauthorized`, `Sign-in with the platform's app is not enabled for Google Business Profile` (no `authmethod`, or `"wiro"`), and `Google Business Profile credentials not configured` (the Client ID or Client Secret is not saved).
-
-### GET /UserAgentOAuth/GBPCallback
-
-Server-side endpoint invoked by Google. You don't call it: you register it as the Authorized redirect URI of your OAuth client and handle the final redirect back to your `redirecturl`.
-
-| Query param | Meaning |
-|-------------|---------|
-| `gbp_connected=true` | Authorization completed. |
-| `gbp_accounts` | URL-encoded JSON array of `{ id, name }`, with up to 20 Business Profile accounts the Google user can access. Always at least one entry. |
-| `gbp_error=<code>` | The connection failed. See [Troubleshooting](#troubleshooting). |
-
-### POST /UserAgentOAuth/SetPickerAccounts
-
-The same endpoint saves both picker steps.
-
-Account selection:
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Agent instance GUID. |
-| `credentialkey` | string | Yes | `"google-business"`. |
-| `accounts` | array | Yes | One or more `{ accountid, accountname }` entries. `accountid` is the numeric account ID (non-digits stripped); Wiro saves the name from its list as `accountname`, the display name shown in dashboards and `OAuthStatus` responses. |
-
-Response: `{ result, errors, accounts: [{id, name}, ...], restart }`. Replaces the previous account selection. The save that completes the connection restarts a running agent once (`restart: "scheduled"`), and a save that changes nothing restarts nothing.
-
-Location selection, after `DiscoverPickerItems`:
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Agent instance GUID. |
-| `credentialkey` | string | Yes | `"google-business"`. |
-| `pickerkey` | string | Yes | `"locations"`. |
-| `selections` | array | Yes | One `{ parentvalue, items }` entry for every group discovery returned without an `errorcode`. `parentvalue` is the account ID; each item carries `locationid` and `locationtitle`. Empty `items` selects no location for that account. Leave out groups that carry an `errorcode`: sending one fails with `Selected parent is not available`, and the locations already saved for that account stay as they are. |
-
-Response: `{ result, errors, pickerkey: "locations", locationmappings: [{accountid, accountname, locationid, locationtitle}], restart }`.
-
-### POST /UserAgentOAuth/DiscoverPickerItems
-
-Lists the locations of the selected Business Profile accounts, grouped by account. Call it after the account selection is saved, or, with `parents` and `flowid`, before it, to save the accounts and their locations in one call.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Agent instance GUID. |
-| `credentialkey` | string | Yes | `"google-business"`. |
-| `pickerkey` | string | Yes | `"locations"`. |
-| `parents` | string[] | No | Account IDs from the sign-in's list, before they are saved (at most 20). |
-| `flowid` | string | No | With `parents`: the `flowid` from `OAuthConnect`. |
-
-Response: `{ result, errors, pickerkey: "locations", groups: [{parent: {accountid, accountname}, items: [{locationid, locationtitle}], errorcode?}] }`. Up to 100 locations per account. The access token stays server-side. Wiro keeps the discovered candidates for five minutes; save the location selection before they expire.
-
-### POST /UserAgentOAuth/OAuthStatus
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Agent instance GUID. |
-| `credentialkey` | string | Yes | `"google-business"`. |
-
-Response fields:
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `connected` | boolean | `true` when the connection has a current access token and at least one selected account. Use `setuprequired` from `POST /UserAgent/Detail` for whole-agent readiness. |
-| `accounts` | array | One `{ id, name }` per selected account (`id` = `accountid`, `name` = `accountname`). |
-| `locationmappings` | array | The selected locations, one `{ accountid, accountname, locationid, locationtitle }` entry each. |
-| `pickersteps.locations` | object | Location selection grouped by account for UI rendering: `{ pickerkey, optional, configured, groups[] }`. |
-| `connectedat` | string | ISO timestamp of the last successful Connect. |
-| `tokenexpiresat` | string | ISO expiry of the current access token (about one hour ahead while the agent runs). |
-
-### POST /UserAgentOAuth/OAuthDisconnect
-
-Body: `{ useragentguid, credentialkey: "google-business" }`. Clears the tokens and the account and location selections in Wiro. Your Client ID and Client Secret are kept, so you can connect again without re-entering them. Wiro does not ask Google to revoke the authorization.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthDisconnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "google-business"
-  }'
-```
-
-Response: `{ "result": true, "errors": [] }`. A starting or running agent restarts when the disconnect removes a token or the connection was complete. Otherwise, for example with only the app keys saved, it restarts nothing.
-
-### Token lifecycle
-
-Wiro renews the access token with the stored refresh token while the agent is running. When the agent is stopped, the token runs out about an hour after the last renewal: `OAuthStatus` then reports `connected: false`, and `DiscoverPickerItems` answers `Google Business Profile account not connected`, until the agent starts and renews it. While the consent screen is in **Testing**, Google expires the refresh token after 7 days; set it to **In production** to avoid weekly disconnects. If Google revokes the access, or `connected` stays `false` while the agent runs, call `OAuthDisconnect` and run Steps 2 to 5 again. There is no customer-facing token-refresh endpoint.
-
-## Using the Skill
-
-Google Review Manager has `int-google-business-reviews` on by default. On any other agent, enable it with `POST /UserAgent/SkillsApply` (see [Agent Skills → Toggling Integration Skills](/docs/agent-skills#toggling-integration-skills)):
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440002",
-    "skills": {
-      "int-google-business-reviews": true
-    }
-  }'
-```
-
-**Pricing:** like every skill, `int-google-business-reviews` is included in every plan: turning it on costs nothing and keeps the plan's price and credits. As with every agent turn, scans and replies are billed on the LLM tokens they use.
-
-Adjust the scanner's schedule with `enabled` and `interval` only. The task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "skillkey": "cs-cron-google-review-scanner",
-    "enabled": true,
-    "interval": "0 */4 * * *"
-  }'
-```
-
-To change how replies read, edit `cs-review-preferences`; to change which replies wait for approval, edit `cs-approval-policy` (see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preference-skills)).
-
-## Troubleshooting
-
-| Error code | Meaning | What to do |
-|------------|---------|------------|
-| `no_accounts` | Sign-in worked, but no Business Profile account could be listed for this Google user. Right after setup this usually means the project is not approved yet (quota 0) or an API is disabled. | Check Steps 3 and 4 of the Google Cloud setup, then connect again. Otherwise connect with the Google account that owns or manages the business. |
-| `authorization_denied` | The user cancelled on Google's consent screen, or Google returned an error instead of an authorization code. | Start again and approve the consent screen. |
-| `session_expired` | More than 15 minutes passed between `OAuthConnect` and the return from Google. A repeated return after a completed one is not an error: it lands where the first one did. | Call `OAuthConnect` again. |
-| `flow_replaced` | A newer sign-in for the same agent and credential replaced this one, whoever started it, so nothing from it was saved. | Use the newer sign-in, or start again with `OAuthConnect`. |
-| `missing_params` | The callback was opened without an OAuth `state`. | Don't open the callback URL directly. Start a new flow with `OAuthConnect`. |
-| `token_exchange_failed` | Google did not return an access token for the authorization code, usually because of a wrong Client Secret or a redirect URI mismatch. | Re-copy the Client Secret, check the redirect URI, and connect again. |
-| `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before Google returned. | Start again with `OAuthConnect` for an existing agent. |
-| `internal_error` | Unexpected server error during callback processing. | Retry once. If it persists, contact Wiro support with the timestamp and your `useragentguid`. |
-| `Sign-in with the platform's app is not enabled for Google Business Profile` | Returned in `OAuthConnect`'s `errors[]` when `authmethod` is missing or `"wiro"`. | Send `authmethod: "own"`. |
-| `Google Business Profile credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when the Client ID or Client Secret is not saved. | Save both with `POST /UserAgent/CredentialUpsert` (Step 1), then retry. |
-| `Picker candidates expired. Discover them again.` | More than five minutes passed after location discovery, or the account selection changed. | Call `DiscoverPickerItems` again, then resubmit the location selection. |
-| `Choose at least one location to finish.` | `errorcode: "next_required"`: the accounts and locations were saved in one call with no location chosen. | Choose at least one location and save again. |
-| `The list of locations expired. Load it again.` | `errorcode: "next_expired"`: the accounts and locations were saved in one call, but the locations weren't discovered with `parents` for those accounts, from this sign-in, in the last five minutes. | Call `DiscoverPickerItems` with `parents` again, then save. |
-| `selections must include every available parent exactly once` | The location selection left out or repeated an account group. | Send one `selections[]` entry per group returned without `errorcode`; use `items: []` to select no location for an account. |
-| `Google Business Profile account not connected` | Returned by `DiscoverPickerItems` or the location `SetPickerAccounts` call when no account is saved yet, or when the access token has run out: about an hour after the last renewal while the agent is stopped. | Save the account selection (Step 4). If it is saved, start the agent so Wiro renews the token, or connect again with Steps 2 and 3: the saved accounts stay selected. |
-
-Without a `state`, Wiro can't tell which flow the callback belongs to, so `missing_params` sends the browser to the API's own neutral page, `https://api.wiro.ai/v1/UserAgentOAuth/SignInNotFinished`, instead of to your app. `session_expired` returns to your `redirecturl`, as long as the return comes within a day of `OAuthConnect`.
-
-### "No accounts available" right after connecting
-
-The Google Cloud project is usually not approved yet (0 requests per minute in [IAM & Admin → Quotas](https://console.cloud.google.com/iam-admin/quotas)), or one of the three APIs from Step 4 is disabled. Connect again once Google has approved the project and the APIs are enabled.
-
-### `redirect_uri_mismatch` on Google's page
-
-The Authorized redirect URI on your OAuth client does not exactly match `https://api.wiro.ai/v1/UserAgentOAuth/GBPCallback`. Fix it in [Clients](https://console.cloud.google.com/auth/clients); Google can take from a few minutes to a few hours to apply the change ([Google Cloud help](https://support.google.com/cloud/answer/15549257)).
-
-### The connection drops every week
-
-The consent screen is still in **Testing**, where Google expires the refresh token after 7 days. Set the publishing status to **In production** in [Audience](https://console.cloud.google.com/auth/audience), then connect again.
-
-### The agent reports a Google access problem
-
-The agent tells you in chat when Google says the project is not approved, an API is disabled, the account cannot manage a location, or the connection expired. Fix the cause in Google Cloud or in the Business Profile. For an expired connection, click **Disconnect** on the Google Business Profile card, then connect again.
-
-### Google rejected a reply
-
-Google reviews every reply before it is public. When it marks a reply `REJECTED` for a policy violation, the agent tells you; ask it to edit or delete that reply.
-
-### `connected: true`, but no reviews are answered
-
-`connected` covers the account selection only. Check that at least one location is selected: use **Manage** on the Google Business Profile card, or run the location step (Step 5) through the API.
-
-## Multi-Tenant Architecture
-
-For SaaS products connecting many businesses through a single Wiro-powered backend:
-
-1. **One Wiro agent instance per business.** Call `POST /UserAgent/Deploy` during onboarding, then run the connection flow for that business's `useragentguid`.
-2. **Tokens are isolated per agent instance.** One business's Google authorization is never visible to another, because they live under different `useragentguid` values.
-3. **The consent screen shows your app.** The connection uses your own OAuth client, so Google shows the app name of your Google Cloud project.
-4. **The quota belongs to the Google Cloud project.** Every connection made with the same OAuth client shares its 300 requests per minute.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials): integration catalog hub and generic OAuth reference.
-- [Agent Overview](/docs/agent-overview): deploying, starting, and lifecycle.
-- [Agent Skills](/docs/agent-skills): configuring `int-google-business-reviews`, custom skills, and scheduled runs.
-- [Telegram integration](/docs/integration-telegram-skills): receive the drafts on Telegram as well as in chat.
-- [App Store Connect integration](/docs/integration-appstore-skills) and [Google Play integration](/docs/integration-googleplay-skills): reviews of your apps.
-- [Business Profile APIs prerequisites](https://developers.google.com/my-business/content/prereqs)
-
----
-
-# Google Search Console Integration
-
-Connect your agent to Google Search Console for read-only organic search reporting: clicks, impressions, click-through rate and average position by query, page, country and device, period comparisons, sitemap status and URL Inspection.
-
-## Overview
-
-The Google Search Console integration uses Google OAuth 2.0 with the Google Search Console API and the read-only scope `https://www.googleapis.com/auth/webmasters.readonly`. The agent reads Search Console data only: it cannot add or remove properties, submit or delete sitemaps, or request indexing.
-
-**Skills that use this integration:**
-
-- `int-search-console`: Search Analytics reporting (top, rising and falling queries and pages, period comparisons), sitemap status and URL Inspection, read-only
-
-**Agents that typically enable this integration:**
-
-- Content and SEO agents that plan or check articles against real search demand
-- Any agent that reports on Google organic search next to Google Analytics 4
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| `"own"` | Available | Your own Google Cloud project and OAuth client. |
-| `"wiro"` | Coming soon | Wiro's shared Google Cloud project is not enabled for Search Console yet. Until then, `OAuthConnect` in Wiro mode, which is also what you get when you leave out `authmethod`, returns `Sign-in with the platform's app is not enabled for Google Search Console`. |
-
-## Prerequisites
-
-- **A Wiro API key** (see [Authentication](/docs/authentication)).
-- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
-- **A Search Console property** the connecting Google account can open as an owner, full user or restricted user. Properties the account has not verified are not listed.
-- **A Google Cloud project** with the Google Search Console API enabled.
-- **An HTTPS callback URL**.
-
-## Own Mode
-
-### Step 1: Create a Google Cloud Project
-
-1. [console.cloud.google.com](https://console.cloud.google.com/) → create a project, or use the one behind your Google Analytics 4 client.
-2. **APIs & Services → Library** → enable the [Google Search Console API](https://console.cloud.google.com/apis/library/searchconsole.googleapis.com).
-3. **OAuth consent screen**:
-   - **External** user type for multi-tenant use
-   - App name, support email, developer contact
-   - Add the scope `webmasters.readonly` (`https://www.googleapis.com/auth/webmasters.readonly`)
-   - While the app is in **Testing**, only the test users you list can connect, and Google ends their authorization 7 days after consent. Add the connecting Google account as a test user, or publish the app (**In production**) so the agent keeps access.
-
-### Step 2: Create OAuth Client
-
-**APIs & Services → Credentials → Create Credentials → OAuth client ID**:
-- Application type: **Web application**
-- **Authorized redirect URIs**: `https://api.wiro.ai/v1/UserAgentOAuth/SearchConsoleCallback`
-
-The OAuth client you made for Google Analytics 4 works too: add this redirect URI to it and enable the Google Search Console API in its project.
-
-Copy the **Client ID** and **Client Secret** to your agent credentials.
-
-### Step 3: Connect
-
-Save the Client ID and Client Secret with `POST /UserAgent/CredentialUpsert`:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "fields": [
-      { "credentialkey": "google-search-console", "fieldname": "clientid", "fieldvalue": "123-abc.apps.googleusercontent.com" },
-      { "credentialkey": "google-search-console", "fieldname": "clientsecret", "fieldvalue": "YOUR_CLIENT_SECRET" },
-      { "credentialkey": "google-search-console", "fieldname": "authmethod", "fieldvalue": "own" }
-    ]
-  }'
-```
-
-Then start `OAuthConnect` in `own` mode:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "google-search-console",
-    "redirecturl": "https://your-app.com/settings/integrations",
-    "authmethod": "own"
-  }'
-```
-
-The response returns `{ result: true, authorizeUrl: "...", flowid: "..." }`. Redirect the user to `authorizeUrl`. Google asks which Google account to connect, even when the browser is already signed in to one, and asks for read-only access to Search Console data.
-
-### Step 4: Property Picker
-
-After consent, the user returns with `?gsc_connected=true&gsc_sites=<URL-encoded-JSON>`. Each entry is `{ id, displayName, permissionLevel }`: `id` is the property exactly as Search Console names it (`sc-domain:example.com` for a Domain property, or the full address of a URL-prefix property with its trailing slash, such as `https://www.example.com/`), `displayName` the same without the `sc-domain:` prefix, and `permissionLevel` Google's permission level for the connecting account (for example `siteOwner`, `siteFullUser` or `siteRestrictedUser`). Properties the account has not verified are left out. Map the user's choice to the picker shape and call `SetPickerAccounts`:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "google-search-console",
-    "accounts": [
-      { "siteurl": "sc-domain:example.com", "sitename": "example.com" }
-    ]
-  }'
-```
-
-Pass several `{ siteurl, sitename }` entries to authorize the agent against several properties at once (`id` becomes `siteurl`). Wiro saves each property's `displayName` from its list as `sitename`, so a name you send is not read. `permissionLevel` is handy for your UI, but it is not stored. Wiro saves only properties from this sign-in's list, under the names it lists, when the call comes from the same Wiro account within 15 minutes. The first save uses the list up: to change the selection later, connect again. See [SetPickerAccounts](/docs/agent-credentials#post-useragentoauthsetpickeraccounts).
-
-## Disconnect
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthDisconnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "google-search-console"
-  }'
-```
-
-Clears the tokens and the selected properties in Wiro. Your Client ID and Client Secret are kept, so you can connect again without saving them again. Wiro does not ask Google to revoke the authorization.
-
-## Status
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "google-search-console"
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "connected": true,
-  "accounts": [
-    { "id": "sc-domain:example.com", "name": "example.com" }
-  ],
-  "connectedat": "2026-11-21T12:00:00.000Z",
-  "tokenexpiresat": "2026-11-21T13:00:00.000Z",
-  "errors": []
-}
-```
-
-`accounts[]` carries one entry per selected property (`id` = `siteurl`, `name` = `sitename`).
-
-## What the agent does with this integration
-
-### Search performance reports
-
-Agent runs Search Analytics queries on operator request:
-
-```
-Operator → "top queries for the last 28 days"
-Agent → POST /webmasters/v3/sites/sc-domain%3Aexample.com/searchAnalytics/query
-     with dimensions=[query], type=web, rowLimit=25
-     and a date range that ends on the last day with data
-```
-
-Every answer names the property, the date range, the search type and Google Search Console as the source. Queries can be grouped and filtered by query, page, country, device, date and search appearance.
-
-### Period comparisons and movers
-
-Agent compares two periods of the same length (for example the last 28 days against the 28 days before, or against the same dates a year earlier) and lists the queries and pages that gained or lost the most clicks, with the change in impressions, click-through rate and average position.
-
-### Sitemaps and URL Inspection
-
-Agent lists the property's submitted sitemaps with their errors, warnings and last download, and inspects single URLs on request: index verdict, coverage, canonical URLs, last crawl, robots.txt and page fetch state. Google allows 2,000 URL inspections per property per day.
-
-### Data freshness
-
-Google says Search Console data is typically available after 2-3 days. The agent finds the last day with data before it reports, does not read the newest days as a drop, and uses Pacific Time dates as Search Console does.
-
-## Troubleshooting
-
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| `Sign-in with the platform's app is not enabled for Google Search Console` in `OAuthConnect`'s `errors[]` | Wiro mode isn't available yet, and it is the default when `authmethod` is left out | Save your OAuth client (Step 3) and call `OAuthConnect` with `"authmethod": "own"` |
-| `Google Search Console credentials not configured` in `OAuthConnect`'s `errors[]` | `authmethod: "own"` without a saved `clientid` and `clientsecret` | Save them (Step 3), then retry |
-| `gsc_error=no_accounts` on your `redirecturl` | Google listed no verified Search Console property for this user, and Wiro saved nothing: the account has no property or only unverified ones, or the Google Search Console API is not enabled in your project. In the last case `gsc_error_detail` carries Google's status, such as `PERMISSION_DENIED` | Enable the API (Step 1), or connect with a Google account that has access to a verified property, then call `OAuthConnect` again |
-| `invalid_grant` | Refresh token expired or revoked; a consent screen still in Testing expires it 7 days after consent | Publish the consent screen, then re-connect via `OAuthConnect` |
-| `403 Request had insufficient authentication scopes` | The consent did not include `webmasters.readonly` | Add the scope to the consent screen (Step 1) and connect again |
-| The agent reports a 403 for one property | The Google account lost access to it, or the property is no longer verified | Restore the account's access in Search Console, or connect again and pick another property |
-| `OAuthStatus` returns `connected: false` right after consent | No property has been saved yet; the connection is complete only once `SetPickerAccounts` stores at least one | Call `SetPickerAccounts` with a property from `gsc_sites` (Step 4) |
-
-### `redirect_uri_mismatch` on Google's page
-
-The Authorized redirect URIs of your OAuth client don't include `https://api.wiro.ai/v1/UserAgentOAuth/SearchConsoleCallback` exactly as written. Google stops on its own error page, so nothing comes back to your `redirecturl`. Add the URI (Step 2) and connect again.
-
-### `Error 403: access_denied` on Google's page
-
-The app is in Testing and the Google account is not one of its test users. Add the account under test users (Step 1), or publish the app, then connect again.
-
-## Skill reference
-
-- [agent-skills.md](/docs/agent-skills): custom skill schema and the `int-search-console` key
-
----
-
-# DataForSEO Integration
-
-Give your agent keyword, search and app store data from your own DataForSEO account: search volume, CPC and competition, keyword difficulty, related keywords, SERP features, Google Trends, local map rankings, Google Shopping prices and app store rankings.
-
-## Overview
-
-[DataForSEO](https://dataforseo.com) sells SEO and marketing data through a pay-as-you-go API. This integration connects an agent to your own DataForSEO account with its API login and API password, so content, SEO, ads and app marketing agents work from real numbers instead of guesses. The agent only reads data: every answer names DataForSEO as the source, gives the date of the numbers and says what the requests cost.
-
-**Skills that use this integration:**
-
-- `int-dataforseo`: Read-only research through the DataForSEO API: Google Ads search volume, CPC and competition for up to 1,000 keywords per request, DataForSEO Labs keyword difficulty, related keywords and keyword ideas, Google SERP features (featured snippets, People Also Ask, local packs, AI Overviews), Google Trends, Google Maps rankings by coordinate (a local rank grid), Google Shopping prices and Google Play / App Store rankings.
-
-**Agents that typically enable this integration:**
-
-- [Blog Content Editor](https://wiro.ai/agents/blog-content-editor): pick topics with real search volume and difficulty, and see what Google already shows for them, before drafting.
-- [Google Ads Manager](https://wiro.ai/agents/google-ads-manager): check search volume, CPC and competition before adding keywords.
-- Custom SEO, local marketing, e-commerce and app marketing agents.
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| API Login + API Password (DataForSEO) | Available | The API login and API password from your DataForSEO dashboard. DataForSEO bills each request to your own balance (pay-as-you-go). No extra charge on the agent: like every skill, it is included in every plan. |
-
-## Prerequisites
-
-- **A Wiro API key** (see [Authentication](/docs/authentication)).
-- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
-- **A DataForSEO account** with balance. New accounts get a $1 trial credit; the minimum top-up is $50.
-
-## Setup
-
-### Step 1: Copy your DataForSEO API login and API password
-
-1. Sign up or sign in at [app.dataforseo.com](https://app.dataforseo.com/register).
-2. Open **API Access** in the dashboard menu ([app.dataforseo.com/api-access](https://app.dataforseo.com/api-access)).
-3. Copy the **API login**. On newer accounts it is a string DataForSEO generated; on older accounts it can be your sign-up email.
-4. Copy the **API password**. It is shown for the first 24 hours after you sign up; after that, click **Send by e-mail** and DataForSEO mails it to your account address.
-
-> The API password is not the password you sign in to DataForSEO with. Using the sign-in password is the most common cause of a `40100` "not authorized" error.
-
-### Step 2: Save the credential to Wiro
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "fields": [
-      { "credentialkey": "dataforseo", "fieldname": "login", "fieldvalue": "YOUR_DATAFORSEO_API_LOGIN" },
-      { "credentialkey": "dataforseo", "fieldname": "password", "fieldvalue": "YOUR_DATAFORSEO_API_PASSWORD" }
-    ]
-  }'
-```
-
-Or fill it in the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Connectors → DataForSEO**.
-
-### Step 3: Enable the skill
-
-DataForSEO ships **available but off**. Turn `int-dataforseo` on for the agent:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "skills": { "int-dataforseo": true },
-    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000"
-  }'
-```
-
-Or flip the toggle in the panel under **Skills** (see [Agent Skills](/docs/agent-skills#toggling-integration-skills)).
-
-### Step 4: Start the agent
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-## Credential Fields
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `login` | string | Yes | DataForSEO API login, from the API Access page. One word with no colon. Encrypted at rest. |
-| `password` | string (secret) | Yes | DataForSEO API password, not the sign-in password. Encrypted at rest. |
-
-## Credentials schema (as returned by `POST /UserAgent/Detail`)
-
-```json
-"dataforseo": {
-  "_connected": true,
-  "optional": false,
-  "extra": false,
-  "login": "your-api-login",
-  "password": "••••••••"
-}
-```
-
-## What the agent can pull
-
-The agent calls the DataForSEO v3 API at `https://api.dataforseo.com/v3/` with HTTP Basic auth (your API login and API password), sends a whole keyword list in one request, and checks DataForSEO's own `status_code` in every answer: DataForSEO can answer HTTP 200 with an error inside.
-
-| Data | DataForSEO endpoint | How | Date the agent reports |
-|------|---------------------|-----|------------------------|
-| Search volume, CPC and competition (up to 1,000 keywords) | Keywords Data: Google Ads Search Volume | Live | The 12 months the monthly average covers |
-| Keyword difficulty (up to 1,000 keywords) | DataForSEO Labs: Bulk Keyword Difficulty | Live | The Labs data update date |
-| Related keywords and keyword ideas | DataForSEO Labs: Related Keywords, Keyword Ideas | Live | Each keyword's last update |
-| SERP features for a query | SERP: Google Organic (advanced) | Live | When DataForSEO loaded the page |
-| Interest over time (up to 5 keywords) | Keywords Data: Google Trends Explore | Live | The window of the graph |
-| Google Maps rank at a point, local rank grid | SERP: Google Maps (advanced) at a coordinate | Live, one request per grid point | When each point was loaded |
-| Google Shopping prices | Merchant: Google Shopping Products | Posted, then collected | When DataForSEO loaded the results |
-| App store rankings for a keyword | App Data: Google Play and App Store App Searches | Posted, then collected | When DataForSEO loaded the results |
-| Keywords an app ranks for (United States, English) | DataForSEO Labs: Keywords For App | Live | Each ranking's last check |
-
-Results are aggregate: keywords, volumes, ranks, prices, domains and business or app names. When DataForSEO fails, the agent says so; it never falls back to another source or to scraping Google.
-
-### Local rank grid
-
-Google ranks local results by where the searcher is, so a business ranks differently across its area. For a local rank grid the agent runs the same Google Maps search from evenly spaced points around the business (3 x 3 by default, up to 5 x 5, at a spacing you choose), one request per point, and reports the business's rank at each point in a table laid out like the map, with its average rank and the number of points where it is in the top 3.
-
-### Posted tasks
-
-Google Shopping and app store searches have no live mode at DataForSEO. The agent posts every query in one request, then collects each result by its task id; collecting is free for 30 days. When results are not ready within the turn, the agent lists the task ids and collects them on your next request.
-
-## Cost & billing
-
-- **DataForSEO** bills each request to your own DataForSEO balance, pay-as-you-go with no subscription, and funds do not expire. The agent reports the cost DataForSEO returns with each answer. Location lookups, the balance check and collecting a posted task are free. See [DataForSEO pricing](https://dataforseo.com/pricing) for each API's rates.
-- **The agent:** every plan includes the integration, so it changes neither the agent's price nor its credits. As with every agent turn, the work is billed on the LLM tokens it uses, from the agent's existing credits.
-
-## Troubleshooting
-
-- **`40100` / HTTP 401 (not authorized):** The API login or API password is wrong. Copy both again from API Access; the API password is not your sign-in password.
-- **`40200` / `40210` (balance):** Your DataForSEO balance is too low. Top it up in the DataForSEO dashboard.
-- **`40104`:** Your DataForSEO account is not verified yet. Complete the verification in the DataForSEO dashboard.
-- **`40207` (IP not allowed):** Your DataForSEO account accepts API requests only from the IP addresses on its allowlist. Clear the allowlist in the API Access section of the DataForSEO dashboard so the agent can connect.
-- **`40202` (rate limit):** Too many requests in a minute; Google Ads volume requests are limited to 12 a minute per account. The agent retries once, then stops.
-- **"Results are being prepared":** A posted Google Shopping or app store task is still in DataForSEO's queue. Ask again in a few minutes; the agent collects it by its task id.
-- **Agent says "not connected" with both fields filled:** The agent restarts to pick up new credentials; give it a moment after saving, then retry.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Skills](/docs/agent-skills)
-- [Serper Web Search Integration](/docs/integration-serper-search-skills)
-- [Google Ads Integration](/docs/integration-googleads-skills)
-
----
-
-# Keepa Integration
-
-Give your agent Amazon price, sales rank and offer history from Keepa, read with your own Keepa API key, so pricing, catalog and competitor agents answer with real numbers and dates.
-
-## Overview
-
-[Keepa](https://keepa.com) tracks Amazon products and keeps their price, sales rank and offer history. This integration lets an agent read that history through the Keepa API with your own key: prices now, averages, the lowest and highest prices with their dates, daily or weekly price and rank tables, Amazon product search, best seller lists, categories and Keepa's product finder. It only reads data: nothing on Keepa or Amazon changes.
-
-**Skills that use this integration:**
-
-- `int-keepa`: Read-only Keepa API calls for product price and sales rank history (with statistics), product search, best sellers, category search and lookup, and the product finder. Every answer names the source (Keepa), the marketplace and the date range, and reports the Keepa tokens left.
-
-**Agents that typically enable this integration:**
-
-- Custom pricing, catalog and Amazon seller agents that watch competitor prices and sales ranks.
-- Commerce agents that run a Shopify or WooCommerce store and want Amazon price context before they reprice.
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| API Key (Keepa) | Available | Your own Keepa API access key (64 letters and digits) with an active Keepa API plan. The integration is included in every plan at no extra charge; Keepa tokens come from your Keepa plan. |
-
-## Prerequisites
-
-- **A Wiro API key** (see [Authentication](/docs/authentication)).
-- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
-- **A Keepa account with an active API plan** ([keepa.com/api/pricing](https://keepa.com/api/pricing)). Keepa says a Keepa Pro subscription includes a small API allowance, enough to try it; an API plan sets the rate for regular use.
-
-## Setup
-
-### Step 1: Get a Keepa API key
-
-1. Sign in at [keepa.com](https://keepa.com) and open the [API page](https://keepa.com/api).
-2. Subscribe to an API plan. Plans differ in how many tokens they add per minute, are billed monthly by Keepa and can be canceled at any time.
-3. Copy your **API access key** (64 letters and digits) from the API page.
-
-> The key is all the agent needs: there is no app to register and no sign-in. Keep it secret, since anyone with the key can spend your tokens. You can generate a new key on the same page at any time.
-
-### Step 2: Save the credential to Wiro
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "fields": [
-      { "credentialkey": "keepa", "fieldname": "apikey", "fieldvalue": "YOUR_KEEPA_API_KEY" }
-    ]
-  }'
-```
-
-Or fill it in the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Connectors → Keepa**.
-
-A value that is not exactly 64 letters and digits is refused when you save it.
-
-### Step 3: Enable the skill
-
-Keepa ships **available but off**. Turn `int-keepa` on for the agent:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "skills": { "int-keepa": true },
-    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000"
-  }'
-```
-
-Or flip the toggle in the panel under **Skills** (see [Agent Skills](/docs/agent-skills#toggling-integration-skills)).
-
-### Step 4: Start the agent
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-## Credential Fields
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `apikey` | string (secret) | Yes | Keepa API access key, exactly 64 letters and digits. Encrypted at rest. |
-
-## Credentials schema (as returned by `POST /UserAgent/Detail`)
-
-```json
-"keepa": {
-  "_connected": true,
-  "optional": false,
-  "extra": false,
-  "apikey": "••••••••"
-}
-```
-
-On a custom build with `int-keepa` on, `optional` and `extra` are `false`: Keepa is that skill's own connector.
-
-## What the agent can look up
-
-| Request | Keepa endpoint | Keepa tokens | What comes back |
-|---------|----------------|--------------|-----------------|
-| Token status | `/token` | 0 | Tokens left, refill rate and time to the next refill. |
-| Product history | `/product` with `stats` and `days` | 1 per product (up to 100 per call) | Prices now, 30 and 90 day averages, lowest and highest in the range with dates, lowest ever, daily or weekly tables of any price or rank series, sales rank drops, Amazon's "bought in past month" bracket. Products are found by ASIN, or by UPC, EAN, GTIN or ISBN-13. |
-| Product search | `/search?type=product` | 10 per search | Up to 20 products in Amazon's search order (sponsored results left out), with price now and sales rank. |
-| Best sellers | `/bestsellers` | 50 per list (0 when Keepa has no list) | The ranked ASIN list of a category or product group: by current rank, by the 30, 90 or 180 day average rank, or for a past month (last 36 months). |
-| Category search and lookup | `/search?type=category`, `/category` | 1 | Category ids, names, the path to the root, product counts and average Buy Box price. |
-| Product finder | `/query` | 10 + 1 per 100 ASINs | ASINs matching filters such as category, brand, price range, sales rank, monthly sold, or a price drop against the 90 day average. |
-
-The Keepa options that cost extra tokens stay off unless you ask for that data:
-
-| Option | Extra Keepa tokens | Adds |
-|--------|--------------------|------|
-| `offers` | 6 per page of 10 offers found (5 when there are none), instead of the base 1 | Live marketplace offers, Buy Box history, FBA, FBM and Amazon Warehouse prices, rating and review history |
-| `buybox` | 2 per product | Buy Box price history and Buy Box statistics |
-| `stock` | 2 per product, when stock data comes back | Stock levels |
-| `rating` | up to 1 per product | Rating and review count history |
-| `historical-variations` | 1 per product with a parent ASIN | Variations that are no longer listed |
-
-## Supported marketplaces
-
-| Domain id | Marketplace | Currency |
-|-----------|-------------|----------|
-| 1 | amazon.com | USD |
-| 2 | amazon.co.uk | GBP |
-| 3 | amazon.de | EUR |
-| 4 | amazon.fr | EUR |
-| 5 | amazon.co.jp | JPY |
-| 6 | amazon.ca | CAD |
-| 8 | amazon.it | EUR |
-| 9 | amazon.es | EUR |
-| 10 | amazon.in | INR |
-| 11 | amazon.com.mx | MXN |
-| 12 | amazon.com.br | BRL |
-
-These are all the marketplaces Keepa covers. **Amazon.com.tr (Türkiye) is not supported**, and neither are amazon.com.au, amazon.nl, amazon.se, amazon.pl, amazon.com.be, amazon.ae, amazon.sa, amazon.sg and amazon.eg. Asked about one of them, the agent says Keepa does not cover it.
-
-## How the agent reads Keepa data
-
-- **Time:** Keepa stores minutes since its own epoch. The agent converts them to UTC dates: Unix milliseconds = (Keepa time + 21564000) × 60000.
-- **Prices** are integers in the currency's smallest unit (cents, pence, paise; yen have none). `-1` means there was no offer at that time, never a price of zero.
-- **Sales rank** is the rank in the product's main category; lower is better. History holds a point only when a value changed.
-- **New and Used prices:** until 2026-02-22 Keepa recorded the lowest listing price, and from 2026-02-23 the lowest price including shipping. The agent says so when a range spans that date.
-- **History series** the agent can tabulate include Amazon's own offer, the lowest New and Used prices, the sales rank, the list price, offer counts, and (with the matching option) the Buy Box, FBA, FBM and Warehouse prices, rating and reviews.
-- **Every answer** names the source, the marketplace and the date range, for example "Source: Keepa · amazon.de · 2026-08-23 to 2026-11-21 (UTC)", followed by the tokens used and left.
-
-## Keepa tokens & billing
-
-- **Keepa plans** add a fixed number of tokens per minute. Unused tokens expire after 60 minutes, so a plan holds at most one hour's worth. Keepa bills the plan monthly to your Keepa account.
-- **Before a costly call** (a search, a best seller list, the product finder) the agent checks your balance; when the call costs more than you have left, it says so and asks first in chat, and skips it in a scheduled task.
-- **When tokens run out**, Keepa answers HTTP 429. The agent stops and says in one sentence when the next call can run; it never retries in a loop.
-- **Billing on Wiro:** every plan includes the integration, so it changes neither the agent's price nor its credits. As with every agent turn, its work is billed on the LLM tokens it uses, from the agent's existing credits.
-
-## Troubleshooting
-
-- **402 "No active API plan found":** the key is unknown or its Keepa plan has ended. Check the plan on the [Keepa API page](https://keepa.com/api), or save the current key again if you generated a new one.
-- **400 invalidParameter:** a request parameter was wrong; the error names it. A rejected `key` means the saved key is not the one Keepa issued.
-- **429:** out of Keepa tokens. Wait for the refill the agent names, or move to a larger Keepa plan.
-- **500:** a Keepa error. The agent retries once, then reports that Keepa is not answering.
-- **Empty best seller list:** Keepa has no list for that category on that marketplace; no tokens were used.
-- **A marketplace is "not covered":** Keepa has no data for it (for example amazon.com.tr).
-- **Agent says "not connected" with the key filled:** the agent restarts to pick up new credentials; give it a moment after saving, then retry.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Skills](/docs/agent-skills)
-- [Shopify Skills](/docs/integration-shopify-skills) / [WooCommerce Skills](/docs/integration-woocommerce-skills): your own store's catalog and prices
-- [Merchant Center Skills](/docs/integration-merchantcenter-skills): Google Shopping product feeds
-
----
-
-# RevenueCat Integration
-
-Connect your agent to RevenueCat subscription analytics: MRR, revenue, active subscriptions and trials, churn, conversion, retention and LTV charts, read with your own RevenueCat secret API key. Aggregate numbers only, never customer records.
-
-## Overview
-
-[RevenueCat](https://www.revenuecat.com) runs in-app subscriptions across the App Store, Google Play, Stripe, Amazon and its own web billing. This integration lets an agent read your project's aggregate subscription numbers through the RevenueCat REST API v2: the same overview cards and charts the RevenueCat dashboard shows.
-
-**Skills that use this integration:**
-
-- `int-revenuecat`: Read-only RevenueCat reporting. Overview metrics (MRR, active subscriptions, active trials, revenue, new and active customers), revenue for any date range, charts (revenue, MRR, ARR, churn, trials, trial and paid conversion, retention, LTV, refunds, cohorts) by date range and resolution with the filters and segments each chart offers, and the project's apps, products, offerings and entitlements.
-
-**Agents that typically enable this integration:**
-
-- Custom app-growth and reporting agents that answer questions about subscription revenue.
-- Any agent that reports on an app's subscription business next to its ads or store numbers.
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| Secret API key (RevenueCat REST API v2) | Available | One read-only v2 secret key per agent. It reads the RevenueCat project the key belongs to. No extra charge: like every skill, it is included in every plan. |
-
-## Prerequisites
-
-- **A Wiro API key** (see [Authentication](/docs/authentication)).
-- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
-- **A RevenueCat project**, and a project admin who can create its API keys.
-
-## Setup
-
-### Step 1: Create a RevenueCat v2 secret key
-
-1. Sign in to [RevenueCat](https://app.revenuecat.com) and open your project.
-2. Open **Project settings**, then **API keys**.
-3. Click **+ New secret API key**, give it a name (for example `Wiro agent`) and choose version **V2**.
-4. Set its permissions: read-only for **Charts & Metrics** (overview and charts) and **Project configuration**, and no access to **Customer information**.
-5. Create the key and copy it. It starts with `sk_`.
-
-> A v1 key does not work with the v2 API. The agent never reads customer data, so the key needs no Customer information access. Deleting the key in RevenueCat cuts the agent off immediately.
-
-### Step 2: Save the credential to Wiro
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "fields": [
-      { "credentialkey": "revenuecat", "fieldname": "apikey", "fieldvalue": "sk_YOUR_REVENUECAT_KEY" }
-    ]
-  }'
-```
-
-Or fill it in the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Connectors → RevenueCat**.
-
-### Step 3: Turn on the skill
-
-RevenueCat Metrics ships **available but off**. Turn `int-revenuecat` on for the agent:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "skills": { "int-revenuecat": true },
-    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000"
-  }'
-```
-
-Or flip the toggle in the panel under **Skills** (see [Agent Skills](/docs/agent-skills#toggling-integration-skills)).
-
-### Step 4: Start the agent
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-## Credential Fields
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `apikey` | string (secret) | Yes | RevenueCat REST API v2 secret key, starting with `sk_`. Encrypted at rest. |
-
-## Credentials schema (as returned by `POST /UserAgent/Detail`)
-
-```json
-"revenuecat": {
-  "_connected": true,
-  "optional": false,
-  "extra": false,
-  "apikey": "••••••••"
-}
-```
-
-On an agent you build yourself with `int-revenuecat` on, the card is required (`optional: false`): the agent's setup is complete once the key is saved.
-
-## What the agent reports
-
-| Source | What it gives |
-|--------|---------------|
-| Overview | Active Trials, Active Subscriptions and MRR as of now; Revenue, New Customers and Active Customers for the last 28 days. |
-| Revenue | Gross revenue, revenue net of taxes, or proceeds (after taxes and store commissions) for any date range. |
-| Charts | `revenue`, `mrr`, `arr`, `actives`, `trials`, `churn`, `trial_conversion_rate`, `initial_conversion`, `conversion_to_paying`, `subscription_retention`, `ltv_per_customer`, `ltv_per_paying_customer`, `cohort_explorer`, `refund_rate` and the rest of RevenueCat's charts, by day, week, month, quarter or year, with the filters and segments each chart offers (such as country, store, product or app). |
-| Configuration | Apps, products, offerings (and which one is current) and entitlements. |
-
-Every report names its source and its date range. Chart dates are in UTC, as in RevenueCat's charts. A partial period (the current one, or a first period that starts mid-way) is called out and left out of trends, and money is shown in the currency RevenueCat returns (USD unless you ask for another).
-
-## Privacy
-
-The agent reads aggregate numbers only. It never reads customers, subscribers, subscriptions, purchases, invoices, audiences or collaborators, and requests to customer endpoints are refused. A question about one customer is declined.
-
-## Billing
-
-Every plan includes the integration, so it changes neither the agent's price nor its credits. As with every agent turn, reports are billed on the LLM tokens they use, from the agent's existing credits.
-
-## Rate limits
-
-RevenueCat allows each key 25 Charts & Metrics requests a minute (overview, revenue and charts) and 60 Project configuration requests a minute. The agent keeps its calls few; when RevenueCat asks it to slow down, it waits and retries once.
-
-## Troubleshooting
-
-- **401:** The key was revoked or mistyped, or it is a v1 key. Create a new v2 secret key and save it again.
-- **403:** The key lacks a permission. Give it read access to Charts & Metrics and Project configuration.
-- **429:** RevenueCat's rate limit. The agent waits the time RevenueCat names and retries once.
-- **Numbers differ from App Store Connect or Google Play:** RevenueCat counts differently; for example, Google counts trials as active subscriptions and RevenueCat does not.
-- **Agent says "not connected" with the key filled:** The agent restarts to pick up new credentials; give it a moment after saving, then retry.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Skills](/docs/agent-skills)
-- [Adapty Integration](/docs/integration-adapty-skills)
-- [Roasit Integration](/docs/integration-roasit-skills)
-
----
-
-# Adapty Integration
-
-Connect your agent to Adapty subscription analytics: revenue, MRR, ARR, subscriptions, trials, conversions, funnels, retention, LTV and install cohorts, read with your app's Adapty secret API key. Aggregate numbers only, never user profiles.
-
-## Overview
-
-[Adapty](https://adapty.io) runs in-app subscriptions and paywalls for mobile apps. This integration lets an agent read the numbers the Adapty Dashboard's analytics show for one app, through Adapty's Analytics Export API.
-
-**Skills that use this integration:**
-
-- `int-adapty`: Read-only Adapty reporting. Charts (revenue, proceeds and net revenue, MRR, ARR, ARPU, ARPPU, active and new subscriptions, trials, cancellations, expirations, refunds, installs), conversion rates, funnels, retention, LTV and install cohorts, by date range with an optional comparison period, filters (country, store, product, segment, attribution, offer) and one grouping per report.
-
-**Agents that typically enable this integration:**
-
-- Custom app-growth and reporting agents that answer questions about subscription revenue.
-- Any agent that reports on an app's subscription business next to its ads or store numbers.
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| Secret API key (Adapty Analytics Export API) | Available | One Adapty secret key per agent. Adapty keys belong to one app, so the agent reports on that app. No extra charge: like every skill, it is included in every plan. |
-
-## Prerequisites
-
-- **A Wiro API key** (see [Authentication](/docs/authentication)).
-- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
-- **An Adapty app** with subscription data, and access to its App settings.
-
-## Setup
-
-### Step 1: Copy the app's Adapty secret key
-
-1. Sign in to the [Adapty Dashboard](https://app.adapty.io) and pick the app.
-2. Open [App settings](https://app.adapty.io/settings/general) and stay on the **General** tab.
-3. In **API keys**, copy the **Secret key**. It starts with `secret_live_`.
-
-> The agent uses the key only with Adapty's Analytics Export API and reads aggregate analytics only, never user profiles. To cut the agent off, click **Generate new key** in App settings and delete the old key.
-
-### Step 2: Save the credential to Wiro
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "fields": [
-      { "credentialkey": "adapty", "fieldname": "apikey", "fieldvalue": "secret_live_YOUR_ADAPTY_KEY" }
-    ]
-  }'
-```
-
-Or fill it in the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Connectors → Adapty**.
-
-### Step 3: Turn on the skill
-
-Adapty Analytics ships **available but off**. Turn `int-adapty` on for the agent:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "skills": { "int-adapty": true },
-    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000"
-  }'
-```
-
-Or flip the toggle in the panel under **Skills** (see [Agent Skills](/docs/agent-skills#toggling-integration-skills)).
-
-### Step 4: Start the agent
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-## Credential Fields
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `apikey` | string (secret) | Yes | The app's Adapty secret API key, starting with `secret_live_`. Encrypted at rest. |
-
-## Credentials schema (as returned by `POST /UserAgent/Detail`)
-
-```json
-"adapty": {
-  "_connected": true,
-  "optional": false,
-  "extra": false,
-  "apikey": "••••••••"
-}
-```
-
-On an agent you build yourself with `int-adapty` on, the card is required (`optional: false`): the agent's setup is complete once the key is saved.
-
-## What the agent reports
-
-| Report | What it gives |
-|--------|---------------|
-| Charts | `revenue` (with proceeds and net revenue), `mrr`, `arr`, `arpu`, `arppu`, `subscriptions_active`, `subscriptions_new`, `subscriptions_renewal_cancelled`, `subscriptions_expired`, `trials_active`, `trials_new`, `trials_renewal_cancelled`, `trials_expired`, `grace_period`, `billing_issue`, `refund_events`, `refund_money`, `non_subscriptions` and `installs`, by day, week, month, quarter or year. |
-| Conversion | Conversion rates between subscription states, such as paid to more than 6 months. |
-| Funnel | Users at each stage from install and paywall view to trial, paid and renewals, with drop-off. |
-| Retention | Retention period by period, counted from the purchase or from the trial. |
-| LTV | Realized lifetime value on revenue, proceeds and net revenue. |
-| Cohorts | Install-date cohorts: installs, subscribers, revenue, ARPU and ARPPU per period, with Adapty's predictions. |
-
-Every report can take a comparison period, filters (country, store, store product, subscription duration, offer, attribution, and Adapty segment, audience, paywall, placement or flow ids) and one grouping. Money is in USD, as Adapty exports it. Every report names its source and its date range; chart revenue counts on the day of each transaction, and cohort revenue on each user's install date.
-
-## Privacy
-
-The agent reads aggregate analytics only. It uses the key only with Adapty's Analytics Export API, never Adapty's server-side API, so it never reads user profiles. A question about one user is declined.
-
-## Billing
-
-Every plan includes the integration, so it changes neither the agent's price nor its credits. As with every agent turn, reports are billed on the LLM tokens they use, from the agent's existing credits.
-
-## Rate limits
-
-Adapty allows 2 requests a second per app, shared by all of the app's keys. The agent sends its calls one after another; when Adapty asks it to slow down, it waits about a minute and retries once.
-
-## Troubleshooting
-
-- **401:** The key was replaced or mistyped. Copy the app's current secret key from App settings and save it again.
-- **400:** A filter or option Adapty does not accept, such as a product id without its store (`app_store:premium_monthly`). The agent reads Adapty's message and fixes the request once.
-- **429:** Adapty's rate limit. The agent waits about a minute and retries once.
-- **Numbers for another app:** One key reads one app. Connect that app's key on another agent.
-- **Agent says "not connected" with the key filled:** The agent restarts to pick up new credentials; give it a moment after saving, then retry.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Skills](/docs/agent-skills)
-- [RevenueCat Integration](/docs/integration-revenuecat-skills)
-- [Roasit Integration](/docs/integration-roasit-skills)
 
 ---
 

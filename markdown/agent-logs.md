@@ -103,7 +103,7 @@ A `token_usage` event records the token spend and credit deduction for one bille
 
 > **Nested vs flat token fields.** The activity-log `token_usage` event nests its counts in **camelCase** under `tokens.{input, output, cacheRead, cacheWrite, total}`. `input` is uncached input and `total` is the exact sum of all four components. This is distinct from the **flat, lowercase** columns on message rows (`inputtokens`, `outputtokens`, `cachereadtokens`, …). Same underlying data, different shape.
 
-> **Credits vs. wallet.** An agent's own credits are spent once per LLM turn: each `token_usage` event is one billed turn, and its `tokencost` is in credits (100 credits = $1). A Wiro model the agent runs, for example through `int-wiro-aimodels`, is billed separately: Wiro charges it to the wallet of the workspace that owns the agent's Wiro API key at the model's usual price, passed through unchanged. That run shows up as an ordinary `tool_completed` event with no credit figure; its cost is the task's `totalcost` (see [Billing & Cost](/docs/tasks#task-billing)).
+> **Credits vs. wallet.** An agent's own credits are spent once per LLM turn: each `token_usage` event is one billed turn, and its `tokencost` is in credits (100 credits = $1). A Wiro model the agent runs, for example for its video skill or through the `wiro` connector, is billed separately: Wiro charges it to the wallet of the workspace that owns the agent's Wiro API key at the model's usual price, passed through unchanged. That run shows up as an ordinary `tool_completed` event with no credit figure; its cost is the task's `totalcost` (see [Billing & Cost](/docs/tasks#task-billing)).
 
 ### Who-did-what rows
 
@@ -139,10 +139,12 @@ A `token_usage` event records the token spend and credit deduction for one bille
 | `AGENT_SETTINGS_UPDATED` | `Agent settings updated: timezone Europe/Istanbul`, `Agent settings updated: screen off` |
 | `AGENT_TRANSFERRED` | `Agent moved to a team workspace`, `Agent moved to the personal workspace`; the system's rows when the agent's team or organization is deleted read `Agent moved to the personal workspace: its team was deleted` and `Agent moved to the personal workspace: its organization was deleted` |
 | `AGENT_INSTRUCTION_ADDED`, `AGENT_INSTRUCTION_UPDATED`, `AGENT_INSTRUCTION_RENAMED`, `AGENT_INSTRUCTION_DELETED`, `AGENT_INSTRUCTION_REVERTED` | `Custom skill added: cs-brand-voice`, `Scheduled task updated: cs-cron-blog-scanner (text, schedule 0 9 * * 1)`, `Custom skill renamed: cs-brand-voice to cs-house-style`, `Scheduled task deleted: cs-cron-blog-scanner`, `Custom skill reverted to its preset: cs-brand-voice` |
-| `AGENT_SKILLS_UPDATED` | `Connectors updated: int-gmail-check on`, `Skills updated: util-web-channel off`, `Connectors and skills updated: int-gmail-check on, util-web-channel off` |
+| `AGENT_SKILLS_UPDATED` | `Skills updated: util-web-channel off` |
 | `AGENT_CREDENTIAL_SAVED` | `Connector setting saved: wiro.apikey` |
-| `AGENT_CREDENTIAL_REMOVED` | `Disconnected: serper` (a disconnect card from chat removed the connector's saved key) |
-| `AGENT_OAUTH_CONNECT_STARTED`, `AGENT_OAUTH_CONNECTED`, `AGENT_OAUTH_DISCONNECTED` | `Connection started: instagram (own)`, `Connected: instagram`, `Disconnected: instagram` |
+| `AGENT_CREDENTIAL_REMOVED` | `Disconnected: telegram` (a disconnect card from chat removed a credential's saved key) |
+| `CONNECTOR_CONNECTED`, `CONNECTOR_DISCONNECTED` | `Connector connected: serper`, `Connector disconnected: serper` (see [Agent Connectors](/docs/agent-connectors)) |
+| `CONNECTOR_ACCOUNTS_SET` | `Connector accounts set: facebook-pages` |
+| `CONNECTOR_REAUTH` | `Connector needs to be connected again: facebook-pages` (written by Wiro when a sign-in expired or was revoked) |
 | `AGENT_PLAN_STARTED`, `AGENT_PLAN_RENEWED`, `AGENT_PLAN_CANCELLED`, `AGENT_PLAN_RESUMED` | `Starter plan started: $5.00 charged`, `Starter plan renewed: $5.00 charged`, `Plan cancelled, ends 2026-06-01`, `Plan cancellation undone` |
 | `AGENT_TIER_UPGRADED` | `Plan upgraded from Starter to Pro; $12.50 charged` |
 | `AGENT_PLAN_CHANGE_SCHEDULED`, `AGENT_PLAN_CHANGE_CANCELLED` | `Plan change scheduled: Pro to Starter on 2026-06-01`, `Scheduled plan change cancelled: stays on Pro` |

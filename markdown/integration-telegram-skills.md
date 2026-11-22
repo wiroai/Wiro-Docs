@@ -145,7 +145,7 @@ the shared direct-message conversation.
 
 ## Related
 
-- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Credentials](/docs/agent-credentials)
 - [Agent Overview](/docs/agent-overview)
 - [Agent Skills](/docs/agent-skills)
 - [Telegram Bot API docs](https://core.telegram.org/bots/api)

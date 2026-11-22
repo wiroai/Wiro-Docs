@@ -93,7 +93,7 @@ Build a fully branded chat experience with no Wiro UI visible to your users.
 The deploy flow has three stages: Deploy, Setup (only when the agent has connectors to set up), and Start.
 
 1. **Deploy** an agent via `POST /UserAgent/Deploy`: returns `useragents[0].guid` and starts the instance in `status: 6` (setup-required). A prepaid Deploy then queues it (`status: 2`) once its subscription is provisioned. Send `"chatsetup": "off"` too, so your users' messages can't change the agent's setup; make setup changes from your own backend.
-2. **Setup** the connectors (only if the agent template requires them) via one or more `POST /UserAgent/CredentialUpsert` calls, `POST /UserAgent/CredentialProjectBind` for the Wiro project, and the matching OAuth flows (see [Agent Credentials & OAuth](/docs/agent-credentials)). These calls don't change `status`: on an agent still at `status: 6`, call `POST /UserAgent/Update` with `{ "guid": "<useragent-guid>" }` after the last one and check `setuprequired` on its response. While it's `true`, the agent cannot start. Once all required connectors are set up, that call flips `setuprequired` to `false` and `status` to `0`. For Pattern 2 (knowledge-base / chat-only agents) there are no connectors to set up, so this stage is skipped and the agent is ready to start right after Deploy.
+2. **Setup** the connectors and credentials (only if the agent template needs them): connect the services it works with through [Agent Connectors](/docs/agent-connectors) (`POST /UserAgent/ConnectorConnect`, with fields or the vendor's sign-in), and save channels with `POST /UserAgent/CredentialUpsert` and the Wiro project with `POST /UserAgent/CredentialProjectBind` (see [Agent Credentials](/docs/agent-credentials)). These calls don't change `status`: on an agent still at `status: 6`, call `POST /UserAgent/Update` with `{ "guid": "<useragent-guid>" }` after the last one and check `setuprequired` on its response. While it's `true`, the agent cannot start. Once all required connectors are set up, that call flips `setuprequired` to `false` and `status` to `0`. For Pattern 2 (knowledge-base / chat-only agents) there are no connectors to set up, so this stage is skipped and the agent is ready to start right after Deploy.
 3. **Start**: a prepaid Deploy already queued the agent, and it goes through `status: 3` (starting) → `status: 4` (running). Call `POST /UserAgent/Start` when it is stopped (`status: 0`, for example after `Update` moved it out of `status: 6`) or errored (`status: 5`).
 4. Build your own chat UI.
 5. Send messages via `POST /UserAgent/Message/Send`.
@@ -171,7 +171,7 @@ A richer variant of white-label chat: besides replying with text, the agent **ge
 
 **Shape:**
 
-- One deployed agent that has the `int-wiro-aimodels` skill enabled, with its Wiro AI Models connector set to your Wiro project (see [Agent Credentials](/docs/agent-credentials#wiro-ai-models-wiro-credential)). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
+- One deployed agent whose Wiro project is set to your project (see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)), or that has the `wiro` connector connected to it (see [The Wiro connector](/docs/agent-connectors#the-wiro-connector)). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
 - One `sessionkey` per end user (Pattern 2 above): the same agent instance serves everyone; each user's chat and media history is isolated by session.
 - A single WebSocket connection carries three things at once: the streaming chat reply, the per-turn token-usage report, and discovery of any model runs the agent launches.
 
@@ -232,7 +232,7 @@ Wiro provides pre-built agent templates you can deploy immediately. Each agent s
 | **[App Event Manager](https://wiro.ai/agents/app-event-manager)** | Scan global holidays, suggest and create App Store + Google Play in-app events | App Store Connect (JWT), Google Play (service account), Calendarific (API key) |
 | **[Push Notification Manager](https://wiro.ai/agents/push-notification-manager)** | Craft locale- and timezone-aware push notifications, queue dispatch | Firebase (service account JSON per app), Calendarific (API key) |
 | **[Voice Receptionist](https://wiro.ai/agents/voice-receptionist)** | Answer phone calls 24/7 with a real-time AI receptionist: recognises callers from CRM, books from your calendar, drafts CRM notes + follow-up emails, streams a live transcript to chat | Twilio Voice (Account SID, Auth Token, phone number) for inbound phone; HubSpot (optional, caller recognition); Google Calendar (optional, slot lookup); Google Drive (optional); Brevo or HubSpot (any one, optional, follow-up email drafts); Telegram bot (optional, operator approvals) |
-| **[Video Creator](https://wiro.ai/agents/video-creator)** | Turn a website, web app, store listing, document or product photos into a share-ready video with real screens, voice-over, music and captions | Wiro project (the video's model runs are billed to its wallet); [YouTube](/docs/integration-youtube-skills) and [Instagram](/docs/integration-instagram-skills) (optional, to publish finished videos); Telegram bot (optional) |
+| **[Video Creator](https://wiro.ai/agents/video-creator)** | Turn a website, web app, store listing, document or product photos into a share-ready video with real screens, voice-over, music and captions | Wiro project (the video's model runs are billed to its wallet); the [YouTube](https://wiro.ai/connectors/youtube) and [Instagram](https://wiro.ai/connectors/instagram) connectors (optional, to publish finished videos); Telegram bot (optional) |
 
 > The list above matches the agent templates currently deployed in production. The exact set evolves over time as new templates ship, so fetch `POST /Agent/List` for the live catalog. Each agent's full marketing page lives at `https://wiro.ai/agents/{slug}` (linked in the first column).
 
@@ -267,14 +267,15 @@ deploy = requests.post(
 )
 useragent_guid = deploy.json()["useragents"][0]["guid"]
 
-# Connect Twitter via the unified OAuth flow
+# Connect X with your own X app (see Agent Connectors)
 connect = requests.post(
-    "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect",
+    "https://api.wiro.ai/v1/UserAgent/ConnectorConnect",
     headers=headers,
     json={
         "useragentguid": useragent_guid,
-        "credentialkey": "twitter",
-        "redirecturl": "https://your-app.com/settings?connected=twitter"
+        "slug": "twitter",
+        "values": {"clientid": "YOUR_X_CLIENT_ID", "clientsecret": "YOUR_X_CLIENT_SECRET"},
+        "redirecturl": "https://your-app.com/settings?slug=twitter"
     }
 )
 authorize_url = connect.json()["authorizeUrl"]

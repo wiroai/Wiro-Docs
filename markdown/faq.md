@@ -108,4 +108,4 @@ Yes. In the Wiro panel, the people who manage an agent can open its Screen besid
 
 ### How do I connect third-party services to an agent?
 
-Agents connect to services like Twitter, Instagram, Google Ads, and HubSpot via OAuth or API keys. Use `POST /UserAgentOAuth/OAuthConnect` with the provider's `credentialkey` to initiate OAuth flows, or set API keys via `/UserAgent/CredentialUpsert`. See [Agent Credentials & OAuth](/docs/agent-credentials). You can also ask the agent in its chat: it proposes a setup card, and an agent admin approves it and gives the key, which the agent never sees. See [Setup From Chat](/docs/agent-messaging#setup-from-chat).
+Agents connect to services like X, Instagram, Google Ads, and HubSpot through connectors, with your customer's own API keys or the vendor's sign-in. Browse them with `POST /AgentConnector/List` and connect one with `POST /UserAgent/ConnectorConnect`. See [Agent Connectors](/docs/agent-connectors). You can also ask the agent in its chat: it proposes a setup card, and an agent admin approves it and gives the key, which the agent never sees. See [Setup From Chat](/docs/agent-messaging#setup-from-chat).

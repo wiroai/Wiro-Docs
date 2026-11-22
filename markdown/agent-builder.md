@@ -1,6 +1,6 @@
 # Agent Builder
 
-Build a custom agent from scratch: no marketplace template required. Pick your own skill set and a plan, and deploy in one call.
+Build a custom agent from scratch: no marketplace template required. Pick your own skill set and a plan, deploy in one call, then connect the services it works with.
 
 ## Overview
 
@@ -9,9 +9,9 @@ Wiro's agent runtime supports two deploy paths:
 | Path | When to use | Endpoint |
 |------|-------------|----------|
 | **Template deploy** | The marketplace already has an agent that does what you need (Instagram Manager, Push Notifications, App Review Support, …). You inherit the template's default skill set + configuration. | `POST /UserAgent/Deploy` with `agentguid` |
-| **Custom build** | You want a unique skill combination: for example a custom support bot that watches Gmail, publishes a daily digest to WordPress, and uses Wiro's image generator. No marketplace template fits. | `POST /UserAgent/Deploy` with `custom: true` |
+| **Custom build** | You want a unique combination: for example a research writer that searches the web with Serper, drafts posts on WordPress and reports to Telegram. No marketplace template fits. | `POST /UserAgent/Deploy` with `custom: true` |
 
-The two paths produce the **same useragent shape** at the end (same `customskills`, `scheduledskills`, `credentials`, `subscription`, `tokenRates`, etc.). The only differences are:
+The two paths produce the **same useragent shape** at the end (same `customskills`, `scheduledskills`, `credentials`, `subscription`, `tokenRates`, etc.), and both connect the services they work with the same way, after Deploy, through [Agent Connectors](/docs/agent-connectors). The only differences are:
 
 | Aspect | Template deploy | Custom build |
 |--------|-----------------|--------------|
@@ -25,22 +25,22 @@ Both paths are sold on the same three plans, Starter at $5, Pro at $30 and Max a
 
 ## Step 1: Browse Available Skills
 
-Custom builds start from the **skill registry**, the catalogue of every skill the platform supports. Browse it with [`POST /Skills/List`](/docs/agent-skills#post-skillslist) and inspect details with [`POST /Skills/Detail`](/docs/agent-skills#post-skillsdetail).
+Custom builds start from the **skill registry**, the catalogue of every Skill the platform supports: rule sets, playbooks and keyless tools such as weather and diagrams. Browse it with [`POST /Skills/List`](/docs/agent-skills#post-skillslist) and inspect details with [`POST /Skills/Detail`](/docs/agent-skills#post-skillsdetail). The outside services the agent works with are connectors, which you pick from the [connector catalog](#step-1c-pick-the-connectors) and connect after Deploy.
 
 Both endpoints are **public, so no authentication is required.**
 
 ```bash
-# Browse all integration skills
+# Browse every Skill
 curl -X POST "https://api.wiro.ai/v1/Skills/List" \
   -H "Content-Type: application/json" \
-  -d '{ "category": "int" }'
+  -d '{ "category": "util" }'
 ```
 
 Pick the skill names you want to enable. Each skill descriptor tells you:
 
 - `name`: the canonical skill key you'll send in `skills` / `skillOverrides`
-- `category`: `int` (integration with a third-party service) or `util` (utility, no credential to connect)
-- `credential_key`: which credential the skill needs (`null` for `util` or platform-managed skills)
+- `category`: `util`, for every registry skill
+- `credential_key`: which credential the skill needs, or `null` (most skills need none)
 - `requires_credentials`: boolean, whether the user must supply a credential before the skill can run
 - `depends_on`: array of skill names that must also be enabled (Wiro auto-enables transitive deps)
 - `conflicts_with`: array of skill names that cannot coexist with this one
@@ -93,6 +93,18 @@ separate enablement parameter: pass a complete channel group in Deploy's
 all `required_fields` are complete. Channels do not add skills or change agent
 pricing.
 
+## Step 1c: Pick the Connectors
+
+The services the agent works with are connectors from the public catalog: [`POST /AgentConnector/List`](/docs/agent-connectors#post-agentconnectorlist), no API key needed. Each row shows its Connect fields (`credentialfields`), whether it signs in with the vendor (`authtype` `provider-oauth` or `oauth`), its account pickers and its tools.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/AgentConnector/List" \
+  -H "Content-Type: application/json" \
+  -d '{ "search": "wordpress" }'
+```
+
+Connectors are not part of Deploy and don't change the price: you connect them to the deployed agent in [Step 3b](#step-3b-connect-the-connectors).
+
 ## Step 2: Preview the Build
 
 Before you commit, resolve the proposed skill set and see the plans with [`POST /UserAgent/PricingPreview`](/docs/agent-overview#post-useragentpricingpreview). The **draft** mode runs without touching any DB state.
@@ -104,7 +116,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
   -d '{
     "draft": true,
     "tier": "pro",
-    "skills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels"]
+    "skills": ["util-anti-ai-human-copy", "util-chat-markdown-reporting"]
   }'
 ```
 
@@ -118,12 +130,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
   "totalPriceUsd": 30,
   "totalMonthlyCredits": 3000,
   "skillBreakdown": [
-    { "skill": "int-gmail-check",     "priceUsd": 0, "credits": 0, "billing_model": "tokens" },
-    { "skill": "int-wordpress-post",  "priceUsd": 0, "credits": 0, "billing_model": "tokens" },
-    { "skill": "int-wiro-aimodels",   "priceUsd": 0, "credits": 0, "billing_model": "tokens" }
+    { "skill": "util-anti-ai-human-copy",      "priceUsd": 0, "credits": 0, "billing_model": "tokens" },
+    { "skill": "util-chat-markdown-reporting", "priceUsd": 0, "credits": 0, "billing_model": "tokens" }
   ],
-  "enabledSkills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels"],
-  "directSkills":  ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels"],
+  "enabledSkills": ["util-anti-ai-human-copy", "util-chat-markdown-reporting"],
+  "directSkills":  ["util-anti-ai-human-copy", "util-chat-markdown-reporting"],
   "tokenRates": {
     "default_model": "openai/gpt-5.6-sol",
     "fallback_rate": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25 },
@@ -169,17 +180,15 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "custom": true,
-    "title": "Inbox Watcher",
-    "description": "Watches inbound Gmail and forwards a summary to Telegram every 4 hours.",
+    "title": "Research Writer",
+    "description": "Researches a topic with Serper every Monday, drafts a WordPress post and reports to Telegram.",
     "useprepaid": true,
     "tier": "pro",
     "skills": {
-      "int-gmail-check":    true,
-      "int-wordpress-post":  true,
-      "int-wiro-aimodels": true
+      "util-anti-ai-human-copy":      true,
+      "util-chat-markdown-reporting": true
     },
     "credentials": {
-      "gmail":    { "account": "agent@company.com", "apppassword": "xxxx xxxx xxxx xxxx" },
       "telegram": {
         "bottoken": "123456:ABC-DEF...",
         "allowedusers": ["123456789"]
@@ -187,12 +196,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
     },
     "customskills": [
       {
-        "key": "cs-cron-summarize-inbox",
-        "value": "Every 4 hours, scan all unread Gmail messages from the past 4 hours, summarize each in 1 sentence, and post the digest to Telegram.",
-        "interval": "0 */4 * * *",
+        "key": "cs-cron-weekly-research",
+        "value": "Every Monday, research this week's topic with serper__web_search, write a 600-word article, save it as a WordPress draft with the WordPress connector's tools (wordpress__*), and post the draft link to Telegram.",
+        "interval": "0 9 * * 1",
         "enabled": true,
         "_user_created": true,
-        "description": "Inbox summary digest"
+        "description": "Weekly research and draft"
       }
     ]
   }'
@@ -208,8 +217,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
     {
       "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
       "agentguid": null,
-      "title": "Inbox Watcher",
-      "description": "Watches inbound Gmail and forwards a summary to Telegram every 4 hours.",
+      "title": "Research Writer",
+      "description": "Researches a topic with Serper every Monday, drafts a WordPress post and reports to Telegram.",
       "tier": "pro",
       "status": 2,
       "setuprequired": false,
@@ -235,13 +244,13 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
         "voicePrepModel": "openai/gpt-5.4-mini",
         "voicePostcallModel": "openai/gpt-5.4"
       },
-      "skills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels"],
+      "skills": ["util-anti-ai-human-copy", "util-chat-markdown-reporting"],
       "customskills": [],
       "scheduledskills": [
         {
-          "key": "cs-cron-summarize-inbox",
-          "value": "Every 4 hours, scan all unread Gmail messages from the past 4 hours, summarize each in 1 sentence, and post the digest to Telegram.",
-          "interval": "0 */4 * * *",
+          "key": "cs-cron-weekly-research",
+          "value": "Every Monday, research this week's topic with serper__web_search, write a 600-word article, save it as a WordPress draft with the WordPress connector's tools (wordpress__*), and post the draft link to Telegram.",
+          "interval": "0 9 * * 1",
           "enabled": true,
           "_source": "user-created",
           "_editable": true,
@@ -254,12 +263,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
       "enabledChannels": ["telegram"],
       "teamsessionmode": "private",
       "credentials": {
-        "gmail":    { "_connected": false, "optional": false, "extra": false, "account": "agent@company.com", "apppassword": "••••••••" },
         "telegram": { "_connected": false, "optional": false, "extra": false, "bottoken": "••••••••", "allowedusers": ["123456789"] }
       },
       "agent": {
         "custom": true,
-        "title": "Inbox Watcher",
+        "title": "Research Writer",
         "tiers": {
           "starter": { "priceUsd": 5,   "credits": 500 },
           "pro":     { "priceUsd": 30,  "credits": 3000 },
@@ -288,7 +296,33 @@ Notes on the response:
 - `scheduledskills` already contains the cron from the Deploy body. Deploy stores each `customskills` key in its full form, as `CustomSkillUpsert` does: a bare slug with an `interval` becomes `cs-cron-<slug>`, one without becomes `cs-<slug>`, and a key that isn't a slug fails the deploy before anything is created or charged.
 - `status: 2` means Deploy auto-queued the instance because `useprepaid: true` provisioned a subscription in the same call. Wiro starts the agent from the queue; you do **not** need to call `POST /UserAgent/Start` after a prepaid deploy.
 - Communication-channel credentials are validated independently from `skills`. Every channel group present in `credentials` must contain all of its `required_fields` or Deploy fails without leaving a partial agent behind.
-- The Gmail app password and the Telegram bot token you sent come back as `"••••••••"`: like `UserAgent/Detail`, the response shows a saved secret only as the mask.
+- The Telegram bot token you sent comes back as `"••••••••"`: like `UserAgent/Detail`, the response shows a saved secret only as the mask.
+
+## Step 3b: Connect the Connectors
+
+Connect each service to the new agent with [`POST /UserAgent/ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect), with your customer's own credentials. Serper and WordPress take fields:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "slug": "serper",
+    "values": { "apikey": "YOUR_SERPER_API_KEY" }
+  }'
+
+curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "slug": "wordpress",
+    "values": { "url": "https://blog.example.com", "user": "admin", "apppassword": "xxxx xxxx xxxx xxxx" }
+  }'
+```
+
+Each answers `status: "connected"` and restarts the running agent, which then has the connector's tools (`serper__web_search`, `wordpress__*`) that the scheduled task above names. A connector that signs in with its vendor answers an `authorizeUrl` instead: see [Connect with a sign-in](/docs/agent-connectors#connect-with-a-sign-in). Check every connection with [`POST /UserAgent/ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist).
 
 ## Step 4: Refine Skills After Deploy
 
@@ -304,7 +338,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
     "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
     "idempotencyKey": "550e8400-e29b-41d4-a716-446655440001",
     "skills": {
-      "int-instagram-post": true
+      "util-weather": true
     }
   }'
 ```
@@ -336,7 +370,7 @@ The response confirms the skill set and the restart:
     "stripeProrationApplied": false,
     "prepaidWalletDelta": null,
     "usedCreditsUsd": 0,
-    "enabledSkills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels", "int-instagram-post"]
+    "enabledSkills": ["util-anti-ai-human-copy", "util-chat-markdown-reporting", "util-weather"]
   }
 }
 ```
@@ -355,11 +389,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
     "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
     "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000",
     "skills": {
-      "int-gmail-check":     true,
-      "int-wordpress-post":  true,
-      "int-wiro-aimodels":  true,
-      "int-instagram-post":  true,
-      "int-metaads-manage":  false
+      "util-anti-ai-human-copy":      true,
+      "util-chat-markdown-reporting": true,
+      "util-weather":                 true,
+      "util-diagram":                 false
     }
   }'
 ```
@@ -368,31 +401,34 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
 
 ## Common Recipes
 
-### A. Email-driven Telegram digest
+Each recipe is a Deploy body, followed by the connectors to connect once the agent exists.
+
+### A. Telegram news digest
 
 ```json
 {
   "custom": true,
-  "title": "Email Digest Bot",
+  "title": "News Digest Bot",
   "useprepaid": true,
   "tier": "starter",
-  "skills": { "int-gmail-check": true, "int-wordpress-post": true },
+  "skills": { "util-chat-markdown-reporting": true },
   "credentials": {
-    "gmail":    { "account": "agent@company.com", "apppassword": "xxxx xxxx xxxx xxxx" },
     "telegram": { "bottoken": "123456:ABC-DEF...", "allowedusers": ["123456789"] }
   },
   "customskills": [
     {
-      "key": "cs-cron-email-digest",
-      "value": "Twice a day, summarize unread Gmail messages in one Telegram message.",
+      "key": "cs-cron-news-digest",
+      "value": "Twice a day, search the news about our market with serper__web_search and post a five-line summary to Telegram.",
       "interval": "0 9,17 * * *",
       "enabled": true,
       "_user_created": true,
-      "description": "Daily email digest"
+      "description": "Daily news digest"
     }
   ]
 }
 ```
+
+Then connect `serper` with its API key.
 
 ### B. WordPress publisher with weekly research
 
@@ -402,9 +438,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   "title": "Blog Research & Publish",
   "useprepaid": true,
   "tier": "pro",
-  "skills": { "int-wordpress-post": true, "int-wiro-aimodels": true },
+  "skills": { "util-anti-ai-human-copy": true },
   "credentials": {
-    "wordpress":   { "url": "https://blog.example.com", "user": "admin", "apppassword": "xxxx xxxx xxxx xxxx" },
     "var-website": { "urls": "[{\"websitename\":\"Wired\",\"url\":\"https://www.wired.com/feed/rss\"}]" }
   },
   "customskills": [
@@ -415,7 +450,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
     },
     {
       "key": "cs-cron-weekly-blog",
-      "value": "Every Monday morning, scan the websites listed under your var-website credential, draft one 600-word article, and publish to WordPress as a draft.",
+      "value": "Every Monday morning, scan the websites listed under your var-website credential, draft one 600-word article, and save it as a WordPress draft with the WordPress connector's tools.",
       "interval": "0 9 * * 1",
       "enabled": true,
       "_user_created": true,
@@ -424,6 +459,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   ]
 }
 ```
+
+Then connect `wordpress` with its site address, user name and application password.
 
 ### C. Multi-channel social poster
 
@@ -434,17 +471,14 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   "useprepaid": true,
   "tier": "pro",
   "skills": {
-    "int-twitterx-post":   true,
-    "int-instagram-post":  true,
-    "int-linkedin-post":   true,
-    "int-facebookpage-post": true,
-    "int-wiro-aimodels":  true
+    "util-social-posting-common": true,
+    "util-anti-ai-human-copy":    true
   },
   "credentials": {}
 }
 ```
 
-OAuth providers are connected later via `POST /UserAgentOAuth/OAuthConnect` with the provider's `credentialkey` (see [Agent Credentials](/docs/agent-credentials)).
+Then connect `twitter`, `instagram`, `linkedin` and `facebook-pages`. Each signs in with its vendor, with an app of your own: [`ConnectorConnect`](/docs/agent-connectors#connect-with-a-sign-in) answers an `authorizeUrl` for your customer to open, and the Pages or accounts to post to are picked afterwards with [account pickers](/docs/agent-connectors#account-pickers).
 
 ## Subscription & Billing for Custom Builds
 
@@ -467,7 +501,8 @@ Turning a skill on or off never changes the subscription: the plan's price and c
 
 ## What's Next
 
-- [Agent Skills](/docs/agent-skills): Discover the skill registry, browse credentials per skill, and configure preferences + scheduled tasks
-- [Agent Credentials](/docs/agent-credentials): Connect OAuth providers and set API-key credentials
+- [Agent Connectors](/docs/agent-connectors): Connect the services the agent works with
+- [Agent Skills](/docs/agent-skills): Discover the skill registry and configure preferences + scheduled tasks
+- [Agent Credentials](/docs/agent-credentials): Channels, the Wiro project and settings
 - [Agent Messaging](/docs/agent-messaging): Chat with your custom agent
 - [Agent Transactions](/docs/agent-transactions): Audit credit deductions, renewals, and grants

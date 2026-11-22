@@ -79,7 +79,7 @@ A wallet plan renews every 30 days, and a plan paid by card in the Wiro dashboar
 
 ### What a Plan Includes
 
-Every skill and connector works on every plan. Turning a skill on or off with [`SkillsApply`](#post-useragentskillsapply) is free: the plan's price and credits stay as they are. The work a skill does still uses credits, since its replies and scheduled tasks are agent turns billed by tokens like any other. A skill that runs Wiro models, such as `int-wiro-aimodels` or `util-video-creator`, pays for those runs from the wallet of the Wiro project you connect to the agent.
+Every skill and connector works on every plan. Turning a skill on or off with [`SkillsApply`](#post-useragentskillsapply) is free: the plan's price and credits stay as they are. The work a skill does still uses credits, since its replies and scheduled tasks are agent turns billed by tokens like any other. A skill that runs Wiro models, such as `util-video-creator`, pays for those runs from the wallet of the Wiro project you connect to the agent. Connectors are included too: connecting one never changes the plan's price (see [Agent Connectors](/docs/agent-connectors)).
 
 ### Disk Space
 
@@ -144,7 +144,7 @@ Cache-read and cache-write categories are charged only when the selected model r
 
 When the credit pool is exhausted, [`POST /UserAgent/Message/Send`](/docs/agent-messaging#post-useragentmessagesend) and [`POST /UserAgent/Start`](#post-useragentstart) refuse with an `Agent has no remaining credits…` error plus an `agentbalance` snapshot; renew the subscription or buy an extra credit pack to continue.
 
-> **Voice realtime audio is billed separately.** Live voice-call audio (for `util-voice-receptionist` agents) is **not** charged to the platform credit pool. It is billed to the operator's own Wiro wallet through the `int-wiro-aimodels` skill, the Wiro AI Models connector (you bring your own Wiro API key). The voice-prep turn before the call and the post-call text turn are billed as normal token deducts.
+> **Voice realtime audio is billed separately.** Live voice-call audio (for `util-voice-receptionist` agents) is **not** charged to the platform credit pool. It is billed to the wallet of the agent's Wiro project (the `wiro` credential, see [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project)). The voice-prep turn before the call and the post-call text turn are billed as normal token deducts.
 
 ### Live Pricing Preview
 
@@ -156,7 +156,7 @@ Deploying and running an agent follows this flow:
 
 1. **Browse**: call `POST /Agent/List` to discover available agents in the catalog
 2. **Deploy**: call `POST /UserAgent/Deploy` with `useprepaid: true` and `tier` (`"starter"`, `"pro"` or `"max"`). The plan's price is debited from your prepaid wallet immediately and a 30-day subscription row is created.
-3. **Configure**: set integration and optional Telegram, Slack, or Discord credentials with `POST /UserAgent/CredentialUpsert` or the OAuth flow, connect the Wiro project the agent runs models with using `POST /UserAgent/CredentialProjectBind`, and set preferences with `POST /UserAgent/CustomSkillUpsert`. An agent admin can also approve the setup cards the agent proposes in its chat (see [Setup From Chat](/docs/agent-messaging#setup-from-chat)). See [Agent Credentials](/docs/agent-credentials) for details
+3. **Configure**: connect the services the agent works with through [Agent Connectors](/docs/agent-connectors) (`POST /UserAgent/ConnectorConnect`), set optional Telegram, Slack, or Discord credentials with `POST /UserAgent/CredentialUpsert`, connect the Wiro project the agent runs models with using `POST /UserAgent/CredentialProjectBind`, and set preferences with `POST /UserAgent/CustomSkillUpsert`. An agent admin can also approve the setup cards the agent proposes in its chat (see [Setup From Chat](/docs/agent-messaging#setup-from-chat)). See [Agent Credentials](/docs/agent-credentials) for details
 4. **Start**: the prepaid Deploy already queued the agent, and Wiro starts it. Call `POST /UserAgent/Start` only for a stopped (status `0`) or errored (status `5`) agent
 5. **Running**: the agent starts and becomes available for conversation
 6. **Chat**: send messages via `POST /UserAgent/Message/Send`. See [Agent Messaging](/docs/agent-messaging) for the full messaging API
@@ -181,9 +181,9 @@ When you mutate an agent's configuration while it is **starting** (status `3`) o
 
 This means you can update credentials, toggle skills, or change a custom skill on a running agent without manually stopping and starting it.
 
-These calls restart a starting or running agent when they change something: `CredentialUpsert` (except the sign-in case below), `CredentialFileUpload`, `CredentialProjectBind` (when the project changes), an OAuth sign-in, direct `OAuthConnect` probe or `SetPickerAccounts` save that completes a connection, `OAuthDisconnect` (when it removes a token or the connection was complete), `SkillsApply`, `SkillToggle`, `CustomSkillUpsert` (a new custom skill or scheduled task, a new `interval`, an `enabled` change, or a change to `cs-approval-policy`), `CustomSkillRename`, `CustomSkillDelete`, `CustomSkillRevert`, `UpdateSettings` (a new time zone, Chat Mode, model, slash-command list or Wiro API path list, or turning `chatsetup` on or off), `Update` (a changed `title`, or a body that names no field), and a setup card applied from chat (see [Setup From Chat](/docs/agent-messaging#setup-from-chat)). [`ResetBrowser`](#post-useragentresetbrowser) restarts a starting or running agent every time: the browser is reset as the agent starts again. A restart takes about a minute. A change saved while a restart is still stopping or queued loads with that restart instead of starting another one.
+These calls restart a starting or running agent when they change something: `CredentialUpsert`, `CredentialFileUpload`, `CredentialProjectBind` (when the project changes), the connector calls `ConnectorConnect`, `ConnectorSetAccounts` and `ConnectorDisconnect` and a connector's sign-in when it comes back (see [Agent Connectors](/docs/agent-connectors#restarts)), `SkillsApply`, `SkillToggle`, `CustomSkillUpsert` (a new custom skill or scheduled task, a new `interval`, an `enabled` change, or a change to `cs-approval-policy`), `CustomSkillRename`, `CustomSkillDelete`, `CustomSkillRevert`, `UpdateSettings` (a new time zone, Chat Mode, model, slash-command list or Wiro API path list, or turning `chatsetup` on or off), `Update` (a changed `title`, or a body that names no field), and a setup card applied from chat (see [Setup From Chat](/docs/agent-messaging#setup-from-chat)). [`ResetBrowser`](#post-useragentresetbrowser) restarts a starting or running agent every time: the browser is reset as the agent starts again. A restart takes about a minute. A change saved while a restart is still stopping or queued loads with that restart instead of starting another one.
 
-**Sign-in connectors restart the agent once, when the connection is complete.** A connection is complete when its mode has a token and, for a credential with an account picker, at least one account is saved. Saving own-mode app keys, a System User token or `authmethod` with `CredentialUpsert` for a sign-in credential (one with an `oauth_provider`) that isn't connected before or after the save restarts nothing. A first sign-in or token check that leaves accounts to pick restarts nothing, and the `SetPickerAccounts` save restarts the agent once. One with nothing to pick (X, TikTok, LinkedIn, HubSpot, Mailchimp, Reddit, Shopify, an Instagram Login, or a Google account with a single YouTube channel) restarts it when it finishes. A reconnect that keeps the saved accounts restarts it at the sign-in, so the agent loads the new token. Saving the same accounts again restarts nothing, and a failed token check restarts the agent only when it cleared a connection that was complete. While nothing that is on uses the credential, a connection restarts nothing: turning on the connector that uses it restarts the agent once, with the connection. A direct `OAuthConnect` and `SetPickerAccounts` answer `restart` (`"scheduled"` or `"none"`), and `flow.restart` in `OAuthStatus` says what the sign-in did.
+**Connectors restart the agent when the connection changes.** A connect that saves new values or tokens, a new account selection and a disconnect of a connected connector answer `restart: "scheduled"` on a running agent; the same values sent again answer `applied: 0` and restart nothing. A sign-in restarts the agent when it comes back to your `redirecturl` with `connector_connected=true`.
 
 A change to only the text or description of an existing custom skill or scheduled task, through `CustomSkillUpsert` or a setup card, reaches a running agent right away, without a restart. These never restart a running agent: a plan change, a credit pack, a renewal or a cancellation, moving `chatsetup` between `"all"` and `"webchat"`, a `screen` change through `UpdateSettings`, and a description, categories or cover edit through `Update`.
 
@@ -483,84 +483,64 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
           "openai/gpt-5.6-luna": { "input_per_1m": 25, "output_per_1m": 150, "cached_input_per_1m": 2.5, "cache_write_per_1m": 31.25, "selectable": true, "label": "GPT-5.6 Luna", "tier": "cheap" }
         }
       },
-      "skills": ["int-instagram-post", "int-wiro-aimodels"],
+      "skills": ["util-social-posting-common", "util-anti-ai-human-copy"],
       "skillsmeta": {
-        "int-instagram-post": {
-          "name": "int-instagram-post",
-          "title": "Instagram Post",
-          "icon": "https://wiro.ai/images/icons/skills/instagram.svg",
-          "brand_color": "#e4405f",
+        "util-social-posting-common": {
+          "name": "util-social-posting-common",
+          "title": "Social Posting Common Rules",
+          "icon": "lni lni-share-2",
+          "brand_color": "#3b82f6",
           "brand_text_color": "#ffffff",
           "brand_logo_filter": "brightness(0) invert(1)",
-          "category": "int",
-          "docs_url": "integration-instagram-skills",
-          "credential_key": "instagram",
-          "requires_credentials": true,
-          "user_invocable": true,
-          "deprecated": false,
-          "replacement": null,
-          "description": "Post carousel feed and multi-story via Meta Graph API."
-        },
-        "int-wiro-aimodels": {
-          "name": "int-wiro-aimodels",
-          "title": "Wiro AI Models",
-          "icon": "https://wiro.ai/images/icons/skills/wiro.svg",
-          "brand_color": "#00d9a3",
-          "brand_text_color": "#ffffff",
-          "brand_logo_filter": "brightness(0) invert(1)",
-          "category": "int",
+          "category": "util",
           "docs_url": "",
-          "credential_key": "wiro",
-          "requires_credentials": true,
+          "credential_key": null,
+          "requires_credentials": false,
           "user_invocable": true,
           "deprecated": false,
           "replacement": null,
-          "description": "Universal access to every AI model on Wiro: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more."
+          "description": "Shared social manager rules: multi-platform posting orchestration, aspect ratio enforcement, caption compliance. Comes with content scanning and a Scheduled Task for Google Drive assets."
+        },
+        "util-anti-ai-human-copy": {
+          "name": "util-anti-ai-human-copy",
+          "title": "Anti-AI Human Copy",
+          "icon": "lni lni-spellcheck",
+          "brand_color": "#6366f1",
+          "brand_text_color": "#ffffff",
+          "brand_logo_filter": "brightness(0) invert(1)",
+          "category": "util",
+          "docs_url": "",
+          "credential_key": null,
+          "requires_credentials": false,
+          "user_invocable": true,
+          "deprecated": false,
+          "replacement": null,
+          "description": "Tone and craftsmanship rules for content-producing agents: banned generic words, sentence rhythm, copula/filler discipline, read-aloud test."
         }
       },
       "credentials": {
-        "instagram": {
-          "optional": false,
+        "telegram": {
+          "optional": true,
           "extra": false,
-          "_editable": { "appid": true, "appsecret": true, "systemusertoken": true, "accountId": false, "igusername": false },
+          "_editable": { "bottoken": true, "allowedusers": true, "groups": true },
           "_schema": {
-            "title": "Instagram",
-            "icon": "https://wiro.ai/images/icons/skills/instagram.svg",
-            "brand_color": "#e4405f",
+            "title": "Telegram",
+            "icon": "https://wiro.ai/images/icons/skills/telegram.svg",
+            "brand_color": "#24a1de",
             "brand_text_color": "#ffffff",
-            "brand_logo_filter": "none",
-            "docs_url": "integration-instagram-skills",
-            "credential_mode": "hybrid",
-            "connection_modes": ["api_key", "own", "wiro"],
-            "default_connection_mode": "api_key",
-            "mode_badges": { "api_key": "Recommended", "own": "Advanced" },
-            "wiro_connect_pending": true,
-            "channel": null,
-            "oauth_provider": {
-              "auth_method_value": "wiro",
-              "connect_endpoint": "/UserAgentOAuth/OAuthConnect",
-              "disconnect_endpoint": "/UserAgentOAuth/OAuthDisconnect",
-              "status_endpoint": "/UserAgentOAuth/OAuthStatus",
-              "username_field": "igusername",
-              "direct_probe": {
-                "mode": "api_key",
-                "token_field": "systemusertoken",
-                "public_account_fields": ["id", "name"]
-              },
-              "account_picker": {
-                "enabled": true,
-                "multi_select": true,
-                "set_endpoint": "/UserAgentOAuth/SetPickerAccounts",
-                "item_value_field": "accountId",
-                "item_label_field": "igusername"
-              }
+            "brand_logo_filter": "brightness(0) invert(1)",
+            "docs_url": "integration-telegram-skills",
+            "credential_mode": "api_key",
+            "channel": {
+              "id": "telegram",
+              "plugin": "telegram",
+              "required_fields": ["bottoken", "allowedusers"],
+              "capabilities": { "direct": true, "rooms": true, "threads": true, "roles": false, "command_menu": true }
             },
             "fields": [
-              { "key": "appid", "label": "App ID", "type": "text", "required": true, "only_in_modes": ["own"], "pattern": "^[0-9]+$", "oauth_managed": true },
-              { "key": "appsecret", "label": "App Secret", "type": "password", "required": true, "show_toggle": true, "only_in_modes": ["own"], "oauth_managed": true },
-              { "key": "systemusertoken", "label": "System User Token", "type": "password", "required": true, "show_toggle": true, "only_in_modes": ["api_key"] },
-              { "key": "accountId", "label": "Instagram Account ID", "type": "text", "required": true, "readonly_when_connected": true, "pattern": "^[0-9]+$", "auto_filled_by_oauth": true },
-              { "key": "igusername", "label": "Connected Account", "type": "text", "required": false, "readonly_when_connected": true, "auto_filled_by_oauth": true }
+              { "key": "bottoken", "label": "Telegram Bot Token", "type": "password", "required": true, "show_toggle": true },
+              { "key": "allowedusers", "label": "Allowed Telegram DM User IDs", "type": "string-array", "required": true },
+              { "key": "groups", "label": "Allowed Telegram Groups", "type": "object-array", "required": false }
             ]
           }
         }
@@ -584,28 +564,23 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
 
 | Flag | Type | Meaning |
 |------|------|---------|
-| `_connected` | boolean | **Connection readiness indicator.** `true` when Wiro has a validated OAuth or hybrid direct connection and every required picker field (`customerid`, `merchantid`, `channelid`, ad-account, page ID, Instagram account ID, etc.) is populated. Plain API-key and service-account providers that do not write `connectedat` can remain `false`; use `setuprequired` to determine overall setup readiness. |
-| `optional` | boolean | `true` when the template marks this credential as not required for the agent to run. Agents can start even if `optional: true` credentials are empty. On a custom build, each skill's own connector reads `false`, and a connector it lists in `additional_credential_keys` reads `true`, unless another skill on the agent has that connector as its own. A credential nothing on the agent asks for, such as one whose app keys or token were saved before its connector was added, or that stayed after its connector was removed, reads `true`, with `extra: false`. |
+| `_connected` | boolean | **Connection readiness indicator** for a credential whose setup writes a connection time. Plain value credentials, such as the channels, can remain `false`; use `setuprequired` to determine overall setup readiness. A connector's state is its `status` on [`ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist). |
+| `optional` | boolean | `true` when the template marks this credential as not required for the agent to run. Agents can start even if `optional: true` credentials are empty. A credential nothing on the agent asks for reads `true`, with `extra: false`. |
 | `extra` | boolean | `true` when the template groups the credential under "extra integrations" in the UI (disabled by default until the user opts into the skill). |
-| `_editable` | object | Map of `fieldname → true\|false` over the registry schema: `false` for a field the caller can't write (filled by the connection flow, platform-managed, or computed). |
-| `_schema` | object | Inlined registry descriptor: `{ title, icon, brand_color, brand_text_color, brand_logo_filter, docs_url, credential_mode, connection_modes[], default_connection_mode, mode_badges, wiro_connect_pending, channel, oauth_provider, fields[] }`, where `channel` describes a communication channel's connector and is `null` on any other. Lets a UI render the form without a separate `Credentials/Detail` round-trip. |
+| `_editable` | object | Map of `fieldname → true\|false` over the registry schema: `false` for a field the caller can't write (platform-managed or computed). |
+| `_schema` | object | Inlined registry descriptor: `{ title, icon, brand_color, brand_text_color, brand_logo_filter, docs_url, credential_mode, channel, fields[] }`, where `channel` describes a communication channel and is `null` or absent on any other credential. Lets a UI render the form without a separate `Credentials/Detail` round-trip. Other keys are for Wiro's own panel: ignore them. |
 
 **Field redaction in responses:**
 
-- **Saved secrets read as a mask.** A field of type `password` or `fileinput-base64` (an API key, token or password, or an uploaded key file or service account JSON) reads `"••••••••"`, eight `•` characters, once a value is saved on the agent, and `""` while none is. So does such a key in a list's entries, such as `firebase.accounts[].serviceaccountjson` and `adjust.apps[].apptoken`. This holds for every caller, the agent's owner and team admins included. A saved secret can't be read back with an API key, only replaced: send its new value with `CredentialUpsert`. A write that sends the mask back keeps the saved value (see [Field-level write rules](/docs/agent-credentials#field-level-write-rules)). `_connected`, `_filled` and `_required_missing` still count what is saved, and the agent receives the values as before. Other values, such as IDs, names, URLs and selections, show as saved, and so does `credentials.wiro.apikey`, the agent's project key. For a saved Google service account file, the agent's owner and team admins also get `_service_account_email` in the connector's group, which names the account by its email (see [Credential object shape](#credential-object-shape)).
-- `fieldstatus: "oauth_session"` fields (`accesstoken`, `refreshtoken`, `tokenexpiresat`, `pageAccessToken`, etc.) are always stripped from every response.
-- Schema fields marked `runtime_excluded: true`, such as the Instagram and
-  Facebook Pages `systemusertoken`, never reach the agent. A saved one reads as
-  the mask, like every saved secret.
-- `fieldstatus: "platform"` fields (Wiro-managed fields, such as Reddit's three approval flags `developerprofileverified`, `dataapiaccessapproved` and `commercialwrittenapproval`) are stripped from every API response. `credentials.wiro.apikey` and `credentials.calendarific.apikey` are operator-supplied user-input fields and appear in the response with `fieldstatus: "user"` like any other API-key credential: `calendarific.apikey` reads as the mask once saved, and `wiro.apikey` shows as saved.
-- `fieldstatus: "oauth_app"` fields (`clientid` / `clientsecret`, `appid` / `appsecret`) are stripped from Detail responses, even after an own-mode OAuth setup writes them. History writes redact `clientsecret` to `[REDACTED]`.
-- A value the agent template holds on a secret field (one Wiro stores encrypted, such as a key, token, password or service account, or an `oauth_managed` OAuth app key) is not returned: the field reads empty, and a list entry keeps its place with an empty value, until you save your own. The agent still runs with the template's value, and the card's `_filled` and `_required_missing` count it. Values you save yourself come back to the agent's owner and team admins, each secret as the mask.
+- **Saved secrets read as a mask.** A field of type `password` (a bot token, an auth token or a password) reads `"••••••••"`, eight `•` characters, once a value is saved on the agent, and `""` while none is. This holds for every caller, the agent's owner and team admins included. A saved secret can't be read back with an API key, only replaced: send its new value with `CredentialUpsert`. A write that sends the mask back keeps the saved value (see [Field-level write rules](/docs/agent-credentials#field-level-write-rules)). `_connected`, `_filled` and `_required_missing` still count what is saved, and the agent receives the values as before. Other values, such as IDs, names, URLs and selections, show as saved, and so does `credentials.wiro.apikey`, the agent's project key.
+- `fieldstatus: "platform"` fields (Wiro-managed fields) are stripped from every API response. `credentials.wiro.apikey` is an operator-supplied user-input field and appears in the response with `fieldstatus: "user"`, as saved.
+- A value the agent template holds on a secret field (one Wiro stores encrypted, such as a token or password) is not returned: the field reads empty until you save your own. The agent still runs with the template's value, and the card's `_filled` and `_required_missing` count it. Values you save yourself come back to the agent's owner and team admins, each secret as the mask.
 - Sentinel rows `_isoptional` / `_isextra`: never appear as fields; they're folded into the `optional` and `extra` flags above.
 
-A plain member of the agent's team gets the same answer with each saved value replaced by `[present]` and each saved secret by the mask, apart from display-only values such as `igusername` and the `authmethod` switch, which show as saved.
+A plain member of the agent's team gets the same answer with each saved value replaced by `[present]` and each saved secret by the mask.
 
-**Communication channel fields** are returned separately from skill and
-integration credentials:
+**Communication channel fields** are returned separately from the other
+credentials:
 
 | Field | Type | Meaning |
 |-------|------|---------|
@@ -693,21 +668,20 @@ for the channel contract.
 {
   "custom": true,
   "title": "My Custom Sales Agent",
-  "description": "Watches inbound emails and posts a summary to Slack each morning.",
+  "description": "Researches leads and posts a summary to Telegram each morning.",
   "useprepaid": true,
   "tier": "pro",
   "skills": {
-    "int-gmail-check":    true,
-    "int-wiro-aimodels": true
+    "util-chat-markdown-reporting": true,
+    "util-anti-ai-human-copy":      true
   },
   "credentials": {
-    "gmail":    { "account": "agent@company.com", "apppassword": "xxxx xxxx xxxx xxxx" },
     "telegram": { "bottoken": "123456:ABC-DEF...", "allowedusers": ["123456789"] }
   }
 }
 ```
 
-> **Custom builds use the same plans.** There is no marketplace template behind a custom agent, and the skills you pick don't change the price: a custom build pays the plan you pass in `tier`, like a template deploy. [`POST /UserAgent/PricingPreview`](#post-useragentpricingpreview) with `draft: true` resolves the skill set (with `depends_on`) and lists the plans before you call Deploy. Full walkthrough: [Agent Builder](/docs/agent-builder).
+> **Custom builds use the same plans.** There is no marketplace template behind a custom agent, and the skills you pick don't change the price. Connectors are connected after Deploy with [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect): a custom build pays the plan you pass in `tier`, like a template deploy. [`POST /UserAgent/PricingPreview`](#post-useragentpricingpreview) with `draft: true` resolves the skill set (with `depends_on`) and lists the plans before you call Deploy. Full walkthrough: [Agent Builder](/docs/agent-builder).
 
 ##### Template deploy vs custom build: what differs server-side
 
@@ -718,7 +692,7 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
 | Linked marketplace template | Snapshotted from the resolved template | None: no template back-reference |
 | `categories` | Cloned from the agent template | `null` (custom agents have no marketplace categories) |
 | `cover` | Cloned from `agent.cover` automatically | Optional: pass `cover` in the body if you want one |
-| Bundled scheduled tasks | Cloned from the template's preset custom skills | Materialized from the standalone cron registry based on the enabled skill set |
+| Bundled scheduled tasks | Cloned from the template's preset custom skills | Materialized from the standalone cron registry |
 | Onboarding placeholders | None: the template ships its own preset strategies | One invocation-only `cs-my-custom-strategy` and one scheduled `cs-cron-my-scheduled-task` are seeded so the panel always has something to render under "Custom Skills" / "Scheduled Tasks" |
 | Platform-managed credentials | Set up by Wiro | Set up by Wiro |
 | Marketplace run counter | Bumped by 1 | Not touched (custom agents have no template to count against) |
@@ -739,18 +713,18 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
       "description": null,
       "tier": "starter",
       "credentials": {
-        "instagram": {
+        "telegram": {
           "_connected": false,
-          "optional": false,
+          "optional": true,
           "extra": false,
-          "_editable": { "appid": true, "appsecret": true, "systemusertoken": true, "accountId": false, "igusername": false },
-          "_schema": { "title": "Instagram", "credential_mode": "hybrid", "connection_modes": ["api_key", "own", "wiro"], "default_connection_mode": "api_key", "fields": [ "..." ] },
-          "authmethod": "",
-          "igusername": "",
-          "connectedat": ""
+          "_editable": { "bottoken": true, "allowedusers": true, "groups": true },
+          "_schema": { "title": "Telegram", "credential_mode": "api_key", "channel": { "id": "telegram", "required_fields": ["bottoken", "allowedusers"] }, "fields": [ "..." ] },
+          "bottoken": "",
+          "allowedusers": [],
+          "groups": []
         }
       },
-      "skills": ["int-instagram-post", "int-wiro-aimodels"],
+      "skills": ["util-social-posting-common", "util-anti-ai-human-copy"],
       "customskills": [],
       "scheduledskills": [],
       "monthlycredits": 500,
@@ -828,10 +802,10 @@ The Deploy response reflects the same composed shape you get from `UserAgent/Det
 
 Next steps for the API integration flow:
 
-1. Inspect `credentials` in the Deploy response (or call `POST /UserAgent/Detail`) to see each provider's fields, the `optional` / `extra` flags, the registry-driven `_schema`, and the `_connected` OAuth status.
-2. Call `POST /UserAgent/CredentialUpsert` per provider (or in bulk via the `fields[]` array) to write API keys, bot tokens, WordPress credentials, etc. For OAuth providers (Meta, Google Ads, HubSpot, …) use the unified `/UserAgentOAuth/OAuthConnect` flow with `credentialkey` (see [Agent Credentials & OAuth](/docs/agent-credentials)). To connect the Wiro project the agent runs models with, call `POST /UserAgent/CredentialProjectBind`.
+1. Inspect `credentials` in the Deploy response (or call `POST /UserAgent/Detail`) to see each credential's fields, the `optional` / `extra` flags and the registry-driven `_schema`.
+2. Connect the services the agent works with through [Agent Connectors](/docs/agent-connectors): `POST /UserAgent/ConnectorConnect` with a connector's fields, or its vendor's sign-in. Call `POST /UserAgent/CredentialUpsert` for channels and settings (bot tokens, the support email), and `POST /UserAgent/CredentialProjectBind` to connect the Wiro project the agent runs models with.
 3. Call `POST /UserAgent/CustomSkillUpsert` per skill to customize strategy text or cron intervals, if the template exposes any.
-4. Once every non-optional connector is set up, `setuprequired` reads `false`. The start doesn't wait for it: the prepaid Deploy already queued the agent, Wiro starts it from the queue (`2` → `3` (Starting) → `4` (Running)), and a running agent restarts to pick up each connector you save.
+4. Once every non-optional credential is set up, `setuprequired` reads `false`. The start doesn't wait for it: the prepaid Deploy already queued the agent, Wiro starts it from the queue (`2` → `3` (Starting) → `4` (Running)), and a running agent restarts to pick up each connector you connect.
 5. If you want to re-launch a stopped agent (status `0`) or recover an errored one (status `5`), call `POST /UserAgent/Start` explicitly.
 
 ##### Idempotency: duplicate Deploy guard
@@ -923,7 +897,7 @@ Lists all agent instances deployed under your account.
           "max":     { "priceUsd": 100, "credits": 10000 }
         }
       },
-      "enabledSkills": ["int-instagram-post", "int-twitterx-post", "int-wiro-aimodels"],
+      "enabledSkills": ["util-social-posting-common", "util-anti-ai-human-copy", "util-chat-markdown-reporting"],
       "tokenRates": {
         "default_model": "openai/gpt-5.6-sol",
         "fallback_rate": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25 },
@@ -993,106 +967,6 @@ Retrieves full details for a single deployed agent instance, including subscript
       "enabledChannels": [],
       "teamsessionmode": "private",
       "credentials": {
-        "instagram": {
-          "_connected": true,
-          "optional": false,
-          "extra": false,
-          "_editable": {
-            "appid": true,
-            "appsecret": true,
-            "systemusertoken": true,
-            "accountId": false,
-            "igusername": false
-          },
-          "_schema": {
-            "title": "Instagram",
-            "icon": "https://wiro.ai/images/icons/skills/instagram.svg",
-            "brand_color": "#e4405f",
-            "brand_text_color": "#ffffff",
-            "brand_logo_filter": "none",
-            "docs_url": "integration-instagram-skills",
-            "credential_mode": "hybrid",
-            "connection_modes": ["api_key", "own", "wiro"],
-            "default_connection_mode": "api_key",
-            "mode_badges": {
-              "api_key": "Recommended",
-              "own": "Advanced"
-            },
-            "wiro_connect_pending": true,
-            "channel": null,
-            "oauth_provider": {
-              "auth_method_value": "wiro",
-              "connect_endpoint": "/UserAgentOAuth/OAuthConnect",
-              "disconnect_endpoint": "/UserAgentOAuth/OAuthDisconnect",
-              "status_endpoint": "/UserAgentOAuth/OAuthStatus",
-              "direct_probe": {
-                "mode": "api_key",
-                "token_field": "systemusertoken",
-                "public_account_fields": ["id", "name"]
-              },
-              "account_picker": {
-                "enabled": true,
-                "multi_select": true,
-                "set_endpoint": "/UserAgentOAuth/SetPickerAccounts",
-                "item_value_field": "accountId",
-                "item_label_field": "igusername"
-              }
-            },
-            "fields": [
-              {
-                "key": "appid",
-                "label": "App ID",
-                "type": "text",
-                "required": true,
-                "only_in_modes": ["own"],
-                "pattern": "^[0-9]+$",
-                "oauth_managed": true
-              },
-              {
-                "key": "appsecret",
-                "label": "App Secret",
-                "type": "password",
-                "required": true,
-                "show_toggle": true,
-                "only_in_modes": ["own"],
-                "oauth_managed": true
-              },
-              {
-                "key": "systemusertoken",
-                "label": "System User Token",
-                "type": "password",
-                "required": true,
-                "show_toggle": true,
-                "only_in_modes": ["api_key"]
-              },
-              {
-                "key": "accountId",
-                "label": "Instagram Account ID",
-                "type": "text",
-                "required": true,
-                "readonly_when_connected": true,
-                "pattern": "^[0-9]+$",
-                "auto_filled_by_oauth": true
-              },
-              {
-                "key": "igusername",
-                "label": "Connected Account",
-                "type": "text",
-                "required": false,
-                "readonly_when_connected": true,
-                "auto_filled_by_oauth": true
-              }
-            ]
-          },
-          "_required_missing": false,
-          "_filled": true,
-          "authmethod": "api_key",
-          "systemusertoken": "••••••••",
-          "accountId": "17841400000000000",
-          "igusername": "mybrand",
-          "connectedat": "2026-05-01T12:00:00.000Z",
-          "tokenexpiresat": ""
-        },
         "telegram": {
           "_connected": false,
           "optional": true,
@@ -1155,58 +1029,6 @@ Retrieves full details for a single deployed agent instance, including subscript
           "bottoken": "",
           "allowedusers": [],
           "groups": []
-        },
-        "wordpress": {
-          "_connected": false,
-          "optional": false,
-          "extra": false,
-          "_editable": {
-            "url":         true,
-            "user":        true,
-            "apppassword": true
-          },
-          "_schema": {
-            "title": "WordPress",
-            "icon": "https://wiro.ai/images/icons/skills/wordpress.svg",
-            "brand_color": "#21759b",
-            "brand_text_color": "#ffffff",
-            "brand_logo_filter": "brightness(0) invert(1)",
-            "docs_url": "integration-wordpress-skills",
-            "credential_mode": "api_key",
-            "connection_modes": [],
-            "default_connection_mode": null,
-            "mode_badges": {},
-            "wiro_connect_pending": false,
-            "channel": null,
-            "oauth_provider": null,
-            "fields": [
-              {
-                "key": "url",
-                "label": "WordPress URL",
-                "type": "url",
-                "required": true,
-                "placeholder": "https://yourdomain.com"
-              },
-              {
-                "key": "user",
-                "label": "Username",
-                "type": "text",
-                "required": true
-              },
-              {
-                "key": "apppassword",
-                "label": "App Password",
-                "type": "password",
-                "required": true,
-                "show_toggle": true
-              }
-            ]
-          },
-          "_required_missing": true,
-          "_filled": false,
-          "url": "",
-          "user": "",
-          "apppassword": ""
         }
       },
       "customskills": [
@@ -1255,58 +1077,58 @@ Retrieves full details for a single deployed agent instance, including subscript
         }
       ],
       "skills": [
-        { "name": "int-instagram-post", "enabled": true, "_edited": false, "_user_created": false },
-        { "name": "int-twitterx-post",  "enabled": true, "_edited": true,  "_user_created": false },
-        { "name": "int-wiro-aimodels", "enabled": true, "_edited": false, "_user_created": false }
+        { "name": "util-social-posting-common",   "enabled": true, "_edited": false, "_user_created": false },
+        { "name": "util-anti-ai-human-copy",      "enabled": true, "_edited": true,  "_user_created": false },
+        { "name": "util-chat-markdown-reporting", "enabled": true, "_edited": false, "_user_created": false }
       ],
       "skillsmeta": {
-        "int-instagram-post": {
-          "name": "int-instagram-post",
-          "title": "Instagram Post",
-          "icon": "https://wiro.ai/images/icons/skills/instagram.svg",
-          "brand_color": "#e4405f",
+        "util-social-posting-common": {
+          "name": "util-social-posting-common",
+          "title": "Social Posting Common Rules",
+          "icon": "lni lni-share-2",
+          "brand_color": "#3b82f6",
           "brand_text_color": "#ffffff",
           "brand_logo_filter": "brightness(0) invert(1)",
-          "category": "int",
-          "docs_url": "integration-instagram-skills",
-          "credential_key": "instagram",
-          "requires_credentials": true,
-          "user_invocable": true,
-          "deprecated": false,
-          "replacement": null,
-          "description": "Post carousel feed and multi-story via Meta Graph API."
-        },
-        "int-twitterx-post": {
-          "name": "int-twitterx-post",
-          "title": "Twitter / X Post",
-          "icon": "https://wiro.ai/images/icons/skills/twitterx.svg",
-          "brand_color": "#000000",
-          "brand_text_color": "#ffffff",
-          "brand_logo_filter": "brightness(0) invert(1)",
-          "category": "int",
-          "docs_url": "integration-twitter-skills",
-          "credential_key": "twitter",
-          "requires_credentials": true,
-          "user_invocable": true,
-          "deprecated": false,
-          "replacement": null,
-          "description": "Post single tweets or threads with mixed media via TwitterX API v2."
-        },
-        "int-wiro-aimodels": {
-          "name": "int-wiro-aimodels",
-          "title": "Wiro AI Models",
-          "icon": "https://wiro.ai/images/icons/skills/wiro.svg",
-          "brand_color": "#00d9a3",
-          "brand_text_color": "#ffffff",
-          "brand_logo_filter": "brightness(0) invert(1)",
-          "category": "int",
+          "category": "util",
           "docs_url": "",
-          "credential_key": "wiro",
-          "requires_credentials": true,
+          "credential_key": null,
+          "requires_credentials": false,
           "user_invocable": true,
           "deprecated": false,
           "replacement": null,
-          "description": "Universal access to every AI model on Wiro: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more."
+          "description": "Shared social manager rules: multi-platform posting orchestration, aspect ratio enforcement, caption compliance. Comes with content scanning and a Scheduled Task for Google Drive assets."
+        },
+        "util-anti-ai-human-copy": {
+          "name": "util-anti-ai-human-copy",
+          "title": "Anti-AI Human Copy",
+          "icon": "lni lni-spellcheck",
+          "brand_color": "#6366f1",
+          "brand_text_color": "#ffffff",
+          "brand_logo_filter": "brightness(0) invert(1)",
+          "category": "util",
+          "docs_url": "",
+          "credential_key": null,
+          "requires_credentials": false,
+          "user_invocable": true,
+          "deprecated": false,
+          "replacement": null,
+          "description": "Tone and craftsmanship rules for content-producing agents: banned generic words, sentence rhythm, copula/filler discipline, read-aloud test."
+        },
+        "util-chat-markdown-reporting": {
+          "name": "util-chat-markdown-reporting",
+          "title": "Chat Markdown Reporting",
+          "icon": "lni lni-message-3-text",
+          "brand_color": "#14b8a6",
+          "brand_text_color": "#ffffff",
+          "brand_logo_filter": "brightness(0) invert(1)",
+          "category": "util",
+          "docs_url": "",
+          "credential_key": null,
+          "requires_credentials": false,
+          "user_invocable": true,
+          "deprecated": false,
+          "replacement": null,
+          "description": "Structured markdown report format for the chat channel (Telegram / web chat / API chat): tables, code blocks for readability, character limits, split logic. Channel-agnostic."
         }
       },
       "monthlycredits": 3000,
@@ -1447,7 +1269,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `credentials` | `object` | Per-provider credential map keyed by credential name (`instagram`, `telegram`, `wordpress`, …). Each provider object carries its saved field values, every saved secret read as the mask `"••••••••"`, plus a fixed metadata header (see "Credential object shape" below). |
 | `customskills` | `array` | Composed list of preset strategies and **non-cron** custom skills (writable instructions). Each entry: `{ key, description, value, enabled, interval: null, _source, _editable, _edited, _user_created? }`. `_source` ∈ `"preset-strategy"` \| `"user-created"`. |
 | `scheduledskills` | `array` | Composed list of **cron** skills (`cs-cron-*`). Same shape as `customskills` plus `interval` (cron expression). `_source` ∈ `"skill-bundle"` (preset cron) \| `"user-created"`. |
-| `skills` | `array<object>` | Currently-enabled integration skills. Each entry: `{ name, enabled: true, _edited, _user_created }`. Toggle via `SkillsApply` (single-skill or batch). Note: object array (not string array). |
+| `skills` | `array<object>` | Currently-enabled Skills (`util-*`). Each entry: `{ name, enabled: true, _edited, _user_created }`. Toggle via `SkillsApply` (single-skill or batch). Note: object array (not string array). |
 | `skillsmeta` | `object` | Inline registry snapshot keyed by skill name: `title`, `icon`, `brand_color`, `category`, `docs_url`, `credential_key`, `requires_credentials`, `user_invocable`, `description`. Lets the panel render skill chips without a `Skills/List` round-trip. |
 | `communicationChannels` | `array` | Every external channel with this agent's state: `id`, `title`, `credentialkey`, `required_fields`, `capabilities`, `schema`, `enabled`, `configured` and `missingfields`. Also on the `Deploy` and `Update` responses; not on `MyAgents` / `PinnedAgents` rows. |
 | `enabledChannels` | `array<string>` | The ids of the channels in `communicationChannels` that are enabled. Same endpoints. |
@@ -1467,17 +1289,16 @@ Every provider entry under `credentials.<key>` carries:
 
 | Sub-field | Type | Description |
 |-----------|------|-------------|
-| `_connected` | `boolean` | Connection-readiness flag. `true` when Wiro has a validated OAuth or hybrid direct credential and every required picker field is populated. Plain API-key and service-account providers can remain `false`; for those use `_required_missing` or inspect the field values directly. |
-| `optional` | `boolean` | `true` when the agent template marks this credential as optional (the agent can run without it; the dependent skill just won't fire). `false` for required credentials. On a custom build, each skill's own connector reads `false`, and a connector it lists in `additional_credential_keys` reads `true`, unless another skill on the agent has that connector as its own. A credential nothing on the agent asks for, such as one whose app keys or token were saved before its connector was added, or that stayed after its connector was removed, reads `true`, with `extra: false`. |
+| `_connected` | `boolean` | Connection-readiness flag for a credential whose setup writes a connection time. Plain value credentials, such as the channels, can remain `false`; for those use `_required_missing` or inspect the field values directly. A connector's state is its `status` on [`ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist). |
+| `optional` | `boolean` | `true` when the agent template marks this credential as optional (the agent can run without it). `false` for required credentials. A credential nothing on the agent asks for reads `true`, with `extra: false`. |
 | `extra` | `boolean` | `true` when this credential surfaces in the "alternative" / secondary group on the panel (rare; most credentials are primary). |
-| `_editable` | `object` | Per-field edit map: `{ fieldname: true\|false }`. `false` means the field is read-only (managed by OAuth, platform-managed, or computed). The frontend uses this to disable inputs. |
-| `_schema` | `object` | Inline registry descriptor: `title`, `icon`, `brand_color`, `docs_url`, `credential_mode` (`oauth`, `api_key`, `hybrid`, etc.), `connection_modes`, `default_connection_mode`, `mode_badges`, `channel` (a communication channel's connector; `null` on any other), `oauth_provider`, plus a `fields[]` array describing every input the form should render. Lets the panel build connector cards without a separate `Credentials/Detail` round-trip. |
-| `_required_missing` | `boolean` | `true` when this connector is required (`optional: false`) and a required field you fill in is still empty. Drives the "needs attention" bullet on each connector card and the aggregate count badge on the Connectors tab. Always `false` on an optional connector. A list field counts as empty while its rows hold nothing but a choice or a switch, such as a default platform on an otherwise blank row. A value the agent template holds counts as filled, even on a secret field that reads empty here. |
-| `_filled` | `boolean` | `true` when the connector holds what the agent needs: its OAuth connection is made, or at least one field holds a value and no required field you fill in is empty. A value the agent template holds counts, even on a secret field that reads empty here. For `setuprequired`, an API-key connector counts only the values saved on this agent; see [Setup Required](/docs/agent-credentials#setup-required-state). |
-| `connectedat` | `string\|null` | OAuth and hybrid providers: ISO timestamp of the last successful connection. |
+| `_editable` | `object` | Per-field edit map: `{ fieldname: true\|false }`. `false` means the field is read-only (platform-managed or computed). The frontend uses this to disable inputs. |
+| `_schema` | `object` | Inline registry descriptor: `title`, `icon`, `brand_color`, `docs_url`, `credential_mode`, `channel` (on the external chat channels) and `fields[]`. Other keys are for Wiro's own panel: ignore them. |
+| `_required_missing` | `boolean` | `true` when this credential is required (`optional: false`) and a required field you fill in is still empty. Drives the "needs attention" bullet on each credential card and the aggregate count badge in the agent's settings. Always `false` on an optional credential. A list field counts as empty while its rows hold nothing but a choice or a switch, such as a default platform on an otherwise blank row. A value the agent template holds counts as filled, even on a secret field that reads empty here. |
+| `_filled` | `boolean` | `true` when the credential holds what the agent needs: at least one field holds a value and no required field you fill in is empty. A value the agent template holds counts, even on a secret field that reads empty here. For `setuprequired`, a credential counts only the values saved on this agent; see [Setup Required](/docs/agent-credentials#setup-required-state). |
+| `connectedat` | `string\|null` | Credentials whose setup writes one: ISO timestamp of the last successful connection. |
 | `tokenexpiresat` | `string\|null` | ISO timestamp when the current token expires, or an empty value when the provider reports no fixed expiry. |
-| `_service_account_email` | `object` | Only on a connector with a Google service account file (`google-drive`, `google-play`, `google-calendar` and `firebase`), and only for the agent's owner and team admins. The file itself reads as the mask, so this names the service account it belongs to: its email, the address a Drive folder, the Play Console or a calendar is shared with. `{ "serviceaccountjson": "agent@acme-project.iam.gserviceaccount.com" }` for a file of the connector itself, and for Firebase `{ "accounts": [{ "serviceaccountjson": "push@acme-project.iam.gserviceaccount.com" }] }`, one item per entry of `accounts`, in its order. A value is `""` when nothing is saved or the file doesn't read as a service account key. Nothing else of the file is returned. It can't be written: leave it out of what you send back, since a field name that starts with `_` is refused. |
-| `<fieldname>` | `string\|number\|boolean\|array` | The field value as you (or the OAuth callback) saved it, returned to the agent's owner and team admins. A saved secret (a `password` or `fileinput-base64` field, or such a key in a list's entries) reads `"••••••••"` instead, for every caller, and one with nothing saved reads `""`. Field types match `_schema.fields[].type`. Never returned: OAuth tokens (`oauth_session`), OAuth app keys (`clientid` / `clientsecret`, `appid` / `appsecret`), Wiro-managed fields, and a value the agent template holds on a field Wiro stores encrypted or on an `oauth_managed` field: such a field reads empty until you save your own. |
+| `<fieldname>` | `string\|number\|boolean\|array` | The field value as you saved it, returned to the agent's owner and team admins. A saved secret (a `password` or `fileinput-base64` field, or such a key in a list's entries) reads `"••••••••"` instead, for every caller, and one with nothing saved reads `""`. Field types match `_schema.fields[].type`. Never returned: Wiro-managed fields, and a value the agent template holds on a field Wiro stores encrypted: such a field reads empty until you save your own. |
 
 ##### Subscription object
 
@@ -1519,14 +1340,15 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 >
 > | What you want to change | Use |
 > |-------------------------|-----|
-> | Provider credentials (API keys, OAuth settings) | [`POST /UserAgent/CredentialUpsert`](#post-useragentcredentialupsert) |
+> | Connect, list or disconnect the services the agent works with | [Agent Connectors](/docs/agent-connectors): [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect) · [`ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist) · [`ConnectorDisconnect`](/docs/agent-connectors#post-useragentconnectordisconnect) |
+> | Channel and setting credentials (bot tokens, the support email) | [`POST /UserAgent/CredentialUpsert`](#post-useragentcredentialupsert) |
 > | The Wiro project the agent runs models with | [`POST /UserAgent/CredentialProjectBind`](#post-useragentcredentialprojectbind) |
 > | Upload a credential `fileinput` field (multipart, e.g. Twilio voice MP3) | [`POST /UserAgent/CredentialFileUpload`](#post-useragentcredentialfileupload) |
 > | Custom skill values (strategy text, cron intervals, enabled flag) | [`POST /UserAgent/CustomSkillUpsert`](#post-useragentcustomskillupsert) |
 > | Rename a user-created custom skill (key + optional description) | [`POST /UserAgent/CustomSkillRename`](#post-useragentcustomskillrename) |
 > | Browse alternative templates for a custom skill | [`POST /UserAgent/CustomSkillAlternatives`](#post-useragentcustomskillalternatives) |
 > | Delete a user-created scheduled task | [`POST /UserAgent/CustomSkillDelete`](#post-useragentcustomskilldelete) |
-> | Toggle one or more integration skills on/off | [`POST /UserAgent/SkillsApply`](#post-useragentskillsapply) |
+> | Turn one or more Skills on or off | [`POST /UserAgent/SkillsApply`](#post-useragentskillsapply) |
 > | Change the plan (Starter, Pro or Max) | [`POST /UserAgent/UpgradeTier`](#post-useragentupgradetier) |
 > | Upload a cover image (multipart) | [`POST /UserAgent/Cover`](#post-useragentcover) |
 > | Per-agent settings: time zone, Chat Mode, models, slash commands, Wiro API paths, Setup From Chat and Screen | [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) |
@@ -1536,7 +1358,7 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 > | Show the agent's live Screen, and Take Control, in your own app | [`POST /UserAgent/Realtime/ScreenInfo`](#post-useragentrealtimescreeninfo) · [`ScreenStart`](#post-useragentrealtimescreenstart) |
 > | Soft-delete a useragent | [`POST /UserAgent/Delete`](#post-useragentdelete) |
 
-> **Note:** `CredentialUpsert` and `CredentialProjectBind` save connector fields **but do not transition `status: 6` on their own**. After setting up the missing connectors, call `POST /UserAgent/Update` once (any scalar body works, even just `{ "guid": "<useragent-guid>" }`) to trigger the `setuprequired` re-check; that's the call that flips `status: 6 → 0` (Stopped) so the next `Start` succeeds.
+> **Note:** `CredentialUpsert` and `CredentialProjectBind` save credential fields **but do not transition `status: 6` on their own**. After setting up the missing credentials, call `POST /UserAgent/Update` once (any scalar body works, even just `{ "guid": "<useragent-guid>" }`) to trigger the `setuprequired` re-check; that's the call that flips `status: 6 → 0` (Stopped) so the next `Start` succeeds.
 
 ##### Response
 
@@ -1631,7 +1453,7 @@ Writes per-agent preference toggles that are not credentials and not skill rows.
 | `voiceprepmodel` | string\|null | No | Same rules as `chatmodel`, applied to the **voice-call prep** turn (context assembled before a realtime call). |
 | `voicepostcallmodel` | string\|null | No | Same rules as `chatmodel`, applied to the **post-call summary** turn after a realtime voice call ends. |
 | `enabledcommands` | string[] | No | Allowlist of in-chat **slash commands** the agent exposes, as an array of command keys **without** the leading slash (e.g. `["agent_help", "new_session", "agent_status"]`). Validated against the command catalog: an unknown key is rejected with `invalid-command-selection`, a non-array value with `invalid-command-list`. Order is preserved and duplicates are removed. An empty array `[]` is valid and **hides the slash-command menu** entirely. Omit the field to leave the current allowlist untouched. |
-| `wiroapiallowedpaths` | string[]\|null | No | Limits the agent's own calls to the Wiro API, the ones it makes with its Wiro project key (for example through `int-wiro-aimodels`), to the endpoints you list. Each rule is a method in capitals (`GET`, `POST`, `PUT`, `PATCH`, `DELETE` or `HEAD`), one space and a `/v1` path, such as `"POST /v1/Task/Detail"`. A `*` stands for exactly one whole path segment: `"POST /v1/Run/*/*"` allows every model run, while `"POST /v1/Run/x*"` is invalid. Up to 64 rules of at most 200 characters each; duplicates are removed and the order is kept. Calls to endpoints that no rule matches are refused. `[]` refuses every call, model runs included; `null` removes your list, and the agent goes back to the default list. An invalid rule, or a value that isn't an array, is rejected with `invalid-wiro-api-path-rule`, and nothing in the request is saved. Omit the field to keep the current list. An agent with no list of its own uses the default list: `POST /v1/Run/*/*`, `POST /v1/Task/Detail`, `POST /v1/Tool/List`, `POST /v1/Tool/Detail`, `POST /v1/Tool/UploadModelPostImage`, `POST /v1/Tool/GenerateModelPostImage`, `GET /v1/Tool/GenerateModelPostImage` and `POST /v1/UserAgent/Message/UploadAsset`. If a custom skill of yours calls another endpoint, send a list that includes it. |
+| `wiroapiallowedpaths` | string[]\|null | No | Limits the agent's own calls to the Wiro API, the ones it makes with its Wiro project key (for example to run models for its skills), to the endpoints you list. Each rule is a method in capitals (`GET`, `POST`, `PUT`, `PATCH`, `DELETE` or `HEAD`), one space and a `/v1` path, such as `"POST /v1/Task/Detail"`. A `*` stands for exactly one whole path segment: `"POST /v1/Run/*/*"` allows every model run, while `"POST /v1/Run/x*"` is invalid. Up to 64 rules of at most 200 characters each; duplicates are removed and the order is kept. Calls to endpoints that no rule matches are refused. `[]` refuses every call, model runs included; `null` removes your list, and the agent goes back to the default list. An invalid rule, or a value that isn't an array, is rejected with `invalid-wiro-api-path-rule`, and nothing in the request is saved. Omit the field to keep the current list. An agent with no list of its own uses the default list: `POST /v1/Run/*/*`, `POST /v1/Task/Detail`, `POST /v1/Tool/List`, `POST /v1/Tool/Detail`, `POST /v1/Tool/UploadModelPostImage`, `POST /v1/Tool/GenerateModelPostImage`, `GET /v1/Tool/GenerateModelPostImage` and `POST /v1/UserAgent/Message/UploadAsset`. If a custom skill of yours calls another endpoint, send a list that includes it. |
 | `chatsetup` | string\|null | No | Setup From Chat: where people can change the agent's setup by approving setup cards in chat. `"all"` (the default): in the Wiro web chat and in messages sent with a project API key, such as from your backend or an MCP client. `"webchat"`: only in the Wiro web chat on wiro.ai. `"off"`: never from chat; the agent says that an agent admin makes the change in the agent's settings. `null` goes back to `"all"`, and any other value is rejected with `chatsetup must be off, webchat or all`. Agents that your customers or many people talk to usually choose `"webchat"` or `"off"`; see [Setup From Chat](/docs/agent-messaging#setup-from-chat). Read it back as `chatSetup` on [`UserAgent/Detail`](#post-useragentdetail). |
 | `screen` | string\|null | No | Screen: whether the agent's [Screen](#screen-and-take-control) opens, in the Wiro panel and in your own app through [`ScreenStart`](#post-useragentrealtimescreenstart) with a project API key. The people who manage the agent (its owner and the team's admins) watch its computer live, and the owner of a personal agent that has never been in a team, or whose browser was reset after it last left one, can take control of it. `"on"` (the default) or `"off"`. `"off"` closes it for everyone, watching and Take Control alike, in the panel and in your app, and also closes screens that are open, a Take Control session included, within about half a minute. On a team agent whose Chat Mode is `"private"` the screen stays closed to the team whatever this says. `null` goes back to `"on"`, and any other value is rejected with `screen must be on or off`. It never restarts the agent. Read it back as `screen` on [`UserAgent/Detail`](#post-useragentdetail). |
 
@@ -1896,7 +1718,9 @@ If you already have a hosted URL, use `POST /UserAgent/Update` with `cover: "<ur
 
 Writes one or more credential fields for one or multiple providers in a single call.
 
-If the agent is **starting** or **running**, an upsert that changes a saved value triggers an automatic restart. Fields of a sign-in credential (one with an `oauth_provider`) that isn't connected before or after the save, such as own-mode app keys or a System User token saved before the sign-in or token check, restart nothing: the connection that follows restarts the agent once (see [Automatic Restart](#automatic-restart)).
+If the agent is **starting** or **running**, an upsert that changes a saved value triggers an automatic restart (see [Automatic Restart](#automatic-restart)).
+
+`CredentialUpsert` writes the agent's credentials: the Telegram, Slack and Discord channels, Twilio Voice, the Wiro project's key and settings such as the support email (see [Agent Credentials](/docs/agent-credentials)). The services the agent works with are connectors: connect them with [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect).
 
 Telegram, Slack, and Discord are optional credential groups. A channel appears
 in `enabledChannels` automatically when all of its catalog `required_fields`
@@ -1912,11 +1736,11 @@ Each field row:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `credentialkey` | string | The provider key: e.g. `"instagram"`, `"google-ads"`, `"wordpress"`, `"telegram"`. Must match one of the credentials declared in `credentials` on `/UserAgent/Detail`. |
-| `fieldname` | string | Field inside that credential: e.g. `"apikey"`, `"clientid"`, `"bottoken"`. Must not start with `_` (reserved for internal sentinels such as `_isoptional`, `_isextra`). |
+| `credentialkey` | string | The credential key: e.g. `"telegram"`, `"slack"`, `"twilio-voice"`, `"var-support-email"`. Must match one of the credentials declared in `credentials` on `/UserAgent/Detail`, or a channel from `POST /Skills/List` → `channels[]`. |
+| `fieldname` | string | Field inside that credential: e.g. `"bottoken"`, `"allowedusers"`, `"accountsid"`. Must not start with `_` (reserved for internal sentinels such as `_isoptional`, `_isextra`). |
 | `fieldvalue` | string \| number \| array | The value to write. An empty string clears an optional single-value field; send `[]` to clear a list field. Clearing a required field fails validation, except on Telegram, Slack and Discord, where it disables the channel. |
-| `fieldstatus` | string | **Server-managed: ignored from the request body for API callers.** The value is derived from the registry / OAuth flow on the server side (e.g. `user` for hand-edited fields, `oauth_session` for tokens written by the OAuth callback, `oauth_app` for app credentials, etc.). Do not set this field. It is stripped before any write. |
-| `parentfield` | string | Optional. The key of a list field (e.g. `"accounts"` for `firebase.accounts[]`) when the row sets one field of a single entry in that list. A list inside the entry, such as its `apps`, is sent whole as that field's `fieldvalue`. |
+| `fieldstatus` | string | **Server-managed: ignored from the request body for API callers.** The server derives it from the registry (`user` for the values you save). Do not set this field. It is stripped before any write. |
+| `parentfield` | string | Optional. The key of a list field (e.g. `"groups"` for Telegram's `groups[]`) when the row sets one field of a single entry in that list. |
 | `ordinal` | number | Optional. Array index inside `parentfield`. Defaults to `0`. |
 
 ##### Request
@@ -1928,9 +1752,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -d '{
     "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
     "fields": [
-      { "credentialkey": "wordpress", "fieldname": "url",         "fieldvalue": "https://myblog.com" },
-      { "credentialkey": "wordpress", "fieldname": "user",        "fieldvalue": "admin" },
-      { "credentialkey": "wordpress", "fieldname": "apppassword", "fieldvalue": "abcd efgh ijkl mnop" }
+      { "credentialkey": "telegram", "fieldname": "bottoken",     "fieldvalue": "123456:ABC-DEF1234ghIkl" },
+      { "credentialkey": "telegram", "fieldname": "allowedusers", "fieldvalue": ["123456789"] }
     ]
   }'
 ```
@@ -1941,7 +1764,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 { "result": true, "applied": 3, "errors": [] }
 ```
 
-`applied` is the number of rows saved without an error; a row sent with its current value still counts. A secret sent as `"••••••••"`, the mask `UserAgent/Detail` shows for a saved one, keeps the saved value and isn't counted (see [Field-level write rules](/docs/agent-credentials#field-level-write-rules)). Every row is validated before anything is written. If any row fails validation (for example a reserved fieldname, a Wiro-managed field or an OAuth token field), the whole request is rejected and nothing is saved: the response has `result: false`, one `errors` entry per invalid row, and no `applied`. If a save fails after validation has passed, the other rows are still saved and the response has `result: false`, the `applied` count, and each failed row in `errors`. Re-sending the same request is safe.
+`applied` is the number of rows saved without an error; a row sent with its current value still counts. A secret sent as `"••••••••"`, the mask `UserAgent/Detail` shows for a saved one, keeps the saved value and isn't counted (see [Field-level write rules](/docs/agent-credentials#field-level-write-rules)). Every row is validated before anything is written. If any row fails validation (for example a reserved fieldname or a Wiro-managed field), the whole request is rejected and nothing is saved: the response has `result: false`, one `errors` entry per invalid row, and no `applied`. If a save fails after validation has passed, the other rows are still saved and the response has `result: false`, the `applied` count, and each failed row in `errors`. Re-sending the same request is safe.
 
 > **Twilio Voice: extra response fields.** When any `twilio-voice` field is touched, `CredentialUpsert` also auto-configures each Twilio phone number's `VoiceUrl` and surfaces the result on the response:
 >
@@ -1952,11 +1775,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 > | `twilioWebhooksFailed` | `object[]` | One `{ phoneNumber, error }` entry per number whose update Twilio rejected. |
 > | `twilioWebhookError` | `string` | Top-level message when the entire VoiceUrl-rewrite flow failed (auth error, network outage). The credential rows are still saved. Only the auto-configuration step failed. |
 >
-> Treat all four fields as best-effort: the credential write itself never depends on Twilio's API call succeeding. See [Twilio Voice Integration](/docs/integration-twiliovoice-skills) for the full lifecycle.
+> Treat all four fields as best-effort: the credential write itself never depends on Twilio's API call succeeding. See [Twilio Voice Channel](/docs/integration-twiliovoice-skills) for the full lifecycle.
 
 #### **POST** /UserAgent/CredentialProjectBind
 
-Connects an agent's Wiro AI Models connector (`int-wiro-aimodels`, the `wiro` key under `credentials`) to one of your Wiro projects. You name the project, and Wiro saves that project's API key on the agent. The agent's model runs are paid from the wallet of the workspace that owns the project.
+Connects the agent's Wiro project (the `wiro` key under `credentials`) to one of your Wiro projects. You name the project, and Wiro saves that project's API key on the agent. The agent's model runs are paid from the wallet of the workspace that owns the project.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -2354,14 +2177,14 @@ Reverts a custom skill to either (a) the agent template's preset default or (b) 
 #### **POST** /UserAgent/CredentialFieldHistory
 
 Returns the per-field write history for one credential group on a useragent. Sensitive values are redacted at read time as a belt-and-suspenders guard:
-- `oauth_session` fields (access / refresh tokens) **never** appear in history at all. They're stripped before persisting.
-- `clientsecret` and similar `oauth_app` secret fields are stored as `[REDACTED]` in history rows (the live value stays server-side, and `UserAgent/Detail` doesn't return it either).
+
+- A saved secret, such as a bot token or an auth token, never comes back as its value.
 - Wiro-managed credentials return an empty `entries[]`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid |
-| `credentialkey` | string | Yes | Provider key (e.g. `"instagram"`, `"wordpress"`) |
+| `credentialkey` | string | Yes | Credential key (e.g. `"telegram"`, `"twilio-voice"`) |
 | `startdate` | number | No | UTC epoch seconds: return entries on/after this time |
 | `enddate` | number | No | UTC epoch seconds: return entries on/before this time |
 
@@ -2375,9 +2198,9 @@ Returns the per-field write history for one credential group on a useragent. Sen
     {
       "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
       "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-      "credentialkey": "instagram",
-      "fieldname": "igusername",
-      "fieldvalue": "myaccount",
+      "credentialkey": "telegram",
+      "fieldname": "allowedusers",
+      "fieldvalue": ["123456789"],
       "fieldstatus": "user",
       "parentfield": null,
       "ordinal": 0,
@@ -2393,28 +2216,6 @@ Returns the per-field write history for one credential group on a useragent. Sen
         "avatarinitials": "AL"
       },
       "changedat": 1714694410
-    },
-    {
-      "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-      "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-      "credentialkey": "instagram",
-      "fieldname": "clientsecret",
-      "fieldvalue": "[REDACTED]",
-      "fieldstatus": "oauth_app",
-      "parentfield": null,
-      "ordinal": 0,
-      "operation": "upsert",
-      "changedby": "ada-uuid",
-      "changedby_user": {
-        "uuid": "ada-uuid",
-        "firstname": "Ada",
-        "lastname": "Lovelace",
-        "email": "ada@example.com",
-        "username": "ada",
-        "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
-        "avatarinitials": "AL"
-      },
-      "changedat": 1714600000
     }
   ]
 }
@@ -2453,9 +2254,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
     "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
     "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000",
     "skills": {
-      "int-instagram-post": true,
-      "int-twitterx-post":  true,
-      "int-reddit-post":     false
+      "util-social-posting-common": true,
+      "util-anti-ai-human-copy":    true,
+      "util-diagram":               false
     }
   }'
 ```
@@ -2487,7 +2288,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
     "stripeProrationApplied": false,
     "prepaidWalletDelta": null,
     "usedCreditsUsd": 0,
-    "enabledSkills": ["int-instagram-post", "int-twitterx-post", "int-wiro-aimodels"]
+    "enabledSkills": ["util-social-posting-common", "util-anti-ai-human-copy", "util-chat-markdown-reporting"]
   }
 }
 ```
@@ -2535,7 +2336,7 @@ Two body shapes:
 {
   "draft": true,
   "tier": "pro",
-  "skills": ["int-instagram-post", "int-wiro-aimodels"]
+  "skills": ["util-social-posting-common", "util-anti-ai-human-copy"]
 }
 ```
 
@@ -2546,8 +2347,8 @@ Two body shapes:
   "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
   "tier": "max",
   "skillOverrides": {
-    "int-instagram-post": true,
-    "int-reddit-post":    false
+    "util-social-posting-common": true,
+    "util-diagram":               false
   }
 }
 ```
@@ -2555,7 +2356,7 @@ Two body shapes:
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `draft` | boolean | A | When `true`, no useragent lookup happens; Wiro resolves the `skills` array directly. Used by Build Your Agent. |
-| `skills` | array<string> | A | Draft mode only: the proposed enabled skill set. |
+| `skills` | `array<string>` | A | Draft mode only: the proposed enabled skill set. |
 | `useragentguid` | string | B | Required for non-draft previews. |
 | `skillOverrides` | object | No | Override the persisted state with `{ skillname: boolean }` for the preview. Omit for "current state" preview. |
 | `tier` | string | No | `"starter"`, `"pro"` or `"max"`: the plan to preview. Defaults to the agent's plan, or Starter in a draft. The response lists all three plans under `tiers`. |
@@ -2572,11 +2373,11 @@ A Pro agent on a wallet plan, previewing Max with 15 days left of 30:
   "totalPriceUsd": 100,
   "totalMonthlyCredits": 10000,
   "skillBreakdown": [
-    { "skill": "int-instagram-post", "priceUsd": 0, "credits": 0, "billing_model": "tokens" },
-    { "skill": "int-wiro-aimodels",  "priceUsd": 0, "credits": 0, "billing_model": "tokens" }
+    { "skill": "util-social-posting-common", "priceUsd": 0, "credits": 0, "billing_model": "tokens" },
+    { "skill": "util-anti-ai-human-copy",    "priceUsd": 0, "credits": 0, "billing_model": "tokens" }
   ],
-  "enabledSkills": ["int-instagram-post", "int-wiro-aimodels"],
-  "directSkills":  ["int-instagram-post"],
+  "enabledSkills": ["util-social-posting-common", "util-anti-ai-human-copy"],
+  "directSkills":  ["util-social-posting-common"],
   "tiers": {
     "starter": { "priceUsd": 5,   "credits": 500 },
     "pro":     { "priceUsd": 30,  "credits": 3000 },
@@ -2691,6 +2492,7 @@ Starts a stopped agent instance. The agent is moved to Queued (status `2`) and t
 > `useragents` is always returned (empty array on Start) because Start returns the standard agent response shape. Only `result` and `errors` carry the outcome here.
 
 Start will fail (returns `{ "result": false, "errors": [...] }`) if:
+
 - The agent is already running or queued
 - The agent is currently stopping
 - Setup is incomplete (status `6`)
@@ -2802,11 +2604,10 @@ Poll every 30 seconds or more.
       "ts": "2026-05-03T14:00:01.000Z",
       "kind": "tool_completed",
       "tool": "exec",
-      "title": "Posted carousel: \"Brand voice teaser\"",
+      "title": "Drew a diagram: \"Onboarding flow\"",
       "summary": {
-        "skill": "int-instagram-post",
-        "action": "create",
-        "permalink": "https://www.instagram.com/p/CXY..."
+        "skill": "util-diagram",
+        "action": "create"
       },
       "durationMs": 2480,
       "ok": true,
@@ -3083,7 +2884,7 @@ No request body fields are required: the workspace of your API key's project sco
           "max":     { "priceUsd": 100, "credits": 10000 }
         }
       },
-      "enabledSkills": ["int-instagram-post", "int-twitterx-post", "int-wiro-aimodels"],
+      "enabledSkills": ["util-social-posting-common", "util-anti-ai-human-copy", "util-chat-markdown-reporting"],
       "tokenRates": {
         "default_model": "openai/gpt-5.6-sol",
         "fallback_rate": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25 },
@@ -3810,7 +3611,7 @@ Agent-specific errors you may encounter:
 | A Model Access refusal (code `92`), such as `This agent can't use openai/gpt-5-6-sol. Model Access rules decide which models can run.` | `Message/Send` with a `model` that the agent's own [Model Access](/docs/model-access) rule blocks, or `UpdateSettings` with such a model override. Nothing runs and nothing is charged |
 | `Message not found` | `Detail` / `Cancel` with invalid messageguid |
 | `Message cannot be cancelled (status: {status})` | `Cancel` on a message that's already in a terminal state |
-| `Invalid redirect URL` | OAuth `Connect` with non-HTTPS URL |
+| `Invalid redirect URL` | [`ConnectorConnect`](/docs/agent-connectors#the-redirect-url) with a `redirecturl` that isn't https (or http on localhost) |
 | `Pack key required` | `CreateExtraCreditCheckout` without `pack` |
 | `Could not retrieve wallet balance` | Wallet service lookup failed while checking balance |
 | `runstream-unavailable` | `RunStreamToken` while following runs live is not available. Try again later |
@@ -3863,7 +3664,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
     "title": "Inbox Watcher",
     "useprepaid": true,
     "tier": "pro",
-    "skills": { "int-gmail-check": true, "int-wiro-aimodels": true }
+    "skills": { "util-chat-markdown-reporting": true, "util-anti-ai-human-copy": true }
   }'
 
 # Preview a plan change before you make it
@@ -3911,15 +3712,14 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{"guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321"}'
 
-# Update credentials on a running agent (triggers automatic restart)
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+# Connect a connector on a running agent (triggers automatic restart)
+curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-    "fields": [
-      { "credentialkey": "instagram", "fieldname": "authmethod", "fieldvalue": "wiro" }
-    ]
+    "slug": "serper",
+    "values": { "apikey": "YOUR_SERPER_API_KEY" }
   }'
 
 # Stop an agent
@@ -3969,15 +3769,14 @@ deploy = requests.post(
 instance_guid = deploy["useragents"][0]["guid"]
 print(f"Deployed: {instance_guid}")
 
-# Update credentials
+# Connect a connector (see Agent Connectors)
 requests.post(
-    "https://api.wiro.ai/v1/UserAgent/CredentialUpsert",
+    "https://api.wiro.ai/v1/UserAgent/ConnectorConnect",
     headers=headers,
     json={
         "useragentguid": instance_guid,
-        "fields": [
-            { "credentialkey": "instagram", "fieldname": "authmethod", "fieldvalue": "wiro" }
-        ]
+        "slug": "serper",
+        "values": { "apikey": "YOUR_SERPER_API_KEY" }
     }
 )
 
@@ -4079,14 +3878,13 @@ async function main() {
   const instanceGuid = deploy.data.useragents[0].guid;
   console.log('Deployed:', instanceGuid);
 
-  // Update credentials
+  // Connect a connector (see Agent Connectors)
   await axios.post(
-    'https://api.wiro.ai/v1/UserAgent/CredentialUpsert',
+    'https://api.wiro.ai/v1/UserAgent/ConnectorConnect',
     {
       useragentguid: instanceGuid,
-      fields: [
-        { credentialkey: 'instagram', fieldname: 'authmethod', fieldvalue: 'wiro' }
-      ]
+      slug: 'serper',
+      values: { apikey: 'YOUR_SERPER_API_KEY' }
     },
     { headers }
   );
@@ -4328,7 +4126,8 @@ print(response.body);
 
 - [Agent Builder](/docs/agent-builder): Build custom agents from scratch (`custom: true`) with live pricing previews and skill picker
 - [Agent Skills](/docs/agent-skills): Configure preferences, scheduled tasks, and skill toggles. Includes the registry browser endpoints (`Skills/List`, `Skills/Detail`, `Skills/Capabilities`)
-- [Agent Credentials](/docs/agent-credentials): Integration catalog hub with 20+ dedicated per-provider setup guides (Meta Ads, Facebook, Instagram, LinkedIn, Twitter, and more) plus the registry endpoints (`Credentials/List`, `Credentials/Detail`)
+- [Agent Connectors](/docs/agent-connectors): The connector catalog and every call to connect the services an agent works with (`AgentConnector/List`, `ConnectorConnect`, sign-ins, account pickers)
+- [Agent Credentials](/docs/agent-credentials): Channels, the Wiro project and settings, plus the registry endpoints (`Credentials/List`, `Credentials/Detail`)
 - [Agent Messaging](/docs/agent-messaging): Send messages and receive responses from running agents
 - [Agent Chat Integration](/docs/agent-chat-integration): Build your own chat for an agent, with setup cards, connections, restarts and the agent's live Screen
 - [Agent WebSocket](/docs/agent-websocket): Real-time response streaming

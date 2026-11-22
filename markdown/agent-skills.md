@@ -1,6 +1,6 @@
 # Agent Skills
 
-Configure agent behavior with editable preferences, scheduled automation tasks, and skill toggles. Browse the platform's skill registry and inspect every skill's capabilities and credential requirements.
+Configure agent behavior with editable preferences, scheduled automation tasks, and skill toggles. Browse the platform's skill registry and inspect what each skill does. The services an agent works with are connectors: see [Agent Connectors](/docs/agent-connectors).
 
 **Read & write paths at a glance:**
 
@@ -16,19 +16,21 @@ Configure agent behavior with editable preferences, scheduled automation tasks, 
 | Delete a user-created scheduled task | [`POST /UserAgent/CustomSkillDelete`](/docs/agent-overview#post-useragentcustomskilldelete) |
 | Read version history of a custom skill | [`POST /UserAgent/CustomSkillHistory`](/docs/agent-overview#post-useragentcustomskillhistory) |
 | Revert a custom skill to preset / a historical version | [`POST /UserAgent/CustomSkillRevert`](/docs/agent-overview#post-useragentcustomskillrevert) |
-| Toggle one or more integration skills (the top-level `skills` array, e.g. `int-instagram-post`) on/off | [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply) |
+| Turn one or more Skills (the top-level `skills` array, e.g. `util-weather`) on or off | [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply) |
 | Preview a skill set or a plan change without saving it | [`POST /UserAgent/PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) |
+| Connect a service the agent works with (Shopify, Google Ads, Serper, ...) | [Agent Connectors](/docs/agent-connectors) |
 
-> Read responses from `POST /UserAgent/Detail` expose the composed `customskills[]` array (preference skills + non-cron user-created skills), the `scheduledskills[]` array (scheduled tasks), and the `skills[]` array as top-level fields on the useragent object. `skills[]` is an **object array**: each entry is `{ name, enabled, _edited?, _user_created? }` (e.g. `[{ "name": "int-instagram-post", "enabled": true }, { "name": "int-wiro-aimodels", "enabled": true }]`).
+> Read responses from `POST /UserAgent/Detail` expose the composed `customskills[]` array (preference skills + non-cron user-created skills), the `scheduledskills[]` array (scheduled tasks), and the `skills[]` array as top-level fields on the useragent object. `skills[]` is an **object array**: each entry is `{ name, enabled, _edited?, _user_created? }` (e.g. `[{ "name": "util-weather", "enabled": true }, { "name": "util-diagram", "enabled": true }]`).
 
 ## Skill Registry vs Custom Skills
 
-Two concepts share the word "skill" in the agent system. Keep them straight:
+Two concepts share the word "skill" in the agent system, and connectors give them their tools. Keep them straight:
 
 | Concept | What it is | Where it lives | API surface |
 |---------|------------|----------------|-------------|
-| **Registry skills** | Platform-shipped capabilities: Wiro defines them, they have credential requirements and runtime tools, and every plan includes them. Examples: `int-instagram-post`, `int-gmail-check`, `int-wordpress-post`, `int-wiro-aimodels`. | Wiro's skill registry. | `POST /Skills/List` / `POST /Skills/Detail` (read), `POST /UserAgent/SkillsApply` (toggle on/off per useragent). |
-| **Custom skills** | User-editable preference text (`cs-content-tone`) or scheduled tasks (`cs-cron-blog-scanner`) that live ON a useragent. They reference registry skills (e.g. a scheduled task calls into `int-wordpress-post`) but are scoped to one instance. | Per useragent on the Wiro platform. | `POST /UserAgent/CustomSkillUpsert` / `POST /UserAgent/CustomSkillRename` / `POST /UserAgent/CustomSkillDelete` / `POST /UserAgent/CustomSkillHistory` / `POST /UserAgent/CustomSkillRevert`. |
+| **Registry skills** | Platform-shipped Skills (`util-*`): rule sets, playbooks and tools that need no outside account, such as `util-weather`, `util-diagram` and `util-video-creator`. Wiro defines them, and every plan includes them. | Wiro's skill registry. | `POST /Skills/List` / `POST /Skills/Detail` (read), `POST /UserAgent/SkillsApply` (toggle on/off per useragent). |
+| **Custom skills** | User-editable preference text (`cs-content-tone`) or scheduled tasks (`cs-cron-blog-scanner`) that live ON a useragent. They can use the tools of the agent's connectors (e.g. a scheduled task drafts posts with `wordpress__*`) but are scoped to one instance. | Per useragent on the Wiro platform. | `POST /UserAgent/CustomSkillUpsert` / `POST /UserAgent/CustomSkillRename` / `POST /UserAgent/CustomSkillDelete` / `POST /UserAgent/CustomSkillHistory` / `POST /UserAgent/CustomSkillRevert`. |
+| **Connectors** | The outside services an agent works with (Shopify, Google Ads, HubSpot, Serper, ...), connected with your customer's own credentials. Each gives the agent tools named `<slug>__<tool>`. | Per useragent. | [Agent Connectors](/docs/agent-connectors) |
 
 The rest of this page documents both: the registry endpoints first (so you can discover what's possible), then the per-useragent endpoints (so you can configure them).
 
@@ -42,12 +44,11 @@ Lists all skills in the registry.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `category` | string | No | Filter by `"int"` (integration with a third-party service) or `"util"` (utility, no credential to connect: rule sets, playbooks, and keyless tools such as weather and diagrams). |
+| `category` | string | No | Filter by category. Every registry skill is `"util"`: rule sets, playbooks, and keyless tools such as weather and diagrams. |
 | `capability` | string | No | Filter by capability key (see [`POST /Skills/Capabilities`](#post-skillscapabilities) for the closed-set vocabulary). |
 | `user_invocable` | boolean | No | When `true`, only return skills end users can call directly through chat (filters out plumbing skills wired by the runtime). |
 | `requires_credentials` | boolean | No | Filter by whether the skill requires a credential. |
-| `wiro_connect_pending` | boolean | No | Filter by the "Wiro mode coming soon" flag: integrations whose Wiro-shared OAuth client is still awaiting provider review (currently 9 user-facing credentials: `facebook-pages`, `instagram`, `google-ads`, `google-merchant-center`, `youtube`, `ga4`, `linkedin`, `tiktok`, and `meta-ads`). Facebook Pages, Instagram, and Meta Ads remain usable through their customer-owned System User and/or OAuth alternatives. When `true`, only pending skills are returned; when `false`, only ready-to-use skills. The flag is read off the credential, not the skill. |
-| `name_in` | array<string> | No | Restrict the response to a specific list of skill names. |
+| `name_in` | `array<string>` | No | Restrict the response to a specific list of skill names. |
 
 ##### Response
 
@@ -55,22 +56,22 @@ Lists all skills in the registry.
 {
   "result": true,
   "errors": [],
-  "total": 45,
+  "total": 17,
   "skills": [
     {
-      "name": "int-instagram-post",
-      "category": "int",
+      "name": "util-weather",
+      "category": "util",
       "version": "1.0.0",
-      "title": "Instagram Post",
-      "description": "Post carousel feed and multi-story via Meta Graph API.",
-      "icon": "/images/icons/skills/instagram.svg",
-      "brand_color": "#e4405f",
+      "title": "Weather",
+      "description": "Current weather and a 9-day forecast for any place (temperature, rain, wind, UV) from MET Norway's open forecast data, with the place found on OpenStreetMap. No key needed.",
+      "icon": "lni lni-cloud-sun",
+      "brand_color": "#0ea5e9",
       "brand_text_color": "#ffffff",
       "brand_logo_filter": "brightness(0) invert(1)",
-      "docs_url": "integration-instagram-skills",
-      "requires_credentials": true,
-      "credential_key": "instagram",
-      "capabilities": ["social_publishing"],
+      "docs_url": "",
+      "requires_credentials": false,
+      "credential_key": null,
+      "capabilities": ["weather_lookup"],
       "depends_on": [],
       "conflicts_with": [],
       "user_invocable": true,
@@ -108,23 +109,23 @@ Lists all skills in the registry.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `name` | `string` | Canonical skill key, **including the registry prefix** (`int-*` for integration skills, `util-*` for utility skills). Use this exact value in `SkillsApply` and `Deploy.body.skills`. |
-| `category` | `string` | `"int"` (third-party integration) or `"util"` (utility, no credential to connect: rule sets, playbooks, and keyless tools such as weather and diagrams). |
+| `name` | `string` | Canonical skill key, **including the registry prefix** `util-`. Use this exact value in `SkillsApply` and `Deploy.body.skills`. |
+| `category` | `string` | `"util"`: rule sets, playbooks, and keyless tools such as weather and diagrams. |
 | `version` | `string` | Semver for the registry entry. Bumped when the skill's tool surface changes. |
 | `title` | `string` | Display name shown on chips / filters / cards. |
 | `description` | `string` | One-line summary used on marketing surfaces. |
-| `icon` | `string` | Path or URL to the brand icon (relative paths are absolutized to `https://wiro.ai/...` on the wire). Utility skills carry a LineIcons class name instead, such as `lni lni-cloud-sun`. |
+| `icon` | `string` | A LineIcons class name, such as `lni lni-cloud-sun`, or a path or URL to an icon (relative paths are absolutized to `https://wiro.ai/...` on the wire). |
 | `brand_color` | `string\|null` | Brand background colour (hex) for chips and cards. |
 | `brand_text_color` | `string\|null` | Foreground colour to render on top of `brand_color`. |
 | `brand_logo_filter` | `string\|null` | CSS `filter` value applied to monochrome SVG icons (e.g. `"brightness(0) invert(1)"`) so the same source SVG renders correctly on light and dark brand colours. |
-| `docs_url` | `string\|null` | Slug or path of the integration page on this docs site. Frontends prefix with `/docs/` when rendering. |
+| `docs_url` | `string\|null` | Slug or path of a page about the skill on this docs site, when it has one. Frontends prefix with `/docs/` when rendering. |
 | `requires_credentials` | `boolean` | `true` when the skill needs a credential the operator must supply (effectively `true` whenever `credential_key` names a credential you supply). |
-| `credential_key` | `string\|null` | The provider this skill needs (`"instagram"`, `"google-ads"`, `"wiro"`, `"calendarific"`, …). `null` for `util` skills and skills whose credential Wiro manages. Use [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail) to inspect the schema. |
-| `additional_credential_keys` | `array<string>` | **Optional: only present when the skill writes secondary credentials.** App-store / Google-Play review skills include `["var-support-email"]` for the support-email variable bag; most skills omit this field entirely. |
+| `credential_key` | `string\|null` | The credential this skill needs, when it needs one (see [Agent Credentials](/docs/agent-credentials)); [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail) shows its schema. `null` for skills that need none. |
+| `additional_credential_keys` | `array<string>` | **Optional: only present when the skill reads further credentials,** such as `["var-support-email"]` for the support-email setting; most skills omit this field entirely. |
 | `capabilities` | `array<string>` | High-level snake_case capability tags from the closed vocabulary returned by [`POST /Skills/Capabilities`](#post-skillscapabilities). Drives the "Find skills that can: ___" picker. |
 | `depends_on` | `array<string>` | Other skill names that must be enabled. Wiro auto-enables transitive deps when you toggle the parent skill on. |
 | `conflicts_with` | `array<string>` | Mutually-exclusive skill names. `SkillsApply` rejects toggle batches that would enable two conflicting skills. |
-| `user_invocable` | `boolean` | `true` when end users can call the skill via chat. Most user-facing skills (including `int-wiro-aimodels` and `int-calendarific`) are `true`; `false` marks supporting parts that come with another skill, such as `util-video-shots` and `util-video-docs`, which come with `util-video-creator`. |
+| `user_invocable` | `boolean` | `true` when end users can call the skill via chat. `false` marks supporting parts that come with another skill, such as `util-video-shots` and `util-video-docs`, which come with `util-video-creator`. |
 | `deprecated` | `boolean` | `true` for skills slated for removal, and `replacement` (if any) names the migration target. |
 | `replacement` | `string\|null` | When `deprecated: true`, the registry-recommended successor skill name. |
 | `pricing` | `object` | `{ monthly_price_weight_usd, monthly_credits_weight, billing_model }`. Every plan includes every skill, so both weights are `0` (see below). |
@@ -144,19 +145,10 @@ complete. Channels are not skills and do not affect pricing.
 |-----------|------|-------------|
 | `monthly_price_weight_usd` | `number` | Always `0`: a skill adds nothing to the agent's price. |
 | `monthly_credits_weight` | `number` | Always `0`: a skill adds nothing to the agent's monthly credits. |
-| `billing_model` | `string` | Always `"tokens"`. Per-turn conversation cost is token-metered at the agent's per-model `tokenRates` (credits per 1M input / output / cached-input tokens). See [token billing in the Agent Overview](/docs/agent-overview#token-billing). Voice skills bill realtime audio to the operator's own Wiro wallet through `int-wiro-aimodels`, the Wiro AI Models connector (your own Wiro API key); the voice-prep and post-call text turns are normal token deducts. |
+| `billing_model` | `string` | Always `"tokens"`. Per-turn conversation cost is token-metered at the agent's per-model `tokenRates` (credits per 1M input / output / cached-input tokens). See [token billing in the Agent Overview](/docs/agent-overview#token-billing). Voice skills bill realtime audio to the wallet of the agent's Wiro project (the `wiro` credential); the voice-prep and post-call text turns are normal token deducts. |
 
 > **Every plan includes every skill.** An agent's price and monthly credits come from its plan (Starter, Pro or Max), never from its skills, so turning a skill on or off changes neither. See [Pricing Model](/docs/agent-overview#pricing-model-plans-credits-token-billing).
 
-> **Optional filter `wiro_connect_pending`.** When you query with
-> `wiro_connect_pending: true` you get every skill whose connecting
-> integration's Wiro-shared OAuth client is awaiting App Review, currently
-> `int-instagram-post`, `int-facebookpage-post`, `int-linkedin-post`,
-> `int-tiktok-post`, `int-metaads-manage`, the Google OAuth skills listed
-> above, and paired `util-*` helpers. Facebook Pages, Instagram, and Meta Ads
-> already expose customer-owned System User and/or OAuth alternatives. The flag
-> itself lives on the credential entry under
-> [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail).
 
 ### **POST** /Skills/Detail
 
@@ -164,7 +156,7 @@ Returns a single skill by name.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `name` | string | Yes | Canonical skill name **with prefix** (e.g. `"int-instagram-post"`, `"util-social-posting-common"`). Registry-only: `cs-*` and `cs-cron-*` user-level customskills are not exposed here. |
+| `name` | string | Yes | Canonical skill name **with prefix** (e.g. `"util-weather"`, `"util-social-posting-common"`). Registry-only: `cs-*` and `cs-cron-*` user-level customskills are not exposed here. |
 
 ##### Response
 
@@ -173,19 +165,19 @@ Returns a single skill by name.
   "result": true,
   "errors": [],
   "skill": {
-    "name": "int-instagram-post",
-    "category": "int",
+    "name": "util-weather",
+    "category": "util",
     "version": "1.0.0",
-    "title": "Instagram Post",
-    "description": "Post carousel feed and multi-story via Meta Graph API.",
-    "icon": "/images/icons/skills/instagram.svg",
-    "brand_color": "#e4405f",
+    "title": "Weather",
+    "description": "Current weather and a 9-day forecast for any place (temperature, rain, wind, UV) from MET Norway's open forecast data, with the place found on OpenStreetMap. No key needed.",
+    "icon": "lni lni-cloud-sun",
+    "brand_color": "#0ea5e9",
     "brand_text_color": "#ffffff",
     "brand_logo_filter": "brightness(0) invert(1)",
-    "docs_url": "integration-instagram-skills",
-    "requires_credentials": true,
-    "credential_key": "instagram",
-    "capabilities": ["social_publishing"],
+    "docs_url": "",
+    "requires_credentials": false,
+    "credential_key": null,
+    "capabilities": ["weather_lookup"],
     "depends_on": [],
     "conflicts_with": [],
     "user_invocable": true,
@@ -204,120 +196,15 @@ Returns the **full registry entry**: same shape as a row from `Skills/List`. The
 
 ### **POST** /Skills/CredentialSchema
 
-Convenience endpoint: returns the credential entry for a given skill name in one call. Useful when you've discovered a skill via `Skills/List` and want to render the credential form without a separate `Credentials/Detail` round-trip.
+Convenience endpoint: returns the credential entry a skill needs, in one call. Useful when you've discovered a skill via `Skills/List` and want to render its credential form without a separate `Credentials/Detail` round-trip.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `name` | string | Yes | Skill name (with the registry prefix, e.g. `"int-instagram-post"`). |
+| `name` | string | Yes | Skill name, with the registry prefix. |
 
 ##### Response
 
-```json
-{
-  "result": true,
-  "errors": [],
-  "credential": {
-    "key": "instagram",
-    "title": "Instagram",
-    "icon": "/images/icons/skills/instagram.svg",
-    "brand_color": "#e4405f",
-    "brand_text_color": "#ffffff",
-    "brand_logo_filter": "none",
-    "docs_url": "integration-instagram-skills",
-    "credential_mode": "hybrid",
-    "connection_modes": ["api_key", "own", "wiro"],
-    "default_connection_mode": "api_key",
-    "mode_badges": {
-      "api_key": "Recommended",
-      "own": "Advanced"
-    },
-    "wiro_connect_pending": true,
-    "credential_schema": [
-      {
-        "key": "appid",
-        "type": "text",
-        "label": "App ID",
-        "required": true,
-        "pattern": "^[0-9]+$",
-        "help": "<ol><li>Go to Meta for Developers → My Apps</li><li>Create App → Other → Business</li><li>Copy the App ID from the dashboard</li><li>Add Product → Facebook Login → Set Up</li><li>Add OAuth Redirect URI: https://api.wiro.ai/v1/UserAgentOAuth/IGCallback</li></ol>",
-        "oauth_managed": true,
-        "only_in_modes": ["own"]
-      },
-      {
-        "key": "appsecret",
-        "type": "password",
-        "label": "App Secret",
-        "required": true,
-        "show_toggle": true,
-        "help": "<ol><li>Meta for Developers → select your app</li><li>App Settings → Basic</li><li>Show next to App Secret and copy</li></ol>",
-        "oauth_managed": true,
-        "only_in_modes": ["own"]
-      },
-      {
-        "key": "systemusertoken",
-        "type": "password",
-        "label": "System User Token",
-        "required": true,
-        "encrypted": true,
-        "show_toggle": true,
-        "runtime_excluded": true,
-        "only_in_modes": ["api_key"]
-      },
-      {
-        "key": "accountId",
-        "type": "text",
-        "label": "Instagram Account ID",
-        "required": true,
-        "pattern": "^[0-9]+$",
-        "auto_filled_by_oauth": true,
-        "readonly_when_connected": true
-      },
-      {
-        "key": "igusername",
-        "type": "text",
-        "label": "Connected Account",
-        "required": false,
-        "auto_filled_by_oauth": true,
-        "readonly_when_connected": true
-      }
-    ],
-    "oauth_provider": {
-      "auth_method_value": "wiro",
-      "connect_endpoint": "/UserAgentOAuth/OAuthConnect",
-      "disconnect_endpoint": "/UserAgentOAuth/OAuthDisconnect",
-      "status_endpoint": "/UserAgentOAuth/OAuthStatus",
-      "connect_button_label": "Connect with Instagram",
-      "connect_button_icon": "/images/icons/skills/instagram.svg",
-      "connect_button_brand_color": "#e4405f",
-      "connect_button_text_color": "#ffffff",
-      "connect_button_logo_filter": "none",
-      "username_field": "igusername",
-      "return_query_param": "ig_connected",
-      "return_error_param": "ig_error",
-      "return_error_detail_param": "ig_error_detail",
-      "direct_probe": {
-        "mode": "api_key",
-        "mode_label": "System User Token",
-        "token_field": "systemusertoken",
-        "required_fields": ["systemusertoken"],
-        "public_account_fields": ["id", "name"]
-      },
-      "account_picker": {
-        "enabled": true,
-        "multi_select": true,
-        "set_endpoint": "/UserAgentOAuth/SetPickerAccounts",
-        "item_value_field": "accountId",
-        "item_label_field": "igusername",
-        "item_fields_to_save": ["accountId", "igusername"]
-      },
-      "extra_step": null
-    },
-    "used_by_skills": ["int-instagram-post"]
-  }
-}
-```
-
-Returns the **full registry credential entry**: same shape as a row from [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail). Returns `{ "result": false, "errors": [{ "code": 404, "message": "No credential associated with skill: <name>" }] }` if the skill exists but has `credential_key: null` (`util` / platform-managed) or if the skill is unknown.
+`{ "result": true, "errors": [], "credential": { ... } }`, where `credential` is the **full registry credential entry**: the same shape as [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail). A skill that needs no credential (most skills: check `requires_credentials` first) answers `{ "result": false, "errors": [{ "code": 404, "message": "No credential associated with skill: <name>" }] }`. A service the agent works with is a connector, not a skill's credential: read its fields with [`POST /AgentConnector/Detail`](/docs/agent-connectors#post-agentconnectordetail).
 
 ### **POST** /Skills/Capabilities
 
@@ -434,9 +321,9 @@ Once you've deployed a useragent, its current custom skills live under `customsk
     }
   ],
   "skills": [
-    { "name": "int-instagram-post", "enabled": true },
-    { "name": "int-googleads-manage", "enabled": false },
-    { "name": "int-wiro-aimodels", "enabled": true }
+    { "name": "util-social-posting-common", "enabled": true },
+    { "name": "util-weather", "enabled": false },
+    { "name": "util-chat-markdown-reporting", "enabled": true }
   ]
 }
 ```
@@ -450,8 +337,8 @@ Once you've deployed a useragent, its current custom skills live under `customsk
 | `description` | string | Human-readable description. **Writable only on user-created rows.** Sending a *different* `description` for a preset strategy or a skill-bundled cron is rejected with `customskill-preset-description-not-editable`; sending the current one back unchanged is ignored. |
 | `enabled` | boolean | Whether the skill is active. **Writable for both strategies (`cs-*`) and crons (`cs-cron-*`)**. A disabled strategy is suppressed end-to-end (kept in the merged `customskills[]` so it still appears in the list, but the agent never loads it). |
 | `interval` | string \| null | Cron expression for scheduled execution, or `null` for preference skills. Writable on scheduled tasks; ignored on preferences. |
-| `_source` | string | `preset-strategy` (editable preference), `skill-bundle` (cron owned by an integration skill), or `user-created` (cron added via `CustomSkillUpsert`). |
-| `_editable` | boolean | Convenience flag: `true` for preset strategies and user-created rows (you can write `value`), `false` for skill-bundled crons (you can only write `enabled` / `interval`). |
+| `_source` | string | `preset-strategy` (editable preference), `skill-bundle` (a scheduled task that comes with the agent template), or `user-created` (cron added via `CustomSkillUpsert`). |
+| `_editable` | boolean | Convenience flag: `true` for preset strategies and user-created rows (you can write `value`), `false` for template scheduled tasks (you can only write `enabled` / `interval`). |
 | `_user_created` | boolean | Present (and `true`) only on `_source: "user-created"` rows. Omitted on preset strategies and skill-bundled crons. |
 
 ### Understanding `_source`
@@ -459,7 +346,7 @@ Once you've deployed a useragent, its current custom skills live under `customsk
 Agent responses merge three sources into a single set of custom-skill rows:
 
 1. **Preset strategies** (`_source: "preset-strategy"`): preferences defined by the agent preset (e.g. `cs-content-tone`, `cs-ad-strategy`). You can write `value`.
-2. **Bundled crons** (`_source: "skill-bundle"`): cron tasks shipped inside a specific integration skill. Automatically materialized when the integration is enabled. You can write `interval` and `enabled`, but **not** `value` (the skill owns the cron instruction text).
+2. **Bundled crons** (`_source: "skill-bundle"`): scheduled tasks that come with the agent template, such as a daily performance report. A task that works with a connector stays off until that connector is connected. You can write `interval` and `enabled`, but **not** `value` (the template owns the task's instruction text).
 3. **User-created rows** (`_source: "user-created"`): entries added via `POST /UserAgent/CustomSkillUpsert`. You can write all fields. Crons are flagged via `interval` (or an explicit `cs-cron-` prefix), not `usercreated`.
 
 ## Updating Preference Skills
@@ -707,9 +594,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillRevert" \
 
 The response carries the post-revert state (`current_value`, `current_interval`, `current_enabled`) so the UI can refresh without a full `Detail` round-trip.
 
-## Toggling Integration Skills
+## Turning Skills On and Off
 
-The top-level `skills[]` array on `UserAgent/Detail` lists every integration skill on the instance as an **object array**: `[{ name, enabled, _edited?, _user_created? }, ...]`. `enabled: false` entries are still returned (so a UI can show disabled rows); filter on `enabled: true` to get only the active set. Example: `[{ "name": "int-instagram-post", "enabled": true }, { "name": "int-googleads-manage", "enabled": false }, { "name": "int-wiro-aimodels", "enabled": true }]`. To enable or disable several skills in one shot, use **`POST /UserAgent/SkillsApply`**. Even when you only want to flip a single skill, send it as a one-entry `skills` map. The endpoint:
+The top-level `skills[]` array on `UserAgent/Detail` lists every Skill on the instance as an **object array**: `[{ name, enabled, _edited?, _user_created? }, ...]`. `enabled: false` entries are still returned (so a UI can show disabled rows); filter on `enabled: true` to get only the active set. Example: `[{ "name": "util-weather", "enabled": true }, { "name": "util-diagram", "enabled": false }]`. To enable or disable several skills in one shot, use **`POST /UserAgent/SkillsApply`**. Even when you only want to flip a single skill, send it as a one-entry `skills` map. Connectors are not in this list: a connected connector is on (see [Agent Connectors](/docs/agent-connectors)). The endpoint:
 
 1. Triggers exactly **one agent restart** after the new skill set lands.
 2. Uses **idempotency**: concurrent calls or client retries can't apply the change twice.
@@ -727,7 +614,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
     "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
     "idempotencyKey": "550e8400-e29b-41d4-a716-446655440001",
     "skills": {
-      "int-instagram-post": true
+      "util-weather": true
     }
   }'
 ```
@@ -742,9 +629,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
     "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
     "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000",
     "skills": {
-      "int-instagram-post": true,
-      "int-twitterx-post":  true,
-      "int-wordpress-post":  false
+      "util-weather": true,
+      "util-diagram": true,
+      "util-anti-ai-human-copy": false
     }
   }'
 ```
@@ -753,7 +640,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
 
 > **Template deploys too.** `SkillsApply` works on agents deployed from a marketplace template as well as on custom builds. On a template agent, a skill you change overrides the template for that skill only; later template updates still reach every skill you never changed.
 
-> **Bundled crons follow the integration toggle.** When you disable an integration skill (e.g. `int-instagram-post`), every bundled cron it owns (`_source: "skill-bundle"`) is hidden from the top-level `customskills` / `scheduledskills` lists until the integration is re-enabled, so you don't need to touch them individually.
+> **Scheduled tasks follow their connectors.** A template's scheduled task that works with a connector, such as a daily Google Ads report, stays off while that connector isn't connected, and turns on when it is. You don't need to touch it on its own.
 
 ## Preview a Skill Change
 
@@ -766,8 +653,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
   -d '{
     "useragentguid": "your-useragent-guid",
     "skillOverrides": {
-      "int-twitterx-post": true,
-      "int-wordpress-post": false
+      "util-weather": true,
+      "util-diagram": false
     }
   }'
 ```
@@ -781,7 +668,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
   -d '{
     "draft": true,
     "tier": "starter",
-    "skills": ["int-gmail-check", "int-wordpress-post"]
+    "skills": ["util-weather", "util-diagram"]
   }'
 ```
 
@@ -874,7 +761,7 @@ All three requests succeed independently. The agent restarts once: the server co
 
 ## Available Skills by Agent
 
-> **Integration setup guides:** Every skill below that needs a third-party connection links to a dedicated integration page with the full OAuth / API key walkthrough, required scopes or permissions, callback URL, troubleshooting, and multi-tenant architecture notes. See the [Integration Catalog](/docs/agent-credentials#integration-catalog) for the full list.
+> **Connectors:** the services these agents work with (Google Ads, Meta Ads, WordPress, Brevo and the rest) are connectors, each connected with your own credentials. See [Agent Connectors](/docs/agent-connectors), and each connector's page at `https://wiro.ai/connectors/{slug}`.
 
 > **Discovery is canonical.** Skill keys evolve as agent templates are updated. To see the exact keys for a specific agent instance, always fetch `POST /UserAgent/Detail` first. The top-level `customskills` / `scheduledskills` arrays are the source of truth. The tables below reflect current intended keys; `CustomSkillUpsert` silently accepts keys that exist on the instance and returns `skill-not-found` for unknown keys without altering other state.
 
@@ -948,70 +835,30 @@ Each scheduled task reads its paired preference skill at runtime. The mechanism:
 
 1. `POST /UserAgent/CustomSkillUpsert` writes your preference `value` for key `content-tone` (stored as `cs-content-tone`).
 2. When the agent starts, each `customskills` / `scheduledskills` row becomes a skill named by its key: a preference skill with key `cs-content-tone` becomes the skill `cs-content-tone`, and a scheduled task with key `cs-cron-social-content-scanner` becomes `cs-cron-social-content-scanner`.
-3. The scheduled task's `value` (shipped in the integration skill, not user-editable) references its paired preference by its skill name, `cs-<preference-key>`, for example:
-   ```
-   0. Read the cs-content-tone skill first — follow ALL its rules.
-   1. ...
-   ```
+3. The scheduled task's `value` (shipped with the agent template, not user-editable) references its paired preference by its skill name, `cs-<preference-key>`, for example: `0. Read the cs-content-tone skill first and follow all its rules. 1. ...`
 4. At each cron tick, the agent LLM reads `cs-content-tone`, applies your instructions, then executes the scan/report/dispatch workflow.
 
 > **Slug normalization:** the `<slug>` in `cs-<slug>` / `cs-cron-<slug>` is the raw key lowercased with any run of non-alphanumeric characters replaced by a single `-` (leading/trailing dashes trimmed). Template keys already follow this shape so the slug matches 1:1.
 
 This means **your editable preference becomes the single place to customize agent behavior** (brand voice, target audience, content sources, holiday markets, etc.), and the bundled scheduled task is a thin orchestration layer that defers to your preference.
 
-### Skill → Integration Mapping
+### Using Connectors in Skills
 
-Skills that depend on third-party credentials. Follow the linked integration page for provider setup, OAuth walkthrough, and troubleshooting.
+A connected connector gives the agent its tools, named `<slug>__<tool>`, such as `serper__web_search` or `bluesky__create_post`. A template's scheduled tasks call them by these names, and your own custom skills can too: tell the agent which tools to use and when, for example "Research the topic with `serper__web_search` before you write." See [What the Agent Gets](/docs/agent-connectors#what-the-agent-gets).
 
-| Skill | Credential Key | Integration Guide |
-|-------|----------------|-------------------|
-| `int-metaads-manage` | `meta-ads` (System User or OAuth) | [Meta Ads Skills](/docs/integration-metaads-skills) |
-| `int-tiktok-ads` | `tiktok-ads` (Wiro OAuth) | [TikTok Ads Skills](/docs/integration-tiktokads-skills) |
-| `int-facebookpage-post` | `facebook-pages` (System User or OAuth) | [Facebook Page Skills](/docs/integration-facebook-skills) |
-| `int-instagram-post` | `instagram` (System User or Instagram OAuth) | [Instagram Skills](/docs/integration-instagram-skills) |
-| `int-linkedin-post` | `linkedin` (OAuth) | [LinkedIn Skills](/docs/integration-linkedin-skills) |
-| `int-twitterx-post` | `twitter` (OAuth) | [Twitter / X Skills](/docs/integration-twitter-skills) |
-| `int-tiktok-post` | `tiktok` (OAuth) | [TikTok Skills](/docs/integration-tiktok-skills) |
-| `int-youtube-manage` | `youtube` (OAuth) | [YouTube Skills](/docs/integration-youtube-skills) |
-| `int-googleads-manage` | `google-ads` (OAuth) | [Google Ads Skills](/docs/integration-googleads-skills) |
-| `int-merchant-center` | `google-merchant-center` (OAuth) | [Merchant Center Skills](/docs/integration-merchantcenter-skills) |
-| `int-ga4-analytics` | `ga4` (OAuth) | [GA4 Skills](/docs/integration-ga4-skills) |
-| `int-google-business-reviews` | `google-business` (Own OAuth) | [Google Business Profile Skills](/docs/integration-googlebusiness-skills) |
-| `int-hubspot-crm` | `hubspot` (OAuth) | [HubSpot Skills](/docs/integration-hubspot-skills) |
-| `int-mailchimp-email` | `mailchimp` (OAuth or API key) | [Mailchimp Skills](/docs/integration-mailchimp-skills) |
-| `int-google-drive` | `google-drive` (Service Account) | [Google Drive Skills](/docs/integration-googledrive-skills) |
-| `int-google-calendar` | `google-calendar` (Service Account) | [Google Calendar Skills](/docs/integration-google-calendar-skills) |
-| `int-gmail-check` | `gmail` (App Password) | [Gmail Skills](/docs/integration-gmail-skills) |
-| `int-firebase-push` | `firebase` (Service Account) | [Firebase Skills](/docs/integration-firebase-skills) |
-| `int-wordpress-post` | `wordpress` (App Password) | [WordPress Skills](/docs/integration-wordpress-skills) |
-| `int-roasit-attribution` | `roasit` (API token) | [Roasit Skills](/docs/integration-roasit-skills) |
-| `int-search-console` | `google-search-console` (OAuth, your own Google Cloud client) | [Google Search Console Skills](/docs/integration-searchconsole-skills) |
-| `int-dataforseo` | `dataforseo` (API login and password) | [DataForSEO Skills](/docs/integration-dataforseo-skills) |
-| `int-keepa` | `keepa` (API key) | [Keepa Skills](/docs/integration-keepa-skills) |
-| `int-revenuecat` | `revenuecat` (secret API key) | [RevenueCat Skills](/docs/integration-revenuecat-skills) |
-| `int-adapty` | `adapty` (secret API key) | [Adapty Skills](/docs/integration-adapty-skills) |
-| `int-brevo-email` | `brevo` (API key) | [Brevo Skills](/docs/integration-brevo-skills) |
-| `int-sendgrid-email` | `sendgrid` (API key) | [SendGrid Skills](/docs/integration-sendgrid-skills) |
-| `int-appstore-reviews`, `int-appstore-metadata`, `int-appstore-events` | `apple-appstore` (JWT / Service Account) | [App Store Skills](/docs/integration-appstore-skills) |
-| `int-googleplay-reviews`, `int-googleplay-metadata` | `google-play` (Service Account) | [Google Play Skills](/docs/integration-googleplay-skills) |
-| `int-googleplay-events` | `google-play-apps` (Service Account, separate per-app registry) | [Google Play Skills](/docs/integration-googleplay-skills) |
-| `int-apollo-sales` | `apollo` (API key) | [Apollo Skills](/docs/integration-apollo-skills) |
-| `int-lemlist-outreach` | `lemlist` (API key) | [Lemlist Skills](/docs/integration-lemlist-skills) |
-| `int-twilio-channel` | `twilio-voice` (API key) | [Twilio Voice](/docs/integration-twiliovoice-skills) |
-| `int-wiro-aimodels` | `wiro` (the Wiro project the agent runs models with) | See [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent) |
-| `int-calendarific` | `calendarific` (API key) | [Calendarific in your agent](/docs/agent-credentials#calendarific-in-your-agent) |
+A template's scheduled task that needs a connector stays off until that connector is connected, so connect the ones a template works with after you deploy it: [`POST /UserAgent/ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect).
 
-Agents can optionally forward operator notifications to a Telegram bot via the `telegram` credential (see [Telegram Skills](/docs/integration-telegram-skills)). This is never required; every agent remains fully usable over web chat and the [Messaging API](/docs/agent-messaging) without a bot configured.
+Agents can optionally forward operator notifications to a Telegram bot via the `telegram` credential (see [Telegram Channel](/docs/integration-telegram-skills)). This is never required; every agent remains fully usable over web chat and the [Messaging API](/docs/agent-messaging) without a bot configured.
 
 ### Utility Skills
 
-`util-*` skills need no credential. Most are rule sets that come with an integration skill as one of its `depends_on`. These three can be added to any agent with [`SkillsApply`](#toggling-integration-skills), on any plan and at no charge:
+`util-*` skills need no outside account. Most are rule sets that come with an agent template. These three can be added to any agent with [`SkillsApply`](#turning-skills-on-and-off), on any plan and at no charge:
 
 | Skill | What it adds |
 |-------|--------------|
 | `util-weather` | Current weather and a 9-day forecast for any place: temperature, rain, wind and UV from MET Norway's open forecast data, with the place found on OpenStreetMap. |
 | `util-diagram` | Flowcharts, architecture and sequence diagrams, state machines, data models, mind maps, timelines, Gantt plans and concept drawings as PNG images with an editable SVG copy, checked for overlapping or cut-off text. |
-| `util-video-creator` | The Video Creator's playbook: finished videos with voice-over, music and captions from a website or web app (behind a login too), an app-store listing, a document, an article or product photos; 16:9 or 9:16, up to 3 minutes. It brings `util-video-shots`, `util-video-docs`, `util-motion-effects` and `int-wiro-aimodels` with it, so the agent needs your Wiro project key, which pays the video's model runs (see [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent)). `util-motion-effects` and `util-video-creator` always come together, whichever one you turn on. |
+| `util-video-creator` | The Video Creator's playbook: finished videos with voice-over, music and captions from a website or web app (behind a login too), an app-store listing, a document, an article or product photos; 16:9 or 9:16, up to 3 minutes. It brings `util-video-shots`, `util-video-docs` and `util-motion-effects` with it, and runs the video's models with the agent's Wiro project, which pays for them (see [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent)). `util-motion-effects` and `util-video-creator` always come together, whichever one you turn on. |
 
 `POST /Skills/List` with `{ "category": "util" }` returns every utility skill.
 
@@ -1019,13 +866,12 @@ Agents can optionally forward operator notifications to a Telegram bot via the `
 
 ## Using Wiro AI Models from Your Agent
 
-`int-wiro-aimodels` lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) while it works. When it's enabled on an agent:
+An agent runs Wiro's own AI models (image, video, audio and LLM generation, cover images, model discovery) two ways:
 
-- `credentials.wiro.apikey` is **operator-supplied**: pick or create a Wiro project at [wiro.ai/panel/project](https://wiro.ai/panel/project) and connect it on the agent's **Connectors** tab, or through the API with `POST /UserAgent/CredentialProjectBind`. Each generated asset is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
-- The agent can run Wiro models only when `int-wiro-aimodels` is enabled **and** a `wiro.apikey` value has been written.
-- `int-wiro-aimodels` is marked `user_invocable: true` in the registry: end-user messages can trigger it directly, and other skills / scheduled tasks invoke it internally when they need to generate content.
+- **With its Wiro project.** Skills such as `util-video-creator` and the voice skills run their models with the agent's Wiro project, the `wiro` credential. Pick or create a project at [wiro.ai/panel/project](https://wiro.ai/panel/project) and connect it in the agent's settings, or through the API with `POST /UserAgent/CredentialProjectBind`. Each run is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project). See [The agent's Wiro project](/docs/agent-credentials#the-agents-wiro-project).
+- **With the Wiro connector.** The `wiro` connector gives the agent Wiro's own tools (`wiro__*`) for any model, billed to the project you connect it with. See [The Wiro connector](/docs/agent-connectors#the-wiro-connector).
 
-Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, TikTok Ads, Google Ads) ship with `int-wiro-aimodels: true`. Templates that don't need AI generation (App Review Support, Lead Generation Manager) ship with `int-wiro-aimodels: false`. Either way, the agent starts without a Wiro project. Where the template marks this connector required, `UserAgent/Detail` reads `setuprequired: true` until one is connected. `projectid` in the call below comes from `POST /Project/List`; see [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) for the response and errors.
+The agent starts without a Wiro project. Where the template marks the project required (`optional: false`), `UserAgent/Detail` reads `setuprequired: true` until it is connected.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialProjectBind" \
@@ -1037,16 +883,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialProjectBind" \
   }'
 ```
 
-To verify the skill is active on a deployed agent:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-# The top-level skills[] array should contain { "name": "int-wiro-aimodels", "enabled": true }
-# credentials.wiro.apikey holds the project's key once the project is connected
-```
+`credentials.wiro.apikey` on `POST /UserAgent/Detail` holds the project's key once the project is connected.
 
 ### Project key vs operator key
 
@@ -1071,7 +908,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
 - Unknown skill keys return `skill-not-found` in the `errors[]` without altering other state.
 - To clear a cron schedule, call `CustomSkillUpsert` with `enabled: false`. Setting `interval: ""` or `null` also clears it.
 - A schedule must be one the agent can run, written as five fields, `minute hour day month weekday`, such as `0 9 * * 1-5`. A schedule the agent can't run, or one whose date never comes, such as 30 February, is refused and nothing is saved. The error says what is wrong and what to write, for example `This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.`
-- Integration toggles (top-level `skills[]`) are a separate endpoint (see [Toggling Integration Skills](#toggling-integration-skills) and [`SkillsApply`](/docs/agent-overview#post-useragentskillsapply)).
+- Skill toggles (top-level `skills[]`) are a separate endpoint (see [Turning Skills On and Off](#turning-skills-on-and-off) and [`SkillsApply`](/docs/agent-overview#post-useragentskillsapply)).
 
 ### What happens when Wiro updates an agent template
 
@@ -1080,7 +917,7 @@ Skills occasionally evolve on Wiro's side: new preset strategies, new bundled cr
 | Row type | Behavior on template update |
 |----------|----------------------------|
 | Preset strategy (`_source: "preset-strategy"`) | Your `value` is **preserved** (rows with `useredited: true`). New placeholder structure in the template appears only on fresh deploys. |
-| Skill-bundled cron (`_source: "skill-bundle"`) | The `value` (cron instructions) is **re-materialized** from the new skill. Your custom `interval` and `enabled` are preserved when `useredited: true`. |
+| Skill-bundled cron (`_source: "skill-bundle"`) | The `value` (cron instructions) is **re-materialized** from the new template. Your custom `interval` and `enabled` are preserved when `useredited: true`. |
 | New preset strategy upstream | Added to your instance with the template's default `value`. |
 | Preset strategy removed upstream | Removed from your instance on the next reconciliation. |
 | User-created cron | Always preserved. |

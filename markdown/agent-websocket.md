@@ -111,7 +111,7 @@ Frames flow in two directions. `↓` = server → client, `↑` = client → ser
 | ↓ | `agent_error` | Terminal failure event. `message` is a plain string: the turn's coded failure message, the same text `response` holds (see [Failed turns](/docs/agent-messaging#failed-turns)). Emits at most once. |
 | ↓ | `agent_cancel` | Terminal cancel event. Fires **only** when an already-active message is aborted mid-stream (via `Message/Cancel` or upstream abort). Cancels against a still-queued message do **not** broadcast this event, so check `Message/Detail` for those. Emits at most once. |
 | ↓ | `agent_usage_report` | Post-terminal usage/billing frame. Fires once, ~250-500 ms after a successful `agent_end`, on the same `agenttoken`. Carries the final token counts, `model`, `tokencost`, and `remainingcredits` for the message identified by `messageguid`. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns); follow those on the [run stream](#following-an-agents-background-runs). |
-| ↓ | `agent_wiroai_runtask` | Model-run discovery frame. Fires whenever the agent itself launches a Wiro model run during a turn (e.g. generating an image or video via `int-wiro-aimodels`). Arrives on the `agenttoken` of the turn that launched the run, carrying the new task's `socketaccesstoken` so you can subscribe to that run's `task_*` lifecycle and collect its outputs. See [Model runs the agent triggers](#model-runs-the-agent-triggers). |
+| ↓ | `agent_wiroai_runtask` | Model-run discovery frame. Fires whenever the agent itself launches a Wiro model run during a turn (e.g. generating an image or video for a skill or through the `wiro` connector). Arrives on the `agenttoken` of the turn that launched the run, carrying the new task's `socketaccesstoken` so you can subscribe to that run's `task_*` lifecycle and collect its outputs. See [Model runs the agent triggers](#model-runs-the-agent-triggers). |
 | ↑ | `agent_session_subscribe` | Follow a session with the `sessiontoken` from `Message/History`. See [Following a session](#following-a-session). |
 | ↓ | `agent_session_subscribed` | Session follow acknowledged. |
 | ↓ | `agent_message_inserted` | A message was added to a followed session between turns (a scheduled report, files sent after an answer, the result of background work). Carries the `sessiontoken` and the new row in `message`. |
@@ -284,7 +284,7 @@ When the agent proposes a setup change, a `setup` block arrives the same way. It
 
 Tool blocks carry two closed-list words:
 
-- `toolintegration` names the connector the step works in, as its `key` from [`POST /Credentials/List`](/docs/agent-credentials#post-credentialslist): `adapty`, `adjust`, `apollo`, `apple-appstore`, `brevo`, `calendarific`, `dataforseo`, `facebook-pages`, `firebase`, `ga4`, `gmail`, `google-ads`, `google-business`, `google-calendar`, `google-drive`, `google-merchant-center`, `google-play`, `google-search-console`, `hubspot`, `instagram`, `keepa`, `lemlist`, `linkedin`, `mailchimp`, `meta-ads`, `reddit`, `revenuecat`, `roasit`, `sendgrid`, `serper`, `shopify`, `telegram`, `tiktok`, `tiktok-ads`, `twitter`, `wiro`, `woocommerce`, `wordpress`, or `youtube`.
+- `toolintegration` names the connector the step works in, as its `slug` from [`POST /AgentConnector/List`](/docs/agent-connectors#post-agentconnectorlist), such as `shopify`, `google-ads` or `serper`, or `telegram` for the Telegram channel and `wiro` for Wiro's own tools. Name it in your app by the connector's `title`.
 - `toolaction` names what the step does: `screenshot`, `open-page`, `read-page`, `click`, `type`, `press-key`, `wait`, `upload`, `download`, `read-file`, or `edit-media`.
 
 Each is `null` when no word fits, and a block never has both. The words come with the block's first update, and every later update of the block carries them. A later update can carry a different word if the step changed, so read them from the newest version of the block. A block whose step is rewritten and no longer fits a word keeps its last word. Treat a value you don't know like `null`; [Agent Messaging](/docs/agent-messaging#tool-integration-and-action-values) says what each word means.
@@ -438,7 +438,7 @@ It is **not** emitted for:
 
 ### Model runs the agent triggers
 
-When the agent **itself** kicks off a Wiro model run during a turn (for example generating an image or a video through the `int-wiro-aimodels` skill), the bridge emits an `agent_wiroai_runtask` discovery frame. It hands you the new model run's `socketaccesstoken` so you can subscribe to that run and stream its progress and final media outputs. This is how a chat product surfaces a "live activity feed" of the media the agent is producing.
+When the agent **itself** kicks off a Wiro model run during a turn (for example generating an image or a video for a skill, or through the `wiro` connector), the bridge emits an `agent_wiroai_runtask` discovery frame. It hands you the new model run's `socketaccesstoken` so you can subscribe to that run and stream its progress and final media outputs. This is how a chat product surfaces a "live activity feed" of the media the agent is producing.
 
 ```json
 {

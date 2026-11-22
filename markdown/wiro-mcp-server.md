@@ -1303,7 +1303,7 @@ and `session` names the conversation, following the session name rule under
 
 An agent is named by its guid, which `list_my_agents` returns. See
 [Agent Overview](/docs/agent-overview), [Agent Builder](/docs/agent-builder),
-[Agent Credentials & OAuth](/docs/agent-credentials) and
+[Agent Connectors](/docs/agent-connectors), [Agent Credentials](/docs/agent-credentials) and
 [Agent Skills](/docs/agent-skills) for the API behind these tools.
 
 | Tool | Main arguments |
