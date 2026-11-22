@@ -14241,7 +14241,7 @@ Do not compare `version` across different blocks. Keep a map keyed by `blockid`,
 
 `toolintegration` and `toolaction` say which connector a tool step works in and what the step does, so your app can show "Working in Shopify" or "Taking a screenshot" instead of only the tool's name. Each holds a word from a closed list or `null`, never free text, a host, a URL, a path, or an argument.
 
-`toolintegration` is the `key` of the connector the step works in, as [`POST /Credentials/List`](/docs/agent-credentials#post-credentialslist) lists it: `adapty`, `adjust`, `apollo`, `apple-appstore`, `brevo`, `calendarific`, `dataforseo`, `facebook-pages`, `firebase`, `ga4`, `gmail`, `google-ads`, `google-business`, `google-calendar`, `google-drive`, `google-merchant-center`, `google-play`, `google-search-console`, `hubspot`, `instagram`, `keepa`, `lemlist`, `linkedin`, `mailchimp`, `meta-ads`, `reddit`, `revenuecat`, `roasit`, `sendgrid`, `serper`, `shopify`, `telegram`, `tiktok`, `tiktok-ads`, `twitter`, `wiro`, `woocommerce`, `wordpress`, or `youtube`.
+`toolintegration` is the `key` of the connector the step works in, as [`POST /Credentials/List`](/docs/agent-credentials#post-credentialslist) lists it: `adapty`, `adjust`, `apollo`, `apple-appstore`, `beehiiv`, `blogger`, `bluesky`, `brevo`, `calendarific`, `dataforseo`, `devto`, `facebook-pages`, `firebase`, `ga4`, `gitbook`, `gmail`, `google-ads`, `google-business`, `google-calendar`, `google-drive`, `google-merchant-center`, `google-play`, `google-search-console`, `hackmd`, `hashnode`, `hubspot`, `instagram`, `kaggle`, `keepa`, `lemlist`, `linkedin`, `mailchimp`, `mastodon`, `meta-ads`, `notion`, `pinterest`, `qiita`, `reddit`, `revenuecat`, `roasit`, `sendgrid`, `serper`, `shopify`, `telegram`, `threads`, `tiktok`, `tiktok-ads`, `tumblr`, `twitter`, `wiro`, `woocommerce`, `wordpress`, or `youtube`.
 
 `toolaction` is one of these words:
 
@@ -15990,7 +15990,7 @@ When the agent proposes a setup change, a `setup` block arrives the same way. It
 
 Tool blocks carry two closed-list words:
 
-- `toolintegration` names the connector the step works in, as its `key` from [`POST /Credentials/List`](/docs/agent-credentials#post-credentialslist): `adapty`, `adjust`, `apollo`, `apple-appstore`, `brevo`, `calendarific`, `dataforseo`, `facebook-pages`, `firebase`, `ga4`, `gmail`, `google-ads`, `google-business`, `google-calendar`, `google-drive`, `google-merchant-center`, `google-play`, `google-search-console`, `hubspot`, `instagram`, `keepa`, `lemlist`, `linkedin`, `mailchimp`, `meta-ads`, `reddit`, `revenuecat`, `roasit`, `sendgrid`, `serper`, `shopify`, `telegram`, `tiktok`, `tiktok-ads`, `twitter`, `wiro`, `woocommerce`, `wordpress`, or `youtube`.
+- `toolintegration` names the connector the step works in, as its `key` from [`POST /Credentials/List`](/docs/agent-credentials#post-credentialslist): `adapty`, `adjust`, `apollo`, `apple-appstore`, `beehiiv`, `blogger`, `bluesky`, `brevo`, `calendarific`, `dataforseo`, `devto`, `facebook-pages`, `firebase`, `ga4`, `gitbook`, `gmail`, `google-ads`, `google-business`, `google-calendar`, `google-drive`, `google-merchant-center`, `google-play`, `google-search-console`, `hackmd`, `hashnode`, `hubspot`, `instagram`, `kaggle`, `keepa`, `lemlist`, `linkedin`, `mailchimp`, `mastodon`, `meta-ads`, `notion`, `pinterest`, `qiita`, `reddit`, `revenuecat`, `roasit`, `sendgrid`, `serper`, `shopify`, `telegram`, `threads`, `tiktok`, `tiktok-ads`, `tumblr`, `twitter`, `wiro`, `woocommerce`, `wordpress`, or `youtube`.
 - `toolaction` names what the step does: `screenshot`, `open-page`, `read-page`, `click`, `type`, `press-key`, `wait`, `upload`, `download`, `read-file`, or `edit-media`.
 
 Each is `null` when no word fits, and a block never has both. The words come with the block's first update, and every later update of the block carries them. A later update can carry a different word if the step changed, so read them from the newest version of the block. A block whose step is rewritten and no longer fits a word keeps its last word. Treat a value you don't know like `null`; [Agent Messaging](/docs/agent-messaging#tool-integration-and-action-values) says what each word means.
@@ -18126,8 +18126,12 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 | Google Business Profile | Own only (your Google Cloud project, approved for Business Profile API access) | [Google Business Profile Skills](/docs/integration-googlebusiness-skills) |
 | HubSpot | Wiro + Own | [HubSpot Skills](/docs/integration-hubspot-skills) |
 | Mailchimp | Wiro + Own + API Key | [Mailchimp Skills](/docs/integration-mailchimp-skills) |
+| Blogger | Own only (your Google Cloud project) | [Blogger Skills](/docs/integration-blogger-skills) (can share the Google OAuth client with Google Search Console) |
+| Threads | Own only (your Meta app with the Access the Threads API use case) | [Threads Skills](/docs/integration-threads-skills) |
+| Pinterest | Own only (your Pinterest app; creating Pins needs Standard access) | [Pinterest Skills](/docs/integration-pinterest-skills) |
+| Tumblr | Own only (your Tumblr app; tokens renewed about every 30 minutes while the agent runs) | [Tumblr Skills](/docs/integration-tumblr-skills) |
 
-> **Google OAuth is shared across 5 APIs.** Google Ads, YouTube, Google Analytics 4, Merchant Center and Google Search Console can all be authorized through one of your own OAuth clients (one Google Cloud project, one OAuth 2.0 Client ID, multiple API scopes), or you can set up separate ones per product. Wiro's shared client for "wiro" mode is coming soon. Google Business Profile is not part of that shared client: it is own mode only, and the Google Cloud project behind your OAuth client must be approved for Business Profile API access.
+> **Google OAuth is shared across 6 APIs.** Google Ads, YouTube, Google Analytics 4, Merchant Center, Google Search Console and Blogger can all be authorized through one of your own OAuth clients (one Google Cloud project, one OAuth 2.0 Client ID, multiple API scopes), or you can set up separate ones per product. Wiro's shared client for "wiro" mode is coming soon for the first five; Blogger is own mode only. Google Business Profile is not part of that shared client: it is own mode only, and the Google Cloud project behind your OAuth client must be approved for Business Profile API access.
 
 ### Service Account Integrations
 
@@ -18165,6 +18169,16 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 | Keepa | [Keepa Skills](/docs/integration-keepa-skills) |
 | RevenueCat | [RevenueCat Skills](/docs/integration-revenuecat-skills) |
 | Adapty | [Adapty Skills](/docs/integration-adapty-skills) |
+| dev.to | [dev.to Skills](/docs/integration-devto-skills) |
+| Hashnode (Personal Access Token, Hashnode Pro) | [Hashnode Skills](/docs/integration-hashnode-skills) |
+| Qiita | [Qiita Skills](/docs/integration-qiita-skills) |
+| HackMD | [HackMD Skills](/docs/integration-hackmd-skills) |
+| Notion | [Notion Skills](/docs/integration-notion-skills) |
+| GitBook | [GitBook Skills](/docs/integration-gitbook-skills) |
+| beehiiv | [beehiiv Skills](/docs/integration-beehiiv-skills) |
+| Kaggle | [Kaggle Skills](/docs/integration-kaggle-skills) |
+| Bluesky (handle + app password) | [Bluesky Skills](/docs/integration-bluesky-skills) |
+| Mastodon (server address + access token) | [Mastodon Skills](/docs/integration-mastodon-skills) |
 | Brevo | [Brevo Skills](/docs/integration-brevo-skills) |
 | SendGrid | [SendGrid Skills](/docs/integration-sendgrid-skills) |
 | Twilio Voice | [Twilio Voice](/docs/integration-twiliovoice-skills) |
@@ -18468,7 +18482,7 @@ Register this URL in your OAuth app settings on the provider's developer portal:
 https://api.wiro.ai/v1/UserAgentOAuth/{Provider}Callback
 ```
 
-Provider-specific paths: `XCallback`, `TikTokCallback`, `IGCallback`, `FBCallback`, `LICallback`, `GAdsCallback`, `MetaAdsCallback`, `MCCallback`, `YTCallback`, `GA4Callback`, `GBPCallback`, `HubSpotCallback`, `MailchimpCallback`, `ShopifyCallback`, `RedditCallback`. TikTok Ads uses `TikTokAdsCallback`, but it is Wiro-managed only, so there is no app of your own to register it in. [`OAuthStatus`](#post-useragentoauthoauthstatus) returns the exact URL to register for each credential as `redirecturi`.
+Provider-specific paths: `XCallback`, `TikTokCallback`, `IGCallback`, `FBCallback`, `LICallback`, `GAdsCallback`, `MetaAdsCallback`, `MCCallback`, `YTCallback`, `GA4Callback`, `GBPCallback`, `HubSpotCallback`, `MailchimpCallback`, `ShopifyCallback`, `RedditCallback`, `SearchConsoleCallback`, `BloggerCallback`, `ThreadsCallback`, `PinterestCallback`, `TumblrCallback`. TikTok Ads uses `TikTokAdsCallback`, but it is Wiro-managed only, so there is no app of your own to register it in. [`OAuthStatus`](#post-useragentoauthoauthstatus) returns the exact URL to register for each credential as `redirecturi`.
 
 ### Callback success & error parameters
 
@@ -18486,6 +18500,10 @@ Provider-specific paths: `XCallback`, `TikTokCallback`, `IGCallback`, `FBCallbac
 | YouTube | `yt_connected=true&yt_channels=[...]` | `yt_error=...` |
 | GA4 | `ga4_connected=true&ga4_properties=[...]` | `ga4_error=...` |
 | Google Search Console | `gsc_connected=true&gsc_sites=[...]` | `gsc_error=...` |
+| Blogger | `blogger_connected=true&blogger_blogs=[...]` | `blogger_error=...` |
+| Threads | `threads_connected=true` | `threads_error=...` |
+| Pinterest | `pinterest_connected=true` | `pinterest_error=...` |
+| Tumblr | `tumblr_connected=true&tumblr_blogs=[...]` | `tumblr_error=...` |
 | Google Business Profile | `gbp_connected=true&gbp_accounts=[...]` | `gbp_error=...` |
 | HubSpot | `hubspot_connected=true&hubspot_portal=...&hubspot_name=...` | `hubspot_error=...` |
 | Mailchimp | `mailchimp_connected=true&mailchimp_account=...` | `mailchimp_error=...` |
@@ -22989,6 +23007,20 @@ Skills that depend on third-party credentials. Follow the linked integration pag
 | `int-keepa` | `keepa` (API key) | [Keepa Skills](/docs/integration-keepa-skills) |
 | `int-revenuecat` | `revenuecat` (secret API key) | [RevenueCat Skills](/docs/integration-revenuecat-skills) |
 | `int-adapty` | `adapty` (secret API key) | [Adapty Skills](/docs/integration-adapty-skills) |
+| `int-blogger-post` | `blogger` (OAuth, your own Google Cloud client) | [Blogger Skills](/docs/integration-blogger-skills) |
+| `int-devto-post` | `devto` (API key) | [dev.to Skills](/docs/integration-devto-skills) |
+| `int-hashnode-post` | `hashnode` (Personal Access Token and blog address) | [Hashnode Skills](/docs/integration-hashnode-skills) |
+| `int-qiita-post` | `qiita` (personal access token) | [Qiita Skills](/docs/integration-qiita-skills) |
+| `int-hackmd-post` | `hackmd` (API token) | [HackMD Skills](/docs/integration-hackmd-skills) |
+| `int-notion-post` | `notion` (API token) | [Notion Skills](/docs/integration-notion-skills) |
+| `int-gitbook-post` | `gitbook` (personal access token) | [GitBook Skills](/docs/integration-gitbook-skills) |
+| `int-beehiiv-post` | `beehiiv` (API key) | [beehiiv Skills](/docs/integration-beehiiv-skills) |
+| `int-kaggle-notebooks` | `kaggle` (username and API token) | [Kaggle Skills](/docs/integration-kaggle-skills) |
+| `int-threads-post` | `threads` (OAuth, your own Meta app) | [Threads Skills](/docs/integration-threads-skills) |
+| `int-bluesky-post` | `bluesky` (handle + app password) | [Bluesky Skills](/docs/integration-bluesky-skills) |
+| `int-mastodon-post` | `mastodon` (server address + access token) | [Mastodon Skills](/docs/integration-mastodon-skills) |
+| `int-pinterest-post` | `pinterest` (OAuth, your own Pinterest app) | [Pinterest Skills](/docs/integration-pinterest-skills) |
+| `int-tumblr-post` | `tumblr` (OAuth, your own Tumblr app) | [Tumblr Skills](/docs/integration-tumblr-skills) |
 | `int-brevo-email` | `brevo` (API key) | [Brevo Skills](/docs/integration-brevo-skills) |
 | `int-sendgrid-email` | `sendgrid` (API key) | [SendGrid Skills](/docs/integration-sendgrid-skills) |
 | `int-appstore-reviews`, `int-appstore-metadata`, `int-appstore-events` | `apple-appstore` (JWT / Service Account) | [App Store Skills](/docs/integration-appstore-skills) |
@@ -28904,6 +28936,2689 @@ Adapty allows 2 requests a second per app, shared by all of the app's keys. The 
 - [Agent Skills](/docs/agent-skills)
 - [RevenueCat Integration](/docs/integration-revenuecat-skills)
 - [Roasit Integration](/docs/integration-roasit-skills)
+
+---
+
+# Blogger Integration
+
+Connect your agent to Blogger to write blog posts as drafts, publish or schedule them after your approval, keep labels and pages up to date, and list draft, scheduled and live posts.
+
+## Overview
+
+The Blogger integration uses Google OAuth 2.0 with the Blogger API v3 and the scope `https://www.googleapis.com/auth/blogger`. You connect it with an OAuth client from your own Google Cloud project; there is no shared Wiro app for Blogger.
+
+**Skills that use this integration:**
+
+- `int-blogger-post`: drafts, publishing and scheduling after approval, post updates and labels, lists of draft, scheduled and live posts, search, and pages
+
+**Agents that typically enable this integration:**
+
+- Blog and content agents that publish on a blogspot.com blog or a Blogger blog on its own domain
+- Any agent that turns research or announcements into blog posts
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| `"own"` | Available | Your own Google Cloud project and OAuth client. This is the only mode: `OAuthConnect` uses it when you leave out `authmethod`. |
+| `"wiro"` | Not offered | `OAuthConnect` with `"authmethod": "wiro"` returns `Unsupported connection mode for Blogger`. |
+
+## Prerequisites
+
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
+- **A Blogger blog** the connecting Google account owns or writes for (admin or author).
+- **A Google Cloud project** with the Blogger API v3 enabled.
+- **An HTTPS callback URL**.
+
+## Own Mode
+
+### Step 1: Create a Google Cloud Project
+
+1. [console.cloud.google.com](https://console.cloud.google.com/) → create a project, or use the one behind your Google Search Console or Google Analytics 4 client.
+2. **APIs & Services → Library** → enable the [Blogger API v3](https://console.cloud.google.com/apis/library/blogger.googleapis.com).
+3. **Google Auth Platform** (OAuth consent screen):
+   - If the project has no app yet, click **Get started**: app name, support email, **External** audience, contact email
+   - **Data Access** → **Add or remove scopes** → add `https://www.googleapis.com/auth/blogger` (Manage your Blogger account)
+   - **Audience**: while the app is in **Testing**, only the test users you list (up to 100) can connect, and Google ends their authorization 7 days after consent. Add the connecting Google account under **Test users**, then click **Publish app** (**In production**) so the agent keeps access.
+   - Google may warn that the app is unverified when you connect: it is your own app, so open **Advanced** and continue. Verification is needed only when people outside your team connect with this app; until an app with a scope Google reviews is verified, at most 100 Google accounts can connect to it.
+
+### Step 2: Create OAuth Client
+
+**Google Auth Platform → Clients → Create client**:
+- Application type: **Web application**
+- **Authorized redirect URIs**: `https://api.wiro.ai/v1/UserAgentOAuth/BloggerCallback`
+
+The OAuth client you made for Google Search Console or Google Analytics 4 works too: add this redirect URI to it, enable the Blogger API v3 in its project and add the Blogger scope.
+
+Copy the **Client ID** (`...apps.googleusercontent.com`) and the **Client Secret** (`GOCSPX-...`). Google shows the secret once, right after you create the client; if you missed it, open the client and add a new secret.
+
+### Step 3: Connect
+
+Save the Client ID and Client Secret with `POST /UserAgent/CredentialUpsert`:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "blogger", "fieldname": "clientid", "fieldvalue": "123-abc.apps.googleusercontent.com" },
+      { "credentialkey": "blogger", "fieldname": "clientsecret", "fieldvalue": "YOUR_CLIENT_SECRET" },
+      { "credentialkey": "blogger", "fieldname": "authmethod", "fieldvalue": "own" }
+    ]
+  }'
+```
+
+Then start `OAuthConnect`:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "blogger",
+    "redirecturl": "https://your-app.com/settings/integrations",
+    "authmethod": "own"
+  }'
+```
+
+The response returns `{ result: true, authorizeUrl: "...", flowid: "..." }`. Redirect the user to `authorizeUrl`. Google asks which Google account to connect, even when the browser is already signed in to one, and asks for access to manage the account's Blogger blogs. The request asks for offline access, so Google returns a refresh token.
+
+### Step 4: Blog Picker
+
+After consent, the user returns with `?blogger_connected=true&blogger_blogs=<URL-encoded-JSON>`. Each entry is `{ id, name, url }`: `id` is the blog's ID (a long number, the one in `blogger.com/blog/posts/<ID>`), `name` its title and `url` its public address. Every blog the Google account owns or writes for is listed. Map the user's choice to the picker shape and call `SetPickerAccounts`:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "blogger",
+    "accounts": [
+      { "blogid": "4967929378133675647", "blogname": "Travel Notes" }
+    ]
+  }'
+```
+
+Pass several `{ blogid, blogname }` entries to let the agent post to several blogs (`id` becomes `blogid`). Wiro saves each blog's `name` from its list as `blogname`, so a name you send is not read. `url` is handy for your UI, but it is not stored. Wiro saves only blogs from this sign-in's list, under the names it lists, when the call comes from the same Wiro account within 15 minutes. The first save uses the list up: to change the selection later, connect again. See [SetPickerAccounts](/docs/agent-credentials#post-useragentoauthsetpickeraccounts).
+
+## Disconnect
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthDisconnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "blogger"
+  }'
+```
+
+Clears the tokens and the selected blogs in Wiro. Your Client ID and Client Secret are kept, so you can connect again without saving them again. Wiro does not ask Google to revoke the authorization: to end it on Google's side, open [myaccount.google.com/linkedapps](https://myaccount.google.com/linkedapps), choose **Access to your Google Account**, pick your app, then **See details → Remove access**.
+
+## Status
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "blogger"
+  }'
+```
+
+Response:
+
+```json
+{
+  "result": true,
+  "connected": true,
+  "accounts": [
+    { "id": "4967929378133675647", "name": "Travel Notes" }
+  ],
+  "connectedat": "2026-11-21T12:00:00.000Z",
+  "tokenexpiresat": "2026-11-21T13:00:00.000Z",
+  "errors": []
+}
+```
+
+`accounts[]` carries one entry per selected blog (`id` = `blogid`, `name` = `blogname`).
+
+### Token lifecycle
+
+Google access tokens last an hour. Wiro renews the token while the agent is running and when it starts, with the refresh token Google issued. `OAuthStatus` reports `connected: false` as soon as the stored token has expired, which can happen to a stopped agent while its authorization is still valid: start the agent and check again. Reconnect through `OAuthConnect` if Google revoked the authorization, or if the app was still in Testing (Google ends that authorization 7 days after consent).
+
+## What the agent does with this integration
+
+### Drafts first, then publish or schedule
+
+The agent saves a new post as a draft, shows it (title, labels, length, opening lines and the Blogger editor link), and publishes it only after your approval, following the agent's approval policy. You can also give a date and time: the agent schedules the post for then and checks that Blogger shows it as scheduled.
+
+```
+Operator → "write a post about our Lisbon trip for the travel blog"
+Agent → POST /blogger/v3/blogs/{blogId}/posts?isDraft=true
+     shows the draft and its editor link
+Operator → "publish it Monday at 9:00"
+Agent → POST /blogger/v3/blogs/{blogId}/posts/{postId}/publish?publishDate=2026-11-23T09:00:00Z
+```
+
+### Updates, labels and pages
+
+The agent updates a post's title, body or labels (a change to a live post is approved like a publish), takes a post back to draft, and creates or updates pages such as About or Contact with the same draft-first rule.
+
+### Lists and search
+
+The agent lists draft, scheduled and live posts with their labels, publish times and comment counts, filters by label, and searches the blog's posts.
+
+### Content rules
+
+Post bodies are HTML. The Blogger API has no image upload, so images go into a post by URL: a generated image's link, your own hosting, or an image already on the blog. The search description and custom permalinks are set in Blogger's editor.
+
+### Deleting
+
+The agent deletes a post or page only when you ask and approve it. A live or scheduled post goes to Blogger's trash, where you can restore it; a deleted draft is gone for good.
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `Unsupported connection mode for Blogger` in `OAuthConnect`'s `errors[]` | `authmethod` was `"wiro"` | Send `"authmethod": "own"`, or leave it out |
+| `Blogger credentials not configured` in `OAuthConnect`'s `errors[]` | No saved `clientid` and `clientsecret` | Save them (Step 3), then retry |
+| `blogger_error=no_accounts` on your `redirecturl` | Google listed no blog for this user, and Wiro saved nothing: the account owns or writes for no Blogger blog, or the Blogger API v3 is not enabled in your project. In the last case `blogger_error_detail` carries Google's status, such as `PERMISSION_DENIED` | Enable the API (Step 1), or connect with the Google account that owns the blog, then call `OAuthConnect` again |
+| `blogger_error=token_exchange_failed` | Wrong Client Secret, or the client is not of type Web application | Copy the secret again or add a new one (Step 2), then connect again |
+| `invalid_grant` | Refresh token expired or revoked; an app still in Testing expires it 7 days after consent | Publish the app, then reconnect via `OAuthConnect` |
+| `403 Request had insufficient authentication scopes` | The consent did not include the Blogger scope | Add the scope in Data Access (Step 1) and connect again |
+| The agent reports a 403 for one blog | The Google account lost its admin or author access to that blog | Restore the access in Blogger's settings, or connect again and pick another blog |
+| `OAuthStatus` returns `connected: false` right after consent | No blog has been saved yet; the connection is complete only once `SetPickerAccounts` stores at least one | Call `SetPickerAccounts` with a blog from `blogger_blogs` (Step 4) |
+
+### `redirect_uri_mismatch` on Google's page
+
+The Authorized redirect URIs of your OAuth client don't include `https://api.wiro.ai/v1/UserAgentOAuth/BloggerCallback` exactly as written. Google stops on its own error page, so nothing comes back to your `redirecturl`. Add the URI (Step 2) and connect again.
+
+### `Error 403: access_denied` on Google's page
+
+The app is in Testing and the Google account is not one of its test users. Add the account under test users (Step 1), or publish the app, then connect again.
+
+## Skill reference
+
+- [agent-skills.md](/docs/agent-skills): custom skill schema and the `int-blogger-post` key
+- [Blogger API v3](https://developers.google.com/blogger/docs/3.0/using)
+
+---
+
+# dev.to Integration
+
+Let your agent write and publish articles on dev.to (DEV Community) with your own API key: drafts first, published when you say so, plus your articles' page views, reactions and comments.
+
+## Overview
+
+[dev.to](https://dev.to) is the DEV Community, a publishing platform for developers built on Forem. This integration connects an agent to your own dev.to account through the Forem API v1. The agent writes the article in Markdown, saves it as a draft, shows it to you with its preview link, and publishes it only when you say publish. It can also edit your articles, list your drafts and published articles with their stats, and read your analytics over a date range.
+
+**Skills that use this integration:**
+
+- `int-devto-post`: Draft-first dev.to publishing. Creates unpublished articles (title, Markdown body, up to 4 tags, cover image by URL, canonical URL for cross-posts, series, organization), shows the preview and edit links, publishes on your approval, edits articles, lists your drafts and published articles with page views, reactions and comments, and reads daily analytics for your account, one article or an organization. Every article carries the AI disclosure dev.to requires.
+
+**Agents that typically enable this integration:**
+
+- Custom blogging, developer relations and content marketing agents that publish technical articles.
+- Agents that already publish to WordPress or Hashnode and cross-post to dev.to with a canonical link back to the original.
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| API Key (DEV Community) | Available | Your own dev.to API key from Settings → Extensions. dev.to and its API are free. The integration is included in every plan at no extra charge. |
+
+## Prerequisites
+
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
+- **A dev.to account** that the articles should appear under. To post under an organization, the account must be a member of it.
+
+## Setup
+
+### Step 1: Generate a dev.to API key
+
+1. Sign in at [dev.to](https://dev.to/enter) with the account the articles should appear under.
+2. Open your avatar menu → **Settings** → **Extensions** ([dev.to/settings/extensions](https://dev.to/settings/extensions)) and scroll to **DEV Community API Keys**.
+3. Under **Generate a new Key**, type a **Description** such as "AI agent" and click **Generate API Key**.
+4. Copy the new key from **Active API keys**. It is 24 letters and digits.
+
+> The key acts as your account: anyone with it can create and edit your articles, so keep it private. An account can hold up to 10 keys. To cut access, click **Revoke** next to the key on the same page.
+
+### Step 2: Save the credential to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "devto", "fieldname": "apikey", "fieldvalue": "YOUR_DEV_API_KEY" }
+    ]
+  }'
+```
+
+Or fill it in the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Connectors → dev.to**.
+
+A value shorter than 20 or longer than 64 characters, or with anything other than letters and digits (a space, quotes, a pasted `api-key:` prefix), is refused when you save it.
+
+### Step 3: Enable the skill
+
+dev.to ships **available but off**. Turn `int-devto-post` on for the agent:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skills": { "int-devto-post": true },
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000"
+  }'
+```
+
+Or flip the toggle in the panel under **Skills** (see [Agent Skills](/docs/agent-skills#toggling-integration-skills)).
+
+### Step 4: Start the agent
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+## Credential Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `apikey` | string (secret) | Yes | DEV Community API key from Settings → Extensions, 24 letters and digits (20 to 64 accepted). Encrypted at rest. |
+
+## Credentials schema (as returned by `POST /UserAgent/Detail`)
+
+```json
+"devto": {
+  "_connected": true,
+  "optional": false,
+  "extra": false,
+  "apikey": "••••••••"
+}
+```
+
+## What the agent can do
+
+The agent calls the Forem API v1 at `https://dev.to/api/` with your key in the `api-key` header.
+
+| Request | dev.to endpoint | What happens |
+|---------|-----------------|--------------|
+| Save a draft | `POST /api/articles` with `published: false` | A new unpublished article: title, Markdown body, up to 4 tags, cover image URL, canonical URL, series, description, organization and AI disclosure. Nothing is public yet. |
+| Publish | `PUT /api/articles/{id}` with `published: true` | The draft goes live and gets its final address, which the agent reports. Only after your approval. |
+| Edit | `PUT /api/articles/{id}` | Changes only the fields sent: title, body, tags, cover, canonical URL, series, AI disclosure. Editing a published article changes it live, so the agent does it only when you ask. |
+| Unpublish | `PUT /api/articles/{id}` with `published: false` | Only when you ask: the article goes back to your drafts; its comments stay. |
+| List your articles | `GET /api/articles/me/all`, `/me/published`, `/me/unpublished` | Drafts and published articles, with lifetime page views, reactions and comments for each published one. dev.to shows page views to the author only. |
+| Analytics by date | `GET /api/analytics/historical` | Daily page views, reactions, comments, new followers and average read time for your account, one article or an organization. |
+| Find an organization | `GET /api/organizations/{username}` | The organization's id, to post under it. |
+
+dev.to's API cannot delete articles: you delete them on dev.to. The agent never comments, reacts or follows on your behalf.
+
+## How publishing works
+
+- **Drafts first.** Asked to write, post, share or save an article to dev.to, the agent saves a draft and replies with its preview link (it opens for you while you are signed in to dev.to), the edit link, tags, cover, canonical URL and AI disclosure, and a short summary. It publishes only when you say publish, go live or make it public.
+- **Scheduled tasks** follow the agent's approval policy: by default a scheduled article waits as a draft for your approval in chat; with automatic approval it publishes and reports afterwards.
+- **Your language and tone.** The article is written in the language you ask for (or the one you write in), following your content tone settings when the agent has them.
+- **Markdown only, no front matter.** dev.to lets a YAML front matter block at the top of the body override the article's fields, including `published`. The agent never sends one: when you hand over Markdown with front matter, it moves the title, tags, cover, canonical URL and series into the article's fields and drops the block.
+- **Cross-posting.** When the article first appeared on your own blog, the agent sets `canonical_url` to the original post so search engines credit it.
+- **Organizations.** The agent looks up the organization's id by its dev.to username. If your account is not a member, dev.to silently posts under your account alone; the agent checks and tells you.
+
+## AI disclosure
+
+dev.to asks automated clients to disclose AI use on every article, and the agent always does:
+
+| `ai_disclosure_level` | When the agent uses it |
+|-----------------------|------------------------|
+| `fully_autonomous` | The agent wrote the article, even when you asked for it, reviewed it or approved it. The default for articles the agent drafts. |
+| `some_ai` | You wrote the article or meaningfully rewrote the agent's draft, and the agent helped with drafting, code, editing or translation. |
+| `no_ai` | Only when you wrote it with no AI help and say so. |
+
+The agent never leaves the field out (dev.to would record `not_disclosed`) and never uses `no_ai` for text it wrote, edited or translated.
+
+## Limits
+
+- **Article fields:** title up to 128 characters (the same title cannot be reused on your account within 5 minutes); up to 4 tags of letters and digits only, up to 30 characters each; body up to 800 KB; the cover shows at 1000 x 420.
+- **Rate limits:** about one write per second; roughly 10 new articles per 30 seconds, and fewer for accounts only a few days old; 30 edits per 30 seconds; reads with a key 4 per second and 40 per minute. When dev.to answers 429 the agent waits once, tries once more and otherwise tells you to try again shortly; it never loops.
+
+## Billing
+
+Every plan includes the integration, so it changes neither the agent's price nor its credits. As with every agent turn, its work is billed on the LLM tokens it uses, from the agent's existing credits. dev.to itself is free.
+
+## Troubleshooting
+
+- **401 unauthorized:** the key is wrong or was revoked. Generate a new key on [dev.to/settings/extensions](https://dev.to/settings/extensions) and save it again.
+- **422 "Title has already been used in the last five minutes":** an earlier attempt already saved the draft; the agent finds it in your drafts instead of creating another.
+- **422 about tags:** more than 4 tags, or a tag with spaces, hyphens or other characters than letters and digits.
+- **404 on an edit:** the article is not your account's own, or the id is wrong.
+- **429:** dev.to's rate limit; wait a moment and ask again.
+- **Posted under your account instead of the organization:** your account is not a member of that organization; an organization admin adds you on dev.to.
+- **Agent says "not connected" with the key filled:** the agent restarts to pick up new credentials; give it a moment after saving, then retry.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Skills](/docs/agent-skills)
+- [Hashnode Skills](/docs/integration-hashnode-skills) / [WordPress Skills](/docs/integration-wordpress-skills): other blogs the agent can publish to
+- [Forem API v1 documentation](https://developers.forem.com/api/v1)
+
+---
+
+# Hashnode Integration
+
+Let your agent write and publish posts on your Hashnode blog with your own Personal Access Token: drafts first, published when you say so, plus your posts' views, reactions and comments.
+
+## Overview
+
+[Hashnode](https://hashnode.com) is a blogging platform for developers and technical teams. This integration connects an agent to your blog through Hashnode's GraphQL API with your own Personal Access Token. The agent writes the post in Markdown, saves it as a draft, shows it to you in chat, and publishes it only when you say publish. It can also edit drafts and published posts, list your posts with their stats and list your drafts.
+
+**Hashnode Pro is required.** Since May 13, 2026, Hashnode's API works only for blogs on [Hashnode Pro](https://hashnode.com/pro), for reading and publishing alike. A blog without Pro gets an error on every call, and the agent tells you so instead of retrying.
+
+**Skills that use this integration:**
+
+- `int-hashnode-post`: Draft-first Hashnode publishing. Saves drafts (title, subtitle, Markdown body, tags, cover image by URL, canonical URL for cross-posts, series, SEO title and description), shows them in chat with the editor link, publishes on your approval (or in one step when you ask to publish directly), edits drafts and posts, lists your posts with views, reactions and comments, and lists your drafts.
+
+**Agents that typically enable this integration:**
+
+- Custom blogging, developer relations and content marketing agents that publish technical articles.
+- Agents that already publish to WordPress or dev.to and cross-post to Hashnode with a canonical link back to the original.
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| Personal Access Token (Hashnode) | Available | Your own token from Account Settings → Developer, plus your blog's address. The blog must be on Hashnode Pro ($5 a month or $50 a year, per seat), which Hashnode bills to you. The integration is included in every plan at no extra charge. |
+
+## Prerequisites
+
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
+- **A Hashnode blog on Hashnode Pro.** Upgrade in your blog dashboard under **Billing** → **Upgrade to Pro**; the API works as soon as checkout succeeds.
+- **A Hashnode account that can publish on the blog:** its owner, or an Editor on a team blog. A Contributor can save drafts and send them to the blog's editors for review, but cannot publish.
+
+## Setup
+
+### Step 1: Generate a Personal Access Token
+
+1. Sign in at [hashnode.com](https://hashnode.com) with the account that writes on the blog.
+2. Open your profile menu → **Account Settings** → **Developer** ([hashnode.com/settings/developer](https://hashnode.com/settings/developer)).
+3. Click **Generate new token** and copy the token. It looks like `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`.
+
+> The token acts as your account on every blog you belong to: it can publish, edit and delete posts, so keep it private. To cut access, revoke it on the same Developer page.
+
+### Step 2: Note your blog's address
+
+The blog's address without `https://` and without a slash at the end, exactly as your browser shows it:
+
+- a blog on Hashnode's domain: `yourname.hashnode.dev`
+- a blog on your own domain: that domain, such as `blog.example.com`
+
+### Step 3: Save the credential to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "hashnode", "fieldname": "token", "fieldvalue": "YOUR_HASHNODE_TOKEN" },
+      { "credentialkey": "hashnode", "fieldname": "publicationhost", "fieldvalue": "yourname.hashnode.dev" }
+    ]
+  }'
+```
+
+Or fill it in the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Connectors → Hashnode**.
+
+A token with a space (for example a pasted `Bearer ` prefix) or quotes, and an address with `https://`, a path or a port, are refused when you save them.
+
+### Step 4: Enable the skill
+
+Hashnode ships **available but off**. Turn `int-hashnode-post` on for the agent:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skills": { "int-hashnode-post": true },
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000"
+  }'
+```
+
+Or flip the toggle in the panel under **Skills** (see [Agent Skills](/docs/agent-skills#toggling-integration-skills)).
+
+### Step 5: Start the agent
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+## Credential Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `token` | string (secret) | Yes | Hashnode Personal Access Token from Account Settings → Developer, the bare token without `Bearer`. Encrypted at rest. |
+| `publicationhost` | string | Yes | The blog's address without `https://`: `yourname.hashnode.dev` or a custom domain such as `blog.example.com`. The agent looks up the blog's id from it. |
+
+## Credentials schema (as returned by `POST /UserAgent/Detail`)
+
+```json
+"hashnode": {
+  "_connected": true,
+  "optional": false,
+  "extra": false,
+  "token": "••••••••",
+  "publicationhost": "yourname.hashnode.dev"
+}
+```
+
+## What the agent can do
+
+The agent calls Hashnode's GraphQL API at `https://gql-beta.hashnode.com` with your token in the `Authorization` header.
+
+| Request | GraphQL operation | What happens |
+|---------|-------------------|--------------|
+| Find the blog | `publication(host:)` | The blog's id, title and URL from its address. This first call also shows whether the blog is on Pro. |
+| Save a draft | `createDraft` | A draft with title, subtitle, Markdown body, tags, cover image URL, canonical URL, series and SEO fields. Nothing is public yet. |
+| Publish a draft | `publishDraft` | The draft becomes a post on your blog; the agent reports its URL. Only after your approval. |
+| Publish directly | `publishPost` | Only when you ask to publish right away: the post goes out in one step, without a draft. |
+| Edit | `updateDraft`, `updatePost` | Changes only the fields sent. Editing a published post changes it live, so the agent does it only when you ask. |
+| List posts | `publication.posts` | Your blog's posts, newest first, with views, reactions (likes), comments and replies. |
+| List drafts | `publication.drafts` | Your own drafts on the blog, with their editor links. |
+| Read one draft or post | `draft(id:)`, `publication.post(slug:)` | The full Markdown and details, to show or edit it. |
+| Series | `publication.seriesList` | The blog's series, to add a post to one. |
+| Team blogs | `submitDraftForReview` | For a Contributor: hands a draft to the blog's editors. |
+
+The agent never deletes posts or drafts and never emails your newsletter subscribers unless you ask for exactly that; you delete posts in Hashnode.
+
+## How publishing works
+
+- **Drafts first.** Asked to write, post, share or save an article to Hashnode, the agent saves a draft and shows it in chat: title, subtitle, tags, cover, canonical URL, a short summary and the editor link (it opens for you while you are signed in). It publishes only when you say publish, go live or make it public.
+- **Scheduled tasks** follow the agent's approval policy: by default a scheduled post waits as a draft for your approval in chat; with automatic approval it publishes and reports afterwards.
+- **Your language and tone.** The post is written in the language you ask for (or the one you write in), following your content tone settings when the agent has them.
+- **Cross-posting.** When the article first appeared elsewhere, the agent sets `originalArticleURL` so search engines credit the original.
+- **No scheduling through the API.** Hashnode's API can backdate a moved post but cannot schedule one; for a later time the agent keeps the draft and publishes it then.
+
+## Limits
+
+- **Requests:** up to 100 KB each, so a very long post may need shortening; up to 15 tags per post (the agent keeps it to about 5).
+- **Lists:** up to 100 posts or 50 drafts per page; the agent pages on.
+- **Stats:** views, reactions, comments and replies are lifetime numbers; Hashnode's API has no stats by date. A view count Hashnode does not report shows as "not shown", never 0.
+- **Freshness:** Hashnode may serve a list up to about 25 seconds old, so right after a change the agent trusts the change's own answer.
+- **Rate limits:** Hashnode publishes targets of 20,000 queries and 500 changes per minute; the agent sends each call once and never loops.
+
+## Billing
+
+Every plan includes the integration, so it changes neither the agent's price nor its credits. As with every agent turn, its work is billed on the LLM tokens it uses, from the agent's existing credits. Hashnode Pro, which the API needs, is your own subscription with Hashnode.
+
+## Troubleshooting
+
+- **"Publication does not have an active Pro plan":** the blog is not on Hashnode Pro. Upgrade in your blog dashboard under **Billing** → **Upgrade to Pro**; the API works right after checkout.
+- **"You must be logged in" or "Authentication required":** the token is wrong or was revoked. Generate a new one on [hashnode.com/settings/developer](https://hashnode.com/settings/developer) and save it again.
+- **"Publication not found":** the saved address is not your blog's host. Use the bare host (`yourname.hashnode.dev` or your custom domain), with no `https://` and no slash; the agent lists the blogs your account owns to help.
+- **FORBIDDEN without the Pro message:** your account cannot publish on this blog (a Contributor on a team blog). The agent can send the draft to the blog's editors for review.
+- **Agent says "not connected" with the fields filled:** the agent restarts to pick up new credentials; give it a moment after saving, then retry.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Skills](/docs/agent-skills)
+- [dev.to Skills](/docs/integration-devto-skills) / [WordPress Skills](/docs/integration-wordpress-skills): other blogs the agent can publish to
+- [Hashnode GraphQL API agent skill (official)](https://github.com/Hashnode/gql-skill)
+
+---
+
+# Qiita Integration
+
+Let your agent write and post technical articles on Qiita with your own access token: new articles are saved as limited-share articles for your review, go public only after you approve, and your own articles' likes, stocks, comments and page views are one question away.
+
+## Overview
+
+[Qiita](https://qiita.com) is a Japanese site where engineers share technical articles. This integration lets an agent work with your own Qiita account through the Qiita API v2: it writes articles in Qiita Markdown, saves them as limited-share articles, makes them public after your approval, updates existing articles and their tags, and reports how your articles are doing.
+
+**Skills that use this integration:**
+
+- `int-qiita-post`: Writes Qiita articles (Qiita Markdown, 1 to 5 tags with versions), saves new ones as limited-share articles, makes an article public only after approval, updates articles, searches Qiita for existing articles on a topic, and lists your own articles with likes, stocks, comments and page views.
+
+**Agents that typically enable this integration:**
+
+- Custom developer relations and technical writing agents that publish for Japanese developers.
+- Blog Content Editor style agents that cross-post a technical article to Qiita next to the company blog.
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| API Key (personal access token) | Available | Your own Qiita personal access token with the `read_qiita` and `write_qiita` scopes. The integration is included in every plan at no extra charge, and Qiita's API is free. Qiita Team (team sites such as `your-team.qiita.com`) is not supported. |
+
+## Prerequisites
+
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
+- **A Qiita account** at [qiita.com](https://qiita.com). Accounts are free and the API needs no paid plan.
+
+## Setup
+
+### Step 1: Create a Qiita access token
+
+1. Sign in at [qiita.com](https://qiita.com) with the account the articles should appear under.
+2. Click your profile icon at the top right, choose **設定** (Settings), then **アプリケーション** (Applications). The page is also at [qiita.com/settings/applications](https://qiita.com/settings/applications).
+3. Under **個人用アクセストークン** (Personal access tokens), click **新しくトークンを発行する** (Generate new token). [This link](https://qiita.com/settings/tokens/new?read_qiita=1&write_qiita=1&description=AI%20agent) opens the same form with both scopes already ticked.
+4. Enter a description you will recognize later, such as `AI agent`.
+5. Tick **read_qiita** and **write_qiita**. Leave **read_qiita_team** and **write_qiita_team** off: Qiita Team is not supported.
+6. Issue the token and copy it at once: Qiita shows it only this one time. It is a string of digits and the lowercase letters a to f, 40 characters long; 64 characters, the length in Qiita's API examples, is accepted too.
+
+> To revoke access, delete the token on the same **アプリケーション** page; the agent stops working with Qiita at once.
+
+### Step 2: Save the credential to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "qiita", "fieldname": "token", "fieldvalue": "YOUR_QIITA_ACCESS_TOKEN" }
+    ]
+  }'
+```
+
+Or fill it in the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Connectors → Qiita**.
+
+A value that is not 40 or 64 characters of digits and the letters a to f is refused when you save it; a space or line break around it is trimmed.
+
+### Step 3: Enable the skill
+
+Qiita ships **available but off**. Turn `int-qiita-post` on for the agent:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skills": { "int-qiita-post": true },
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000"
+  }'
+```
+
+Or flip the toggle in the panel under **Skills** (see [Agent Skills](/docs/agent-skills#toggling-integration-skills)).
+
+### Step 4: Start the agent
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+## Credential Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `token` | string (secret) | Yes | Qiita personal access token with `read_qiita` and `write_qiita`: 40 (or 64) digits and lowercase letters a to f. Encrypted at rest. |
+
+## Credentials schema (as returned by `POST /UserAgent/Detail`)
+
+```json
+"qiita": {
+  "_connected": true,
+  "optional": false,
+  "extra": false,
+  "token": "••••••••"
+}
+```
+
+On a custom build with `int-qiita-post` on, `optional` and `extra` are `false`: Qiita is that skill's own connector.
+
+## How publishing works
+
+Qiita's API has no drafts. A **limited-share article** (限定共有) is the closest thing: only you and people who have its link can open it, and search engines do not list it. So the agent works in two steps:
+
+1. **Saved as limited share.** When you ask the agent to write or post an article, it saves it as a limited-share article and sends you its link. You read it on Qiita exactly as readers will see it.
+2. **Public after approval.** The agent makes it public only when you say so (publish, 公開して, 全体に公開), following the agent's approval policy. With the policy set to automatic, a scheduled run posts the article public directly.
+
+Things Qiita decides that the agent tells you before it publishes:
+
+- **Public is final.** Qiita cannot turn a public article back into a limited-share one. Only deleting it takes it down, and its likes, stocks and comments go with it.
+- **The edit history goes public too.** Every revision saved while the article was limited becomes visible in its edit history once it is public. If an earlier revision held something that should not be seen, the agent offers to post the final text as a new public article and delete the limited one instead.
+- **Mentions wait.** `@user` mentions in the article notify those users only when it goes public.
+- **Organization on public articles only.** A limited-share article cannot be linked to a Qiita Organization; the agent links it when the article goes public. The agent never joins posting campaigns, which need your own agreement to the campaign terms on qiita.com.
+- **Edits to a public article go live at once**, so the agent shows the change and waits for your approval first.
+
+## What the agent can do
+
+| Request | Qiita API | What happens |
+|---------|-----------|--------------|
+| Check the account | `GET /api/v2/authenticated_user` | Account id, article and follower counts, the image upload allowance of Qiita's editor. |
+| Write and save an article | `POST /api/v2/items` with `private: true` | A limited-share article; you get its link. |
+| Make it public | `GET` then `PATCH /api/v2/items/:item_id` with `private: false` | The same article, now public. |
+| Update an article | `PATCH /api/v2/items/:item_id` | New body, title or tags; a limited article stays limited and a public one stays public. |
+| Your articles with numbers | `GET /api/v2/authenticated_user/items` | Up to 100 per page, newest first, limited-share ones included: likes, stocks and comments, sorted as you ask. |
+| Page views | `GET /api/v2/items/:item_id` | Qiita leaves view counts out of lists and gives them when you read your own article on its own, so the agent reads them one article at a time (20 per question unless you ask for more). |
+| Tags | `GET /api/v2/tags/:tag_id`, `GET /api/v2/tags?sort=count` | How many articles carry a tag and how many people follow it, to pick existing tags. |
+| Search Qiita | `GET /api/v2/items?query=...` | Existing articles on a topic (`tag:`, `title:`, `stocks:>`, `created:>=` and other Qiita search terms), so the agent does not repeat them. |
+| Delete an article | `DELETE /api/v2/items/:item_id` | Only when you ask for that article and confirm; the API cannot bring it back. |
+
+## Writing for Qiita's readers
+
+- **Language and tone:** the agent writes in the language you ask for, in your tone. Most Qiita readers read Japanese; when you write in another language without naming one, the agent writes in yours and offers a Japanese version. In Japanese it keeps one style all the way (です・ます or だ・である).
+- **Titles** are concrete and searchable: the technology and the result. **Structure** follows what Qiita readers expect: an introduction, the environment with versions, the steps with code, the result, a summary and references.
+- **Qiita Markdown:** code blocks with the language and file name (` ```python:main.py `), `:::note info|warn|alert` boxes, math, Mermaid and PlantUML diagrams, footnotes, tables and collapsible sections.
+- **Tags:** 1 to 5 per article, each with optional versions (for example `Python` with `3.12`). The agent uses tags that already exist on Qiita.
+- **Facts and sources:** Qiita's community guideline asks that AI-written text be checked before it is posted, and forbids articles whose main purpose is advertising. The agent checks every command, version and API name against sources it reads, lists them in the preview, and keeps articles technical.
+- **Images:** Qiita's API cannot upload images. The agent uses images that already have a lasting public link and marks where you can drag an image in with Qiita's editor.
+
+## Limits & billing
+
+- **Rate limit:** Qiita allows 1,000 API requests per hour with a token. The agent reads the remaining count from Qiita's answers, skips optional reads when few are left, and on HTTP 429 stops and says when the hour resets.
+- **Qiita Team** (team sites, groups, co-editing, emoji reactions) is not supported.
+- **Billing on Wiro:** every plan includes the integration, so it changes neither the agent's price nor its credits. As with every agent turn, its work is billed on the LLM tokens it uses, from the agent's existing credits. Qiita's API is free.
+
+## Troubleshooting
+
+- **401 Unauthorized:** the token is wrong or was deleted. Issue a new one at [qiita.com/settings/applications](https://qiita.com/settings/applications) and save it again.
+- **403 Forbidden:** the token lacks `write_qiita`, or the article belongs to someone else. Issue a token with both scopes.
+- **400 or 422 with a message:** Qiita refused the content, for example more than 5 tags or an Organization on a limited-share article. The agent fixes what the message names.
+- **404 Not Found:** the article id is wrong or the article was deleted.
+- **429:** the hourly limit is used up; the agent says when it resets.
+- **An article went public by mistake:** Qiita cannot make it limited again. Ask the agent to delete it, then to save the text again as a limited-share article.
+- **Page views show "-":** Qiita gives view counts only for your own articles, read one at a time. Ask for page views and the agent reads them.
+- **A Qiita Team site:** not supported; the integration works with qiita.com.
+- **Agent says "not connected" with the token filled:** the agent restarts to pick up new credentials; give it a moment after saving, then retry.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Skills](/docs/agent-skills)
+- [WordPress Skills](/docs/integration-wordpress-skills): your own blog
+- [Qiita API v2 documentation](https://qiita.com/api/v2/docs)
+- [Qiita help: limited-share articles](https://help.qiita.com/ja/articles/qiita-private-article)
+
+---
+
+# HackMD Integration
+
+Let your agent create, update and share notes on HackMD with your own API token, in your personal workspace and your teams: new notes start readable by their owners only, and sharing them wider waits for your approval.
+
+## Overview
+
+[HackMD](https://hackmd.io) is a real-time collaborative Markdown editor for notes, documents, slides and books, used alone or in team workspaces. This integration lets an agent work with your notes through the HackMD API v1: it writes meeting notes, documents and drafts in Markdown, keeps them owners-only until you approve sharing, updates them, uploads images into them, and lists and reads the notes of your workspaces.
+
+**Skills that use this integration:**
+
+- `int-hackmd-post`: Creates notes in your personal workspace or a team as owners-only drafts, updates their Markdown, title and tags, sets who can read, write and comment, lists personal and team notes, reads a note, uploads images into a note, and deletes a note only after approval.
+
+**Agents that typically enable this integration:**
+
+- Custom documentation, meeting-notes and release-notes agents that keep their output in a team's HackMD.
+- Writing agents that prepare a draft in HackMD for the team to review and edit together.
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| API Key (API token) | Available | Your own HackMD API token. The integration is included in every plan at no extra charge; API calls count against your HackMD account's monthly API quota. Publishing a note to your HackMD profile stays a button on HackMD. |
+
+## Prerequisites
+
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
+- **A HackMD account** at [hackmd.io](https://hackmd.io). A free account gets 400 API calls a month and a Prime account 10,000.
+
+## Setup
+
+### Step 1: Create a HackMD API token
+
+1. Sign in at [hackmd.io](https://hackmd.io).
+2. On your overview page, open your account menu and choose **Settings**, then **API**. The page is also at [hackmd.io/settings#api](https://hackmd.io/settings#api).
+3. Click **Create API token**, give the token a name you will recognize later, such as `AI agent`, and click **Create**.
+4. Click **Copy token**. HackMD shows the token only once; if you lose it, create a new one.
+
+> A HackMD token has no scopes: it can read and change every note your account can reach, in your personal workspace and in every team you are a member of, so keep it secret. To revoke it, click the **x** next to the token on the API page; the agent stops working with HackMD at once.
+
+### Step 2: Save the credential to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "hackmd", "fieldname": "token", "fieldvalue": "YOUR_HACKMD_API_TOKEN" }
+    ]
+  }'
+```
+
+Or fill it in the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Connectors → HackMD**.
+
+A value with a space or line break inside it, shorter than 20 characters or longer than 200 is refused when you save it; a space or line break around it is trimmed.
+
+### Step 3: Enable the skill
+
+HackMD ships **available but off**. Turn `int-hackmd-post` on for the agent:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skills": { "int-hackmd-post": true },
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000"
+  }'
+```
+
+Or flip the toggle in the panel under **Skills** (see [Agent Skills](/docs/agent-skills#toggling-integration-skills)).
+
+### Step 4: Start the agent
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+## Credential Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `token` | string (secret) | Yes | HackMD API token, exactly as copied (no spaces). Encrypted at rest. |
+
+## Credentials schema (as returned by `POST /UserAgent/Detail`)
+
+```json
+"hackmd": {
+  "_connected": true,
+  "optional": false,
+  "extra": false,
+  "token": "••••••••"
+}
+```
+
+On a custom build with `int-hackmd-post` on, `optional` and `extra` are `false`: HackMD is that skill's own connector.
+
+## Who can read a note
+
+HackMD sets read and write access per note:
+
+| Setting | Who |
+|---------|-----|
+| Owners | You for a personal note; the team's members for a team note (the team owns it). |
+| Signed-in users | Anyone signed in to HackMD who has the link. |
+| Everyone | Everyone who has the link. HackMD warns that search engines may index a note everyone can read. |
+
+Write access is always as strict as read access or stricter. Comments have their own setting (disabled, owners, signed-in users or everyone).
+
+## How sharing works
+
+1. **Owners-only drafts.** When you ask the agent to put something in HackMD, it creates the note readable and writable by its owners only, and sends you the link. It always sets this explicitly, since a public team's notes are readable by everyone by default.
+2. **Sharing after approval.** The agent opens a note to signed-in users or to everyone only when you say so, following the agent's approval policy, and tells you first who will be able to read and edit it. It then checks that HackMD applied the change.
+3. **Back to private** at any time: the agent narrows a note to its owners on request.
+4. **Publishing** a note to your HackMD profile or team page, where search engines can find it, is HackMD's Publish button in the note's Sharing menu, where HackMD asks you to agree to its community guidelines. The API has no publish call, so the agent shares the note and tells you that the last step is that button.
+
+Edits to a note others can read go live at once, so the agent shows the change and waits for your approval first. A note only its owners can read is edited on request.
+
+## What the agent can do
+
+| Request | HackMD API | What happens |
+|---------|------------|--------------|
+| Check the account and teams | `GET /v1/me` | Account name, whether the plan is paid, and each team's name and path. The account's email is never repeated. |
+| List notes | `GET /v1/notes`, `GET /v1/teams/{teamPath}/notes` | Every note of the workspace, newest change first: title, who can read and write, whether it is published, last change, tags and link. |
+| Read a note | `GET /v1/notes/{noteId}` | The note's details and its Markdown (team notes too, when your account can open them). |
+| Create a note | `POST /v1/notes`, `POST /v1/teams/{teamPath}/notes` | An owners-only note with your Markdown, title, tags and optional permalink. |
+| Update a note | `PATCH /v1/notes/{noteId}` (or the team path) | New Markdown (it replaces the whole text), title, tags, description or permalink. |
+| Share or narrow a note | `PATCH` with `readPermission` and `writePermission` | Owners, signed-in users or everyone, after your approval when it widens access. |
+| Add an image | `POST /v1/notes/{noteId}/images` | The image is stored with the note and linked in its Markdown: png, jpg, gif, bmp or tif, up to 1 MB on a free account and 20 MB on Prime. Only those who can read the note can see it. |
+| Delete a note | `DELETE /v1/notes/{noteId}` (or the team path) | Only when you ask for that note and confirm. The note goes to HackMD's trash, and a personal note can be restored while it is there. |
+
+## Limits & billing
+
+- **HackMD's API limits** (the API is in beta and they can change): a free account gets 400 calls a month, a Prime account 10,000, and every account 100 calls every 5 minutes. Every call counts, reads included; the API page in HackMD's settings shows your usage.
+- **The agent saves calls:** it plans each request (a new note is one call, sharing two, an edit two), never polls, and reads the account or the note list once per request at most.
+- **When the quota runs out**, HackMD answers HTTP 429. The agent stops and tells you once; HackMD takes calls again when the quota resets or after an upgrade.
+- **Billing on Wiro:** every plan includes the integration, so it changes neither the agent's price nor its credits. As with every agent turn, its work is billed on the LLM tokens it uses, from the agent's existing credits.
+
+## Troubleshooting
+
+- **401 Unauthorized:** the token is wrong or was revoked, or the account is disabled. Create a new token at [hackmd.io/settings#api](https://hackmd.io/settings#api) and save it again.
+- **403 Forbidden:** your account is not an owner of that note or a member of that team.
+- **404 Not Found:** the note id or team path is wrong. A note's id is the part of its address after `hackmd.io/`; an address with a custom permalink holds none, so ask the agent to find the note in the list.
+- **422 Validation Failed:** for example write access looser than read access. The agent fixes the field HackMD names.
+- **429:** the 5-minute window or the monthly quota is used up.
+- **413 or 415 on an image:** the image is too large for your plan or its format is not supported.
+- **A shared link stopped working after a permalink change:** HackMD keeps only a note's latest permalink.
+- **Agent says "not connected" with the token filled:** the agent restarts to pick up new credentials; give it a moment after saving, then retry.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Skills](/docs/agent-skills)
+- [WordPress Skills](/docs/integration-wordpress-skills): your own blog
+- [HackMD API reference](https://api.hackmd.io/v1/docs)
+- [HackMD: create or revoke an API token](https://hackmd.io/@docs/how-to-issue-an-api-token)
+
+---
+
+# Notion Integration
+
+Give your agent read and write access to the Notion pages and databases you choose, with your own Notion connection, so it can file notes, keep databases up to date and answer from your workspace.
+
+## Overview
+
+[Notion](https://www.notion.com) holds your team's pages and databases. This integration connects an agent to your workspace through the Notion API with a token you create: an internal connection's API token, or a personal access token. The agent can search what the token can see, read pages and databases, create pages and database entries, write content as Markdown or as Notion blocks, add to existing pages, edit text, update properties and query databases with filters. Moving a page to the trash always waits for your approval, and the agent never deletes anything permanently.
+
+**Skills that use this integration:**
+
+- `int-notion-post`: Search, read and write Notion through the Notion API (Notion-Version `2026-03-11`): create pages under a page or as database entries with properties, write content as Notion-flavored Markdown or as blocks (headings, paragraphs, lists, to-dos, quotes, code, dividers, images by URL, tables), append to pages, change text in place, update properties, read pages as Markdown or blocks, and query databases with filters and sorts.
+
+**Agents that typically enable this integration:**
+
+- Custom assistants that file meeting notes, research summaries and reports into a team wiki.
+- Content and project agents that keep a Notion content calendar, task board or CRM database up to date.
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| Internal connection API token (Notion) | Available | Created by a Workspace Owner in Notion's Developer portal. The agent sees only the pages and databases you share with the connection. Recommended. |
+| Personal access token (Notion) | Available | Acts as the person who created it and reaches every page they can open. Expires after 7 days to 1 year. |
+
+Both go in the same field. The integration is included in every plan at no extra charge.
+
+## Prerequisites
+
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
+- **A Notion workspace** where you are a **Workspace Owner** (to create an internal connection), or a member allowed to create personal access tokens.
+
+## Setup
+
+### Step 1: Create an internal connection and copy its token
+
+1. Sign in to Notion as a Workspace Owner: only owners can create a connection.
+2. Open the Developer portal at [app.notion.com/developers/connections](https://app.notion.com/developers/connections) (inside Notion: **Settings → Connections → Develop or manage connections**).
+3. On the **Developer connections** tab, select **New connection**. Name it (for example `AI agent`), choose **API token** under **Authentication method**, and select **Create connection**. The connection belongs to the workspace you are in and cannot be moved, so switch workspaces in the sidebar first if needed.
+4. Open the connection's **Configuration** tab and tick **Read content**, **Update content** and **Insert content**. Under user capabilities, **User information without email addresses** lets the agent look people up by name for person fields; **No user information** is enough otherwise. Comment capabilities are not used.
+5. Select **Show** next to the **API token** and copy it. New tokens start with `ntn_`; tokens created before September 25, 2024 start with `secret_`.
+
+> Notion asks integrators to treat tokens as opaque strings, so the only checks on save are that the value has no spaces and is 20 to 200 characters long.
+
+### Step 2: Share pages with the connection
+
+A new connection can see nothing. For each page or database the agent should use:
+
+1. Open it in Notion and click **•••** at the top right.
+2. Select **Connections**, click **+ Add connection**, search for your connection and confirm.
+
+Sub-pages are shared with their parent, so sharing a top-level page shares everything under it. You can also choose pages on the connection's **Content access** tab with **Edit access** in the Developer portal.
+
+### Step 2 (alternative): Use a personal access token
+
+If you are not a Workspace Owner, a personal access token works in the same field:
+
+1. Open the [Personal access tokens](https://www.notion.so/developers/tokens) page and select **New token**.
+2. Give it a name, tick the **Notion API** capability, and choose an expiration: 7, 30, 90 or 180 days, or 1 year (the default).
+3. Select **Create token** and copy the value right away: Notion shows it only once.
+
+The token acts as you: it reaches every page you can open, with no sharing step, and stops working when it expires. On Free only Workspace Owners can create one, on Plus every member can, and on Business and Enterprise an admin decides who can. It cannot list workspace members, so filling person fields by name needs an internal connection.
+
+### Step 3: Save the credential to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "notion", "fieldname": "token", "fieldvalue": "YOUR_NOTION_API_TOKEN" }
+    ]
+  }'
+```
+
+Or fill it in the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Connectors → Notion**.
+
+### Step 4: Enable the skill
+
+Notion ships **available but off**. Turn `int-notion-post` on for the agent:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skills": { "int-notion-post": true },
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000"
+  }'
+```
+
+Or flip the toggle in the panel under **Skills** (see [Agent Skills](/docs/agent-skills#toggling-integration-skills)).
+
+### Step 5: Start the agent
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+## Credential Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `token` | string (secret) | Yes | Notion internal connection API token (`ntn_...` or older `secret_...`) or personal access token. 20 to 200 characters, no spaces. Encrypted at rest. |
+
+## Credentials schema (as returned by `POST /UserAgent/Detail`)
+
+```json
+"notion": {
+  "_connected": true,
+  "optional": false,
+  "extra": false,
+  "token": "••••••••"
+}
+```
+
+On a custom build with `int-notion-post` on, `optional` and `extra` are `false`: Notion is that skill's own connector.
+
+## What the agent can do
+
+| Request | Notion API | What happens |
+|---------|------------|--------------|
+| Find pages and databases | `POST /v1/search` | Lists what the token can see by title, newest edit first, with links. |
+| Read a page | `GET /v1/pages/{id}`, `GET /v1/pages/{id}/markdown`, `GET /v1/blocks/{id}/children` | Properties, the body as Markdown, or the blocks with their IDs. |
+| Read a database | `GET /v1/databases/{id}`, `GET /v1/data_sources/{id}` | Its data sources and their schema: property names, types and options. |
+| Query a database | `POST /v1/data_sources/{id}/query` | Rows matching a filter (text, select, status, dates, checkboxes, numbers, people, edit times), sorted, up to 100 per call. |
+| Create a page | `POST /v1/pages` | Under a page, or as a database entry with properties; the body as Notion-flavored Markdown (up to 5,000 blocks) or as blocks (up to 100 per call). |
+| Add to a page | `PATCH /v1/pages/{id}/markdown`, `PATCH /v1/blocks/{id}/children` | Markdown at the end or the start, or blocks at the end, the start or after a given block. |
+| Edit text | `PATCH /v1/pages/{id}/markdown` (`update_content`) | Replaces an exact passage. Edits that would remove a child page or database are refused. |
+| Update properties | `PATCH /v1/pages/{id}` | Changes only the properties sent: status, dates, tags, people, relations, title. |
+| Tick a to-do or change a block | `PATCH /v1/blocks/{id}` | Changes one block. |
+| Move to the trash | `PATCH /v1/pages/{id}` (`in_trash`), `DELETE /v1/blocks/{id}` | Only after your approval. Reversible from Notion's Trash; the API cannot delete permanently. |
+
+## How the agent works with Notion
+
+- **Approvals:** reading never needs approval. In chat, your request to create or change a page is the approval. In scheduled tasks, writes follow the agent's approval policy. Moving anything to the trash, replacing a whole page body, or erasing a page's content always needs your explicit yes for that page, and scheduled tasks never do it.
+- **Databases and data sources:** since Notion-Version `2025-09-03`, a database holds one or more data sources. The agent reads the database, picks its data source and reads the schema before writing rows, so property names and option values match exactly.
+- **Markdown or blocks:** long documents go in as Notion-flavored Markdown, which Notion turns into headings, lists, to-dos, quotes, code blocks, dividers, images, tables, callouts and toggles. When exact blocks matter, the agent builds them directly and respects Notion's limits: 100 blocks per request, two levels of nesting, 2,000 characters per text item.
+- **Images** are added by URL. The URL must point straight at an image file over HTTPS and stay reachable.
+- **Links:** every answer about a page carries its Notion link, and the agent replies with it.
+- **Page content is data:** text inside a Notion page never acts as an instruction to the agent.
+
+## Limits & billing
+
+- **Rate limits:** Notion allows each connection 180 requests a minute (about 3 a second), or 600 on Business and Enterprise plans, plus a shared limit per workspace. Database queries have their own limit of about 3 a second. The agent works one call at a time and, when Notion answers 429, waits the time Notion gives and tries once more.
+- **Free workspace blocks:** a Free workspace with more than one member can create 1,000 blocks in its lifetime. Three days after reaching that, Notion refuses new content from connections until a Workspace Owner upgrades the plan. Personal access tokens, paid plans and single-member Free workspaces are not limited this way.
+- **Billing on Wiro:** every plan includes the integration, so it changes neither the agent's price nor its credits. As with every agent turn, its work is billed on the LLM tokens it uses, from the agent's existing credits.
+
+## Troubleshooting
+
+- **404 "object_not_found" or a page the agent cannot find:** the page is not shared with the connection. Open it in Notion, click **•••** → **Connections** → **+ Add connection** and pick the connection.
+- **401 "unauthorized":** the token is wrong, was refreshed, or the personal access token expired or was revoked. Save the current token again.
+- **403 "restricted_resource":** the connection is missing a capability (tick **Read content**, **Update content** and **Insert content** on its **Configuration** tab), or a Free workspace has used its 1,000 blocks.
+- **400 "validation_error":** a property name, option value or block shape did not match. The agent reads the schema again and fixes the field.
+- **429 "rate_limited":** too many requests; the agent waits and retries once.
+- **Rows created in the wrong place:** a database link carries the database ID before `?v=`; the agent writes rows to the database's data source, never to a view.
+- **Agent says "not connected" with the token filled:** the agent restarts to pick up new credentials; give it a moment after saving, then retry.
+
+To revoke access, remove the connection from a page's **Connections** menu or delete the connection in the Developer portal. If a token leaks, select **Refresh** on the connection's **Configuration** tab and save the new token. Personal access tokens are revoked on the [Personal access tokens](https://www.notion.so/developers/tokens) page or by a workspace admin in **Settings → Connections**.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Skills](/docs/agent-skills)
+- [GitBook Skills](/docs/integration-gitbook-skills): documentation edits through change requests
+- [Google Drive Skills](/docs/integration-googledrive-skills): files and folders from Google Drive
+- [Notion API reference](https://developers.notion.com/reference/intro)
+
+---
+
+# GitBook Integration
+
+Let your agent read your GitBook documentation and propose edits as change requests with your own GitBook token. Nothing reaches your live docs until a change request is merged, and the agent merges only after you approve.
+
+## Overview
+
+[GitBook](https://www.gitbook.com) hosts documentation in spaces, grouped into collections inside an organization. This integration connects an agent to GitBook through the GitBook API with your own personal access token. The agent can list your organizations, collections and spaces, read a space's page tree and any page as Markdown, search a space, and write changes, always inside a change request: new pages, edited pages, renamed, moved or removed pages, each body written in Markdown. It shows you what the change request changes, with its link, and merges it into the live content only after your approval.
+
+GitBook's API writes content only through change requests: there is no call that edits live pages directly, and the agent never looks for one.
+
+**Skills that use this integration:**
+
+- `int-gitbook-post`: Read and edit GitBook through the GitBook API: list organizations, collections and spaces, read the page tree and pages as Markdown (live or inside a change request), search a space, open a change request, write a batch of page changes into it (insert, update, move or delete pages, bodies in Markdown), show its change list and link, sync it with the live content, and merge it after your approval.
+
+**Agents that typically enable this integration:**
+
+- Custom documentation, developer relations and product agents that keep docs in step with releases.
+- Support agents that turn repeated questions into proposed doc pages.
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| Personal access token (GitBook) | Available | Created in your GitBook account's Developer tools. It carries your account's access in every organization you belong to. The integration is included in every plan at no extra charge. |
+
+## Prerequisites
+
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
+- **A GitBook account** with edit rights on the spaces the agent should change. Merging also needs the merge permission on the space.
+
+## Setup
+
+### Step 1: Create a GitBook API token
+
+1. Sign in at [app.gitbook.com](https://app.gitbook.com) with the account the agent should work as.
+2. From your organization's **Home**, click **Settings** under **Admin** in the sidebar, then open **Developer tools** under **Account** (direct link: [app.gitbook.com/account/developer](https://app.gitbook.com/account/developer)).
+3. Click **Create new API token**, enter a **Label** you will recognize later (for example `AI agent`), and choose an **Expiration**: 7, 30, 60 or 90 days, a **Custom** date, or **No expiration**. New tokens default to 90 days, and GitBook emails you before a token expires.
+4. Create the token and copy it. It is a long string that usually starts with `gb_api_`.
+
+> A GitBook token has no scopes: it can do everything your account can do. The agent only reads organizations, collections, spaces and pages, opens and updates change requests, and merges one after your approval. Prefer an expiration date, and an account with edit rights only on the spaces the agent should touch.
+
+### Step 2: Save the credential to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "gitbook", "fieldname": "token", "fieldvalue": "YOUR_GITBOOK_API_TOKEN" }
+    ]
+  }'
+```
+
+Or fill it in the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Connectors → GitBook**.
+
+### Step 3: Enable the skill
+
+GitBook ships **available but off**. Turn `int-gitbook-post` on for the agent:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skills": { "int-gitbook-post": true },
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000"
+  }'
+```
+
+Or flip the toggle in the panel under **Skills** (see [Agent Skills](/docs/agent-skills#toggling-integration-skills)).
+
+### Step 4: Start the agent
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+## Credential Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `token` | string (secret) | Yes | GitBook personal access token. 20 to 200 characters, no spaces. Encrypted at rest. |
+
+## Credentials schema (as returned by `POST /UserAgent/Detail`)
+
+```json
+"gitbook": {
+  "_connected": true,
+  "optional": false,
+  "extra": false,
+  "token": "••••••••"
+}
+```
+
+On a custom build with `int-gitbook-post` on, `optional` and `extra` are `false`: GitBook is that skill's own connector.
+
+## What the agent can do
+
+| Request | GitBook API | What happens |
+|---------|-------------|--------------|
+| Organizations, collections, spaces | `GET /v1/orgs`, `GET /v1/orgs/{id}/collections`, `GET /v1/orgs/{id}/spaces` | Lists what your account can reach, with links. |
+| A space's details | `GET /v1/spaces/{id}` | Whether your account may edit, review and merge there, its merge rules and its Git Sync state. |
+| Page tree and pages | `GET /v1/spaces/{id}/content/pages`, `GET /v1/spaces/{id}/content/page/{pageId}?format=markdown` | Titles, page IDs and paths; a page body as Markdown. Pages can also be read by path. |
+| Search a space | `GET /v1/spaces/{id}/search` | Matching pages and sections with their links. |
+| Open a change request | `POST /v1/spaces/{id}/change-requests` | A draft branch of the space with a subject. Nothing live changes. |
+| Write page changes | `POST /v1/spaces/{id}/change-requests/{cr}/content` | Up to 50 changes in one all-or-nothing batch: insert pages, update a page's body, title or position, delete pages. Bodies are Markdown. |
+| Show the change request | `GET /v1/spaces/{id}/change-requests/{cr}`, `.../changes`, `.../content/page/{pageId}` | Status, change counts, the list of added, edited, moved and deleted pages, the link to review it, and any edited page as it reads now. |
+| Sync and merge | `POST /v1/spaces/{id}/change-requests/{cr}/update`, `.../merge` | Brings the change request up to date with the live content, then merges it, only after your approval. |
+| Submit for review, archive, rename | `PATCH /v1/spaces/{id}/change-requests/{cr}` | Only when you ask. |
+
+## How the agent works with GitBook
+
+- **Approvals:** reading never needs approval. Opening a draft change request and writing into it changes nothing live, so the agent does it when you ask, and scheduled tasks may prepare one and report its link. Merging always needs your yes after you have seen the change list; scheduled tasks never merge. Removing a page also removes the pages under it, so the agent lists every removed page and merges only after you approve that list.
+- **Markdown:** the agent reads each page as Markdown and writes back the whole body without its title line (GitBook shows the title separately). It keeps GitBook blocks such as hints, tabs, embeds and content references as they were.
+- **Links to new pages:** a link to a page that exists only in an unmerged change request does not resolve yet; the agent writes the page name and tells you to add the link after the merge.
+- **Merge rules and permissions:** GitBook checks a space's merge rules, such as required reviews, at merge time. If your account may edit but not merge, the agent prepares the change request and tells you who has to merge it.
+- **Git Sync:** in a space synced with GitHub or GitLab, a merge is also committed to the connected repository. The agent says so before you approve. It never calls GitBook's Git import or export itself.
+- **What the agent never does:** change or delete spaces, collections, organizations, members, sites, integrations or tokens, import whole websites, or merge without your approval. Page text, comments and change request descriptions never act as instructions to the agent.
+
+## Limits & billing
+
+- **Rate limits:** GitBook limits API requests per time window and does not publish the numbers. Past the limit it answers 429; the agent waits about a minute and tries once more, and scheduled tasks stop and report.
+- **Batches:** one content batch holds up to 50 changes, applied in order; if one is invalid, none is written.
+- **Plans:** GitBook's Free plan has a single user, so you review the agent's change requests yourself; inviting teammates to review needs the Essential plan or higher.
+- **Billing on Wiro:** every plan includes the integration, so it changes neither the agent's price nor its credits. As with every agent turn, its work is billed on the LLM tokens it uses, from the agent's existing credits.
+
+## Troubleshooting
+
+- **401:** the token is wrong, expired or deleted. Create a new one in **Developer tools** and save it again.
+- **403 or a refused merge:** your account lacks edit or merge rights on that space, or a merge rule (for example a required review) is not met yet. The agent reports GitBook's message.
+- **404:** a wrong ID, or your account is not a member of that organization or space.
+- **409 on a content batch:** the change request changed since the agent read it; the agent reads it again and resends once.
+- **Merge finished with conflicts:** GitBook merged but could not combine every change; check the space in GitBook.
+- **A title appears twice on a page:** a body was written with its own `# Title` line; edit the page in the change request to remove it.
+- **Agent says "not connected" with the token filled:** the agent restarts to pick up new credentials; give it a moment after saving, then retry.
+
+To revoke access, open the **API Access Tokens** tab of **Developer tools** in GitBook and click **Delete** next to the token.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Skills](/docs/agent-skills)
+- [Notion Skills](/docs/integration-notion-skills): pages and databases in Notion
+- [WordPress Skills](/docs/integration-wordpress-skills): blog posts on your own site
+- [GitBook API reference](https://gitbook.com/docs/developers/gitbook-api/api-reference)
+
+---
+
+# beehiiv Integration
+
+Give your agent your beehiiv newsletter, reached with an API key from your own beehiiv workspace: post stats, subscribers, segments and automations, and new posts saved as drafts. Nothing reaches your subscribers until you approve the final text and the audience.
+
+## Overview
+
+[beehiiv](https://www.beehiiv.com) is a newsletter platform. This integration connects an agent to your own beehiiv workspace through the beehiiv API v2, so newsletter and content agents can report how your posts did, prepare the next issue as a draft, and keep your subscriber list tidy.
+
+**Skills that use this integration:**
+
+- `int-beehiiv-post`: Publications and their subscriber counts; posts with email stats (recipients, delivered, unique opens and clicks, unsubscribes, spam reports), web views and the most clicked links; totals across posts; new posts and changes to drafts (Pro and Enterprise plans); test emails to addresses you name; subscribers looked up, added with tags and custom fields, updated, or unsubscribed after your approval; segments with their sizes; enrollment of a subscriber in an automation after your approval.
+
+**Agents that typically enable this integration:**
+
+- Custom newsletter agents that write and schedule a weekly issue on beehiiv.
+- Content and marketing agents that turn blog posts or announcements into newsletter drafts and report opens and clicks back.
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| API Key (beehiiv) | Available | An API key from your own beehiiv workspace, plus an optional default publication. Reading posts, stats and subscribers works on every beehiiv plan, Free included; creating and changing posts needs beehiiv Pro or Enterprise. The integration is included in every plan at no extra charge. |
+
+## Prerequisites
+
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
+- **A beehiiv workspace** where you are the Owner or an Admin, with beehiiv's identity check (through Stripe) completed. For drafting posts through the API, the workspace needs the **Pro** or **Enterprise** plan; beehiiv does not include post creation in a Pro trial. See [beehiiv pricing](https://www.beehiiv.com/pricing).
+
+## Setup
+
+### Step 1: Create a beehiiv API key
+
+1. Sign in at [app.beehiiv.com](https://app.beehiiv.com) as the workspace Owner or an Admin.
+2. In the left menu click **Settings**, then under **Workspace Settings** choose **API**.
+3. In the **API Keys** section click **Create New API Key**, give it a name (for example "AI agent") and click **Create New Key**. On a paid plan, the **Publications** field can limit the key to the publications you pick; leave it empty to reach every publication in the workspace.
+4. Copy the key, then click **I've saved the key**. beehiiv shows a key only once.
+5. Optional: scroll down to the **Publication ID** section, pick a publication with the arrows icon and copy its API V2 ID (it starts with `pub_`). The agent uses it when you do not name a publication; without it, the agent lists your publications and asks.
+
+> To revoke the key later, open the same **API** page, click the three dots next to the key and choose **Delete**.
+
+### Step 2: Save the credential to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "beehiiv", "fieldname": "apikey", "fieldvalue": "YOUR_BEEHIIV_API_KEY" },
+      { "credentialkey": "beehiiv", "fieldname": "publicationid", "fieldvalue": "pub_00000000-0000-0000-0000-000000000000" }
+    ]
+  }'
+```
+
+Or fill it in the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Connectors → beehiiv**.
+
+A key with spaces in it, or a publication ID that is not `pub_` followed by a 36-character ID, is refused when you save it.
+
+### Step 3: Enable the skill
+
+beehiiv ships **available but off**. Turn `int-beehiiv-post` on for the agent:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skills": { "int-beehiiv-post": true },
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000"
+  }'
+```
+
+Or flip the toggle in the panel under **Skills** (see [Agent Skills](/docs/agent-skills#toggling-integration-skills)).
+
+### Step 4: Start the agent
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+## Credential Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `apikey` | string (secret) | Yes | beehiiv API key from Settings → Workspace Settings → API. Encrypted at rest. |
+| `publicationid` | string | No | Default publication, its API V2 ID (`pub_` and 36 characters). Empty: the agent lists the publications the key reaches. |
+
+## Credentials schema (as returned by `POST /UserAgent/Detail`)
+
+```json
+"beehiiv": {
+  "_connected": true,
+  "optional": false,
+  "extra": false,
+  "apikey": "••••••••",
+  "publicationid": "pub_00000000-0000-0000-0000-000000000000"
+}
+```
+
+## What the agent can do
+
+| Request | beehiiv API | Plan | Waits for your approval |
+|---------|-------------|------|--------------------------|
+| List publications with subscriber counts and average rates | `GET /v2/publications` | Every plan | No |
+| Posts with email stats, web views and top links; totals across posts | `GET /v2/publications/{id}/posts`, `/posts/{post_id}`, `/posts/aggregate_stats` | Every plan | No |
+| Draft a post (HTML body, subject line, preview text, audience by tier or segment, template, tags) and change a draft | `POST` and `PATCH /v2/publications/{id}/posts` | Pro, Enterprise | No: a draft reaches no one |
+| Send a test email to addresses you name | `POST /posts/{post_id}/test_sends` | Every plan | No |
+| Send a draft now, or schedule it | `PATCH /posts/{post_id}` with status `confirmed` | Pro, Enterprise | **Yes** |
+| Look up a subscriber, with tags, custom fields and engagement | `GET /v2/publications/{id}/subscriptions` | Every plan | No |
+| Add a subscriber with custom fields and a source; add tags; update custom fields | `POST /subscriptions`, `POST /subscriptions/{sub_id}/tags`, `PUT /subscriptions/{sub_id}` | Every plan | No (only people you say agreed to receive the newsletter) |
+| Unsubscribe someone | `PUT /subscriptions/{sub_id}` | Every plan | **Yes** |
+| Segments with their sizes, custom fields, tiers, templates, automations | `GET /segments`, `/custom_fields`, `/tiers`, `/post_templates`, `/automations` | Every plan; automations from Lite | No |
+| Enroll a subscriber in an automation | `POST /automations/{automation_id}/journeys` | Lite and up (the automation needs an Add by API trigger) | **Yes** |
+
+The agent never deletes a post or a subscriber: beehiiv deletes them for good, so that stays with you in beehiiv.
+
+## Approvals
+
+Everything that reaches your subscribers or changes what they receive waits for your explicit yes in the chat, after you have seen exactly what will happen:
+
+- **Sending or scheduling a post:** the final subject line, preview text and body (the draft's preview link, a test email or the HTML), the audience in words with its size, and the send time in your time zone, or "now".
+- **Unsubscribing:** the exact addresses.
+- **Enrolling in an automation:** the automation's name and the people.
+- **A welcome email, re-adding someone who unsubscribed, or skipping double opt-in** when adding a subscriber, and **changing someone's tier**.
+
+A yes covers only what you saw: if the text, audience or time changes, the agent shows it again. This holds even when the agent's approval policy is set to run without waiting. A scheduled task never sends: it prepares the draft and reports it to you.
+
+Once a post is sent or scheduled, beehiiv does not let it return to draft through the API. To stop a scheduled post, unschedule it in beehiiv; the agent reminds you of this when it schedules one.
+
+## Plans & limits
+
+| beehiiv plan | API access | Drafting posts through the API | Automations | Segments | Requests per minute |
+|--------------|------------|--------------------------------|-------------|----------|---------------------|
+| Free | Yes | No | No | 3 | 30 |
+| Lite | Yes | No | Up to 10 live | 10 | 180 |
+| Pro | Yes | Yes (not during a trial) | Unlimited | Unlimited | 500 |
+| Enterprise | Yes | Yes | Unlimited | Unlimited | 800 (more on request) |
+
+- beehiiv caps test emails per publication per day; the agent tells you how many are left after each one.
+- Custom fields must exist in beehiiv before the agent can fill them; unknown fields are dropped and the agent says which.
+
+## Cost & billing
+
+- **beehiiv** bills its own plan to your beehiiv account; the API adds no charge.
+- **Billing on Wiro:** every plan includes the integration, so it changes neither the agent's price nor its credits. As with every agent turn, its work is billed on the LLM tokens it uses, from the agent's existing credits.
+
+## Troubleshooting
+
+- **401:** The key is wrong or was deleted. Create a new key on the beehiiv API page and save it again.
+- **403 when drafting a post:** The workspace is not on Pro or Enterprise, or is on a Pro trial. Reading stats and managing subscribers still work.
+- **404 for a publication:** The key is limited to other publications, or the publication ID is wrong. Edit the key's **Publications** on the beehiiv API page, or clear the default publication so the agent lists the ones it can reach.
+- **422 on a test email:** beehiiv's daily test email limit is reached; it resets the next day.
+- **429:** Too many requests for your plan in one minute. The agent waits and tries once more.
+- **A subscriber shows `pending`:** The publication uses double opt-in, and the person has not confirmed yet.
+- **Agent says "not connected" with the key filled:** The agent restarts to pick up new credentials; give it a moment after saving, then retry.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Skills](/docs/agent-skills)
+- [Mailchimp Skills](/docs/integration-mailchimp-skills) / [Brevo Skills](/docs/integration-brevo-skills): other email platforms
+
+---
+
+# Kaggle Integration
+
+Give your agent your own Kaggle account: it lists your notebooks and datasets, pushes a notebook and runs it on Kaggle's CPUs or GPUs, reads the run's log and output, publishes data as a private dataset or a new version, and browses competitions and leaderboards.
+
+## Overview
+
+[Kaggle](https://www.kaggle.com) runs notebooks on free CPUs, GPUs and TPUs and hosts datasets and competitions. This integration connects an agent to your Kaggle account with your username and a Kaggle API token, so data and research agents can run code where the hardware is, and share data with you or your team. Everything the agent creates is private; making something public and sending a competition submission wait for your approval.
+
+**Skills that use this integration:**
+
+- `int-kaggle-notebooks`: Your notebooks and datasets; notebook pushes (script or notebook, with dataset, competition, notebook and model sources, GPU or TPU, internet on or off); run status, logs and output files; new datasets and new dataset versions; your weekly GPU and TPU quota; competitions, leaderboards and your submissions, and submissions after your approval.
+
+**Agents that typically enable this integration:**
+
+- Custom data science and research agents that train or evaluate models on Kaggle hardware.
+- Reporting and data agents that publish a cleaned dataset for a team on a schedule.
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| API Token (Kaggle) | Available | Your Kaggle username and an API token from Settings → API → Generate New Token (`KGAT_` and 32 characters). Kaggle's API is free; runs use your own Kaggle quotas. The integration is included in every plan at no extra charge. |
+
+## Prerequisites
+
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
+- **A Kaggle account.** For notebooks that use a GPU or the internet, Kaggle asks for a phone-verified account. To submit to a competition, join it and accept its rules on the Kaggle website first; the API cannot do that step.
+
+## Setup
+
+### Step 1: Find your username and create an API token
+
+1. Sign in at [kaggle.com](https://www.kaggle.com) and open your profile page (your picture, top right). Your username is the last part of the address: in `https://www.kaggle.com/janedoe` it is `janedoe`.
+2. Open [Settings → API](https://www.kaggle.com/settings/api) (your picture, then **Settings**, then the **API** section).
+3. Click **Generate New Token**, then **Copy**. The token is `KGAT_` followed by 32 letters and digits.
+
+> Use a token from **Generate New Token**. The older key from **Create Legacy API Key** (the `key` inside a `kaggle.json` file) is a different credential and is refused when you save it. To revoke the token later, remove it in the same API section of your Kaggle settings.
+
+### Step 2: Save the credential to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "kaggle", "fieldname": "username", "fieldvalue": "janedoe" },
+      { "credentialkey": "kaggle", "fieldname": "apitoken", "fieldvalue": "KGAT_YOUR_KAGGLE_API_TOKEN" }
+    ]
+  }'
+```
+
+Or fill it in the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Connectors → Kaggle**.
+
+A token that is not `KGAT_` followed by 32 hexadecimal characters, or a username with spaces, slashes or an `@`, is refused when you save it.
+
+### Step 3: Enable the skill
+
+Kaggle ships **available but off**. Turn `int-kaggle-notebooks` on for the agent:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skills": { "int-kaggle-notebooks": true },
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000"
+  }'
+```
+
+Or flip the toggle in the panel under **Skills** (see [Agent Skills](/docs/agent-skills#toggling-integration-skills)).
+
+### Step 4: Start the agent
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+## Credential Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `username` | string | Yes | Your Kaggle username, the last part of your profile address. |
+| `apitoken` | string (secret) | Yes | Kaggle API token from Settings → API → Generate New Token: `KGAT_` and 32 hexadecimal characters. Encrypted at rest. |
+
+## Credentials schema (as returned by `POST /UserAgent/Detail`)
+
+```json
+"kaggle": {
+  "_connected": true,
+  "optional": false,
+  "extra": false,
+  "username": "janedoe",
+  "apitoken": "••••••••"
+}
+```
+
+## What the agent can do
+
+The agent calls the Kaggle API at `https://www.kaggle.com/api/v1/` with your token as a Bearer token.
+
+| Request | Kaggle API | Waits for your approval |
+|---------|------------|--------------------------|
+| Your weekly GPU and TPU quota: used, left, refresh time | `GET /kernels/quota` | No |
+| List your notebooks; read one notebook's settings and code | `GET /kernels/list`, `GET /kernels/pull` | No |
+| Push a notebook or script as a new notebook or a new version, private, with dataset, competition, notebook and model sources; save and run, or save only | `POST /kernels/push` | No for a private notebook on CPU; **yes** to make it public, and for a GPU or TPU run you did not ask for |
+| Run status, log and output files | `GET /kernels/status`, `GET /kernels/output` | No |
+| List your datasets, their files and processing status | `GET /datasets/list`, `/datasets/list/{owner}/{slug}`, `/datasets/status/{owner}/{slug}` | No |
+| Create a private dataset or a new version from files in the agent's workspace | `POST /blobs/upload`, then the upload, then `POST /datasets/create/new` or `/datasets/create/version/{owner}/{slug}` | No for private; **yes** to make it public or to delete older versions |
+| Competitions, leaderboards and your submissions | `GET /competitions/list`, `/competitions/{slug}/leaderboard/view`, `/competitions/submissions/list/{slug}` | No |
+| Submit a file, or a notebook version for a code competition | `POST /competitions/submission-url`, the upload, then `POST /competitions/submissions/submit/{slug}` or `/submit-notebook/{slug}` | **Yes** |
+
+The agent never deletes a notebook or a dataset; that stays with you on Kaggle.
+
+### How notebooks run
+
+- A push creates the notebook (or a new version) and starts a run, unless the agent was asked only to save it.
+- Notebooks run on CPU with the internet off by default. The agent turns a GPU (`NvidiaTeslaT4`, `NvidiaL4`) or a TPU (`TpuV5E8`) on only when you ask, or after telling you how much of your weekly quota is left; it turns the internet on only when the code needs to download packages or data, and says why.
+- Runs take minutes to hours. The agent reports the status when you ask; it does not wait in a loop. When a run fails, it reads the log for the cause before changing the code.
+- Output files are listed with their names. Kaggle serves them through short-lived signed links; if the agent cannot fetch one, it points you to the notebook's Output tab.
+
+### How datasets are published
+
+Kaggle takes files in three steps: the agent asks for an upload ticket, uploads the file to the link Kaggle gives (signed for that one file, with no token), then creates the dataset or the new version naming the ticket. A new version is built from the files sent with it, so the agent uploads every file the dataset should keep. Titles and slugs take 6 to 50 characters and subtitles 20 to 80; a public dataset needs one license, which you choose.
+
+## Approvals
+
+These wait for your explicit yes in the chat, after you have seen exactly what will happen:
+
+- **Making a notebook or dataset public:** the notebook or dataset by name, and for a dataset its license. Anyone can then see and copy it.
+- **A competition submission:** the competition, the file or notebook version, and the description. It uses one of the competition's daily submissions.
+- **A GPU or TPU run you did not ask for:** the accelerator and the quota left.
+- **Deleting a dataset's older versions** when publishing a new one.
+
+A scheduled task never makes anything public and never submits: it reports what is ready.
+
+## Quotas & limits
+
+| Limit | Value |
+|-------|-------|
+| GPU and TPU time | A weekly allowance per account, in hours; the agent reads what is left before a run |
+| One run | Up to 12 hours on CPU and GPU, 9 hours on TPU |
+| Saved output per run | Up to 20 GB |
+| Dataset size | 200 GB per dataset, 200 GB of private datasets per account |
+| Files per dataset | At most 50 at the top level (more go in an archive) |
+| Competition submissions | A daily limit per competition |
+| Request rate | Kaggle limits request rates on its own; when it answers "Too many requests", the agent stops and tries again later |
+
+## Cost & billing
+
+- **Kaggle:** the API and Kaggle's notebook hardware are free within your Kaggle quotas.
+- **Billing on Wiro:** every plan includes the integration, so it changes neither the agent's price nor its credits. As with every agent turn, its work is billed on the LLM tokens it uses, from the agent's existing credits.
+
+## Troubleshooting
+
+- **401 "Unauthenticated":** The token is wrong, expired or was removed. Generate a new token in Kaggle's Settings → API and save it again.
+- **403 "Permission ... was denied":** The notebook or dataset belongs to someone else or is private, the slug is wrong, or you have not accepted a competition's rules on the Kaggle website.
+- **A push names refused sources:** A dataset, competition, notebook or model source is misspelled or not accessible to you; the agent fixes it and pushes again once.
+- **A run ends in `error`:** The agent reads the log and tells you the cause, for example running out of memory or a missing package with the internet off.
+- **No GPU in the run:** Your weekly GPU quota is used up, or the account is not phone-verified.
+- **429 "Too many requests":** Kaggle asked to slow down; the agent tries again on a later request.
+- **Agent says "not connected" with both fields filled:** The agent restarts to pick up new credentials; give it a moment after saving, then retry.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Skills](/docs/agent-skills)
+- [Wiro AI Models](/docs/agent-skills#using-wiro-ai-models-from-your-agent): run AI models from the same agent
+
+---
+
+# Threads Integration
+
+Connect your agent to a Threads profile with your own Meta app to publish text, image, video and carousel posts, answer and moderate replies, and read post and profile insights.
+
+## Overview
+
+The Threads integration uses the Threads API (`graph.threads.net/v1.0`) with OAuth 2.0 and a Meta app you own that has the **Access the Threads API** use case. One connection is one Threads profile: the agent posts as that profile and nowhere else.
+
+Wiro exchanges the sign-in code for a short-lived token, swaps it at once for a 60-day token, and renews that token every day while the agent runs. Tokens stay on Wiro's servers.
+
+**Skills that use this integration:**
+
+- `int-threads-post`: Publish text, image, video and carousel posts (2 to 20 items) with reply controls, quote posts, link previews, topic tags and long text attachments; answer replies in your own threads; read and hide replies; read post and profile insights; delete a post after you approve it
+
+**Agents that typically enable this integration:**
+
+- Social Manager
+- Any custom agent that publishes to Threads
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| `"own"` | Available | Your own Meta app with the Access the Threads API use case. |
+
+There is no Wiro mode: `OAuthConnect` with `"authmethod": "wiro"` returns `Unsupported connection mode for Threads`. Leaving `authmethod` out means `"own"`.
+
+## Prerequisites
+
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
+- **A Threads profile** the agent will post as.
+- **A Meta for Developers account** to create the app.
+- **An HTTPS callback URL** for your backend, where the browser returns after the sign-in.
+
+## Complete Integration Walkthrough
+
+### Step 1: Create a Meta app with the Threads use case
+
+1. Open [Meta for Developers → My Apps](https://developers.facebook.com/apps/) and click **Create App**.
+2. Enter an app name and your contact email.
+3. On **Use cases**, select **Access the Threads API**. Connecting a business portfolio is optional.
+4. Finish the steps to create the app.
+
+Meta gives the app two IDs and secrets. The Threads API uses the **Threads App ID** and **Threads App Secret**, not the App ID at the top of the dashboard.
+
+### Step 2: Add the permissions
+
+In the left menu click **Use cases**, then **Customize** next to **Access the Threads API**. Under **Permissions**, click **Add** next to each of these (`threads_basic` is already included):
+
+| Permission | Why |
+|------------|-----|
+| `threads_basic` | Required for every Threads API call: the profile's id and username. |
+| `threads_content_publish` | Create and publish posts. |
+| `threads_manage_replies` | Answer replies in your threads, hide replies, set who can reply. |
+| `threads_read_replies` | Read the replies to your posts. |
+| `threads_manage_insights` | Read post and profile insights. |
+| `threads_delete` | Delete a post the profile made. |
+
+Wiro asks for exactly these six scopes, so all six must be on the app or the sign-in fails.
+
+### Step 3: Configure the redirect URI
+
+Open the use case's **Settings**:
+
+1. Under **Redirect Callback URLs** (Client OAuth Settings in Meta's docs), add:
+
+   ```
+   https://api.wiro.ai/v1/UserAgentOAuth/ThreadsCallback
+   ```
+
+2. Fill in **Uninstall Callback URL** and **Delete Callback URL** as well, or the page does not save. A page on your own website, such as your privacy policy, works for both.
+3. Click **Save**. If the dashboard shows **Finish customization**, click it.
+
+### Step 4: Add the Threads account as a tester
+
+Until Meta approves the app, only Threads accounts with a role on it can sign in.
+
+1. Go to **App roles → Roles → Add People** and choose **Threads Tester**.
+2. Enter the Threads username of the profile the agent will post as. It can differ from your Facebook login.
+3. In Threads, sign in as that profile and accept the invite under **Settings → Account → Website permissions → Invites**.
+
+To let accounts without a role connect, submit each permission for **App Review** and publish the app. For your own profile, the tester role is enough.
+
+### Step 5: Copy the Threads App ID and Threads App Secret
+
+On the same **Settings** page, copy the **Threads App ID** (digits). Next to **Threads App Secret**, click **Show** and copy all 32 characters.
+
+### Step 6: Save the app credentials to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "threads", "fieldname": "authmethod", "fieldvalue": "own" },
+      { "credentialkey": "threads", "fieldname": "appid", "fieldvalue": "1234567890123456" },
+      { "credentialkey": "threads", "fieldname": "appsecret", "fieldvalue": "YOUR_THREADS_APP_SECRET" }
+    ]
+  }'
+```
+
+`appid` takes digits only.
+
+### Step 7: Initiate OAuth
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "threads",
+    "redirecturl": "https://your-app.com/settings/integrations",
+    "authmethod": "own"
+  }'
+```
+
+Response:
+
+```json
+{
+  "result": true,
+  "authorizeUrl": "https://threads.com/oauth/authorize?client_id=...&redirect_uri=...&scope=threads_basic%2Cthreads_content_publish%2Cthreads_manage_insights%2Cthreads_manage_replies%2Cthreads_read_replies%2Cthreads_delete&response_type=code&state=...",
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
+  "errors": []
+}
+```
+
+Redirect the user to `authorizeUrl` and have them sign in with the Threads profile the agent will post as.
+
+### Step 8: Handle the callback
+
+After consent, Threads redirects to Wiro's callback. Wiro exchanges the code, swaps the short-lived token for a 60-day token, reads the profile's id and username, and returns the user to your `redirecturl`.
+
+**Success URL:**
+
+```
+https://your-app.com/settings/integrations?threads_connected=true&threads_username=acme.studio
+```
+
+```javascript
+const params = new URLSearchParams(window.location.search);
+
+if (params.get("threads_connected") === "true") {
+  showSuccess(`Connected as @${params.get("threads_username")}`);
+} else if (params.get("threads_error")) {
+  handleError(params.get("threads_error"));
+}
+```
+
+### Step 9: Verify
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "threads"
+  }'
+```
+
+Response:
+
+```json
+{
+  "result": true,
+  "connected": true,
+  "accounts": [
+    { "id": "acme.studio", "name": "acme.studio" }
+  ],
+  "connectedat": "2026-11-21T12:00:00.000Z",
+  "tokenexpiresat": "2027-01-20T12:00:00.000Z",
+  "errors": []
+}
+```
+
+`accounts[0]` carries the connected Threads username.
+
+### Step 10: Start the agent
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+## API Reference
+
+### POST /UserAgentOAuth/OAuthConnect
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Agent instance GUID. |
+| `credentialkey` | string | Yes | `"threads"`. |
+| `redirecturl` | string | Yes | Any HTTPS URL you control; the browser returns there after consent. `http://localhost` and `http://127.0.0.1` also work for development. |
+| `authmethod` | string | No | `"own"`, the only mode. `"wiro"` returns `Unsupported connection mode for Threads`. |
+
+### GET /UserAgentOAuth/ThreadsCallback
+
+Server-side endpoint Threads calls with `code` and `state`. You don't call it. You only handle the final redirect back to your `redirecturl`, which carries `threads_connected=true&threads_username=<username>` or `threads_error=<code>`.
+
+### POST /UserAgentOAuth/OAuthStatus
+
+Body: `{ useragentguid, credentialkey: "threads" }`. Response: `connected`, `accounts: [{id, name}]` (the connected username), `connectedat`, `tokenexpiresat`.
+
+### POST /UserAgentOAuth/OAuthDisconnect
+
+Body: `{ useragentguid, credentialkey: "threads" }`. Clears the token and the connected profile in Wiro. `appid` and `appsecret` stay saved, so you can connect again without saving them again. Threads has no revoke endpoint: to end the app's access on Threads too, remove the app under **Settings → Account → Website permissions** in Threads.
+
+### Token lifecycle
+
+The token lasts 60 days. Wiro renews it every day while the agent runs once it has 30 days or less left, and when the agent starts. A token that expired cannot be renewed: connect again. Meta extends the permissions of public profiles with each renewal; a **private** Threads profile has to connect again every 90 days. `OAuthStatus` reports `connected: false` once the stored token has expired.
+
+## Using the Skill
+
+Once Threads is connected, the agent publishes with `int-threads-post`, gated by your approval policy:
+
+- **Text posts** up to 500 characters. Threads counts each emoji by its UTF-8 bytes, so one emoji usually counts 4. A link in a text post becomes its preview card; at most 5 links per post. Longer pieces go into a text attachment of up to 10,000 characters.
+- **Image posts** (JPEG or PNG, up to 8 MB) and **video posts** (MP4 or MOV, H.264 or HEVC, up to 5 minutes and 1 GB), from public URLs, with alt text.
+- **Carousels** of 2 to 20 images and videos.
+- **Reply controls** (everyone, accounts you follow, mentioned only, followers only, or the post's author only), **quote posts**, and one **topic tag** per post.
+- **Replies:** reads the replies to your posts, answers inside your own threads, and hides or unhides replies on request.
+- **Insights (read-only):** views, likes, replies, reposts, quotes and shares per post; views, likes, replies, reposts, quotes, link clicks and follower count for the profile.
+- **Delete:** a post the profile made, only after you approve that exact post.
+
+Every post is created as a media container and then published. The agent waits until the container is ready (videos take longer), publishes it once, and returns the post's permalink. Threads has no scheduled publishing in its API: a post for later is published by a scheduled task at that time.
+
+Threads allows each profile 250 published posts, 1,000 replies and 100 deletions in any 24 hours. A carousel counts as one post.
+
+## Troubleshooting
+
+| Error code | Meaning | What to do |
+|------------|---------|------------|
+| `missing_params` | The callback was opened without an OAuth `state`. The browser ends on the API's own neutral page, not on your `redirecturl`. | Don't open the callback URL directly. Start again from Step 7. |
+| `session_expired` | More than 15 minutes between `OAuthConnect` and the callback. | Call `OAuthConnect` again. |
+| `flow_replaced` | A newer sign-in for the same agent and credential replaced this one, so nothing from it was saved. | Use the newer sign-in, or start again with `OAuthConnect`. |
+| `authorization_denied` | The user cancelled on Threads. | Start again and approve. |
+| `token_exchange_failed` | Threads refused the code (wrong Threads App Secret, a redirect URI that does not match, a code used twice), or the profile could not be read. | Check the Threads App ID and Secret and the redirect URI (Steps 3 and 5), then connect again. |
+| `long_lived_exchange_failed` | Threads issued the short-lived token but refused to swap it for a 60-day token, so nothing was saved. | Check the Threads App Secret (Step 5) and connect again. |
+| `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow. | Start again with `OAuthConnect` for an existing agent. |
+| `Threads credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `appid` or `appsecret` is missing. | Save them (Step 6). |
+| `internal_error` | Server error. | Retry; contact support if it persists. |
+
+### "The user has not accepted the invite to test the app"
+
+The Threads account has a pending tester invite. Accept it in Threads under **Settings → Account → Website permissions → Invites**, then connect again.
+
+### The Threads sign-in page refuses a permission
+
+One of the six permissions is not on the app. Add it in **Use cases → Customize → Permissions** (Step 2) and connect again.
+
+### Posts fail with a link limit error
+
+Threads refuses posts with more than 5 links (`THREADS_API__LINK_LIMIT_EXCEEDED`). The agent removes links and tries a new container.
+
+### The agent says Threads needs to be connected again
+
+The token expired (the agent was stopped for more than 60 days, or the profile is private and its 90 days passed) or access was removed in Threads. Connect again from Step 7.
+
+## Multi-Tenant Architecture
+
+1. **One Meta app per product**, with the Threads use case and the six permissions.
+2. **One Wiro agent instance per customer**, each connecting its own Threads profile.
+3. **App Review is per app**: submit the permissions once so customers' profiles can connect without the tester role.
+4. **Tokens are isolated per agent instance.**
+5. **Limits are per profile**: 250 posts, 1,000 replies and 100 deletions in any 24 hours.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Overview](/docs/agent-overview)
+- [Agent Skills](/docs/agent-skills)
+- [Threads API documentation](https://developers.facebook.com/docs/threads)
+
+---
+
+# Bluesky Integration
+
+Let your agent post to Bluesky with your own handle and an app password: text posts with working links, mentions and hashtags, images with alt text, link cards and threads, and a look at how your posts are doing.
+
+## Overview
+
+[Bluesky](https://bsky.app) is a social network built on the AT Protocol. This integration connects an agent to your Bluesky account with an app password, a separate password Bluesky makes for apps, so the agent never holds your real password. The agent writes the post, shows it to you for approval as the agent's approval policy says, then publishes it. It can also delete a post you approve and read the likes, reposts, replies and quotes of your recent posts.
+
+**Skills that use this integration:**
+
+- `int-bluesky-post`: Text posts up to 300 characters with clickable links, @mentions and #hashtags, up to 4 images per post with alt text, link cards, threads and replies, deleting a post after your approval, and reading your recent posts with their numbers.
+
+**Agents that typically enable this integration:**
+
+- [Social Manager](https://wiro.ai/agents/social-manager): posts each approved item to Bluesky next to your other networks, adapted to Bluesky's length and style.
+- Custom agents that publish announcements, product news, releases or event updates.
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| Handle + App Password (Bluesky) | Available | Accounts hosted by Bluesky: every account made on bsky.app with the default hosting provider (Bluesky Social). Accounts on a self-hosted or another provider's server are not supported yet. The integration is included in every plan at no extra charge. |
+
+## Prerequisites
+
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
+- **A Bluesky account hosted by Bluesky.** Posting through the API is free on Bluesky.
+
+## Setup
+
+### Step 1: Create a Bluesky app password
+
+1. Sign in at [bsky.app](https://bsky.app) (or in the Bluesky app) with the account the posts should come from.
+2. Open **Settings** → **Privacy and security** → **App passwords** ([bsky.app/settings/app-passwords](https://bsky.app/settings/app-passwords)).
+3. Click **Add App Password** and give it a name you will recognize, such as `Social posting` (letters, digits, spaces, hyphens and underscores, at least 4 characters).
+4. Leave **Allow access to your direct messages** unticked: the agent never reads or sends direct messages.
+5. Click **Next**. Bluesky shows the password once, as four groups of four lowercase letters and digits: `xxxx-xxxx-xxxx-xxxx`. Click **Copy App Password**, keep it for Step 2, then click **Done**.
+6. Note your handle: the name under your display name on your profile, such as `yourname.bsky.social`, or your own domain if you set one up.
+
+> Never use the password you sign in with. An app password can post, delete posts and read for the account, but it cannot delete the account or create other app passwords, and it works with email two-factor sign-in turned on. To revoke the agent's access, delete the app password on the same page.
+
+### Step 2: Save the credential to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "bluesky", "fieldname": "handle", "fieldvalue": "yourname.bsky.social" },
+      { "credentialkey": "bluesky", "fieldname": "apppassword", "fieldvalue": "xxxx-xxxx-xxxx-xxxx" }
+    ]
+  }'
+```
+
+Or fill it in the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Connectors → Bluesky**.
+
+A handle with a leading `@` or capital letters is accepted and used without them. An app password in any other shape than `xxxx-xxxx-xxxx-xxxx` (four groups of four lowercase letters and digits) is refused when you save it, so an account password cannot be saved by mistake.
+
+### Step 3: Enable the skill
+
+Bluesky ships **available but off**. Turn `int-bluesky-post` on for the agent:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skills": { "int-bluesky-post": true },
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000"
+  }'
+```
+
+Or flip the toggle in the panel under **Skills** (see [Agent Skills](/docs/agent-skills#toggling-integration-skills)).
+
+### Step 4: Start the agent
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+### Setup from chat
+
+With setup cards on, a person can ask the agent in chat to post to Bluesky. The agent then proposes an `add` card for `int-bluesky-post` and a `connect` card for `bluesky`, whose mode is `key`: your UI shows a form with the two fields of [Credential Fields](#credential-fields), and `SetupCardApply` takes them as `values` (see [Key mode](/docs/agent-chat-integration#key-serper-web-search)):
+
+```json
+{
+  "useragentguid": "your-useragent-guid",
+  "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "cardid": "h6w3k9p2m5tc",
+  "action": "apply",
+  "values": { "handle": "yourname.bsky.social", "apppassword": "xxxx-xxxx-xxxx-xxxx" }
+}
+```
+
+A value in the wrong shape is refused with the field's message, such as `App Password has an invalid format`, and the card stays pending. With only one of the two fields, the answer is `Saved <field> for Bluesky. Still needed: <field>.` and the card waits for the other.
+
+## Credential Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `handle` | string | Yes | Your Bluesky handle, such as `yourname.bsky.social` or your own domain. A leading `@` is removed. Not a secret: it is shown as saved. |
+| `apppassword` | string (secret) | Yes | A Bluesky app password: 19 characters, four groups of four lowercase letters and digits joined by hyphens. Never the account password. Encrypted at rest. |
+
+## Credentials schema (as returned by `POST /UserAgent/Detail`)
+
+```json
+"bluesky": {
+  "_connected": true,
+  "optional": false,
+  "extra": false,
+  "handle": "yourname.bsky.social",
+  "apppassword": "••••••••"
+}
+```
+
+On a custom build with `int-bluesky-post` on, `optional` and `extra` are `false`: Bluesky is that skill's own connector.
+
+## What the agent can do
+
+The agent calls Bluesky's API at `https://bsky.social`, the entry point for every account Bluesky hosts.
+
+| Action | Bluesky API | Limits and notes |
+|--------|-------------|------------------|
+| Text post | `com.atproto.repo.createRecord` (an `app.bsky.feed.post` record) | 300 characters (Bluesky counts graphemes, so an emoji is one) and 3,000 bytes. Up to 3 language codes. |
+| Links, mentions, hashtags | Rich text facets on the post | Made clickable by the agent: it finds each link, `@handle` and `#tag` and marks its place in the text in UTF-8 bytes, so accented letters and emoji land right. A mention of a handle that does not exist stays plain text. |
+| Images | `com.atproto.repo.uploadBlob`, then an `app.bsky.embed.images` embed | Up to 4 per post, each up to 2,000,000 bytes, JPEG, PNG or WebP, with alt text on every image. The agent shrinks a larger image to a JPEG at most 2,000 pixels wide. |
+| Link card | `app.bsky.embed.external` | The page's title and description, and an optional image up to 1,000,000 bytes. Only on a post without images. |
+| Threads and replies | The post's `reply` reference (thread root and parent) | A thread posts part by part and stops at the first failure. A reply to someone else's post goes out only when you ask for it. |
+| Delete a post | `com.atproto.repo.deleteRecord` | Only a post of the connected account, only after you see it and say yes to that post. It cannot be undone. |
+| Read your posts | `app.bsky.feed.getAuthorFeed`, `app.bsky.feed.getPosts`, `app.bsky.feed.getPostThread` | Likes, reposts, replies and quotes of each post, its replies, and views (Bluesky shows view counts only to the author and only from 100 views). |
+
+Not supported: videos (the agent puts the video's link in the text), scheduled posts (Bluesky has none: the agent posts when it runs), editing (Bluesky has no edits), quote posts, direct messages, and accounts on servers not hosted by Bluesky.
+
+## How posting works
+
+- **Approval.** The agent follows its approval policy. By default it shows the post first (the text with its character count, each image with its alt text, the link card, and every post of a thread) and publishes after your approval. An agent admin can switch the policy to post automatically, also for Bluesky alone. Deleting always needs your yes for that post, whatever the policy says.
+- **Sign-in limit.** Bluesky allows 30 sign-ins per 5 minutes and 300 per day for one account. The agent signs in once for every request that needs your account: each image upload, each post, each read of your posts' numbers and each delete. A post with 4 images takes 5 sign-ins. The agent keeps a run within the limit and posts a long thread with many images in parts at least 5 minutes apart. Looking up a handle, reading a post by its link and listing your latest posts need no sign-in.
+- **Writes.** Bluesky also counts writes per account: 5,000 points per hour and 35,000 per day, where a post costs 3 and a delete 1. Normal posting never comes near it.
+- **No duplicates.** When Bluesky does not answer whether a post went through, the agent checks your latest posts before anything else and never posts the same thing twice on its own.
+
+## Cost & billing
+
+- **Bluesky:** posting and reading through the API are free.
+- **The agent:** every plan includes the integration, so it changes neither the agent's price nor its credits. As with every agent turn, its work is billed on the LLM tokens it uses, from the agent's existing credits.
+
+## Troubleshooting
+
+- **"Bluesky refused the handle or app password":** the app password was deleted or mistyped, the handle is wrong, or the account is not hosted by Bluesky. Create a new app password and save it with the handle.
+- **"Bluesky sign-in limit reached":** 30 sign-ins in 5 minutes or 300 in a day were used. The agent stops and says when it can post again; nothing else needs to change.
+- **"Bluesky asked for an email sign-in code":** the account password was saved instead of an app password. Save an app password.
+- **"taken down or suspended":** Bluesky has suspended the account. Contact Bluesky.
+- **A mention is not a link:** the handle does not exist or is misspelled; write the full handle, such as `@name.bsky.social`.
+- **An image was left out:** it was not an image or stayed over 2,000,000 bytes. Send a smaller JPEG, PNG or WebP.
+- **"too long":** the text is over 300 characters. The agent shortens it, and shows it again first when the policy asks for approval.
+- **Agent says "not connected" with both fields filled:** the agent restarts to pick up new credentials; give it a moment after saving, then retry.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Skills](/docs/agent-skills)
+- [Mastodon Integration](/docs/integration-mastodon-skills)
+- [Twitter / X Skills](/docs/integration-twitter-skills)
+- [LinkedIn Skills](/docs/integration-linkedin-skills)
+
+---
+
+# Mastodon Integration
+
+Let your agent post to your own Mastodon server with an access token: posts within your server's limits, with visibility, content warnings, polls, images and videos with alt text, threads and scheduled posts, and a look at how your posts are doing.
+
+## Overview
+
+[Mastodon](https://joinmastodon.org) is a decentralized social network: each account lives on a server (an instance) that sets its own rules and limits. This integration connects an agent to your account on your server with an access token from an application you create in your own account settings. The agent reads your server's limits first, writes the post within them, shows it to you for approval as the agent's approval policy says, then publishes it. It can also schedule a post on the server, delete a post you approve and read the favourites, boosts, replies and quotes of your recent posts.
+
+**Skills that use this integration:**
+
+- `int-mastodon-post`: Posts on your server within its character, media and alt text limits, with visibility, content warnings, language and polls, images and videos with alt text, threads and replies, scheduled posts, an idempotency key against duplicates, deleting a post after your approval, and reading your recent posts with their numbers.
+
+**Agents that typically enable this integration:**
+
+- [Social Manager](https://wiro.ai/agents/social-manager): posts each approved item to Mastodon next to your other networks, adapted to your server's limits and to Mastodon's hashtag-led discovery.
+- Custom agents that publish announcements, release notes, open source updates or community news.
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| Server Address + Access Token (Mastodon) | Available | Any Mastodon server reachable over `https://`. The steps below are Mastodon's own; other servers that offer the same API and settings page can work too. The integration is included in every plan at no extra charge. |
+
+## Prerequisites
+
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
+- **A Mastodon account** on a server that serves `https://`. Check the server's rules on its About page: many servers ask accounts that post automatically to be marked as bots in their profile.
+
+## Setup
+
+### Step 1: Create an application and copy its access token
+
+1. Sign in to your Mastodon account in a web browser.
+2. Open **Preferences** (the gear icon in the menu), then **Development** in the menu on the left. The page is `https://your-server/settings/applications`.
+3. Click **New application**.
+4. **Application name:** some apps show it next to your posts, so use a name you are happy for followers to see, such as your brand or `Publishing`. **Application website** can stay empty. Leave **Redirect URI** as it is (`urn:ietf:wg:oauth:2.0:oob`).
+5. Under **Scopes**, tick these four, and leave the broad `read`, `write` and `follow` boxes unticked (the `profile` box ticked by default can stay):
+
+   | Scope | Why |
+   |-------|-----|
+   | `read:accounts` | Read your own account: its id and default visibility. |
+   | `read:statuses` | Read your posts, including followers-only ones and scheduled posts. |
+   | `write:media` | Upload images and videos with their alt text. |
+   | `write:statuses` | Publish, schedule and delete posts. |
+
+6. Click **Submit**, then click the new application's name in the list.
+7. Copy **Your access token**. On Mastodon it is a string of 43 letters, digits, `-` and `_`. The **Client key** and **Client secret** are not needed.
+8. Note the server address: the start of the address bar, such as `https://mastodon.social` (your handle `@name@mastodon.social` shows it too).
+
+> The token does not expire. To revoke the agent's access, delete the application under **Development**, or click **Regenerate access token** on its page and save the new token. **Account** → **Authorized apps** lists it too, with a **Revoke** button. Changing the application's scopes also gives it a new token, which must be saved again.
+
+### Step 2: Save the credential to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "mastodon", "fieldname": "instanceurl", "fieldvalue": "https://mastodon.social" },
+      { "credentialkey": "mastodon", "fieldname": "accesstoken", "fieldvalue": "YOUR_MASTODON_ACCESS_TOKEN" }
+    ]
+  }'
+```
+
+Or fill it in the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Connectors → Mastodon**.
+
+The server address must start with `https://`. A link to your profile, such as `https://mastodon.social/@name`, works as well: only the server address is used, and the agent's posts and token go to that server only.
+
+### Step 3: Enable the skill
+
+Mastodon ships **available but off**. Turn `int-mastodon-post` on for the agent:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skills": { "int-mastodon-post": true },
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000"
+  }'
+```
+
+Or flip the toggle in the panel under **Skills** (see [Agent Skills](/docs/agent-skills#toggling-integration-skills)).
+
+### Step 4: Start the agent
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+### Setup from chat
+
+With setup cards on, a person can ask the agent in chat to post to Mastodon. The agent then proposes an `add` card for `int-mastodon-post` and a `connect` card for `mastodon`, whose mode is `key`: your UI shows a form with the two fields of [Credential Fields](#credential-fields), and `SetupCardApply` takes them as `values` (see [Key mode](/docs/agent-chat-integration#key-serper-web-search)):
+
+```json
+{
+  "useragentguid": "your-useragent-guid",
+  "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "cardid": "h6w3k9p2m5tc",
+  "action": "apply",
+  "values": { "instanceurl": "https://mastodon.social", "accesstoken": "YOUR_MASTODON_ACCESS_TOKEN" }
+}
+```
+
+A value in the wrong shape is refused with the field's message, such as `Server Address has an invalid format` for an `http://` address, and the card stays pending. With only one of the two fields, the answer is `Saved <field> for Mastodon. Still needed: <field>.` and the card waits for the other.
+
+## Credential Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `instanceurl` | string (URL) | Yes | Your server's address, starting with `https://`, such as `https://mastodon.social`. A profile link is accepted; only the server address is used. Not a secret: it is shown as saved. |
+| `accesstoken` | string (secret) | Yes | The access token of the application you created (20 to 512 letters, digits and `-._~+/=`). Encrypted at rest. |
+
+## Credentials schema (as returned by `POST /UserAgent/Detail`)
+
+```json
+"mastodon": {
+  "_connected": true,
+  "optional": false,
+  "extra": false,
+  "instanceurl": "https://mastodon.social",
+  "accesstoken": "••••••••"
+}
+```
+
+On a custom build with `int-mastodon-post` on, `optional` and `extra` are `false`: Mastodon is that skill's own connector.
+
+## What the agent can do
+
+The agent calls the Mastodon REST API on your server with your access token.
+
+| Action | Mastodon API | Limits and notes |
+|--------|--------------|------------------|
+| Read the server's limits | `GET /api/v2/instance` (`/api/v1/instance` on servers before Mastodon 4.0) | Characters per post, what a link counts as, media per post, alt text length, image and video size and pixels, video frame rate, file types and poll limits. Read before every post. |
+| Post | `POST /api/v1/statuses` | Within the server's character limit (500 on most servers), counted the way the server counts: the content warning plus the text, each link as 23 characters (or the server's own number) and `@name@server` as `@name`. Visibility `public`, `unlisted`, `private` (followers only) or `direct`; content warning; sensitive media; language; an `Idempotency-Key` so a repeated request within an hour returns the same post. |
+| Images and videos | `POST /api/v2/media`, then `GET /api/v1/media/:id` until processed | Up to the server's media limit (usually 4), each with alt text, within the server's size limits (16 MB for images and 99 MB for videos on mastodon.social). |
+| Polls | `poll` on the post | 2 to the server's maximum options (usually 4, 50 characters each), open from 5 minutes to about a month. A post has media or a poll, not both. |
+| Scheduled posts | `scheduled_at` on the post; `GET`, `PUT` and `DELETE /api/v1/scheduled_statuses` | More than 5 minutes ahead; Mastodon keeps up to 25 scheduled posts per day and 300 in total. A thread cannot be scheduled, since a reply needs a parent that is already posted. |
+| Threads and replies | `in_reply_to_id` on the post | A thread posts part by part and stops at the first failure. A reply to someone else's post goes out only when you ask for it, and starts with their `@name@server`. |
+| Delete a post | `DELETE /api/v1/statuses/:id` | Only a post of the connected account, only after you see it and say yes to that post. It cannot be undone. |
+| Read your posts | `GET /api/v1/accounts/:id/statuses`, `GET /api/v1/statuses/:id` and `/context` | Favourites, boosts, replies and quotes (quotes on Mastodon 4.5 and later) of each post, and its replies. Mastodon does not give view counts. |
+
+Not supported: editing a post, quote posts, direct messages beyond `direct` visibility, and servers that are not reachable over `https://`.
+
+## How posting works
+
+- **Approval.** The agent follows its approval policy. By default it shows the post first (the text with its character count and the server's limit, the visibility, the content warning, each image or video with its alt text, the poll, a scheduled time in your time zone, and every post of a thread) and publishes after your approval. An agent admin can switch the policy to post automatically, also for Mastodon alone. Deleting always needs your yes for that post, whatever the policy says.
+- **Your server's limits.** The agent reads them from the server before posting and checks the draft against them, so a post that fits one server is never assumed to fit another.
+- **Rate limits.** Mastodon allows 300 requests per 5 minutes, 30 media uploads per 30 minutes and 30 deletes per 30 minutes for an account by default; a server can set its own. When one is hit, the agent stops and says when it can go on.
+- **No duplicates.** Every post carries an idempotency key. When the server does not answer whether a post went through, the agent checks your latest posts before anything else and never posts the same thing twice on its own.
+
+## Cost & billing
+
+- **Mastodon:** free; your server's admins set its rules and limits.
+- **The agent:** every plan includes the integration, so it changes neither the agent's price nor its credits. As with every agent turn, its work is billed on the LLM tokens it uses, from the agent's existing credits.
+
+## Troubleshooting
+
+- **401 "The access token is invalid":** the token was regenerated or revoked, or the application was deleted. Copy the current token from the application's page and save it.
+- **403 "This action is outside the authorized scopes":** the application is missing a scope. Tick `read:accounts`, `read:statuses`, `write:media` and `write:statuses` on it, then save the new token the change gives it.
+- **422 "Validation failed":** the post broke a server rule, such as its character limit; nothing was posted. The agent fixes the draft and shows it again first when the policy asks for approval.
+- **Media "still processing":** a video can take a minute or more on the server; the agent waits and posts once it is ready.
+- **413:** the file is bigger than your server takes.
+- **429:** a rate limit was hit; the agent stops and continues later.
+- **The server does not answer:** Mastodon servers are run by their own admins; check the server's status, then retry later.
+- **Agent says "not connected" with both fields filled:** the agent restarts to pick up new credentials; give it a moment after saving, then retry.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Skills](/docs/agent-skills)
+- [Bluesky Integration](/docs/integration-bluesky-skills)
+- [Twitter / X Skills](/docs/integration-twitter-skills)
+- [LinkedIn Skills](/docs/integration-linkedin-skills)
+
+---
+
+# Pinterest Integration
+
+Connect your agent to a Pinterest business account with your own Pinterest app to create image Pins on your boards, list boards and Pins, and read Pin and account analytics. Organic Pins only: this integration does not run ads.
+
+## Overview
+
+The Pinterest integration uses Pinterest API v5 (`api.pinterest.com/v5`) with OAuth 2.0 and an app you own at [developers.pinterest.com](https://developers.pinterest.com/apps/). One connection is one Pinterest account. The agent pins to the boards you name; it lists the account's boards when it needs them, so new boards are available without connecting again.
+
+Wiro exchanges the sign-in code for a 30-day access token and a 60-day refresh token, and renews them while the agent runs. Every renewal returns a new refresh token, so the connection lasts as long as the agent keeps running. Tokens stay on Wiro's servers.
+
+**Skills that use this integration:**
+
+- `int-pinterest-post`: Create image Pins from a public URL, on a board or board section, with title, description, link and alt text; list boards, sections and Pins; read Pin and account analytics; create a board or delete a Pin after you approve it
+
+**Agents that typically enable this integration:**
+
+- Social Manager
+- Any custom agent that publishes to Pinterest
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| `"own"` | Available | Your own Pinterest app. Creating Pins needs **Standard access** (see below). |
+
+There is no Wiro mode: `OAuthConnect` with `"authmethod": "wiro"` returns `Unsupported connection mode for Pinterest`. Leaving `authmethod` out means `"own"`.
+
+## Trial and Standard access
+
+Pinterest gives every new app **Trial access** first, and creating Pins needs **Standard access**:
+
+| | Trial access | Standard access |
+|---|---|---|
+| Read boards, Pins and Pin analytics of your account | Yes | Yes |
+| Create Pins and boards on your profile | **No**: Pinterest answers with error code 29 | Yes |
+| Rate limits | 1,000 requests a day per app | Per minute, per user and app (for example 100 Pin creations a minute per user) |
+
+Trial apps can create Pins and boards only in Pinterest's **Sandbox**, a separate test area with its own tokens, where only you can see what you create. This integration works with your live profile, not the Sandbox, so a Trial app can connect and read, but the agent cannot publish until the app has Standard access.
+
+**Upgrading to Standard access:**
+
+1. Go to [My apps](https://developers.pinterest.com/apps/) and click **Upgrade** on the app card. The button shows once the app has Trial access.
+2. Check the app description, use case and privacy policy link.
+3. Upload a short screen recording that shows the Pinterest sign-in and approval screens and a working call, for example connecting the account here and the agent listing your boards. Pinterest asks for this video even when you are the only user.
+4. Submit. Pinterest answers by email; allow a few days.
+
+If creating a Pin still fails after the upgrade, connect again.
+
+## Prerequisites
+
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
+- **A Pinterest business account.** It is free; a personal account can be converted in its settings. Apps registered on or after September 14, 2026 cannot read the boards and Pins of personal accounts (`PINNER_DATA_ACCESS_DENIED`).
+- **A public privacy policy page** on your own domain, for the app form.
+- **An HTTPS callback URL** for your backend, where the browser returns after the sign-in.
+
+## Complete Integration Walkthrough
+
+### Step 1: Register the app
+
+1. Sign in to Pinterest with the business account and open [developers.pinterest.com → My apps](https://developers.pinterest.com/apps/). Accept the developer terms.
+2. Click **Connect app** and fill in the form: an app name (at least 3 letters or digits, without the word "Pinterest"), what the app does, your website and the privacy policy link.
+3. Submit it. Pinterest reviews the request for Trial access and emails you. A vague description or a privacy policy that does not load are the usual reasons for a refusal.
+
+### Step 2: Configure the redirect URI
+
+Once the app is approved, click **Manage** on it in **My apps**. On the **Configure** tab, under **Redirect URIs**, enter this exactly and click **Add**:
+
+```
+https://api.wiro.ai/v1/UserAgentOAuth/PinterestCallback
+```
+
+### Step 3: Copy the App ID and App secret key
+
+The **App ID** is shown under the app name on **My apps** (digits). On the **Configure** tab, under **API keys**, click the view icon next to **App secret key** and copy it.
+
+### Step 4: Note the scopes
+
+Wiro requests these scopes:
+
+```
+boards:read,boards:write,pins:read,pins:write,user_accounts:read
+```
+
+| Scope | Why |
+|-------|-----|
+| `boards:read` | List your public boards and their sections. |
+| `boards:write` | Create a board or a section (after your approval). |
+| `pins:read` | List Pins and read Pin analytics. |
+| `pins:write` | Create Pins and delete a Pin (after your approval). |
+| `user_accounts:read` | The connected username and account analytics. |
+
+No ads, catalog, billing or secret-board scopes are requested. Pinterest asks the user to approve these on its consent screen; nothing has to be switched on in the app.
+
+### Step 5: Save the app credentials to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "pinterest", "fieldname": "authmethod", "fieldvalue": "own" },
+      { "credentialkey": "pinterest", "fieldname": "clientid", "fieldvalue": "1512345" },
+      { "credentialkey": "pinterest", "fieldname": "clientsecret", "fieldvalue": "YOUR_APP_SECRET_KEY" }
+    ]
+  }'
+```
+
+`clientid` is the App ID and takes digits only.
+
+### Step 6: Initiate OAuth
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "pinterest",
+    "redirecturl": "https://your-app.com/settings/integrations",
+    "authmethod": "own"
+  }'
+```
+
+Response:
+
+```json
+{
+  "result": true,
+  "authorizeUrl": "https://www.pinterest.com/oauth/?client_id=...&redirect_uri=...&scope=boards%3Aread%2Cboards%3Awrite%2Cpins%3Aread%2Cpins%3Awrite%2Cuser_accounts%3Aread&response_type=code&state=...",
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
+  "errors": []
+}
+```
+
+Redirect the user to `authorizeUrl` and have them sign in with the business account.
+
+### Step 7: Handle the callback
+
+After consent, Pinterest redirects to Wiro's callback. Wiro exchanges the code (your App ID and App secret key go to Pinterest in an HTTP Basic header), reads the account's username, and returns the user to your `redirecturl`.
+
+**Success URL:**
+
+```
+https://your-app.com/settings/integrations?pinterest_connected=true&pinterest_username=acmestudio
+```
+
+```javascript
+const params = new URLSearchParams(window.location.search);
+
+if (params.get("pinterest_connected") === "true") {
+  showSuccess(`Connected as @${params.get("pinterest_username")}`);
+} else if (params.get("pinterest_error")) {
+  handleError(params.get("pinterest_error"));
+}
+```
+
+### Step 8: Verify
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "pinterest"
+  }'
+```
+
+Response:
+
+```json
+{
+  "result": true,
+  "connected": true,
+  "accounts": [
+    { "id": "acmestudio", "name": "acmestudio" }
+  ],
+  "connectedat": "2026-11-21T12:00:00.000Z",
+  "tokenexpiresat": "2026-12-21T12:00:00.000Z",
+  "errors": []
+}
+```
+
+`accounts[0]` carries the connected Pinterest username.
+
+### Step 9: Start the agent
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+## API Reference
+
+### POST /UserAgentOAuth/OAuthConnect
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Agent instance GUID. |
+| `credentialkey` | string | Yes | `"pinterest"`. |
+| `redirecturl` | string | Yes | Any HTTPS URL you control; the browser returns there after consent. `http://localhost` and `http://127.0.0.1` also work for development. |
+| `authmethod` | string | No | `"own"`, the only mode. `"wiro"` returns `Unsupported connection mode for Pinterest`. |
+
+### GET /UserAgentOAuth/PinterestCallback
+
+Server-side endpoint Pinterest calls with `code` and `state`. You don't call it. You only handle the final redirect back to your `redirecturl`, which carries `pinterest_connected=true&pinterest_username=<username>` or `pinterest_error=<code>`.
+
+### POST /UserAgentOAuth/OAuthStatus
+
+Body: `{ useragentguid, credentialkey: "pinterest" }`. Response: `connected`, `accounts: [{id, name}]` (the connected username), `connectedat`, `tokenexpiresat`.
+
+### POST /UserAgentOAuth/OAuthDisconnect
+
+Body: `{ useragentguid, credentialkey: "pinterest" }`. Clears the tokens and the connected username in Wiro. `clientid` and `clientsecret` stay saved, so you can connect again without saving them again. Pinterest's API cannot revoke a user's token for an app: to end the app's access on Pinterest too, open **Settings → Security** on Pinterest and remove the app from your connected apps.
+
+### Token lifecycle
+
+The access token lasts 30 days and the refresh token 60 days. Wiro renews the access token while the agent runs once it has 7 days or less left, and when the agent starts; each renewal also returns a new 60-day refresh token. If the agent stays stopped for more than 60 days, the refresh token expires: connect again. `OAuthStatus` reports `connected: false` once the stored access token has expired; starting the agent renews it while the refresh token is still valid.
+
+## Using the Skill
+
+Once Pinterest is connected, the agent pins with `int-pinterest-post`, gated by your approval policy:
+
+- **Image Pins** from a public PNG or JPEG URL (up to 20 MB; 2:3, such as 1000 x 1500 px, is recommended), with a title (up to 100 characters), a description (up to 800), a destination link and alt text (up to 500).
+- **Boards and sections:** the agent pins to the board you name, or the one your brand rules name, and asks when it is unclear. It lists boards, sections and Pins on request, and creates a public board or a section only after you approve its name.
+- **Analytics (read-only):** impressions, saves, Pin clicks, outbound clicks and save rate per Pin (plus video views and watch time for video Pins), and the same for the whole account, over up to the last 90 days.
+- **Delete:** a Pin of the account, only after you approve that exact Pin.
+
+Pinterest has no scheduled publishing in its API: a Pin for later is created by a scheduled task at that time.
+
+## Troubleshooting
+
+| Error code | Meaning | What to do |
+|------------|---------|------------|
+| `missing_params` | The callback was opened without an OAuth `state`. The browser ends on the API's own neutral page, not on your `redirecturl`. | Don't open the callback URL directly. Start again from Step 6. |
+| `session_expired` | More than 15 minutes between `OAuthConnect` and the callback. | Call `OAuthConnect` again. |
+| `flow_replaced` | A newer sign-in for the same agent and credential replaced this one, so nothing from it was saved. | Use the newer sign-in, or start again with `OAuthConnect`. |
+| `authorization_denied` | The user cancelled on Pinterest. | Start again and approve. |
+| `token_exchange_failed` | Pinterest refused the code or the app keys (a wrong App secret key, a redirect URI that does not match exactly, an app whose access is pending), or the account could not be read. | Check the App ID, App secret key and redirect URI (Steps 2 and 3) and the app's status in My apps, then connect again. |
+| `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow. | Start again with `OAuthConnect` for an existing agent. |
+| `Pinterest credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `clientid` or `clientsecret` is missing. | Save them (Step 5). |
+| `internal_error` | Server error. | Retry; contact support if it persists. |
+
+### Creating a Pin fails with code 29
+
+The app still has Trial access, which cannot create Pins on your profile. Upgrade it to Standard access (see [Trial and Standard access](/docs/integration-pinterest-skills#trial-and-standard-access)).
+
+### Reading boards fails with `PINNER_DATA_ACCESS_DENIED`
+
+The connected account is a personal account and the app was registered on or after September 14, 2026. Convert the account to a free business account in Pinterest's settings and connect again.
+
+### Every call fails with code 3
+
+"Your application consumer type is not supported": the app's access is still pending or was paused. Check the app's status in [My apps](https://developers.pinterest.com/apps/).
+
+### The agent hits the rate limit
+
+A Trial app has 1,000 requests a day for all calls; Standard access has higher, per-minute limits. The agent stops and reports when Pinterest answers 429.
+
+## Multi-Tenant Architecture
+
+1. **One Pinterest app per product**, upgraded once to Standard access.
+2. **One Wiro agent instance per customer**, each connecting its own Pinterest business account.
+3. **Rate limits are per app and user**: Trial limits are shared by every account on a Trial app.
+4. **Tokens are isolated per agent instance.**
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Overview](/docs/agent-overview)
+- [Agent Skills](/docs/agent-skills)
+- [Pinterest API v5 documentation](https://developers.pinterest.com/docs/api/v5/)
+
+---
+
+# Tumblr Integration
+
+Connect your agent to your Tumblr blogs to post text, links and images with alt text and tags, keep drafts and the queue, schedule posts, and see how recent posts did by their note counts.
+
+## Overview
+
+The Tumblr integration uses Tumblr's OAuth 2.0 with the Tumblr API v2 and the Neue Post Format (NPF). You connect it with an app you register on Tumblr; there is no shared Wiro app for Tumblr. The sign-in asks for the scopes `basic`, `write` and `offline_access`.
+
+**Skills that use this integration:**
+
+- `int-tumblr-post`: NPF posts (text, links, images by URL or upload, alt text), tags, drafts first, the queue and scheduled posts, edits after approval, the blog's posts with note counts, and deletes after approval
+
+**Agents that typically enable this integration:**
+
+- Social Manager
+- Any custom agent that shares art, product news or articles on Tumblr
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| `"own"` | Available | Your own Tumblr app. This is the only mode: `OAuthConnect` uses it when you leave out `authmethod`. |
+| `"wiro"` | Not offered | `OAuthConnect` with `"authmethod": "wiro"` returns `Unsupported connection mode for Tumblr`. |
+
+## Prerequisites
+
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
+- **A Tumblr account** that owns the blog or is a member of it (group blogs included).
+- **A Tumblr app** with an OAuth2 redirect URL (Step 1).
+- **An HTTPS callback URL**.
+
+## Own Mode
+
+### Step 1: Register a Tumblr App
+
+1. Sign in to Tumblr and open [tumblr.com/oauth/apps](https://www.tumblr.com/oauth/apps) → **Register application**.
+2. Fill in the application name, website, description and your contact email.
+3. In both **Default callback URL** and **OAuth2 redirect URLs**, enter `https://api.wiro.ai/v1/UserAgentOAuth/TumblrCallback`. Tumblr turns on OAuth 2 for an app only when it has an OAuth2 redirect URL.
+4. Save. The app shows its **OAuth Consumer Key** (the OAuth 2 client ID). Click **Show secret key** for the **OAuth Consumer Secret** (the client secret). Both are about 50 letters and digits.
+
+Tumblr does not review apps: yours works for your own account right away.
+
+### Step 2: Note the scopes
+
+Wiro requests these exact scopes:
+
+```
+basic write offline_access
+```
+
+| Scope | Why |
+|-------|-----|
+| `basic` | Read the account and the blogs it can post to. |
+| `write` | Create, edit and delete posts. |
+| `offline_access` | Get a refresh token, so the connection lasts without signing in again. |
+
+### Step 3: Connect
+
+Save the key and the secret with `POST /UserAgent/CredentialUpsert`:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "tumblr", "fieldname": "clientid", "fieldvalue": "YOUR_OAUTH_CONSUMER_KEY" },
+      { "credentialkey": "tumblr", "fieldname": "clientsecret", "fieldvalue": "YOUR_OAUTH_CONSUMER_SECRET" },
+      { "credentialkey": "tumblr", "fieldname": "authmethod", "fieldvalue": "own" }
+    ]
+  }'
+```
+
+Then start `OAuthConnect`:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "tumblr",
+    "redirecturl": "https://your-app.com/settings/integrations",
+    "authmethod": "own"
+  }'
+```
+
+The response returns `{ result: true, authorizeUrl: "...", flowid: "..." }`. Redirect the user to `authorizeUrl` (`https://www.tumblr.com/oauth2/authorize`), where Tumblr asks them to allow the app.
+
+### Step 4: Blog Picker
+
+After consent, the user returns with `?tumblr_connected=true&tumblr_blogs=<URL-encoded-JSON>`. Each entry is `{ id, name, title, url }`: `id` is the blog's Tumblr ID (`t:...`), or its name when Tumblr lists a blog without one, `name` its short name (`acme` for `acme.tumblr.com`), `title` its title and `url` its address. Every blog the account can post to is listed. Map the user's choice to the picker shape and call `SetPickerAccounts`:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "tumblr",
+    "accounts": [
+      { "blogid": "t:0aY0xL2Fi1OFJg4YxpmegQ", "blogname": "acme" }
+    ]
+  }'
+```
+
+Pass several `{ blogid, blogname }` entries to let the agent post to several blogs (`id` becomes `blogid`). Wiro saves each blog's `name` from its list as `blogname`, so a name you send is not read. `title` and `url` are handy for your UI, but they are not stored. A blog saved by its Tumblr ID stays connected when it is renamed. Wiro saves only blogs from this sign-in's list, under the names it lists, when the call comes from the same Wiro account within 15 minutes. The first save uses the list up: to change the selection later, connect again. See [SetPickerAccounts](/docs/agent-credentials#post-useragentoauthsetpickeraccounts).
+
+## Disconnect
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthDisconnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "tumblr"
+  }'
+```
+
+Clears the tokens and the selected blogs in Wiro. Your key and secret are kept, so you can connect again without saving them again. Wiro does not ask Tumblr to revoke the authorization: to end it on Tumblr's side, open Tumblr [Settings → Apps](https://www.tumblr.com/settings/apps) and click the **X** next to your app.
+
+## Status
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "tumblr"
+  }'
+```
+
+Response:
+
+```json
+{
+  "result": true,
+  "connected": true,
+  "accounts": [
+    { "id": "t:0aY0xL2Fi1OFJg4YxpmegQ", "name": "acme" }
+  ],
+  "connectedat": "2026-11-21T12:00:00.000Z",
+  "tokenexpiresat": "2026-11-21T12:42:00.000Z",
+  "errors": []
+}
+```
+
+`accounts[]` carries one entry per selected blog (`id` = `blogid`, `name` = `blogname`).
+
+### Token lifecycle
+
+Tumblr access tokens last about 42 minutes. Wiro renews the token while the agent is running and when it starts, with the refresh token from the sign-in; each renewal returns a new refresh token, which Wiro keeps. `OAuthStatus` reports `connected: false` as soon as the stored token has expired, which happens to a stopped agent after about 42 minutes while its authorization is still valid: start the agent and check again. Reconnect through `OAuthConnect` if the app's access was removed in Tumblr's settings.
+
+## What the agent does with this integration
+
+### Drafts first, then publish or queue
+
+The agent saves a new post as a Tumblr draft, shows what it holds (text, images with their alt text, links, tags) with the blog's drafts link, and publishes it only after your approval, following the agent's approval policy. With a time, it queues the post to go out then (`publish_on`); a queued post without a time follows the blog's own queue schedule.
+
+```
+Operator → "post the new print series on Tumblr with the cover image"
+Agent → POST /v2/blog/{blog-identifier}/posts with "state": "draft"
+     shows the draft and the drafts link
+Operator → "queue it for Friday 18:00"
+Agent → PUT /v2/blog/{blog-identifier}/posts/{post-id} with "state": "queue", "publish_on": "2026-11-27T18:00:00Z"
+```
+
+### Posts in the Neue Post Format
+
+Text blocks with headings, quotes, lists and inline formatting; link blocks, which Tumblr fills with the page's title and picture; and image blocks, by URL or uploaded in the same request, each with alt text. Tags are sent without `#`; Tumblr's search reads the first 30 of a post.
+
+### Edits, lists and deletes
+
+The agent edits posts made in this format (a change to a published or queued post is approved like a publish), lists published posts with their note counts, drafts and the queue, and deletes a post only when you ask and approve it. Tumblr has no trash: a deleted post cannot be restored.
+
+### Limits
+
+Tumblr allows one account 250 new posts a day (reblogs included) and 250 image uploads a day, keeps up to 1,000 posts in a blog's queue, and allows one app 1,000 requests an hour and 5,000 a day. Images may be up to 20 MB, GIFs up to 10 MB, and a post holds up to 30 images.
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `Unsupported connection mode for Tumblr` in `OAuthConnect`'s `errors[]` | `authmethod` was `"wiro"` | Send `"authmethod": "own"`, or leave it out |
+| `Tumblr credentials not configured` in `OAuthConnect`'s `errors[]` | No saved `clientid` and `clientsecret` | Save them (Step 3), then retry |
+| Tumblr shows an error about the redirect instead of the consent page | The app has no OAuth2 redirect URL, or it differs from `https://api.wiro.ai/v1/UserAgentOAuth/TumblrCallback` | Enter the URL exactly in **OAuth2 redirect URLs** (Step 1) and connect again |
+| `tumblr_error=token_exchange_failed` | Wrong consumer secret, or Tumblr returned no refresh token (the `offline_access` permission was not granted) | Copy the key and secret again (Step 1), then connect again and allow every permission |
+| `tumblr_error=authorization_denied` | The user clicked cancel on Tumblr's page | Connect again and allow the app |
+| `tumblr_error=no_accounts` | Tumblr listed no blog for this account | Connect with the account that owns the blog or is a member of it |
+| The agent reports a 401 twice in a row | The app's access was removed in Tumblr's settings, or the refresh token no longer works | Reconnect via `OAuthConnect` |
+| The agent reports a 429 | A Tumblr limit was reached (see Limits) | Wait for the daily or hourly reset |
+| `OAuthStatus` returns `connected: false` right after consent | No blog has been saved yet; the connection is complete only once `SetPickerAccounts` stores at least one | Call `SetPickerAccounts` with a blog from `tumblr_blogs` (Step 4) |
+
+## Skill reference
+
+- [agent-skills.md](/docs/agent-skills): custom skill schema and the `int-tumblr-post` key
+- [Tumblr API v2](https://www.tumblr.com/docs/en/api/v2) and the [Neue Post Format](https://www.tumblr.com/docs/npf)
 
 ---
 

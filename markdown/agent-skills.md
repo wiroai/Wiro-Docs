@@ -990,6 +990,20 @@ Skills that depend on third-party credentials. Follow the linked integration pag
 | `int-keepa` | `keepa` (API key) | [Keepa Skills](/docs/integration-keepa-skills) |
 | `int-revenuecat` | `revenuecat` (secret API key) | [RevenueCat Skills](/docs/integration-revenuecat-skills) |
 | `int-adapty` | `adapty` (secret API key) | [Adapty Skills](/docs/integration-adapty-skills) |
+| `int-blogger-post` | `blogger` (OAuth, your own Google Cloud client) | [Blogger Skills](/docs/integration-blogger-skills) |
+| `int-devto-post` | `devto` (API key) | [dev.to Skills](/docs/integration-devto-skills) |
+| `int-hashnode-post` | `hashnode` (Personal Access Token and blog address) | [Hashnode Skills](/docs/integration-hashnode-skills) |
+| `int-qiita-post` | `qiita` (personal access token) | [Qiita Skills](/docs/integration-qiita-skills) |
+| `int-hackmd-post` | `hackmd` (API token) | [HackMD Skills](/docs/integration-hackmd-skills) |
+| `int-notion-post` | `notion` (API token) | [Notion Skills](/docs/integration-notion-skills) |
+| `int-gitbook-post` | `gitbook` (personal access token) | [GitBook Skills](/docs/integration-gitbook-skills) |
+| `int-beehiiv-post` | `beehiiv` (API key) | [beehiiv Skills](/docs/integration-beehiiv-skills) |
+| `int-kaggle-notebooks` | `kaggle` (username and API token) | [Kaggle Skills](/docs/integration-kaggle-skills) |
+| `int-threads-post` | `threads` (OAuth, your own Meta app) | [Threads Skills](/docs/integration-threads-skills) |
+| `int-bluesky-post` | `bluesky` (handle + app password) | [Bluesky Skills](/docs/integration-bluesky-skills) |
+| `int-mastodon-post` | `mastodon` (server address + access token) | [Mastodon Skills](/docs/integration-mastodon-skills) |
+| `int-pinterest-post` | `pinterest` (OAuth, your own Pinterest app) | [Pinterest Skills](/docs/integration-pinterest-skills) |
+| `int-tumblr-post` | `tumblr` (OAuth, your own Tumblr app) | [Tumblr Skills](/docs/integration-tumblr-skills) |
 | `int-brevo-email` | `brevo` (API key) | [Brevo Skills](/docs/integration-brevo-skills) |
 | `int-sendgrid-email` | `sendgrid` (API key) | [SendGrid Skills](/docs/integration-sendgrid-skills) |
 | `int-appstore-reviews`, `int-appstore-metadata`, `int-appstore-events` | `apple-appstore` (JWT / Service Account) | [App Store Skills](/docs/integration-appstore-skills) |

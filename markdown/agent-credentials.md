@@ -452,8 +452,12 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 | Google Business Profile | Own only (your Google Cloud project, approved for Business Profile API access) | [Google Business Profile Skills](/docs/integration-googlebusiness-skills) |
 | HubSpot | Wiro + Own | [HubSpot Skills](/docs/integration-hubspot-skills) |
 | Mailchimp | Wiro + Own + API Key | [Mailchimp Skills](/docs/integration-mailchimp-skills) |
+| Blogger | Own only (your Google Cloud project) | [Blogger Skills](/docs/integration-blogger-skills) (can share the Google OAuth client with Google Search Console) |
+| Threads | Own only (your Meta app with the Access the Threads API use case) | [Threads Skills](/docs/integration-threads-skills) |
+| Pinterest | Own only (your Pinterest app; creating Pins needs Standard access) | [Pinterest Skills](/docs/integration-pinterest-skills) |
+| Tumblr | Own only (your Tumblr app; tokens renewed about every 30 minutes while the agent runs) | [Tumblr Skills](/docs/integration-tumblr-skills) |
 
-> **Google OAuth is shared across 5 APIs.** Google Ads, YouTube, Google Analytics 4, Merchant Center and Google Search Console can all be authorized through one of your own OAuth clients (one Google Cloud project, one OAuth 2.0 Client ID, multiple API scopes), or you can set up separate ones per product. Wiro's shared client for "wiro" mode is coming soon. Google Business Profile is not part of that shared client: it is own mode only, and the Google Cloud project behind your OAuth client must be approved for Business Profile API access.
+> **Google OAuth is shared across 6 APIs.** Google Ads, YouTube, Google Analytics 4, Merchant Center, Google Search Console and Blogger can all be authorized through one of your own OAuth clients (one Google Cloud project, one OAuth 2.0 Client ID, multiple API scopes), or you can set up separate ones per product. Wiro's shared client for "wiro" mode is coming soon for the first five; Blogger is own mode only. Google Business Profile is not part of that shared client: it is own mode only, and the Google Cloud project behind your OAuth client must be approved for Business Profile API access.
 
 ### Service Account Integrations
 
@@ -491,6 +495,16 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 | Keepa | [Keepa Skills](/docs/integration-keepa-skills) |
 | RevenueCat | [RevenueCat Skills](/docs/integration-revenuecat-skills) |
 | Adapty | [Adapty Skills](/docs/integration-adapty-skills) |
+| dev.to | [dev.to Skills](/docs/integration-devto-skills) |
+| Hashnode (Personal Access Token, Hashnode Pro) | [Hashnode Skills](/docs/integration-hashnode-skills) |
+| Qiita | [Qiita Skills](/docs/integration-qiita-skills) |
+| HackMD | [HackMD Skills](/docs/integration-hackmd-skills) |
+| Notion | [Notion Skills](/docs/integration-notion-skills) |
+| GitBook | [GitBook Skills](/docs/integration-gitbook-skills) |
+| beehiiv | [beehiiv Skills](/docs/integration-beehiiv-skills) |
+| Kaggle | [Kaggle Skills](/docs/integration-kaggle-skills) |
+| Bluesky (handle + app password) | [Bluesky Skills](/docs/integration-bluesky-skills) |
+| Mastodon (server address + access token) | [Mastodon Skills](/docs/integration-mastodon-skills) |
 | Brevo | [Brevo Skills](/docs/integration-brevo-skills) |
 | SendGrid | [SendGrid Skills](/docs/integration-sendgrid-skills) |
 | Twilio Voice | [Twilio Voice](/docs/integration-twiliovoice-skills) |
@@ -794,7 +808,7 @@ Register this URL in your OAuth app settings on the provider's developer portal:
 https://api.wiro.ai/v1/UserAgentOAuth/{Provider}Callback
 ```
 
-Provider-specific paths: `XCallback`, `TikTokCallback`, `IGCallback`, `FBCallback`, `LICallback`, `GAdsCallback`, `MetaAdsCallback`, `MCCallback`, `YTCallback`, `GA4Callback`, `GBPCallback`, `HubSpotCallback`, `MailchimpCallback`, `ShopifyCallback`, `RedditCallback`. TikTok Ads uses `TikTokAdsCallback`, but it is Wiro-managed only, so there is no app of your own to register it in. [`OAuthStatus`](#post-useragentoauthoauthstatus) returns the exact URL to register for each credential as `redirecturi`.
+Provider-specific paths: `XCallback`, `TikTokCallback`, `IGCallback`, `FBCallback`, `LICallback`, `GAdsCallback`, `MetaAdsCallback`, `MCCallback`, `YTCallback`, `GA4Callback`, `GBPCallback`, `HubSpotCallback`, `MailchimpCallback`, `ShopifyCallback`, `RedditCallback`, `SearchConsoleCallback`, `BloggerCallback`, `ThreadsCallback`, `PinterestCallback`, `TumblrCallback`. TikTok Ads uses `TikTokAdsCallback`, but it is Wiro-managed only, so there is no app of your own to register it in. [`OAuthStatus`](#post-useragentoauthoauthstatus) returns the exact URL to register for each credential as `redirecturi`.
 
 ### Callback success & error parameters
 
@@ -812,6 +826,10 @@ Provider-specific paths: `XCallback`, `TikTokCallback`, `IGCallback`, `FBCallbac
 | YouTube | `yt_connected=true&yt_channels=[...]` | `yt_error=...` |
 | GA4 | `ga4_connected=true&ga4_properties=[...]` | `ga4_error=...` |
 | Google Search Console | `gsc_connected=true&gsc_sites=[...]` | `gsc_error=...` |
+| Blogger | `blogger_connected=true&blogger_blogs=[...]` | `blogger_error=...` |
+| Threads | `threads_connected=true` | `threads_error=...` |
+| Pinterest | `pinterest_connected=true` | `pinterest_error=...` |
+| Tumblr | `tumblr_connected=true&tumblr_blogs=[...]` | `tumblr_error=...` |
 | Google Business Profile | `gbp_connected=true&gbp_accounts=[...]` | `gbp_error=...` |
 | HubSpot | `hubspot_connected=true&hubspot_portal=...&hubspot_name=...` | `hubspot_error=...` |
 | Mailchimp | `mailchimp_connected=true&mailchimp_account=...` | `mailchimp_error=...` |
