@@ -124,7 +124,7 @@ These errors are returned by the `POST /Run/{owner}/{model}` endpoint.
 
 ## Task Errors
 
-These errors are returned by `POST /Task/Detail`, `POST /Task/Cancel`, `POST /Task/Kill`, and `POST /Task/InputOutputDelete`.
+These errors are returned by `POST /Task/Detail`, `POST /Task/List`, `POST /Task/Cancel`, `POST /Task/Kill`, and `POST /Task/InputOutputDelete`.
 
 | Error | Code | Message | Endpoint |
 |-------|------|---------|----------|
@@ -132,6 +132,7 @@ These errors are returned by `POST /Task/Detail`, `POST /Task/Cancel`, `POST /Ta
 | Task not found | `1` | "There is no task yet." | Cancel |
 | Task not found | `0` | "There is no task yet." | Kill, InputOutputDelete |
 | Missing identifier | `0` | "Request parameter [taskid or tasktoken] required" | Detail |
+| Unknown surface | `0` | "surface must be one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow." | List |
 | Missing identifier | `0` | "taskid or socketaccesstoken is required" | Kill |
 | Not cancellable | `1` | "Task is not in a cancellable state." | Cancel |
 | Kill failed | `1` | "Task could not be killed: {reason}" | Kill |

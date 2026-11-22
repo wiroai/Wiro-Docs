@@ -9584,7 +9584,7 @@ x-nonce: Unix timestamp or random integer</code></pre>
 
                   <section id="error-task">
                     <h2>Task Errors</h2>
-                    <p>Returned by <code>POST /Task/Detail</code>, <code>POST /Task/Cancel</code>, <code>POST /Task/Kill</code>, and <code>POST /Task/InputOutputDelete</code>.</p>
+                    <p>These errors are returned by <code>POST /Task/Detail</code>, <code>POST /Task/List</code>, <code>POST /Task/Cancel</code>, <code>POST /Task/Kill</code>, and <code>POST /Task/InputOutputDelete</code>.</p>
                     <table>
                       <thead>
                         <tr>
@@ -9618,6 +9618,12 @@ x-nonce: Unix timestamp or random integer</code></pre>
                           <td><code>0</code></td>
                           <td>Request parameter [taskid or tasktoken] required</td>
                           <td>Detail</td>
+                        </tr>
+                        <tr>
+                          <td>Unknown surface</td>
+                          <td><code>0</code></td>
+                          <td>surface must be one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow.</td>
+                          <td>List</td>
                         </tr>
                         <tr>
                           <td>Missing identifier</td>
