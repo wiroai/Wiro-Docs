@@ -211,7 +211,7 @@ The conversation tools call the matching `Message/*` route of [Studio](/docs/stu
 
 | Tool | API Endpoint | What it does |
 |------|-------------|-------------|
-| `send_agent_message` | `Message/Send`, or `Message/SendForm` with attachments | Send a message and wait for the reply, with any media, workflows or model runs it produced. |
+| `send_agent_message` | `Message/Send`; with attachments, `Message/SendForm` for Studio and the Workflow Agent, and a multipart `Message/Send` for a deployed agent | Send a message and wait for the reply, with any media, workflows or model runs it produced. |
 | `get_agent_message` | `Message/Detail` | Keep waiting on a reply, or read one again. |
 | `get_agent_conversation` | `Message/Sessions`, `Message/History` | List conversations, or read one conversation's history. |
 | `cancel_agent_message` | `Message/Cancel` | Stop a reply that is still being written. |
@@ -226,13 +226,13 @@ The conversation tools call the matching `Message/*` route of [Studio](/docs/stu
 | `get_my_agent` | `POST /UserAgent/Detail` | Read one agent's setup, plan, AI usage and the balance it runs on; can wait until it is running. |
 | `control_agent` | `POST /UserAgent/Start`, `/UserAgent/Stop`, `/UserAgent/Update` (restart) | Start, stop or restart an agent. |
 | `update_agent` | `POST /UserAgent/Update`, `/UserAgent/UpdateSettings` | Change an agent's name, description, time zone, models, chat commands and setup from chat. |
-| `apply_agent_skills` | `POST /UserAgent/PricingPreview`, `/UserAgent/SkillsApply` | Turn skills on or off; every plan includes every skill, so a change costs nothing. |
+| `apply_agent_skills` | `POST /Skills/List`, `/UserAgent/Detail`, then `/UserAgent/SkillsApply` | Turn skills on or off; every plan includes every skill, so a change costs nothing. |
 | `set_agent_credentials` | `POST /UserAgent/CredentialUpsert`, `/UserAgent/CredentialFileUpload` | Save an agent's chat channel keys (such as a Telegram bot token), Twilio Voice and settings. |
-| `connect_agent_connector` | `POST /UserAgent/ConnectorConnect`, `/UserAgent/ConnectorList` (status) | Connect a connector to an agent: save its keys, or start its sign-in, which you approve in your browser. A connector that runs with a Wiro project shows the project and its wallet first. |
+| `connect_agent_connector` | `POST /UserAgent/ConnectorConnect`, `/UserAgent/ConnectorList` (status) | Connect a connector to an agent: save its keys, or start its sign-in, which you approve in your browser. The Wiro AI Models connector (`wiro`) gives the agent Wiro's model, task and file upload tools, plus read-only docs search and playbooks; it shows the project it runs with and its wallet first, and connecting it also sets that project, as `bind_agent_project` does. |
 | `set_agent_connector_accounts` | `POST /UserAgent/ConnectorAccounts`, `/UserAgent/ConnectorSetAccounts` | Choose the accounts a connected connector may act on, such as its ad accounts, pages or channels. |
 | `disconnect_agent_connector` | `POST /UserAgent/ConnectorDisconnect` | Disconnect a connector from an agent, after your confirmation. |
 | `list_projects` | `POST /Project/List`, `/UserAgent/Detail` (with `agent_guid`) | List the projects of the connected project's workspace, to pick one for an agent; no keys are shown. |
-| `bind_agent_project` | `POST /UserAgent/Detail`, `/Project/List`, then `/UserAgent/CredentialProjectBind` | Connect an agent to a Wiro project so it can run models, with no key in the chat; shows the project first, then asks for your confirmation. |
+| `bind_agent_project` | `POST /UserAgent/Detail`, `/Project/List`, then `/UserAgent/CredentialProjectBind` | Set the Wiro project an agent's video and voice skills run models with, with no key in the chat; shows the project first, then asks for your confirmation. It gives the agent no model tools: connect the Wiro AI Models connector (`wiro`) for those. |
 | `manage_agent_custom_skill` | `POST /UserAgent/CustomSkillUpsert`, `CustomSkillRename`, `CustomSkillDelete`, `CustomSkillHistory`, `CustomSkillRevert` | Add, edit, schedule, restore or remove an agent's own instructions and scheduled tasks; turning off its approval policy or changing its rules needs your confirmation. |
 | `manage_agent_billing` | `POST /UserAgent/CreateSubscriptionCheckout`, `UpgradeTier`, `CancelSubscription`, `RenewSubscription` | Subscribe, move to another plan, cancel or renew, paid from your Wiro balance, after your confirmation; `buy_credits` is retired and charges nothing. |
 | `get_agent_activity` | `POST /UserAgent/TransactionList`, `/UserAgent/LogsList`, `/UserAgent/Logs` | Read an agent's AI usage, its transactions in dollars and its activity logs, including who changed what on it. |

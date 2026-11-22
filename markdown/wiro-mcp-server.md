@@ -719,8 +719,10 @@ go on with it, start a new session.
 
 **Studio** is Wiro's creative agent: it picks and runs models for you and
 charges your wallet after each reply (see [Studio](/docs/studio)). Your own
-agents run on a monthly plan that includes AI usage, then on your Wiro
-balance (see [Agent Overview](/docs/agent-overview)).
+agents run while their monthly plan is active. The plan includes AI usage, and
+past it the agent's usage is paid from your Wiro balance; an agent without an
+active plan does not run, whatever the balance holds (see
+[Agent Overview](/docs/agent-overview)).
 
 | Tool | What it does |
 |------|-------------|
@@ -735,11 +737,11 @@ balance (see [Agent Overview](/docs/agent-overview)).
 | `update_agent` | Change an agent's name, description, time zone, models, chat commands and setup from chat |
 | `apply_agent_skills` | Turn skills on or off; every plan includes every skill, so a change costs nothing |
 | `set_agent_credentials` | Save an agent's chat channel keys (such as a Telegram bot token), Twilio Voice and settings |
-| `connect_agent_connector` | Connect a connector to an agent: save its keys, or start its sign-in, which you approve in your browser. A connector that runs with a Wiro project shows the project and its wallet first |
+| `connect_agent_connector` | Connect a connector to an agent: save its keys, or start its sign-in, which you approve in your browser. The Wiro AI Models connector (`wiro`) gives the agent Wiro's model, task and file upload tools, plus read-only docs search and playbooks; it shows the project it runs with and its wallet first, and connecting it also sets that project, as `bind_agent_project` does |
 | `set_agent_connector_accounts` | Choose the accounts a connected connector may act on, such as its ad accounts, pages or channels |
 | `disconnect_agent_connector` | Disconnect a connector from an agent, after your confirmation |
 | `list_projects` | List the projects of the connected project's workspace, to pick one for an agent; no keys are shown |
-| `bind_agent_project` | Connect an agent to a Wiro project so it can run models, with no key in the chat; shows the project first, then asks for your confirmation |
+| `bind_agent_project` | Set the Wiro project an agent's video and voice skills run models with, with no key in the chat; shows the project first, then asks for your confirmation. It gives the agent no model tools: connect the Wiro AI Models connector (`wiro`) for those |
 | `manage_agent_custom_skill` | Add, edit, schedule, restore or remove an agent's own instructions and scheduled tasks; turning off its approval policy or changing its rules needs your confirmation |
 | `manage_agent_billing` | Subscribe, move to another plan, cancel or renew, paid from your Wiro balance, after your confirmation; `buy_credits` is retired and charges nothing |
 | `get_agent_activity` | Read an agent's AI usage, its transactions in dollars and its activity logs, including who changed what on it |
@@ -856,7 +858,11 @@ browser extensions on the `extension` surface. The
 for now, as calls with its API key. Messages to Studio and the Workflow Agent
 count on the `studio` and `workflow-agent` surfaces, and workflow runs on
 `workflow`, whichever way they are sent (see
-[Surfaces](/docs/tasks#task-surfaces)). When a limit refuses work (error code `93`), the
+[Surfaces](/docs/tasks#task-surfaces)). The tools of an agent's Wiro AI Models
+connector also reach Wiro through this server, but their calls are the agent's
+own and count on the `agent` surface, under that agent's spend limits and Model
+Access rule (see [The Wiro connector](/docs/agent-connectors#the-wiro-connector)).
+When a limit refuses work (error code `93`), the
 tool returns an error with Wiro's message and a note: nothing ran and nothing
 was charged, and the work should not be tried again until the limit resets or
 someone who manages it raises it. `get_controls` shows the limit and when it
@@ -988,7 +994,7 @@ The assistant will call `get_task` with the task token from the previous run.
 
 > "Show my latest productions and open the newest result"
 
-The assistant will call `list_tasks`, select the matching task, and call `get_task` with its task ID. Task history covers the authenticated project's workspace, personal or team: model tasks from every project in it and from wiro.ai. Steps of workflow runs and the runs Studio starts are not listed: `list_workflow_runs` and `list_studio_results` have those. The LLM never sends a user UUID.
+The assistant will call `list_tasks`, select the matching task, and call `get_task` with its task ID. Task history covers the authenticated project's workspace, personal or team: model tasks from every project in it and from wiro.ai. Steps of workflow runs are not listed: `list_workflow_runs` has those. The model runs Studio starts for you are your own tasks and are listed with the rest; `list_studio_results` lists only Studio's. The LLM never sends a user UUID.
 
 ### Build and run a workflow
 
@@ -1032,9 +1038,10 @@ The assistant compares templates with `list_agent_templates` and
 `get_agent_template`, gets the price from `deploy_agent`, and deploys only
 after you confirm the amount. Then it lists the missing setup with
 `get_my_agent` and connects the Instagram connector with
-`connect_agent_connector`. If the
-agent runs Wiro models, it connects a Wiro project with `bind_agent_project`
-once you agree to the project it shows.
+`connect_agent_connector`. If the agent should run Wiro models itself, it
+connects the Wiro AI Models connector (`wiro`) with `connect_agent_connector`
+once you agree to the project it shows; that also sets the project the agent's
+video and voice skills use.
 
 ### Talk to your agent
 
@@ -1181,7 +1188,7 @@ until `task_postprocess_end` or `task_cancel`.
 
 ### list_tasks
 
-List recent model-generation tasks in the authenticated project's workspace (personal or team), from every project in it and from wiro.ai. Steps of workflow runs and the runs Studio starts are not listed: `list_workflow_runs` and `list_studio_results` have those. Calls `POST /Task/List` without a `uuid`; Wiro derives the workspace from the API credential.
+List recent model-generation tasks in the authenticated project's workspace (personal or team), from every project in it and from wiro.ai. Steps of workflow runs are not listed: `list_workflow_runs` has those. The model runs Studio starts for you are your own tasks and are listed with the rest; `list_studio_results` lists only Studio's. Calls `POST /Task/List` without a `uuid`; Wiro derives the workspace from the API credential.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
@@ -1319,7 +1326,7 @@ An agent is named by its guid, which `list_my_agents` returns. See
 | `list_agent_templates` | `search`, `category`, `sort` (`newest`, `popular` or `title`), `start`, `limit` |
 | `get_agent_template` | `template`, `include_tasks` |
 | `list_agent_connectors` | `name`, `search`, `category`, `agent_guid` (its connections too) |
-| `list_agent_skills` | `name`, `category`, `capability` |
+| `list_agent_skills` | `name`, `capability` |
 | `deploy_agent` | `template`, or `custom: true` with `skills`; `tier` (`starter`, `pro` or `max`), `title`, `credentials`, `chat_setup` (`all`, `webchat` or `off`), `confirm`, `confirm_charge_usd` |
 | `list_my_agents` | `sort`, `start`, `limit` |
 | `get_my_agent` | `agent_guid`, `wait_seconds` (wait until it is running) |
@@ -1341,8 +1348,10 @@ An agent is named by its guid, which `list_my_agents` returns. See
 and name. It marks the connection's own project, the projects this connection
 can connect to an agent (the ones you created, or any project of a team you are
 an admin of) and the projects with an IP whitelist, and it shows no keys.
-`bind_agent_project` connects the Wiro project an agent runs models with.
-Called without `confirm`, it changes nothing: it shows the project, the one it
+`bind_agent_project` sets the Wiro project an agent's video and voice skills
+run models with. It does not connect the Wiro AI Models connector (`wiro`),
+which gives the agent Wiro's model tools and always runs with this same
+project. Called without `confirm`, it changes nothing: it shows the project, the one it
 replaces, whether a running agent restarts and which wallet pays for the
 agent's model runs (the wallet of the workspace that owns the project). After
 you agree, the assistant repeats the call with `confirm: true`, as its

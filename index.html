@@ -9275,7 +9275,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
     }
   ]
 }</code></pre>
-                    <p>All API responses return HTTP <code>200</code>. Use the <code>result</code> field and error <code>code</code> to determine success or failure.</p>
+                    <p>Most errors return HTTP <code>200</code>, so use the <code>result</code> field and error <code>code</code> to determine success or failure, whatever the status. Some errors also use another HTTP status, such as <code>401</code> for a failed API key or bearer token, <code>404</code> for an unknown endpoint and <code>403</code> for the Studio and Workflow Agent team check (see below).</p>
                   </section>
 
                   <section id="error-codes">
@@ -9329,6 +9329,11 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                           <td><code>99</code></td>
                           <td>Token Invalid</td>
                           <td>Bearer token missing, invalid, or expired</td>
+                        </tr>
+                        <tr>
+                          <td><code>110</code></td>
+                          <td>Plan Payment Not Finished</td>
+                          <td>The wallet paid for an agent plan (<code>Deploy</code>, <code>CreateSubscriptionCheckout</code>, <code>RenewSubscription</code> or <code>UpgradeTier</code>), but the plan change could not be saved. Never send the call again: a retry charges again. Contact support. See <a href="/docs/agent-overview#error-messages">Agent Overview</a></td>
                         </tr>
                       </tbody>
                     </table>
@@ -9586,7 +9591,7 @@ x-nonce: Unix timestamp or random integer</code></pre>
 
                   <section id="error-task">
                     <h2>Task Errors</h2>
-                    <p>Returned by <code>POST /Task/Detail</code>, <code>POST /Task/Cancel</code>, <code>POST /Task/Kill</code>, and <code>POST /Task/InputOutputDelete</code>.</p>
+                    <p>These errors are returned by <code>POST /Task/Detail</code>, <code>POST /Task/List</code>, <code>POST /Task/Cancel</code>, <code>POST /Task/Kill</code>, and <code>POST /Task/InputOutputDelete</code>.</p>
                     <table>
                       <thead>
                         <tr>
@@ -9620,6 +9625,12 @@ x-nonce: Unix timestamp or random integer</code></pre>
                           <td><code>0</code></td>
                           <td>Request parameter [taskid or tasktoken] required</td>
                           <td>Detail</td>
+                        </tr>
+                        <tr>
+                          <td>Unknown surface</td>
+                          <td><code>0</code></td>
+                          <td>surface must be one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow.</td>
+                          <td>List</td>
                         </tr>
                         <tr>
                           <td>Missing identifier</td>
@@ -9737,6 +9748,11 @@ if (!data.result) {
                           <td><code>99</code></td>
                           <td>No</td>
                           <td>Check your API key or bearer token</td>
+                        </tr>
+                        <tr>
+                          <td><code>110</code></td>
+                          <td>No</td>
+                          <td>Never retry: the wallet already paid and a retry charges again. Contact support</td>
                         </tr>
                       </tbody>
                     </table>
@@ -10751,7 +10767,7 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
                         </tr>
                       </tbody>
                     </table>
-                    <p><strong>Studio</strong> is Wiro's creative agent: it picks and runs models for you and charges your wallet after each reply (see <a href="/docs/studio">Studio</a>). Your own agents run on a monthly plan that includes AI usage, then on your Wiro balance (see <a href="/docs/agent-overview">Agent Overview</a>).</p>
+                    <p><strong>Studio</strong> is Wiro's creative agent: it picks and runs models for you and charges your wallet after each reply (see <a href="/docs/studio">Studio</a>). Your own agents run while their monthly plan is active. The plan includes AI usage, and past it the agent's usage is paid from your Wiro balance; an agent without an active plan does not run, whatever the balance holds (see <a href="/docs/agent-overview">Agent Overview</a>).</p>
                     <table>
                       <thead>
                         <tr>
@@ -10806,7 +10822,7 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
                         </tr>
                         <tr>
                           <td><code>connect_agent_connector</code></td>
-                          <td>Connect a connector to an agent: save its keys, or start its sign-in, which you approve in your browser. A connector that runs with a Wiro project shows the project and its wallet first</td>
+                          <td>Connect a connector to an agent: save its keys, or start its sign-in, which you approve in your browser. The Wiro AI Models connector (<code>wiro</code>) gives the agent Wiro's model, task and file upload tools, plus read-only docs search and playbooks; it shows the project it runs with and its wallet first, and connecting it also sets that project, as <code>bind_agent_project</code> does</td>
                         </tr>
                         <tr>
                           <td><code>set_agent_connector_accounts</code></td>
@@ -10822,7 +10838,7 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
                         </tr>
                         <tr>
                           <td><code>bind_agent_project</code></td>
-                          <td>Connect an agent to a Wiro project so it can run models, with no key in the chat; shows the project first, then asks for your confirmation</td>
+                          <td>Set the Wiro project an agent's video and voice skills run models with, with no key in the chat; shows the project first, then asks for your confirmation. It gives the agent no model tools: connect the Wiro AI Models connector (<code>wiro</code>) for those</td>
                         </tr>
                         <tr>
                           <td><code>manage_agent_custom_skill</code></td>
@@ -10982,7 +10998,7 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
                     <p>Agent plans and moves to a larger plan are paid from your Wiro balance, so <code>deploy_agent</code> and <code>manage_agent_billing</code> first return the price (for a move inside a billing period, the amount Wiro works out for the time left). They act only when they are called again with <code>confirm: true</code> and <code>confirm_charge_usd</code>, the approved amount, after you agree. If the price changed in between, nothing is charged and you get a new quote. Turning an agent's skills on or off with <code>apply_agent_skills</code> costs nothing, and so does connecting its connectors, since every plan includes every skill and connector, and a move to a smaller plan starts with the next renewal, with nothing charged or refunded. When the balance can't pay a plan, the quote says how much to add on wiro.ai and nothing is charged. <code>buy_credits</code> is retired and charges nothing: past its plan's included usage, an agent uses the Wiro balance.</p>
                     <p>Deleting a workflow, an agent, a conversation or a connector connection also waits for <code>confirm: true</code>, and so do replacing a working connector connection, connecting an agent or a connector to a Wiro project with <code>bind_agent_project</code> or <code>connect_agent_connector</code>, and replacing a workflow's steps with <code>update_workflow</code> or <code>save_workflow_from_agent</code>: you see a summary of the change first, with the old and new value of each step input that changes. Changing a spend limit or a Model Access rule with <code>manage_spend_limit</code> or <code>manage_model_access</code> also waits for <code>confirm: true</code>: you see the old and new values first and, for a limit, what was spent this period. No tool adds funds or takes a card payment: funds are added in the Wiro dashboard.</p>
                     <p>The connected project decides the workspace: a personal project uses your personal wallet, a team project uses the team wallet. <code>get_account</code> shows which one, its balance and its spend limits, and <code>get_controls</code> its spend limits and Model Access rules in full.</p>
-                    <p>Calls through the hosted MCP server count toward the workspace's <a href="/docs/spend-limits">spend limits</a> on the <code>mcp</code> surface, and calls from the Wiro browser extensions on the <code>extension</code> surface. The <a href="/docs/mcp-self-hosted">self-hosted</a> package's calls count on the <code>api</code> surface for now, as calls with its API key. Messages to Studio and the Workflow Agent count on the <code>studio</code> and <code>workflow-agent</code> surfaces, and workflow runs on <code>workflow</code>, whichever way they are sent (see <a href="/docs/tasks#task-surfaces">Surfaces</a>). When a limit refuses work (error code <code>93</code>), the tool returns an error with Wiro's message and a note: nothing ran and nothing was charged, and the work should not be tried again until the limit resets or someone who manages it raises it. <code>get_controls</code> shows the limit and when it resets, and <code>manage_spend_limit</code> changes it after a change summary. Limits are also managed under <a href="https://wiro.ai/panel/controls/spend-limits" target="_blank">Controls &gt; Spend Limits</a>.</p>
+                    <p>Calls through the hosted MCP server count toward the workspace's <a href="/docs/spend-limits">spend limits</a> on the <code>mcp</code> surface, and calls from the Wiro browser extensions on the <code>extension</code> surface. The <a href="/docs/mcp-self-hosted">self-hosted</a> package's calls count on the <code>api</code> surface for now, as calls with its API key. Messages to Studio and the Workflow Agent count on the <code>studio</code> and <code>workflow-agent</code> surfaces, and workflow runs on <code>workflow</code>, whichever way they are sent (see <a href="/docs/tasks#task-surfaces">Surfaces</a>). The tools of an agent's Wiro AI Models connector also reach Wiro through this server, but their calls are the agent's own and count on the <code>agent</code> surface, under that agent's spend limits and Model Access rule (see <a href="/docs/agent-connectors#the-wiro-connector">The Wiro connector</a>). When a limit refuses work (error code <code>93</code>), the tool returns an error with Wiro's message and a note: nothing ran and nothing was charged, and the work should not be tried again until the limit resets or someone who manages it raises it. <code>get_controls</code> shows the limit and when it resets, and <code>manage_spend_limit</code> changes it after a change summary. Limits are also managed under <a href="https://wiro.ai/panel/controls/spend-limits" target="_blank">Controls &gt; Spend Limits</a>.</p>
                     <p>The workspace's <a href="/docs/model-access">Model Access</a> rules apply to these calls too, on the same surfaces. A model a rule blocks is refused before anything runs (error code <code>92</code>), and the tool returns an error with Wiro's message, which names the rule. A message to Studio or the Workflow Agent is refused the same way when a rule blocks its chat model, the one it names or the default. Nothing ran and nothing was charged. <code>check_model_access</code> shows why the model is blocked, and <code>manage_model_access</code> changes the rule after a change summary. Rules are also managed under <a href="https://wiro.ai/panel/controls/model-access" target="_blank">Controls &gt; Model Access</a>.</p>
                   </section>
 
@@ -11038,7 +11054,7 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
                     <p>The assistant will call <code>get_task</code> with the task token from the previous run.</p>
                     <h3>Resume a previous production</h3>
                     <div class="info-callout"><p>"Show my latest productions and open the newest result"</p></div>
-                    <p>The assistant will call <code>list_tasks</code>, select the matching task, and call <code>get_task</code> with its task ID. Task history covers the authenticated project's workspace, personal or team: model tasks from every project in it and from wiro.ai. Steps of workflow runs and the runs Studio starts are not listed: <code>list_workflow_runs</code> and <code>list_studio_results</code> have those. The LLM never sends a user UUID.</p>
+                    <p>The assistant will call <code>list_tasks</code>, select the matching task, and call <code>get_task</code> with its task ID. Task history covers the authenticated project's workspace, personal or team: model tasks from every project in it and from wiro.ai. Steps of workflow runs are not listed: <code>list_workflow_runs</code> has those. The model runs Studio starts for you are your own tasks and are listed with the rest; <code>list_studio_results</code> lists only Studio's. The LLM never sends a user UUID.</p>
                     <h3>Build and run a workflow</h3>
                     <div class="info-callout"><p>"Build a workflow that turns a product photo into a short ad video, then run it on this photo"</p></div>
                     <p>The assistant reads the <code>workflows</code> and <code>workflow-graph</code> playbooks, picks a model for each step with <code>search_models</code> and <code>get_model_schema</code>, and saves the graph with <code>create_workflow</code>. It tells you the expected cost and waits for your yes, then calls <code>run_workflow</code> and follows <code>wait_for_workflow_run</code> until the video is ready.</p>
@@ -11053,7 +11069,7 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
                     <p>The assistant checks the balance with <code>get_account</code>, tells you what a Studio turn costs, sends the brief with <code>send_agent_message</code> (<code>agent: "studio"</code>) and shows the images from the reply.</p>
                     <h3>Deploy an agent</h3>
                     <div class="info-callout"><p>"Deploy an agent that posts to our Instagram account and tell me what it still needs"</p></div>
-                    <p>The assistant compares templates with <code>list_agent_templates</code> and <code>get_agent_template</code>, gets the price from <code>deploy_agent</code>, and deploys only after you confirm the amount. Then it lists the missing setup with <code>get_my_agent</code> and connects the Instagram connector with <code>connect_agent_connector</code>. If the agent runs Wiro models, it connects a Wiro project with <code>bind_agent_project</code> once you agree to the project it shows.</p>
+                    <p>The assistant compares templates with <code>list_agent_templates</code> and <code>get_agent_template</code>, gets the price from <code>deploy_agent</code>, and deploys only after you confirm the amount. Then it lists the missing setup with <code>get_my_agent</code> and connects the Instagram connector with <code>connect_agent_connector</code>. If the agent should run Wiro models itself, it connects the Wiro AI Models connector (<code>wiro</code>) with <code>connect_agent_connector</code> once you agree to the project it shows; that also sets the project the agent's video and voice skills use.</p>
                     <h3>Talk to your agent</h3>
                     <div class="info-callout"><p>"Tell my support agent to summarise today's tickets"</p></div>
                     <p>The assistant finds the agent with <code>list_my_agents</code>, checks that it is running with <code>get_my_agent</code>, and sends the message with <code>send_agent_message</code>. The message uses the agent's AI usage. If the reply proposes a setup change, the assistant shows it and sends your yes only after you agree.</p>
@@ -11269,7 +11285,7 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
                     <p>A live WebSocket <code>task_error</code> event is an interim stderr log, while persisted <code>status: "task_error"</code> returned by Task/Detail marks a pre-execution recovery state. Neither closes the task; <code>wait_for_task</code> continues until <code>task_postprocess_end</code> or <code>task_cancel</code>.</p>
 
                     <h3>list_tasks</h3>
-                    <p>List recent model-generation tasks in the authenticated project's workspace (personal or team), from every project in it and from wiro.ai. Steps of workflow runs and the runs Studio starts are not listed: <code>list_workflow_runs</code> and <code>list_studio_results</code> have those. Calls <code>POST /Task/List</code> without a <code>uuid</code>; Wiro derives the workspace from the API credential.</p>
+                    <p>List recent model-generation tasks in the authenticated project's workspace (personal or team), from every project in it and from wiro.ai. Steps of workflow runs are not listed: <code>list_workflow_runs</code> has those. The model runs Studio starts for you are your own tasks and are listed with the rest; <code>list_studio_results</code> lists only Studio's. Calls <code>POST /Task/List</code> without a <code>uuid</code>; Wiro derives the workspace from the API credential.</p>
                     <table>
                       <thead>
                         <tr>
@@ -11541,7 +11557,7 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
                         </tr>
                         <tr>
                           <td><code>list_agent_skills</code></td>
-                          <td><code>name</code>, <code>category</code>, <code>capability</code></td>
+                          <td><code>name</code>, <code>capability</code></td>
                         </tr>
                         <tr>
                           <td><code>deploy_agent</code></td>
@@ -11609,7 +11625,7 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
                         </tr>
                       </tbody>
                     </table>
-                    <p><code>list_projects</code> lists the projects of the connected project's workspace by id and name. It marks the connection's own project, the projects this connection can connect to an agent (the ones you created, or any project of a team you are an admin of) and the projects with an IP whitelist, and it shows no keys. <code>bind_agent_project</code> connects the Wiro project an agent runs models with. Called without <code>confirm</code>, it changes nothing: it shows the project, the one it replaces, whether a running agent restarts and which wallet pays for the agent's model runs (the wallet of the workspace that owns the project). After you agree, the assistant repeats the call with <code>confirm: true</code>, as its <code>nextAction</code> shows. Connecting the project an agent already has changes nothing and restarts nothing. On a team agent, a team admin can connect any project of the team, and the person who deployed the agent the projects they created. The API behind it is <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>POST /UserAgent/CredentialProjectBind</code></a>.</p>
+                    <p><code>list_projects</code> lists the projects of the connected project's workspace by id and name. It marks the connection's own project, the projects this connection can connect to an agent (the ones you created, or any project of a team you are an admin of) and the projects with an IP whitelist, and it shows no keys. <code>bind_agent_project</code> sets the Wiro project an agent's video and voice skills run models with. It does not connect the Wiro AI Models connector (<code>wiro</code>), which gives the agent Wiro's model tools and always runs with this same project. Called without <code>confirm</code>, it changes nothing: it shows the project, the one it replaces, whether a running agent restarts and which wallet pays for the agent's model runs (the wallet of the workspace that owns the project). After you agree, the assistant repeats the call with <code>confirm: true</code>, as its <code>nextAction</code> shows. Connecting the project an agent already has changes nothing and restarts nothing. On a team agent, a team admin can connect any project of the team, and the person who deployed the agent the projects they created. The API behind it is <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>POST /UserAgent/CredentialProjectBind</code></a>.</p>
 
                     <h3>Controls tools</h3>
                     <p>A limit or a rule is for one scope: <code>account</code>, <code>member</code> (a team member, by e-mail or user uuid), <code>project</code> (an API key, by its project's id or name; left out, the key of this connection), <code>surface</code> or <code>agent</code> (by guid or name). See <a href="/docs/spend-limits">Spend Limits</a> and <a href="/docs/model-access">Model Access</a> for the API behind these tools.</p>
@@ -11996,7 +12012,7 @@ WIRO_API_SECRET=your-api-secret</code></pre>
                       <tbody>
                         <tr>
                           <td><code>send_agent_message</code></td>
-                          <td><code>Message/Send</code>, or <code>Message/SendForm</code> with attachments</td>
+                          <td><code>Message/Send</code>; with attachments, <code>Message/SendForm</code> for Studio and the Workflow Agent, and a multipart <code>Message/Send</code> for a deployed agent</td>
                           <td>Send a message and wait for the reply, with any media, workflows or model runs it produced.</td>
                         </tr>
                         <tr>
@@ -12071,7 +12087,7 @@ WIRO_API_SECRET=your-api-secret</code></pre>
                         </tr>
                         <tr>
                           <td><code>apply_agent_skills</code></td>
-                          <td><code>POST /UserAgent/PricingPreview</code>, <code>/UserAgent/SkillsApply</code></td>
+                          <td><code>POST /Skills/List</code>, <code>/UserAgent/Detail</code>, then <code>/UserAgent/SkillsApply</code></td>
                           <td>Turn skills on or off; every plan includes every skill, so a change costs nothing.</td>
                         </tr>
                         <tr>
@@ -12082,7 +12098,7 @@ WIRO_API_SECRET=your-api-secret</code></pre>
                         <tr>
                           <td><code>connect_agent_connector</code></td>
                           <td><code>POST /UserAgent/ConnectorConnect</code>, <code>/UserAgent/ConnectorList</code> (status)</td>
-                          <td>Connect a connector to an agent: save its keys, or start its sign-in, which you approve in your browser. A connector that runs with a Wiro project shows the project and its wallet first.</td>
+                          <td>Connect a connector to an agent: save its keys, or start its sign-in, which you approve in your browser. The Wiro AI Models connector (<code>wiro</code>) gives the agent Wiro's model, task and file upload tools, plus read-only docs search and playbooks; it shows the project it runs with and its wallet first, and connecting it also sets that project, as <code>bind_agent_project</code> does.</td>
                         </tr>
                         <tr>
                           <td><code>set_agent_connector_accounts</code></td>
@@ -12102,7 +12118,7 @@ WIRO_API_SECRET=your-api-secret</code></pre>
                         <tr>
                           <td><code>bind_agent_project</code></td>
                           <td><code>POST /UserAgent/Detail</code>, <code>/Project/List</code>, then <code>/UserAgent/CredentialProjectBind</code></td>
-                          <td>Connect an agent to a Wiro project so it can run models, with no key in the chat; shows the project first, then asks for your confirmation.</td>
+                          <td>Set the Wiro project an agent's video and voice skills run models with, with no key in the chat; shows the project first, then asks for your confirmation. It gives the agent no model tools: connect the Wiro AI Models connector (<code>wiro</code>) for those.</td>
                         </tr>
                         <tr>
                           <td><code>manage_agent_custom_skill</code></td>

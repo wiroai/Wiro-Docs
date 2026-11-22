@@ -18,7 +18,7 @@ When an API request fails, the response includes `result: false` and an `errors`
 }
 ```
 
-All API responses return HTTP `200`. Use the `result` field and error `code` to determine success or failure.
+Most errors return HTTP `200`, so use the `result` field and error `code` to determine success or failure, whatever the status. Some errors also use another HTTP status, such as `401` for a failed API key or bearer token, `404` for an unknown endpoint and `403` for the Studio and Workflow Agent team check (see below).
 
 ## Error Codes
 
@@ -34,6 +34,7 @@ Error codes indicate the category of the problem. Use these for conditional logi
 | `97` | Insufficient Balance | Not enough funds to run the model |
 | `98` | Authentication Required | Sign in required to access this model |
 | `99` | Token Invalid | Bearer token missing, invalid, or expired |
+| `110` | Plan Payment Not Finished | The wallet paid for an agent plan (`Deploy`, `CreateSubscriptionCheckout`, `RenewSubscription` or `UpgradeTier`), but the plan change could not be saved. Never send the call again: a retry charges again. Contact support. See [Agent Overview](/docs/agent-overview#error-messages) |
 
 ## Authentication Errors
 
@@ -124,7 +125,7 @@ These errors are returned by the `POST /Run/{owner}/{model}` endpoint.
 
 ## Task Errors
 
-These errors are returned by `POST /Task/Detail`, `POST /Task/Cancel`, `POST /Task/Kill`, and `POST /Task/InputOutputDelete`.
+These errors are returned by `POST /Task/Detail`, `POST /Task/List`, `POST /Task/Cancel`, `POST /Task/Kill`, and `POST /Task/InputOutputDelete`.
 
 | Error | Code | Message | Endpoint |
 |-------|------|---------|----------|
@@ -132,6 +133,7 @@ These errors are returned by `POST /Task/Detail`, `POST /Task/Cancel`, `POST /Ta
 | Task not found | `1` | "There is no task yet." | Cancel |
 | Task not found | `0` | "There is no task yet." | Kill, InputOutputDelete |
 | Missing identifier | `0` | "Request parameter [taskid or tasktoken] required" | Detail |
+| Unknown surface | `0` | "surface must be one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow." | List |
 | Missing identifier | `0` | "taskid or socketaccesstoken is required" | Kill |
 | Not cancellable | `1` | "Task is not in a cancellable state." | Cancel |
 | Kill failed | `1` | "Task could not be killed: {reason}" | Kill |
@@ -190,3 +192,4 @@ if (!data.result) {
 | `97` | No | Add funds, then retry |
 | `98` | No | Sign in or use authenticated credentials |
 | `99` | No | Check your API key or bearer token |
+| `110` | No | Never retry: the wallet already paid and a retry charges again. Contact support |
