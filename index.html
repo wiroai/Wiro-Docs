@@ -19701,7 +19701,7 @@ channel-enable endpoint or persisted switch.</p>
 <td><code>skills</code></td>
 <td>object</td>
 <td>Yes</td>
-<td>Map of <code>{ "skillname": true | false }</code> for every skill you want to set. Skills not in the map keep their current state.</td>
+<td>Map of <code>{ "skillname": true | false }</code> for every Skill (<code>util-*</code>) you want to set. Skills not in the map keep their current state. A Skill you turn on needs the Skills in its <code>depends_on</code>, and theirs, on already or in the same map: <code>SkillsApply</code> doesn't turn them on and refuses the change with <code>101</code>. <a href="#post-useragentpricingpreview"><code>PricingPreview</code></a> with the same <code>skillOverrides</code> lists the whole set in <code>enabledSkills</code>. Connectors aren't in this map: connect one with <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>ConnectorConnect</code></a>.</td>
 </tr>
 <tr>
 <td><code>tier</code></td>
@@ -19713,13 +19713,13 @@ channel-enable endpoint or persisted switch.</p>
 <td><code>idempotencyKey</code></td>
 <td>string</td>
 <td>Yes</td>
-<td>Caller-generated unique key (UUID recommended). Replays of the same key return the cached response without applying the change again.</td>
+<td>Caller-generated unique key (UUID recommended), a new one for each change. For 10 minutes, the same key with the same <code>skills</code> returns the first call's answer without applying the change again, and the same key with other <code>skills</code> is refused with <code>107</code>. After that, the key of a change that was applied is spent: a call with it that would change something is refused with <code>107</code>, and one that changes nothing answers <code>noOp: true</code>.</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
-<p><strong>Headers:</strong> No extra header is needed. For team agents, use an API key from a project in the agent's team. Keys from another workspace are rejected.</p>
+<p><strong>Headers:</strong> No extra header is needed. For team agents, use an API key from a project in the agent's team. Keys from another workspace are rejected. The caller must be the agent's owner or a team admin of its team. Plain team members are refused with code <code>97</code>, <code>Only a team admin can perform this action on a team-owned agent.</code></p>
 <h5 id="request_5">Request</h5>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/SkillsApply&quot; \
   -H &quot;x-api-key: YOUR_API_KEY&quot; \
@@ -19822,24 +19822,32 @@ channel-enable endpoint or persisted switch.</p>
 </thead>
 <tbody>
 <tr>
+<td><code>0</code></td>
+<td><code>Unknown skill: &lt;names&gt;</code>: a name in <code>skills</code> that is not a Skill, such as one that starts with <code>int-</code> (Connectors are connected with <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>ConnectorConnect</code></a>, not toggled). Nothing is changed. A name the agent still has can still be turned off.</td>
+</tr>
+<tr>
 <td><code>101</code></td>
-<td><code>skillsapply-deps-violation</code>: a final enabled skill has unsatisfied <code>depends_on</code>. Body includes <code>deps[]</code>.</td>
+<td><code>Cannot apply: some skills require other skills to be enabled.</code>: a Skill that would be on needs one in its <code>depends_on</code> that would be off. Body includes <code>deps[]</code> (<code>{ skill, requires }</code>). Send those Skills in the same map.</td>
 </tr>
 <tr>
 <td><code>102</code></td>
-<td><code>skillsapply-conflict</code>: two finally-enabled skills are mutually exclusive. Body includes <code>conflicts[]</code>.</td>
+<td><code>Cannot apply: some skills conflict with each other.</code>: two Skills that would be on are mutually exclusive. Body includes <code>conflicts[]</code>.</td>
 </tr>
 <tr>
 <td><code>104</code></td>
-<td><code>skillsapply-in-progress</code>: another <code>SkillsApply</code> is already running on this useragent. Wait and retry.</td>
+<td><code>A skill update is already in progress for this agent — please retry shortly.</code>: another skill change or plan change of this agent is running. Wait and retry.</td>
 </tr>
 <tr>
 <td><code>105</code></td>
 <td><code>Change the plan with UpgradeTier.</code>: the <code>tier</code> sent is not the agent's current plan. Nothing is changed. Change the plan with <a href="#post-useragentupgradetier"><code>UpgradeTier</code></a>, and send skill changes without <code>tier</code>.</td>
 </tr>
 <tr>
+<td><code>107</code></td>
+<td><code>This idempotencyKey was already used for a different skill change. Nothing was changed; send a new idempotencyKey.</code> (the same key with other <code>skills</code> within 10 minutes), <code>This idempotencyKey was already used for an earlier skill change. Nothing was changed; send a new idempotencyKey.</code> (the key of a change that was applied, used later), or <code>Cached response corrupt — please retry with a new idempotency key.</code> Send a new <code>idempotencyKey</code>.</td>
+</tr>
+<tr>
 <td><code>108</code></td>
-<td><code>skillsapply-db-tx-failed</code>: DB transaction rolled back; safe to retry with a new idempotency key.</td>
+<td><code>Failed to apply skill changes — please retry.</code>: nothing was changed. Retry with a new idempotency key.</td>
 </tr>
 </tbody>
 </table>
@@ -20983,7 +20991,7 @@ channel-enable endpoint or persisted switch.</p>
 <td><code>useragentguid</code></td>
 <td>string</td>
 <td>Yes</td>
-<td>Useragent must be in <code>status: 4</code> and have <code>util-web-channel</code> enabled (Voice Receptionist / Voice Sales Rep presets enable it by default; toggle it on other agents via <code>SkillsApply</code>).</td>
+<td>The agent must be running (<code>status: 4</code>) with the Web Voice Channel Skill (<code>util-web-channel</code>) on. The Voice Receptionist and Voice Sales Rep templates have it on. On another agent, turn it on with <a href="#post-useragentskillsapply"><code>SkillsApply</code></a> together with the two Skills it depends on, Voice Receptionist Rules (<code>util-voice-receptionist</code>) and Voice Call Prep Rules (<code>util-voice-call-prep</code>): <code>{ "util-web-channel": true, "util-voice-receptionist": true, "util-voice-call-prep": true }</code>. Sent alone, it is refused with code <code>101</code> and <code>deps[]</code> unless those two are already on. Deploy's <code>skills</code> turns them on itself.</td>
 </tr>
 <tr>
 <td><code>session_metadata.page_url</code></td>
@@ -21046,7 +21054,7 @@ channel-enable endpoint or persisted switch.</p>
 </tr>
 <tr>
 <td><code>util-web-channel not enabled</code></td>
-<td>Toggle the skill via <code>SkillsApply</code> or pick a preset that bundles it.</td>
+<td>The Web Voice Channel Skill (<code>util-web-channel</code>) is off. Turn it on with <code>SkillsApply</code> together with <code>util-voice-receptionist</code> and <code>util-voice-call-prep</code> (sent alone it gets <code>101</code>), or deploy from the Voice Receptionist or Voice Sales Rep template.</td>
 </tr>
 <tr>
 <td><code>Web voice from this origin needs an API key.</code></td>

@@ -2358,11 +2358,11 @@ Designed for both the Skill Editor modal (multiple toggles in one save) and one-
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid (template deploy or custom build) |
-| `skills` | object | Yes | Map of `{ "skillname": true \| false }` for every skill you want to set. Skills not in the map keep their current state. |
+| `skills` | object | Yes | Map of `{ "skillname": true \| false }` for every Skill (`util-*`) you want to set. Skills not in the map keep their current state. A Skill you turn on needs the Skills in its `depends_on`, and theirs, on already or in the same map: `SkillsApply` doesn't turn them on and refuses the change with `101`. [`PricingPreview`](#post-useragentpricingpreview) with the same `skillOverrides` lists the whole set in `enabledSkills`. Connectors aren't in this map: connect one with [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect). |
 | `tier` | string | No | Kept for older clients. Skills never change the plan: a value other than the agent's current plan is refused with `Change the plan with UpgradeTier.` |
-| `idempotencyKey` | string | Yes | Caller-generated unique key (UUID recommended). Replays of the same key return the cached response without applying the change again. |
+| `idempotencyKey` | string | Yes | Caller-generated unique key (UUID recommended), a new one for each change. For 10 minutes, the same key with the same `skills` returns the first call's answer without applying the change again, and the same key with other `skills` is refused with `107`. After that, the key of a change that was applied is spent: a call with it that would change something is refused with `107`, and one that changes nothing answers `noOp: true`. |
 
-**Headers:** No extra header is needed. For team agents, use an API key from a project in the agent's team. Keys from another workspace are rejected.
+**Headers:** No extra header is needed. For team agents, use an API key from a project in the agent's team. Keys from another workspace are rejected. The caller must be the agent's owner or a team admin of its team. Plain team members are refused with code `97`, `Only a team admin can perform this action on a team-owned agent.`
 
 ##### Request
 
@@ -2432,11 +2432,13 @@ When every entry in your `skills` map already matches the persisted state, the e
 
 | Code | Meaning |
 |------|---------|
-| `101` | `skillsapply-deps-violation`: a final enabled skill has unsatisfied `depends_on`. Body includes `deps[]`. |
-| `102` | `skillsapply-conflict`: two finally-enabled skills are mutually exclusive. Body includes `conflicts[]`. |
-| `104` | `skillsapply-in-progress`: another `SkillsApply` is already running on this useragent. Wait and retry. |
+| `0` | `Unknown skill: <names>`: a name in `skills` that is not a Skill, such as one that starts with `int-` (Connectors are connected with [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect), not toggled). Nothing is changed. A name the agent still has can still be turned off. |
+| `101` | `Cannot apply: some skills require other skills to be enabled.`: a Skill that would be on needs one in its `depends_on` that would be off. Body includes `deps[]` (`{ skill, requires }`). Send those Skills in the same map. |
+| `102` | `Cannot apply: some skills conflict with each other.`: two Skills that would be on are mutually exclusive. Body includes `conflicts[]`. |
+| `104` | `A skill update is already in progress for this agent — please retry shortly.`: another skill change or plan change of this agent is running. Wait and retry. |
 | `105` | `Change the plan with UpgradeTier.`: the `tier` sent is not the agent's current plan. Nothing is changed. Change the plan with [`UpgradeTier`](#post-useragentupgradetier), and send skill changes without `tier`. |
-| `108` | `skillsapply-db-tx-failed`: DB transaction rolled back; safe to retry with a new idempotency key. |
+| `107` | `This idempotencyKey was already used for a different skill change. Nothing was changed; send a new idempotencyKey.` (the same key with other `skills` within 10 minutes), `This idempotencyKey was already used for an earlier skill change. Nothing was changed; send a new idempotencyKey.` (the key of a change that was applied, used later), or `Cached response corrupt — please retry with a new idempotency key.` Send a new `idempotencyKey`. |
+| `108` | `Failed to apply skill changes — please retry.`: nothing was changed. Retry with a new idempotency key. |
 
 #### **POST** /UserAgent/PricingPreview
 
@@ -3090,7 +3092,7 @@ Starts a browser-embedded realtime voice session with the agent. Returns two opa
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Useragent must be in `status: 4` and have `util-web-channel` enabled (Voice Receptionist / Voice Sales Rep presets enable it by default; toggle it on other agents via `SkillsApply`). |
+| `useragentguid` | string | Yes | The agent must be running (`status: 4`) with the Web Voice Channel Skill (`util-web-channel`) on. The Voice Receptionist and Voice Sales Rep templates have it on. On another agent, turn it on with [`SkillsApply`](#post-useragentskillsapply) together with the two Skills it depends on, Voice Receptionist Rules (`util-voice-receptionist`) and Voice Call Prep Rules (`util-voice-call-prep`): `{ "util-web-channel": true, "util-voice-receptionist": true, "util-voice-call-prep": true }`. Sent alone, it is refused with code `101` and `deps[]` unless those two are already on. Deploy's `skills` turns them on itself. |
 | `session_metadata.page_url` | string | No | Page URL the caller opened the mic from (≤ 2048 chars). Echoed back on Call History. |
 | `session_metadata.display_identifier` | string | No | Operator-supplied display name. 1-100 chars, Unicode letters / numbers / spaces / `@ . _ - ' +`; other characters silently dropped. |
 
@@ -3120,7 +3122,7 @@ Starts a browser-embedded realtime voice session with the agent. Returns two opa
 | `This agent belongs to a team. Switch to the team context to access it.` | Team agent called from a personal workspace or personal project key by a caller who is no longer a member of the agent's team. |
 | `This agent belongs to a different team.` | Team agent called from another team's workspace or project key by a caller who is no longer a member of the agent's team. |
 | `Agent is not running` | Useragent is not in `status: 4`. |
-| `util-web-channel not enabled` | Toggle the skill via `SkillsApply` or pick a preset that bundles it. |
+| `util-web-channel not enabled` | The Web Voice Channel Skill (`util-web-channel`) is off. Turn it on with `SkillsApply` together with `util-voice-receptionist` and `util-voice-call-prep` (sent alone it gets `101`), or deploy from the Voice Receptionist or Voice Sales Rep template. |
 | `Web voice from this origin needs an API key.` | Bearer auth with an Origin outside the allow-list. |
 | `Rate limit: max N web voice sessions per hour` | Operator burned through the per-hour cap. |
 
