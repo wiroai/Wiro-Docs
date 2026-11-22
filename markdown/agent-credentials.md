@@ -418,11 +418,11 @@ If you skip these keys in Deploy entirely, the instance is created empty and you
 
 ## Setup Required State
 
-Every fresh Deploy starts in **Setup Required** state (`status: 6`). While an agent is at `status: 6`, `Start` refuses it with `Agent setup is not complete. Fill in the agent's required settings before starting.`
+Every fresh Deploy starts in **Setup Required** state (`status: 6`). A Deploy without `useprepaid: true` leaves the agent there, with no plan, and `Start` refuses it with `Agent setup is not complete. Fill in the agent's required settings before starting.` Pay its plan with [`CreateSubscriptionCheckout`](/docs/agent-overview#post-useragentcreatesubscriptioncheckout) (`useprepaid: true`), which queues it.
 
 API deploys must always pass `useprepaid: true`. The server provisions the prepaid subscription inline and moves the agent to `status: 2` (Queued) whatever its credentials hold, and Wiro then starts it, so no `Start` call is needed. A credential the agent requires may still be incomplete while it runs: `UserAgent/Detail` reads `setuprequired: true` until every required credential is set up, and a running agent restarts to pick up each value you save.
 
-Saving a credential doesn't move the agent out of `status: 6`, whether with `CredentialUpsert` or `CredentialProjectBind`. After the last one, call `POST /UserAgent/Update` once with `{ "guid": "<useragent-guid>" }`: that call moves the agent to `status: 0` (Stopped) once every required credential is set up, so `Start` can launch it. `Start` doesn't read `setuprequired` on a stopped (`status: 0`) or errored (`status: 5`) agent.
+Credentials never hold an agent at `status: 6`, and saving one, with `CredentialUpsert` or `CredentialProjectBind`, doesn't change `status`: a running agent with a missing required credential reads `setuprequired: true` on `UserAgent/Detail` until it is set up. `Start` doesn't read `setuprequired` on a stopped (`status: 0`) or errored (`status: 5`) agent.
 
 `setuprequired` in `UserAgent/Detail` is `true` while the agent is at `status: 6` or any non-optional credential is still incomplete; on `UserAgent/MyAgents` rows it follows `status: 6` alone. A credential counts as complete when at least one field saved on this agent with `fieldstatus: "user"` has a non-empty value (any one user-writable field filled in makes the credential count as "entered"; there is no deeper per-field validation). A value the agent template holds doesn't count here, though it counts toward the card's `_filled` and `_required_missing`.
 
