@@ -133,6 +133,43 @@ The `totalcost` field in the Task Detail response shows the actual cost charged 
 
 Use the `totalcost` field to track spending per task. For more details on how costs are calculated, see [Pricing](/docs/pricing).
 
+## Surfaces
+
+Every task records its surface: the way its work came in, such as an API key, MCP or Studio. Task/Detail and Task/List return it as `surface`, and Task/List can list the tasks of one surface. [Spend limits](/docs/spend-limits) and [Model Access](/docs/model-access) rules use the same surfaces and decide them the same way, so a task's `surface` is the one its run counted on.
+
+| `surface` | Label | Covers |
+|-----------|-------|--------|
+| `web` | Dashboard | The Wiro dashboard, and calls with a signed-in user's Bearer token |
+| `api` | API | Calls with an API key, including [`/sync`](/docs/run-a-model#run-sync) and, for now, the [Wiro MCP package](/docs/mcp-self-hosted) when you run it yourself |
+| `mcp` | MCP | The hosted [Wiro MCP server](/docs/wiro-mcp-server) at `mcp.wiro.ai`, and the Wiro MCP package when it names itself (see below) |
+| `llm-gateway` | LLM Gateway | The OpenAI and Anthropic compatible [LLM gateway](/docs/completions-api) at `llm.wiro.ai` |
+| `extension` | Browser Extension | The Wiro browser extensions |
+| `agent` | Agent | Your deployed agents' own runs |
+| `studio` | Studio | [Studio](/docs/studio): the messages you send it and the models it runs for you |
+| `workflow-agent` | Workflow Agent | The [Workflow Agent](/docs/workflow-agent): the messages you send it |
+| `workflow` | Workflow | [Workflow](/docs/workflows) runs and resumes, and every step they run |
+
+The label is the surface's name in the dashboard.
+
+### Which Surface Work Gets
+
+Some work fits more than one surface, such as a workflow run started with an API key. The first match in this order decides:
+
+1. **Who does the work**: Studio, the Workflow Agent or one of your deployed agents. Messages to Studio and the Workflow Agent, the other calls to their `/Studio` and `/StudioWorkflow` endpoints and the models Studio runs for you count as `studio` and `workflow-agent`, and a deployed agent's own calls as `agent`.
+2. **What it is**: a workflow run, its resumes and every step it runs count as `workflow`. A workflow that a deployed agent, Studio or the Workflow Agent starts keeps that surface instead.
+3. **Which client sends it**: the LLM gateway (`llm-gateway`), a Wiro browser extension (`extension`) or MCP (`mcp`).
+4. **Which credential it uses**: an API key (`api`), else a signed-in session (`web`).
+
+So a model run started with an API key counts as `api`, a message to Studio sent with the same key as `studio`, and a workflow run started through MCP as `workflow`.
+
+### Clients That Name Themselves
+
+The Wiro MCP package (`@wiro-ai/wiro-mcp`) counts as `mcp` when it names itself with the header `x-wiro-client: wiro-mcp/<version>`. The package does not send this header yet, so the runs of a package you run yourself count as `api` for now. A client's name for itself is its own word: anyone who holds the API key can leave the header out. A spend limit or Model Access rule that must hold whoever uses a key belongs on the key itself, with scope `project`.
+
+### Older Tasks
+
+Tasks from before surfaces were recorded have one only where it is certain: workflow steps, the runs of deployed agents, Studio and the Workflow Agent, and runs from MCP, the LLM gateway and the browser extensions. Runs with an API key and dashboard runs have one from late October 2026 on. Other tasks have `surface: null`: the dashboard shows no label for them, and a `surface` filter never lists them.
+
 ## LLM Models
 
 For LLM requests, `outputs` contains a structured entry with
@@ -214,6 +251,7 @@ Retrieves the current status and output of a task. You can query by either `task
     "modeldescription": "FLUX.2 [dev] is a 32 billion parameter rectified flow transformer...",
     "modelslugowner": "wiro",
     "modelslugproject": "flux-2-dev",
+    "surface": "api",
     "outputs": [{
       "name": "0.png",
       "contenttype": "image/png",
@@ -240,7 +278,77 @@ Retrieves the current status and output of a task. You can query by either `task
 | `modeldescription` | `string` | Description of the model that was executed. |
 | `modelslugowner` | `string` | Model owner slug (e.g. `"google"`, `"wiro"`). |
 | `modelslugproject` | `string` | Model project slug (e.g. `"nano-banana-pro"`). |
+| `surface` | `string \| null` | The way the task came in, such as `"api"` (see [Surfaces](#surfaces)). `null` for an older task whose surface is not known for certain. |
 | `outputs` | `array` | Output files (CDN URLs) or structured LLM content (`contenttype: "raw"`). |
+
+## **POST** /Task/List
+
+Lists the tasks of the call's workspace, newest first. A team project's API key lists the team's tasks, a personal project's key your personal tasks, and a signed-in call the tasks of the team named in `x-team-guid`, or your personal tasks without it. Every field is optional: send `{}` for the 20 most recent tasks.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `surface` | string | No | Only the tasks of one [surface](#surfaces): `web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, `studio`, `workflow-agent` or `workflow`. Empty or left out: every surface |
+| `type` | string | No | `"model"` for model runs, `"train"` for training runs, or `"running"` for the tasks that have not ended and were not cancelled, queued ones included. Left out: every task |
+| `projectid` | string | No | Only the tasks of this project, by its `id` from `/Project/List` |
+| `modelid` | string | No | Only the runs of this model, by its `id` from [`/Tool/List`](/docs/models) |
+| `modelName` | string | No | Only the runs of the models whose owner or slug contains this text, ignoring case. When no model matches, the list is empty and `errors` holds `There is no task yet.` with code `1` |
+| `start` | number | No | How many tasks to skip, for the next page. Default: `0` |
+| `limit` | number | No | How many tasks to return. Default: `20`, maximum `1000` |
+
+Without `surface`, the list leaves out the tasks that workflow runs start for their steps. With `surface`, it lists every task of that surface, workflow steps included, so `"surface": "workflow"` lists the steps of your workflow runs.
+
+### Example
+
+**The workspace's 10 most recent Studio tasks:**
+
+```json
+{
+  "surface": "studio",
+  "limit": 10
+}
+```
+
+### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "total": "1",
+  "tasklist": [{
+    "id": "534602",
+    "socketaccesstoken": "Tq4wZ8nLx2RmKc7VbYp3HdJ9sFgNa1",
+    "parameters": { "prompt": "Square banner for a bakery weekend sale, warm colors" },
+    "status": "task_postprocess_end",
+    "pexit": "0",
+    "debugoutput": "",
+    "starttime": "1734514421",
+    "endtime": "1734514452",
+    "elapsedseconds": "31.0000",
+    "totalcost": "0.140000000000",
+    "modelslugowner": "google",
+    "modelslugproject": "nano-banana-pro",
+    "surface": "studio",
+    "outputs": [{
+      "name": "0.png",
+      "contenttype": "image/png",
+      "size": "1843212",
+      "url": "https://cdn1.wiro.ai/.../0.png"
+    }]
+  }]
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `total` | `string` | How many tasks match, counting every page. |
+| `tasklist` | `array` | The tasks of this page, newest first, each with the fields of [Task/Detail](#post-taskdetail), `surface` included. |
+
+### Errors
+
+| Error | When |
+|-------|------|
+| `surface must be one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow.` | `surface` is not one of the nine surfaces |
 
 ## **POST** /Task/Cancel
 
@@ -309,6 +417,16 @@ curl -X POST "https://api.wiro.ai/v1/Task/Detail" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{"taskid": "task-id-here"}'
+```
+
+### curl (List)
+
+```bash
+# List the workspace's 10 most recent Studio tasks
+curl -X POST "https://api.wiro.ai/v1/Task/List" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{"surface": "studio", "limit": 10}'
 ```
 
 ### curl (Cancel/Kill/InputOutputDelete)
@@ -580,6 +698,7 @@ print(response.body);
     "modeldescription": "FLUX.2 [dev] is a 32 billion parameter rectified flow transformer...",
     "modelslugowner": "wiro",
     "modelslugproject": "flux-2-dev",
+    "surface": "api",
     "outputs": [{
       "name": "0.png",
       "contenttype": "image/png",

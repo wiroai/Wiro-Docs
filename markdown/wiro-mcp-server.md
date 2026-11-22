@@ -851,8 +851,11 @@ Model Access rules in full.
 Calls through the hosted MCP server count toward the workspace's
 [spend limits](/docs/spend-limits) on the `mcp` surface, and calls from the Wiro
 browser extensions on the `extension` surface. The
-[self-hosted](/docs/mcp-self-hosted) package's calls count on the `api` surface,
-as calls with its API key. When a limit refuses work (error code `93`), the
+[self-hosted](/docs/mcp-self-hosted) package's calls count on the `api` surface
+for now, as calls with its API key. Messages to Studio and the Workflow Agent
+count on the `studio` and `workflow-agent` surfaces, and workflow runs on
+`workflow`, whichever way they are sent (see
+[Surfaces](/docs/tasks#task-surfaces)). When a limit refuses work (error code `93`), the
 tool returns an error with Wiro's message and a note: nothing ran and nothing
 was charged, and the work should not be tried again until the limit resets or
 someone who manages it raises it. `get_controls` shows the limit and when it

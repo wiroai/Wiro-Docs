@@ -4394,6 +4394,88 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                     <p>Use the <code>totalcost</code> field to track spending per task. For more details on how costs are calculated, see <a href="/docs/pricing">Pricing</a>.</p>
                   </section>
 
+                  <section id="task-surfaces">
+                    <h2>Surfaces</h2>
+                    <p>Every task records its surface: the way its work came in, such as an API key, MCP or Studio. Task/Detail and Task/List return it as <code>surface</code>, and Task/List can list the tasks of one surface. <a href="/docs/spend-limits">Spend limits</a> and <a href="/docs/model-access">Model Access</a> rules use the same surfaces and decide them the same way, so a task's <code>surface</code> is the one its run counted on.</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th><code>surface</code></th>
+                              <th>Label</th>
+                              <th>Covers</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>web</code></td>
+                              <td>Dashboard</td>
+                              <td>The Wiro dashboard, and calls with a signed-in user's Bearer token</td>
+                            </tr>
+                            <tr>
+                              <td><code>api</code></td>
+                              <td>API</td>
+                              <td>Calls with an API key, including <a href="/docs/run-a-model#run-sync"><code>/sync</code></a> and, for now, the <a href="/docs/mcp-self-hosted">Wiro MCP package</a> when you run it yourself</td>
+                            </tr>
+                            <tr>
+                              <td><code>mcp</code></td>
+                              <td>MCP</td>
+                              <td>The hosted <a href="/docs/wiro-mcp-server">Wiro MCP server</a> at <code>mcp.wiro.ai</code>, and the Wiro MCP package when it names itself (see below)</td>
+                            </tr>
+                            <tr>
+                              <td><code>llm-gateway</code></td>
+                              <td>LLM Gateway</td>
+                              <td>The OpenAI and Anthropic compatible <a href="/docs/completions-api">LLM gateway</a> at <code>llm.wiro.ai</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>extension</code></td>
+                              <td>Browser Extension</td>
+                              <td>The Wiro browser extensions</td>
+                            </tr>
+                            <tr>
+                              <td><code>agent</code></td>
+                              <td>Agent</td>
+                              <td>Your deployed agents' own runs</td>
+                            </tr>
+                            <tr>
+                              <td><code>studio</code></td>
+                              <td>Studio</td>
+                              <td><a href="/docs/studio">Studio</a>: the messages you send it and the models it runs for you</td>
+                            </tr>
+                            <tr>
+                              <td><code>workflow-agent</code></td>
+                              <td>Workflow Agent</td>
+                              <td>The <a href="/docs/workflow-agent">Workflow Agent</a>: the messages you send it</td>
+                            </tr>
+                            <tr>
+                              <td><code>workflow</code></td>
+                              <td>Workflow</td>
+                              <td><a href="/docs/workflows">Workflow</a> runs and resumes, and every step they run</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p>The label is the surface's name in the dashboard.</p>
+
+                    <h3>Which Surface Work Gets</h3>
+                    <p>Some work fits more than one surface, such as a workflow run started with an API key. The first match in this order decides:</p>
+                    <ol>
+                      <li><strong>Who does the work</strong>: Studio, the Workflow Agent or one of your deployed agents. Messages to Studio and the Workflow Agent, the other calls to their <code>/Studio</code> and <code>/StudioWorkflow</code> endpoints and the models Studio runs for you count as <code>studio</code> and <code>workflow-agent</code>, and a deployed agent's own calls as <code>agent</code>.</li>
+                      <li><strong>What it is</strong>: a workflow run, its resumes and every step it runs count as <code>workflow</code>. A workflow that a deployed agent, Studio or the Workflow Agent starts keeps that surface instead.</li>
+                      <li><strong>Which client sends it</strong>: the LLM gateway (<code>llm-gateway</code>), a Wiro browser extension (<code>extension</code>) or MCP (<code>mcp</code>).</li>
+                      <li><strong>Which credential it uses</strong>: an API key (<code>api</code>), else a signed-in session (<code>web</code>).</li>
+                    </ol>
+                    <p>So a model run started with an API key counts as <code>api</code>, a message to Studio sent with the same key as <code>studio</code>, and a workflow run started through MCP as <code>workflow</code>.</p>
+
+                    <h3>Clients That Name Themselves</h3>
+                    <p>The Wiro MCP package (<code>@wiro-ai/wiro-mcp</code>) counts as <code>mcp</code> when it names itself with the header <code>x-wiro-client: wiro-mcp/&lt;version&gt;</code>. The package does not send this header yet, so the runs of a package you run yourself count as <code>api</code> for now. A client's name for itself is its own word: anyone who holds the API key can leave the header out. A spend limit or Model Access rule that must hold whoever uses a key belongs on the key itself, with scope <code>project</code>.</p>
+
+                    <h3>Older Tasks</h3>
+                    <p>Tasks from before surfaces were recorded have one only where it is certain: workflow steps, the runs of deployed agents, Studio and the Workflow Agent, and runs from MCP, the LLM gateway and the browser extensions. Runs with an API key and dashboard runs have one from late October 2026 on. Other tasks have <code>surface: null</code>: the dashboard shows no label for them, and a <code>surface</code> filter never lists them.</p>
+                  </section>
+
                   <section id="llm-models">
                     <h2>LLM Models</h2>
                     <p>For LLM requests, <code>outputs</code> contains a structured entry with <code>contenttype: "raw"</code> and ordered <code>content.segments</code>; <code>debugoutput</code> contains the merged plain text. Use the representation that matches your UI.</p>
@@ -4503,6 +4585,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
     "modeldescription": "FLUX.2 [dev] is a 32 billion parameter rectified flow transformer...",
     "modelslugowner": "wiro",
     "modelslugproject": "flux-2-dev",
+    "surface": "api",
     "outputs": [{
       "name": "0.png",
       "contenttype": "image/png",
@@ -4593,12 +4676,164 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                             <td>Model project slug (e.g. <code>"nano-banana-pro"</code>).</td>
                           </tr>
                           <tr>
+                            <td><code>surface</code></td>
+                            <td><code>string | null</code></td>
+                            <td>The way the task came in, such as <code>"api"</code> (see <a href="#task-surfaces">Surfaces</a>). <code>null</code> for an older task whose surface is not known for certain.</td>
+                          </tr>
+                          <tr>
                             <td><code>outputs</code></td>
                             <td><code>array</code></td>
                             <td>Output files (CDN URLs) or structured LLM content (<code>contenttype: "raw"</code>).</td>
                           </tr>
                         </tbody>
                       </table>
+                    </div>
+                  </section>
+
+                  <section id="task-list">
+                    <h2>
+                      <span class="endpoint-badge post">POST</span>
+                      /Task/List
+                    </h2>
+                    <p>Lists the tasks of the call's workspace, newest first. A team project's API key lists the team's tasks, a personal project's key your personal tasks, and a signed-in call the tasks of the team named in <code>x-team-guid</code>, or your personal tasks without it. Every field is optional: send <code>{}</code> for the 20 most recent tasks.</p>
+
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Parameter</th>
+                              <th>Type</th>
+                              <th>Required</th>
+                              <th>Description</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>surface</code></td>
+                              <td>string</td>
+                              <td>No</td>
+                              <td>Only the tasks of one <a href="#task-surfaces">surface</a>: <code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code>, <code>agent</code>, <code>studio</code>, <code>workflow-agent</code> or <code>workflow</code>. Empty or left out: every surface</td>
+                            </tr>
+                            <tr>
+                              <td><code>type</code></td>
+                              <td>string</td>
+                              <td>No</td>
+                              <td><code>"model"</code> for model runs, <code>"train"</code> for training runs, or <code>"running"</code> for the tasks that have not ended and were not cancelled, queued ones included. Left out: every task</td>
+                            </tr>
+                            <tr>
+                              <td><code>projectid</code></td>
+                              <td>string</td>
+                              <td>No</td>
+                              <td>Only the tasks of this project, by its <code>id</code> from <code>/Project/List</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>modelid</code></td>
+                              <td>string</td>
+                              <td>No</td>
+                              <td>Only the runs of this model, by its <code>id</code> from <a href="/docs/models"><code>/Tool/List</code></a></td>
+                            </tr>
+                            <tr>
+                              <td><code>modelName</code></td>
+                              <td>string</td>
+                              <td>No</td>
+                              <td>Only the runs of the models whose owner or slug contains this text, ignoring case. When no model matches, the list is empty and <code>errors</code> holds <code>There is no task yet.</code> with code <code>1</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>start</code></td>
+                              <td>number</td>
+                              <td>No</td>
+                              <td>How many tasks to skip, for the next page. Default: <code>0</code></td>
+                            </tr>
+                            <tr>
+                              <td><code>limit</code></td>
+                              <td>number</td>
+                              <td>No</td>
+                              <td>How many tasks to return. Default: <code>20</code>, maximum <code>1000</code></td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p>Without <code>surface</code>, the list leaves out the tasks that workflow runs start for their steps. With <code>surface</code>, it lists every task of that surface, workflow steps included, so <code>"surface": "workflow"</code> lists the steps of your workflow runs.</p>
+
+                    <h3>Example</h3>
+                    <p><strong>The workspace's 10 most recent Studio tasks:</strong></p>
+                    <pre><code class="language-json">{
+  "surface": "studio",
+  "limit": 10
+}</code></pre>
+
+                    <h3>Response</h3>
+                    <pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "total": "1",
+  "tasklist": [{
+    "id": "534602",
+    "socketaccesstoken": "Tq4wZ8nLx2RmKc7VbYp3HdJ9sFgNa1",
+    "parameters": { "prompt": "Square banner for a bakery weekend sale, warm colors" },
+    "status": "task_postprocess_end",
+    "pexit": "0",
+    "debugoutput": "",
+    "starttime": "1734514421",
+    "endtime": "1734514452",
+    "elapsedseconds": "31.0000",
+    "totalcost": "0.140000000000",
+    "modelslugowner": "google",
+    "modelslugproject": "nano-banana-pro",
+    "surface": "studio",
+    "outputs": [{
+      "name": "0.png",
+      "contenttype": "image/png",
+      "size": "1843212",
+      "url": "https://cdn1.wiro.ai/.../0.png"
+    }]
+  }]
+}</code></pre>
+
+                    <div class="docs-comparison-table">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Field</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td><code>total</code></td>
+                            <td><code>string</code></td>
+                            <td>How many tasks match, counting every page.</td>
+                          </tr>
+                          <tr>
+                            <td><code>tasklist</code></td>
+                            <td><code>array</code></td>
+                            <td>The tasks of this page, newest first, each with the fields of <a href="#task-detail">Task/Detail</a>, <code>surface</code> included.</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <h3>Errors</h3>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Error</th>
+                              <th>When</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>surface must be one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow.</code></td>
+                              <td><code>surface</code> is not one of the nine surfaces</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </section>
 
@@ -4753,6 +4988,11 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                       "code": "# Get task details by task token\ncurl -X POST \"https://api.wiro.ai/v1/Task/Detail\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"tasktoken\": \"abc123-def456-ghi789\"}'\n\n# Or by task ID\ncurl -X POST \"https://api.wiro.ai/v1/Task/Detail\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"taskid\": \"task-id-here\"}'"
                     },
                     {
+                      "label": "curl (List)",
+                      "language": "bash",
+                      "code": "# List the workspace's 10 most recent Studio tasks\ncurl -X POST \"https://api.wiro.ai/v1/Task/List\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"surface\": \"studio\", \"limit\": 10}'"
+                    },
+                    {
                       "label": "curl (Cancel/Kill/InputOutputDelete)",
                       "language": "bash",
                       "code": "# Cancel a queued task\ncurl -X POST \"https://api.wiro.ai/v1/Task/Cancel\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"taskid\": \"534574\"}'\n\n# Kill a running task\ncurl -X POST \"https://api.wiro.ai/v1/Task/Kill\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"socketaccesstoken\": \"abc123-def456-ghi789\"}'\n\n# Delete task input and output files\ncurl -X POST \"https://api.wiro.ai/v1/Task/InputOutputDelete\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"tasktoken\": \"abc123-def456-ghi789\"}'"
@@ -4800,7 +5040,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                     {
                       "label": "Response",
                       "language": "json",
-                      "code": "{\n  \"result\": true,\n  \"errors\": [],\n  \"total\": \"1\",\n  \"tasklist\": [{\n    \"id\": \"534574\",\n    \"socketaccesstoken\": \"eDcCm5yyUfIvMFspTwww49OUfgXkQt\",\n    \"parameters\": { \"prompt\": \"Hello, world!\" },\n    \"status\": \"task_postprocess_end\",\n    \"pexit\": \"0\",\n    \"debugoutput\": \"\",\n    \"starttime\": \"1734513809\",\n    \"endtime\": \"1734513813\",\n    \"elapsedseconds\": \"6.0000\",\n    \"totalcost\": \"0.003510000000\",\n    \"modeldescription\": \"FLUX.2 [dev] is a 32 billion parameter rectified flow transformer...\",\n    \"modelslugowner\": \"wiro\",\n    \"modelslugproject\": \"flux-2-dev\",\n    \"outputs\": [{\n      \"name\": \"0.png\",\n      \"contenttype\": \"image/png\",\n      \"size\": \"202472\",\n      \"url\": \"https://cdn1.wiro.ai/.../0.png\"\n    }]\n  }]\n}"
+                      "code": "{\n  \"result\": true,\n  \"errors\": [],\n  \"total\": \"1\",\n  \"tasklist\": [{\n    \"id\": \"534574\",\n    \"socketaccesstoken\": \"eDcCm5yyUfIvMFspTwww49OUfgXkQt\",\n    \"parameters\": { \"prompt\": \"Hello, world!\" },\n    \"status\": \"task_postprocess_end\",\n    \"pexit\": \"0\",\n    \"debugoutput\": \"\",\n    \"starttime\": \"1734513809\",\n    \"endtime\": \"1734513813\",\n    \"elapsedseconds\": \"6.0000\",\n    \"totalcost\": \"0.003510000000\",\n    \"modeldescription\": \"FLUX.2 [dev] is a 32 billion parameter rectified flow transformer...\",\n    \"modelslugowner\": \"wiro\",\n    \"modelslugproject\": \"flux-2-dev\",\n    \"surface\": \"api\",\n    \"outputs\": [{\n      \"name\": \"0.png\",\n      \"contenttype\": \"image/png\",\n      \"size\": \"202472\",\n      \"url\": \"https://cdn1.wiro.ai/.../0.png\"\n    }]\n  }]\n}"
                     }
                   ]
                 </script>
@@ -7119,7 +7359,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                             </tr>
                             <tr>
                               <td><code>surface</code></td>
-                              <td><code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code> or <code>agent</code></td>
+                              <td><code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code>, <code>agent</code>, <code>studio</code>, <code>workflow-agent</code> or <code>workflow</code></td>
                               <td>One way in (see Surfaces below)</td>
                             </tr>
                             <tr>
@@ -7147,17 +7387,17 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                             <tr>
                               <td><code>web</code></td>
                               <td>the dashboard</td>
-                              <td>The Wiro dashboard, including Studio and the Workflow Agent used there</td>
+                              <td>The Wiro dashboard, and calls with a signed-in user's Bearer token</td>
                             </tr>
                             <tr>
                               <td><code>api</code></td>
                               <td>the API</td>
-                              <td>Calls with an API key, including <a href="/docs/run-a-model#run-sync"><code>/sync</code></a> and the <a href="/docs/mcp-self-hosted">Wiro MCP package</a> when you run it yourself</td>
+                              <td>Calls with an API key, including <a href="/docs/run-a-model#run-sync"><code>/sync</code></a> and, for now, the <a href="/docs/mcp-self-hosted">Wiro MCP package</a> when you run it yourself</td>
                             </tr>
                             <tr>
                               <td><code>mcp</code></td>
                               <td>MCP</td>
-                              <td>The hosted <a href="/docs/wiro-mcp-server">Wiro MCP server</a> at <code>mcp.wiro.ai</code></td>
+                              <td>The hosted <a href="/docs/wiro-mcp-server">Wiro MCP server</a> at <code>mcp.wiro.ai</code>, and the Wiro MCP package when it names itself (see <a href="/docs/tasks#task-surfaces">Surfaces</a>)</td>
                             </tr>
                             <tr>
                               <td><code>llm-gateway</code></td>
@@ -7174,11 +7414,27 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                               <td>agents</td>
                               <td>Your deployed agents' own runs</td>
                             </tr>
+                            <tr>
+                              <td><code>studio</code></td>
+                              <td>Studio</td>
+                              <td><a href="/docs/studio">Studio</a>: the messages you send it and the models it runs for you</td>
+                            </tr>
+                            <tr>
+                              <td><code>workflow-agent</code></td>
+                              <td>the Workflow Agent</td>
+                              <td>The <a href="/docs/workflow-agent">Workflow Agent</a>: the messages you send it</td>
+                            </tr>
+                            <tr>
+                              <td><code>workflow</code></td>
+                              <td>workflows</td>
+                              <td><a href="/docs/workflows">Workflow</a> runs and resumes, and every step they run</td>
+                            </tr>
                           </tbody>
                         </table>
                       </div>
                     </div>
-                    <p>Studio and Workflow Agent messages count on the surface they were sent from. Refusal messages and <code>/SpendLimit/Usage</code> name a surface by its label.</p>
+                    <p>When work fits more than one surface, the first match in this order decides: who does it (Studio, the Workflow Agent or a deployed agent), what it is (a workflow run and its steps, unless a deployed agent, Studio or the Workflow Agent started it), which client sends it (the LLM gateway, a browser extension or MCP), and last which credential it uses (an API key, else a signed-in session). So a message to Studio sent with an API key counts on <code>studio</code>, and a workflow run started with an API key or through MCP on <code>workflow</code>. Each task records the surface it counted on: see <a href="/docs/tasks#task-surfaces">Surfaces</a>. Refusal messages and <code>/SpendLimit/Usage</code> name a surface by its label.</p>
+                    <p>Studio, the Workflow Agent and workflows used to have no surface of their own. Studio and Workflow Agent work counted on <code>web</code>, or on <code>api</code> when it was sent with an API key, and a workflow run counted on the surface that started it. Limits that were already set were not changed, so a limit on <code>web</code> or <code>api</code> no longer covers this work: to cap it by surface, set a limit on <code>studio</code>, <code>workflow-agent</code> or <code>workflow</code>.</p>
 
                     <h3>Periods and Amounts</h3>
                     <p>A limit's <code>period</code> is <code>month</code> (the default), which resets on the 1st of each month at 00:00 UTC, or <code>day</code>, which resets every day at 00:00 UTC. A scope and target can have one monthly limit and one daily limit.</p>
@@ -7186,7 +7442,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
 
                     <h3>What Counts</h3>
                     <p>Every charge to the wallet for usage counts: model runs, workflow runs, realtime sessions, Studio, the Workflow Agent, agent plans, upgrades and credit packs. Deposits are not spending.</p>
-                    <p>The models Studio runs for you are checked and counted like the runs you start yourself: against the account's or the team's limits, your member limit in a team, the limit of the API key you sent the message with and the limit of the surface you sent it from. What the chat of Studio and the Workflow Agent costs counts toward your limits too.</p>
+                    <p>The models Studio runs for you are checked and counted like the runs you start yourself: against the account's or the team's limits, your member limit in a team, the limit of the turn's project (the API key you sent the message with, or the workspace's <a href="/docs/studio#costs">Studio project</a> for a message sent from wiro.ai) and the limit of the <code>studio</code> surface. What the chat of Studio and the Workflow Agent costs counts toward your limits too, on the <code>studio</code> and <code>workflow-agent</code> surfaces.</p>
 
                     <h3>When Limits Are Checked</h3>
                     <p>Limits are checked before work starts:</p>
@@ -7243,7 +7499,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                             </tr>
                             <tr>
                               <td><code>surface</code></td>
-                              <td><code>The monthly spend limit for</code> and the surface's label, for example <code>The monthly spend limit for the LLM gateway</code></td>
+                              <td><code>The monthly spend limit for</code> and the surface's label, for example <code>The monthly spend limit for the LLM gateway</code> or <code>The monthly spend limit for the Workflow Agent</code></td>
                             </tr>
                             <tr>
                               <td><code>agent</code></td>
@@ -7463,7 +7719,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                               <td><code>target</code></td>
                               <td>string</td>
                               <td>For every scope but <code>account</code></td>
-                              <td>The member's <code>useruuid</code>, the project's <code>id</code>, the surface (<code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code> or <code>agent</code>) or the agent's guid. Leave it out for <code>account</code></td>
+                              <td>The member's <code>useruuid</code>, the project's <code>id</code>, the surface (<code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code>, <code>agent</code>, <code>studio</code>, <code>workflow-agent</code> or <code>workflow</code>) or the agent's guid. Leave it out for <code>account</code></td>
                             </tr>
                             <tr>
                               <td><code>period</code></td>
@@ -7557,7 +7813,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                               <td>No <code>target</code> for a <code>member</code>, <code>project</code>, <code>surface</code> or <code>agent</code> limit</td>
                             </tr>
                             <tr>
-                              <td><code>A surface is one of web, api, mcp, llm-gateway, extension, agent.</code></td>
+                              <td><code>A surface is one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow.</code></td>
                               <td>A <code>surface</code> limit with another <code>target</code></td>
                             </tr>
                             <tr>
@@ -7826,12 +8082,15 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
     "totalusd": 248.7,
     "heldusd": 3.5,
     "surfaces": [
-      { "surface": "web", "label": "the dashboard", "spentusd": 40.1 },
+      { "surface": "web", "label": "the dashboard", "spentusd": 21.4 },
       { "surface": "api", "label": "the API", "spentusd": 168.2, "heldusd": 3.5 },
       { "surface": "mcp", "label": "MCP", "spentusd": 12.5 },
       { "surface": "llm-gateway", "label": "the LLM gateway", "spentusd": 7.9 },
       { "surface": "extension", "label": "the browser extensions", "spentusd": 0 },
-      { "surface": "agent", "label": "agents", "spentusd": 20 }
+      { "surface": "agent", "label": "agents", "spentusd": 20 },
+      { "surface": "studio", "label": "Studio", "spentusd": 14.5 },
+      { "surface": "workflow-agent", "label": "the Workflow Agent", "spentusd": 0.8 },
+      { "surface": "workflow", "label": "workflows", "spentusd": 3.4 }
     ],
     "members": [
       { "useruuid": "3f5a9c20-6d41-4b8e-a1c7-5e9d0f2b4c61", "label": "Jane Doe", "spentusd": 120.5 },
@@ -7875,7 +8134,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                             </tr>
                             <tr>
                               <td><code>usage.surfaces</code></td>
-                              <td>One row per surface, always in the order <code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code>, <code>agent</code>, with its label</td>
+                              <td>One row per surface, always all nine in the order <code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code>, <code>agent</code>, <code>studio</code>, <code>workflow-agent</code>, <code>workflow</code>, with its label</td>
                             </tr>
                             <tr>
                               <td><code>usage.members</code></td>
@@ -7945,7 +8204,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                             </tr>
                             <tr>
                               <td><code>surface</code></td>
-                              <td><code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code> or <code>agent</code></td>
+                              <td><code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code>, <code>agent</code>, <code>studio</code>, <code>workflow-agent</code> or <code>workflow</code></td>
                               <td>One way in (see Surfaces below)</td>
                             </tr>
                             <tr>
@@ -7971,15 +8230,15 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                           <tbody>
                             <tr>
                               <td><code>web</code></td>
-                              <td>The Wiro dashboard, including Studio and the Workflow Agent used there</td>
+                              <td>The Wiro dashboard, and calls with a signed-in user's Bearer token</td>
                             </tr>
                             <tr>
                               <td><code>api</code></td>
-                              <td>Calls with an API key, including <a href="/docs/run-a-model#run-sync"><code>/sync</code></a> and the <a href="/docs/mcp-self-hosted">Wiro MCP package</a> when you run it yourself</td>
+                              <td>Calls with an API key, including <a href="/docs/run-a-model#run-sync"><code>/sync</code></a> and, for now, the <a href="/docs/mcp-self-hosted">Wiro MCP package</a> when you run it yourself</td>
                             </tr>
                             <tr>
                               <td><code>mcp</code></td>
-                              <td>The hosted <a href="/docs/wiro-mcp-server">Wiro MCP server</a> at <code>mcp.wiro.ai</code></td>
+                              <td>The hosted <a href="/docs/wiro-mcp-server">Wiro MCP server</a> at <code>mcp.wiro.ai</code>, and the Wiro MCP package when it names itself (see <a href="/docs/tasks#task-surfaces">Surfaces</a>)</td>
                             </tr>
                             <tr>
                               <td><code>llm-gateway</code></td>
@@ -7993,10 +8252,24 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                               <td><code>agent</code></td>
                               <td>Your deployed agents' own runs</td>
                             </tr>
+                            <tr>
+                              <td><code>studio</code></td>
+                              <td><a href="/docs/studio">Studio</a>: the chat model of each message you send it, and the models it runs for you</td>
+                            </tr>
+                            <tr>
+                              <td><code>workflow-agent</code></td>
+                              <td>The <a href="/docs/workflow-agent">Workflow Agent</a>: the chat model of each message you send it</td>
+                            </tr>
+                            <tr>
+                              <td><code>workflow</code></td>
+                              <td><a href="/docs/workflows">Workflow</a> runs and resumes, and every step they run</td>
+                            </tr>
                           </tbody>
                         </table>
                       </div>
                     </div>
+                    <p>A run counts on one surface, decided the same way as for <a href="/docs/spend-limits">spend limits</a>: the first match among who does it (Studio, the Workflow Agent or a deployed agent), what it is (a workflow run and its steps, unless a deployed agent, Studio or the Workflow Agent started it), which client sends it (the LLM gateway, a browser extension or MCP), and last which credential it uses (an API key, else a signed-in session). So a message to Studio sent with an API key counts on <code>studio</code>, and a workflow run started with an API key or through MCP on <code>workflow</code>. See <a href="/docs/tasks#task-surfaces">Surfaces</a>.</p>
+                    <p>Studio, the Workflow Agent and workflows used to have no surface of their own. Studio and Workflow Agent work counted on <code>web</code>, or on <code>api</code> when it was sent with an API key, and a workflow run counted on the surface that started it. Rules that were already set were not changed, so a rule on <code>web</code> or <code>api</code> no longer covers this work: to decide its models by surface, set a rule on <code>studio</code>, <code>workflow-agent</code> or <code>workflow</code>.</p>
 
                     <h3>Everything Else</h3>
                     <p>Every rule has an Everything Else setting, <code>access</code>. It decides the models the rule names neither one by one nor by category:</p>
@@ -8080,7 +8353,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                     <ul>
                       <li>Model runs: <code>/Run</code> and its <code>/sync</code> wait, realtime sessions, the <a href="/docs/completions-api">LLM gateway</a>, the <a href="/docs/wiro-mcp-server">MCP server</a>, the browser extensions and the dashboard</li>
                       <li>Workflow runs and resumes: every model step that will run must be allowed. Steps that will not run, such as the steps after a breakpoint, are not checked</li>
-                      <li>Studio and the Workflow Agent: the models Studio runs for you, and the chat model of each message you send to Studio or the Workflow Agent, follow your own rules like the runs you start yourself: the account's or the team's rule, your member rule in a team, the rule of the API key you sent the message with and the rule of the surface you sent it from. A message whose chat model a rule blocks, the <code>model</code> it names or the default chat model when it names none, is refused with code <code>92</code> before anything runs. Chat models are LLM &amp; Chat models: a rule that blocks LLM &amp; Chat blocks them unless it allows the chat model by name, and a rule that lets only selected models run blocks them unless it allows LLM &amp; Chat or the chat model. The Workflow Agent runs nothing but its chat model. <a href="/docs/studio#post-studiostatus"><code>/Studio/Status</code></a> and <a href="/docs/workflow-agent#post-studioworkflowstatus"><code>/StudioWorkflow/Status</code></a> list the chat models your rules block</li>
+                      <li>Studio and the Workflow Agent: the models Studio runs for you, and the chat model of each message you send to Studio or the Workflow Agent, follow your own rules like the runs you start yourself: the account's or the team's rule, your member rule in a team, the rule of the turn's project (the API key you sent the message with, or the workspace's <a href="/docs/studio#costs">Studio project</a> for a message sent from wiro.ai) and the rule of the <code>studio</code> surface, or of <code>workflow-agent</code> for a message to the Workflow Agent. A message whose chat model a rule blocks, the <code>model</code> it names or the default chat model when it names none, is refused with code <code>92</code> before anything runs. Chat models are LLM &amp; Chat models: a rule that blocks LLM &amp; Chat blocks them unless it allows the chat model by name, and a rule that lets only selected models run blocks them unless it allows LLM &amp; Chat or the chat model. The Workflow Agent runs nothing but its chat model. <a href="/docs/studio#post-studiostatus"><code>/Studio/Status</code></a> and <a href="/docs/workflow-agent#post-studioworkflowstatus"><code>/StudioWorkflow/Status</code></a> list the chat models your rules block</li>
                       <li>The models your deployed agents run through Wiro</li>
                       <li>An agent's chat model: choosing one in the agent's settings, or sending <code>model</code> with <code>Message/Send</code>, follows that agent's own rule. If its rule blocks the model the agent already uses, its model calls are refused and the turn ends with <code>[MODEL_NOT_ALLOWED]</code>. A Scheduled Task whose model the rule blocks is paused rather than failed, and runs again at its next scheduled time once the model is allowed or another one is chosen</li>
                       <li>An agent's built-in voice: transcription of the voice notes people send the agent, and the voice replies it sends, follow that agent's own rule as Audio &amp; Speech models. A rule that blocks Audio &amp; Speech, or that lets only selected models run without allowing Audio &amp; Speech, blocks them, even when it allows LLM &amp; Chat. Voice notes are then not transcribed, and the agent replies in text. An agent that chats on a Gemini model has its voice notes transcribed by <code>google/gemini-3-flash</code>, so a rule that names that model decides them too. A rule that does not name that model blocks those voice notes unless it lets both Audio &amp; Speech and LLM &amp; Chat models run</li>
@@ -8153,7 +8426,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                             </tr>
                             <tr>
                               <td><code>surface</code></td>
-                              <td>The surface's name: <code>The dashboard</code>, <code>The API</code>, <code>MCP</code>, <code>The LLM gateway</code>, <code>The browser extensions</code> or <code>Agents</code></td>
+                              <td>The surface's name: <code>The dashboard</code>, <code>The API</code>, <code>MCP</code>, <code>The LLM gateway</code>, <code>The browser extensions</code>, <code>Agents</code>, <code>Studio</code>, <code>The Workflow Agent</code> or <code>Workflows</code>, for example <code>Studio can't use openai/gpt-6-2-astra.</code></td>
                             </tr>
                             <tr>
                               <td><code>agent</code></td>
@@ -8363,7 +8636,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                               <td><code>target</code></td>
                               <td>string</td>
                               <td>For every scope but <code>account</code></td>
-                              <td>The member's <code>useruuid</code>, the project's <code>id</code>, the surface (<code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code> or <code>agent</code>) or the agent's guid. Leave it out for <code>account</code></td>
+                              <td>The member's <code>useruuid</code>, the project's <code>id</code>, the surface (<code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code>, <code>agent</code>, <code>studio</code>, <code>workflow-agent</code> or <code>workflow</code>) or the agent's guid. Leave it out for <code>account</code></td>
                             </tr>
                             <tr>
                               <td><code>access</code></td>
@@ -8467,7 +8740,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                               <td>No <code>target</code> for a <code>member</code>, <code>project</code>, <code>surface</code> or <code>agent</code> rule</td>
                             </tr>
                             <tr>
-                              <td><code>A surface is one of web, api, mcp, llm-gateway, extension, agent.</code></td>
+                              <td><code>A surface is one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow.</code></td>
                               <td>A <code>surface</code> rule with another <code>target</code></td>
                             </tr>
                             <tr>
@@ -8769,7 +9042,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                               <td><code>surface</code></td>
                               <td>string</td>
                               <td>No</td>
-                              <td>Where the run comes from: <code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code> or <code>agent</code>. Default: <code>web</code>, a dashboard run. With <code>project</code> the default is <code>api</code>, and with <code>agent</code> the surface is always <code>agent</code>. The <code>agent</code> surface needs an agent: send its guid in <code>agent</code></td>
+                              <td>Where the run comes from: <code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code>, <code>agent</code>, <code>studio</code>, <code>workflow-agent</code> or <code>workflow</code>. Default: <code>web</code>, a dashboard run. With <code>project</code> the default is <code>api</code>, and with <code>agent</code> the surface is always <code>agent</code>. The <code>agent</code> surface needs an agent: send its guid in <code>agent</code></td>
                             </tr>
                             <tr>
                               <td><code>agent</code></td>
@@ -8945,7 +9218,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                               <td>No model listed on Wiro has that <code>owner/slug</code> or id</td>
                             </tr>
                             <tr>
-                              <td><code>A surface is one of web, api, mcp, llm-gateway, extension, agent.</code></td>
+                              <td><code>A surface is one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow.</code></td>
                               <td>Another <code>surface</code></td>
                             </tr>
                             <tr>
@@ -10706,7 +10979,7 @@ codex mcp add wiro --url https://mcp.wiro.ai/v1 --bearer-token-env-var WIRO_API_
                     <p>Agent plans, moves to a larger plan and credit packs are charged to your wallet, so <code>deploy_agent</code> and <code>manage_agent_billing</code> first return the price (for a move inside a billing period, the amount Wiro works out for the time left). They act only when they are called again with <code>confirm: true</code> and <code>confirm_charge_usd</code>, the approved amount, after you agree. If the price changed in between, nothing is charged and you get a new quote. Turning an agent's skills on or off with <code>apply_agent_skills</code> costs nothing, and so does connecting its connectors, since every plan includes every skill and connector, and a move to a smaller plan starts with the next renewal, with nothing charged or refunded.</p>
                     <p>Deleting a workflow, an agent, a conversation or a connector connection also waits for <code>confirm: true</code>, and so do replacing a working connector connection, connecting an agent or a connector to a Wiro project with <code>bind_agent_project</code> or <code>connect_agent_connector</code>, and replacing a workflow's steps with <code>update_workflow</code> or <code>save_workflow_from_agent</code>: you see a summary of the change first, with the old and new value of each step input that changes. Changing a spend limit or a Model Access rule with <code>manage_spend_limit</code> or <code>manage_model_access</code> also waits for <code>confirm: true</code>: you see the old and new values first and, for a limit, what was spent this period. No tool adds funds or takes a card payment. Funds are added in the Wiro dashboard, and an agent plan paid by card moves to a larger plan or is topped up there.</p>
                     <p>The connected project decides the workspace: a personal project uses your personal wallet, a team project uses the team wallet. <code>get_account</code> shows which one, its balance and its spend limits, and <code>get_controls</code> its spend limits and Model Access rules in full.</p>
-                    <p>Calls through the hosted MCP server count toward the workspace's <a href="/docs/spend-limits">spend limits</a> on the <code>mcp</code> surface, and calls from the Wiro browser extensions on the <code>extension</code> surface. The <a href="/docs/mcp-self-hosted">self-hosted</a> package's calls count on the <code>api</code> surface, as calls with its API key. When a limit refuses work (error code <code>93</code>), the tool returns an error with Wiro's message and a note: nothing ran and nothing was charged, and the work should not be tried again until the limit resets or someone who manages it raises it. <code>get_controls</code> shows the limit and when it resets, and <code>manage_spend_limit</code> changes it after a change summary. Limits are also managed under <a href="https://wiro.ai/panel/controls/spend-limits" target="_blank">Controls &gt; Spend Limits</a>.</p>
+                    <p>Calls through the hosted MCP server count toward the workspace's <a href="/docs/spend-limits">spend limits</a> on the <code>mcp</code> surface, and calls from the Wiro browser extensions on the <code>extension</code> surface. The <a href="/docs/mcp-self-hosted">self-hosted</a> package's calls count on the <code>api</code> surface for now, as calls with its API key. Messages to Studio and the Workflow Agent count on the <code>studio</code> and <code>workflow-agent</code> surfaces, and workflow runs on <code>workflow</code>, whichever way they are sent (see <a href="/docs/tasks#task-surfaces">Surfaces</a>). When a limit refuses work (error code <code>93</code>), the tool returns an error with Wiro's message and a note: nothing ran and nothing was charged, and the work should not be tried again until the limit resets or someone who manages it raises it. <code>get_controls</code> shows the limit and when it resets, and <code>manage_spend_limit</code> changes it after a change summary. Limits are also managed under <a href="https://wiro.ai/panel/controls/spend-limits" target="_blank">Controls &gt; Spend Limits</a>.</p>
                     <p>The workspace's <a href="/docs/model-access">Model Access</a> rules apply to these calls too, on the same surfaces. A model a rule blocks is refused before anything runs (error code <code>92</code>), and the tool returns an error with Wiro's message, which names the rule. A message to Studio or the Workflow Agent is refused the same way when a rule blocks its chat model, the one it names or the default. Nothing ran and nothing was charged. <code>check_model_access</code> shows why the model is blocked, and <code>manage_model_access</code> changes the rule after a change summary. Rules are also managed under <a href="https://wiro.ai/panel/controls/model-access" target="_blank">Controls &gt; Model Access</a>.</p>
                   </section>
 
@@ -11851,7 +12124,7 @@ WIRO_API_SECRET=your-api-secret</code></pre>
                       </tbody>
                     </table>
                     <h3 id="self-hosted-controls">Controls</h3>
-                    <p>These tools read and change the workspace's <a href="/docs/spend-limits">spend limits</a> and <a href="/docs/model-access">Model Access</a> rules. They come with <code>@wiro-ai/wiro-mcp</code> 1.9.0 and later. The self-hosted server's calls count on the <code>api</code> surface, as calls with its API key. Its Controls tools change limits and rules only when the person who created the key's project can change them: a personal account's owner, or in a team a team admin or the organization owner.</p>
+                    <p>These tools read and change the workspace's <a href="/docs/spend-limits">spend limits</a> and <a href="/docs/model-access">Model Access</a> rules. They come with <code>@wiro-ai/wiro-mcp</code> 1.9.0 and later. The self-hosted server's calls count on the <code>api</code> surface for now, as calls with its API key, except its messages to Studio and the Workflow Agent and its workflow runs, which count on <code>studio</code>, <code>workflow-agent</code> and <code>workflow</code> (see <a href="/docs/tasks#task-surfaces">Surfaces</a>). Its Controls tools change limits and rules only when the person who created the key's project can change them: a personal account's owner, or in a team a team admin or the organization owner.</p>
                     <table>
                       <thead>
                         <tr>
@@ -12814,6 +13087,7 @@ import type {
 <li>The expected cost of a run is the sum of the model prices for the settings each step uses, from <a href="/docs/models">Tool/Detail</a>. A run's <code>totalcost</code> shows the list price of the steps finished so far, and once the run has ended <code>chargedcost</code> and <code>discountamount</code> show what the wallet paid. <code>chargedcost</code> is <code>null</code> while a step's charge is still settling.</li>
 <li>The workspace's <a href="/docs/spend-limits">spend limits</a> apply when a run starts or resumes, and again before each step starts. A run is refused with code <code>93</code> when its known price would go over a limit that covers it, or once that limit has no room left. Each step is checked the same way with its own price, and holds that price until it is charged. A step a limit refuses fails with cause <code>spend-limit-reached</code>, and the run ends as <code>failed</code>: resume it with <a href="#post-workflowrunresume">RunResume</a> once the limit allows.</li>
 <li>The workspace's <a href="/docs/model-access">Model Access</a> rules apply when a run starts or resumes: when a rule blocks the model of a step that will run, the run is refused with code <code>92</code> before anything runs, and the message names that model. When the workflow's steps are hidden from you, as on a protected workflow from another workspace, the message names your rule but not the model, for example <code>Your account can't use one of the models this workflow runs. Model Access rules decide which models can run.</code> Steps that will not run, such as the steps after a breakpoint, are not checked.</li>
+<li>A run, its resumes and every step it runs count on the <code>workflow</code> <a href="/docs/tasks#task-surfaces">surface</a> of spend limits and Model Access, whether you start it with an API key, through MCP or in the dashboard, and each step's task has <code>surface</code> <code>workflow</code>. A run that a deployed agent, Studio or the Workflow Agent starts keeps that surface instead. Before workflows had their own surface, a run counted on the surface it was started from, such as <code>api</code>.</li>
 </ul>
 <h2 id="post-workflowlist"><strong>POST</strong> /Workflow/List</h2>
 <p>Lists the workflows of the key's workspace, or searches the public gallery.</p>
@@ -13842,13 +14116,14 @@ import type {
 <h2 id="costs">Costs</h2>
 <ul>
 <li><strong>$10 to start a turn.</strong> Send and SendForm need at least $10 spendable in the wallet of the key's workspace. Below that, the message is refused with code <code>97</code> (<code>Insufficient balance</code>), with <code>walletUsd</code> and <code>minTopup</code> in the response, and nothing is charged.</li>
-<li><strong>Chat.</strong> Each turn is charged after it ends for the tokens it used, at the chat model's rates in <a href="#post-studioworkflowstatus">StudioWorkflow/Status</a> (credits per 1M tokens; 1 credit is $0.01). The reply's <code>tokencost</code> shows the charge in credits: <code>tokencost / 100</code> is the amount in USD.</li>
-<li><strong>Spend limits and Model Access.</strong> The chat counts toward your workspace's <a href="/docs/spend-limits">spend limits</a>, and its chat model follows your <a href="/docs/model-access">Model Access</a> rules: the account's or the team's, your own in a team, and those of the API key and the surface you sent the message with. A message whose chat model a rule blocks is refused with code <code>92</code> before anything runs.</li>
+<li><strong>Project.</strong> A call with an API key runs on that key's project. Messages sent from wiro.ai run on the workspace's Studio project, which the Workflow Agent shares with <a href="/docs/studio#costs">Studio</a>: the first Studio or Workflow Agent message from wiro.ai creates it, or uses the workspace's existing project named "Studio". <a href="#post-studioworkflowstatus">StudioWorkflow/Status</a> shows it, and <a href="/docs/studio#post-studioprojectset">Studio/ProjectSet</a> changes it.</li>
+<li><strong>Chat.</strong> Each turn is charged after it ends for the tokens it used, at the chat model's rates in <a href="#post-studioworkflowstatus">StudioWorkflow/Status</a> (credits per 1M tokens; 1 credit is $0.01), on the turn's project and the <code>workflow-agent</code> surface. The reply's <code>tokencost</code> shows the charge in credits: <code>tokencost / 100</code> is the amount in USD.</li>
+<li><strong>Spend limits and Model Access.</strong> The chat counts toward your workspace's <a href="/docs/spend-limits">spend limits</a>, and its chat model follows your <a href="/docs/model-access">Model Access</a> rules: the account's or the team's, your own in a team, those of the turn's project (the API key you sent the message with, or the Studio project for a message sent from wiro.ai), and those of the <code>workflow-agent</code> <a href="/docs/tasks#task-surfaces">surface</a>. A message whose chat model a rule blocks is refused with code <code>92</code> before anything runs.</li>
 <li>The agent only reads the catalog, so its turns start no model runs. Saving a proposal is free, and running the saved workflow is billed like any <a href="/docs/workflows#costs">workflow run</a>.</li>
 <li><a href="#post-studioworkflowtransactions">StudioWorkflow/Transactions</a> lists the charges.</li>
 </ul>
 <h2 id="post-studioworkflowstatus"><strong>POST</strong> /StudioWorkflow/Status</h2>
-<p>Returns the wallet check and the chat models the agent can use, after settling your pending Workflow Agent charges. It takes no request fields, and its fields are the same as <a href="/docs/studio#post-studiostatus">Studio/Status</a>: <code>walletUsd</code>, <code>needsTopup</code>, <code>minTopup</code> (<code>10</code>), <code>tokenRates</code>, <code>agentModel.chatModel</code>, <code>blockedModels</code>, <code>agentModelBlocked</code> and <code>agentModelMessage</code>. <code>title</code> is <code>"Workflow Agent"</code>.</p>
+<p>Returns the wallet check, the chat models the agent can use and the project it works on, after settling your pending Workflow Agent charges. It takes no request fields, and its fields are the same as <a href="/docs/studio#post-studiostatus">Studio/Status</a>: <code>walletUsd</code>, <code>needsTopup</code>, <code>minTopup</code> (<code>10</code>), <code>tokenRates</code>, <code>agentModel.chatModel</code>, <code>blockedModels</code>, <code>agentModelBlocked</code>, <code>agentModelMessage</code> and <code>project</code> (<code>current</code>, <code>options</code> and <code>canchange</code>): with an API key the key's own project, signed in the workspace's Studio project, which the Workflow Agent shares with Studio. <code>title</code> is <code>"Workflow Agent"</code>.</p>
 <h2 id="post-studioworkflowmessagesend"><strong>POST</strong> /StudioWorkflow/Message/Send</h2>
 <p>Sends a message to the Workflow Agent and returns at once with the turn's <code>messageguid</code> and <code>agenttoken</code>.</p>
 <div class="docs-param-table">
@@ -14219,7 +14494,7 @@ import type {
 <p>There is no agent guid to pass: every route talks to Studio. Studio is paid from your Wiro wallet, as described under <a href="#costs">Costs</a>.</p>
 <p>Studio runs on one setup shared by everyone who uses it, so it never changes that setup: it proposes no <a href="/docs/agent-messaging#setup-from-chat">setup cards</a>, and its connectors, skills and scheduled tasks are fixed. Asked to remember a rule or to repeat a job on a schedule, it helps with the request once, as a one-time task.</p>
 <h3 id="authentication">Authentication</h3>
-<p>Every <code>/Studio/*</code> route takes a project API key: <code>x-api-key</code>, plus <code>x-nonce</code> and <code>x-signature</code> for a project that uses signature authentication (see <a href="/docs/authentication">Authentication</a>). A key acts as the person who created its project, in that project's workspace: a personal project works in the personal workspace and pays from the personal wallet, a team project works in the team and pays from the team wallet. For a team project, that person must still be a member of the team; otherwise every route answers HTTP 403 with <code>You must be a member of this team to perform this action</code>.</p>
+<p>Every <code>/Studio/*</code> route takes a project API key: <code>x-api-key</code>, plus <code>x-nonce</code> and <code>x-signature</code> for a project that uses signature authentication (see <a href="/docs/authentication">Authentication</a>). A key acts as the person who created its project, in that project's workspace: a personal project works in the personal workspace and pays from the personal wallet, a team project works in the team and pays from the team wallet. For a team project, that person must still be a member of the team; otherwise every route answers HTTP 403 with <code>You must be a member of this team to perform this action</code>. The one exception is <a href="#post-studioprojectset">ProjectSet</a>, which works only signed in.</p>
 <h3 id="sessions">Sessions</h3>
 <p>A session is one conversation with its own memory. <code>sessionkey</code> names it, and <code>"default"</code> is used when you leave it out.</p>
 <ul>
@@ -14234,13 +14509,14 @@ import type {
 <ul>
 <li><strong>$10 to start a turn.</strong> <a href="#post-studiomessagesend">Message/Send</a> and <a href="#post-studiomessagesendform">Message/SendForm</a> need at least $10 spendable in the wallet of the key's workspace. Below that, the message is refused with code <code>97</code> (<code>Insufficient balance</code>), and the response carries <code>walletUsd</code>, the balance, and <code>minTopup</code>, the minimum. Nothing is charged for a refused message. Reading messages, sessions and results is free.</li>
 <li><strong>What a turn costs.</strong> A turn's cost depends on the models Studio runs for it, and can be more than $10.</li>
-<li><strong>Chat.</strong> Each turn is charged for the tokens it used, at the chat model's rates in <a href="#post-studiostatus">Studio/Status</a> (credits per 1M tokens; 1 credit is $0.01). The reply shows the chat charge in <code>tokencost</code>, in credits: <code>tokencost / 100</code> is the amount in USD.</li>
-<li><strong>Model runs.</strong> Each model run Studio starts is charged at that model's price when it succeeds. Failed and cancelled runs are not charged. <a href="#post-studiotasks">Studio/Tasks</a> shows each run's <code>totalcost</code>.</li>
-<li><strong>Spend limits and Model Access.</strong> The models Studio runs for you follow your workspace's <a href="/docs/spend-limits">spend limits</a> and <a href="/docs/model-access">Model Access</a> rules, the same as the runs you start yourself: the account's or the team's, your own in a team, and those of the API key and the surface you sent the message with. So does the chat: what it costs counts toward spend limits, and a message whose chat model a Model Access rule blocks is refused with code <code>92</code> before anything runs.</li>
-<li>Charges are made within about a minute of the work finishing. <a href="#post-studiotransactions">Studio/Transactions</a> lists them, and they also appear in the wallet's transactions.</li>
+<li><strong>Project.</strong> Studio works on a project of the workspace. A call with an API key runs on that key's project. Work sent from wiro.ai runs on the workspace's Studio project: one for a personal workspace and one for each team, shared by Studio and the <a href="/docs/workflow-agent">Workflow Agent</a>. The first Studio or Workflow Agent message sent from wiro.ai in a workspace that has none creates a project named "Studio" there, or uses the workspace's existing project of that name. It is a normal project: like any project you create, it gets an API key, and you get the email that comes with a new key. <a href="#post-studiostatus">Studio/Status</a> shows it, and <a href="#post-studioprojectset">Studio/ProjectSet</a> changes it.</li>
+<li><strong>Chat.</strong> Each turn is charged for the tokens it used, at the chat model's rates in <a href="#post-studiostatus">Studio/Status</a> (credits per 1M tokens; 1 credit is $0.01), on the turn's project and the <code>studio</code> surface. The reply shows the chat charge in <code>tokencost</code>, in credits: <code>tokencost / 100</code> is the amount in USD.</li>
+<li><strong>Model runs.</strong> The models Studio runs for you are your own tasks, on the turn's project: <a href="/docs/tasks#task-list">Task/List</a> and <a href="/docs/tasks#task-detail">Task/Detail</a> return them with <code>surface</code> <code>studio</code>, and <a href="#post-studiotasks">Studio/Tasks</a> lists them too. Each is charged like any model run when it finishes: at the model's price when it succeeds, and not at all when it fails or is cancelled. Studio/Tasks shows each run's <code>totalcost</code>.</li>
+<li><strong>Spend limits and Model Access.</strong> The models Studio runs for you follow your workspace's <a href="/docs/spend-limits">spend limits</a> and <a href="/docs/model-access">Model Access</a> rules, the same as the runs you start yourself: the account's or the team's, your own in a team, those of the turn's project (the API key you sent the message with, or the Studio project for a message sent from wiro.ai), and those of the <code>studio</code> <a href="/docs/tasks#task-surfaces">surface</a>. So does the chat: what it costs counts toward spend limits, and a message whose chat model a Model Access rule blocks is refused with code <code>92</code> before anything runs.</li>
+<li>Chat charges are made within about a minute of the turn ending, and model runs are charged when they finish, like any model run. Both appear in the wallet's transactions, and <a href="#post-studiotransactions">Studio/Transactions</a> lists the chat charges.</li>
 </ul>
 <h2 id="post-studiostatus"><strong>POST</strong> /Studio/Status</h2>
-<p>Returns the wallet check and the chat models Studio can use. It settles your pending Studio charges first, so <code>walletUsd</code> is current. It takes no request fields.</p>
+<p>Returns the wallet check, the chat models Studio can use and the project Studio works on. It settles your pending Studio charges first, so <code>walletUsd</code> is current. It takes no request fields.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -14293,6 +14569,21 @@ import type {
 <td>The refusal such a message gets when <code>agentModelBlocked</code> is <code>true</code>, else <code>null</code>.</td>
 </tr>
 <tr>
+<td><code>project.current</code></td>
+<td>object | null</td>
+<td>The project Studio works on, <code>{ "id", "name" }</code> with <code>id</code> as a string (see <a href="#costs">Costs</a>). With an API key, the key's own project. Signed in, the workspace's Studio project, or <code>null</code> until the workspace has one: the first Studio or Workflow Agent message from wiro.ai creates it.</td>
+</tr>
+<tr>
+<td><code>project.options</code></td>
+<td>object[]</td>
+<td>The projects you can make the Studio project with <a href="#post-studioprojectset">ProjectSet</a>, each <code>{ "id", "name" }</code>. Signed in to a personal workspace, your personal projects; in a team, every team project for a team admin or the organization owner, and none for other members. Always <code>[]</code> with an API key.</td>
+</tr>
+<tr>
+<td><code>project.canchange</code></td>
+<td>boolean</td>
+<td><code>true</code> when you can change the Studio project. <code>false</code> for team members who are not admins, and with an API key.</td>
+</tr>
+<tr>
 <td><code>title</code></td>
 <td>string</td>
 <td>The agent's name.</td>
@@ -14340,9 +14631,15 @@ import type {
   },
   &quot;blockedModels&quot;: [],
   &quot;agentModelBlocked&quot;: false,
-  &quot;agentModelMessage&quot;: null
+  &quot;agentModelMessage&quot;: null,
+  &quot;project&quot;: {
+    &quot;current&quot;: { &quot;id&quot;: &quot;48211&quot;, &quot;name&quot;: &quot;Production&quot; },
+    &quot;options&quot;: [],
+    &quot;canchange&quot;: false
+  }
 }
 </code></pre>
+<p>This call was made with the API key of the Production project, so <code>project.current</code> is that project, <code>project.options</code> is empty and <code>project.canchange</code> is <code>false</code>: the key's turns always run on its own project.</p>
 <p>When a rule blocks a chat model, Status says so. With a team rule that blocks <code>openai/gpt-5-6-sol</code>, Studio's default chat model, these fields read:</p>
 <pre><code class="language-json">{
   &quot;tokenRates&quot;: {
@@ -14374,6 +14671,76 @@ import type {
 }
 </code></pre>
 <p>A message that leaves <code>model</code> out is then refused with <code>agentModelMessage</code>. Send a model that is still selectable, such as <code>openai/gpt-5.4-mini</code>.</p>
+<h2 id="post-studioprojectset"><strong>POST</strong> /Studio/ProjectSet</h2>
+<p>Changes the workspace's Studio project: the project that Studio and the <a href="/docs/workflow-agent">Workflow Agent</a> work on for messages sent from wiro.ai. It works only signed in, in the dashboard or with a signed-in user's Bearer token, and changes your personal workspace's Studio project, or the team's when <code>x-team-guid</code> names a team. In a personal workspace you can pick any of your personal projects; in a team, a team admin or the organization owner can pick any team project. <code>project.options</code> in <a href="#post-studiostatus">Studio/Status</a> lists them. A call with an API key always runs on the key's project, so ProjectSet refuses it.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>projectid</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The project's <code>id</code>, from <code>project.options</code> in Studio/Status.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<h3 id="response_projectset">Response</h3>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;project&quot;: { &quot;id&quot;: &quot;7001&quot;, &quot;name&quot;: &quot;Mobile App&quot; }
+}
+</code></pre>
+<p>Studio/Status then shows the new project. For a team admin, signed in, it reads:</p>
+<pre><code class="language-json">{
+  &quot;project&quot;: {
+    &quot;current&quot;: { &quot;id&quot;: &quot;7001&quot;, &quot;name&quot;: &quot;Mobile App&quot; },
+    &quot;options&quot;: [
+      { &quot;id&quot;: &quot;6839&quot;, &quot;name&quot;: &quot;Studio&quot; },
+      { &quot;id&quot;: &quot;7001&quot;, &quot;name&quot;: &quot;Mobile App&quot; }
+    ],
+    &quot;canchange&quot;: true
+  }
+}
+</code></pre>
+<p>A refusal comes back with <code>result: false</code> and code <code>0</code>:</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Message</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Studio runs on your API key's project. Change the Studio project on wiro.ai.</code></td>
+<td>The call was made with an API key.</td>
+</tr>
+<tr>
+<td><code>Only a team admin can change the team's Studio project.</code></td>
+<td>In a team, the caller is a member who is not a team admin.</td>
+</tr>
+<tr>
+<td><code>Project not found in this workspace.</code></td>
+<td><code>projectid</code> is not a project of this workspace.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 <h2 id="post-studiomessagesend"><strong>POST</strong> /Studio/Message/Send</h2>
 <p>Sends a message to Studio. It returns at once with the turn's <code>messageguid</code> and <code>agenttoken</code>; the reply arrives on the WebSocket and in <a href="#post-studiomessagedetail">Message/Detail</a>.</p>
 <div class="docs-param-table">
@@ -14928,7 +15295,7 @@ import type {
 </table>
 </div>
 </div>
-<p>Each row has <code>guid</code>, <code>type</code>, <code>amount</code>, <code>description</code>, <code>modelid</code>, <code>taskid</code>, <code>confirmed</code> and <code>time</code>. A chat charge is described as <code>Generative Media Agent LLM &lt;model&gt; (...)</code> with its token counts, and a model run as <code>Generative Media Agent media run</code>.</p>
+<p>Each row has <code>guid</code>, <code>type</code>, <code>amount</code>, <code>description</code>, <code>modelid</code>, <code>taskid</code>, <code>confirmed</code> and <code>time</code>. A chat charge is described as <code>Generative Media Agent LLM &lt;model&gt; (...)</code> with its token counts. A model run from before Studio's runs became your own tasks is described as <code>Generative Media Agent media run</code>; the model runs since then are charged on their own tasks, like any model run (see <a href="#costs">Costs</a>).</p>
 <h2 id="post-studiotaskdeleteoutput"><strong>POST</strong> /Studio/Task/DeleteOutput</h2>
 <p>Deletes the output and input files of one of your Studio runs once it has finished or was cancelled.</p>
 <div class="docs-param-table">
@@ -15026,6 +15393,21 @@ import type {
 <td><code>Message cannot be cancelled (status: &lt;status&gt;)</code></td>
 <td>0</td>
 <td>Cancel on a turn that has already ended.</td>
+</tr>
+<tr>
+<td><code>Studio runs on your API key's project. Change the Studio project on wiro.ai.</code></td>
+<td>0</td>
+<td>ProjectSet with an API key.</td>
+</tr>
+<tr>
+<td><code>Only a team admin can change the team's Studio project.</code></td>
+<td>0</td>
+<td>ProjectSet in a team by a member who is not a team admin.</td>
+</tr>
+<tr>
+<td><code>Project not found in this workspace.</code></td>
+<td>0</td>
+<td>ProjectSet with a <code>projectid</code> that is not a project of this workspace.</td>
 </tr>
 <tr>
 <td><code>Agent is temporarily unavailable. Please try again shortly.</code></td>

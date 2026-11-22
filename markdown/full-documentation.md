@@ -4175,6 +4175,43 @@ with a `debugerror`, but clients must keep waiting until
 > persisted `status: "task_error"` in Task/Detail. Both are non-terminal; only
 > `task_postprocess_end` and `task_cancel` close the task.
 
+## Surfaces
+
+Every task records its surface: the way its work came in, such as an API key, MCP or Studio. Task/Detail and Task/List return it as `surface`, and Task/List can list the tasks of one surface. [Spend limits](/docs/spend-limits) and [Model Access](/docs/model-access) rules use the same surfaces and decide them the same way, so a task's `surface` is the one its run counted on.
+
+| `surface` | Label | Covers |
+|-----------|-------|--------|
+| `web` | Dashboard | The Wiro dashboard, and calls with a signed-in user's Bearer token |
+| `api` | API | Calls with an API key, including [`/sync`](/docs/run-a-model#run-sync) and, for now, the [Wiro MCP package](/docs/mcp-self-hosted) when you run it yourself |
+| `mcp` | MCP | The hosted [Wiro MCP server](/docs/wiro-mcp-server) at `mcp.wiro.ai`, and the Wiro MCP package when it names itself (see below) |
+| `llm-gateway` | LLM Gateway | The OpenAI and Anthropic compatible [LLM gateway](/docs/completions-api) at `llm.wiro.ai` |
+| `extension` | Browser Extension | The Wiro browser extensions |
+| `agent` | Agent | Your deployed agents' own runs |
+| `studio` | Studio | [Studio](/docs/studio): the messages you send it and the models it runs for you |
+| `workflow-agent` | Workflow Agent | The [Workflow Agent](/docs/workflow-agent): the messages you send it |
+| `workflow` | Workflow | [Workflow](/docs/workflows) runs and resumes, and every step they run |
+
+The label is the surface's name in the dashboard.
+
+### Which Surface Work Gets
+
+Some work fits more than one surface, such as a workflow run started with an API key. The first match in this order decides:
+
+1. **Who does the work**: Studio, the Workflow Agent or one of your deployed agents. Messages to Studio and the Workflow Agent, the other calls to their `/Studio` and `/StudioWorkflow` endpoints and the models Studio runs for you count as `studio` and `workflow-agent`, and a deployed agent's own calls as `agent`.
+2. **What it is**: a workflow run, its resumes and every step it runs count as `workflow`. A workflow that a deployed agent, Studio or the Workflow Agent starts keeps that surface instead.
+3. **Which client sends it**: the LLM gateway (`llm-gateway`), a Wiro browser extension (`extension`) or MCP (`mcp`).
+4. **Which credential it uses**: an API key (`api`), else a signed-in session (`web`).
+
+So a model run started with an API key counts as `api`, a message to Studio sent with the same key as `studio`, and a workflow run started through MCP as `workflow`.
+
+### Clients That Name Themselves
+
+The Wiro MCP package (`@wiro-ai/wiro-mcp`) counts as `mcp` when it names itself with the header `x-wiro-client: wiro-mcp/<version>`. The package does not send this header yet, so the runs of a package you run yourself count as `api` for now. A client's name for itself is its own word: anyone who holds the API key can leave the header out. A spend limit or Model Access rule that must hold whoever uses a key belongs on the key itself, with scope `project`.
+
+### Older Tasks
+
+Tasks from before surfaces were recorded have one only where it is certain: workflow steps, the runs of deployed agents, Studio and the Workflow Agent, and runs from MCP, the LLM gateway and the browser extensions. Runs with an API key and dashboard runs have one from late October 2026 on. Other tasks have `surface: null`: the dashboard shows no label for them, and a `surface` filter never lists them.
+
 ## LLM Models
 
 For LLM requests, `outputs` contains a structured entry with
@@ -4257,6 +4294,7 @@ Retrieves the current status and output of a task. You can query by either `task
       "modeldescription": "FLUX.2 [dev] is a 32 billion parameter rectified flow transformer...",
       "modelslugowner": "wiro",
       "modelslugproject": "flux-2-dev",
+      "surface": "api",
       "outputs": [
         {
           "name": "0.png",
@@ -4286,7 +4324,81 @@ Retrieves the current status and output of a task. You can query by either `task
 | `modeldescription` | `string` | Description of the model that was executed. |
 | `modelslugowner` | `string` | Model owner slug (e.g. `"google"`, `"wiro"`). |
 | `modelslugproject` | `string` | Model project slug (e.g. `"nano-banana-pro"`). |
+| `surface` | `string \| null` | The way the task came in, such as `"api"` (see [Surfaces](#surfaces)). `null` for an older task whose surface is not known for certain. |
 | `outputs` | `array` | Output files (CDN URLs) or structured LLM content (`contenttype: "raw"`). |
+
+## **POST** /Task/List
+
+Lists the tasks of the call's workspace, newest first. A team project's API key lists the team's tasks, a personal project's key your personal tasks, and a signed-in call the tasks of the team named in `x-team-guid`, or your personal tasks without it. Every field is optional: send `{}` for the 20 most recent tasks.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `surface` | string | No | Only the tasks of one [surface](#surfaces): `web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, `studio`, `workflow-agent` or `workflow`. Empty or left out: every surface |
+| `type` | string | No | `"model"` for model runs, `"train"` for training runs, or `"running"` for the tasks that have not ended and were not cancelled, queued ones included. Left out: every task |
+| `projectid` | string | No | Only the tasks of this project, by its `id` from `/Project/List` |
+| `modelid` | string | No | Only the runs of this model, by its `id` from [`/Tool/List`](/docs/models) |
+| `modelName` | string | No | Only the runs of the models whose owner or slug contains this text, ignoring case. When no model matches, the list is empty and `errors` holds `There is no task yet.` with code `1` |
+| `start` | number | No | How many tasks to skip, for the next page. Default: `0` |
+| `limit` | number | No | How many tasks to return. Default: `20`, maximum `1000` |
+
+Without `surface`, the list leaves out the tasks that workflow runs start for their steps. With `surface`, it lists every task of that surface, workflow steps included, so `"surface": "workflow"` lists the steps of your workflow runs.
+
+### Example
+
+**The workspace's 10 most recent Studio tasks:**
+
+```json
+{
+  "surface": "studio",
+  "limit": 10
+}
+```
+
+### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "total": "1",
+  "tasklist": [
+    {
+      "id": "534602",
+      "socketaccesstoken": "Tq4wZ8nLx2RmKc7VbYp3HdJ9sFgNa1",
+      "parameters": { "prompt": "Square banner for a bakery weekend sale, warm colors" },
+      "status": "task_postprocess_end",
+      "pexit": "0",
+      "debugoutput": "",
+      "starttime": "1734514421",
+      "endtime": "1734514452",
+      "elapsedseconds": "31.0000",
+      "totalcost": "0.140000000000",
+      "modelslugowner": "google",
+      "modelslugproject": "nano-banana-pro",
+      "surface": "studio",
+      "outputs": [
+        {
+          "name": "0.png",
+          "contenttype": "image/png",
+          "size": "1843212",
+          "url": "https://cdn1.wiro.ai/.../0.png"
+        }
+      ]
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `total` | `string` | How many tasks match, counting every page. |
+| `tasklist` | `array` | The tasks of this page, newest first, each with the fields of [Task/Detail](#post-taskdetail), `surface` included. |
+
+### Errors
+
+| Error | When |
+|-------|------|
+| `surface must be one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow.` | `surface` is not one of the nine surfaces |
 
 ## **POST** /Task/Cancel
 
@@ -5485,21 +5597,26 @@ Each limit caps one scope of the wallet's spending:
 | `account` | None | The whole wallet. In a team, the whole team's spending |
 | `member` | The member's `useruuid` from `/Team/Member/List` | One team member's spending in the team (team wallets only). A member's spending includes their dashboard runs in the team workspace and every run made with the API key of a team project they created |
 | `project` | The project's `id` from `/Project/List` | One API key: what is spent with that project's key |
-| `surface` | `web`, `api`, `mcp`, `llm-gateway`, `extension` or `agent` | One way in (see Surfaces below) |
+| `surface` | `web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, `studio`, `workflow-agent` or `workflow` | One way in (see Surfaces below) |
 | `agent` | The agent's `guid` (its `useragentguid`) | One deployed agent: what the agent itself spends, its own model runs and the credits its replies use (100 credits = $1). Its plan, upgrades and credit packs count toward the wallet's other limits, not this one |
 
 ### Surfaces
 
 | Surface | Label | Covers |
 |---------|-------|--------|
-| `web` | the dashboard | The Wiro dashboard, including Studio and the Workflow Agent used there |
-| `api` | the API | Calls with an API key, including [`/sync`](/docs/run-a-model#run-sync) and the [Wiro MCP package](/docs/mcp-self-hosted) when you run it yourself |
-| `mcp` | MCP | The hosted [Wiro MCP server](/docs/wiro-mcp-server) at `mcp.wiro.ai` |
+| `web` | the dashboard | The Wiro dashboard, and calls with a signed-in user's Bearer token |
+| `api` | the API | Calls with an API key, including [`/sync`](/docs/run-a-model#run-sync) and, for now, the [Wiro MCP package](/docs/mcp-self-hosted) when you run it yourself |
+| `mcp` | MCP | The hosted [Wiro MCP server](/docs/wiro-mcp-server) at `mcp.wiro.ai`, and the Wiro MCP package when it names itself (see [Surfaces](/docs/tasks#task-surfaces)) |
 | `llm-gateway` | the LLM gateway | The OpenAI and Anthropic compatible [LLM gateway](/docs/completions-api) at `llm.wiro.ai` |
 | `extension` | the browser extensions | Only the Wiro browser extensions |
 | `agent` | agents | Your deployed agents' own runs |
+| `studio` | Studio | [Studio](/docs/studio): the messages you send it and the models it runs for you |
+| `workflow-agent` | the Workflow Agent | The [Workflow Agent](/docs/workflow-agent): the messages you send it |
+| `workflow` | workflows | [Workflow](/docs/workflows) runs and resumes, and every step they run |
 
-Studio and Workflow Agent messages count on the surface they were sent from. Refusal messages and `/SpendLimit/Usage` name a surface by its label.
+When work fits more than one surface, the first match in this order decides: who does it (Studio, the Workflow Agent or a deployed agent), what it is (a workflow run and its steps, unless a deployed agent, Studio or the Workflow Agent started it), which client sends it (the LLM gateway, a browser extension or MCP), and last which credential it uses (an API key, else a signed-in session). So a message to Studio sent with an API key counts on `studio`, and a workflow run started with an API key or through MCP on `workflow`. Each task records the surface it counted on: see [Surfaces](/docs/tasks#task-surfaces). Refusal messages and `/SpendLimit/Usage` name a surface by its label.
+
+Studio, the Workflow Agent and workflows used to have no surface of their own. Studio and Workflow Agent work counted on `web`, or on `api` when it was sent with an API key, and a workflow run counted on the surface that started it. Limits that were already set were not changed, so a limit on `web` or `api` no longer covers this work: to cap it by surface, set a limit on `studio`, `workflow-agent` or `workflow`.
 
 ### Periods and Amounts
 
@@ -5511,7 +5628,7 @@ A limit's `period` is `month` (the default), which resets on the 1st of each mon
 
 Every charge to the wallet for usage counts: model runs, workflow runs, realtime sessions, Studio, the Workflow Agent, agent plans, upgrades and credit packs. Deposits are not spending.
 
-The models Studio runs for you are checked and counted like the runs you start yourself: against the account's or the team's limits, your member limit in a team, the limit of the API key you sent the message with and the limit of the surface you sent it from. What the chat of Studio and the Workflow Agent costs counts toward your limits too.
+The models Studio runs for you are checked and counted like the runs you start yourself: against the account's or the team's limits, your member limit in a team, the limit of the turn's project (the API key you sent the message with, or the workspace's [Studio project](/docs/studio#costs) for a message sent from wiro.ai) and the limit of the `studio` surface. What the chat of Studio and the Workflow Agent costs counts toward your limits too, on the `studio` and `workflow-agent` surfaces.
 
 ### When Limits Are Checked
 
@@ -5556,7 +5673,7 @@ When the price of the work is known before it starts, the message says what is l
 | A team's `account` limit | `This team's monthly spend limit` |
 | `member` | `Your monthly spend limit in this team` |
 | `project` | `This API key's monthly spend limit` |
-| `surface` | `The monthly spend limit for` and the surface's label, for example `The monthly spend limit for the LLM gateway` |
+| `surface` | `The monthly spend limit for` and the surface's label, for example `The monthly spend limit for the LLM gateway` or `The monthly spend limit for the Workflow Agent` |
 | `agent` | `This agent's monthly spend limit` |
 
 Nothing runs and nothing is charged. Retrying does not help until the limit resets or someone who manages it raises it. Through the [LLM gateway](/docs/completions-api#gateway-errors) the refusal is an HTTP `402` error with code `spend_limit_reached`, and the [MCP server](/docs/wiro-mcp-server) returns it as a tool error.
@@ -5682,7 +5799,7 @@ Adds a spend limit to the call's workspace, or changes the existing limit with t
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `scope` | string | Yes | `"account"`, `"member"`, `"project"`, `"surface"` or `"agent"`. See [Spend Limits](#how-spend-limits-work) |
-| `target` | string | For every scope but `account` | The member's `useruuid`, the project's `id`, the surface (`web`, `api`, `mcp`, `llm-gateway`, `extension` or `agent`) or the agent's guid. Leave it out for `account` |
+| `target` | string | For every scope but `account` | The member's `useruuid`, the project's `id`, the surface (`web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, `studio`, `workflow-agent` or `workflow`) or the agent's guid. Leave it out for `account` |
 | `period` | string | No | `"month"` or `"day"`. Default: `"month"` |
 | `amountusd` | number | Yes | The limit in USD, rounded to cents. Once rounded, it must be at least `0.01` |
 | `alertpct` | number | No | When the alert email goes out: `50`, `80` or `90` percent of the limit, or `null` for no alert email. Default: `80` |
@@ -5754,7 +5871,7 @@ Adds a spend limit to the call's workspace, or changes the existing limit with t
 | `scope must be one of account, member, project, surface, agent.` | `scope` is missing or not one of the five scopes |
 | `Member limits exist only in a team workspace.` | A `member` limit in a personal account |
 | `target is required for this scope.` | No `target` for a `member`, `project`, `surface` or `agent` limit |
-| `A surface is one of web, api, mcp, llm-gateway, extension, agent.` | A `surface` limit with another `target` |
+| `A surface is one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow.` | A `surface` limit with another `target` |
 | `target must be a project id.` | A `project` limit whose `target` is not a project id |
 | `period must be month or day.` | Another `period` |
 | `amountusd must be a positive number.` | `amountusd` is missing, zero or negative |
@@ -5884,12 +6001,15 @@ Returns what the call's workspace has spent this month or today, in total and by
     "totalusd": 248.7,
     "heldusd": 3.5,
     "surfaces": [
-      { "surface": "web", "label": "the dashboard", "spentusd": 40.1 },
+      { "surface": "web", "label": "the dashboard", "spentusd": 21.4 },
       { "surface": "api", "label": "the API", "spentusd": 168.2, "heldusd": 3.5 },
       { "surface": "mcp", "label": "MCP", "spentusd": 12.5 },
       { "surface": "llm-gateway", "label": "the LLM gateway", "spentusd": 7.9 },
       { "surface": "extension", "label": "the browser extensions", "spentusd": 0 },
-      { "surface": "agent", "label": "agents", "spentusd": 20 }
+      { "surface": "agent", "label": "agents", "spentusd": 20 },
+      { "surface": "studio", "label": "Studio", "spentusd": 14.5 },
+      { "surface": "workflow-agent", "label": "the Workflow Agent", "spentusd": 0.8 },
+      { "surface": "workflow", "label": "workflows", "spentusd": 3.4 }
     ],
     "members": [
       { "useruuid": "3f5a9c20-6d41-4b8e-a1c7-5e9d0f2b4c61", "label": "Jane Doe", "spentusd": 120.5 },
@@ -5912,7 +6032,7 @@ Returns what the call's workspace has spent this month or today, in total and by
 | `usage.periodstart`, `usage.resetsat` | Start and end of the period, in Unix seconds |
 | `usage.totalusd` | What the wallet has spent in the period, in USD |
 | `usage.heldusd` | What work in progress holds, in USD. Present only when it holds something (see [Work in Progress](#work-in-progress)) |
-| `usage.surfaces` | One row per surface, always in the order `web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, with its label |
+| `usage.surfaces` | One row per surface, always all nine in the order `web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, `studio`, `workflow-agent`, `workflow`, with its label |
 | `usage.members` | Spending per team member, with the member's name as `label`. Empty for a personal account |
 | `usage.projects` | Spending per API key, with the project's name as `label` |
 | `usage.agents` | Spending per deployed agent, with the agent's title as `label` |
@@ -5943,19 +6063,26 @@ Each rule covers one scope of the wallet's work, the same scopes as [spend limit
 | `account` | None | Everything the wallet runs. In a team, every run in the team |
 | `member` | The member's `useruuid` from `/Team/Member/List` | One team member's runs in the team (team wallets only): their dashboard runs in the team workspace and every run made with the API key of a team project they created |
 | `project` | The project's `id` from `/Project/List` | One API key: the runs made with that project's key |
-| `surface` | `web`, `api`, `mcp`, `llm-gateway`, `extension` or `agent` | One way in (see Surfaces below) |
+| `surface` | `web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, `studio`, `workflow-agent` or `workflow` | One way in (see Surfaces below) |
 | `agent` | The agent's `guid` (its `useragentguid`) | One deployed agent: the models it runs through Wiro, the chat models it answers with and its built-in voice |
 
 ### Surfaces
 
 | Surface | Covers |
 |---------|--------|
-| `web` | The Wiro dashboard, including Studio and the Workflow Agent used there |
-| `api` | Calls with an API key, including [`/sync`](/docs/run-a-model#run-sync) and the [Wiro MCP package](/docs/mcp-self-hosted) when you run it yourself |
-| `mcp` | The hosted [Wiro MCP server](/docs/wiro-mcp-server) at `mcp.wiro.ai` |
+| `web` | The Wiro dashboard, and calls with a signed-in user's Bearer token |
+| `api` | Calls with an API key, including [`/sync`](/docs/run-a-model#run-sync) and, for now, the [Wiro MCP package](/docs/mcp-self-hosted) when you run it yourself |
+| `mcp` | The hosted [Wiro MCP server](/docs/wiro-mcp-server) at `mcp.wiro.ai`, and the Wiro MCP package when it names itself (see [Surfaces](/docs/tasks#task-surfaces)) |
 | `llm-gateway` | The OpenAI and Anthropic compatible [LLM gateway](/docs/completions-api) at `llm.wiro.ai` |
 | `extension` | Only the Wiro browser extensions |
 | `agent` | Your deployed agents' own runs |
+| `studio` | [Studio](/docs/studio): the chat model of each message you send it, and the models it runs for you |
+| `workflow-agent` | The [Workflow Agent](/docs/workflow-agent): the chat model of each message you send it |
+| `workflow` | [Workflow](/docs/workflows) runs and resumes, and every step they run |
+
+A run counts on one surface, decided the same way as for [spend limits](/docs/spend-limits): the first match among who does it (Studio, the Workflow Agent or a deployed agent), what it is (a workflow run and its steps, unless a deployed agent, Studio or the Workflow Agent started it), which client sends it (the LLM gateway, a browser extension or MCP), and last which credential it uses (an API key, else a signed-in session). So a message to Studio sent with an API key counts on `studio`, and a workflow run started with an API key or through MCP on `workflow`. See [Surfaces](/docs/tasks#task-surfaces).
+
+Studio, the Workflow Agent and workflows used to have no surface of their own. Studio and Workflow Agent work counted on `web`, or on `api` when it was sent with an API key, and a workflow run counted on the surface that started it. Rules that were already set were not changed, so a rule on `web` or `api` no longer covers this work: to decide its models by surface, set a rule on `studio`, `workflow-agent` or `workflow`.
 
 ### Everything Else
 
@@ -6006,7 +6133,7 @@ Rules are checked before work starts:
 
 - Model runs: `/Run` and its `/sync` wait, realtime sessions, the [LLM gateway](/docs/completions-api), the [MCP server](/docs/wiro-mcp-server), the browser extensions and the dashboard
 - Workflow runs and resumes: every model step that will run must be allowed. Steps that will not run, such as the steps after a breakpoint, are not checked
-- Studio and the Workflow Agent: the models Studio runs for you, and the chat model of each message you send to Studio or the Workflow Agent, follow your own rules like the runs you start yourself: the account's or the team's rule, your member rule in a team, the rule of the API key you sent the message with and the rule of the surface you sent it from. A message whose chat model a rule blocks, the `model` it names or the default chat model when it names none, is refused with code `92` before anything runs. Chat models are LLM & Chat models: a rule that blocks LLM & Chat blocks them unless it allows the chat model by name, and a rule that lets only selected models run blocks them unless it allows LLM & Chat or the chat model. The Workflow Agent runs nothing but its chat model. [`/Studio/Status`](/docs/studio#post-studiostatus) and [`/StudioWorkflow/Status`](/docs/workflow-agent#post-studioworkflowstatus) list the chat models your rules block
+- Studio and the Workflow Agent: the models Studio runs for you, and the chat model of each message you send to Studio or the Workflow Agent, follow your own rules like the runs you start yourself: the account's or the team's rule, your member rule in a team, the rule of the turn's project (the API key you sent the message with, or the workspace's [Studio project](/docs/studio#costs) for a message sent from wiro.ai) and the rule of the `studio` surface, or of `workflow-agent` for a message to the Workflow Agent. A message whose chat model a rule blocks, the `model` it names or the default chat model when it names none, is refused with code `92` before anything runs. Chat models are LLM & Chat models: a rule that blocks LLM & Chat blocks them unless it allows the chat model by name, and a rule that lets only selected models run blocks them unless it allows LLM & Chat or the chat model. The Workflow Agent runs nothing but its chat model. [`/Studio/Status`](/docs/studio#post-studiostatus) and [`/StudioWorkflow/Status`](/docs/workflow-agent#post-studioworkflowstatus) list the chat models your rules block
 - The models your deployed agents run through Wiro
 - An agent's chat model: choosing one in the agent's settings, or sending `model` with `Message/Send`, follows that agent's own rule. If its rule blocks the model the agent already uses, its model calls are refused and the turn ends with `[MODEL_NOT_ALLOWED]`. A Scheduled Task whose model the rule blocks is paused rather than failed, and runs again at its next scheduled time once the model is allowed or another one is chosen
 - An agent's built-in voice: transcription of the voice notes people send the agent, and the voice replies it sends, follow that agent's own rule as Audio & Speech models. A rule that blocks Audio & Speech, or that lets only selected models run without allowing Audio & Speech, blocks them, even when it allows LLM & Chat. Voice notes are then not transcribed, and the agent replies in text. An agent that chats on a Gemini model has its voice notes transcribed by `google/gemini-3-flash`, so a rule that names that model decides them too. A rule that does not name that model blocks those voice notes unless it lets both Audio & Speech and LLM & Chat models run
@@ -6043,7 +6170,7 @@ The message also says what blocked the model:
 | A team's `account` rule | `This team` |
 | `member` | `You`, with `in this team` after the model or category, for example `You can't use openai/gpt-6-2-astra in this team.` |
 | `project` | `This API key` |
-| `surface` | The surface's name: `The dashboard`, `The API`, `MCP`, `The LLM gateway`, `The browser extensions` or `Agents` |
+| `surface` | The surface's name: `The dashboard`, `The API`, `MCP`, `The LLM gateway`, `The browser extensions`, `Agents`, `Studio`, `The Workflow Agent` or `Workflows`, for example `Studio can't use openai/gpt-6-2-astra.` |
 | `agent` | `This agent` |
 
 Nothing runs and nothing is charged. Retrying does not help: run a model the rules allow, or ask someone who manages the rule to change it. Through the [LLM gateway](/docs/completions-api#gateway-errors) the refusal is an HTTP `403` error with code `model_not_allowed`, and the [MCP server](/docs/wiro-mcp-server) returns it as a tool error.
@@ -6165,7 +6292,7 @@ Adds a rule to the call's workspace, or replaces the rule with the same `scope` 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `scope` | string | Yes | `"account"`, `"member"`, `"project"`, `"surface"` or `"agent"`. See [What a Rule Covers](#how-model-access-works) |
-| `target` | string | For every scope but `account` | The member's `useruuid`, the project's `id`, the surface (`web`, `api`, `mcp`, `llm-gateway`, `extension` or `agent`) or the agent's guid. Leave it out for `account` |
+| `target` | string | For every scope but `account` | The member's `useruuid`, the project's `id`, the surface (`web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, `studio`, `workflow-agent` or `workflow`) or the agent's guid. Leave it out for `account` |
 | `access` | string | No | Everything Else: `"allow"` or `"block"`. Default: `"allow"` |
 | `categories` | array or object | No | The categories the rule allows or blocks, as `[{ "category": "video", "access": "block" }]` or as `{ "video": "block" }`. A category is `image`, `video`, `audio`, `music`, `3d`, `llm` or `utilities` |
 | `models` | array or object | No | The single models the rule allows or blocks, as `[{ "model": "openai/gpt-6-2-astra", "access": "block" }]` or as `{ "openai/gpt-6-2-astra": "block" }`. Name a model by its `owner/slug` or its `id`. At most 500 models |
@@ -6251,7 +6378,7 @@ Adds a rule to the call's workspace, or replaces the rule with the same `scope` 
 | `scope must be one of account, member, project, surface, agent.` | `scope` is missing or not one of the five scopes |
 | `Member rules exist only in a team workspace.` | A `member` rule in a personal account |
 | `target is required for this scope.` | No `target` for a `member`, `project`, `surface` or `agent` rule |
-| `A surface is one of web, api, mcp, llm-gateway, extension, agent.` | A `surface` rule with another `target` |
+| `A surface is one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow.` | A `surface` rule with another `target` |
 | `target must be a project id.` | A `project` rule whose `target` is not a project id |
 | `access must be allow or block.` | Another `access` |
 | `categories must be a list of { category, access }.` | `categories` is neither a list nor an object |
@@ -6382,7 +6509,7 @@ Shows how the rules of the call's workspace decide one model for one run: which 
 | `model` | string | Yes | The model's `owner/slug` or `id` |
 | `member` | string | No | In a team, the `useruuid` of the member whose dashboard run to check. Default: you (with an API key, the person who created its project). With `project` or `agent`, the run is checked as the person who created that API key, and `member` is not used |
 | `project` | string | No | A project's `id`, to check a run made with that project's API key, as the person who created the project. The surface is then `api` unless you name another one, and `web` is refused: a run made with an API key never counts as the dashboard |
-| `surface` | string | No | Where the run comes from: `web`, `api`, `mcp`, `llm-gateway`, `extension` or `agent`. Default: `web`, a dashboard run. With `project` the default is `api`, and with `agent` the surface is always `agent`. The `agent` surface needs an agent: send its guid in `agent` |
+| `surface` | string | No | Where the run comes from: `web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, `studio`, `workflow-agent` or `workflow`. Default: `web`, a dashboard run. With `project` the default is `api`, and with `agent` the surface is always `agent`. The `agent` surface needs an agent: send its guid in `agent` |
 | `agent` | string | No | An agent's guid, to check a model run that agent makes: with the API key it runs models with, as the person who created that key, on the `agent` surface. `project` is not used then |
 
 ### Example
@@ -6483,7 +6610,7 @@ Each applicable rule comes back shaped like a row of `/ModelAccess/List`, with w
 | `model is required.` | No `model` was sent |
 | `<model> is not a model's owner/slug or id.` | `model` is neither an `owner/slug` nor a number |
 | `<model> is not a model on Wiro.` | No model listed on Wiro has that `owner/slug` or id |
-| `A surface is one of web, api, mcp, llm-gateway, extension, agent.` | Another `surface` |
+| `A surface is one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow.` | Another `surface` |
 | `Name the agent to check its runs.` | `surface` is `agent` and no `agent` was sent |
 | `That API key's project is not in this workspace.` | `project` is not the id of a project of this workspace |
 | `A run made with an API key never counts as the dashboard. Leave surface out or pick another one.` | `project` with `surface` `web` |
@@ -7642,8 +7769,11 @@ funds or takes a card payment.
 Calls through the hosted MCP server count toward the workspace's
 [spend limits](/docs/spend-limits) on the `mcp` surface, and calls from the Wiro
 browser extensions on the `extension` surface. The
-[self-hosted](/docs/mcp-self-hosted) package's calls count on the `api` surface,
-as calls with its API key. When a limit refuses work (error code `93`), the
+[self-hosted](/docs/mcp-self-hosted) package's calls count on the `api` surface
+for now, as calls with its API key. Messages to Studio and the Workflow Agent
+count on the `studio` and `workflow-agent` surfaces, and workflow runs on
+`workflow`, whichever way they are sent (see
+[Surfaces](/docs/tasks#task-surfaces)). When a limit refuses work (error code `93`), the
 tool returns an error with Wiro's message and a note: nothing ran and nothing
 was charged, and the work should not be tried again until the limit resets or
 someone who manages it raises it. `get_controls` shows the limit and when it
@@ -7729,7 +7859,10 @@ reuse an older cached package.
 for Studio and the Workflow Agent come with either `workflows` or `agents`, and
 `controls` loads the four Controls tools, which come with 1.9.0 and later. The
 self-hosted server's calls count on the `api` surface of [spend limits](/docs/spend-limits) and
-[Model Access](/docs/model-access) rules, as calls with its API key.
+[Model Access](/docs/model-access) rules for now, as calls with its API key,
+except its messages to Studio and the Workflow Agent and its workflow runs,
+which count on `studio`, `workflow-agent` and `workflow` (see
+[Surfaces](/docs/tasks#task-surfaces)).
 
 ## Authentication errors
 
@@ -8052,6 +8185,7 @@ A resume runs the remaining steps exactly as the run started them, with the same
 - The expected cost of a run is the sum of the model prices for the settings each step uses, from [Tool/Detail](/docs/models). A run's `totalcost` shows the list price of the steps finished so far, and once the run has ended `chargedcost` and `discountamount` show what the wallet paid. `chargedcost` is `null` while a step's charge is still settling.
 - The workspace's [spend limits](/docs/spend-limits) apply when a run starts or resumes, and again before each step starts. A run is refused with code `93` when its known price would go over a limit that covers it, or once that limit has no room left. Each step is checked the same way with its own price, and holds that price until it is charged. A step a limit refuses fails with cause `spend-limit-reached`, and the run ends as `failed`: resume it with [RunResume](#post-workflowrunresume) once the limit allows.
 - The workspace's [Model Access](/docs/model-access) rules apply when a run starts or resumes: when a rule blocks the model of a step that will run, the run is refused with code `92` before anything runs, and the message names that model. When the workflow's steps are hidden from you, as on a protected workflow from another workspace, the message names your rule but not the model, for example `Your account can't use one of the models this workflow runs. Model Access rules decide which models can run.` Steps that will not run, such as the steps after a breakpoint, are not checked.
+- A run, its resumes and every step it runs count on the `workflow` [surface](/docs/tasks#task-surfaces) of spend limits and Model Access, whether you start it with an API key, through MCP or in the dashboard, and each step's task has `surface` `workflow`. A run that a deployed agent, Studio or the Workflow Agent starts keeps that surface instead. Before workflows had their own surface, a run counted on the surface it was started from, such as `api`.
 
 ## **POST** /Workflow/List
 
@@ -8475,14 +8609,15 @@ A session is one conversation with its own memory. `sessionkey` names it, and `"
 ## Costs
 
 - **$10 to start a turn.** Send and SendForm need at least $10 spendable in the wallet of the key's workspace. Below that, the message is refused with code `97` (`Insufficient balance`), with `walletUsd` and `minTopup` in the response, and nothing is charged.
-- **Chat.** Each turn is charged after it ends for the tokens it used, at the chat model's rates in [StudioWorkflow/Status](#post-studioworkflowstatus) (credits per 1M tokens; 1 credit is $0.01). The reply's `tokencost` shows the charge in credits: `tokencost / 100` is the amount in USD.
-- **Spend limits and Model Access.** The chat counts toward your workspace's [spend limits](/docs/spend-limits), and its chat model follows your [Model Access](/docs/model-access) rules: the account's or the team's, your own in a team, and those of the API key and the surface you sent the message with. A message whose chat model a rule blocks is refused with code `92` before anything runs.
+- **Project.** A call with an API key runs on that key's project. Messages sent from wiro.ai run on the workspace's Studio project, which the Workflow Agent shares with [Studio](/docs/studio#costs): the first Studio or Workflow Agent message from wiro.ai creates it, or uses the workspace's existing project named "Studio". [StudioWorkflow/Status](#post-studioworkflowstatus) shows it, and [Studio/ProjectSet](/docs/studio#post-studioprojectset) changes it.
+- **Chat.** Each turn is charged after it ends for the tokens it used, at the chat model's rates in [StudioWorkflow/Status](#post-studioworkflowstatus) (credits per 1M tokens; 1 credit is $0.01), on the turn's project and the `workflow-agent` surface. The reply's `tokencost` shows the charge in credits: `tokencost / 100` is the amount in USD.
+- **Spend limits and Model Access.** The chat counts toward your workspace's [spend limits](/docs/spend-limits), and its chat model follows your [Model Access](/docs/model-access) rules: the account's or the team's, your own in a team, those of the turn's project (the API key you sent the message with, or the Studio project for a message sent from wiro.ai), and those of the `workflow-agent` [surface](/docs/tasks#task-surfaces). A message whose chat model a rule blocks is refused with code `92` before anything runs.
 - The agent only reads the catalog, so its turns start no model runs. Saving a proposal is free, and running the saved workflow is billed like any [workflow run](/docs/workflows#costs).
 - [StudioWorkflow/Transactions](#post-studioworkflowtransactions) lists the charges.
 
 ## **POST** /StudioWorkflow/Status
 
-Returns the wallet check and the chat models the agent can use, after settling your pending Workflow Agent charges. It takes no request fields, and its fields are the same as [Studio/Status](/docs/studio#post-studiostatus): `walletUsd`, `needsTopup`, `minTopup` (`10`), `tokenRates`, `agentModel.chatModel`, `blockedModels`, `agentModelBlocked` and `agentModelMessage`. `title` is `"Workflow Agent"`.
+Returns the wallet check, the chat models the agent can use and the project it works on, after settling your pending Workflow Agent charges. It takes no request fields, and its fields are the same as [Studio/Status](/docs/studio#post-studiostatus): `walletUsd`, `needsTopup`, `minTopup` (`10`), `tokenRates`, `agentModel.chatModel`, `blockedModels`, `agentModelBlocked`, `agentModelMessage` and `project` (`current`, `options` and `canchange`): with an API key the key's own project, signed in the workspace's Studio project, which the Workflow Agent shares with Studio. `title` is `"Workflow Agent"`.
 
 ## **POST** /StudioWorkflow/Message/Send
 
@@ -8678,7 +8813,7 @@ Studio runs on one setup shared by everyone who uses it, so it never changes tha
 
 ### Authentication
 
-Every `/Studio/*` route takes a project API key: `x-api-key`, plus `x-nonce` and `x-signature` for a project that uses signature authentication (see [Authentication](/docs/authentication)). A key acts as the person who created its project, in that project's workspace: a personal project works in the personal workspace and pays from the personal wallet, a team project works in the team and pays from the team wallet. For a team project, that person must still be a member of the team; otherwise every route answers HTTP 403 with `You must be a member of this team to perform this action`.
+Every `/Studio/*` route takes a project API key: `x-api-key`, plus `x-nonce` and `x-signature` for a project that uses signature authentication (see [Authentication](/docs/authentication)). A key acts as the person who created its project, in that project's workspace: a personal project works in the personal workspace and pays from the personal wallet, a team project works in the team and pays from the team wallet. For a team project, that person must still be a member of the team; otherwise every route answers HTTP 403 with `You must be a member of this team to perform this action`. The one exception is [ProjectSet](#post-studioprojectset), which works only signed in.
 
 ### Sessions
 
@@ -8695,14 +8830,15 @@ A session is one conversation with its own memory. `sessionkey` names it, and `"
 
 - **$10 to start a turn.** [Message/Send](#post-studiomessagesend) and [Message/SendForm](#post-studiomessagesendform) need at least $10 spendable in the wallet of the key's workspace. Below that, the message is refused with code `97` (`Insufficient balance`), and the response carries `walletUsd`, the balance, and `minTopup`, the minimum. Nothing is charged for a refused message. Reading messages, sessions and results is free.
 - **What a turn costs.** A turn's cost depends on the models Studio runs for it, and can be more than $10.
-- **Chat.** Each turn is charged for the tokens it used, at the chat model's rates in [Studio/Status](#post-studiostatus) (credits per 1M tokens; 1 credit is $0.01). The reply shows the chat charge in `tokencost`, in credits: `tokencost / 100` is the amount in USD.
-- **Model runs.** Each model run Studio starts is charged at that model's price when it succeeds. Failed and cancelled runs are not charged. [Studio/Tasks](#post-studiotasks) shows each run's `totalcost`.
-- **Spend limits and Model Access.** The models Studio runs for you follow your workspace's [spend limits](/docs/spend-limits) and [Model Access](/docs/model-access) rules, the same as the runs you start yourself: the account's or the team's, your own in a team, and those of the API key and the surface you sent the message with. So does the chat: what it costs counts toward spend limits, and a message whose chat model a Model Access rule blocks is refused with code `92` before anything runs.
-- Charges are made within about a minute of the work finishing. [Studio/Transactions](#post-studiotransactions) lists them, and they also appear in the wallet's transactions.
+- **Project.** Studio works on a project of the workspace. A call with an API key runs on that key's project. Work sent from wiro.ai runs on the workspace's Studio project: one for a personal workspace and one for each team, shared by Studio and the [Workflow Agent](/docs/workflow-agent). The first Studio or Workflow Agent message sent from wiro.ai in a workspace that has none creates a project named "Studio" there, or uses the workspace's existing project of that name. It is a normal project: like any project you create, it gets an API key, and you get the email that comes with a new key. [Studio/Status](#post-studiostatus) shows it, and [Studio/ProjectSet](#post-studioprojectset) changes it.
+- **Chat.** Each turn is charged for the tokens it used, at the chat model's rates in [Studio/Status](#post-studiostatus) (credits per 1M tokens; 1 credit is $0.01), on the turn's project and the `studio` surface. The reply shows the chat charge in `tokencost`, in credits: `tokencost / 100` is the amount in USD.
+- **Model runs.** The models Studio runs for you are your own tasks, on the turn's project: [Task/List](/docs/tasks#task-list) and [Task/Detail](/docs/tasks#task-detail) return them with `surface` `studio`, and [Studio/Tasks](#post-studiotasks) lists them too. Each is charged like any model run when it finishes: at the model's price when it succeeds, and not at all when it fails or is cancelled. Studio/Tasks shows each run's `totalcost`.
+- **Spend limits and Model Access.** The models Studio runs for you follow your workspace's [spend limits](/docs/spend-limits) and [Model Access](/docs/model-access) rules, the same as the runs you start yourself: the account's or the team's, your own in a team, those of the turn's project (the API key you sent the message with, or the Studio project for a message sent from wiro.ai), and those of the `studio` [surface](/docs/tasks#task-surfaces). So does the chat: what it costs counts toward spend limits, and a message whose chat model a Model Access rule blocks is refused with code `92` before anything runs.
+- Chat charges are made within about a minute of the turn ending, and model runs are charged when they finish, like any model run. Both appear in the wallet's transactions, and [Studio/Transactions](#post-studiotransactions) lists the chat charges.
 
 ## **POST** /Studio/Status
 
-Returns the wallet check and the chat models Studio can use. It settles your pending Studio charges first, so `walletUsd` is current. It takes no request fields.
+Returns the wallet check, the chat models Studio can use and the project Studio works on. It settles your pending Studio charges first, so `walletUsd` is current. It takes no request fields.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -8714,6 +8850,9 @@ Returns the wallet check and the chat models Studio can use. It settles your pen
 | `blockedModels` | string[] | The chat models you could pick that your Model Access rules block. `[]` when none is blocked. |
 | `agentModelBlocked` | boolean | `true` when your rules block `agentModel.chatModel`: a message that leaves `model` out is then refused with code `92`. |
 | `agentModelMessage` | string \| null | The refusal such a message gets when `agentModelBlocked` is `true`, else `null`. |
+| `project.current` | object \| null | The project Studio works on, `{ "id", "name" }` with `id` as a string (see [Costs](#costs)). With an API key, the key's own project. Signed in, the workspace's Studio project, or `null` until the workspace has one: the first Studio or Workflow Agent message from wiro.ai creates it. |
+| `project.options` | object[] | The projects you can make the Studio project with [ProjectSet](#post-studioprojectset), each `{ "id", "name" }`. Signed in to a personal workspace, your personal projects; in a team, every team project for a team admin or the organization owner, and none for other members. Always `[]` with an API key. |
+| `project.canchange` | boolean | `true` when you can change the Studio project. `false` for team members who are not admins, and with an API key. |
 | `title` | string | The agent's name. |
 | `status` | number | Always `4`. |
 
@@ -8754,9 +8893,16 @@ The response also carries fields that Wiro's own apps use. Ignore the ones not l
   },
   "blockedModels": [],
   "agentModelBlocked": false,
-  "agentModelMessage": null
+  "agentModelMessage": null,
+  "project": {
+    "current": { "id": "48211", "name": "Production" },
+    "options": [],
+    "canchange": false
+  }
 }
 ```
+
+This call was made with the API key of the Production project, so `project.current` is that project, `project.options` is empty and `project.canchange` is `false`: the key's turns always run on its own project.
 
 When a rule blocks a chat model, Status says so. With a team rule that blocks `openai/gpt-5-6-sol`, Studio's default chat model, these fields read:
 
@@ -8792,6 +8938,47 @@ When a rule blocks a chat model, Status says so. With a team rule that blocks `o
 ```
 
 A message that leaves `model` out is then refused with `agentModelMessage`. Send a model that is still selectable, such as `openai/gpt-5.4-mini`.
+
+## **POST** /Studio/ProjectSet
+
+Changes the workspace's Studio project: the project that Studio and the [Workflow Agent](/docs/workflow-agent) work on for messages sent from wiro.ai. It works only signed in, in the dashboard or with a signed-in user's Bearer token, and changes your personal workspace's Studio project, or the team's when `x-team-guid` names a team. In a personal workspace you can pick any of your personal projects; in a team, a team admin or the organization owner can pick any team project. `project.options` in [Studio/Status](#post-studiostatus) lists them. A call with an API key always runs on the key's project, so ProjectSet refuses it.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `projectid` | string | Yes | The project's `id`, from `project.options` in Studio/Status. |
+
+### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "project": { "id": "7001", "name": "Mobile App" }
+}
+```
+
+Studio/Status then shows the new project. For a team admin, signed in, it reads:
+
+```json
+{
+  "project": {
+    "current": { "id": "7001", "name": "Mobile App" },
+    "options": [
+      { "id": "6839", "name": "Studio" },
+      { "id": "7001", "name": "Mobile App" }
+    ],
+    "canchange": true
+  }
+}
+```
+
+A refusal comes back with `result: false` and code `0`:
+
+| Message | When |
+|---------|------|
+| `Studio runs on your API key's project. Change the Studio project on wiro.ai.` | The call was made with an API key. |
+| `Only a team admin can change the team's Studio project.` | In a team, the caller is a member who is not a team admin. |
+| `Project not found in this workspace.` | `projectid` is not a project of this workspace. |
 
 ## **POST** /Studio/Message/Send
 
@@ -9069,7 +9256,7 @@ Lists the wallet charges for your Studio use in the key's workspace, newest firs
 |-----------|------|----------|-------------|
 | `limit` | number | No | Default `50`, maximum `200`. |
 
-Each row has `guid`, `type`, `amount`, `description`, `modelid`, `taskid`, `confirmed` and `time`. A chat charge is described as `Generative Media Agent LLM <model> (...)` with its token counts, and a model run as `Generative Media Agent media run`.
+Each row has `guid`, `type`, `amount`, `description`, `modelid`, `taskid`, `confirmed` and `time`. A chat charge is described as `Generative Media Agent LLM <model> (...)` with its token counts. A model run from before Studio's runs became your own tasks is described as `Generative Media Agent media run`; the model runs since then are charged on their own tasks, like any model run (see [Costs](#costs)).
 
 ## **POST** /Studio/Task/DeleteOutput
 
@@ -9099,6 +9286,9 @@ Business errors come back with HTTP 200, `result: false` and an `errors` array, 
 | `Uploaded file format invalid. Supported: ...` | 0 | An attachment type that is not accepted. |
 | `Message not found` | 0 | Detail or Cancel with an unknown message, or one from another session. |
 | `Message cannot be cancelled (status: <status>)` | 0 | Cancel on a turn that has already ended. |
+| `Studio runs on your API key's project. Change the Studio project on wiro.ai.` | 0 | ProjectSet with an API key. |
+| `Only a team admin can change the team's Studio project.` | 0 | ProjectSet in a team by a member who is not a team admin. |
+| `Project not found in this workspace.` | 0 | ProjectSet with a `projectid` that is not a project of this workspace. |
 | `Agent is temporarily unavailable. Please try again shortly.` | 0 | Try again shortly. |
 | `You must be a member of this team to perform this action` | HTTP 403 | A team project's key whose creator is no longer a member of the team. |
 
