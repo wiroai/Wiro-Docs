@@ -1,4 +1,4 @@
-# Telegram Integration
+# Telegram Channel
 
 Connect your agent to a Telegram bot as an optional extra messaging channel.
 

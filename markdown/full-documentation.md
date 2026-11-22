@@ -48,7 +48,7 @@ Complete API documentation for the Wiro AI platform: run AI models through a uni
 42. [Managing Teams](#managing-teams)
 43. [Team Billing & Spending](#team-billing--spending)
 44. [Team API Access](#team-api-access)
-45. [Telegram Integration](#telegram-integration)
+45. [Telegram Channel](#telegram-channel)
 
 ---
 
@@ -23824,7 +23824,7 @@ Runs made with a team project's key are charged to the team wallet and appear in
 
 ---
 
-# Telegram Integration
+# Telegram Channel
 
 Connect your agent to a Telegram bot as an optional extra messaging channel.
 
