@@ -9328,6 +9328,11 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                           <td>Token Invalid</td>
                           <td>Bearer token missing, invalid, or expired</td>
                         </tr>
+                        <tr>
+                          <td><code>110</code></td>
+                          <td>Plan Payment Not Finished</td>
+                          <td>The wallet paid for an agent plan (<code>Deploy</code>, <code>CreateSubscriptionCheckout</code>, <code>RenewSubscription</code> or <code>UpgradeTier</code>), but the plan change could not be saved. Never send the call again: a retry charges again. Contact support. See <a href="/docs/agent-overview#error-messages">Agent Overview</a></td>
+                        </tr>
                       </tbody>
                     </table>
                   </section>
@@ -9741,6 +9746,11 @@ if (!data.result) {
                           <td><code>99</code></td>
                           <td>No</td>
                           <td>Check your API key or bearer token</td>
+                        </tr>
+                        <tr>
+                          <td><code>110</code></td>
+                          <td>No</td>
+                          <td>Never retry: the wallet already paid and a retry charges again. Contact support</td>
                         </tr>
                       </tbody>
                     </table>

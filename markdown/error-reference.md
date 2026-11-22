@@ -34,6 +34,7 @@ Error codes indicate the category of the problem. Use these for conditional logi
 | `97` | Insufficient Balance | Not enough funds to run the model |
 | `98` | Authentication Required | Sign in required to access this model |
 | `99` | Token Invalid | Bearer token missing, invalid, or expired |
+| `110` | Plan Payment Not Finished | The wallet paid for an agent plan (`Deploy`, `CreateSubscriptionCheckout`, `RenewSubscription` or `UpgradeTier`), but the plan change could not be saved. Never send the call again: a retry charges again. Contact support. See [Agent Overview](/docs/agent-overview#error-messages) |
 
 ## Authentication Errors
 
@@ -191,3 +192,4 @@ if (!data.result) {
 | `97` | No | Add funds, then retry |
 | `98` | No | Sign in or use authenticated credentials |
 | `99` | No | Check your API key or bearer token |
+| `110` | No | Never retry: the wallet already paid and a retry charges again. Contact support |
