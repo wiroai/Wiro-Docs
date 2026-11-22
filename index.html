@@ -30318,7 +30318,7 @@ Completing the required fields again reactivates it automatically.</p>
 <tr>
 <td><code>icon</code></td>
 <td><code>string</code></td>
-<td>Path or URL to the icon (relative paths absolutized server-side).</td>
+<td>The icon as the registry holds it: a path on <code>https://wiro.ai</code>, such as <code>/images/icons/skills/telegram.svg</code> (put <code>https://wiro.ai</code> in front of it), or, for a setting, a Lineicons class name, such as <code>lni lni-envelope-1</code>.</td>
 </tr>
 <tr>
 <td><code>brand_color</code> / <code>brand_text_color</code> / <code>brand_logo_filter</code></td>
@@ -30399,7 +30399,7 @@ Completing the required fields again reactivates it automatically.</p>
 <tr>
 <td><code>options</code></td>
 <td><code>array?</code></td>
-<td>For <code>type: "select"</code>, <code>[{ label, value }]</code> choices.</td>
+<td>For <code>type: "select"</code>, <code>[{ value, text }]</code> choices: show <code>text</code>, send <code>value</code> as the <code>fieldvalue</code>.</td>
 </tr>
 <tr>
 <td><code>default</code></td>
@@ -30419,7 +30419,7 @@ Completing the required fields again reactivates it automatically.</p>
 <tr>
 <td><code>encrypted</code></td>
 <td><code>boolean?</code></td>
-<td><code>true</code> for a secret: it is stored encrypted and read back as the mask.</td>
+<td><code>true</code> when the value is stored encrypted. Only a <code>password</code> field comes back as the mask, <code>"••••••••"</code>: an encrypted field of another type, such as Twilio Voice's <code>accountsid</code> or the Wiro project's <code>apikey</code>, comes back as saved. In <a href="#auditing-credential-changes-credentialfieldhistory"><code>CredentialFieldHistory</code></a>, an encrypted field's earlier values read <code>"[REDACTED]"</code>.</td>
 </tr>
 <tr>
 <td><code>item_schema</code> / <code>item_type</code></td>
@@ -30504,7 +30504,7 @@ Completing the required fields again reactivates it automatically.</p>
 </ul>
 <p><code>CredentialUpsert</code> rejects writes to these fields with <code>&lt;Field label&gt; is managed by the platform</code>, and Deploy drops them from <code>credentials</code>.</p>
 <h2 id="auditing-credential-changes-credentialfieldhistory">Auditing Credential Changes: <code>CredentialFieldHistory</code></h2>
-<p>Every credential field write is appended to a versioned history. Use <code>POST /UserAgent/CredentialFieldHistory</code> to read it, the same idea as <code>CustomSkillHistory</code> for skills.</p>
+<p>Each time a save replaces a field's saved value, the earlier value is kept in a versioned history, with <code>operation: "update"</code>. A first save adds no entry, and neither does a list of entries sent whole (Telegram <code>groups</code>, Slack <code>channels</code>, Discord <code>guilds</code>, Website <code>urls</code>); a change to one entry's field, sent with <code>parentfield</code> and <code>ordinal</code>, is kept like any other. Use <code>POST /UserAgent/CredentialFieldHistory</code> to read it, the same idea as <code>CustomSkillHistory</code> for skills.</p>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CredentialFieldHistory&quot; \
   -H &quot;Content-Type: application/json&quot; \
   -H &quot;x-api-key: YOUR_API_KEY&quot; \
@@ -30527,7 +30527,7 @@ Completing the required fields again reactivates it automatically.</p>
       &quot;fieldstatus&quot;: &quot;user&quot;,
       &quot;parentfield&quot;: null,
       &quot;ordinal&quot;: 0,
-      &quot;operation&quot;: &quot;upsert&quot;,
+      &quot;operation&quot;: &quot;update&quot;,
       &quot;changedby&quot;: &quot;ada-uuid&quot;,
       &quot;changedby_user&quot;: {
         &quot;uuid&quot;: &quot;ada-uuid&quot;,
@@ -30585,7 +30585,7 @@ Completing the required fields again reactivates it automatically.</p>
 </div>
 </div>
 <blockquote>
-<p><strong>Secrets stay out of the history's answers.</strong> A saved secret such as a bot token or an auth token comes back as <code>"••••••••"</code>, in <code>POST /UserAgent/Detail</code> as in the history. <code>CredentialFieldHistory</code> only shows the audit trail.</p>
+<p><strong>Secrets stay out of the history's answers.</strong> A saved secret, such as a bot token or an auth token, reads <code>"••••••••"</code> in <code>POST /UserAgent/Detail</code>, and its earlier values read <code>"[REDACTED]"</code> in the history, as do those of every field the registry marks <code>encrypted</code>, such as Twilio Voice's <code>accountsid</code>. <code>CredentialFieldHistory</code> only shows the audit trail.</p>
 </blockquote>
 <h2 id="setting-credentials">Setting Credentials</h2>
 <p>Use <code>POST /UserAgent/CredentialUpsert</code> with a flat <code>fields[]</code> array. Each field row carries <code>{credentialkey, fieldname, fieldvalue}</code>. The Wiro project an agent runs models with has its own route, <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>POST /UserAgent/CredentialProjectBind</code></a>, which takes the project's <code>id</code>.</p>

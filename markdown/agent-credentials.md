@@ -180,7 +180,7 @@ The example shows one entry, shortened. Keys this table doesn't list are for Wir
 |-------|------|-------------|
 | `key` | `string` | Canonical credential key. Use this in `CredentialUpsert.fields[].credentialkey`. |
 | `title` | `string` | Display label for the credential's card. |
-| `icon` | `string` | Path or URL to the icon (relative paths absolutized server-side). |
+| `icon` | `string` | The icon as the registry holds it: a path on `https://wiro.ai`, such as `/images/icons/skills/telegram.svg` (put `https://wiro.ai` in front of it), or, for a setting, a Lineicons class name, such as `lni lni-envelope-1`. |
 | `brand_color` / `brand_text_color` / `brand_logo_filter` | `string\|null` | Colours and CSS filter for rendering the icon, the same shape as on skill registry entries. |
 | `docs_url` | `string\|null` | Slug of the page about it on this docs site, when it has one. Frontends prefix it with `/docs/`. |
 | `credential_mode` | `string` | `"api_key"` for values typed in (the channels, Twilio Voice, the Wiro project) or `"static"` for settings. |
@@ -198,11 +198,11 @@ The example shows one entry, shortened. Keys this table doesn't list are for Wir
 | `placeholder` | `string?` | Placeholder text for the input. |
 | `pattern` | `string?` | Regex the value must satisfy. |
 | `maxlength` / `minlength` | `number?` | Length constraints. |
-| `options` | `array?` | For `type: "select"`, `[{ label, value }]` choices. |
+| `options` | `array?` | For `type: "select"`, `[{ value, text }]` choices: show `text`, send `value` as the `fieldvalue`. |
 | `default` | `string?` | Default value applied when the user hasn't set anything yet. |
 | `help` | `string?` | HTML help text rendered under the input. |
 | `show_toggle` | `boolean?` | For `type: "password"`, render a "show / hide" toggle. |
-| `encrypted` | `boolean?` | `true` for a secret: it is stored encrypted and read back as the mask. |
+| `encrypted` | `boolean?` | `true` when the value is stored encrypted. Only a `password` field comes back as the mask, `"••••••••"`: an encrypted field of another type, such as Twilio Voice's `accountsid` or the Wiro project's `apikey`, comes back as saved. In [`CredentialFieldHistory`](#auditing-credential-changes-credentialfieldhistory), an encrypted field's earlier values read `"[REDACTED]"`. |
 | `item_schema` / `item_type` | `object?` | For array-of-object fields: describes the per-entry shape (e.g. Telegram `groups[].{chatid, allowedusers}`). |
 
 **`fieldstatus`**. Not part of the registry schema: the server stamps it onto each stored field when it is written. Values you save are `user` and come back in responses (a secret as the mask). `platform` fields are Wiro's own: you can't write them, and they never come back.
@@ -277,7 +277,7 @@ Some credential fields are **managed by Wiro**. You don't provide them, and they
 
 ## Auditing Credential Changes: `CredentialFieldHistory`
 
-Every credential field write is appended to a versioned history. Use `POST /UserAgent/CredentialFieldHistory` to read it, the same idea as `CustomSkillHistory` for skills.
+Each time a save replaces a field's saved value, the earlier value is kept in a versioned history, with `operation: "update"`. A first save adds no entry, and neither does a list of entries sent whole (Telegram `groups`, Slack `channels`, Discord `guilds`, Website `urls`); a change to one entry's field, sent with `parentfield` and `ordinal`, is kept like any other. Use `POST /UserAgent/CredentialFieldHistory` to read it, the same idea as `CustomSkillHistory` for skills.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialFieldHistory" \
@@ -305,7 +305,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialFieldHistory" \
       "fieldstatus": "user",
       "parentfield": null,
       "ordinal": 0,
-      "operation": "upsert",
+      "operation": "update",
       "changedby": "ada-uuid",
       "changedby_user": {
         "uuid": "ada-uuid",
@@ -331,7 +331,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialFieldHistory" \
 | `startdate` | number | No | UTC epoch seconds: return entries on/after this time |
 | `enddate` | number | No | UTC epoch seconds: return entries on/before this time |
 
-> **Secrets stay out of the history's answers.** A saved secret such as a bot token or an auth token comes back as `"••••••••"`, in `POST /UserAgent/Detail` as in the history. `CredentialFieldHistory` only shows the audit trail.
+> **Secrets stay out of the history's answers.** A saved secret, such as a bot token or an auth token, reads `"••••••••"` in `POST /UserAgent/Detail`, and its earlier values read `"[REDACTED]"` in the history, as do those of every field the registry marks `encrypted`, such as Twilio Voice's `accountsid`. `CredentialFieldHistory` only shows the audit trail.
 
 ## Setting Credentials
 
