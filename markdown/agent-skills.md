@@ -114,7 +114,7 @@ Lists all skills in the registry.
 | `version` | `string` | Semver for the registry entry. Bumped when the skill's tool surface changes. |
 | `title` | `string` | Display name shown on chips / filters / cards. |
 | `description` | `string` | One-line summary used on marketing surfaces. |
-| `icon` | `string` | A LineIcons class name, such as `lni lni-cloud-sun`, or a path or URL to an icon (relative paths are absolutized to `https://wiro.ai/...` on the wire). |
+| `icon` | `string` | A LineIcons class name, such as `lni lni-cloud-sun`, or a path on wiro.ai, such as `/images/icons/skills/twilio.svg`: prefix a path with `https://wiro.ai`. |
 | `brand_color` | `string\|null` | Brand background colour (hex) for chips and cards. |
 | `brand_text_color` | `string\|null` | Foreground colour to render on top of `brand_color`. |
 | `brand_logo_filter` | `string\|null` | CSS `filter` value applied to monochrome SVG icons (e.g. `"brightness(0) invert(1)"`) so the same source SVG renders correctly on light and dark brand colours. |
@@ -123,7 +123,8 @@ Lists all skills in the registry.
 | `credential_key` | `string\|null` | The credential this skill needs, when it needs one (see [Agent Credentials](/docs/agent-credentials)); [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail) shows its schema. `null` for skills that need none. |
 | `additional_credential_keys` | `array<string>` | **Optional: only present when the skill reads further credentials,** such as `["var-support-email"]` for the support-email setting; most skills omit this field entirely. |
 | `capabilities` | `array<string>` | High-level snake_case capability tags from the closed vocabulary returned by [`POST /Skills/Capabilities`](#post-skillscapabilities). Drives the "Find skills that can: ___" picker. |
-| `depends_on` | `array<string>` | Other skill names that must be enabled. Wiro auto-enables transitive deps when you toggle the parent skill on. |
+| `suggested_connectors` | `array<string>` | **Optional: only present when set.** The connectors the skill works with, by catalog slug, such as `["google-ads", "meta-ads", "tiktok-ads"]` on Ads Manager Common Rules (`util-ads-manager-common`). Nothing connects by itself: connect the ones you want with [`POST /UserAgent/ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect). An `add` setup card names up to 3 of them that aren't connected yet in its `needs` (see [Setup From Chat](/docs/agent-messaging#setup-from-chat)). |
+| `depends_on` | `array<string>` | Other skill names that must be on while this one is. Deploy's `skills` and an `add` setup card turn them on with it. `SkillsApply` turns on only the names you send and refuses, with code `101` and `deps[]`, a change that leaves one of them off, so send them in the same call. |
 | `conflicts_with` | `array<string>` | Mutually-exclusive skill names. `SkillsApply` rejects toggle batches that would enable two conflicting skills. |
 | `user_invocable` | `boolean` | `true` when end users can call the skill via chat. `false` marks supporting parts that come with another skill, such as `util-video-shots` and `util-video-docs`, which come with `util-video-creator`. |
 | `deprecated` | `boolean` | `true` for skills slated for removal, and `replacement` (if any) names the migration target. |
@@ -609,7 +610,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   }'
 ```
 
-`idempotencyKey` is required: use a UUID per "user clicks Save" event. The full response shape and error-code table live on [`SkillsApply`](/docs/agent-overview#post-useragentskillsapply).
+`idempotencyKey` is required: use a UUID per "user clicks Save" event. A Skill whose `depends_on` would stay off is refused with code `101` and `deps[]`, and nothing changes: send its dependencies in the same call. The full response shape and error-code table live on [`SkillsApply`](/docs/agent-overview#post-useragentskillsapply).
 
 > **Template deploys too.** `SkillsApply` works on agents deployed from a marketplace template as well as on custom builds. On a template agent, a skill you change overrides the template for that skill only; later template updates still reach every skill you never changed.
 
@@ -617,7 +618,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
 
 ## Preview a Skill Change
 
-Before you commit `SkillsApply` (or the user clicks Save in your UI), call `POST /UserAgent/PricingPreview` to see the skill set the change would leave, with its `depends_on` resolved. No state is mutated, and the price and included AI usage stay the plan's: its `planChange` shows no charge. See [`PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) for the full response shape.
+Before you commit `SkillsApply` (or the user clicks Save in your UI), call `POST /UserAgent/PricingPreview` to see the skill set the change would leave, with its `depends_on` resolved. No state is mutated, and the price and included AI usage stay the plan's: its `planChange` shows no charge. Its `enabledSkills` includes the `depends_on` skills, but `SkillsApply` does not add them: send every name `enabledSkills` adds in the same `SkillsApply` call. See [`PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) for the full response shape.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
@@ -831,9 +832,9 @@ Agents can optionally forward operator notifications to a Telegram bot via the `
 |-------|--------------|
 | `util-weather` | Current weather and a 9-day forecast for any place: temperature, rain, wind and UV from MET Norway's open forecast data, with the place found on OpenStreetMap. |
 | `util-diagram` | Flowcharts, architecture and sequence diagrams, state machines, data models, mind maps, timelines, Gantt plans and concept drawings as PNG images with an editable SVG copy, checked for overlapping or cut-off text. |
-| `util-video-creator` | The Video Creator's playbook: finished videos with voice-over, music and captions from a website or web app (behind a login too), an app-store listing, a document, an article or product photos; 16:9 or 9:16, up to 3 minutes. It brings `util-video-shots`, `util-video-docs` and `util-motion-effects` with it, and runs the video's models with the agent's Wiro project, which pays for them (see [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent)). `util-motion-effects` and `util-video-creator` always come together, whichever one you turn on. |
+| Video Creator (`util-video-creator`) | The Video Creator's playbook: finished videos with voice-over, music and captions from a website or web app (behind a login too), an app-store listing, a document, an article or product photos; 16:9 or 9:16, up to 3 minutes. It needs Video Story & Shots (`util-video-shots`), Document Videos (`util-video-docs`) and Motion Effects (`util-motion-effects`), and runs the video's models with the agent's Wiro project, which pays for them (see [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent)). Motion Effects needs Video Creator too, so the four are on together: with `SkillsApply` send all four in one call, `{ "util-video-creator": true, "util-video-shots": true, "util-video-docs": true, "util-motion-effects": true }`. Deploy's `skills` and an `add` setup card turn the rest on by themselves. |
 
-The voice channels are Skills too: `util-twilio-channel` answers phone calls through Twilio Voice and saves its account in the `twilio-voice` credential (see [Twilio Voice Channel](/docs/integration-twiliovoice-skills)), and `util-web-channel` takes calls in the browser (see [Web Voice Channel](/docs/integration-webvoice-skills)). Each brings `util-voice-receptionist` and `util-voice-call-prep` with it. Turn them on with [`SkillsApply`](#turning-skills-on-and-off) or Deploy's `skills`.
+The voice channels are Skills too: Twilio Voice Channel (`util-twilio-channel`) answers phone calls through Twilio Voice and saves its account in the `twilio-voice` credential (see [Twilio Voice Channel](/docs/integration-twiliovoice-skills)), and Web Voice Channel (`util-web-channel`) takes calls in the browser (see [Web Voice Channel](/docs/integration-webvoice-skills)). Each needs Voice Receptionist Rules (`util-voice-receptionist`) and Voice Call Prep Rules (`util-voice-call-prep`). With [`SkillsApply`](#turning-skills-on-and-off) send them in the same call, for example `{ "util-twilio-channel": true, "util-voice-receptionist": true, "util-voice-call-prep": true }`: sent alone while the two are off, a channel is refused with code `101` and `deps[]`. Deploy's `skills` turns them on by itself.
 
 `POST /Skills/List` with `{ "category": "util" }` returns every utility skill.
 

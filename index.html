@@ -33969,7 +33969,7 @@ page &lt;&gt; binary RFB 3.8 frames: noVNC draws the agent's browser, view only
 <tr>
 <td><code>icon</code></td>
 <td><code>string</code></td>
-<td>A LineIcons class name, such as <code>lni lni-cloud-sun</code>, or a path or URL to an icon (relative paths are absolutized to <code>https://wiro.ai/...</code> on the wire).</td>
+<td>A LineIcons class name, such as <code>lni lni-cloud-sun</code>, or a path on wiro.ai, such as <code>/images/icons/skills/twilio.svg</code>: prefix a path with <code>https://wiro.ai</code>.</td>
 </tr>
 <tr>
 <td><code>brand_color</code></td>
@@ -34012,9 +34012,14 @@ page &lt;&gt; binary RFB 3.8 frames: noVNC draws the agent's browser, view only
 <td>High-level snake_case capability tags from the closed vocabulary returned by <a href="#post-skillscapabilities"><code>POST /Skills/Capabilities</code></a>. Drives the "Find skills that can: ___" picker.</td>
 </tr>
 <tr>
+<td><code>suggested_connectors</code></td>
+<td><code>array&lt;string&gt;</code></td>
+<td><strong>Optional: only present when set.</strong> The connectors the skill works with, by catalog slug, such as <code>["google-ads", "meta-ads", "tiktok-ads"]</code> on Ads Manager Common Rules (<code>util-ads-manager-common</code>). Nothing connects by itself: connect the ones you want with <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>POST /UserAgent/ConnectorConnect</code></a>. An <code>add</code> setup card names up to 3 of them that aren't connected yet in its <code>needs</code> (see <a href="/docs/agent-messaging#setup-from-chat">Setup From Chat</a>).</td>
+</tr>
+<tr>
 <td><code>depends_on</code></td>
 <td><code>array&lt;string&gt;</code></td>
-<td>Other skill names that must be enabled. Wiro auto-enables transitive deps when you toggle the parent skill on.</td>
+<td>Other skill names that must be on while this one is. Deploy's <code>skills</code> and an <code>add</code> setup card turn them on with it. <code>SkillsApply</code> turns on only the names you send and refuses, with code <code>101</code> and <code>deps[]</code>, a change that leaves one of them off, so send them in the same call.</td>
 </tr>
 <tr>
 <td><code>conflicts_with</code></td>
@@ -34581,13 +34586,13 @@ complete. Channels are not skills and do not affect pricing.</p>
     }
   }'
 </code></pre>
-<p><code>idempotencyKey</code> is required: use a UUID per "user clicks Save" event. The full response shape and error-code table live on <a href="/docs/agent-overview#post-useragentskillsapply"><code>SkillsApply</code></a>.</p>
+<p><code>idempotencyKey</code> is required: use a UUID per "user clicks Save" event. A Skill whose <code>depends_on</code> would stay off is refused with code <code>101</code> and <code>deps[]</code>, and nothing changes: send its dependencies in the same call. The full response shape and error-code table live on <a href="/docs/agent-overview#post-useragentskillsapply"><code>SkillsApply</code></a>.</p>
 <blockquote>
 <p><strong>Template deploys too.</strong> <code>SkillsApply</code> works on agents deployed from a marketplace template as well as on custom builds. On a template agent, a skill you change overrides the template for that skill only; later template updates still reach every skill you never changed.</p>
 <p><strong>Scheduled tasks follow their connectors.</strong> A template's scheduled task that works with a connector, such as a daily Google Ads report, stays off while that connector isn't connected, and turns on when it is. You don't need to touch it on its own.</p>
 </blockquote>
 <h2 id="preview-a-skill-change">Preview a Skill Change</h2>
-<p>Before you commit <code>SkillsApply</code> (or the user clicks Save in your UI), call <code>POST /UserAgent/PricingPreview</code> to see the skill set the change would leave, with its <code>depends_on</code> resolved. No state is mutated, and the price and included AI usage stay the plan's: its <code>planChange</code> shows no charge. See <a href="/docs/agent-overview#post-useragentpricingpreview"><code>PricingPreview</code></a> for the full response shape.</p>
+<p>Before you commit <code>SkillsApply</code> (or the user clicks Save in your UI), call <code>POST /UserAgent/PricingPreview</code> to see the skill set the change would leave, with its <code>depends_on</code> resolved. No state is mutated, and the price and included AI usage stay the plan's: its <code>planChange</code> shows no charge. Its <code>enabledSkills</code> includes the <code>depends_on</code> skills, but <code>SkillsApply</code> does not add them: send every name <code>enabledSkills</code> adds in the same <code>SkillsApply</code> call. See <a href="/docs/agent-overview#post-useragentpricingpreview"><code>PricingPreview</code></a> for the full response shape.</p>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/PricingPreview&quot; \
   -H &quot;Content-Type: application/json&quot; \
   -H &quot;x-api-key: YOUR_API_KEY&quot; \
@@ -35062,14 +35067,14 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <td>Flowcharts, architecture and sequence diagrams, state machines, data models, mind maps, timelines, Gantt plans and concept drawings as PNG images with an editable SVG copy, checked for overlapping or cut-off text.</td>
 </tr>
 <tr>
-<td><code>util-video-creator</code></td>
-<td>The Video Creator's playbook: finished videos with voice-over, music and captions from a website or web app (behind a login too), an app-store listing, a document, an article or product photos; 16:9 or 9:16, up to 3 minutes. It brings <code>util-video-shots</code>, <code>util-video-docs</code> and <code>util-motion-effects</code> with it, and runs the video's models with the agent's Wiro project, which pays for them (see <a href="#using-wiro-ai-models-from-your-agent">Using Wiro AI Models from Your Agent</a>). <code>util-motion-effects</code> and <code>util-video-creator</code> always come together, whichever one you turn on.</td>
+<td>Video Creator (<code>util-video-creator</code>)</td>
+<td>The Video Creator's playbook: finished videos with voice-over, music and captions from a website or web app (behind a login too), an app-store listing, a document, an article or product photos; 16:9 or 9:16, up to 3 minutes. It needs Video Story &amp; Shots (<code>util-video-shots</code>), Document Videos (<code>util-video-docs</code>) and Motion Effects (<code>util-motion-effects</code>), and runs the video's models with the agent's Wiro project, which pays for them (see <a href="#using-wiro-ai-models-from-your-agent">Using Wiro AI Models from Your Agent</a>). Motion Effects needs Video Creator too, so the four are on together: with <code>SkillsApply</code> send all four in one call, <code>{ "util-video-creator": true, "util-video-shots": true, "util-video-docs": true, "util-motion-effects": true }</code>. Deploy's <code>skills</code> and an <code>add</code> setup card turn the rest on by themselves.</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
-<p>The voice channels are Skills too: <code>util-twilio-channel</code> answers phone calls through Twilio Voice and saves its account in the <code>twilio-voice</code> credential (see <a href="/docs/integration-twiliovoice-skills">Twilio Voice Channel</a>), and <code>util-web-channel</code> takes calls in the browser (see <a href="/docs/integration-webvoice-skills">Web Voice Channel</a>). Each brings <code>util-voice-receptionist</code> and <code>util-voice-call-prep</code> with it. Turn them on with <a href="#turning-skills-on-and-off"><code>SkillsApply</code></a> or Deploy's <code>skills</code>.</p>
+<p>The voice channels are Skills too: Twilio Voice Channel (<code>util-twilio-channel</code>) answers phone calls through Twilio Voice and saves its account in the <code>twilio-voice</code> credential (see <a href="/docs/integration-twiliovoice-skills">Twilio Voice Channel</a>), and Web Voice Channel (<code>util-web-channel</code>) takes calls in the browser (see <a href="/docs/integration-webvoice-skills">Web Voice Channel</a>). Each needs Voice Receptionist Rules (<code>util-voice-receptionist</code>) and Voice Call Prep Rules (<code>util-voice-call-prep</code>). With <a href="#turning-skills-on-and-off"><code>SkillsApply</code></a> send them in the same call, for example <code>{ "util-twilio-channel": true, "util-voice-receptionist": true, "util-voice-call-prep": true }</code>: sent alone while the two are off, a channel is refused with code <code>101</code> and <code>deps[]</code>. Deploy's <code>skills</code> turns them on by itself.</p>
 <p><code>POST /Skills/List</code> with <code>{ "category": "util" }</code> returns every utility skill.</p>
 <blockquote>
 <p><strong>Restart behavior:</strong> On a starting or running agent (status 3 or 4), <code>SkillsApply</code>, <code>CustomSkillRename</code>, <code>CustomSkillDelete</code> and <code>CustomSkillRevert</code> restart it so the new skill configuration is picked up, as credential updates do. <code>CustomSkillUpsert</code> restarts it for a new skill or task, a new <code>interval</code> or an <code>enabled</code> change. A change to the text or description of an existing one reaches the running agent without a restart, except for <code>cs-approval-policy</code>. See <a href="/docs/agent-overview#automatic-restart">Automatic Restart</a>.</p>
