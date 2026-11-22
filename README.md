@@ -103,6 +103,11 @@ One row per page, in sidebar order. Each path is live under `https://wiro.ai`.
 | Roasit | `/docs/integration-roasit-skills` | [integration-roasit-skills.md](./markdown/integration-roasit-skills.md) |
 | Merchant Center | `/docs/integration-merchantcenter-skills` | [integration-merchantcenter-skills.md](./markdown/integration-merchantcenter-skills.md) |
 | Google Business Profile | `/docs/integration-googlebusiness-skills` | [integration-googlebusiness-skills.md](./markdown/integration-googlebusiness-skills.md) |
+| Google Search Console | `/docs/integration-searchconsole-skills` | [integration-searchconsole-skills.md](./markdown/integration-searchconsole-skills.md) |
+| DataForSEO | `/docs/integration-dataforseo-skills` | [integration-dataforseo-skills.md](./markdown/integration-dataforseo-skills.md) |
+| Keepa | `/docs/integration-keepa-skills` | [integration-keepa-skills.md](./markdown/integration-keepa-skills.md) |
+| RevenueCat | `/docs/integration-revenuecat-skills` | [integration-revenuecat-skills.md](./markdown/integration-revenuecat-skills.md) |
+| Adapty | `/docs/integration-adapty-skills` | [integration-adapty-skills.md](./markdown/integration-adapty-skills.md) |
 | HubSpot | `/docs/integration-hubspot-skills` | [integration-hubspot-skills.md](./markdown/integration-hubspot-skills.md) |
 | Mailchimp | `/docs/integration-mailchimp-skills` | [integration-mailchimp-skills.md](./markdown/integration-mailchimp-skills.md) |
 | Google Drive | `/docs/integration-googledrive-skills` | [integration-googledrive-skills.md](./markdown/integration-googledrive-skills.md) |
