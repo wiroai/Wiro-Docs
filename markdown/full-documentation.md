@@ -24010,6 +24010,8 @@ for (const row of rows.filter(r => r.kind === 'ai-usage' && r.costs)) {
 console.log(totals);
 ```
 
+A batch paid more than one way carries the whole batch's `costs` on each of its rows (see [Rows that cover several model calls](#metered-token-rows)), so these totals can count it twice, as when the plan's included usage runs out partway through a batch.
+
 ### Reconcile a plan change
 
 Every plan payment is a `plan` row: the deploy, a move to a higher plan (the prorated difference) and each renewal, with the plan's name in its `title` (for legacy rows, see the note under Row fields). A move to a lower plan charges nothing when it is asked for: the renewal that starts it is a `plan` row at the lower price. Use these rows to render a plan history in your UI. For an agent from before dollar billing, page with `kind: "all"` and keep the `plan` rows, as the Pagination note says.
