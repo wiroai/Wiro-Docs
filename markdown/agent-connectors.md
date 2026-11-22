@@ -906,7 +906,7 @@ When the agent is back up, every `connected` connection whose connector is still
 - `readonly: true` tools only read. `destructive: true` tools can change or delete something at the vendor.
 - A tool acts with the connection's own credentials and, where the connector has pickers, only on the selected accounts.
 - To tell the agent when and how to use the tools, write a [Custom Skill](/docs/agent-skills#using-connectors-in-skills) that names them, such as: "Before you write an article, research the topic with `serper__web_search` and cite the top three results."
-- A scheduled task of an agent template that works with a connector stays off until that connector is connected.
+- A scheduled task of an agent template that works with a connector runs only while that connector is connected; connecting or disconnecting it never changes the task's `enabled`.
 - A disconnected connector's tools are gone after the restart. A `reauth` connection's tools answer that it must be connected again, in words your customer can read (they name no Wiro place or link), until the agent's next restart; after it, the agent no longer has them.
 
 ## Wiro AI Models
