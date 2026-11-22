@@ -515,7 +515,7 @@ print(response.body);
 
 ## Using Auth with Agent Endpoints
 
-The same authentication headers work for every `UserAgent/*` and `UserAgentOAuth/*` endpoint. Example:
+The same authentication headers work for every `UserAgent/*` endpoint, the connector calls included. Example:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
