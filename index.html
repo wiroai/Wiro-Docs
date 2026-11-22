@@ -24359,7 +24359,7 @@ Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it
 <td>A malformed request.</td>
 </tr>
 <tr>
-<td>A sentence from the connect checks, such as <code>Serper API Key is required.</code>, the vendor's own refusal, <code>This connector signs in with your own app: send its Client ID and Client Secret.</code>, a project refusal such as <code>This is a team agent: use one of its team's projects.</code>, or <code>Invalid redirect URL</code></td>
+<td>A sentence from the connect checks, such as <code>Serper API Key is required.</code> (or, for a <code>signin</code> card sent without your app's keys, <code>Client ID is required. Client Secret is required.</code>), the vendor's own refusal, a project refusal such as <code>This is a team agent: use one of its team's projects.</code>, or <code>Invalid redirect URL</code></td>
 <td>A <code>connect</code> card's values or project were refused, as <a href="/docs/agent-connectors#errors"><code>ConnectorConnect</code></a> refuses them. Nothing was saved and the card stays pending.</td>
 </tr>
 <tr>
@@ -28976,7 +28976,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 <tr>
 <td><code>ConnectorConnect</code></td>
 <td><code>&lt;Label&gt; is required.</code> (a <code>headers</code> connector: <code>&lt;name&gt; is required.</code>)</td>
-<td>A required field has no value, sent or saved.</td>
+<td>A required field has no value, sent or saved. A <code>provider-oauth</code> sign-in gets one for each of your app's keys it lacks, such as <code>Client ID is required. Client Secret is required.</code></td>
 </tr>
 <tr>
 <td><code>ConnectorConnect</code></td>
@@ -29016,7 +29016,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 <tr>
 <td><code>ConnectorConnect</code></td>
 <td><code>This connector signs in with your own app: send its &lt;labels&gt;.</code></td>
-<td>A <code>provider-oauth</code> sign-in without your app's keys, sent or saved.</td>
+<td>A <code>provider-oauth</code> sign-in without your app's keys, sent or saved, on a connector whose app keys are optional. Where they are <code>required</code>, each missing key gets <code>&lt;Label&gt; is required.</code> instead.</td>
 </tr>
 <tr>
 <td><code>ConnectorConnect</code></td>
@@ -31506,7 +31506,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 </code></pre>
 <p>The agent already restarted when the sign-in came back, so <code>restarting</code> is <code>false</code>. Without this call, the card is recorded applied the next time a card of the same person's is applied or dismissed in that chat; until then it still shows its Sign in.</p>
 <ul>
-<li>A card from a chat sent with your API key never carries <code>wiroapp: true</code>: its sign-in always uses your own app, and HubSpot's consent screen shows that app. Send the app's keys with the first sign-in; a later sign-in of the same connection may leave them out and use the saved ones. Without them, the answer is <code>This connector signs in with your own app: send its Client ID and Client Secret.</code> and the card stays pending.</li>
+<li>A card from a chat sent with your API key never carries <code>wiroapp: true</code>: its sign-in always uses your own app, and HubSpot's consent screen shows that app. Send the app's keys with the first sign-in; a later sign-in of the same connection may leave them out and use the saved ones. Without them, the answer is <code>Client ID is required. Client Secret is required.</code> and the card stays pending.</li>
 <li>An <code>oauth</code> connector, a vendor's own MCP server with its own sign-in such as TikTok Ads, has no fields on its card: send <code>redirecturl</code> only. Its consent screen names your organization.</li>
 <li>A connector with account pickers, such as Facebook Pages, lists its candidates once it is connected. Let the person choose them on your settings screen with <a href="/docs/agent-connectors#post-useragentconnectoraccounts"><code>ConnectorAccounts</code></a> and <a href="/docs/agent-connectors#post-useragentconnectorsetaccounts"><code>ConnectorSetAccounts</code></a>: no card picks accounts.</li>
 </ul>
@@ -31679,7 +31679,7 @@ async function connectFromNext(entry, useragentguid, own) {
 <td><code>signin: true</code> before the sign-in came back. Nothing was applied.</td>
 </tr>
 <tr>
-<td>A field's sentence, such as <code>Serper API Key is required.</code>, the vendor's own refusal, <code>This connector signs in with your own app: send its Client ID and Client Secret.</code>, a project refusal such as <code>This is a team agent: use one of its team's projects.</code>, or <code>Invalid redirect URL</code></td>
+<td>A field's sentence, such as <code>Serper API Key is required.</code> (or, for a <code>signin</code> card sent without your app's keys, <code>Client ID is required. Client Secret is required.</code>), the vendor's own refusal, a project refusal such as <code>This is a team agent: use one of its team's projects.</code>, or <code>Invalid redirect URL</code></td>
 <td>The checks of <code>ConnectorConnect</code> refused the card's values or project: show it next to the form. Nothing was saved and the card stays pending. See <a href="/docs/agent-connectors#errors">Errors</a> on Agent Connectors.</td>
 </tr>
 <tr>

@@ -956,7 +956,7 @@ Refusals come as `result: false` with one sentence per problem in `errors`. Show
 | `List` | `search is text of at most 100 characters.` | `search` too long. |
 | `List` | `category must be one lowercase word (letters, digits or dashes, at most 40).` | A malformed `category`. |
 | `ConnectorConnect` | `This connector is not available.` | The slug is not in the catalog. |
-| `ConnectorConnect` | `<Label> is required.` (a `headers` connector: `<name> is required.`) | A required field has no value, sent or saved. |
+| `ConnectorConnect` | `<Label> is required.` (a `headers` connector: `<name> is required.`) | A required field has no value, sent or saved. A `provider-oauth` sign-in gets one for each of your app's keys it lacks, such as `Client ID is required. Client Secret is required.` |
 | `ConnectorConnect` | `Unknown field <name>. This connector takes: <names>.` (a `headers` connector: `Unknown variable <name>. This connector takes: <names>.`) | A key in `values` the connector does not take. |
 | `ConnectorConnect` | `values must be an object of field names and values.` (a `headers` connector: `values must be an object of variable names and values.`), `<Label> must be text.` | The shape of `values`. |
 | `ConnectorConnect` | `<Label> must be an https address.`, `<Label> must be valid JSON.`, `<Label> must be an email address.`, `<Label> must be one of: <values>.`, `<Label> is not in the expected format.`, `<Label> must be at most <n> characters.`, `<Label> must be on one line.`, `<Label> has characters it cannot take.` | A value that fails its field's `format`, `pattern` or `maxlength` (65,536 characters at most). |
@@ -964,7 +964,7 @@ Refusals come as `result: false` with one sentence per problem in `errors`. Show
 | `ConnectorConnect` | The vendor's own sentence | The credential check: the vendor refused the values. Nothing was saved. |
 | `ConnectorConnect` | `The vendor refused these credentials. Check them and try again.` | A key way that mints a token (Shopify) was refused. |
 | `ConnectorConnect` | `The vendor could not be reached. Try again in a moment.` | The vendor did not answer the key exchange. |
-| `ConnectorConnect` | `This connector signs in with your own app: send its <labels>.` | A `provider-oauth` sign-in without your app's keys, sent or saved. |
+| `ConnectorConnect` | `This connector signs in with your own app: send its <labels>.` | A `provider-oauth` sign-in without your app's keys, sent or saved, on a connector whose app keys are optional. Where they are `required`, each missing key gets `<Label> is required.` instead. |
 | `ConnectorConnect` | `This connector connects only by signing in.` | `mode: "key"` on a connector whose `modes` is `["oauth"]`. |
 | `ConnectorConnect` | `mode is oauth or key.`, `mode is only for a connector that signs in with its vendor's own OAuth.` | A wrong `mode`. |
 | `ConnectorConnect` | `Invalid redirect URL` | See [The redirect URL](#the-redirect-url). |
