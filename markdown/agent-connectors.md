@@ -568,7 +568,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorList" \
 |----------|---------|--------------|
 | `connected` | The agent has the connector's tools. | Connected, with Disconnect and, when it has pickers, the account choice. |
 | `pending` | A sign-in was started and has not come back yet, or a connection that [moved over](#coming-from-credential-connectors) misses a required value. | Waiting for the sign-in, with a way to start it again; or the form, to send the missing value with ConnectorConnect. |
-| `reauth` | The sign-in expired or was revoked at the vendor and refreshing it failed (`lasterror` is a code), or the connector's way in changed (`lasterror: "auth_changed"`). Until the agent's next restart, the connector's tools answer that it must be connected again; after it, the agent no longer has them. | Reconnect: start a new sign-in with ConnectorConnect. |
+| `reauth` | The sign-in expired or was revoked at the vendor: refreshing it failed (`lasterror` is a code), or the vendor's own MCP server refused it with HTTP 401 or 403 as Wiro listed the connection's accounts (`lasterror: "unauthorized"`; `"no_access_token"` when the connection held no token to send). Or the connector's way in changed (`lasterror: "auth_changed"`). Until the agent's next restart, the connector's tools answer that it must be connected again; after it, the agent no longer has them. | Reconnect: start a new sign-in with ConnectorConnect. |
 | `error` | The last sign-in failed (`lasterror` says how). | Connect again. |
 
 A connector that was never connected, or was disconnected, has no row.
@@ -689,14 +689,14 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetAccounts" \
 
 | Refusal | Why |
 |---------|-----|
-| `Unknown account picker: <key>. This connector has: pages.`, `Unknown account picker: <key>. This connector has none.` | A key the connector does not have. |
+| `Unknown account picker: <key>. This connector has: pages.` | A key the connector does not have. |
 | `<label> takes one account.` | More than one id for a picker with `multiple: false`. |
 | `<label>: 1 of the accounts sent is not among the ones this connection can use.` | An id the vendor did not list for this connection. |
 | `accounts must be an object of lists of account ids.`, `accounts has too many keys.`, `Each account id is text of at most 200 characters.` | The body's shape. |
 | `This connector is not connected to the agent.` | No connected connection for this slug. |
-| `This connector has no accounts to pick.` | `ConnectorAccounts` on a connector whose tools run on the vendor's own MCP server and whose catalog row lists no account pickers. |
+| `This connector has no accounts to pick.` | The connector's catalog row lists no account pickers: `ConnectorSetAccounts` on any such connector, and `ConnectorAccounts` on one whose tools run on the vendor's own MCP server (one whose tools run inside the agent answers `pickers: []`). |
 | `This connector's accounts cannot be listed yet.` | The connector's account lists aren't available right now. Try again later. |
-| `The sign-in for this connector expired or was revoked, so it has to be connected again. Ask the agent's operator to reconnect it.` | The sign-in could not be refreshed, and the connection is now `reauth`. Or the vendor's own MCP server refused the connection's sign-in (HTTP 401 or 403) as Wiro listed the candidates: the connection's `status` doesn't change. Either way, start a new sign-in with [ConnectorConnect](#connect-with-a-sign-in), then list the accounts again. |
+| `The sign-in for this connector expired or was revoked, so it has to be connected again. Ask the agent's operator to reconnect it.` | The connection reads `reauth`, and a new sign-in is needed: refreshing the sign-in failed; or the vendor's own MCP server refused it (HTTP 401 or 403) as Wiro listed the candidates, which sets `lasterror` to `unauthorized` (`no_access_token` when the connection held no token); or the connection already read `reauth`. This refusal's `code` is `"reauth"`, where the others here have `0`. Start a new sign-in with [ConnectorConnect](#connect-with-a-sign-in), then list the accounts again. |
 | `The token is being refreshed. Try again in a moment.` | A refresh was under way. |
 | `The token could not be refreshed right now. Try again in a moment.` | Refreshing the sign-in failed for now, and its token has already expired. Try again shortly. |
 | The vendor's own sentence | The vendor refused to list the accounts. A saved value or token in the sentence reads `[redacted]`; a refusal with no sentence reads `The connector could not complete the request.` |

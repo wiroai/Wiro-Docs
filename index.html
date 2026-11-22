@@ -28352,7 +28352,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </tr>
 <tr>
 <td><code>reauth</code></td>
-<td>The sign-in expired or was revoked at the vendor and refreshing it failed (<code>lasterror</code> is a code), or the connector's way in changed (<code>lasterror: "auth_changed"</code>). Until the agent's next restart, the connector's tools answer that it must be connected again; after it, the agent no longer has them.</td>
+<td>The sign-in expired or was revoked at the vendor: refreshing it failed (<code>lasterror</code> is a code), or the vendor's own MCP server refused it with HTTP 401 or 403 as Wiro listed the connection's accounts (<code>lasterror: "unauthorized"</code>; <code>"no_access_token"</code> when the connection held no token to send). Or the connector's way in changed (<code>lasterror: "auth_changed"</code>). Until the agent's next restart, the connector's tools answer that it must be connected again; after it, the agent no longer has them.</td>
 <td>Reconnect: start a new sign-in with ConnectorConnect.</td>
 </tr>
 <tr>
@@ -28548,7 +28548,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </thead>
 <tbody>
 <tr>
-<td><code>Unknown account picker: &lt;key&gt;. This connector has: pages.</code>, <code>Unknown account picker: &lt;key&gt;. This connector has none.</code></td>
+<td><code>Unknown account picker: &lt;key&gt;. This connector has: pages.</code></td>
 <td>A key the connector does not have.</td>
 </tr>
 <tr>
@@ -28569,7 +28569,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </tr>
 <tr>
 <td><code>This connector has no accounts to pick.</code></td>
-<td><code>ConnectorAccounts</code> on a connector whose tools run on the vendor's own MCP server and whose catalog row lists no account pickers.</td>
+<td>The connector's catalog row lists no account pickers: <code>ConnectorSetAccounts</code> on any such connector, and <code>ConnectorAccounts</code> on one whose tools run on the vendor's own MCP server (one whose tools run inside the agent answers <code>pickers: []</code>).</td>
 </tr>
 <tr>
 <td><code>This connector's accounts cannot be listed yet.</code></td>
@@ -28577,7 +28577,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </tr>
 <tr>
 <td><code>The sign-in for this connector expired or was revoked, so it has to be connected again. Ask the agent's operator to reconnect it.</code></td>
-<td>The sign-in could not be refreshed, and the connection is now <code>reauth</code>. Or the vendor's own MCP server refused the connection's sign-in (HTTP 401 or 403) as Wiro listed the candidates: the connection's <code>status</code> doesn't change. Either way, start a new sign-in with <a href="#connect-with-a-sign-in">ConnectorConnect</a>, then list the accounts again.</td>
+<td>The connection reads <code>reauth</code>, and a new sign-in is needed: refreshing the sign-in failed; or the vendor's own MCP server refused it (HTTP 401 or 403) as Wiro listed the candidates, which sets <code>lasterror</code> to <code>unauthorized</code> (<code>no_access_token</code> when the connection held no token); or the connection already read <code>reauth</code>. This refusal's <code>code</code> is <code>"reauth"</code>, where the others here have <code>0</code>. Start a new sign-in with <a href="#connect-with-a-sign-in">ConnectorConnect</a>, then list the accounts again.</td>
 </tr>
 <tr>
 <td><code>The token is being refreshed. Try again in a moment.</code></td>
@@ -31414,7 +31414,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
     {
       &quot;name&quot;: &quot;clientid&quot;,
       &quot;label&quot;: &quot;Client ID&quot;,
-      &quot;description&quot;: &quot;1. Go to [developers.hubspot.com](https://developers.hubspot.com) and create an app (or open an existing one)\n2. Open the app's **Auth** tab\n3. Add this **Redirect URL**:\n`https://api.wiro.ai/v1/AgentConnector/OAuthCallback`\n4. Under **Scopes**, request the CRM + marketing scopes you need (contacts, companies, deals, lists, marketing-email)\n5. Save and copy the **Client ID**&quot;,
+      &quot;description&quot;: &quot;1. Go to [developers.hubspot.com](https://developers.hubspot.com) and create an app (or open an existing one)\n2. Open the app's **Auth** tab\n3. Add this **Redirect URL**:\n`https://api.wiro.ai/v1/AgentConnector/OAuthCallback`\n4. Under **Scopes**, add these as **Required**: `oauth`, `crm.objects.contacts.read`, `crm.objects.contacts.write`, `crm.lists.read`, `crm.lists.write`; and these as **Optional**: `crm.objects.companies.read`, `crm.objects.companies.write`, `crm.objects.deals.read`, `crm.objects.deals.write`, `crm.objects.owners.read`, `crm.schemas.contacts.read`, `tickets`, `content`, `marketing-email`, `transactional-email`, `files`. HubSpot refuses a sign-in that asks for a scope the app does not list, and leaves out an optional scope the account's plan does not include\n5. Save and copy the **Client ID**&quot;,
       &quot;required&quot;: true,
       &quot;secret&quot;: false,
       &quot;format&quot;: &quot;text&quot;,
