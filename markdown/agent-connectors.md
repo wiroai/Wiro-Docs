@@ -10,7 +10,7 @@ A connector gives an agent the tools of one outside service: Google search throu
 - **Sign-in.** The vendor's own consent screen in a browser. `ConnectorConnect` answers with an `authorizeUrl`; your customer opens it, agrees, and the vendor sends the browser back through Wiro to your page. Vendors whose sign-in needs an app of your own (Blogger, Gmail, Google Ads, Google Analytics 4, Google Business Profile, Google Merchant Center, Google Search Console, YouTube, Facebook Pages, Instagram, Meta Ads, Threads, LinkedIn, TikTok, X, Reddit, Pinterest, Tumblr, HubSpot, Mailchimp and Shopify) take that app's client id and secret with the connect. Google Calendar, Google Drive and Google Play Console don't sign in: they take a service account's JSON as a field.
 - **A Wiro project.** Wiro AI Models (`wiro`), Wiro's own model and task tools, takes one of your Wiro projects instead of values: see [Wiro AI Models](#the-wiro-connector).
 
-Once a connector is connected, the agent restarts and has the connector's tools, named `<slug>__<tool>`. Values and tokens are never sent back in an answer and never reach the agent's chat. By default the agent runs the tools that only read, and asks a person in the chat before it creates, sends, changes or deletes anything: see [Permissions and Approvals](#permissions-and-approvals).
+Once a connector is connected, the agent restarts and has the connector's tools, named `<slug>__<tool>`. Values and tokens are never sent back in an answer and never reach the agent's chat. By default the agent runs the tools that only read, asks a person in the chat before it creates, sends, changes or deletes anything, and does those in its Scheduled Tasks without asking: see [Permissions and Approvals](#permissions-and-approvals).
 
 Every connector also has a public page, `https://wiro.ai/connectors/{slug}`, with its fields, setup steps, tools and the calls to connect it.
 
@@ -131,7 +131,7 @@ curl -X POST "https://api.wiro.ai/v1/AgentConnector/List" \
       "wiroapp": false,
       "tools": [
         { "name": "list_pages", "title": "List Facebook Pages", "description": "Lists the Facebook Pages this connection can use ...", "readonly": true, "destructive": false, "category": "read", "defaults": { "chat": "allow", "autopilot": "allow" } },
-        { "name": "create_post", "title": "Create a Facebook Page post", "description": "Publishes a text post on a Page, optionally with a link ...", "readonly": false, "destructive": false, "category": "create", "defaults": { "chat": "ask", "autopilot": "ask" } }
+        { "name": "create_post", "title": "Create a Facebook Page post", "description": "Publishes a text post on a Page, optionally with a link ...", "readonly": false, "destructive": false, "category": "create", "defaults": { "chat": "ask", "autopilot": "allow" } }
       ],
       "docs": {
         "overview": "Publish posts, photos and videos to your Facebook Pages and read their engagement.",
@@ -928,9 +928,9 @@ Each connection decides what the agent may do with the connector's tools without
 | Column | When it applies |
 |--------|-----------------|
 | `chat` | A person is in the conversation: a message sent with [`Message/Send`](/docs/agent-messaging#post-useragentmessagesend), from your app or Wiro's web chat, or a conversation with an allowed user on the agent's Telegram, Slack or Discord channel. |
-| `autopilot` | Nobody is watching: the agent's Scheduled Tasks. |
+| `autopilot` | Nobody is watching: the agent's Scheduled Tasks and the work before and after a voice call. |
 
-Other work the agent does on its own, such as work it moved to the background or the work before and after a voice call, takes the stricter of the two values for each tool.
+Other work the agent does on its own, such as work it moved to the background, the work of its sub-agents and a turn it picks up again after a restart, takes the stricter of the two values for each tool.
 
 | Value | What happens |
 |-------|--------------|
@@ -943,17 +943,21 @@ Each tool belongs to one category, set by its `readonly` and `destructive` flags
 | Category | Its tools | `chat` | `autopilot` |
 |----------|-----------|--------|-------------|
 | `read` (Read-only) | `readonly: true` | `allow` | `allow` |
-| `create` (Create and send) | neither `readonly` nor `destructive` | `ask` | `ask` |
-| `change` (Change and delete) | `destructive: true` | `ask` | `block` |
+| `create` (Create and send) | neither `readonly` nor `destructive` | `ask` | `allow` |
+| `change` (Change and delete) | `destructive: true` | `ask` | `allow` |
+
+So by default a person approves each create, send, change or delete in a chat, and the agent's Scheduled Tasks do them without asking. To have a Scheduled Task ask too, set the column to `ask` with [ConnectorSetPermissions](#post-useragentconnectorsetpermissions); `block` stops it there.
 
 A connector can set its own default for a tool. Each tool's `category` and `defaults` are on [List](#post-agentconnectorlist) and Detail. These connectors have defaults of their own:
 
-- **Wiro AI Models** (`wiro`): `run_model` is `allow` in both columns, since the agent's spend limit and Model Access already govern its model runs. `upload_file` asks in both columns, `cancel_task` and `kill_task` ask in Chat and never run in Autopilot, and its other tools only read.
-- **Reddit** (`reddit`): `submit_post`, `add_comment`, `edit_text` and `delete_item` are `allow` in Chat and `block` in Autopilot. Reddit's requests are not kept, so no approval card can show them: the person asking in the chat is the approval, and an unattended run never posts.
+- **Wiro AI Models** (`wiro`): `run_model` and `upload_file` are `allow` in both columns: the agent's spend limit and Model Access already govern its model runs, and an upload spends nothing. `cancel_task` and `kill_task` follow Change and delete, and its other tools only read.
+- **Reddit** (`reddit`): `submit_post`, `add_comment`, `edit_text` and `delete_item` are `allow` in both columns. Reddit's requests are not kept, so no approval card could show them.
 
 A tool's value is the first one set of: its own value on the connection, its category's value on the connection, the connector's default for the tool, and its category's default. A connector on a vendor's own MCP server lists its tools after its first connect. Until then, each of its tools without a value of its own or a default of the connector's follows the connection's Change and delete values.
 
-The agent's Approval Policy (`cs-approval-policy`) can still ask before more actions, but it never lets a tool run that its value asks about or blocks. Studio and the Workflow Agent have no permissions or approvals.
+The agent's Approval Policy (`cs-approval-policy`) decides whether what the agent makes on an outside service, such as a post or a newsletter, goes out as a draft that waits for a person's yes or is published at once. It is not a connector permission: the permissions decide whether a connector action runs, waits for an approval or is blocked, and neither replaces the other.
+
+Studio and the Workflow Agent have no permissions or approvals: they never show an approval card, and ConnectorPermissions and ConnectorSetPermissions refuse them.
 
 ### Permissions and approvals at a glance
 
@@ -994,8 +998,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorPermissions" \
   "permissions": {
     "categories": [
       { "key": "read", "tools": 6, "chat": { "value": "allow", "mixed": false }, "autopilot": { "value": "allow", "mixed": false }, "chosen": {} },
-      { "key": "create", "tools": 3, "chat": { "value": "ask", "mixed": false }, "autopilot": { "value": "ask", "mixed": false }, "chosen": {} },
-      { "key": "change", "tools": 4, "chat": { "value": "ask", "mixed": false }, "autopilot": { "value": "block", "mixed": false }, "chosen": {} }
+      { "key": "create", "tools": 3, "chat": { "value": "ask", "mixed": false }, "autopilot": { "value": "allow", "mixed": false }, "chosen": {} },
+      { "key": "change", "tools": 4, "chat": { "value": "ask", "mixed": false }, "autopilot": { "value": "allow", "mixed": false }, "chosen": {} }
     ],
     "tools": [
       {
@@ -1016,9 +1020,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorPermissions" \
         "description": "Creates a post (or page). It is a draft unless status says otherwise ...",
         "category": "create",
         "chat": "ask",
-        "autopilot": "ask",
+        "autopilot": "allow",
         "source": { "chat": "default", "autopilot": "default" },
-        "defaults": { "chat": "ask", "autopilot": "ask" },
+        "defaults": { "chat": "ask", "autopilot": "allow" },
         "hidden": false,
         "cached": true
       },
@@ -1028,14 +1032,14 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorPermissions" \
         "description": "Changes a post (or page): only the fields given change ...",
         "category": "change",
         "chat": "ask",
-        "autopilot": "block",
+        "autopilot": "allow",
         "source": { "chat": "default", "autopilot": "default" },
-        "defaults": { "chat": "ask", "autopilot": "block" },
+        "defaults": { "chat": "ask", "autopilot": "allow" },
         "hidden": false,
         "cached": true
       }
     ],
-    "unknown": { "chat": "ask", "autopilot": "block" },
+    "unknown": { "chat": "ask", "autopilot": "allow" },
     "updatedat": null,
     "updatedby": null
   },
@@ -1054,6 +1058,8 @@ The example is shortened: `tools` lists all 13 WordPress tools, and descriptions
 | `permissions.updatedat`, `permissions.updatedby` | When the connection's values last changed (Unix seconds) and the account that changed them, or `null` when they never did. |
 | `pending` | The cards for this connector still waiting that have a message of their own: the ones Scheduled Tasks, channel conversations and the agent's own work asked for (see [How an approval works](#how-an-approval-works)), newest first, at most 20. Each is `{ cardid, messageguid, tool, tooltitle, origin, createdat, expiresat, args, argspreview, argsbytes, argsredacted }`, as on [the card](#the-approval-block). Answer one with [ApprovalCardAct](#post-useragentmessageapprovalcardact) and its `messageguid` and `cardid`. A card on a person's own message is not listed: it is in that chat. |
 
+Studio and the Workflow Agent have no permissions: for them ConnectorPermissions answers `result: false` with `This agent's connectors are fixed.`
+
 ### **POST** /UserAgent/ConnectorSetPermissions
 
 Changes what one connection may do without asking. The agent's owner or an admin of the agent's team, as for ConnectorPermissions.
@@ -1068,7 +1074,7 @@ Changes what one connection may do without asking. The agent's owner or an admin
 
 Send at least one of `reset`, `categories` and `tools`. They apply in that order, so a tool's value sent in the same call as its category's stays.
 
-To let Create and send run in Chat without asking while Autopilot keeps asking, and to block `api_request` in both columns so the agent no longer sees it:
+To have Create and send ask in Autopilot too, so that a Scheduled Task waits for a person before it creates or sends anything, and to block `api_request` in both columns so the agent no longer sees it:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetPermissions" \
@@ -1077,7 +1083,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetPermissions" \
   -d '{
     "useragentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "slug": "wordpress",
-    "categories": { "create": { "chat": "allow" } },
+    "categories": { "create": { "autopilot": "ask" } },
     "tools": { "api_request": { "chat": "block", "autopilot": "block" } }
   }'
 ```
@@ -1093,8 +1099,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetPermissions" \
   "permissions": {
     "categories": [
       { "key": "read", "tools": 6, "chat": { "value": "allow", "mixed": false }, "autopilot": { "value": "allow", "mixed": false }, "chosen": {} },
-      { "key": "create", "tools": 3, "chat": { "value": "allow", "mixed": false }, "autopilot": { "value": "ask", "mixed": false }, "chosen": { "chat": "allow" } },
-      { "key": "change", "tools": 4, "chat": { "value": null, "mixed": true }, "autopilot": { "value": "block", "mixed": false }, "chosen": {} }
+      { "key": "create", "tools": 3, "chat": { "value": "ask", "mixed": false }, "autopilot": { "value": "ask", "mixed": false }, "chosen": { "autopilot": "ask" } },
+      { "key": "change", "tools": 4, "chat": { "value": null, "mixed": true }, "autopilot": { "value": null, "mixed": true }, "chosen": {} }
     ],
     "tools": [
       {
@@ -1102,10 +1108,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetPermissions" \
         "title": "Create a WordPress post or page",
         "description": "Creates a post (or page). It is a draft unless status says otherwise ...",
         "category": "create",
-        "chat": "allow",
+        "chat": "ask",
         "autopilot": "ask",
-        "source": { "chat": "category", "autopilot": "default" },
-        "defaults": { "chat": "ask", "autopilot": "ask" },
+        "source": { "chat": "default", "autopilot": "category" },
+        "defaults": { "chat": "ask", "autopilot": "allow" },
         "hidden": false,
         "cached": true
       },
@@ -1117,12 +1123,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetPermissions" \
         "chat": "block",
         "autopilot": "block",
         "source": { "chat": "tool", "autopilot": "tool" },
-        "defaults": { "chat": "ask", "autopilot": "block" },
+        "defaults": { "chat": "ask", "autopilot": "allow" },
         "hidden": true,
         "cached": true
       }
     ],
-    "unknown": { "chat": "ask", "autopilot": "block" },
+    "unknown": { "chat": "ask", "autopilot": "allow" },
     "updatedat": 1795390600,
     "updatedby": "ada-uuid"
   }
@@ -1162,7 +1168,7 @@ When the agent calls a tool whose value is `ask`, the call waits, and Wiro adds 
 
 Such a card has a message of its own, sent as the agent's owner, with an empty `content`, a `response` such as `Approval needed: Create a WordPress post or page in WordPress.` and `metadata.type` `"system"`. Wiro puts it in the session of the owner's most recent message sent in Wiro's web chat (on a team agent whose sessions are shared, the team's most recent); messages sent with a project API key don't count. Without one, it goes to the agent's `approvals` session: read it with [`Message/History`](/docs/agent-messaging#post-useragentmessagehistory) and `sessionkey: "approvals"`, and keep that key for it. [ConnectorPermissions](#post-useragentconnectorpermissions) lists these cards under `pending`, so the agent's admins can answer them from there too.
 
-A Scheduled Task's card, as History returns its message in the `approvals` session:
+By default a Scheduled Task creates, sends, changes and deletes without asking, so it gets a card only on a connection that sets Autopilot to `ask`, such as the one in the [ConnectorSetPermissions](#post-useragentconnectorsetpermissions) example. There, a Scheduled Task's card, as History returns its message in the `approvals` session:
 
 ```json
 {
@@ -1196,7 +1202,7 @@ A Scheduled Task's card, as History returns its message in the `approvals` sessi
         "argspreview": null,
         "argsbytes": 107,
         "argsredacted": false,
-        "always": { "chat": false, "autopilot": true },
+        "always": { "chat": true, "autopilot": true },
         "requestedby": "ada-uuid",
         "createdat": 1795403600,
         "expiresat": 1795490000,
@@ -1214,7 +1220,7 @@ A Scheduled Task's card, as History returns its message in the `approvals` sessi
 }
 ```
 
-(Shortened: the message has the other fields of a History row too.) `always` reads `{ "chat": false, "autopilot": true }` because this connection already lets Create and send run in Chat. The same card is in ConnectorPermissions' `pending` for `wordpress`:
+(Shortened: the message has the other fields of a History row too.) `always` reads `{ "chat": true, "autopilot": true }`: on this connection `create_post` asks in both columns, so Always allow would let it run without asking in both. The same card is in ConnectorPermissions' `pending` for `wordpress`:
 
 ```json
 "pending": [
@@ -1413,10 +1419,10 @@ The same card answered with `always` gets:
 
 ```json
 "summary": "Always allowed.",
-"permissions": { "connector": "wordpress", "tool": "update_post", "chat": "allow", "autopilot": "block" }
+"permissions": { "connector": "wordpress", "tool": "update_post", "chat": "allow", "autopilot": "allow" }
 ```
 
-Always allow changes only the columns that read `ask`: `update_post` still never runs in Autopilot. It writes the tool's own values, as [ConnectorSetPermissions](#post-useragentconnectorsetpermissions) would, and two rows to the agent's activity log: `CONNECTOR_APPROVAL_ANSWERED` and `CONNECTOR_PERMISSIONS_SET`. Every answer writes the first.
+Always allow changes only the columns that read `ask`, here Chat: `update_post` already ran without asking in Autopilot, and a column set to `block` stays blocked. It writes the tool's own values, as [ConnectorSetPermissions](#post-useragentconnectorsetpermissions) would, and two rows to the agent's activity log: `CONNECTOR_APPROVAL_ANSWERED` and `CONNECTOR_PERMISSIONS_SET`. Every answer writes the first.
 
 Answered with `decline`:
 
@@ -1528,7 +1534,7 @@ Wiro AI Models (`wiro`) gives the agent Wiro's own model and task tools, named `
 - The models they run are billed to the wallet of the workspace that owns that project, at each model's usual price.
 - Wiro counts them as the agent's own runs: the agent's own [spend limit](/docs/spend-limits) and [Model Access](/docs/model-access) rule apply to them (the `agent` scope, on the `agent` surface), as to every model the agent runs.
 - Account, agent, team and billing endpoints are refused to them, as to every call the agent makes: see the note "An agent's own calls never manage an account" under [`UserAgent/UpdateSettings`](/docs/agent-overview#post-useragentupdatesettings). The agent changes its own setup only through [setup cards](/docs/agent-messaging#setup-from-chat) that an agent admin approves.
-- Its [permissions](#permissions-and-approvals) cover these tools only: by default `run_model` runs without asking, `upload_file` asks, and `cancel_task` and `kill_task` ask in Chat and never run in Autopilot. The models a Skill runs with the agent's own Wiro project, such as video creation, follow the agent's spend limit and Model Access instead.
+- Its [permissions](#permissions-and-approvals) cover these tools only: by default `run_model` and `upload_file` run without asking, and `cancel_task` and `kill_task` ask in Chat and run in Autopilot. The models a Skill runs with the agent's own Wiro project, such as video creation, follow the agent's spend limit and Model Access instead.
 
 ### Its tools
 
@@ -1657,6 +1663,7 @@ Refusals come as `result: false` with one sentence per problem in `errors`. Show
 | `ConnectorConnect` | `This project has no API key the connector can use.` | The project's key can't be used. |
 | `ConnectorConnect`, `ConnectorSetAccounts` | `accounts must be an object of lists of account ids.`, `accounts has too many keys.`, `Each account id is text of at most 200 characters.` | The shape of `accounts`: at most 10 keys and 500 ids per key. |
 | `ConnectorPermissions`, `ConnectorSetPermissions` | `This connector is not connected to the agent.` | The agent has no connection for this slug. |
+| `ConnectorPermissions`, `ConnectorSetPermissions` | `This agent's connectors are fixed.` | Studio and the Workflow Agent, which have no permissions. |
 | `ConnectorSetPermissions` | `Send reset, categories or tools.`, `categories takes read, create and change.`, `Each category and tool takes chat and autopilot.`, `A permission is allow, ask or block.`, `<name> is not one of <Title>'s tools.` | The body's shape: see [ConnectorSetPermissions](#post-useragentconnectorsetpermissions) for every refusal. |
 | `ApprovalCardAct` | `This approval expired. Ask the agent again.` (code `approval_expired`), `This approval was already answered.` (`approval_done`), `This action is blocked now. Change it in the connector's permissions.` (`approval_blocked`) | The card can't be answered any more: see [ApprovalCardAct](#post-useragentmessageapprovalcardact) for every refusal. |
 | any | `Something went wrong. Try again.` | A temporary failure: nothing was changed. |

@@ -14,7 +14,7 @@ The Studio API uses the message protocol of [Agent Messaging](/docs/agent-messag
 
 There is no agent guid to pass: every route talks to Studio. Studio is paid from your Wiro wallet, as described under [Costs](#costs).
 
-Studio runs on one setup shared by everyone who uses it, so it never changes that setup: it proposes no [setup cards](/docs/agent-messaging#setup-from-chat), and its connectors, skills and scheduled tasks are fixed. Asked to remember a rule or to repeat a job on a schedule, it helps with the request once, as a one-time task.
+Studio runs on one setup shared by everyone who uses it, so it never changes that setup: it proposes no [setup cards](/docs/agent-messaging#setup-from-chat), and its connectors, skills and scheduled tasks are fixed. Asked to remember a rule or to repeat a job on a schedule, it helps with the request once, as a one-time task. It has no connector permissions and never shows an approval card: its model runs follow your spend limits and Model Access.
 
 ### Authentication
 

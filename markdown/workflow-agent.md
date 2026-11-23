@@ -6,7 +6,7 @@ Design and edit Wiro workflows by chat: describe the job, read the agent's propo
 
 The Workflow Agent is a Wiro chat agent that designs and edits [workflows](/docs/workflows). It looks up current models and utilities in the Wiro catalog and replies with an explanation and zero or more proposed workflows. It never saves, changes or runs anything itself: your application saves a proposal with the [Workflows](/docs/workflows) endpoints and runs it there.
 
-The Workflow Agent runs on one setup shared by everyone who uses it, so it never changes that setup: it proposes no [setup cards](/docs/agent-messaging#setup-from-chat), and its connectors, skills and scheduled tasks are fixed. Asked for a standing rule or a recurring job, it helps with the request once, as a one-time task.
+The Workflow Agent runs on one setup shared by everyone who uses it, so it never changes that setup: it proposes no [setup cards](/docs/agent-messaging#setup-from-chat), and its connectors, skills and scheduled tasks are fixed. Asked for a standing rule or a recurring job, it helps with the request once, as a one-time task. It has no connector permissions and never shows an approval card: its model runs follow your spend limits and Model Access.
 
 The Workflow Agent API uses the message protocol of [Agent Messaging](/docs/agent-messaging) on its own routes under `/StudioWorkflow/`:
 

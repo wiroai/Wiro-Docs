@@ -14115,7 +14115,7 @@ import type {
 <p class="section-subtitle">Design and edit Wiro workflows by chat: describe the job, read the agent's proposals and save the one you want.</p>
 <h2 id="overview">Overview</h2>
 <p>The Workflow Agent is a Wiro chat agent that designs and edits <a href="/docs/workflows">workflows</a>. It looks up current models and utilities in the Wiro catalog and replies with an explanation and zero or more proposed workflows. It never saves, changes or runs anything itself: your application saves a proposal with the <a href="/docs/workflows">Workflows</a> endpoints and runs it there.</p>
-<p>The Workflow Agent runs on one setup shared by everyone who uses it, so it never changes that setup: it proposes no <a href="/docs/agent-messaging#setup-from-chat">setup cards</a>, and its connectors, skills and scheduled tasks are fixed. Asked for a standing rule or a recurring job, it helps with the request once, as a one-time task.</p>
+<p>The Workflow Agent runs on one setup shared by everyone who uses it, so it never changes that setup: it proposes no <a href="/docs/agent-messaging#setup-from-chat">setup cards</a>, and its connectors, skills and scheduled tasks are fixed. Asked for a standing rule or a recurring job, it helps with the request once, as a one-time task. It has no connector permissions and never shows an approval card: its model runs follow your spend limits and Model Access.</p>
 <p>The Workflow Agent API uses the message protocol of <a href="/docs/agent-messaging">Agent Messaging</a> on its own routes under <code>/StudioWorkflow/</code>:</p>
 <ol>
 <li><strong>Send</strong> a brief with <a href="#post-studioworkflowmessagesend">Message/Send</a>. Attach a workflow in <code>workflowContext</code> to have it edited.</li>
@@ -14512,7 +14512,7 @@ import type {
 <li><strong>Collect</strong> the files. The reply lists them, and <a href="#post-studiotasks">Studio/Tasks</a> returns every model run Studio started for you, with its outputs and cost.</li>
 </ol>
 <p>There is no agent guid to pass: every route talks to Studio. Studio is paid from your Wiro wallet, as described under <a href="#costs">Costs</a>.</p>
-<p>Studio runs on one setup shared by everyone who uses it, so it never changes that setup: it proposes no <a href="/docs/agent-messaging#setup-from-chat">setup cards</a>, and its connectors, skills and scheduled tasks are fixed. Asked to remember a rule or to repeat a job on a schedule, it helps with the request once, as a one-time task.</p>
+<p>Studio runs on one setup shared by everyone who uses it, so it never changes that setup: it proposes no <a href="/docs/agent-messaging#setup-from-chat">setup cards</a>, and its connectors, skills and scheduled tasks are fixed. Asked to remember a rule or to repeat a job on a schedule, it helps with the request once, as a one-time task. It has no connector permissions and never shows an approval card: its model runs follow your spend limits and Model Access.</p>
 <h3 id="authentication">Authentication</h3>
 <p>Every <code>/Studio/*</code> route takes a project API key: <code>x-api-key</code>, plus <code>x-nonce</code> and <code>x-signature</code> for a project that uses signature authentication (see <a href="/docs/authentication">Authentication</a>). A key acts as the person who created its project, in that project's workspace: a personal project works in the personal workspace and pays from the personal wallet, a team project works in the team and pays from the team wallet. For a team project, that person must still be a member of the team; otherwise every route answers HTTP 403 with <code>You must be a member of this team to perform this action</code>. The one exception is <a href="#post-studioprojectset">ProjectSet</a>, which works only signed in.</p>
 <h3 id="sessions">Sessions</h3>
@@ -28227,7 +28227,7 @@ echo json_encode(['ok' =&gt; true]);
 <li><strong>Sign-in.</strong> The vendor's own consent screen in a browser. <code>ConnectorConnect</code> answers with an <code>authorizeUrl</code>; your customer opens it, agrees, and the vendor sends the browser back through Wiro to your page. Vendors whose sign-in needs an app of your own (Blogger, Gmail, Google Ads, Google Analytics 4, Google Business Profile, Google Merchant Center, Google Search Console, YouTube, Facebook Pages, Instagram, Meta Ads, Threads, LinkedIn, TikTok, X, Reddit, Pinterest, Tumblr, HubSpot, Mailchimp and Shopify) take that app's client id and secret with the connect. Google Calendar, Google Drive and Google Play Console don't sign in: they take a service account's JSON as a field.</li>
 <li><strong>A Wiro project.</strong> Wiro AI Models (<code>wiro</code>), Wiro's own model and task tools, takes one of your Wiro projects instead of values: see <a href="#the-wiro-connector">Wiro AI Models</a>.</li>
 </ul>
-<p>Once a connector is connected, the agent restarts and has the connector's tools, named <code>&lt;slug&gt;__&lt;tool&gt;</code>. Values and tokens are never sent back in an answer and never reach the agent's chat. By default the agent runs the tools that only read, and asks a person in the chat before it creates, sends, changes or deletes anything: see <a href="#permissions-and-approvals">Permissions and Approvals</a>.</p>
+<p>Once a connector is connected, the agent restarts and has the connector's tools, named <code>&lt;slug&gt;__&lt;tool&gt;</code>. Values and tokens are never sent back in an answer and never reach the agent's chat. By default the agent runs the tools that only read, asks a person in the chat before it creates, sends, changes or deletes anything, and does those in its Scheduled Tasks without asking: see <a href="#permissions-and-approvals">Permissions and Approvals</a>.</p>
 <p>Every connector also has a public page, <code>https://wiro.ai/connectors/{slug}</code>, with its fields, setup steps, tools and the calls to connect it.</p>
 <h3 id="the-cycle-at-a-glance">The cycle at a glance</h3>
 <div class="docs-param-table">
@@ -28459,7 +28459,7 @@ echo json_encode(['ok' =&gt; true]);
       &quot;wiroapp&quot;: false,
       &quot;tools&quot;: [
         { &quot;name&quot;: &quot;list_pages&quot;, &quot;title&quot;: &quot;List Facebook Pages&quot;, &quot;description&quot;: &quot;Lists the Facebook Pages this connection can use ...&quot;, &quot;readonly&quot;: true, &quot;destructive&quot;: false, &quot;category&quot;: &quot;read&quot;, &quot;defaults&quot;: { &quot;chat&quot;: &quot;allow&quot;, &quot;autopilot&quot;: &quot;allow&quot; } },
-        { &quot;name&quot;: &quot;create_post&quot;, &quot;title&quot;: &quot;Create a Facebook Page post&quot;, &quot;description&quot;: &quot;Publishes a text post on a Page, optionally with a link ...&quot;, &quot;readonly&quot;: false, &quot;destructive&quot;: false, &quot;category&quot;: &quot;create&quot;, &quot;defaults&quot;: { &quot;chat&quot;: &quot;ask&quot;, &quot;autopilot&quot;: &quot;ask&quot; } }
+        { &quot;name&quot;: &quot;create_post&quot;, &quot;title&quot;: &quot;Create a Facebook Page post&quot;, &quot;description&quot;: &quot;Publishes a text post on a Page, optionally with a link ...&quot;, &quot;readonly&quot;: false, &quot;destructive&quot;: false, &quot;category&quot;: &quot;create&quot;, &quot;defaults&quot;: { &quot;chat&quot;: &quot;ask&quot;, &quot;autopilot&quot;: &quot;allow&quot; } }
       ],
       &quot;docs&quot;: {
         &quot;overview&quot;: &quot;Publish posts, photos and videos to your Facebook Pages and read their engagement.&quot;,
@@ -29716,13 +29716,13 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </tr>
 <tr>
 <td><code>autopilot</code></td>
-<td>Nobody is watching: the agent's Scheduled Tasks.</td>
+<td>Nobody is watching: the agent's Scheduled Tasks and the work before and after a voice call.</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
-<p>Other work the agent does on its own, such as work it moved to the background or the work before and after a voice call, takes the stricter of the two values for each tool.</p>
+<p>Other work the agent does on its own, such as work it moved to the background, the work of its sub-agents and a turn it picks up again after a restart, takes the stricter of the two values for each tool.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -29772,25 +29772,27 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 <td><code>create</code> (Create and send)</td>
 <td>neither <code>readonly</code> nor <code>destructive</code></td>
 <td><code>ask</code></td>
-<td><code>ask</code></td>
+<td><code>allow</code></td>
 </tr>
 <tr>
 <td><code>change</code> (Change and delete)</td>
 <td><code>destructive: true</code></td>
 <td><code>ask</code></td>
-<td><code>block</code></td>
+<td><code>allow</code></td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
+<p>So by default a person approves each create, send, change or delete in a chat, and the agent's Scheduled Tasks do them without asking. To have a Scheduled Task ask too, set the column to <code>ask</code> with <a href="#post-useragentconnectorsetpermissions">ConnectorSetPermissions</a>; <code>block</code> stops it there.</p>
 <p>A connector can set its own default for a tool. Each tool's <code>category</code> and <code>defaults</code> are on <a href="#post-agentconnectorlist">List</a> and Detail. These connectors have defaults of their own:</p>
 <ul>
-<li><strong>Wiro AI Models</strong> (<code>wiro</code>): <code>run_model</code> is <code>allow</code> in both columns, since the agent's spend limit and Model Access already govern its model runs. <code>upload_file</code> asks in both columns, <code>cancel_task</code> and <code>kill_task</code> ask in Chat and never run in Autopilot, and its other tools only read.</li>
-<li><strong>Reddit</strong> (<code>reddit</code>): <code>submit_post</code>, <code>add_comment</code>, <code>edit_text</code> and <code>delete_item</code> are <code>allow</code> in Chat and <code>block</code> in Autopilot. Reddit's requests are not kept, so no approval card can show them: the person asking in the chat is the approval, and an unattended run never posts.</li>
+<li><strong>Wiro AI Models</strong> (<code>wiro</code>): <code>run_model</code> and <code>upload_file</code> are <code>allow</code> in both columns: the agent's spend limit and Model Access already govern its model runs, and an upload spends nothing. <code>cancel_task</code> and <code>kill_task</code> follow Change and delete, and its other tools only read.</li>
+<li><strong>Reddit</strong> (<code>reddit</code>): <code>submit_post</code>, <code>add_comment</code>, <code>edit_text</code> and <code>delete_item</code> are <code>allow</code> in both columns. Reddit's requests are not kept, so no approval card could show them.</li>
 </ul>
 <p>A tool's value is the first one set of: its own value on the connection, its category's value on the connection, the connector's default for the tool, and its category's default. A connector on a vendor's own MCP server lists its tools after its first connect. Until then, each of its tools without a value of its own or a default of the connector's follows the connection's Change and delete values.</p>
-<p>The agent's Approval Policy (<code>cs-approval-policy</code>) can still ask before more actions, but it never lets a tool run that its value asks about or blocks. Studio and the Workflow Agent have no permissions or approvals.</p>
+<p>The agent's Approval Policy (<code>cs-approval-policy</code>) decides whether what the agent makes on an outside service, such as a post or a newsletter, goes out as a draft that waits for a person's yes or is published at once. It is not a connector permission: the permissions decide whether a connector action runs, waits for an approval or is blocked, and neither replaces the other.</p>
+<p>Studio and the Workflow Agent have no permissions or approvals: they never show an approval card, and ConnectorPermissions and ConnectorSetPermissions refuse them.</p>
 <h3 id="permissions-and-approvals-at-a-glance">Permissions and approvals at a glance</h3>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -29878,8 +29880,8 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
   &quot;permissions&quot;: {
     &quot;categories&quot;: [
       { &quot;key&quot;: &quot;read&quot;, &quot;tools&quot;: 6, &quot;chat&quot;: { &quot;value&quot;: &quot;allow&quot;, &quot;mixed&quot;: false }, &quot;autopilot&quot;: { &quot;value&quot;: &quot;allow&quot;, &quot;mixed&quot;: false }, &quot;chosen&quot;: {} },
-      { &quot;key&quot;: &quot;create&quot;, &quot;tools&quot;: 3, &quot;chat&quot;: { &quot;value&quot;: &quot;ask&quot;, &quot;mixed&quot;: false }, &quot;autopilot&quot;: { &quot;value&quot;: &quot;ask&quot;, &quot;mixed&quot;: false }, &quot;chosen&quot;: {} },
-      { &quot;key&quot;: &quot;change&quot;, &quot;tools&quot;: 4, &quot;chat&quot;: { &quot;value&quot;: &quot;ask&quot;, &quot;mixed&quot;: false }, &quot;autopilot&quot;: { &quot;value&quot;: &quot;block&quot;, &quot;mixed&quot;: false }, &quot;chosen&quot;: {} }
+      { &quot;key&quot;: &quot;create&quot;, &quot;tools&quot;: 3, &quot;chat&quot;: { &quot;value&quot;: &quot;ask&quot;, &quot;mixed&quot;: false }, &quot;autopilot&quot;: { &quot;value&quot;: &quot;allow&quot;, &quot;mixed&quot;: false }, &quot;chosen&quot;: {} },
+      { &quot;key&quot;: &quot;change&quot;, &quot;tools&quot;: 4, &quot;chat&quot;: { &quot;value&quot;: &quot;ask&quot;, &quot;mixed&quot;: false }, &quot;autopilot&quot;: { &quot;value&quot;: &quot;allow&quot;, &quot;mixed&quot;: false }, &quot;chosen&quot;: {} }
     ],
     &quot;tools&quot;: [
       {
@@ -29900,9 +29902,9 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
         &quot;description&quot;: &quot;Creates a post (or page). It is a draft unless status says otherwise ...&quot;,
         &quot;category&quot;: &quot;create&quot;,
         &quot;chat&quot;: &quot;ask&quot;,
-        &quot;autopilot&quot;: &quot;ask&quot;,
+        &quot;autopilot&quot;: &quot;allow&quot;,
         &quot;source&quot;: { &quot;chat&quot;: &quot;default&quot;, &quot;autopilot&quot;: &quot;default&quot; },
-        &quot;defaults&quot;: { &quot;chat&quot;: &quot;ask&quot;, &quot;autopilot&quot;: &quot;ask&quot; },
+        &quot;defaults&quot;: { &quot;chat&quot;: &quot;ask&quot;, &quot;autopilot&quot;: &quot;allow&quot; },
         &quot;hidden&quot;: false,
         &quot;cached&quot;: true
       },
@@ -29912,14 +29914,14 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
         &quot;description&quot;: &quot;Changes a post (or page): only the fields given change ...&quot;,
         &quot;category&quot;: &quot;change&quot;,
         &quot;chat&quot;: &quot;ask&quot;,
-        &quot;autopilot&quot;: &quot;block&quot;,
+        &quot;autopilot&quot;: &quot;allow&quot;,
         &quot;source&quot;: { &quot;chat&quot;: &quot;default&quot;, &quot;autopilot&quot;: &quot;default&quot; },
-        &quot;defaults&quot;: { &quot;chat&quot;: &quot;ask&quot;, &quot;autopilot&quot;: &quot;block&quot; },
+        &quot;defaults&quot;: { &quot;chat&quot;: &quot;ask&quot;, &quot;autopilot&quot;: &quot;allow&quot; },
         &quot;hidden&quot;: false,
         &quot;cached&quot;: true
       }
     ],
-    &quot;unknown&quot;: { &quot;chat&quot;: &quot;ask&quot;, &quot;autopilot&quot;: &quot;block&quot; },
+    &quot;unknown&quot;: { &quot;chat&quot;: &quot;ask&quot;, &quot;autopilot&quot;: &quot;allow&quot; },
     &quot;updatedat&quot;: null,
     &quot;updatedby&quot;: null
   },
@@ -29965,6 +29967,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </table>
 </div>
 </div>
+<p>Studio and the Workflow Agent have no permissions: for them ConnectorPermissions answers <code>result: false</code> with <code>This agent's connectors are fixed.</code></p>
 <h3 id="post-useragentconnectorsetpermissions"><strong>POST</strong> /UserAgent/ConnectorSetPermissions</h3>
 <p>Changes what one connection may do without asking. The agent's owner or an admin of the agent's team, as for ConnectorPermissions.</p>
 <div class="docs-param-table">
@@ -30014,14 +30017,14 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </div>
 </div>
 <p>Send at least one of <code>reset</code>, <code>categories</code> and <code>tools</code>. They apply in that order, so a tool's value sent in the same call as its category's stays.</p>
-<p>To let Create and send run in Chat without asking while Autopilot keeps asking, and to block <code>api_request</code> in both columns so the agent no longer sees it:</p>
+<p>To have Create and send ask in Autopilot too, so that a Scheduled Task waits for a person before it creates or sends anything, and to block <code>api_request</code> in both columns so the agent no longer sees it:</p>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorSetPermissions&quot; \
   -H &quot;Content-Type: application/json&quot; \
   -H &quot;x-api-key: YOUR_API_KEY&quot; \
   -d '{
     &quot;useragentguid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;,
     &quot;slug&quot;: &quot;wordpress&quot;,
-    &quot;categories&quot;: { &quot;create&quot;: { &quot;chat&quot;: &quot;allow&quot; } },
+    &quot;categories&quot;: { &quot;create&quot;: { &quot;autopilot&quot;: &quot;ask&quot; } },
     &quot;tools&quot;: { &quot;api_request&quot;: { &quot;chat&quot;: &quot;block&quot;, &quot;autopilot&quot;: &quot;block&quot; } }
   }'
 </code></pre>
@@ -30034,8 +30037,8 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
   &quot;permissions&quot;: {
     &quot;categories&quot;: [
       { &quot;key&quot;: &quot;read&quot;, &quot;tools&quot;: 6, &quot;chat&quot;: { &quot;value&quot;: &quot;allow&quot;, &quot;mixed&quot;: false }, &quot;autopilot&quot;: { &quot;value&quot;: &quot;allow&quot;, &quot;mixed&quot;: false }, &quot;chosen&quot;: {} },
-      { &quot;key&quot;: &quot;create&quot;, &quot;tools&quot;: 3, &quot;chat&quot;: { &quot;value&quot;: &quot;allow&quot;, &quot;mixed&quot;: false }, &quot;autopilot&quot;: { &quot;value&quot;: &quot;ask&quot;, &quot;mixed&quot;: false }, &quot;chosen&quot;: { &quot;chat&quot;: &quot;allow&quot; } },
-      { &quot;key&quot;: &quot;change&quot;, &quot;tools&quot;: 4, &quot;chat&quot;: { &quot;value&quot;: null, &quot;mixed&quot;: true }, &quot;autopilot&quot;: { &quot;value&quot;: &quot;block&quot;, &quot;mixed&quot;: false }, &quot;chosen&quot;: {} }
+      { &quot;key&quot;: &quot;create&quot;, &quot;tools&quot;: 3, &quot;chat&quot;: { &quot;value&quot;: &quot;ask&quot;, &quot;mixed&quot;: false }, &quot;autopilot&quot;: { &quot;value&quot;: &quot;ask&quot;, &quot;mixed&quot;: false }, &quot;chosen&quot;: { &quot;autopilot&quot;: &quot;ask&quot; } },
+      { &quot;key&quot;: &quot;change&quot;, &quot;tools&quot;: 4, &quot;chat&quot;: { &quot;value&quot;: null, &quot;mixed&quot;: true }, &quot;autopilot&quot;: { &quot;value&quot;: null, &quot;mixed&quot;: true }, &quot;chosen&quot;: {} }
     ],
     &quot;tools&quot;: [
       {
@@ -30043,10 +30046,10 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
         &quot;title&quot;: &quot;Create a WordPress post or page&quot;,
         &quot;description&quot;: &quot;Creates a post (or page). It is a draft unless status says otherwise ...&quot;,
         &quot;category&quot;: &quot;create&quot;,
-        &quot;chat&quot;: &quot;allow&quot;,
+        &quot;chat&quot;: &quot;ask&quot;,
         &quot;autopilot&quot;: &quot;ask&quot;,
-        &quot;source&quot;: { &quot;chat&quot;: &quot;category&quot;, &quot;autopilot&quot;: &quot;default&quot; },
-        &quot;defaults&quot;: { &quot;chat&quot;: &quot;ask&quot;, &quot;autopilot&quot;: &quot;ask&quot; },
+        &quot;source&quot;: { &quot;chat&quot;: &quot;default&quot;, &quot;autopilot&quot;: &quot;category&quot; },
+        &quot;defaults&quot;: { &quot;chat&quot;: &quot;ask&quot;, &quot;autopilot&quot;: &quot;allow&quot; },
         &quot;hidden&quot;: false,
         &quot;cached&quot;: true
       },
@@ -30058,12 +30061,12 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
         &quot;chat&quot;: &quot;block&quot;,
         &quot;autopilot&quot;: &quot;block&quot;,
         &quot;source&quot;: { &quot;chat&quot;: &quot;tool&quot;, &quot;autopilot&quot;: &quot;tool&quot; },
-        &quot;defaults&quot;: { &quot;chat&quot;: &quot;ask&quot;, &quot;autopilot&quot;: &quot;block&quot; },
+        &quot;defaults&quot;: { &quot;chat&quot;: &quot;ask&quot;, &quot;autopilot&quot;: &quot;allow&quot; },
         &quot;hidden&quot;: true,
         &quot;cached&quot;: true
       }
     ],
-    &quot;unknown&quot;: { &quot;chat&quot;: &quot;ask&quot;, &quot;autopilot&quot;: &quot;block&quot; },
+    &quot;unknown&quot;: { &quot;chat&quot;: &quot;ask&quot;, &quot;autopilot&quot;: &quot;allow&quot; },
     &quot;updatedat&quot;: 1795390600,
     &quot;updatedby&quot;: &quot;ada-uuid&quot;
   }
@@ -30182,7 +30185,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </div>
 </div>
 <p>Such a card has a message of its own, sent as the agent's owner, with an empty <code>content</code>, a <code>response</code> such as <code>Approval needed: Create a WordPress post or page in WordPress.</code> and <code>metadata.type</code> <code>"system"</code>. Wiro puts it in the session of the owner's most recent message sent in Wiro's web chat (on a team agent whose sessions are shared, the team's most recent); messages sent with a project API key don't count. Without one, it goes to the agent's <code>approvals</code> session: read it with <a href="/docs/agent-messaging#post-useragentmessagehistory"><code>Message/History</code></a> and <code>sessionkey: "approvals"</code>, and keep that key for it. <a href="#post-useragentconnectorpermissions">ConnectorPermissions</a> lists these cards under <code>pending</code>, so the agent's admins can answer them from there too.</p>
-<p>A Scheduled Task's card, as History returns its message in the <code>approvals</code> session:</p>
+<p>By default a Scheduled Task creates, sends, changes and deletes without asking, so it gets a card only on a connection that sets Autopilot to <code>ask</code>, such as the one in the <a href="#post-useragentconnectorsetpermissions">ConnectorSetPermissions</a> example. There, a Scheduled Task's card, as History returns its message in the <code>approvals</code> session:</p>
 <pre><code class="language-json">{
   &quot;guid&quot;: &quot;f6a7b8c9-d0e1-4f23-a456-789abcdef012&quot;,
   &quot;uuid&quot;: &quot;ada-uuid&quot;,
@@ -30214,7 +30217,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
         &quot;argspreview&quot;: null,
         &quot;argsbytes&quot;: 107,
         &quot;argsredacted&quot;: false,
-        &quot;always&quot;: { &quot;chat&quot;: false, &quot;autopilot&quot;: true },
+        &quot;always&quot;: { &quot;chat&quot;: true, &quot;autopilot&quot;: true },
         &quot;requestedby&quot;: &quot;ada-uuid&quot;,
         &quot;createdat&quot;: 1795403600,
         &quot;expiresat&quot;: 1795490000,
@@ -30231,7 +30234,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
   &quot;createdat&quot;: 1795403600
 }
 </code></pre>
-<p>(Shortened: the message has the other fields of a History row too.) <code>always</code> reads <code>{ "chat": false, "autopilot": true }</code> because this connection already lets Create and send run in Chat. The same card is in ConnectorPermissions' <code>pending</code> for <code>wordpress</code>:</p>
+<p>(Shortened: the message has the other fields of a History row too.) <code>always</code> reads <code>{ "chat": true, "autopilot": true }</code>: on this connection <code>create_post</code> asks in both columns, so Always allow would let it run without asking in both. The same card is in ConnectorPermissions' <code>pending</code> for <code>wordpress</code>:</p>
 <pre><code class="language-json">&quot;pending&quot;: [
   {
     &quot;cardid&quot;: &quot;q9w8e7r6t5y4&quot;,
@@ -30536,9 +30539,9 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </div>
 <p>The same card answered with <code>always</code> gets:</p>
 <pre><code class="language-json">&quot;summary&quot;: &quot;Always allowed.&quot;,
-&quot;permissions&quot;: { &quot;connector&quot;: &quot;wordpress&quot;, &quot;tool&quot;: &quot;update_post&quot;, &quot;chat&quot;: &quot;allow&quot;, &quot;autopilot&quot;: &quot;block&quot; }
+&quot;permissions&quot;: { &quot;connector&quot;: &quot;wordpress&quot;, &quot;tool&quot;: &quot;update_post&quot;, &quot;chat&quot;: &quot;allow&quot;, &quot;autopilot&quot;: &quot;allow&quot; }
 </code></pre>
-<p>Always allow changes only the columns that read <code>ask</code>: <code>update_post</code> still never runs in Autopilot. It writes the tool's own values, as <a href="#post-useragentconnectorsetpermissions">ConnectorSetPermissions</a> would, and two rows to the agent's activity log: <code>CONNECTOR_APPROVAL_ANSWERED</code> and <code>CONNECTOR_PERMISSIONS_SET</code>. Every answer writes the first.</p>
+<p>Always allow changes only the columns that read <code>ask</code>, here Chat: <code>update_post</code> already ran without asking in Autopilot, and a column set to <code>block</code> stays blocked. It writes the tool's own values, as <a href="#post-useragentconnectorsetpermissions">ConnectorSetPermissions</a> would, and two rows to the agent's activity log: <code>CONNECTOR_APPROVAL_ANSWERED</code> and <code>CONNECTOR_PERMISSIONS_SET</code>. Every answer writes the first.</p>
 <p>Answered with <code>decline</code>:</p>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
@@ -30712,7 +30715,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 <li>The models they run are billed to the wallet of the workspace that owns that project, at each model's usual price.</li>
 <li>Wiro counts them as the agent's own runs: the agent's own <a href="/docs/spend-limits">spend limit</a> and <a href="/docs/model-access">Model Access</a> rule apply to them (the <code>agent</code> scope, on the <code>agent</code> surface), as to every model the agent runs.</li>
 <li>Account, agent, team and billing endpoints are refused to them, as to every call the agent makes: see the note "An agent's own calls never manage an account" under <a href="/docs/agent-overview#post-useragentupdatesettings"><code>UserAgent/UpdateSettings</code></a>. The agent changes its own setup only through <a href="/docs/agent-messaging#setup-from-chat">setup cards</a> that an agent admin approves.</li>
-<li>Its <a href="#permissions-and-approvals">permissions</a> cover these tools only: by default <code>run_model</code> runs without asking, <code>upload_file</code> asks, and <code>cancel_task</code> and <code>kill_task</code> ask in Chat and never run in Autopilot. The models a Skill runs with the agent's own Wiro project, such as video creation, follow the agent's spend limit and Model Access instead.</li>
+<li>Its <a href="#permissions-and-approvals">permissions</a> cover these tools only: by default <code>run_model</code> and <code>upload_file</code> run without asking, and <code>cancel_task</code> and <code>kill_task</code> ask in Chat and run in Autopilot. The models a Skill runs with the agent's own Wiro project, such as video creation, follow the agent's spend limit and Model Access instead.</li>
 </ul>
 <h3 id="its-tools">Its tools</h3>
 <p>The agent gets these tools of the Wiro MCP server, and no others:</p>
@@ -31025,6 +31028,11 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 <td><code>ConnectorPermissions</code>, <code>ConnectorSetPermissions</code></td>
 <td><code>This connector is not connected to the agent.</code></td>
 <td>The agent has no connection for this slug.</td>
+</tr>
+<tr>
+<td><code>ConnectorPermissions</code>, <code>ConnectorSetPermissions</code></td>
+<td><code>This agent's connectors are fixed.</code></td>
+<td>Studio and the Workflow Agent, which have no permissions.</td>
 </tr>
 <tr>
 <td><code>ConnectorSetPermissions</code></td>
