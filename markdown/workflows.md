@@ -563,3 +563,314 @@ Business errors come back with HTTP 200, `result: false` and an `errors` array, 
 | `Only a failed or stopped run can be resumed` | 0 | RunResume on a run that is running or completed. |
 
 Authentication errors are listed in the [Error Reference](/docs/error-reference).
+
+## Code Examples
+
+### curl (List)
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/Workflow/List" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "scope": "my", "sort": "updatetime", "limit": 20 }'
+```
+
+### curl (Prepare)
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/Workflow/Prepare" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d @- <<'JSON'
+{
+  "mode": "create",
+  "contents": {
+    "version": "1",
+    "nodes": {
+      "node-image": {
+        "id": "node-image", "type": "run", "tool": "google/nano-banana-pro", "depends": ["input"],
+        "input": { "prompt": "$input.prompt" },
+        "metadata": { "position": { "x": 350, "y": 0 } }
+      },
+      "output": {
+        "id": "output", "type": "display", "depends": ["node-image"], "input": {},
+        "fields": { "image": "$node-image.outputs" },
+        "metadata": { "position": { "x": 700, "y": 0 } }
+      }
+    },
+    "output": { "image": "$node-image.outputs" },
+    "schema": {
+      "input": { "prompt": { "label": "Prompt", "type": "string", "defaultValue": "", "ui": { "field": "textarea" } } },
+      "output": {}
+    },
+    "metadata": { "input": { "position": { "x": 0, "y": 0 } } }
+  }
+}
+JSON
+```
+
+### curl (Run)
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/Workflow/Run" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "slug": "product-ad-a1B2c",
+    "input": { "prompt": "A ceramic mug on a wooden table, morning light" }
+  }'
+```
+
+### curl (RunDetail)
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/Workflow/RunDetail" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "workflowtoken": "Lk3vQ9xT2mWc7Rp4Yh8Nd1Fs6Gb0Zj" }'
+```
+
+### Python
+
+```python
+import json
+import time
+import requests
+
+BASE = "https://api.wiro.ai/v1"
+headers = {"x-api-key": "YOUR_API_KEY", "Content-Type": "application/json"}
+
+graph = {
+    "version": "1",
+    "nodes": {
+        "node-image": {
+            "id": "node-image", "type": "run", "tool": "google/nano-banana-pro", "depends": ["input"],
+            "input": {"prompt": "$input.prompt"},
+            "metadata": {"position": {"x": 350, "y": 0}},
+        },
+        "output": {
+            "id": "output", "type": "display", "depends": ["node-image"], "input": {},
+            "fields": {"image": "$node-image.outputs"},
+            "metadata": {"position": {"x": 700, "y": 0}},
+        },
+    },
+    "output": {"image": "$node-image.outputs"},
+    "schema": {
+        "input": {"prompt": {"label": "Prompt", "type": "string", "defaultValue": "", "ui": {"field": "textarea"}}},
+        "output": {},
+    },
+    "metadata": {"input": {"position": {"x": 0, "y": 0}}},
+}
+
+# 1. Prepare: every problem comes back at once
+prepared = requests.post(f"{BASE}/Workflow/Prepare", headers=headers,
+                         json={"contents": graph, "mode": "create"}).json()
+if not prepared["result"]:
+    raise SystemExit(prepared["issues"])
+
+# 2. Save it (contents is a JSON string here)
+saved = requests.post(f"{BASE}/Workflow/Add", headers=headers, json={
+    "title": "Product shot",
+    "slug": "product-shot",
+    "contents": json.dumps(prepared["contents"]),
+}).json()
+row = saved["workflow"][0]
+full_slug = f"{row['slug']}-{row['slugid']}"
+
+# 3. Run it and wait
+run = requests.post(f"{BASE}/Workflow/Run", headers=headers, json={
+    "slug": full_slug,
+    "input": {"prompt": "A ceramic mug on a wooden table, morning light"},
+}).json()
+if not run["result"]:
+    raise SystemExit(run["errors"])
+
+while True:
+    detail = requests.post(f"{BASE}/Workflow/RunDetail", headers=headers,
+                           json={"workflowtoken": run["workflowtoken"]}).json()
+    status = detail["workflowrun"]["status"]
+    if status in ("completed", "failed", "stopped", "cancelled"):
+        break
+    time.sleep(5)
+
+for node in detail["workflowrunnodes"]:
+    print(node["nodeId"], node["status"], [o.get("url") for o in node["outputs"] or []])
+print("Charged:", detail["workflowrun"].get("chargedcost"))
+```
+
+### Node.js
+
+```javascript
+const axios = require('axios');
+
+const BASE = 'https://api.wiro.ai/v1';
+const headers = { 'x-api-key': 'YOUR_API_KEY', 'Content-Type': 'application/json' };
+
+// Run a saved workflow and wait for it
+const { data: run } = await axios.post(`${BASE}/Workflow/Run`, {
+  slug: 'product-ad-a1B2c',
+  input: { prompt: 'A ceramic mug on a wooden table, morning light' }
+}, { headers });
+if (!run.result) throw new Error(JSON.stringify(run.errors));
+
+let detail;
+do {
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+  ({ data: detail } = await axios.post(`${BASE}/Workflow/RunDetail`, {
+    workflowtoken: run.workflowtoken
+  }, { headers }));
+} while (detail.workflowrun.status === 'running');
+
+for (const node of detail.workflowrunnodes) {
+  console.log(node.nodeId, node.status, (node.outputs || []).map((o) => o.url));
+}
+if (detail.workflowrun.canresume) {
+  // A failed or stopped run can continue without paying again for finished steps
+  await axios.post(`${BASE}/Workflow/RunResume`, { workflowtoken: run.workflowtoken }, { headers });
+}
+```
+
+### PHP
+
+```php
+<?php
+function wiro($path, $body) {
+    $ch = curl_init("https://api.wiro.ai/v1" . $path);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        "Content-Type: application/json",
+        "x-api-key: YOUR_API_KEY"
+    ]);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $response = json_decode(curl_exec($ch), true);
+    curl_close($ch);
+    return $response;
+}
+
+$run = wiro("/Workflow/Run", [
+    "slug" => "product-ad-a1B2c",
+    "input" => ["prompt" => "A ceramic mug on a wooden table, morning light"]
+]);
+
+do {
+    sleep(5);
+    $detail = wiro("/Workflow/RunDetail", ["workflowtoken" => $run["workflowtoken"]]);
+} while ($detail["workflowrun"]["status"] === "running");
+
+echo $detail["workflowrun"]["status"];
+```
+
+### C#
+
+```csharp
+using System.Net.Http.Json;
+using System.Text.Json;
+
+using var client = new HttpClient { BaseAddress = new Uri("https://api.wiro.ai/v1/") };
+client.DefaultRequestHeaders.Add("x-api-key", "YOUR_API_KEY");
+
+var run = await (await client.PostAsJsonAsync("Workflow/Run", new {
+    slug = "product-ad-a1B2c",
+    input = new { prompt = "A ceramic mug on a wooden table, morning light" }
+})).Content.ReadFromJsonAsync<JsonElement>();
+var token = run.GetProperty("workflowtoken").GetString();
+
+string status;
+JsonElement detail;
+do {
+    await Task.Delay(5000);
+    detail = await (await client.PostAsJsonAsync("Workflow/RunDetail", new { workflowtoken = token }))
+        .Content.ReadFromJsonAsync<JsonElement>();
+    status = detail.GetProperty("workflowrun").GetProperty("status").GetString();
+} while (status == "running");
+
+Console.WriteLine(status);
+```
+
+### Go
+
+```go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+    "time"
+)
+
+func wiro(path string, body map[string]interface{}) map[string]interface{} {
+    payload, _ := json.Marshal(body)
+    req, _ := http.NewRequest("POST", "https://api.wiro.ai/v1"+path, bytes.NewBuffer(payload))
+    req.Header.Set("Content-Type", "application/json")
+    req.Header.Set("x-api-key", "YOUR_API_KEY")
+    resp, err := http.DefaultClient.Do(req)
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    var out map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&out)
+    return out
+}
+
+func main() {
+    run := wiro("/Workflow/Run", map[string]interface{}{
+        "slug":  "product-ad-a1B2c",
+        "input": map[string]interface{}{"prompt": "A ceramic mug on a wooden table, morning light"},
+    })
+    for {
+        time.Sleep(5 * time.Second)
+        detail := wiro("/Workflow/RunDetail", map[string]interface{}{"workflowtoken": run["workflowtoken"]})
+        status := detail["workflowrun"].(map[string]interface{})["status"].(string)
+        if status != "running" {
+            fmt.Println(status)
+            break
+        }
+    }
+}
+```
+
+### Response (Run)
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "workflowtoken": "Lk3vQ9xT2mWc7Rp4Yh8Nd1Fs6Gb0Zj"
+}
+```
+
+### Response (RunDetail)
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "workflowrun": {
+    "workflowtoken": "Lk3vQ9xT2mWc7Rp4Yh8Nd1Fs6Gb0Zj",
+    "workflowslug": "product-ad-a1B2c",
+    "status": "completed",
+    "outcome": "completed",
+    "startedAt": 1761902400000,
+    "elapsedseconds": 74,
+    "totalcost": "0.84",
+    "chargedcost": "0.84",
+    "discountamount": "0"
+  },
+  "workflowrunnodes": [
+    {
+      "nodeId": "node-image",
+      "tool": "google/nano-banana-pro",
+      "kind": "tool",
+      "layerIdx": 0,
+      "status": "completed",
+      "outputs": [
+        { "url": "https://cdn1.wiro.ai/5e8d7a1c/product.png", "name": "product.png", "contenttype": "image/png", "size": "1843212" }
+      ]
+    }
+  ]
+}
+```
