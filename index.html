@@ -16613,7 +16613,7 @@ for the channel contract.</p>
 <td><code>customskills</code></td>
 <td>array</td>
 <td>No</td>
-<td>Inline custom skill rows. Each entry: <code>{ key, value?, interval?, enabled?, description?, _user_created? }</code>. A scheduled task's <code>interval</code> must be a schedule the agent can run, as in <a href="#post-useragentcustomskillupsert"><code>CustomSkillUpsert</code></a>, and <code>"manual"</code> means no schedule. Otherwise Deploy fails before anything is created or charged, and the error starts with the skill's key. Up to 50 entries; add more with <a href="#post-useragentcustomskillupsert"><code>CustomSkillUpsert</code></a> once the agent is deployed.</td>
+<td>Inline custom skill rows. Each entry: <code>{ key, value?, interval?, enabled?, description?, _user_created? }</code>. A scheduled task's <code>interval</code> must be a schedule the agent can run, as in <a href="#post-useragentcustomskillupsert"><code>CustomSkillUpsert</code></a>, and <code>"manual"</code> means no schedule. Otherwise Deploy fails before anything is created or charged, and the error starts with the skill's key. On a template deploy, a scheduled task the template brings with a text of its own runs the template's text: a different <code>value</code> for it fails Deploy before anything is created or charged, with <code>&lt;key&gt;: This scheduled task comes with the agent's template, so its instructions cannot be changed. You can still turn it on or off and change its schedule.</code>, and the template's own text sent back saves no text of the agent's own; its <code>interval</code> and <code>enabled</code> are yours to set. Up to 50 entries; add more with <a href="#post-useragentcustomskillupsert"><code>CustomSkillUpsert</code></a> once the agent is deployed.</td>
 </tr>
 <tr>
 <td><code>wiroapiallowedpaths</code></td>
@@ -19205,7 +19205,7 @@ channel-enable endpoint or persisted switch.</p>
 <td><code>description</code></td>
 <td>string</td>
 <td>No</td>
-<td>Only persisted for user-created skills (preset descriptions are template-owned). On a preset row, sending the current description back unchanged is ignored; a different text is rejected with <code>customskill-preset-description-not-editable</code>.</td>
+<td>Only persisted for user-created skills (preset descriptions are template-owned). On a preset row, sending the current description back unchanged is ignored; a different text is rejected with <code>This skill comes with the agent's template, so its description can't be changed for one agent.</code></td>
 </tr>
 </tbody>
 </table>
@@ -19641,6 +19641,7 @@ channel-enable endpoint or persisted switch.</p>
 }
 </code></pre>
 <p><code>action</code> is <code>"reverted"</code>, <code>"re-inserted"</code> (a version of a row that no longer exists, written back), <code>"reset"</code> (back to the template's text, interval and switch), <code>"deleted"</code> (the template no longer has the skill, so the row is removed) or <code>"no-op"</code> (already matches the target).</p>
+<p>On a template agent, a scheduled task the template brings with a text of its own (<code>_editable: false</code> on <a href="#post-useragentdetail">Detail</a>) keeps the template's text: a revert to a version brings back that version's schedule and switch only, a version that differs from the task only in its text is a <code>"no-op"</code>, and <code>current_value</code> is the template's text, the one the agent runs.</p>
 <h4 id="post-useragentcredentialfieldhistory"><strong>POST</strong> /UserAgent/CredentialFieldHistory</h4>
 <p>Returns the earlier values of one credential's fields, newest first (up to 500). Each entry is a value a save replaced, with who replaced it (<code>changedby</code>) and when (<code>changedat</code>). A first save adds no entry, and neither does a list sent whole (Telegram <code>groups</code>, Slack <code>channels</code>, Discord <code>guilds</code>, website <code>urls</code>). A secret's earlier value reads <code>"[REDACTED]"</code>. Wiro-managed credentials return an empty <code>entries[]</code>.</p>
 <div class="docs-param-table">
@@ -36670,7 +36671,7 @@ complete. These channels (Telegram, Slack, Discord) are not Skills and do not af
 <tr>
 <td><code>description</code></td>
 <td>string</td>
-<td>Human-readable description. <strong>Writable only on user-created rows.</strong> Sending a <em>different</em> <code>description</code> for a preset strategy or a skill-bundled cron is rejected with <code>customskill-preset-description-not-editable</code>; sending the current one back unchanged is ignored.</td>
+<td>Human-readable description. <strong>Writable only on user-created rows.</strong> Sending a <em>different</em> <code>description</code> for a preset strategy or a skill-bundled cron is rejected with <code>This skill comes with the agent's template, so its description can't be changed for one agent.</code>; sending the current one back unchanged is ignored.</td>
 </tr>
 <tr>
 <td><code>enabled</code></td>
@@ -36720,7 +36721,7 @@ complete. These channels (Telegram, Slack, Discord) are not Skills and do not af
 </ol>
 <h2 id="updating-preference-skills">Updating Preference Skills</h2>
 <p>Preference skills (<code>_source: "preset-strategy"</code>, <code>_editable: true</code>) let you customize the agent's behavior by editing its instructions.</p>
-<p>Send one <code>CustomSkillUpsert</code> call per skill. Unspecified skills are untouched. The typical update is just <code>value</code>. You can also pass <code>enabled: false</code> to disable a strategy (the agent will skip it everywhere it would otherwise inject the strategy's instructions). <code>interval</code> has no effect on strategies: they're read on-demand by cron tasks via <code>cs-&lt;slug&gt;</code>, never scheduled themselves. <code>description</code> is rejected on preset rows with <code>customskill-preset-description-not-editable</code>, because the description is template-owned.</p>
+<p>Send one <code>CustomSkillUpsert</code> call per skill. Unspecified skills are untouched. The typical update is just <code>value</code>. You can also pass <code>enabled: false</code> to disable a strategy (the agent will skip it everywhere it would otherwise inject the strategy's instructions). <code>interval</code> has no effect on strategies: they're read on-demand by cron tasks via <code>cs-&lt;slug&gt;</code>, never scheduled themselves. A changed <code>description</code> is rejected on preset rows with <code>This skill comes with the agent's template, so its description can't be changed for one agent.</code></p>
 <h3 id="example-social-manager-brand-voice">Example: Social Manager (Brand Voice)</h3>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
   -H &quot;Content-Type: application/json&quot; \
@@ -37554,8 +37555,8 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <tr>
 <td>Write <code>description</code></td>
 <td><code>CustomSkillUpsert</code></td>
-<td><strong>No: a changed text is rejected</strong> with <code>customskill-preset-description-not-editable</code> (the current text is ignored)</td>
-<td><strong>No: a changed text is rejected</strong> with <code>customskill-preset-description-not-editable</code> (the current text is ignored)</td>
+<td><strong>No: a changed text is rejected</strong> with <code>This skill comes with the agent's template, so its description can't be changed for one agent.</code> (the current text is ignored)</td>
+<td><strong>No: a changed text is rejected</strong> with <code>This skill comes with the agent's template, so its description can't be changed for one agent.</code> (the current text is ignored)</td>
 <td>Yes</td>
 </tr>
 <tr>
@@ -37597,7 +37598,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <td>Revert to a version</td>
 <td><code>CustomSkillRevert</code> (<code>source: "history"</code>)</td>
 <td>Yes</td>
-<td>Yes</td>
+<td>Yes; on a template agent the version's schedule and switch only, since the text stays the template's (a version that differs only in its text is a <code>no-op</code>)</td>
 <td>Yes</td>
 </tr>
 </tbody>

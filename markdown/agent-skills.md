@@ -314,7 +314,7 @@ Once you've deployed a useragent, its current custom skills live under `customsk
 |-------|------|-------------|
 | `key` | string | Canonical key. **Always carries the `cs-` runtime prefix.** Strategies are `cs-<slug>`; crons are `cs-cron-<slug>`. The server normalises bare slugs you send to `CustomSkillUpsert`: `"content-tone"` becomes `cs-content-tone`, `"weekly-health-check"` with `interval: "0 9 * * 1"` becomes `cs-cron-weekly-health-check`. |
 | `value` | string | The text of the preference or task: the one you wrote, or else the template's. |
-| `description` | string | Human-readable description. **Writable only on user-created rows.** Sending a *different* `description` for a preset strategy or a skill-bundled cron is rejected with `customskill-preset-description-not-editable`; sending the current one back unchanged is ignored. |
+| `description` | string | Human-readable description. **Writable only on user-created rows.** Sending a *different* `description` for a preset strategy or a skill-bundled cron is rejected with `This skill comes with the agent's template, so its description can't be changed for one agent.`; sending the current one back unchanged is ignored. |
 | `enabled` | boolean | Whether the skill is active. **Writable for both strategies (`cs-*`) and crons (`cs-cron-*`)**. A disabled strategy is suppressed end-to-end (kept in the merged `customskills[]` so it still appears in the list, but the agent never loads it). |
 | `interval` | string \| null | Cron expression for scheduled execution, or `null` for preference skills. Writable on scheduled tasks; ignored on preferences. |
 | `requires_connectors` | string[] | Scheduled tasks only (`[]` on preferences): the connectors the task works with, by catalog slug. The task runs only while at least one of them is connected, that is, its row on [`POST /UserAgent/ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist) has `status: "connected"` and `catalogstatus: "active"`; until then the agent skips every run. This gate never changes `enabled`: a task waiting for a connector can still read `enabled: true`. `[]` means no connector gate; a task you add with `CustomSkillUpsert` has `[]`. |
@@ -335,7 +335,7 @@ Agent responses merge three sources into a single set of custom-skill rows:
 
 Preference skills (`_source: "preset-strategy"`, `_editable: true`) let you customize the agent's behavior by editing its instructions.
 
-Send one `CustomSkillUpsert` call per skill. Unspecified skills are untouched. The typical update is just `value`. You can also pass `enabled: false` to disable a strategy (the agent will skip it everywhere it would otherwise inject the strategy's instructions). `interval` has no effect on strategies: they're read on-demand by cron tasks via `cs-<slug>`, never scheduled themselves. `description` is rejected on preset rows with `customskill-preset-description-not-editable`, because the description is template-owned.
+Send one `CustomSkillUpsert` call per skill. Unspecified skills are untouched. The typical update is just `value`. You can also pass `enabled: false` to disable a strategy (the agent will skip it everywhere it would otherwise inject the strategy's instructions). `interval` has no effect on strategies: they're read on-demand by cron tasks via `cs-<slug>`, never scheduled themselves. A changed `description` is rejected on preset rows with `This skill comes with the agent's template, so its description can't be changed for one agent.`
 
 ### Example: Social Manager (Brand Voice)
 
@@ -891,13 +891,13 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialProjectBind" \
 | Write `value` | `CustomSkillUpsert` | Yes | **No on a template agent: a different text is refused** (the template's text sent back is no change); yes on a custom build | Yes |
 | Write `interval` | `CustomSkillUpsert` | **No: silently dropped** (strategies aren't scheduled) | Yes | Yes |
 | Write `enabled` | `CustomSkillUpsert` | Yes (disabling suppresses the strategy end-to-end) | Yes | Yes |
-| Write `description` | `CustomSkillUpsert` | **No: a changed text is rejected** with `customskill-preset-description-not-editable` (the current text is ignored) | **No: a changed text is rejected** with `customskill-preset-description-not-editable` (the current text is ignored) | Yes |
+| Write `description` | `CustomSkillUpsert` | **No: a changed text is rejected** with `This skill comes with the agent's template, so its description can't be changed for one agent.` (the current text is ignored) | **No: a changed text is rejected** with `This skill comes with the agent's template, so its description can't be changed for one agent.` (the current text is ignored) | Yes |
 | Create | `CustomSkillUpsert` with a new key | n/a | n/a | Yes |
 | Rename key (+ optional description) | `CustomSkillRename` | **No: preset-forbidden** | **No: preset-forbidden** | Yes (flavour preserved; `cs-cron-*` ↔ `cs-*` rejected) |
 | Delete | `CustomSkillDelete` | **Rejected with `suggestion: "disable-via-upsert"`** | **Rejected with `suggestion: "disable-via-upsert"`** | Yes (hard delete: live row + full history purged) |
 | Read history | `CustomSkillHistory` | Yes | Yes | Yes (post-rename, the chain is migrated under the new key; a `rename` event marks the transition) |
 | Revert to preset | `CustomSkillRevert` (`source: "preset"`) | Yes | Yes (resets `interval` / `enabled` to preset defaults) | Yes (deletes the row if no preset baseline exists) |
-| Revert to a version | `CustomSkillRevert` (`source: "history"`) | Yes | Yes | Yes |
+| Revert to a version | `CustomSkillRevert` (`source: "history"`) | Yes | Yes; on a template agent the version's schedule and switch only, since the text stays the template's (a version that differs only in its text is a `no-op`) | Yes |
 
 - Send only the fields you want to change. Omitted fields keep their current values.
 - A key the agent doesn't have creates a user-created row: a scheduled task when you send `interval` (or a `cs-cron-` key), else a preference.
