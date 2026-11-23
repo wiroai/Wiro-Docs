@@ -29961,7 +29961,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </tr>
 <tr>
 <td><code>pending</code></td>
-<td>The cards for this connector still waiting that have a message of their own: the ones Scheduled Tasks, channel conversations and the agent's own work asked for (see <a href="#how-an-approval-works">How an approval works</a>), newest first, at most 20. Each is <code>{ cardid, messageguid, tool, tooltitle, origin, createdat, expiresat, args, argspreview, argsbytes, argsredacted }</code>, as on <a href="#the-approval-block">the card</a>. Answer one with <a href="#post-useragentmessageapprovalcardact">ApprovalCardAct</a> and its <code>messageguid</code> and <code>cardid</code>. A card on a person's own message is not listed: it is in that chat.</td>
+<td>The cards for this connector still waiting that have a message of their own: the ones Scheduled Tasks, channel conversations and the agent's own work asked for (see <a href="#how-an-approval-works">How an approval works</a>), newest first, at most 20. Each is <code>{ cardid, messageguid, tool, tooltitle, origin, createdat, expiresat, args, argspreview, argsbytes, argsredacted, toolcached }</code>, as on <a href="#the-approval-block">the card</a>. Answer one with <a href="#post-useragentmessageapprovalcardact">ApprovalCardAct</a> and its <code>messageguid</code> and <code>cardid</code>. A card on a person's own message is not listed: it is in that chat.</td>
 </tr>
 </tbody>
 </table>
@@ -30221,7 +30221,8 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
         &quot;requestedby&quot;: &quot;ada-uuid&quot;,
         &quot;createdat&quot;: 1795403600,
         &quot;expiresat&quot;: 1795490000,
-        &quot;status&quot;: &quot;pending&quot;
+        &quot;status&quot;: &quot;pending&quot;,
+        &quot;toolcached&quot;: true
       },
       &quot;phase&quot;: &quot;end&quot;,
       &quot;version&quot;: 1,
@@ -30247,7 +30248,8 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
     &quot;args&quot;: { &quot;title&quot;: &quot;What we shipped this week&quot;, &quot;content&quot;: &quot;&lt;p&gt;Three updates landed this week.&lt;/p&gt;&quot;, &quot;status&quot;: &quot;publish&quot; },
     &quot;argspreview&quot;: null,
     &quot;argsbytes&quot;: 107,
-    &quot;argsredacted&quot;: false
+    &quot;argsredacted&quot;: false,
+    &quot;toolcached&quot;: true
   }
 ]
 </code></pre>
@@ -30284,7 +30286,8 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
     &quot;requestedby&quot;: &quot;ada-uuid&quot;,
     &quot;createdat&quot;: 1795400000,
     &quot;expiresat&quot;: 1795486400,
-    &quot;status&quot;: &quot;pending&quot;
+    &quot;status&quot;: &quot;pending&quot;,
+    &quot;toolcached&quot;: true
   },
   &quot;phase&quot;: &quot;end&quot;,
   &quot;version&quot;: 1,
@@ -30374,6 +30377,10 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 <tr>
 <td><code>status</code></td>
 <td><code>pending</code>, <code>allowed</code> (allowed once), <code>always</code> (allowed, and from now on), <code>declined</code> or <code>expired</code>. A <code>pending</code> card whose <code>expiresat</code> has passed reads as expired.</td>
+</tr>
+<tr>
+<td><code>toolcached</code></td>
+<td><code>false</code> when the connector hadn't listed this action yet when the card was made (a connector on a vendor's own MCP server lists its actions after its first connect): Always allow on it allows the call once while the action is still not listed. <code>true</code> otherwise.</td>
 </tr>
 <tr>
 <td><code>actedat</code>, <code>actedby</code></td>
@@ -30494,6 +30501,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
     &quot;createdat&quot;: 1795400000,
     &quot;expiresat&quot;: 1795486400,
     &quot;status&quot;: &quot;allowed&quot;,
+    &quot;toolcached&quot;: true,
     &quot;actedat&quot;: 1795400120,
     &quot;actedby&quot;: &quot;ada-uuid&quot;,
     &quot;resume&quot;: { &quot;status&quot;: &quot;queued&quot;, &quot;messageguid&quot;: &quot;e5f6a7b8-c9d0-4e1f-9a23-456789abcdef&quot; }
@@ -30523,7 +30531,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </tr>
 <tr>
 <td><code>summary</code></td>
-<td>One sentence to show: <code>Allowed once.</code>, <code>Always allowed.</code> or <code>Declined.</code> When Always allow could not change the tool's values, the call still runs once and the sentence says why: <code>Allowed once. &lt;Title&gt;'s actions are listed after its first connection, so this one can't be allowed for good yet.</code> or <code>Allowed once. &lt;Title&gt; already has 500 action overrides, so this one could not be allowed for good.</code></td>
+<td>One sentence to show: <code>Allowed once.</code>, <code>Always allowed.</code> or <code>Declined.</code> When Always allow could not change the tool's values, the call still runs once: the card reads <code>allowed</code>, its resume turn says once, and the sentence is <code>Allowed once. &lt;Title&gt;'s actions are listed after its first connection, so this one can't be allowed for good yet.</code> (an action the connector hasn't listed yet), <code>Allowed once. &lt;Title&gt; already has 500 action overrides, so this one could not be allowed for good.</code>, or a plain <code>Allowed once.</code> when the values could not be written at that moment.</td>
 </tr>
 <tr>
 <td><code>resume</code></td>
@@ -30541,7 +30549,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 <pre><code class="language-json">&quot;summary&quot;: &quot;Always allowed.&quot;,
 &quot;permissions&quot;: { &quot;connector&quot;: &quot;wordpress&quot;, &quot;tool&quot;: &quot;update_post&quot;, &quot;chat&quot;: &quot;allow&quot;, &quot;autopilot&quot;: &quot;allow&quot; }
 </code></pre>
-<p>Always allow changes only the columns that read <code>ask</code>, here Chat: <code>update_post</code> already ran without asking in Autopilot, and a column set to <code>block</code> stays blocked. It writes the tool's own values, as <a href="#post-useragentconnectorsetpermissions">ConnectorSetPermissions</a> would, and two rows to the agent's activity log: <code>CONNECTOR_APPROVAL_ANSWERED</code> and <code>CONNECTOR_PERMISSIONS_SET</code>. Every answer writes the first.</p>
+<p>Always allow changes only the columns that read <code>ask</code>, here Chat: <code>update_post</code> already ran without asking in Autopilot, and a column set to <code>block</code> stays blocked. It writes the tool's own values, as <a href="#post-useragentconnectorsetpermissions">ConnectorSetPermissions</a> would, and two rows to the agent's activity log: <code>CONNECTOR_APPROVAL_ANSWERED</code> and <code>CONNECTOR_PERMISSIONS_SET</code>. Every answer writes the first, with the answer that took effect: an Always allow that allowed the call once writes only it, as <code>allow</code>.</p>
 <p>Answered with <code>decline</code>:</p>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
@@ -38124,7 +38132,7 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
 </tr>
 <tr>
 <td><code>CONNECTOR_APPROVAL_ANSWERED</code></td>
-<td><code>Approval allow: wordpress update_post</code> (<code>allow</code>, <code>always</code> or <code>decline</code>; see <a href="/docs/agent-connectors#post-useragentmessageapprovalcardact">ApprovalCardAct</a>)</td>
+<td><code>Approval allow: wordpress update_post</code> (<code>allow</code>, <code>always</code> or <code>decline</code>: the answer that took effect, so an Always allow that allowed the call once reads <code>allow</code>; see <a href="/docs/agent-connectors#post-useragentmessageapprovalcardact">ApprovalCardAct</a>)</td>
 </tr>
                             <tr><td><code>AGENT_PLAN_STARTED</code>, <code>AGENT_PLAN_RENEWED</code>, <code>AGENT_PLAN_CANCELLED</code>, <code>AGENT_PLAN_RESUMED</code></td><td><code>Starter plan started: $5.00 charged</code>, <code>Starter plan renewed: $5.00 charged</code>, <code>Plan cancelled, ends 2026-06-01</code>, <code>Plan cancellation undone</code></td></tr>
                             <tr><td><code>AGENT_PLAN_ENDED</code></td><td><code>Starter plan ended: the wallet could not pay the renewal</code>, <code>Pro plan ended: it was set to cancel</code> (written by Wiro; the agent stops when its plan ends)</td></tr>

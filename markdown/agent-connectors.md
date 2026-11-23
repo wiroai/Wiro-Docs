@@ -1056,7 +1056,7 @@ The example is shortened: `tools` lists all 13 WordPress tools, and descriptions
 | `permissions.tools` | Every tool the connection has values for: `name`, `title`, `description`, `category`, its values `chat` and `autopilot`, `source` (where each value comes from: `tool`, its own value; `category`, its category's value on the connection; `catalog`, the connector's default for the tool; `default`, the category's default; `unknown`, the connection's Change and delete value), `defaults` (the values without the connection's own), `hidden` (`true` when blocked in both columns: the agent doesn't see it) and `cached` (`false` for a name the connector doesn't list yet, such as a tool its vendor added later that already has a value of its own; it reads `change`). |
 | `permissions.unknown` | What a tool the connector doesn't list yet gets in each column: the connection's Change and delete values. |
 | `permissions.updatedat`, `permissions.updatedby` | When the connection's values last changed (Unix seconds) and the account that changed them, or `null` when they never did. |
-| `pending` | The cards for this connector still waiting that have a message of their own: the ones Scheduled Tasks, channel conversations and the agent's own work asked for (see [How an approval works](#how-an-approval-works)), newest first, at most 20. Each is `{ cardid, messageguid, tool, tooltitle, origin, createdat, expiresat, args, argspreview, argsbytes, argsredacted }`, as on [the card](#the-approval-block). Answer one with [ApprovalCardAct](#post-useragentmessageapprovalcardact) and its `messageguid` and `cardid`. A card on a person's own message is not listed: it is in that chat. |
+| `pending` | The cards for this connector still waiting that have a message of their own: the ones Scheduled Tasks, channel conversations and the agent's own work asked for (see [How an approval works](#how-an-approval-works)), newest first, at most 20. Each is `{ cardid, messageguid, tool, tooltitle, origin, createdat, expiresat, args, argspreview, argsbytes, argsredacted, toolcached }`, as on [the card](#the-approval-block). Answer one with [ApprovalCardAct](#post-useragentmessageapprovalcardact) and its `messageguid` and `cardid`. A card on a person's own message is not listed: it is in that chat. |
 
 Studio and the Workflow Agent have no permissions: for them ConnectorPermissions answers `result: false` with `This agent's connectors are fixed.`
 
@@ -1206,7 +1206,8 @@ By default a Scheduled Task creates, sends, changes and deletes without asking, 
         "requestedby": "ada-uuid",
         "createdat": 1795403600,
         "expiresat": 1795490000,
-        "status": "pending"
+        "status": "pending",
+        "toolcached": true
       },
       "phase": "end",
       "version": 1,
@@ -1235,7 +1236,8 @@ By default a Scheduled Task creates, sends, changes and deletes without asking, 
     "args": { "title": "What we shipped this week", "content": "<p>Three updates landed this week.</p>", "status": "publish" },
     "argspreview": null,
     "argsbytes": 107,
-    "argsredacted": false
+    "argsredacted": false,
+    "toolcached": true
   }
 ]
 ```
@@ -1278,7 +1280,8 @@ A card is a timeline block of type `approval`, in the message's `timeline` on Hi
     "requestedby": "ada-uuid",
     "createdat": 1795400000,
     "expiresat": 1795486400,
-    "status": "pending"
+    "status": "pending",
+    "toolcached": true
   },
   "phase": "end",
   "version": 1,
@@ -1309,6 +1312,7 @@ The block's `blockid` is `a:` and the card's `id`. Approval blocks sort after th
 | `requestedby` | The account whose message asked, or the agent's owner for a card with a message of its own. |
 | `createdat`, `expiresat` | When the card was made, and when it expires, 24 hours later. |
 | `status` | `pending`, `allowed` (allowed once), `always` (allowed, and from now on), `declined` or `expired`. A `pending` card whose `expiresat` has passed reads as expired. |
+| `toolcached` | `false` when the connector hadn't listed this action yet when the card was made (a connector on a vendor's own MCP server lists its actions after its first connect): Always allow on it allows the call once while the action is still not listed. `true` otherwise. |
 | `actedat`, `actedby` | Once answered: when, and the account that answered. An expired card has `actedat` and no `actedby`. |
 | `usedat` | When the approved call ran. |
 | `resume` | After an Allow or Always allow: `{ "status": "queued", "messageguid" }`, `{ "status": "not_running" }` or `{ "status": "refused" }`. See [The resume turn](#the-resume-turn). |
@@ -1394,6 +1398,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/ApprovalCardAct" \
     "createdat": 1795400000,
     "expiresat": 1795486400,
     "status": "allowed",
+    "toolcached": true,
     "actedat": 1795400120,
     "actedby": "ada-uuid",
     "resume": { "status": "queued", "messageguid": "e5f6a7b8-c9d0-4e1f-9a23-456789abcdef" }
@@ -1411,7 +1416,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/ApprovalCardAct" \
 | Field | Description |
 |-------|-------------|
 | `approval` | The card after the answer. Refusals carry it too, as it is now, or `null` when there is none. |
-| `summary` | One sentence to show: `Allowed once.`, `Always allowed.` or `Declined.` When Always allow could not change the tool's values, the call still runs once and the sentence says why: `Allowed once. <Title>'s actions are listed after its first connection, so this one can't be allowed for good yet.` or `Allowed once. <Title> already has 500 action overrides, so this one could not be allowed for good.` |
+| `summary` | One sentence to show: `Allowed once.`, `Always allowed.` or `Declined.` When Always allow could not change the tool's values, the call still runs once: the card reads `allowed`, its resume turn says once, and the sentence is `Allowed once. <Title>'s actions are listed after its first connection, so this one can't be allowed for good yet.` (an action the connector hasn't listed yet), `Allowed once. <Title> already has 500 action overrides, so this one could not be allowed for good.`, or a plain `Allowed once.` when the values could not be written at that moment. |
 | `resume` | What happens next, after `allow` and `always`; `null` after `decline`. See [The resume turn](#the-resume-turn). |
 | `permissions` | `always` only: the tool's values after it, `{ connector, tool, chat, autopilot }`. |
 
@@ -1422,7 +1427,7 @@ The same card answered with `always` gets:
 "permissions": { "connector": "wordpress", "tool": "update_post", "chat": "allow", "autopilot": "allow" }
 ```
 
-Always allow changes only the columns that read `ask`, here Chat: `update_post` already ran without asking in Autopilot, and a column set to `block` stays blocked. It writes the tool's own values, as [ConnectorSetPermissions](#post-useragentconnectorsetpermissions) would, and two rows to the agent's activity log: `CONNECTOR_APPROVAL_ANSWERED` and `CONNECTOR_PERMISSIONS_SET`. Every answer writes the first.
+Always allow changes only the columns that read `ask`, here Chat: `update_post` already ran without asking in Autopilot, and a column set to `block` stays blocked. It writes the tool's own values, as [ConnectorSetPermissions](#post-useragentconnectorsetpermissions) would, and two rows to the agent's activity log: `CONNECTOR_APPROVAL_ANSWERED` and `CONNECTOR_PERMISSIONS_SET`. Every answer writes the first, with the answer that took effect: an Always allow that allowed the call once writes only it, as `allow`.
 
 Answered with `decline`:
 

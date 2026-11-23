@@ -142,7 +142,7 @@ A `token_usage` event records the tokens and the AI usage of one billed turn: a 
 | `CONNECTOR_ACCOUNTS_SET` | `Connector accounts set: facebook-pages` |
 | `CONNECTOR_REAUTH` | `Connector needs to be connected again: facebook-pages` (written by Wiro when a sign-in expired or was revoked) |
 | `CONNECTOR_PERMISSIONS_SET` | `Connector permissions changed: wordpress` (see [ConnectorSetPermissions](/docs/agent-connectors#post-useragentconnectorsetpermissions)); `Connector permissions changed: wordpress (update_post), from chat` when Always allow on an approval card changed a tool's values |
-| `CONNECTOR_APPROVAL_ANSWERED` | `Approval allow: wordpress update_post` (`allow`, `always` or `decline`; see [ApprovalCardAct](/docs/agent-connectors#post-useragentmessageapprovalcardact)) |
+| `CONNECTOR_APPROVAL_ANSWERED` | `Approval allow: wordpress update_post` (`allow`, `always` or `decline`: the answer that took effect, so an Always allow that allowed the call once reads `allow`; see [ApprovalCardAct](/docs/agent-connectors#post-useragentmessageapprovalcardact)) |
 | `AGENT_PLAN_STARTED`, `AGENT_PLAN_RENEWED`, `AGENT_PLAN_CANCELLED`, `AGENT_PLAN_RESUMED` | `Starter plan started: $5.00 charged`, `Starter plan renewed: $5.00 charged`, `Plan cancelled, ends 2026-06-01`, `Plan cancellation undone` |
 | `AGENT_PLAN_ENDED` | `Starter plan ended: the wallet could not pay the renewal`, `Pro plan ended: it was set to cancel` (written by Wiro; the agent stops when its plan ends) |
 | `AGENT_PLAN_NOT_SAVED` | `Pro plan renewal did not finish: $24.00 charged`, `Max plan start did not finish: $100.00 charged` (the wallet paid and the plan could not be saved; see [Plan payments that did not finish](/docs/agent-transactions#plan-not-saved)) |
