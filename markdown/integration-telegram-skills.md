@@ -132,6 +132,12 @@ the shared direct-message conversation.
   only from that room's `allowedusers`.
 - Group turns must mention the bot.
 - Usernames and display names are never accepted as authorization values.
+- Approvals: when a connector action needs a person's approval, the agent's
+  reply ends with a question that shows the action and its whole request.
+  Reply `yes` to allow it once or `no` to decline it; in a group, any allowed
+  member answers, by replying to the question or mentioning the bot. Always
+  allow isn't offered in Telegram: an agent admin sets it in the connector's
+  Permissions. See [Approvals in Telegram, Slack and Discord](/docs/agent-connectors#approvals-in-telegram-slack-and-discord).
 - Telegram is optional. Clear either `bottoken` or `allowedusers` with
   `CredentialUpsert` to disable it; completing both fields reactivates it.
 

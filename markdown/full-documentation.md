@@ -25373,7 +25373,7 @@ Other work the agent does on its own, such as work it moved to the background, t
 | Value | What happens |
 |-------|--------------|
 | `allow` | The tool runs. |
-| `ask` | The call waits for a person's approval: an [approval card](#the-approval-block) appears in the chat, and the agent says what is waiting. |
+| `ask` | The call waits for a person's approval: an [approval card](#the-approval-block) appears in the chat, and the agent says what is waiting. In a Telegram, Slack or Discord conversation, Wiro asks the person a question at the end of the agent's reply instead (see [Approvals in Telegram, Slack and Discord](#approvals-in-telegram-slack-and-discord)). |
 | `block` | The tool never runs. Blocked in both columns, it is not shown to the agent at all. Blocked in one column, a call there is refused: in a chat the agent says the action is blocked, and in a Scheduled Task it finishes the rest and writes in its report that the action is blocked in autopilot and can be asked for in chat. |
 
 Each tool belongs to one category, set by its `readonly` and `destructive` flags on [Detail](#post-agentconnectordetail). The category's values are the defaults:
@@ -25403,7 +25403,7 @@ Studio and the Workflow Agent have no permissions or approvals: they never show 
 |------|------|--------------|
 | 1. Read the permissions | [`POST /UserAgent/ConnectorPermissions`](#post-useragentconnectorpermissions) | Each category's and each tool's values in both columns, and the cards waiting that came from Scheduled Tasks, channels or the agent's own work. |
 | 2. Change them | [`POST /UserAgent/ConnectorSetPermissions`](#post-useragentconnectorsetpermissions) | The new values. The agent restarts, unless every change only turns `ask` into `allow`. |
-| 3. The agent asks | None: the card arrives in the chat | An `approval` block in the timeline of a message, in [History](/docs/agent-messaging#post-useragentmessagehistory), [Detail](/docs/agent-messaging#post-useragentmessagedetail) and on the [WebSocket](/docs/agent-websocket). See [How an approval works](#how-an-approval-works). |
+| 3. The agent asks | None: the card arrives in the chat | An `approval` block in the timeline of a message, in [History](/docs/agent-messaging#post-useragentmessagehistory), [Detail](/docs/agent-messaging#post-useragentmessagedetail) and on the [WebSocket](/docs/agent-websocket). See [How an approval works](#how-an-approval-works). In Telegram, Slack and Discord, a question at the end of the agent's reply. |
 | 4. Answer the card | [`POST /UserAgent/Message/ApprovalCardAct`](#post-useragentmessageapprovalcardact) | The card's new state, and a turn queued in the same chat that tells the agent. |
 | 5. The agent goes on | [The resume turn](#the-resume-turn) | The approved call runs once, and the agent's answer arrives as the chat's next message. |
 
@@ -25494,7 +25494,7 @@ The example is shortened: `tools` lists all 13 WordPress tools, and descriptions
 | `permissions.tools` | Every tool the connection has values for: `name`, `title`, `description`, `category`, its values `chat` and `autopilot`, `source` (where each value comes from: `tool`, its own value; `category`, its category's value on the connection; `catalog`, the connector's default for the tool; `default`, the category's default; `unknown`, the connection's Change and delete value), `defaults` (the values without the connection's own), `hidden` (`true` when blocked in both columns: the agent doesn't see it) and `cached` (`false` for a name the connector doesn't list yet, such as a tool its vendor added later that already has a value of its own; it reads `change`). |
 | `permissions.unknown` | What a tool the connector doesn't list yet gets in each column: the connection's Change and delete values. |
 | `permissions.updatedat`, `permissions.updatedby` | When the connection's values last changed (Unix seconds) and the account that changed them, or `null` when they never did. |
-| `pending` | The cards for this connector still waiting that have a message of their own: the ones Scheduled Tasks, channel conversations and the agent's own work asked for (see [How an approval works](#how-an-approval-works)), newest first, at most 20. Each is `{ cardid, messageguid, tool, tooltitle, origin, createdat, expiresat, args, argspreview, argsbytes, argsredacted, toolcached }`, as on [the card](#the-approval-block). Answer one with [ApprovalCardAct](#post-useragentmessageapprovalcardact) and its `messageguid` and `cardid`. A card on a person's own message is not listed: it is in that chat. |
+| `pending` | The cards for this connector still waiting that have a message of their own: the ones Scheduled Tasks, channel conversations and the agent's own work asked for (see [How an approval works](#how-an-approval-works)), newest first, at most 20. Each is `{ cardid, messageguid, tool, tooltitle, origin, createdat, expiresat, args, argspreview, argsbytes, argsredacted, toolcached }`, as on [the card](#the-approval-block). Answer one with [ApprovalCardAct](#post-useragentmessageapprovalcardact) and its `messageguid` and `cardid`. A card on a person's own message is not listed: it is in that chat. A card asked in a Telegram, Slack or Discord conversation (`origin.kind` `"channel"`) is listed read-only: it is answered only there, and ApprovalCardAct refuses it. |
 
 Studio and the Workflow Agent have no permissions: for them ConnectorPermissions answers `result: false` with `This agent's connectors are fixed.`
 
@@ -25602,9 +25602,10 @@ When the agent calls a tool whose value is `ask`, the call waits, and Wiro adds 
 | The call came from | The card is | It arrives live as |
 |--------------------|-------------|--------------------|
 | A message sent with `Message/Send`, from your app or Wiro's web chat | On that message: an `approval` block in its `timeline` | `agent_timeline_delta` on the message's `agenttoken` |
-| A Scheduled Task, a Telegram, Slack or Discord conversation, or the agent's own work | On a message of its own in the owner's chat (below) | `agent_message_inserted` on the session's stream, then `agent_message_block` each time the card changes (see [Following a session](/docs/agent-websocket#following-a-session)) |
+| A Scheduled Task, the work before and after a voice call, or the agent's own work | On a message of its own in the owner's chat (below) | `agent_message_inserted` on the session's stream, then `agent_message_block` each time the card changes (see [Following a session](/docs/agent-websocket#following-a-session)) |
+| A conversation on the agent's Telegram, Slack or Discord channel | Asked as a question in that conversation and answered there (see [Approvals in Telegram, Slack and Discord](#approvals-in-telegram-slack-and-discord)). The card is also kept on a message of its own in the owner's chat, read-only | As in the row above |
 
-Such a card has a message of its own, sent as the agent's owner, with an empty `content`, a `response` such as `Approval needed: Create a WordPress post or page in WordPress.` and `metadata.type` `"system"`. Wiro puts it in the session of the owner's most recent message sent in Wiro's web chat (on a team agent whose sessions are shared, the team's most recent); messages sent with a project API key don't count. Without one, it goes to the agent's `approvals` session: read it with [`Message/History`](/docs/agent-messaging#post-useragentmessagehistory) and `sessionkey: "approvals"`, and keep that key for it. [ConnectorPermissions](#post-useragentconnectorpermissions) lists these cards under `pending`, so the agent's admins can answer them from there too.
+Such a card has a message of its own, sent as the agent's owner, with an empty `content`, a `response` such as `Approval needed: Create a WordPress post or page in WordPress.` and `metadata.type` `"system"`. Wiro puts it in the session of the owner's most recent message sent in Wiro's web chat (on a team agent whose sessions are shared, the team's most recent); messages sent with a project API key don't count. Without one, it goes to the agent's `approvals` session: read it with [`Message/History`](/docs/agent-messaging#post-useragentmessagehistory) and `sessionkey: "approvals"`, and keep that key for it. [ConnectorPermissions](#post-useragentconnectorpermissions) lists these cards under `pending`, so the agent's admins can answer them from there too (a card asked in Telegram, Slack or Discord only shows there).
 
 By default a Scheduled Task creates, sends, changes and deletes without asking, so it gets a card only on a connection that sets Autopilot to `ask`, such as the one in the [ConnectorSetPermissions](#post-useragentconnectorsetpermissions) example. There, a Scheduled Task's card, as History returns its message in the `approvals` session:
 
@@ -25680,9 +25681,119 @@ By default a Scheduled Task creates, sends, changes and deletes without asking, 
 ]
 ```
 
-Telegram, Slack and Discord show no buttons: the card goes to the web chat as above, and the agent tells the person on the channel that the approval waits in its web chat. Once it is answered, the action runs in that web chat, and its result is there.
-
 A reply such as "yes" typed in the chat answers no card: only [ApprovalCardAct](#post-useragentmessageapprovalcardact) (and the card's buttons on wiro.ai) do. Approvals work whatever the agent's [Setup From Chat](/docs/agent-messaging#setup-from-chat) setting.
+
+### Approvals in Telegram, Slack and Discord
+
+Telegram, Slack and Discord have no buttons. When an action needs approval in a conversation on the agent's channel, the agent asks in text there, and the person's answer in that conversation allows the action once or declines it.
+
+**The question.** The agent answers as usual, says in a sentence that the action needs approval, and ends its reply. Wiro adds the question to the end of that reply, and to the end of each of its messages when the agent sends several, so the reply always ends with it. Wiro writes the question from the card, never the agent: the action and the connector, then the whole request, exactly as the card holds it. A request over 64 KB shows its stored start and its size, and Reddit's request is hidden under its data terms. A long question comes in several messages. A Telegram user reads:
+
+```text
+I need your OK before I publish it.
+
+Approval needed
+Create a WordPress post or page in WordPress
+{
+  "content": "Big discounts all week.",
+  "status": "publish",
+  "title": "Summer sale"
+}
+Reply "yes" to allow it once, or "no" to decline it. It expires in 24 hours.
+```
+
+The first line is the agent's. In the app, `Approval needed` is bold and the request is a code block.
+
+| Part | What it says |
+|------|--------------|
+| A request | `<tooltitle> in <title>` and the request in a code block. Over 64 KB: `<tooltitle> in <title> (a long request, <size> KB; its start:)` and the stored start. Reddit: `<tooltitle> in <title>: the request is hidden under Reddit's data terms.` |
+| One action | `Approval needed`, the request, then `Reply "yes" to allow it once, or "no" to decline it. It expires in 24 hours.` |
+| Several actions | `Approval needed for <N> actions`, each request after its number (`1.`, `2.`, ...), then `Reply "yes" and the action's number to allow it once, one per message, for example "yes 1". Reply "no" and its number to decline one, or "no" to decline them all. They expire in 24 hours.` |
+| Actions still waiting after one ran | At the end of the agent's reply to a `yes`: `Still waiting for your answer`, and each waiting action under the number it was first asked with. |
+| In a group | One more line. Telegram and Discord: `In a group, reply to this message or mention the agent.` Slack: `In a channel, mention the agent in your answer.` |
+| When they expire | `in 24 hours`, `in about <h> hours`, `in about 1 hour` or `in less than an hour`, from the action that expires first. |
+| A request the conversation can't show | `An action is waiting for approval, but its request can't be shown in this chat, so it can't be approved here.` |
+| A seventh action | `Another action is waiting for approval. Ask the agent again once these are answered.` A question holds six numbers. |
+
+**Answering.** The whole message is the answer: at most four words and no question mark, with courtesy words such as `please` or `thanks` allowed. `yes` (or `evet`, `ok`, `go ahead`, `👍` and the other approval words) allows the action once, and `no` (or `hayır`, `cancel` and the other refusal words) declines it. With several actions, add the number, as in `yes 2` or `no 1`, one action per message; `no` alone declines them all. An action keeps its number until it is answered, also when the agent lists it again. `always` (or `her zaman`) allows the action once too: Always allow is set in the connector's Permissions, never in a chat app.
+
+| Reply | What the person sees |
+|-------|----------------------|
+| `yes`, or `yes 2` | The agent does the action right away in the same conversation, and its reply starts with `Allowed once: <tooltitle> in <title>.` After `always`, `A reply in this chat allows a call only once. An agent admin can allow it for good in the connector's permissions.` follows. |
+| `no` | `Declined: <tooltitle> in <title>. The agent won't do it unless you ask again.` With several actions, `Declined: <n>. <tooltitle> in <title>.` for each, then `The agent won't do them unless you ask again.` |
+| `no 2` | `Declined: 2. <tooltitle> in <title>.`, then `Action 1 still waits for your answer.` or `Actions 1 and 3 still wait for your answer.` when others wait. |
+| `yes` while several actions wait | `<N> actions are waiting. Reply "yes" with the action's number, for example "yes 1", or "no" to decline them all.` |
+| A number no waiting action has | `There is no action <n> waiting. Reply "yes" or "no" with the number of an action that waits: 1, 2 or 3.`, or `There is no action <n> waiting. Reply "yes" or "no".` when one waits. |
+| `yes` while the agent is still replying in that conversation | `The agent is still replying in this chat. Answer again when it's done.` The question stays, with its numbers. A `no` is taken at any time. |
+| `yes` while the agent can't take a turn | The sentence the agent gives in its chats for that, such as `This agent is paused for now. It runs again once its owner adds funds or its plan renews.` Nothing is allowed. |
+| An action that can't be answered any more | Wiro's sentence, as ApprovalCardAct gives it: `This approval expired. Ask the agent again.`, `This approval was already answered.`, `This action is blocked now. Change it in the connector's permissions.` or `This approval was asked in another chat.` The action leaves the question. |
+| An answer that could not be saved | `Your answer could not be saved right now. Try again in a minute.` The question stays. |
+
+Only the allowed action's turn is billed, as any turn is; the other answers start no agent turn and cost nothing.
+
+**After the answer.** After `yes`, the agent does the action in that conversation with exactly the request the question showed, and replies there with the result. The approval is used once, within an hour. After `no`, nothing runs; the next time the agent needs the action, it asks again.
+
+**Who answers.** In a direct chat, that person. In a group, a Slack channel or a thread, any member allowed to talk to the agent there, by mentioning the agent or, in Telegram and Discord, by replying to the question. A question belongs to its conversation: an answer in another conversation, another person's direct chat included, never answers it.
+
+**Only an answer right after the question counts.** Anything else said to the agent first sets the question aside (a `/command` doesn't), and so does anything sent into that conversation after the question, such as a Scheduled Task's report or another message of the agent's. So does a restart of the agent. The action keeps waiting: when the agent makes the same call again in that conversation, it asks again with the same card.
+
+**Expiry.** A question lasts as long as its card: 24 hours. An answer after that gets `This approval expired. Ask the agent again.`, and the agent asks again with a new card when the action is still wanted. An approved action runs within the hour.
+
+**Work with no person in the conversation.** A Scheduled Task, the work before and after a voice call and the agent's own work have nobody to ask, even when they post their results to Telegram, Slack or Discord: their cards go to the owner's chat as approval cards, as described above.
+
+**In the agent's chat, in Permissions and over the API.** These approvals show read-only. The card is kept on a message of its own in the owner's chat, as described above, with `origin` `{ "kind": "channel", "channel": "telegram" }` (or `slack`, `discord`). Wiro's web chat shows it with no buttons, and ConnectorPermissions lists it under `pending`. While it waits, the block's card reads:
+
+```json
+"approval": {
+  "v": 1,
+  "id": "a1b2c3d4e5f6",
+  "kind": "approval",
+  "connector": "wordpress",
+  "title": "WordPress",
+  "tool": "create_post",
+  "tooltitle": "Create a WordPress post or page",
+  "modeltool": "wordpress__create_post",
+  "category": "create",
+  "columns": ["chat"],
+  "column": "chat",
+  "origin": { "kind": "channel", "channel": "telegram" },
+  "connectedat": 1795390000,
+  "argshash": "c1bf959322778d0a4db6aa6013b137d9dd6f29467770e60c02182e7e83c97ee0",
+  "args": { "content": "Big discounts all week.", "status": "publish", "title": "Summer sale" },
+  "argspreview": null,
+  "argsbytes": 78,
+  "argsredacted": false,
+  "always": { "chat": true, "autopilot": false },
+  "requestedby": "ada-uuid",
+  "createdat": 1795400300,
+  "expiresat": 1795486700,
+  "status": "pending",
+  "toolcached": true
+}
+```
+
+Answered in the conversation, it reads `allowed` or `declined`, with `actedat` and `actedvia`, the app it was answered in, and no `actedby`:
+
+```json
+"status": "allowed",
+"toolcached": true,
+"actedat": 1795400420,
+"actedvia": "telegram"
+```
+
+[ApprovalCardAct](#post-useragentmessageapprovalcardact) refuses it before anything changes:
+
+```json
+{
+  "result": false,
+  "errors": [{ "code": "approval_in_channel", "message": "This approval is answered in the Telegram chat it was asked in." }],
+  "approval": { "id": "a1b2c3d4e5f6", "origin": { "kind": "channel", "channel": "telegram" }, "status": "pending" }
+}
+```
+
+(`approval` shortened.) Show such a card without buttons, with `Answered in the Telegram chat it was asked in.` while it waits, and `Allowed in the Telegram chat.` or `Declined in the Telegram chat.` once it is answered. It has no resume turn in the owner's chat: the person's `yes` runs as the turn in its conversation. Once the approved call ran, the card gets `usedat` and its block version `3`, as any card.
+
+In MCP clients, `answer_agent_approval` returns that refusal and says the card is answered in its chat, and the lists of waiting cards mark it `Answered in the Telegram chat it was asked in.`, with no step to answer it.
 
 ### The approval block
 
@@ -25737,9 +25848,9 @@ The block's `blockid` is `a:` and the card's `id`. Approval blocks sort after th
 | `tool`, `tooltitle` | The tool's name and title. |
 | `modeltool` | The name the agent calls the tool by, `<slug>__<tool>`. |
 | `category` | `read`, `create` or `change`. |
-| `columns` | The columns of the run that asked: `["chat"]`, `["autopilot"]`, or `["chat", "autopilot"]` for other work the agent did on its own and for the resume of a card that didn't come from a chat. |
+| `columns` | The columns of the run that asked: `["chat"]`, `["autopilot"]` (a Scheduled Task, or the work before and after a voice call), or `["chat", "autopilot"]` for other work the agent did on its own and for the resume of a card that didn't come from a chat. |
 | `column` | The column whose `ask` made the card. |
-| `origin` | Where the call came from: `{ "kind": "chat" }`; `{ "kind": "channel", "channel": "telegram" }` (or `slack`, `discord`); `{ "kind": "task", "task": "cs-cron-weekly-post", "tasktitle": "Weekly Post" }`, a Scheduled Task (`task` and `tasktitle` can be absent); or `{ "kind": "background" }`, work the agent did on its own. |
+| `origin` | Where the call came from: `{ "kind": "chat" }`; `{ "kind": "channel", "channel": "telegram" }` (or `slack`, `discord`), a conversation on the agent's channel, where the card is answered (see [Approvals in Telegram, Slack and Discord](#approvals-in-telegram-slack-and-discord)); `{ "kind": "task", "task": "cs-cron-weekly-post", "tasktitle": "Weekly Post" }`, a Scheduled Task (`task` and `tasktitle` can be absent); or `{ "kind": "background" }`, work the agent did on its own, the work before and after a voice call included. |
 | `connectedat` | When the connection last connected. A card made before a later connect can't be answered. |
 | `argshash` | A hash of the exact request: the approval holds for this request only. |
 | `args` | The exact arguments of the call, as an object. Show them before anyone answers. `null` when the request is too long or not kept. |
@@ -25751,12 +25862,12 @@ The block's `blockid` is `a:` and the card's `id`. Approval blocks sort after th
 | `createdat`, `expiresat` | When the card was made, and when it expires, 24 hours later. |
 | `status` | `pending`, `allowed` (allowed once), `always` (allowed, and from now on), `declined` or `expired`. A `pending` card whose `expiresat` has passed reads as expired. |
 | `toolcached` | `false` when the connector hadn't listed this action yet when the card was made (a connector on a vendor's own MCP server lists its actions after its first connect): Always allow on it allows the call once while the action is still not listed. `true` otherwise. |
-| `actedat`, `actedby` | Once answered: when, and the account that answered. An expired card has `actedat` and no `actedby`. |
+| `actedat`, `actedby`, `actedvia` | Once answered: when, and the account that answered. A card answered in its Telegram, Slack or Discord conversation has `actedvia` (`telegram`, `slack` or `discord`) instead of `actedby`. An expired card has `actedat` and no `actedby`. |
 | `usedat` | When the approved call ran. |
 | `resume` | After an Allow or Always allow: `{ "status": "queued", "messageguid" }`, `{ "status": "not_running" }` or `{ "status": "refused" }`. See [The resume turn](#the-resume-turn). |
 | `error` | Why the card expired early or why its turn could not run, in one sentence. Show it as it is. |
 
-While a card is `pending`, show its arguments and three buttons: Allow, Always Allow and Decline. Show Always Allow only to the agent's owner and the admins of its team. A card from a Scheduled Task or a channel names where it came from; a card on a message from your app was asked for in that chat.
+While a card is `pending`, show its arguments and three buttons: Allow, Always Allow and Decline. Show Always Allow only to the agent's owner and the admins of its team. A card from a Scheduled Task names where it came from; a card on a message from your app was asked for in that chat. A card whose `origin.kind` is `"channel"` gets no buttons: show `Answered in the Telegram chat it was asked in.` while it waits, and `Allowed in the Telegram chat.` or `Declined in the Telegram chat.` once `actedvia` is set.
 
 A request over 64 KB, as its card shows it:
 
@@ -25791,6 +25902,7 @@ Who may answer:
 
 - **`allow` and `decline`:** the agent's owner and anyone in the agent's team who sees the card's message in the chat. On a team agent whose sessions are private, the team's admins can also answer the cards that have a message of their own (the ones `pending` lists).
 - **`always`:** the agent's owner or an admin of the agent's team, since it changes the agent's settings. Anyone else gets code `97`.
+- **A card asked in Telegram, Slack or Discord:** only an answer in that conversation counts, and ApprovalCardAct refuses it with `approval_in_channel` (see [Approvals in Telegram, Slack and Discord](#approvals-in-telegram-slack-and-discord)).
 
 An answer works while the agent's turn is still running, and restarts nothing.
 
@@ -25891,10 +26003,21 @@ A card that can't be answered any more:
 }
 ```
 
-(`approval` shortened.) Three refusal codes are words, where the others are numbers:
+A card asked in a Telegram, Slack or Discord conversation, refused before anything changes:
+
+```json
+{
+  "result": false,
+  "errors": [{ "code": "approval_in_channel", "message": "This approval is answered in the Telegram chat it was asked in." }],
+  "approval": { "id": "a1b2c3d4e5f6", "origin": { "kind": "channel", "channel": "telegram" }, "status": "pending" }
+}
+```
+
+(`approval` shortened.) Four refusal codes are words, where the others are numbers:
 
 | Code | Message | Why |
 |------|---------|-----|
+| `approval_in_channel` | `This approval is answered in the Telegram chat it was asked in.` (or `Slack`, `Discord`) | The card was asked in a conversation on the agent's channel, and only an answer there counts. Nothing changed. |
 | `approval_expired` | `This approval expired. Ask the agent again.` | The card's 24 hours have passed. It now reads `expired`. |
 | `approval_expired` | `<Title> is not connected any more.` | The connection was disconnected or isn't `connected`. The card now reads `expired` with this `error`. |
 | `approval_expired` | `<Title> was connected again, so this approval no longer applies. Ask the agent again.` | The connector was connected again, signed in again or given new accounts since the card was made. |
@@ -25955,13 +26078,13 @@ The resume turn is a message of the session like any other, and History returns 
 
 (Shortened; once the turn ends, `metadata` also has the finished turn's metrics.) Its `content` is Wiro's message to the agent, not a person's: don't show it as one. Show one line instead, `Allowed: <tooltitle> in <title>` (`Always allowed: ...` when `answer` is `always`), then the agent's answer. [`Message/Sessions`](/docs/agent-messaging#post-useragentmessagesessions) shows the same line as the session's `lastmessage`.
 
-A card with a message of its own resumes in the chat where the card is, and its resume hands the agent the call's stored arguments as data. When they can't be repeated (a request over 64 KB, or Reddit's), the agent does that step again in the chat, which can ask for a new approval. The resume of a card from a Scheduled Task or the agent's own work takes the stricter of the two columns for every tool it calls (`resumecolumn: "autopilot"`), so a tool blocked in Autopilot stays blocked. A card from a chat message or a channel conversation resumes in Chat (`resumecolumn: "chat"`).
+A card with a message of its own resumes in the chat where the card is, and its resume hands the agent the call's stored arguments as data. When they can't be repeated (a request over 64 KB, or Reddit's), the agent does that step again in the chat, which can ask for a new approval. The resume of a card from a Scheduled Task or the agent's own work takes the stricter of the two columns for every tool it calls (`resumecolumn: "autopilot"`), so a tool blocked in Autopilot stays blocked. A card from a chat message resumes in Chat (`resumecolumn: "chat"`). A card asked in a Telegram, Slack or Discord conversation has no resume turn here: the person's own `yes` runs as the agent's turn in that conversation, and the result is delivered there (see [Approvals in Telegram, Slack and Discord](#approvals-in-telegram-slack-and-discord)).
 
 Once the approved call ran, the card gets `usedat` and its block version `3`. If the agent already made the call in the turn that asked, before the resume ran, the resume doesn't make it a second time.
 
 ### Expiries and limits
 
-- A card waits 24 hours (`expiresat`). After that it reads `expired`, and the agent asks again with a new card when the action is still wanted.
+- A card waits 24 hours (`expiresat`). After that it reads `expired`, and the agent asks again with a new card when the action is still wanted. A question in Telegram, Slack or Discord expires with its card.
 - An approval is used within an hour of the answer, in the chat the card is in, once. After that hour, the next call asks again.
 - Connecting the connector again with new values, a new sign-in and new account choices end every card still waiting for it: each reads `expired`, with the `error` `<Title> was connected again, so this approval no longer applies. Ask the agent again.` A call that changes nothing keeps them.
 - [Disconnecting](#post-useragentconnectordisconnect) deletes the connection's permissions and its waiting approvals with it. Connecting again after `reauth` keeps the permissions.
@@ -26109,6 +26232,7 @@ Refusals come as `result: false` with one sentence per problem in `errors`. Show
 | `ConnectorPermissions`, `ConnectorSetPermissions` | `This agent's connectors are fixed.` | Studio and the Workflow Agent, which have no permissions. |
 | `ConnectorSetPermissions` | `Send reset, categories or tools.`, `categories takes read, create and change.`, `Each category and tool takes chat and autopilot.`, `A permission is allow, ask or block.`, `<name> is not one of <Title>'s tools.` | The body's shape: see [ConnectorSetPermissions](#post-useragentconnectorsetpermissions) for every refusal. |
 | `ApprovalCardAct` | `This approval expired. Ask the agent again.` (code `approval_expired`), `This approval was already answered.` (`approval_done`), `This action is blocked now. Change it in the connector's permissions.` (`approval_blocked`) | The card can't be answered any more: see [ApprovalCardAct](#post-useragentmessageapprovalcardact) for every refusal. |
+| `ApprovalCardAct` | `This approval is answered in the Telegram chat it was asked in.` (code `approval_in_channel`; or `Slack`, `Discord`) | A card asked in a Telegram, Slack or Discord conversation: see [Approvals in Telegram, Slack and Discord](#approvals-in-telegram-slack-and-discord). |
 | any | `Something went wrong. Try again.` | A temporary failure: nothing was changed. |
 
 The account picker refusals are under [ConnectorSetAccounts](#post-useragentconnectorsetaccounts), the callback codes under [The callback and your redirect URL](#the-callback-and-your-redirect-url), the permission and approval refusals under [Permissions and Approvals](#permissions-and-approvals), and what Deploy, `SkillsApply` and `CredentialUpsert` answer for a connector under [Connectors, Skills and Credentials](#connectors-skills-and-credentials).
@@ -26574,6 +26698,8 @@ and free-form room names are not authorization identifiers. Unlisted users and
 rooms are rejected, and room messages must mention the bot. To disable a
 channel, clear at least one of its `required_fields` with `CredentialUpsert`.
 Completing the required fields again reactivates it automatically.
+
+**Approvals in these chats.** When an action of a connector needs a person's approval in a Telegram, Slack or Discord conversation, the agent asks there: its reply ends with a question that shows the action and its whole request, and an answer in that conversation of `yes` allows the action once and `no` declines it. Always allow isn't offered there: an agent admin sets it in the connector's Permissions. In a group, any member allowed to talk to the agent there answers. See [Approvals in Telegram, Slack and Discord](/docs/agent-connectors#approvals-in-telegram-slack-and-discord).
 
 
 ## Credential Registry Endpoints
@@ -30978,7 +31104,7 @@ A `token_usage` event records the tokens and the AI usage of one billed turn: a 
 | `CONNECTOR_ACCOUNTS_SET` | `Connector accounts set: facebook-pages` |
 | `CONNECTOR_REAUTH` | `Connector needs to be connected again: facebook-pages` (written by Wiro when a sign-in expired or was revoked) |
 | `CONNECTOR_PERMISSIONS_SET` | `Connector permissions changed: wordpress` (see [ConnectorSetPermissions](/docs/agent-connectors#post-useragentconnectorsetpermissions)); `Connector permissions changed: wordpress (update_post), from chat` when Always allow on an approval card changed a tool's values |
-| `CONNECTOR_APPROVAL_ANSWERED` | `Approval allow: wordpress update_post` (`allow`, `always` or `decline`: the answer that took effect, so an Always allow that allowed the call once reads `allow`; see [ApprovalCardAct](/docs/agent-connectors#post-useragentmessageapprovalcardact)) |
+| `CONNECTOR_APPROVAL_ANSWERED` | `Approval allow: wordpress update_post` (`allow`, `always` or `decline`: the answer that took effect, so an Always allow that allowed the call once reads `allow`; see [ApprovalCardAct](/docs/agent-connectors#post-useragentmessageapprovalcardact)). A card answered in its Telegram, Slack or Discord conversation reads `Approval allow: wordpress create_post in Telegram` |
 | `AGENT_PLAN_STARTED`, `AGENT_PLAN_RENEWED`, `AGENT_PLAN_CANCELLED`, `AGENT_PLAN_RESUMED` | `Starter plan started: $5.00 charged`, `Starter plan renewed: $5.00 charged`, `Plan cancelled, ends 2026-06-01`, `Plan cancellation undone` |
 | `AGENT_PLAN_ENDED` | `Starter plan ended: the wallet could not pay the renewal`, `Pro plan ended: it was set to cancel` (written by Wiro; the agent stops when its plan ends) |
 | `AGENT_PLAN_NOT_SAVED` | `Pro plan renewal did not finish: $24.00 charged`, `Max plan start did not finish: $100.00 charged` (the wallet paid and the plan could not be saved; see [Plan payments that did not finish](/docs/agent-transactions#plan-not-saved)) |
@@ -32718,6 +32844,12 @@ the shared direct-message conversation.
   only from that room's `allowedusers`.
 - Group turns must mention the bot.
 - Usernames and display names are never accepted as authorization values.
+- Approvals: when a connector action needs a person's approval, the agent's
+  reply ends with a question that shows the action and its whole request.
+  Reply `yes` to allow it once or `no` to decline it; in a group, any allowed
+  member answers, by replying to the question or mentioning the bot. Always
+  allow isn't offered in Telegram: an agent admin sets it in the connector's
+  Permissions. See [Approvals in Telegram, Slack and Discord](/docs/agent-connectors#approvals-in-telegram-slack-and-discord).
 - Telegram is optional. Clear either `bottoken` or `allowedusers` with
   `CredentialUpsert` to disable it; completing both fields reactivates it.
 

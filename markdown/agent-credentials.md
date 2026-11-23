@@ -117,6 +117,8 @@ rooms are rejected, and room messages must mention the bot. To disable a
 channel, clear at least one of its `required_fields` with `CredentialUpsert`.
 Completing the required fields again reactivates it automatically.
 
+**Approvals in these chats.** When an action of a connector needs a person's approval in a Telegram, Slack or Discord conversation, the agent asks there: its reply ends with a question that shows the action and its whole request, and an answer in that conversation of `yes` allows the action once and `no` declines it. Always allow isn't offered there: an agent admin sets it in the connector's Permissions. In a group, any member allowed to talk to the agent there answers. See [Approvals in Telegram, Slack and Discord](/docs/agent-connectors#approvals-in-telegram-slack-and-discord).
+
 
 ## Credential Registry Endpoints
 
