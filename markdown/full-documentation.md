@@ -20627,7 +20627,7 @@ In Telegram, Slack and Discord the agent says the same without the code in brack
 
 ## **POST** /UserAgent/Message/Send
 
-Sends a user message to a deployed agent. The agent must be in running state (status `4`), except for a setup reply that Wiro answers itself, such as a `yes` that applies a setup card, which works in any status (see [Replies Wiro handles itself](#handled-setup-replies)). Returns immediately with an `agenttoken` that you use to track the response via WebSocket, polling, or webhook.
+Sends a user message to a deployed agent. The agent must be in running state (status `4`), except for a reply that Wiro answers itself, such as a `yes` that applies a setup card or answers a connector's approval card, which works in any status (see [Replies Wiro handles itself](#handled-setup-replies)). Returns immediately with an `agenttoken` that you use to track the response via WebSocket, polling, or webhook.
 
 Accepts either `application/json` (text-only) or `multipart/form-data` (text + file attachments). When sending files, the `message` field can be empty. The agent receives the attachments and any accompanying text.
 
@@ -20662,12 +20662,13 @@ Accepts either `application/json` (text-only) or `multipart/form-data` (text + f
 |-------|------|-------------|
 | `messageguid` | `string` | Unique identifier for this message. Use it with Detail, History, or Cancel. |
 | `agenttoken` | `string\|null` | Token for WebSocket subscription and polling. Equivalent to `tasktoken` in model runs. `null` when Wiro handled the message itself (see below). |
-| `status` | `string` | Initial status: `"agent_queue"` on success, or `"agent_end"` when Wiro handled the message itself: a setup reply (see [Replies Wiro handles itself](#handled-setup-replies)) or an [unknown or disabled command](#unknown-or-disabled-commands). |
+| `status` | `string` | Initial status: `"agent_queue"` on success, or `"agent_end"` when Wiro handled the message itself: a setup reply (see [Replies Wiro handles itself](#handled-setup-replies)), a reply to an approval card (see [Answering with a reply](/docs/agent-connectors#answering-with-a-reply)) or an [unknown or disabled command](#unknown-or-disabled-commands). |
 | `modelChangeMarker` | `object\|null` | Present **only** when this turn's `model` selects a different chat model than the session was running, i.e. it rotates the model mid-session. Shape: `{ guid, type: "model_change", fromModel, toModel, createdat }`. The platform also writes a matching marker row into history (see [Message/History](#post-useragentmessagehistory)). Absent on turns that keep the session's model. |
 | `content` | `string` | Present when Wiro handled the message itself or removed a key from it: the message text as stored. See [Keys in chat](#keys-in-chat). |
 | `contentmasked` | `boolean` | Present (`true`) when Wiro removed a key from the message before the agent saw it; `content` holds the text the agent got. |
 | `response` | `string` | Only when Wiro handled the message itself: its result text. |
 | `setupresult` | `object` | Only when Wiro handled the message itself as a setup reply: `{ applied, dismissed, failed, restarting, next? }`. See [Replies Wiro handles itself](#handled-setup-replies). |
+| `approvalresult` | `object` | Only when Wiro handled the message itself as a reply to an approval card: `{ answered, listed }`, the cards it answered (each with what Wiro did, the card after, `summary` and `resume`) and the cards its listing showed. Both lists are empty when the agent was still replying. See [Answering with a reply](/docs/agent-connectors#answering-with-a-reply). |
 
 > **`model_change` marker.** When `model` rotates the session to a different chat model, the Send response carries a `modelChangeMarker` describing the switch, and a standalone marker row (status `agent_done`) is written into history at the same time:
 >
@@ -20689,7 +20690,7 @@ When `result: false`, the response shape is `{ result: false, errors: [{ code, m
 
 | Failure branch | Extra fields | Notes |
 |----------------|--------------|-------|
-| Agent not running (`status` ≠ 4) | `agentstatus: <int>` | Returned for every message Wiro doesn't answer itself as a setup reply (see [Replies Wiro handles itself](#handled-setup-replies)). Echoes the agent's current `status` so the caller can decide whether to wait, call `Start`, or surface "Setup Required" UI: `0` Stopped (call `Start`), `1` Stopping, `2` Queued and `3` Starting (wait and retry), `5` Error (call `Start` to retry), `6` Setup Required. With status `1`, the error reads `Agent is stopping. Please wait a moment and try again.` when the agent is shutting down to stay stopped, and `Agent is restarting. Please wait a moment and try again.` when it is shutting down to start again, as in a [restart](/docs/agent-overview#automatic-restart). See [UserAgent Statuses](/docs/agent-overview#useragent-statuses). |
+| Agent not running (`status` ≠ 4) | `agentstatus: <int>` | Returned for every message Wiro doesn't answer itself as a setup reply or a reply to an approval card (see [Replies Wiro handles itself](#handled-setup-replies)). Echoes the agent's current `status` so the caller can decide whether to wait, call `Start`, or surface "Setup Required" UI: `0` Stopped (call `Start`), `1` Stopping, `2` Queued and `3` Starting (wait and retry), `5` Error (call `Start` to retry), `6` Setup Required. With status `1`, the error reads `Agent is stopping. Please wait a moment and try again.` when the agent is shutting down to stay stopped, and `Agent is restarting. Please wait a moment and try again.` when it is shutting down to start again, as in a [restart](/docs/agent-overview#automatic-restart). See [UserAgent Statuses](/docs/agent-overview#useragent-statuses). |
 | Spend limit used up | `agentstatus` | Code `93`: a [spend limit](/docs/spend-limits) that covers the agent is used up: its own limit or, once its plan's included AI usage is used up, the account's or team's limit or the `agent` surface's limit. The message names the limit and when it resets, such as `This agent's monthly spend limit is reached ($20.35 of $20.00). It resets on December 1, 2026 at 00:00 UTC.` It is checked before the balance's code `97`; an agent with no active plan gets the plan's code `97` instead, whatever its limits. `agentstatus` is `4` here, so branch on the code. Nothing is queued or charged. When the limits can't be checked at that moment, this branch answers code `0` `Spend limits could not be checked. Try again in a moment.` instead: send the message again shortly. |
 | Agent paused (balance or plan) | `agentstatus`, `agentusage` | Code `97`. `agentusage` is the agent's [`usage`](/docs/agent-overview#usage-object) with `paused: true`, and its `pausedreason` says why. `"balance"`: the agent has used the AI usage its plan includes and the balance is under $0.50. The message speaks to whoever pays for the agent: surface an "Add funds" action. `"plan"`: the agent has no active plan, and the message reads `<Agent name> has no active plan. Choose a plan to keep it running.` Surface a "Choose a plan" action that renews the plan with [`RenewSubscription`](/docs/agent-overview#post-useragentrenewsubscription): adding funds doesn't run it. See [AI Usage and the Balance](/docs/agent-overview#ai-usage-and-the-balance). |
 
@@ -20820,7 +20821,7 @@ Retrieves the current status and content of a single message. You can query by e
 | `debugoutput` | `string` | Accumulated output text. Updated during streaming, contains the full response after completion. |
 | `timeline` | `array` | Ordered turn blocks. Always an array; `[]` means no public blocks were persisted. Merge live deltas by `blockid` and per-block `version`, then sort by call/content order. |
 | `status` | `string` | Current message status (see Message Lifecycle). |
-| `metadata` | `object` | Parsed JSON object (API returns it already decoded). Filled when the turn ends. Only `type` and a few keys are returned: on a finished turn (`type: "progressGenerate"`) `task`, `speed`, `speedType`, `elapsedTime`, `tokenCount` and `wordCount`; on a `model_change` marker row `fromModel` and `toModel`; on a `setup_result` row, a [reply Wiro handles itself](#handled-setup-replies), the answer's `next` when it left connectors to connect (as in `setupresult`), and `listed` and `listedfrom` when it was the [card listing](#setup-card-listing): the ids of the cards it showed and the `guid` of the message they are on; on an `approval_resume` row, the turn Wiro queued after someone answered an approval card, `serverProvenance`, `resumecolumn` and `approvals` (see [The resume turn](/docs/agent-connectors#the-resume-turn)); on other rows (`system`, `subagent`) usually `type` alone, and in History `systemcost: true` on a row whose cost came from a scheduled or background run. The answer text is in `response` and `timeline`, never in metadata. A turn that ended with a coded failure, such as `[SPEND_LIMIT_REACHED]` or `[CREDITS_EXHAUSTED]`, keeps `type: "progressGenerate"` and its metrics. Empty object `{}` for `agent_cancel`, for an `agent_error` that cut the turn off, such as `[TURN_INTERRUPTED]`, and while the turn is still running. Message status lives in the top-level `status` field, so don't read it from `metadata.type`: read a turn's outcome from `status` and `response`. |
+| `metadata` | `object` | Parsed JSON object (API returns it already decoded). Filled when the turn ends. Only `type` and a few keys are returned: on a finished turn (`type: "progressGenerate"`) `task`, `speed`, `speedType`, `elapsedTime`, `tokenCount` and `wordCount`; on a `model_change` marker row `fromModel` and `toModel`; on a `setup_result` row, a [reply Wiro handles itself](#handled-setup-replies), the answer's `next` when it left connectors to connect (as in `setupresult`), and `listed` and `listedfrom` when it was the [card listing](#setup-card-listing): the ids of the cards it showed and the `guid` of the message they are on, and `approvalresult` when it answered or listed approval cards (see [Answering with a reply](/docs/agent-connectors#answering-with-a-reply)); on an `approval_resume` row, the turn Wiro queued after someone answered an approval card, `serverProvenance`, `resumecolumn` and `approvals` (see [The resume turn](/docs/agent-connectors#the-resume-turn)); on other rows (`system`, `subagent`) usually `type` alone, and in History `systemcost: true` on a row whose cost came from a scheduled or background run. The answer text is in `response` and `timeline`, never in metadata. A turn that ended with a coded failure, such as `[SPEND_LIMIT_REACHED]` or `[CREDITS_EXHAUSTED]`, keeps `type: "progressGenerate"` and its metrics. Empty object `{}` for `agent_cancel`, for an `agent_error` that cut the turn off, such as `[TURN_INTERRUPTED]`, and while the turn is still running. Message status lives in the top-level `status` field, so don't read it from `metadata.type`: read a turn's outcome from `status` and `response`. |
 | `attachments` | `array` | Always present as an array: empty `[]` for text-only messages. When the message was sent via multipart with files, each entry is a resolved `{url, name, type, size}` object (no further file-lookup needed). Identical shape in `Message/History` rows. |
 | `deletestatus` | `number` | Internal flag. `0` for normal messages. |
 | `createdat` | `number` | Unix timestamp (epoch seconds) when the message was created. |
@@ -21662,6 +21663,8 @@ What a `yes` does depends on where it is sent and how many cards are pending (`c
 | One, in a message sent with a project API key | The first `yes` applies nothing: Wiro answers with the card's exact content (the [card listing](#setup-card-listing)). A second `yes` applies that card. |
 | Several | The first `yes` gets the card listing, which numbers the cards. Then reply `yes` and a number, such as `yes 2`, to apply that card, one card per reply. A plain `yes` never applies one of several cards. In the web chat, the card's Apply button works too. |
 
+When a connector's approval card waits on the same reply, a plain `yes` applies nothing: Wiro lists the setup and approval cards together, and `yes N` then acts on one of them; a `no` also declines the approval cards, and Wiro answers it itself with no agent turn. See [Answering with a reply](/docs/agent-connectors#answering-with-a-reply).
+
 A number works only for a card Wiro has listed: `yes 2` sent before the listing gets the listing. A message that says more, such as `yes, but at 10`, is an ordinary message for the agent. A reply such as `no` or `cancel` dismisses the pending cards of the latest reply that are less than 30 minutes old, as a `yes` acts only on those, and goes to the agent as usual. A row added to the session between turns, such as a scheduled task's report, becomes the latest reply, so a `yes` or `no` sent after it finds no cards. While the agent isn't running, Wiro answers such a reply itself when it turned cards down: `The setup change was turned down.` or `The <N> setup changes were turned down.`, with the cards' ids in `setupresult.dismissed`. A `connect` card that takes values waits for them, a `signin` card waits for its sign-in, and a `project` card waits for its project, so a `yes` applies none of them. When only `connect` cards are pending, a `yes` is an ordinary message for the agent, unless one of them is a `signin` or `project` card: then Wiro answers `A yes cannot connect <Title>. Its sign-in and any app keys are entered outside this chat, never in it.` (for a `project` card, `A yes cannot connect <Title>. Its project is picked outside this chat.`), applies nothing and starts no agent turn. A `connect` card with no required field is applied by a `yes` like any other card.
 
 Wiro applies the stored card, checked again against the agent's current setup, never anything written in the reply. A card is applied at most once. Whenever a card is applied, dismissed or fails, Wiro also marks `applied` the same person's pending `connect` cards in that chat from the last 7 days whose connectors now read connected: the one just connected, and any whose sign-in finished or that were connected elsewhere. `setup` and `setupresult` name only the card you acted on; History and Detail show the others. Only an agent admin can apply a card: a reply from anyone else changes nothing and gets `Only an agent admin can apply setup changes.` When a change needs a restart, the agent restarts to load it: continue the chat in about a minute. Replies Wiro handles itself don't have to wait for it; see [Replies Wiro handles itself](#handled-setup-replies). Cards that restart a starting or running agent: `add`, `remove`, `connect`, `disconnect` and `timezone` cards, a `schedule` or `skill` card that creates one, a `schedule` card that changes the `cron`, and `pause`, `resume`, `delete`, `disable` and `enable` cards. A card that changes only the text of a custom skill or scheduled task (`append`, `revert`, or an `update` that keeps the schedule) reaches a running agent without a restart, and `restarting` is `false`; if the agent can't take the new text, Wiro restarts it instead.
@@ -21700,7 +21703,7 @@ While setup from chat is on for a message, Wiro keeps keys out of the agent's co
 
 ### Replies Wiro handles itself
 
-When Wiro handles a message itself (a `yes` that applies a card or gets the [card listing](#setup-card-listing), a `yes` while a `signin` or `project` card waits, a key pasted as the reply, a reply refused because the sender isn't an agent admin, or a `no` that turned cards down while the agent isn't running), no agent turn runs and nothing is charged, even while the agent is paused for its balance. Wiro does this whatever the agent's status, so these replies also work while the agent is stopped or restarting. [`Message/Send`](#post-useragentmessagesend) answers at once with the result:
+When Wiro handles a message itself (a `yes` that applies a card or gets the [card listing](#setup-card-listing), a `yes` while a `signin` or `project` card waits, a key pasted as the reply, a reply refused because the sender isn't an agent admin, a `no` that turned cards down while the agent isn't running, or a `yes`, `always` or `no` that answers or lists a connector's approval cards, see [Answering with a reply](/docs/agent-connectors#answering-with-a-reply)), no agent turn runs and nothing is charged, even while the agent is paused for its balance. Wiro does this whatever the agent's status, so these replies also work while the agent is stopped or restarting. [`Message/Send`](#post-useragentmessagesend) answers at once with the result:
 
 ```json
 {
@@ -21727,8 +21730,9 @@ When Wiro handles a message itself (a `yes` that applies a card or gets the [car
 | `content` | `string` | The message as stored. A saved key reads `[key saved to <Connector title>]`. |
 | `response` | `string` | Wiro's answer, always in English: the lines in [Wiro's answers](#setup-reply-lines), or the [card listing](#setup-card-listing). Read `setupresult` in code, not this text. |
 | `setupresult` | `object` | `applied` and `dismissed`: the ids of the cards applied and dismissed. `failed`: `[{ id, error }]`. `restarting`: `true` when the agent restarts to load the change. All three lists are empty for a card listing. `next`: only when the answer leaves connectors to connect, `[{ connector, title, mode, cardid?, messageguid? }]`: first the `connect` cards its last lines name, each with its `cardid` and the `messageguid` of the message it is on, then each connector an applied `add` card brings that no card connects, without a card. Never on a listing, a refusal or a `no`. |
+| `approvalresult` | `object` | Only for a reply to a connector's approval card: `{ answered, listed }`, what Wiro did with each card and the cards its listing showed. See [Answering with a reply](/docs/agent-connectors#answering-with-a-reply). |
 
-The message is stored like any finished exchange: Message/Detail and Message/History return it with `status: "agent_end"`, `metadata.type: "setup_result"` and `model: null`. Its `metadata` also keeps `next` when the answer has one, the same as in `setupresult`, and, for a [card listing](#setup-card-listing), `listed` and `listedfrom`: the ids of the cards the listing showed and the `guid` of the message they are on. A chat you load again later can still show what is left to connect. When the Send has a `callbackurl`, Wiro posts the result to it right away with `status: "agent_end"`, as for a finished turn, and its `metadata` holds `type: "setup_result"`, `cards` (the ids of the cards it acted on) and, when there is one, the same `next` as `setupresult`; see [Agent Webhooks](/docs/agent-webhooks).
+The message is stored like any finished exchange: Message/Detail and Message/History return it with `status: "agent_end"`, `metadata.type: "setup_result"` and `model: null`. Its `metadata` also keeps `next` when the answer has one, the same as in `setupresult`, and, for a [card listing](#setup-card-listing), `listed` and `listedfrom`: the ids of the cards the listing showed and the `guid` of the message they are on. A reply to an approval card keeps `approvalresult`: `answered` entries `{ cardid, messageguid, action, result, code? }` and `listed` entries `{ number, cardid, messageguid }`, with `listedfrom` for a listing. A chat you load again later can still show what is left to connect. When the Send has a `callbackurl`, Wiro posts the result to it right away with `status: "agent_end"`, as for a finished turn, and its `metadata` holds `type: "setup_result"`, `cards` (the ids of the cards it acted on), when there is one, the same `next` as `setupresult`, and for a reply to an approval card, `approvalresult` as stored; see [Agent Webhooks](/docs/agent-webhooks).
 
 A card applied while the agent is stopped doesn't start it: the agent loads the change the next time it starts, and `restarting` is `false`. While the agent isn't running, every message Wiro doesn't answer itself gets the [not-running refusal](#failure-responses) with `agentstatus`, a message with attachments or over 2,000 characters included.
 
@@ -24187,6 +24191,8 @@ This lets you build fully asynchronous workflows: fire a message and let your ba
 
 A setup reply that Wiro handles itself, such as a `yes` that applies a setup card, runs no agent turn: Wiro posts its result to the `callbackurl` right away, with `status: "agent_end"`. Its `metadata` holds `type: "setup_result"`, `cards` (the ids of the cards it acted on) and `via` (`"api"` for a message sent with a project API key, `"web"` otherwise). It also holds `next` when the answer leaves connectors to connect (`[{ connector, title, mode, cardid?, messageguid? }]`, as in `setupresult`), `listed` and `listedfrom` for a [card listing](/docs/agent-messaging#setup-card-listing) (the ids of the cards it showed and the `guid` of the message they are on), and `teamguid` when the message was sent in a team's workspace. See [Replies Wiro handles itself](/docs/agent-messaging#handled-setup-replies).
 
+A reply to a connector's approval card, such as a `yes` that allows the card's call once or gets Wiro's listing of it, is posted the same way, right away and with `status: "agent_end"`. Its `metadata` also holds `approvalresult`: `answered` (`[{ cardid, messageguid, action, result, code? }]`, what Wiro did with each card) and `listed` (`[{ number, cardid, messageguid }]`, the cards a listing showed), and for a listing `listedfrom`, the `guid` of the message the cards are on. See [Answering with a reply](/docs/agent-connectors#answering-with-a-reply).
+
 An unknown or disabled slash command that Wiro answers itself, such as `/status`, is posted the same way, right away and with `status: "agent_end"`. Its `metadata` holds `type: "setup_result"`, `cards: []`, `command` (the command's name, such as `"status"`), `via` and, in a team's workspace, `teamguid`. See [Unknown or disabled commands](/docs/agent-messaging#unknown-or-disabled-commands).
 
 > **Results that arrive later.** When the agent moves longer work to the background, its turn ends with a short line saying the result will follow, and that line is what your `callbackurl` receives (`status: "agent_end"`). The result is added to the session later as a separate message and doesn't call the `callbackurl`. Read it with [`Message/History`](/docs/agent-messaging#post-useragentmessagehistory), or follow the session on the [Agent WebSocket](/docs/agent-websocket#following-a-session).
@@ -24464,7 +24470,7 @@ Every connector also has a public page, `https://wiro.ai/connectors/{slug}`, wit
 | 5. Read the state | [`POST /UserAgent/ConnectorList`](#post-useragentconnectorlist) | Each connection's `status`: `connected`, `pending`, `reauth` or `error`. |
 | 6. Pick accounts | [`POST /UserAgent/ConnectorAccounts`](#post-useragentconnectoraccounts), [`POST /UserAgent/ConnectorSetAccounts`](#post-useragentconnectorsetaccounts) | The Pages, ad accounts, advertisers or properties the connection can reach, and the ones it may act on. |
 | 7. Choose what runs without asking | [`POST /UserAgent/ConnectorPermissions`](#post-useragentconnectorpermissions), [`POST /UserAgent/ConnectorSetPermissions`](#post-useragentconnectorsetpermissions) | Each tool's value in Chat and in Autopilot: `allow`, `ask` or `block`. |
-| 8. Answer approvals | [`POST /UserAgent/Message/ApprovalCardAct`](#post-useragentmessageapprovalcardact) | An action that asked runs once (or from now on), or is declined, and the agent goes on in the chat. |
+| 8. Answer approvals | [`POST /UserAgent/Message/ApprovalCardAct`](#post-useragentmessageapprovalcardact), or a [reply](#answering-with-a-reply) | An action that asked runs once (or from now on), or is declined, and the agent goes on in the chat. Answer the card with ApprovalCardAct, or reply `yes`, `always` or `no` in the chat; in Telegram, Slack and Discord, answer the agent's question there. |
 | 9. Disconnect | [`POST /UserAgent/ConnectorDisconnect`](#post-useragentconnectordisconnect) | The connection, its values and tokens deleted, and the agent restarts. |
 
 ### Who your customer sees
@@ -25404,7 +25410,7 @@ Studio and the Workflow Agent have no permissions or approvals: they never show 
 | 1. Read the permissions | [`POST /UserAgent/ConnectorPermissions`](#post-useragentconnectorpermissions) | Each category's and each tool's values in both columns, and the cards waiting that came from Scheduled Tasks, channels or the agent's own work. |
 | 2. Change them | [`POST /UserAgent/ConnectorSetPermissions`](#post-useragentconnectorsetpermissions) | The new values. The agent restarts, unless every change only turns `ask` into `allow`. |
 | 3. The agent asks | None: the card arrives in the chat | An `approval` block in the timeline of a message, in [History](/docs/agent-messaging#post-useragentmessagehistory), [Detail](/docs/agent-messaging#post-useragentmessagedetail) and on the [WebSocket](/docs/agent-websocket). See [How an approval works](#how-an-approval-works). In Telegram, Slack and Discord, a question at the end of the agent's reply. |
-| 4. Answer the card | [`POST /UserAgent/Message/ApprovalCardAct`](#post-useragentmessageapprovalcardact) | The card's new state, and a turn queued in the same chat that tells the agent. |
+| 4. Answer the card | [`POST /UserAgent/Message/ApprovalCardAct`](#post-useragentmessageapprovalcardact), or a [reply](#answering-with-a-reply) | The card's new state, and a turn queued in the same chat that tells the agent. Answer the card with ApprovalCardAct, or reply `yes`, `always` or `no` in the chat; in Telegram, Slack and Discord, answer the agent's question there. |
 | 5. The agent goes on | [The resume turn](#the-resume-turn) | The approved call runs once, and the agent's answer arrives as the chat's next message. |
 
 ### **POST** /UserAgent/ConnectorPermissions
@@ -25681,7 +25687,7 @@ By default a Scheduled Task creates, sends, changes and deletes without asking, 
 ]
 ```
 
-A reply such as "yes" typed in the chat answers no card: only [ApprovalCardAct](#post-useragentmessageapprovalcardact) (and the card's buttons on wiro.ai) do. Approvals work whatever the agent's [Setup From Chat](/docs/agent-messaging#setup-from-chat) setting.
+A card is answered with its buttons in Wiro's web chat, with [ApprovalCardAct](#post-useragentmessageapprovalcardact), or with a typed `yes`, `always` or `no` in its chat (see [Answering with a reply](#answering-with-a-reply)). Approvals work whatever the agent's [Setup From Chat](/docs/agent-messaging#setup-from-chat) setting.
 
 ### Approvals in Telegram, Slack and Discord
 
@@ -25715,7 +25721,7 @@ The first line is the agent's. In the app, `Approval needed` is bold and the req
 | A request the conversation can't show | `An action is waiting for approval, but its request can't be shown in this chat, so it can't be approved here.` |
 | A seventh action | `Another action is waiting for approval. Ask the agent again once these are answered.` A question holds six numbers. |
 
-**Answering.** The whole message is the answer: at most four words and no question mark, with courtesy words such as `please` or `thanks` allowed. `yes` (or `evet`, `ok`, `go ahead`, `👍` and the other approval words) allows the action once, and `no` (or `hayır`, `cancel` and the other refusal words) declines it. With several actions, add the number, as in `yes 2` or `no 1`, one action per message; `no` alone declines them all. An action keeps its number until it is answered, also when the agent lists it again. `always` (or `her zaman`) allows the action once too: Always allow is set in the connector's Permissions, never in a chat app.
+**Answering.** The whole message is the answer: at most four words and no question mark, with courtesy words such as `please` or `thanks` allowed. `yes` (or `evet`, `ok`, `go ahead`, `👍` and the other approval words of [Answering with a reply](#answering-with-a-reply)) allows the action once, and `no` (or `hayır`, `cancel` and the other refusal words) declines it. With several actions, add the number, as in `yes 2` or `no 1`, one action per message; `no` alone declines them all. An action keeps its number until it is answered, also when the agent lists it again. `always` (or `her zaman`) allows the action once too: Always allow is set in the connector's Permissions, never in a chat app.
 
 | Reply | What the person sees |
 |-------|----------------------|
@@ -25794,6 +25800,220 @@ Answered in the conversation, it reads `allowed` or `declined`, with `actedat` a
 (`approval` shortened.) Show such a card without buttons, with `Answered in the Telegram chat it was asked in.` while it waits, and `Allowed in the Telegram chat.` or `Declined in the Telegram chat.` once it is answered. It has no resume turn in the owner's chat: the person's `yes` runs as the turn in its conversation. Once the approved call ran, the card gets `usedat` and its block version `3`, as any card.
 
 In MCP clients, `answer_agent_approval` returns that refusal and says the card is answered in its chat, and the lists of waiting cards mark it `Answered in the Telegram chat it was asked in.`, with no step to answer it.
+
+### Answering with a reply
+
+A person can also answer a card by typing `yes`, `always` or `no` in the chat the card is in: in your own app or in Wiro's web chat. Wiro answers the reply itself, exactly as the card's buttons would, and the agent takes no turn for it.
+
+**What counts.** Only a person's own message, sent with [`Message/Send`](/docs/agent-messaging#post-useragentmessagesend) in the card's chat: from your app with your project API key (MCP clients send one too) or from Wiro's web chat. Text the agent writes, what it reads (a page, an email, a tool's result) and messages in Telegram, Slack or Discord never answer a card here; a card asked in those apps is answered there (see [Approvals in Telegram, Slack and Discord](#approvals-in-telegram-slack-and-discord)). A message with attachments or over 2,000 characters is an ordinary message. Approvals work whatever the agent's [Setup From Chat](/docs/agent-messaging#setup-from-chat) setting says.
+
+**Which cards.** The cards of the agent's latest reply in the same `sessionkey`, as History shows that session to the sender. Replies Wiro answers itself and model switches don't count as replies, and a card a Scheduled Task left in the session is the latest reply too, so its owner can answer it there. Any other message after the card ends its reach by reply, such as a Scheduled Task's report, a new message or the turn an approval started; the card's buttons and ApprovalCardAct still answer it. A reply works until the card's `expiresat`, also while the agent is stopped or restarting.
+
+**The words.** The whole message is the reply: at most four words and 200 characters, no question mark and no attachment. Case, accents and other punctuation don't matter:
+
+| Kind | Words |
+|------|-------|
+| Allow once | `yes`, `y`, `yeah`, `yep`, `yup`, `ok`, `okay`, `sure`, `approve`, `approved`, `confirm`, `confirmed`, `apply`, `lgtm`, `do it`, `go ahead`, `go for it`, `sounds good`, `looks good`, `please do`, `of course`, `evet`, `e`, `tamam`, `tamamdır`, `olur`, `onay`, `onayla`, `onaylıyorum`, `onayladım`, `uygula`, `kabul`, `kabul ediyorum`, `ja`, `oui`, `si`, `sim`, `da`, `hai`, `👍`, `✅`, `✔` |
+| Always allow | `always`, `always allow`, `hep`, `her zaman`, alone or with allow-once words, as in `evet her zaman` or `yes always` |
+| Decline | `no`, `n`, `nope`, `nah`, `cancel`, `stop`, `don't`, `do not`, `never mind`, `not now`, `hayır`, `yok`, `iptal`, `vazgeç`, `vazgeçtim`, `istemiyorum`, `nein`, `non`, `não` |
+| Courtesy, allowed next to any of them | `please`, `pls`, `plz`, `thanks`, `thx`, `ty`, `thank you`, `lütfen`, `teşekkürler`, `teşekkür ederim`, `sağol`, `sağolun`, `bitte`, `danke`, `merci`, `gracias`, `por favor` |
+| A card number | One number from 1 to 6, as in `yes 2`, `no 1`, `#2 no`, `yes card 2`, `evet 2` or `her zaman 3` |
+
+A message that mixes kinds, such as `always no`, or holds any other word, such as `allow`, `decline` or `reddet`, is an ordinary message for the agent.
+
+**What a reply does.**
+
+| Reply | What happens |
+|-------|--------------|
+| `yes` in Wiro's web chat, with one card waiting and no setup card beside it | The card on screen is allowed once. |
+| `yes` sent with your project API key | The first `yes` answers nothing: Wiro answers with its listing of the waiting cards, each with its exact request (below). Once a listing showed the card, `yes` (one card listed) or `yes N` allows it once. |
+| `yes` while several cards wait, or a setup card waits beside the approval card | The listing; nothing is answered. A plain reply never picks one of two cards. |
+| `yes N` | Card N is allowed once when the newest listing of that reply showed it as N; otherwise the listing again. |
+| `always`, `always N` | As `yes` and `yes N`, but Always allow when the agent's owner or an admin of its team sends it in Wiro's web chat (see who may answer, below). |
+| `no` | Every waiting approval card of the reply is declined, and its setup cards are turned down where Setup From Chat allows the message. It is taken at any time, while the agent is still replying too. |
+| `no N` | Card N is declined when the newest listing showed it as N; otherwise the listing. |
+| A reply that needs the listing, while the agent is still replying | `The agent is still replying. Answer again once its reply is done.` Nothing is listed or answered. A `no`, and a `yes` under the web chat's lone card, need no listing. |
+| `yes` or `always` when the reply's approval cards have all expired | Each card reads `expired`, and the answer is `This approval expired. Ask the agent again.` A `yes` that can apply a setup card of that reply goes to the setup card instead. |
+| A number that is a setup card's | The setup card's own rules: `yes N` applies or lists it (see [Approving a setup card](/docs/agent-messaging#approving-setup-cards)), and `no N` is an ordinary message. |
+| Any reply while no approval card waits | An ordinary message, or a [setup reply](/docs/agent-messaging#approving-setup-cards). |
+
+One reply answers one approval. When it starts the agent's turn, that turn is the chat's latest reply, so the other cards of the reply are answered with their buttons or ApprovalCardAct.
+
+**Who may answer.**
+
+- `yes` and `no`: the agent's owner and anyone in its team who sees the chat.
+- `always`: in Wiro's web chat, the agent's owner or an admin of its team gets Always allow, as with the card's button. Anyone else's `always` in the web chat allows the call once and adds `Only an agent admin can allow this for good.` Every `always` sent with a project API key allows the call once, whoever owns the key, and adds `A reply in this chat allows a call only once. An agent admin can allow it for good in the connector's permissions.` From your own UI, Always allow is [ApprovalCardAct](#post-useragentmessageapprovalcardact) with `always`.
+
+> **Agents your customers talk to.** A message sent with your project API key acts as you, even when one of your users typed it. If people who must not approve the agent's actions write in your chat, hold back from Wiro the messages that are only these words while a card waits, and answer cards from your own UI with ApprovalCardAct.
+
+**A setup card and an approval card on the same reply.** A plain `yes` or `always` applies and answers nothing: Wiro lists both, setup cards first, each under its number. A setup card a reply can't apply (Setup From Chat doesn't allow the message, the sender isn't an agent admin, the card is older than 30 minutes, or it is a `connect` card that takes values or signs in) is shown without a number, with `A reply can't apply this one.` Then `yes N` acts on one card. `no` declines the approval cards and turns the setup cards down.
+
+**The listing.** For one card, `response` reads:
+
+```text
+The agent asks to run this action. Nothing ran yet.
+
+Card 1: Update or publish a WordPress post or page in WordPress (wordpress__update_post). Asked in this chat.
+Request:
+> {
+>   "id": 4182,
+>   "status": "publish"
+> }
+
+Reply "yes" to allow exactly this call once, or "no" to decline it.
+```
+
+- It starts with `The agent asks to run this action. Nothing ran yet.`; with several cards, `The agent asks to run these actions. Nothing ran yet.`; with setup cards, `The agent proposes setup changes and asks to run actions. Nothing is applied or run yet.`
+- Each card's line is `Card <n>: <tooltitle> in <title> (<modeltool>).` and where it was asked: `Asked in this chat.`, `Asked by the scheduled task "<tasktitle>".`, `Asked by a scheduled task.` or `Asked while the agent worked on its own.` Its request follows, always whole: `Request:` and the arguments, each line quoted with a `>`; a request over 64 KB reads `Request (too long to show in full, <size> KB; its start):` and its stored start; a Reddit request reads `Request: not shown under Reddit's data terms.` A setup card is listed as in [The card listing](/docs/agent-messaging#setup-card-listing), and one a reply can't apply starts with `Also waiting:` instead of `Card <n>:`.
+- It ends with `Reply "yes" to allow exactly this call once, or "no" to decline it.` for one card; with several, `To allow one, reply "yes" and its number, such as "yes <n>", one card per reply. Reply "no" and its number to decline one, or "no" to decline them all.`; with setup cards, `To act on one, reply "yes" and its number, such as "yes <n>", one card per reply. Reply "no" to turn them all down.` `<n>` is the first number listed. A listing never offers `always`.
+- Numbers are places on the agent's finished reply: its setup cards first, then its approval cards (1 to 3 on a reply with no setup card). They stay the same in every listing of that reply, and a listing may skip a number. A listing comes only once the reply is finished.
+
+**Send's answer.** As for every reply Wiro answers itself, `status` is `"agent_end"`, `agenttoken` is `null`, `response` holds Wiro's answer, and `approvalresult` says what Wiro did:
+
+| Field | Description |
+|-------|-------------|
+| `approvalresult.answered` | The cards answered: one for a `yes` or an `always`, one per card for a `no`. Each is `{ cardid, messageguid, action, result, approval, summary, resume, permissions? }`: `messageguid` is the message the card is on, `action` what Wiro did (`allow`, `always` or `decline`), `approval` the card after the answer, `summary` and `resume` as [ApprovalCardAct](#post-useragentmessageapprovalcardact) answers them (an `always` that allowed once reads `Allowed once. ` and the reason), and `permissions` after an Always allow. A card that could not be answered has `result: false`, `approval` as it is now (or `null`) and `error: { code, message }`, ApprovalCardAct's refusal. |
+| `approvalresult.listed` | The cards a listing showed, each `{ number, cardid, messageguid, approval }`. |
+| `setupresult` | Only when the reply listed setup cards too, or turned them down: `{ applied: [], dismissed, failed: [], restarting: false }`. |
+
+Both lists are empty when the agent was still replying. Sent with a project API key, the first `yes` gets the listing:
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "messageguid": "1c2d3e4f-5061-4728-899a-abbccddeeff0",
+  "agenttoken": null,
+  "status": "agent_end",
+  "response": "The agent asks to run this action. Nothing ran yet.\n\nCard 1: Update or publish a WordPress post or page in WordPress (wordpress__update_post). Asked in this chat.\nRequest:\n> {\n>   \"id\": 4182,\n>   \"status\": \"publish\"\n> }\n\nReply \"yes\" to allow exactly this call once, or \"no\" to decline it.",
+  "content": "yes",
+  "approvalresult": {
+    "answered": [],
+    "listed": [
+      {
+        "number": 1,
+        "cardid": "k3v9q2m7x1pd",
+        "messageguid": "d4e5f6a7-b8c9-4d0e-8f12-3456789abcde",
+        "approval": { "id": "k3v9q2m7x1pd", "tool": "update_post", "args": { "id": 4182, "status": "publish" }, "status": "pending" }
+      }
+    ]
+  }
+}
+```
+
+The second `yes` allows the call once:
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "messageguid": "2d3e4f50-6172-4839-9aab-bccddeeff001",
+  "agenttoken": null,
+  "status": "agent_end",
+  "response": "✅ Allowed once: Update or publish a WordPress post or page in WordPress.\nThe agent goes on with it now.",
+  "content": "yes",
+  "approvalresult": {
+    "answered": [
+      {
+        "cardid": "k3v9q2m7x1pd",
+        "messageguid": "d4e5f6a7-b8c9-4d0e-8f12-3456789abcde",
+        "action": "allow",
+        "result": true,
+        "approval": { "id": "k3v9q2m7x1pd", "status": "allowed", "toolcached": true, "actedat": 1795400120, "actedby": "ada-uuid", "resume": { "status": "queued", "messageguid": "e5f6a7b8-c9d0-4e1f-9a23-456789abcdef" } },
+        "summary": "Allowed once.",
+        "resume": { "status": "queued", "messageguid": "e5f6a7b8-c9d0-4e1f-9a23-456789abcdef", "agenttoken": "Wq7nR2kXv9LpT4mYb8HcJd3sFg6ZaE", "sessionkey": "user-42" }
+      }
+    ],
+    "listed": []
+  }
+}
+```
+
+(`approval` shortened.) Follow the queued turn as on [The resume turn](#the-resume-turn). In Wiro's web chat, `evet` typed under the one waiting card gets this answer at once, with no listing. An `always` sent with a project API key allows once:
+
+```json
+"response": "✅ Allowed once: Update or publish a WordPress post or page in WordPress.\nA reply in this chat allows a call only once. An agent admin can allow it for good in the connector's permissions.\nThe agent goes on with it now.",
+"approvalresult": {
+  "answered": [
+    {
+      "cardid": "k3v9q2m7x1pd",
+      "messageguid": "d4e5f6a7-b8c9-4d0e-8f12-3456789abcde",
+      "action": "allow",
+      "result": true,
+      "approval": { "id": "k3v9q2m7x1pd", "status": "allowed" },
+      "summary": "Allowed once. A reply in this chat allows a call only once. An agent admin can allow it for good in the connector's permissions.",
+      "resume": { "status": "queued", "messageguid": "e5f6a7b8-c9d0-4e1f-9a23-456789abcdef", "agenttoken": "Wq7nR2kXv9LpT4mYb8HcJd3sFg6ZaE", "sessionkey": "user-42" }
+    }
+  ],
+  "listed": []
+}
+```
+
+A `no` while two cards wait declines both, and starts no turn:
+
+```json
+"response": "Declined: Update or publish a WordPress post or page in WordPress.\nDeclined: Create a WordPress post or page in WordPress.",
+"approvalresult": {
+  "answered": [
+    { "cardid": "k3v9q2m7x1pd", "messageguid": "d4e5f6a7-b8c9-4d0e-8f12-3456789abcde", "action": "decline", "result": true, "approval": { "id": "k3v9q2m7x1pd", "status": "declined" }, "summary": "Declined.", "resume": null },
+    { "cardid": "r5t8y2u6i9op", "messageguid": "d4e5f6a7-b8c9-4d0e-8f12-3456789abcde", "action": "decline", "result": true, "approval": { "id": "r5t8y2u6i9op", "status": "declined" }, "summary": "Declined.", "resume": null }
+  ],
+  "listed": []
+}
+```
+
+A reply that needs the listing while the agent is still replying:
+
+```json
+"response": "The agent is still replying. Answer again once its reply is done.",
+"approvalresult": { "answered": [], "listed": [] }
+```
+
+These replies cost nothing and start no agent turn; the turn an Allow starts is the agent's work, as after the card's button.
+
+**In History and the webhook.** The reply is stored as a finished message, like every reply Wiro answers itself: History and Detail return it with `status: "agent_end"`, `agenttoken: null`, `model: null`, an empty `timeline` and `metadata.type: "setup_result"`. Its `metadata.approvalresult` keeps what Wiro did, without the cards: `answered` entries `{ cardid, messageguid, action, result, code? }` (`code` on a refusal) and `listed` entries `{ number, cardid, messageguid }`. A listing also keeps `listedfrom`, the `guid` of the message the cards are on. A reply that started the agent's turn is stored a second before that turn, so History lists the reply first. The listing above, as History returns it:
+
+```json
+{
+  "guid": "1c2d3e4f-5061-4728-899a-abbccddeeff0",
+  "uuid": "ada-uuid",
+  "agenttoken": null,
+  "content": "yes",
+  "response": "The agent asks to run this action. Nothing ran yet.\n\nCard 1: Update or publish a WordPress post or page in WordPress (wordpress__update_post). Asked in this chat.\nRequest:\n> {\n>   \"id\": 4182,\n>   \"status\": \"publish\"\n> }\n\nReply \"yes\" to allow exactly this call once, or \"no\" to decline it.",
+  "status": "agent_end",
+  "model": null,
+  "timeline": [],
+  "metadata": {
+    "type": "setup_result",
+    "approvalresult": {
+      "answered": [],
+      "listed": [{ "number": 1, "cardid": "k3v9q2m7x1pd", "messageguid": "d4e5f6a7-b8c9-4d0e-8f12-3456789abcde" }]
+    },
+    "listedfrom": "d4e5f6a7-b8c9-4d0e-8f12-3456789abcde"
+  },
+  "createdat": 1795400100
+}
+```
+
+(Shortened: the message has the other fields of a History row too.) The second `yes` is stored with `"approvalresult": { "answered": [{ "cardid": "k3v9q2m7x1pd", "messageguid": "d4e5f6a7-b8c9-4d0e-8f12-3456789abcde", "action": "allow", "result": true }], "listed": [] }`. When the message was sent with a `callbackurl`, Wiro posts the answer to it right away with `status: "agent_end"`; its `metadata` holds `type: "setup_result"`, `via`, `cards`, `approvalresult` as stored and, for a listing, `listedfrom` (see [Agent Webhooks](/docs/agent-webhooks)). The turn an Allow starts calls the `callbackurl` of the card's message, if it had one, when it ends.
+
+**The answer lines.** Wiro writes these lines in `response`, always in English, naming no site, page or link:
+
+| Line | When |
+|------|------|
+| `✅ Allowed once: <tooltitle> in <title>.` | The call was allowed once. |
+| `✅ Always allowed: <tooltitle> in <title>.` | An agent admin's `always` in Wiro's web chat changed the tool's values. |
+| `Declined: <tooltitle> in <title>.` | A card was declined, one line per card. |
+| `Only an agent admin can allow this for good.` | After the allowed-once line: an `always` in the web chat from someone who isn't an agent admin. |
+| `A reply in this chat allows a call only once. An agent admin can allow it for good in the connector's permissions.` | After the allowed-once line: an `always` sent with a project API key. |
+| `<Title>'s actions are listed after its first connection, so this one can't be allowed for good yet.`, `<Title> already has 500 action overrides, so this one could not be allowed for good.` | After the allowed-once line: an agent admin's `always` that could not change the tool's values. |
+| `The agent goes on with it now.` | The turn that runs the call is queued. |
+| `The agent isn't running, so nothing ran. It can use this approval if it's asked again in this chat within an hour.` | The agent isn't running. |
+| The sentence a [`Message/Send`](/docs/agent-messaging#post-useragentmessagesend) would refuse a turn with | The agent can't take a turn now, for its plan, a spend limit or the balance. The approval holds for an hour. |
+| `1 more action is still waiting for approval.`, `<N> more actions are still waiting for approval.` | Other cards of the reply still wait. |
+| `The setup change was turned down.`, `The <N> setup changes were turned down.` | A `no` turned setup cards down too. |
+| `This approval expired. Ask the agent again.`, `<Title> is not connected any more.`, `<Title> was connected again, so this approval no longer applies. Ask the agent again.`, `This action is blocked now. Change it in the connector's permissions.`, `This approval was already answered.`, `The approval could not be saved. Try again.`, `This approval card was not found.` | The card could not be answered: [ApprovalCardAct](#post-useragentmessageapprovalcardact)'s refusals. |
+| `The agent is still replying. Answer again once its reply is done.` | A reply that needs the listing while the agent is still replying. |
 
 ### The approval block
 
@@ -25903,6 +26123,8 @@ Who may answer:
 - **`allow` and `decline`:** the agent's owner and anyone in the agent's team who sees the card's message in the chat. On a team agent whose sessions are private, the team's admins can also answer the cards that have a message of their own (the ones `pending` lists).
 - **`always`:** the agent's owner or an admin of the agent's team, since it changes the agent's settings. Anyone else gets code `97`.
 - **A card asked in Telegram, Slack or Discord:** only an answer in that conversation counts, and ApprovalCardAct refuses it with `approval_in_channel` (see [Approvals in Telegram, Slack and Discord](#approvals-in-telegram-slack-and-discord)).
+
+The same people can answer with a typed `yes`, `always` or `no` in the card's chat instead: see [Answering with a reply](#answering-with-a-reply).
 
 An answer works while the agent's turn is still running, and restarts nothing.
 
@@ -26086,10 +26308,11 @@ Once the approved call ran, the card gets `usedat` and its block version `3`. If
 
 - A card waits 24 hours (`expiresat`). After that it reads `expired`, and the agent asks again with a new card when the action is still wanted. A question in Telegram, Slack or Discord expires with its card.
 - An approval is used within an hour of the answer, in the chat the card is in, once. After that hour, the next call asks again.
+- A reply answers only cards of the agent's latest reply; older ones are answered with ApprovalCardAct.
 - Connecting the connector again with new values, a new sign-in and new account choices end every card still waiting for it: each reads `expired`, with the `error` `<Title> was connected again, so this approval no longer applies. Ask the agent again.` A call that changes nothing keeps them.
 - [Disconnecting](#post-useragentconnectordisconnect) deletes the connection's permissions and its waiting approvals with it. Connecting again after `reauth` keeps the permissions.
 - A message holds at most three approval cards, and a connection at most 20 cards waiting or approved and not used yet. Past that, the agent tells the person what is waiting and asks no more.
-- The agent can't change its own permissions or answer its own cards: ConnectorSetPermissions and ApprovalCardAct answer HTTP `403` to a request the agent makes itself.
+- The agent can't change its own permissions or answer its own cards: ConnectorSetPermissions and ApprovalCardAct answer HTTP `403` to a request the agent makes itself, and a message the agent sends never counts as a reply.
 
 ## Wiro AI Models
 
@@ -27458,7 +27681,7 @@ A reply is an ordered list of blocks. Keep a map keyed by `blockid`, keep a bloc
 | `answer` | `text`: the answer text | The agent's message. Render it as Markdown. |
 | `tool` | `toollabel`, `toolstatus` (`requested`, `completed`, `error`), `toolintegration`, `toolaction` | A small status line, such as "Working in Shopify" or "Taking a screenshot". Use your own labels for the `toolintegration` and `toolaction` words, and `toollabel` when both are `null`. |
 | `setup` | `setup`: a setup card; on a pending `connect` card, also `next` | A card with buttons. See [Setup Cards](#setup-cards). |
-| `approval` | `approval`: a connector action waiting for a person's approval, with the call's arguments | A card with the arguments and Allow, Always Allow (for the agent's owner and team admins) and Decline buttons that call [`Message/ApprovalCardAct`](/docs/agent-connectors#post-useragentmessageapprovalcardact). A typed `yes` doesn't answer it. See [The approval block](/docs/agent-connectors#the-approval-block). |
+| `approval` | `approval`: a connector action waiting for a person's approval, with the call's arguments | A card with the arguments and Allow, Always Allow (for the agent's owner and team admins) and Decline buttons that call [`Message/ApprovalCardAct`](/docs/agent-connectors#post-useragentmessageapprovalcardact). A typed `yes`, `always` or `no` answers it too: see [Answering with a reply](/docs/agent-connectors#answering-with-a-reply). A card asked in Telegram, Slack or Discord (`origin.kind` `"channel"`) gets no buttons. See [The approval block](/docs/agent-connectors#the-approval-block). |
 
 Setup blocks have `callindex: 1000000`, so they sort after the reply's other blocks, in the order the agent proposed them, at most three per message. Approval blocks have `callindex: 1000001` and sort after them, also at most three per message. Skip a block whose `type` you don't know. The block fields are listed in [Public timeline block fields](/docs/agent-messaging#public-timeline-block-fields).
 
@@ -27487,6 +27710,36 @@ Some messages are answered by Wiro itself, with no agent turn: a `yes` that appl
 ```
 
 Show `response` as the reply, as plain text. There is nothing to follow on the WebSocket. In `Message/History` the row reads `status: "agent_end"`, `metadata: { "type": "setup_result" }` and an empty `timeline`. When the answer leaves connectors to connect, `metadata` also keeps its `next`, and a card listing keeps `listed` and `listedfrom` there: see [Replies Wiro handles itself](/docs/agent-messaging#handled-setup-replies). These replies cost nothing, and Wiro gives them while the agent is stopped or restarting too: see [Messages during a restart](#messages-during-a-restart) for which ones.
+
+A `yes`, `always` or `no` while a connector's approval card waits on the agent's latest reply is answered the same way, with `approvalresult` instead of the setup fields. Sent with your API key, the first `yes` gets Wiro's listing of the card's exact request, and a second `yes` allows it once:
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "messageguid": "2d3e4f50-6172-4839-9aab-bccddeeff001",
+  "agenttoken": null,
+  "status": "agent_end",
+  "response": "✅ Allowed once: Update or publish a WordPress post or page in WordPress.\nThe agent goes on with it now.",
+  "content": "yes",
+  "approvalresult": {
+    "answered": [
+      {
+        "cardid": "k3v9q2m7x1pd",
+        "messageguid": "d4e5f6a7-b8c9-4d0e-8f12-3456789abcde",
+        "action": "allow",
+        "result": true,
+        "approval": { "id": "k3v9q2m7x1pd", "status": "allowed", "actedat": 1795400120, "actedby": "ada-uuid" },
+        "summary": "Allowed once.",
+        "resume": { "status": "queued", "messageguid": "e5f6a7b8-c9d0-4e1f-9a23-456789abcdef", "agenttoken": "Wq7nR2kXv9LpT4mYb8HcJd3sFg6ZaE", "sessionkey": "customer-42" }
+      }
+    ],
+    "listed": []
+  }
+}
+```
+
+Update the card in your chat from `approval` (shortened here), show `response`, and follow the turn `resume` names on its `agenttoken`, as after the card's own button. In `Message/History` the row's `metadata` keeps `approvalresult` without the cards. The listing, the words, who may answer and every answer are in [Answering with a reply](/docs/agent-connectors#answering-with-a-reply).
 
 Wiro also answers a slash command the agent doesn't run, such as `/status`, or one of its commands that is turned off, while the agent is running. It costs nothing, even while the agent is paused for its balance, and the answer has no `setupresult`:
 
@@ -28614,6 +28867,7 @@ Before this refusal, Wiro still answers the replies it handles itself:
 - A key for the only `connect` card waiting, when it is a `key` card with one secret field. Another service's key is answered too, whoever sends it, and nothing is saved: `That does not look like a <Title> key (it looks like <kind>), so it was not saved. Paste the <Title> key as your reply.` The part in brackets comes only when Wiro knows the kind, and before a title that starts with a vowel, `a` becomes `an`, as in `an Apollo key`.
 - Such a `yes`, or a key for the waiting `key` card, from a sender who isn't an agent admin, answered `Only an agent admin can apply setup changes.`
 - A `no` that turned pending cards down, answered `The setup change was turned down.` or `The <N> setup changes were turned down.`
+- A `yes`, `always` or `no` that answers a connector's approval card, or gets its listing (see [Answering with a reply](/docs/agent-connectors#answering-with-a-reply)). An allowed call can't run while the agent is down, so the answer ends with `The agent isn't running, so nothing ran. It can use this approval if it's asked again in this chat within an hour.`
 
 Every other message gets the refusal, a `yes` while only `key` cards wait, a key while more than one `connect` card waits, and a `yes` or `no` with no pending card included. A turn still running when the restart began, in another session for example, ends as `agent_error` with `[TURN_INTERRUPTED]`: offer to send it again.
 
@@ -28626,6 +28880,7 @@ Your chat can work with text alone, or people may type `yes` even where you show
 - **Approve.** A message that is only an approval, such as `yes`, `ok`, `approve`, `go ahead`, `evet` or `👍`, acts on the pending cards of the agent's latest reply in the same `sessionkey`, when they are less than 30 minutes old. In a chat sent with your API key, the first approval applies nothing: Wiro answers with the card listing, the exact content of the cards. A second one applies the one card listed. With several cards, `yes 2` applies card 2 once the listing has shown it, one card per reply.
 - **Turn down.** A message that is only a refusal, such as `no` or `cancel`, dismisses the pending cards of the latest reply that are less than 30 minutes old, then goes to the agent as a normal message. Older cards aren't dismissed, and the `no` goes to the agent all the same. While the agent isn't running, Wiro answers it itself: `The setup change was turned down.`, or `The <N> setup changes were turned down.` for several cards. Anyone who can write in the chat can turn cards down.
 - **A key as the reply.** When the latest reply has one pending `connect` card and it is a `key` card with one secret field (never a `project` card), a key pasted as the reply can be saved to it with your key owner's rights: the key is saved, and the message is stored as `[key saved to <Connector title>]`. When the connector needs more than that key, nothing is saved and the answer names what is missing: use the card's form. In a chat sent with your API key, when the only pending cards are an `add` card and its `connect` card, and the key is all the connector needs, the key typed after the listing applies both cards at once. A key typed before that listing saves nothing: the message is stored with `[key removed]` in its place, and Wiro answers with the listing.
+- **Approval cards.** While a connector's approval card waits on the agent's latest reply, `yes`, `always` and `no` answer it instead: in a chat sent with your API key the first `yes` gets Wiro's listing of each card's exact request, and a second `yes` (or `yes 2`) allows one card once; `always` from your API key allows once too; `no` declines every waiting card at once and, where `chatsetup` allows the message, turns the reply's setup cards down with them. No agent turn runs for any of these. A setup card and an approval card on the same reply get one listing of both. See [Answering with a reply](/docs/agent-connectors#answering-with-a-reply).
 - A `yes` applies a `connect` card only when it needs no values. A `key` card waits for its key, and a `signin` card never connects from a typed reply: a `yes` while it waits is answered `A yes cannot connect <Title>. Its sign-in and any app keys are entered outside this chat, never in it.`, applies nothing and starts no agent turn. Its card's Sign in connects it. A `project` card never connects from a typed reply either: a `yes` while it waits is answered `A yes cannot connect <Title>. Its project is picked outside this chat.`, and its card's Connect, with the project picked, connects it.
 
 The latest reply is the newest row of the session, other than the replies Wiro answers itself and model switches. A row added between turns counts, such as a scheduled task's report written into that session: once it comes, a `yes` or `no` typed after it finds no cards. Your buttons still act on those cards, since `SetupCardApply` takes a pending card by its `messageguid` and `cardid`, at any age.
@@ -28637,9 +28892,11 @@ A message counts as an approval or a refusal when it is sent with no attachment 
 | Approval | `yes`, `y`, `yeah`, `yep`, `yup`, `ok`, `okay`, `sure`, `approve`, `approved`, `confirm`, `confirmed`, `apply`, `lgtm`, `do it`, `go ahead`, `go for it`, `sounds good`, `looks good`, `please do`, `of course`, `evet`, `e`, `tamam`, `tamamdır`, `olur`, `onay`, `onayla`, `onaylıyorum`, `onayladım`, `uygula`, `kabul`, `kabul ediyorum`, `ja`, `oui`, `si`, `sim`, `da`, `hai`, `👍`, `✅`, `✔` |
 | Refusal | `no`, `n`, `nope`, `nah`, `cancel`, `stop`, `don't`, `do not`, `never mind`, `not now`, `hayır`, `yok`, `iptal`, `vazgeç`, `vazgeçtim`, `istemiyorum`, `nein`, `non`, `não` |
 | Courtesy, allowed next to either | `please`, `pls`, `plz`, `thanks`, `thx`, `ty`, `thank you`, `lütfen`, `teşekkürler`, `teşekkür ederim`, `sağol`, `sağolun`, `bitte`, `danke`, `merci`, `gracias`, `por favor` |
-| A card number, with an approval | One number from 1 to 3, as in `yes 2`, `apply #1`, `evet 3` or `yes card 2` |
+| A card number, with an approval | One number from 1 to 3, as in `yes 2`, `apply #1`, `evet 3` or `yes card 2`; 1 to 6 when approval cards wait on the same reply, where `no 2` declines one card |
 
-If people who must not change the agent can write in your chat, hold back from Wiro the messages that are only these words, and a key sent while a `key` connect card waits, or set `chatsetup` to `"off"` for that agent. The full rules are in [Approving a setup card](/docs/agent-messaging#approving-setup-cards).
+For approval cards, `always`, `always allow`, `hep` and `her zaman` are words too: see [Answering with a reply](/docs/agent-connectors#answering-with-a-reply).
+
+If people who must not change the agent can write in your chat, hold back from Wiro the messages that are only these words, and a key sent while a `key` connect card waits, or set `chatsetup` to `"off"` for that agent. `chatsetup` doesn't stop a typed answer to an approval card: while one waits, hold such messages back and answer cards from your own UI with [ApprovalCardAct](/docs/agent-connectors#post-useragentmessageapprovalcardact). The full rules are in [Approving a setup card](/docs/agent-messaging#approving-setup-cards) and [Answering with a reply](/docs/agent-connectors#answering-with-a-reply).
 
 ### Listing the cards
 
