@@ -19422,17 +19422,17 @@ channel-enable endpoint or persisted switch.</p>
 </tr>
 <tr>
 <td><code>usercreated: false</code>: a template's skills and tasks, copied to the agent at deploy, and a custom build's registry rows (e.g. <code>cs-approval-policy</code>, bundled <code>cs-cron-*</code> tasks)</td>
-<td><strong>Rejected</strong> with <code>customskill-registry-not-deletable</code>. Disable it via <code>CustomSkillUpsert</code> with <code>enabled: false</code> instead.</td>
+<td><strong>Rejected</strong> with <code>This skill is registry-owned and cannot be deleted. Use enabled=false to disable it instead.</code> Disable it via <code>CustomSkillUpsert</code> with <code>enabled: false</code> instead.</td>
 </tr>
 <tr>
 <td>User-created, under a key the agent's template also has</td>
-<td><strong>Rejected</strong> with <code>customskill-preset-not-deletable</code>. Disable it via <code>CustomSkillUpsert</code> with <code>enabled: false</code> instead.</td>
+<td><strong>Rejected</strong> with <code>This skill belongs to the agent preset and cannot be deleted. Use enabled=false to disable it instead.</code> Disable it via <code>CustomSkillUpsert</code> with <code>enabled: false</code> instead.</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
-<p>In both reject branches the response carries <code>suggestion: "disable-via-upsert"</code> so panel UIs can offer a "Disable instead" CTA without re-querying the registry. The message is the key itself, as shown below. Deleting a skill also deletes its version history, so it can't be reverted. A key the agent doesn't have deletes nothing and answers <code>result: true</code>.</p>
+<p>In both reject branches the response carries <code>suggestion: "disable-via-upsert"</code> so panel UIs can offer a "Disable instead" CTA without re-querying the registry. The message is the sentence in the table, as shown below. Deleting a skill also deletes its version history, so it can't be reverted. A key the agent doesn't have deletes nothing and answers <code>result: true</code>.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -19470,7 +19470,7 @@ channel-enable endpoint or persisted switch.</p>
   &quot;errors&quot;: [
     {
       &quot;code&quot;: 0,
-      &quot;message&quot;: &quot;customskill-registry-not-deletable&quot;
+      &quot;message&quot;: &quot;This skill is registry-owned and cannot be deleted. Use enabled=false to disable it instead.&quot;
     }
   ],
   &quot;suggestion&quot;: &quot;disable-via-upsert&quot;
@@ -19482,7 +19482,7 @@ channel-enable endpoint or persisted switch.</p>
   &quot;errors&quot;: [
     {
       &quot;code&quot;: 0,
-      &quot;message&quot;: &quot;customskill-preset-not-deletable&quot;
+      &quot;message&quot;: &quot;This skill belongs to the agent preset and cannot be deleted. Use enabled=false to disable it instead.&quot;
     }
   ],
   &quot;suggestion&quot;: &quot;disable-via-upsert&quot;
@@ -35132,10 +35132,10 @@ complete. These channels (Telegram, Slack, Discord) are not Skills and do not af
     &quot;skillkey&quot;: &quot;cs-cron-weekly-health-check&quot;
   }'
 </code></pre>
-<p>A task or preference the agent came with, from its template or, on a custom build, from a Skill or from Wiro (such as Approval Policy), can't be deleted: the call answers <code>customskill-registry-not-deletable</code> (<code>customskill-preset-not-deletable</code> for one you created whose key the template also has) with <code>suggestion: "disable-via-upsert"</code>, and nothing changes. Disable it via <code>CustomSkillUpsert</code> + <code>enabled: false</code> instead.</p>
+<p>A task or preference the agent came with, from its template or, on a custom build, from a Skill or from Wiro (such as Approval Policy), can't be deleted: the call answers <code>This skill is registry-owned and cannot be deleted. Use enabled=false to disable it instead.</code> (<code>This skill belongs to the agent preset and cannot be deleted. Use enabled=false to disable it instead.</code> for one you created whose key the template also has) with <code>suggestion: "disable-via-upsert"</code>, and nothing changes. Disable it via <code>CustomSkillUpsert</code> + <code>enabled: false</code> instead.</p>
 <pre><code class="language-json">{
   &quot;result&quot;: false,
-  &quot;errors&quot;: [{ &quot;code&quot;: 0, &quot;message&quot;: &quot;customskill-registry-not-deletable&quot; }],
+  &quot;errors&quot;: [{ &quot;code&quot;: 0, &quot;message&quot;: &quot;This skill is registry-owned and cannot be deleted. Use enabled=false to disable it instead.&quot; }],
   &quot;suggestion&quot;: &quot;disable-via-upsert&quot;
 }
 </code></pre>

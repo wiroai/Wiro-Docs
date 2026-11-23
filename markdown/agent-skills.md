@@ -428,12 +428,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillDelete" \
   }'
 ```
 
-A task or preference the agent came with, from its template or, on a custom build, from a Skill or from Wiro (such as Approval Policy), can't be deleted: the call answers `customskill-registry-not-deletable` (`customskill-preset-not-deletable` for one you created whose key the template also has) with `suggestion: "disable-via-upsert"`, and nothing changes. Disable it via `CustomSkillUpsert` + `enabled: false` instead.
+A task or preference the agent came with, from its template or, on a custom build, from a Skill or from Wiro (such as Approval Policy), can't be deleted: the call answers `This skill is registry-owned and cannot be deleted. Use enabled=false to disable it instead.` (`This skill belongs to the agent preset and cannot be deleted. Use enabled=false to disable it instead.` for one you created whose key the template also has) with `suggestion: "disable-via-upsert"`, and nothing changes. Disable it via `CustomSkillUpsert` + `enabled: false` instead.
 
 ```json
 {
   "result": false,
-  "errors": [{ "code": 0, "message": "customskill-registry-not-deletable" }],
+  "errors": [{ "code": 0, "message": "This skill is registry-owned and cannot be deleted. Use enabled=false to disable it instead." }],
   "suggestion": "disable-via-upsert"
 }
 ```

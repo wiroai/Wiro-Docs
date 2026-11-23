@@ -2179,10 +2179,10 @@ Removes a user-created custom skill. The endpoint enforces a **hybrid delete pol
 | Row type | Delete result |
 |----------|--------------|
 | User-created (`usercreated: true`) under a key the agent's template doesn't have | **Allowed**: the row and its version history are deleted, and a starting or running agent restarts. |
-| `usercreated: false`: a template's skills and tasks, copied to the agent at deploy, and a custom build's registry rows (e.g. `cs-approval-policy`, bundled `cs-cron-*` tasks) | **Rejected** with `customskill-registry-not-deletable`. Disable it via `CustomSkillUpsert` with `enabled: false` instead. |
-| User-created, under a key the agent's template also has | **Rejected** with `customskill-preset-not-deletable`. Disable it via `CustomSkillUpsert` with `enabled: false` instead. |
+| `usercreated: false`: a template's skills and tasks, copied to the agent at deploy, and a custom build's registry rows (e.g. `cs-approval-policy`, bundled `cs-cron-*` tasks) | **Rejected** with `This skill is registry-owned and cannot be deleted. Use enabled=false to disable it instead.` Disable it via `CustomSkillUpsert` with `enabled: false` instead. |
+| User-created, under a key the agent's template also has | **Rejected** with `This skill belongs to the agent preset and cannot be deleted. Use enabled=false to disable it instead.` Disable it via `CustomSkillUpsert` with `enabled: false` instead. |
 
-In both reject branches the response carries `suggestion: "disable-via-upsert"` so panel UIs can offer a "Disable instead" CTA without re-querying the registry. The message is the key itself, as shown below. Deleting a skill also deletes its version history, so it can't be reverted. A key the agent doesn't have deletes nothing and answers `result: true`.
+In both reject branches the response carries `suggestion: "disable-via-upsert"` so panel UIs can offer a "Disable instead" CTA without re-querying the registry. The message is the sentence in the table, as shown below. Deleting a skill also deletes its version history, so it can't be reverted. A key the agent doesn't have deletes nothing and answers `result: true`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -2203,7 +2203,7 @@ In both reject branches the response carries `suggestion: "disable-via-upsert"` 
   "errors": [
     {
       "code": 0,
-      "message": "customskill-registry-not-deletable"
+      "message": "This skill is registry-owned and cannot be deleted. Use enabled=false to disable it instead."
     }
   ],
   "suggestion": "disable-via-upsert"
@@ -2218,7 +2218,7 @@ In both reject branches the response carries `suggestion: "disable-via-upsert"` 
   "errors": [
     {
       "code": 0,
-      "message": "customskill-preset-not-deletable"
+      "message": "This skill belongs to the agent preset and cannot be deleted. Use enabled=false to disable it instead."
     }
   ],
   "suggestion": "disable-via-upsert"
