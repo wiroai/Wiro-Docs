@@ -15864,7 +15864,7 @@ What pays a plan is the balance's deposits and store revenue, and its coupon cre
 
 Every plan payment also counts on [Spend Limits](/docs/spend-limits): the account's or team's limit and the `agent` surface's, automatic renewals included. When a new plan, a move to a higher plan or a renewal you ask for would take spending over one of them, `Deploy`, `CreateSubscriptionCheckout`, `UpgradeTier` and `RenewSubscription` are refused with code `93` and the limit's message, and nothing is created or charged. An automatic renewal is counted, never refused.
 
-A plan that was paid by card before agent plans moved to the balance keeps its current period as paid. At the end of that period it renews from the balance like every other plan, or ends when the balance can't pay the renewal. Until then its `subscription` reads `provider: "stripe"` with `nextprovider: "prepaid"`, and a move to a higher plan is paid from the balance. The switch itself charges and refunds nothing. Such a plan can also be cancelled with [`CancelSubscription`](#post-useragentcancelsubscription): it then ends at the end of its period instead of switching.
+A plan that was paid by card before agent plans moved to the balance keeps its current period as paid. At the end of that period it renews from the balance like every other plan, or ends when the balance can't pay the renewal. Until then its `subscription` reads `provider: "stripe"` with `nextprovider: "prepaid"`, and a move to a higher plan is paid from the balance. A card plan whose period ends within 7 days of the email announcing its move to the balance renews once more by card; until it switches, its `subscription` reads `provider: "stripe"` with `nextprovider: null`. The switch itself charges and refunds nothing. Such a plan can also be cancelled with [`CancelSubscription`](#post-useragentcancelsubscription): it then ends at the end of its period instead of switching.
 
 ### Adding Funds
 
@@ -17153,7 +17153,7 @@ Every provider entry under `credentials.<key>` carries:
 | `daysremaining` | `number` | Days until `renewaldate`, rounded up; `0` unless the subscription is active. |
 | `pendingdowngrade` | `string\|null` | `"cancel"` after `CancelSubscription`; `null` for normal active subs. A move to a lower plan shows in the agent's `nextplan`, not here. |
 | `provider` | `string` | `"prepaid"`: the plan is paid from the Wiro balance. `"stripe"` only on a plan paid by card before agent plans moved to the balance, until its period ends. |
-| `nextprovider` | `string\|null` | `"prepaid"` on a plan paid by card: it renews from the balance at the end of its period. `null` otherwise, and on such a plan once it is cancelled. |
+| `nextprovider` | `string\|null` | `"prepaid"` on a plan paid by card: it renews from the balance at the end of its period. `null` otherwise, and on such a plan once it is cancelled. A card plan whose period ends within 7 days of the email announcing its move to the balance renews once more by card; until it switches, its `subscription` reads `provider: "stripe"` with `nextprovider: null`. |
 
 ##### Disk object
 
