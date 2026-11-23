@@ -261,6 +261,7 @@ A turn that fails ends with `status: "agent_error"`, and a cancelled one with `"
 | `[USAGE_CEILING_REACHED]` | `agent_error` | The agent reached its hourly or daily safety ceiling for AI model calls: say it runs again when that hour or day is over. |
 | `[MODEL_NOT_ALLOWED]` | `agent_error` | A Model Access rule for the agent blocks the model it uses (its own, the account's or team's, or the `agent` surface's): show the sentence as it is. |
 | `[CREDITS_EXHAUSTED]` | `agent_error` | The agent has used the AI usage its plan includes and the balance is under $0.50: say it runs again once funds are added or its plan renews, and don't offer to try again before that. |
+| `[NO_ACTIVE_PLAN]` | `agent_error` | The agent has no active plan: say it runs again once it has a plan, and offer to renew the plan, never to add funds. |
 | `[AGENT_UNAVAILABLE]` | `agent_error` | Anything else, a message that couldn't be queued included: offer to try again shortly. |
 | `[REQUEST_CANCELLED]` | `agent_cancel` | The turn was cancelled. |
 

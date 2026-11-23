@@ -56,6 +56,7 @@ When a turn ends with `agent_error` or `agent_cancel`, `response` and `debugoutp
 | `[USAGE_CEILING_REACHED]` | `agent_error` | The agent reached its hourly or daily safety ceiling for AI model calls. | Wait until that hour or day is over. |
 | `[MODEL_NOT_ALLOWED]` | `agent_error` | A [Model Access](/docs/model-access) rule for the agent blocks the model it uses, so its model calls were refused: its own rule, the account's or team's rule, or the `agent` surface's rule. | Have someone who manages the workspace's Model Access rules allow the model under [Controls > Model Access](https://wiro.ai/panel/controls/model-access), or choose another model for the agent. |
 | `[CREDITS_EXHAUSTED]` | `agent_error` | The agent has used the AI usage its plan includes and its balance is under $0.50, so its model calls were refused. A turn that is already running stops at its next model call. Every try fails until funds are added or the plan renews. | Add funds to the balance of the agent's workspace (see [Adding Funds](/docs/agent-overview#adding-funds)), or wait for the plan to renew. Don't send the message again before that. |
+| `[NO_ACTIVE_PLAN]` | `agent_error` | The agent has no active plan, so its model calls were refused. A turn that is already running stops at its next model call. Adding funds doesn't run it. | Renew the plan with [`RenewSubscription`](/docs/agent-overview#post-useragentrenewsubscription), or start one with [`CreateSubscriptionCheckout`](/docs/agent-overview#post-useragentcreatesubscriptioncheckout) (`useprepaid: true`). |
 | `[AGENT_UNAVAILABLE]` | `agent_error` | Any other failure. | Try again after a short wait. |
 | `[REQUEST_CANCELLED]` | `agent_cancel` | The turn was cancelled, while it ran or while it was still queued. | Nothing to do. |
 
@@ -71,13 +72,14 @@ The full texts:
 [USAGE_CEILING_REACHED] This agent reached its hourly or daily safety ceiling for AI model calls, so it paused. It runs again when that hour or day is over.
 [MODEL_NOT_ALLOWED] This agent's Model Access rule blocks the model it uses, so it stopped. It runs again once the model is allowed or another one is chosen.
 [CREDITS_EXHAUSTED] This agent's plan usage and its owner's balance are used up, so it paused. It runs again once its owner adds funds or its plan renews.
+[NO_ACTIVE_PLAN] This agent has no active plan, so it paused. It runs again once it has a plan.
 [AGENT_UNAVAILABLE] Agent is temporarily unavailable. Please try again shortly.
 [REQUEST_CANCELLED] Request cancelled.
 ```
 
 Match the code in brackets, never the sentence after it, which can change. Turns that failed before the codes existed are returned in the same form.
 
-In Telegram, Slack and Discord the agent says the same without the code in brackets, when a turn stops and when a message arrives while its spend limit is used up or its rule blocks its model. The spend limit sentence also names the limit's period and when it resets, when the agent knows them: `This agent's daily spend limit is used up, so it paused. It runs again when the limit resets at 00:00 UTC or is raised.` When its plan's usage and its balance are used up, it says `This agent is paused for now. It runs again once its owner adds funds or its plan renews.`, with no amount.
+In Telegram, Slack and Discord the agent says the same without the code in brackets, when a turn stops and when a message arrives while its spend limit is used up or its rule blocks its model. The spend limit sentence also names the limit's period and when it resets, when the agent knows them: `This agent's daily spend limit is used up, so it paused. It runs again when the limit resets at 00:00 UTC or is raised.` When its plan's usage and its balance are used up, it says `This agent is paused for now. It runs again once its owner adds funds or its plan renews.`, with no amount, and when it has no active plan, `This agent has no active plan, so it paused.`
 
 ## **POST** /UserAgent/Message/Send
 

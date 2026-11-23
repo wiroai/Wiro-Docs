@@ -23041,6 +23041,12 @@ print(response.body);
 <td>Add funds to the balance of the agent's workspace (see <a href="/docs/agent-overview#adding-funds">Adding Funds</a>), or wait for the plan to renew. Don't send the message again before that.</td>
 </tr>
 <tr>
+<td><code>[NO_ACTIVE_PLAN]</code></td>
+<td><code>agent_error</code></td>
+<td>The agent has no active plan, so its model calls were refused. A turn that is already running stops at its next model call. Adding funds doesn't run it.</td>
+<td>Renew the plan with <a href="/docs/agent-overview#post-useragentrenewsubscription"><code>RenewSubscription</code></a>, or start one with <a href="/docs/agent-overview#post-useragentcreatesubscriptioncheckout"><code>CreateSubscriptionCheckout</code></a> (<code>useprepaid: true</code>).</td>
+</tr>
+<tr>
 <td><code>[AGENT_UNAVAILABLE]</code></td>
 <td><code>agent_error</code></td>
 <td>Any other failure.</td>
@@ -23065,11 +23071,12 @@ print(response.body);
 [USAGE_CEILING_REACHED] This agent reached its hourly or daily safety ceiling for AI model calls, so it paused. It runs again when that hour or day is over.
 [MODEL_NOT_ALLOWED] This agent's Model Access rule blocks the model it uses, so it stopped. It runs again once the model is allowed or another one is chosen.
 [CREDITS_EXHAUSTED] This agent's plan usage and its owner's balance are used up, so it paused. It runs again once its owner adds funds or its plan renews.
+[NO_ACTIVE_PLAN] This agent has no active plan, so it paused. It runs again once it has a plan.
 [AGENT_UNAVAILABLE] Agent is temporarily unavailable. Please try again shortly.
 [REQUEST_CANCELLED] Request cancelled.
 </code></pre>
 <p>Match the code in brackets, never the sentence after it, which can change. Turns that failed before the codes existed are returned in the same form.</p>
-<p>In Telegram, Slack and Discord the agent says the same without the code in brackets, when a turn stops and when a message arrives while its spend limit is used up or its rule blocks its model. The spend limit sentence also names the limit's period and when it resets, when the agent knows them: <code>This agent's daily spend limit is used up, so it paused. It runs again when the limit resets at 00:00 UTC or is raised.</code> When its plan's usage and its balance are used up, it says <code>This agent is paused for now. It runs again once its owner adds funds or its plan renews.</code>, with no amount.</p>
+<p>In Telegram, Slack and Discord the agent says the same without the code in brackets, when a turn stops and when a message arrives while its spend limit is used up or its rule blocks its model. The spend limit sentence also names the limit's period and when it resets, when the agent knows them: <code>This agent's daily spend limit is used up, so it paused. It runs again when the limit resets at 00:00 UTC or is raised.</code> When its plan's usage and its balance are used up, it says <code>This agent is paused for now. It runs again once its owner adds funds or its plan renews.</code>, with no amount, and when it has no active plan, <code>This agent has no active plan, so it paused.</code></p>
 <h2 id="post-useragentmessagesend"><strong>POST</strong> /UserAgent/Message/Send</h2>
 <p>Sends a user message to a deployed agent. The agent must be in running state (status <code>4</code>), except for a reply that Wiro answers itself, such as a <code>yes</code> that applies a setup card or answers a connector's approval card, which works in any status (see <a href="#handled-setup-replies">Replies Wiro handles itself</a>). Returns immediately with an <code>agenttoken</code> that you use to track the response via WebSocket, polling, or webhook.</p>
 <p>Accepts either <code>application/json</code> (text-only) or <code>multipart/form-data</code> (text + file attachments). When sending files, the <code>message</code> field can be empty. The agent receives the attachments and any accompanying text.</p>
@@ -32944,6 +32951,11 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <td><code>[CREDITS_EXHAUSTED]</code></td>
 <td><code>agent_error</code></td>
 <td>The agent has used the AI usage its plan includes and the balance is under $0.50: say it runs again once funds are added or its plan renews, and don't offer to try again before that.</td>
+</tr>
+<tr>
+<td><code>[NO_ACTIVE_PLAN]</code></td>
+<td><code>agent_error</code></td>
+<td>The agent has no active plan: say it runs again once it has a plan, and offer to renew the plan, never to add funds.</td>
 </tr>
 <tr>
 <td><code>[AGENT_UNAVAILABLE]</code></td>
