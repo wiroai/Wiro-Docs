@@ -12,7 +12,7 @@ Complete API documentation for the Wiro AI platform: run AI models through a uni
 6. [Direct LLM Gateway](#direct-llm-gateway)
 7. [Model Parameters](#model-parameters)
 8. [Tasks](#tasks)
-9. [LLM Streaming](#llm-streaming)
+9. [LLM & Chat Streaming](#llm--chat-streaming)
 10. [WebSocket](#websocket)
 11. [Realtime Voice](#realtime-voice)
 12. [Realtime Text to Speech](#realtime-text-to-speech)
@@ -25,7 +25,7 @@ Complete API documentation for the Wiro AI platform: run AI models through a uni
 19. [Code Examples](#code-examples)
 20. [Pricing](#pricing)
 21. [FAQ](#faq)
-22. [MCP Server](#mcp-server)
+22. [Wiro MCP Server](#wiro-mcp-server)
 23. [Self-Hosted MCP](#self-hosted-mcp)
 24. [Node.js Library](#nodejs-library)
 25. [n8n Wiro Integration](#n8n-wiro-integration)
@@ -89,7 +89,7 @@ wss://socket.wiro.ai/v1
 1. **Sign up** at [wiro.ai](https://wiro.ai/auth/signup)
 2. **Create a project** in the [Dashboard](https://wiro.ai/panel/project/new) to get your API key
 3. **Pick a model** from the [marketplace](https://wiro.ai/models)
-4. **Make your first API call**: see [Code Examples](#code-examples) for full end-to-end samples
+4. **Make your first API call**: see [Code Examples](/docs/code-examples) for full end-to-end samples
 5. **Deploy an AI Agent**: browse the [agent catalog](https://wiro.ai/agents), deploy an instance, and interact via the [Agent API](/docs/agent-overview)
 
 ## Response Format
@@ -118,6 +118,175 @@ Common HTTP status codes:
 - `403`: Forbidden (signature mismatch or insufficient permissions)
 - `429`: Rate limit exceeded
 - `500`: Internal server error
+
+## Code Examples
+
+### curl
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{"prompt": "Hello, world!"}'
+```
+
+### Python
+
+```python
+import requests
+
+response = requests.post(
+    "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}",
+    headers={"x-api-key": "YOUR_API_KEY", "Content-Type": "application/json"},
+    json={"prompt": "Hello, world!"}
+)
+print(response.json())
+```
+
+### Node.js
+
+```javascript
+const axios = require('axios');
+
+const response = await axios.post(
+  'https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}',
+  { prompt: 'Hello, world!' },
+  { headers: { 'x-api-key': 'YOUR_API_KEY', 'Content-Type': 'application/json' } }
+);
+console.log(response.data);
+```
+
+### PHP
+
+```php
+<?php
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}");
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Content-Type: application/json",
+    "x-api-key: YOUR_API_KEY"
+]);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    "prompt" => "Hello, world!"
+]));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = curl_exec($ch);
+curl_close($ch);
+echo $response;
+```
+
+### C#
+
+```csharp
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("x-api-key", "YOUR_API_KEY");
+
+var content = new StringContent(
+    JsonSerializer.Serialize(new { prompt = "Hello, world!" }),
+    Encoding.UTF8, "application/json");
+
+var response = await client.PostAsync(
+    "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}", content);
+var result = await response.Content.ReadAsStringAsync();
+Console.WriteLine(result);
+```
+
+### Go
+
+```go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+    "io"
+)
+
+func main() {
+    body, _ := json.Marshal(map[string]string{
+        "prompt": "Hello, world!",
+    })
+    req, _ := http.NewRequest("POST",
+        "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}",
+        bytes.NewBuffer(body))
+    req.Header.Set("Content-Type", "application/json")
+    req.Header.Set("x-api-key", "YOUR_API_KEY")
+
+    resp, _ := http.DefaultClient.Do(req)
+    defer resp.Body.Close()
+    data, _ := io.ReadAll(resp.Body)
+    fmt.Println(string(data))
+}
+```
+
+### Swift
+
+```swift
+import Foundation
+
+let url = URL(string: "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}")!
+var request = URLRequest(url: url)
+request.httpMethod = "POST"
+request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+request.setValue("YOUR_API_KEY", forHTTPHeaderField: "x-api-key")
+request.httpBody = try! JSONSerialization.data(withJSONObject: [
+    "prompt": "Hello, world!"
+])
+
+let (data, _) = try await URLSession.shared.data(for: request)
+print(String(data: data, encoding: .utf8)!)
+```
+
+### Kotlin
+
+```kotlin
+import java.net.HttpURLConnection
+import java.net.URL
+
+val url = URL("https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}")
+val conn = url.openConnection() as HttpURLConnection
+conn.requestMethod = "POST"
+conn.setRequestProperty("Content-Type", "application/json")
+conn.setRequestProperty("x-api-key", "YOUR_API_KEY")
+conn.doOutput = true
+conn.outputStream.write("""{"prompt": "Hello, world!"}""".toByteArray())
+
+val response = conn.inputStream.bufferedReader().readText()
+println(response)
+```
+
+### Dart
+
+```dart
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+final response = await http.post(
+  Uri.parse('https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}'),
+  headers: {
+    'Content-Type': 'application/json',
+    'x-api-key': 'YOUR_API_KEY',
+  },
+  body: jsonEncode({
+    'prompt': 'Hello, world!',
+  }),
+);
+print(response.body);
+```
+
+### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "taskid": "2221",
+  "socketaccesstoken": "eDcCm5yyUfIvMFspTwww49OUfgXkQt"
+}
+```
 
 ---
 
@@ -148,11 +317,11 @@ SIGNATURE = HMAC-SHA256(key=API_KEY, message=API_SECRET + NONCE)
 
 #### Required Headers
 
-| Parameter     | Type   | Required | Description                              |
-| ------------- | ------ | -------- | ---------------------------------------- |
-| `x-api-key`   | string | Yes      | Your project API key                     |
-| `x-signature` | string | Yes      | HMAC-SHA256(API_SECRET + NONCE, API_KEY) |
-| `x-nonce`     | string | Yes      | Unix timestamp or random integer         |
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `x-api-key` | string | Yes | Your project API key |
+| `x-signature` | string | Yes | HMAC-SHA256(API_SECRET + NONCE, API_KEY) |
+| `x-nonce` | string | Yes | Unix timestamp or random integer |
 
 ## API Key Only Authentication
 
@@ -160,24 +329,497 @@ For server-side applications where you control the environment, you can use the 
 
 #### Required Headers
 
-| Parameter   | Type   | Required | Description          |
-| ----------- | ------ | -------- | -------------------- |
-| `x-api-key` | string | Yes      | Your project API key |
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `x-api-key` | string | Yes | Your project API key |
 
 ## Comparison
 
-| Feature           | Signature-Based                        | API Key Only                         |
-| ----------------- | -------------------------------------- | ------------------------------------ |
-| Security          | High: the secret is never sent over the wire | Moderate: the key is sent with every request |
-| Complexity        | Requires HMAC computation              | Single header                        |
-| Best for          | Server-side apps, production backends  | Server-side, internal tools          |
-| Leaked API key    | Not enough: the secret is also needed | Enough to call the API               |
+| Feature | Signature-Based | API Key Only |
+|---------|----------------|--------------|
+| Security | High: the secret is never sent over the wire | Moderate: the key is sent with every request |
+| Complexity | Requires HMAC computation | Single header |
+| Best for | Server-side apps, production backends | Server-side, internal tools |
+| Leaked API key | Not enough: the secret is also needed | Enough to call the API |
 
 ## How to Choose
 
 - Building a **browser** or **mobile** app? Have the app call your own backend, and call Wiro from there. Never put your API key or secret in the app.
 - Running a **server-side** backend with controlled access? **API Key Only** is simpler.
 - Unsure? Default to **Signature-Based**, which is always the safer option.
+
+## Code Examples
+
+### Signature-Based
+
+#### curl
+
+```bash
+export YOUR_API_KEY="your-api-key"
+export YOUR_API_SECRET="your-api-secret"
+export NONCE=$(date +%s)
+export SIGNATURE=$(echo -n "${YOUR_API_SECRET}${NONCE}" | \
+  openssl dgst -sha256 -hmac "${YOUR_API_KEY}" | awk '{print $NF}')
+
+curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: ${YOUR_API_KEY}" \
+  -H "x-nonce: ${NONCE}" \
+  -H "x-signature: ${SIGNATURE}" \
+  -d '{"prompt": "Hello, world!"}'
+```
+
+#### Python
+
+```python
+import hmac, hashlib, time, requests
+
+YOUR_API_KEY = "your-api-key"
+YOUR_API_SECRET = "your-api-secret"
+
+nonce = str(int(time.time()))
+message = YOUR_API_SECRET + nonce
+signature = hmac.new(
+    YOUR_API_KEY.encode(),
+    message.encode(),
+    hashlib.sha256
+).hexdigest()
+
+response = requests.post(
+    "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}",
+    headers={
+        "x-api-key": YOUR_API_KEY,
+        "x-nonce": nonce,
+        "x-signature": signature,
+        "Content-Type": "application/json"
+    },
+    json={"prompt": "Hello, world!"}
+)
+print(response.json())
+```
+
+#### Node.js
+
+```javascript
+const crypto = require("crypto");
+const axios = require("axios");
+
+const YOUR_API_KEY = "your-api-key";
+const YOUR_API_SECRET = "your-api-secret";
+
+const nonce = String(Date.now());
+const signature = crypto
+  .createHmac("sha256", YOUR_API_KEY)
+  .update(YOUR_API_SECRET + nonce)
+  .digest("hex");
+
+const response = await axios.post(
+  "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}",
+  { prompt: "Hello, world!" },
+  {
+    headers: {
+      "x-api-key": YOUR_API_KEY,
+      "x-nonce": nonce,
+      "x-signature": signature,
+      "Content-Type": "application/json"
+    }
+  }
+);
+console.log(response.data);
+```
+
+#### PHP
+
+```php
+<?php
+$apiKey = "your-api-key";
+$apiSecret = "your-api-secret";
+
+$nonce = (string)time();
+$message = $apiSecret . $nonce;
+$signature = hash_hmac("sha256", $message, $apiKey);
+
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL,
+    "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}");
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Content-Type: application/json",
+    "x-api-key: $apiKey",
+    "x-nonce: $nonce",
+    "x-signature: $signature"
+]);
+curl_setopt($ch, CURLOPT_POSTFIELDS,
+    json_encode(["prompt" => "Hello, world!"]));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = curl_exec($ch);
+curl_close($ch);
+echo $response;
+```
+
+#### C#
+
+```csharp
+using System.Security.Cryptography;
+using System.Text;
+
+var apiKey = "your-api-key";
+var apiSecret = "your-api-secret";
+
+var nonce = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+var message = apiSecret + nonce;
+using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(apiKey));
+var signature = Convert.ToHexString(
+    hmac.ComputeHash(Encoding.UTF8.GetBytes(message))).ToLower();
+
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("x-api-key", apiKey);
+client.DefaultRequestHeaders.Add("x-nonce", nonce);
+client.DefaultRequestHeaders.Add("x-signature", signature);
+
+var content = new StringContent(
+    "{\"prompt\":\"Hello, world!\"}",
+    Encoding.UTF8, "application/json");
+var response = await client.PostAsync(
+    "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}", content);
+Console.WriteLine(await response.Content.ReadAsStringAsync());
+```
+
+#### Go
+
+```go
+package main
+
+import (
+    "crypto/hmac"
+    "crypto/sha256"
+    "encoding/hex"
+    "fmt"
+    "net/http"
+    "strconv"
+    "strings"
+    "time"
+    "io"
+)
+
+func main() {
+    apiKey := "your-api-key"
+    apiSecret := "your-api-secret"
+
+    nonce := strconv.FormatInt(time.Now().Unix(), 10)
+    mac := hmac.New(sha256.New, []byte(apiKey))
+    mac.Write([]byte(apiSecret + nonce))
+    signature := hex.EncodeToString(mac.Sum(nil))
+
+    body := strings.NewReader(`{"prompt":"Hello, world!"}`)
+    req, _ := http.NewRequest("POST",
+        "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}", body)
+    req.Header.Set("Content-Type", "application/json")
+    req.Header.Set("x-api-key", apiKey)
+    req.Header.Set("x-nonce", nonce)
+    req.Header.Set("x-signature", signature)
+
+    resp, _ := http.DefaultClient.Do(req)
+    defer resp.Body.Close()
+    data, _ := io.ReadAll(resp.Body)
+    fmt.Println(string(data))
+}
+```
+
+#### Swift
+
+```swift
+import Foundation
+import CommonCrypto
+
+let apiKey = "your-api-key"
+let apiSecret = "your-api-secret"
+
+let nonce = String(Int(Date().timeIntervalSince1970))
+let message = (apiSecret + nonce).data(using: .utf8)!
+let key = apiKey.data(using: .utf8)!
+var hmac = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
+message.withUnsafeBytes { msgPtr in
+    key.withUnsafeBytes { keyPtr in
+        CCHmac(CCHmacAlgorithm(kCCHmacAlgSHA256),
+               keyPtr.baseAddress, key.count,
+               msgPtr.baseAddress, message.count, &hmac)
+    }
+}
+let signature = hmac.map { String(format: "%02x", $0) }.joined()
+
+var request = URLRequest(url: URL(string:
+    "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}")!)
+request.httpMethod = "POST"
+request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+request.setValue(nonce, forHTTPHeaderField: "x-nonce")
+request.setValue(signature, forHTTPHeaderField: "x-signature")
+request.httpBody = try! JSONSerialization.data(
+    withJSONObject: ["prompt": "Hello, world!"])
+
+let (data, _) = try await URLSession.shared.data(for: request)
+print(String(data: data, encoding: .utf8)!)
+```
+
+#### Kotlin
+
+```kotlin
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
+import java.net.HttpURLConnection
+import java.net.URL
+
+val apiKey = "your-api-key"
+val apiSecret = "your-api-secret"
+
+val nonce = (System.currentTimeMillis() / 1000).toString()
+val mac = Mac.getInstance("HmacSHA256")
+mac.init(SecretKeySpec(apiKey.toByteArray(), "HmacSHA256"))
+val signature = mac.doFinal((apiSecret + nonce).toByteArray())
+    .joinToString("") { "%02x".format(it) }
+
+val conn = URL("https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}")
+    .openConnection() as HttpURLConnection
+conn.requestMethod = "POST"
+conn.setRequestProperty("Content-Type", "application/json")
+conn.setRequestProperty("x-api-key", apiKey)
+conn.setRequestProperty("x-nonce", nonce)
+conn.setRequestProperty("x-signature", signature)
+conn.doOutput = true
+conn.outputStream.write("""{"prompt":"Hello, world!"}""".toByteArray())
+
+println(conn.inputStream.bufferedReader().readText())
+```
+
+#### Dart
+
+```dart
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
+import 'package:http/http.dart' as http;
+
+final apiKey = 'your-api-key';
+final apiSecret = 'your-api-secret';
+
+final nonce = (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();
+final hmac = Hmac(sha256, utf8.encode(apiKey));
+final signature = hmac.convert(utf8.encode(apiSecret + nonce)).toString();
+
+final response = await http.post(
+  Uri.parse('https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}'),
+  headers: {
+    'Content-Type': 'application/json',
+    'x-api-key': apiKey,
+    'x-nonce': nonce,
+    'x-signature': signature,
+  },
+  body: jsonEncode({'prompt': 'Hello, world!'}),
+);
+print(response.body);
+```
+
+#### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "taskid": "2221",
+  "socketaccesstoken": "eDcCm5yyUfIvMFspTwww49OUfgXkQt"
+}
+```
+
+### API Key Only (Simple)
+
+#### curl
+
+```bash
+export YOUR_API_KEY="your-api-key"
+
+curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: ${YOUR_API_KEY}" \
+  -d '{"prompt": "Hello, world!"}'
+```
+
+#### Python
+
+```python
+import requests
+
+YOUR_API_KEY = "your-api-key"
+
+response = requests.post(
+    "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}",
+    headers={
+        "x-api-key": YOUR_API_KEY,
+        "Content-Type": "application/json"
+    },
+    json={"prompt": "Hello, world!"}
+)
+print(response.json())
+```
+
+#### Node.js
+
+```javascript
+const axios = require("axios");
+
+const YOUR_API_KEY = "your-api-key";
+
+const response = await axios.post(
+  "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}",
+  { prompt: "Hello, world!" },
+  {
+    headers: {
+      "x-api-key": YOUR_API_KEY,
+      "Content-Type": "application/json"
+    }
+  }
+);
+console.log(response.data);
+```
+
+#### PHP
+
+```php
+<?php
+$apiKey = "your-api-key";
+
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL,
+    "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}");
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Content-Type: application/json",
+    "x-api-key: $apiKey"
+]);
+curl_setopt($ch, CURLOPT_POSTFIELDS,
+    json_encode(["prompt" => "Hello, world!"]));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = curl_exec($ch);
+curl_close($ch);
+echo $response;
+```
+
+#### C#
+
+```csharp
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("x-api-key", "your-api-key");
+
+var content = new StringContent(
+    "{\"prompt\":\"Hello, world!\"}",
+    Encoding.UTF8, "application/json");
+var response = await client.PostAsync(
+    "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}", content);
+Console.WriteLine(await response.Content.ReadAsStringAsync());
+```
+
+#### Go
+
+```go
+package main
+
+import (
+    "fmt"
+    "net/http"
+    "strings"
+    "io"
+)
+
+func main() {
+    body := strings.NewReader(`{"prompt":"Hello, world!"}`)
+    req, _ := http.NewRequest("POST",
+        "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}", body)
+    req.Header.Set("Content-Type", "application/json")
+    req.Header.Set("x-api-key", "your-api-key")
+
+    resp, _ := http.DefaultClient.Do(req)
+    defer resp.Body.Close()
+    data, _ := io.ReadAll(resp.Body)
+    fmt.Println(string(data))
+}
+```
+
+#### Swift
+
+```swift
+import Foundation
+
+var request = URLRequest(url: URL(string:
+    "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}")!)
+request.httpMethod = "POST"
+request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+request.setValue("your-api-key", forHTTPHeaderField: "x-api-key")
+request.httpBody = try! JSONSerialization.data(
+    withJSONObject: ["prompt": "Hello, world!"])
+
+let (data, _) = try await URLSession.shared.data(for: request)
+print(String(data: data, encoding: .utf8)!)
+```
+
+#### Kotlin
+
+```kotlin
+import java.net.HttpURLConnection
+import java.net.URL
+
+val conn = URL("https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}")
+    .openConnection() as HttpURLConnection
+conn.requestMethod = "POST"
+conn.setRequestProperty("Content-Type", "application/json")
+conn.setRequestProperty("x-api-key", "your-api-key")
+conn.doOutput = true
+conn.outputStream.write("""{"prompt":"Hello, world!"}""".toByteArray())
+
+println(conn.inputStream.bufferedReader().readText())
+```
+
+#### Dart
+
+```dart
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+final response = await http.post(
+  Uri.parse('https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}'),
+  headers: {
+    'Content-Type': 'application/json',
+    'x-api-key': 'your-api-key',
+  },
+  body: jsonEncode({'prompt': 'Hello, world!'}),
+);
+print(response.body);
+```
+
+#### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "taskid": "2221",
+  "socketaccesstoken": "eDcCm5yyUfIvMFspTwww49OUfgXkQt"
+}
+```
+
+## Using Auth with Agent Endpoints
+
+The same authentication headers work for every `UserAgent/*` endpoint, the connector calls included. Example:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: ${YOUR_API_KEY}" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "message": "What are the latest campaign insights?"
+  }'
+```
+
+Signature-based projects add `x-nonce` and `x-signature` exactly as shown in the Run example. The signing algorithm is identical. See [Agent Overview](/docs/agent-overview) for the full agent API reference.
 
 ---
 
@@ -202,7 +844,7 @@ Each workspace also has a Studio project: the project [Studio](/docs/studio) and
 2. Navigate to [Projects](https://wiro.ai/panel/project)
 3. Click [New Project](https://wiro.ai/panel/project/new)
 4. Enter a project name
-5. Select your [authentication method](#authentication):
+5. Select your [authentication method](/docs/authentication):
    - **Signature-Based**: generates both an API key and API secret
    - **API Key Only**: generates only an API key
 6. Click **Create**
@@ -224,6 +866,197 @@ From the [Projects page](https://wiro.ai/panel/project) in your Dashboard, you c
 
 A project's API key never changes. To replace it, create a new project, move your application to the new key, then delete the old project, which revokes its key at once. Changing a project's IP whitelist gives the project a new API secret.
 
+## Code Examples
+
+### curl
+
+```bash
+# Use your project API key in any request
+curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_PROJECT_API_KEY" \
+  -d '{"prompt": "A sunset over mountains"}'
+```
+
+### Python
+
+```python
+import requests
+
+API_KEY = "YOUR_PROJECT_API_KEY"
+
+response = requests.post(
+    "https://api.wiro.ai/v1/Run/google/nano-banana",
+    headers={
+        "x-api-key": API_KEY,
+        "Content-Type": "application/json"
+    },
+    json={"prompt": "A sunset over mountains"}
+)
+print(response.json())
+```
+
+### Node.js
+
+```javascript
+const axios = require('axios');
+
+const API_KEY = 'YOUR_PROJECT_API_KEY';
+
+const response = await axios.post(
+  'https://api.wiro.ai/v1/Run/google/nano-banana',
+  { prompt: 'A sunset over mountains' },
+  {
+    headers: {
+      'x-api-key': API_KEY,
+      'Content-Type': 'application/json'
+    }
+  }
+);
+console.log(response.data);
+```
+
+### PHP
+
+```php
+<?php
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}");
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Content-Type: application/json",
+    "x-api-key: YOUR_PROJECT_API_KEY"
+]);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    "prompt" => "A sunset over mountains"
+]));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = curl_exec($ch);
+curl_close($ch);
+echo $response;
+```
+
+### C#
+
+```csharp
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add(
+    "x-api-key", "YOUR_PROJECT_API_KEY");
+
+var content = new StringContent(
+    JsonSerializer.Serialize(new {
+        prompt = "A sunset over mountains"
+    }),
+    Encoding.UTF8, "application/json");
+
+var response = await client.PostAsync(
+    "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}",
+    content);
+var result = await response.Content
+    .ReadAsStringAsync();
+Console.WriteLine(result);
+```
+
+### Go
+
+```go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+    "io"
+)
+
+func main() {
+    body, _ := json.Marshal(map[string]string{
+        "prompt": "A sunset over mountains",
+    })
+    req, _ := http.NewRequest("POST",
+        "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}",
+        bytes.NewBuffer(body))
+    req.Header.Set("Content-Type", "application/json")
+    req.Header.Set("x-api-key", "YOUR_PROJECT_API_KEY")
+
+    resp, _ := http.DefaultClient.Do(req)
+    defer resp.Body.Close()
+    data, _ := io.ReadAll(resp.Body)
+    fmt.Println(string(data))
+}
+```
+
+### Swift
+
+```swift
+import Foundation
+
+let url = URL(string: "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}")!
+var request = URLRequest(url: url)
+request.httpMethod = "POST"
+request.setValue("application/json",
+    forHTTPHeaderField: "Content-Type")
+request.setValue("YOUR_PROJECT_API_KEY",
+    forHTTPHeaderField: "x-api-key")
+request.httpBody = try! JSONSerialization.data(
+    withJSONObject: [
+        "prompt": "A sunset over mountains"
+    ])
+
+let (data, _) = try await URLSession.shared
+    .data(for: request)
+print(String(data: data, encoding: .utf8)!)
+```
+
+### Kotlin
+
+```kotlin
+import java.net.HttpURLConnection
+import java.net.URL
+
+val url = URL("https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}")
+val conn = url.openConnection() as HttpURLConnection
+conn.requestMethod = "POST"
+conn.setRequestProperty("Content-Type", "application/json")
+conn.setRequestProperty("x-api-key", "YOUR_PROJECT_API_KEY")
+conn.doOutput = true
+conn.outputStream.write("""{"prompt": "A sunset over mountains"}""".toByteArray())
+
+val response = conn.inputStream.bufferedReader().readText()
+println(response)
+```
+
+### Dart
+
+```dart
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+final response = await http.post(
+  Uri.parse('https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}'),
+  headers: {
+    'Content-Type': 'application/json',
+    'x-api-key': 'YOUR_PROJECT_API_KEY',
+  },
+  body: jsonEncode({
+    'prompt': 'A sunset over mountains',
+  }),
+);
+print(response.body);
+```
+
+### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "taskid": "2221",
+  "socketaccesstoken": "eDcCm5yyUfIvMFspTwww49OUfgXkQt"
+}
+```
+
 ---
 
 # Models
@@ -236,18 +1069,18 @@ Returns a paginated list of available models. Filter by categories, search by na
 
 #### Request Parameters
 
-| Parameter       | Type     | Required | Description                                                     |
-| --------------- | -------- | -------- | --------------------------------------------------------------- |
-| `start`         | string   | No       | Offset for pagination (default: "0")                            |
-| `limit`         | string   | No       | Number of results to return (default: "20")                     |
-| `search`        | string   | No       | Search query to filter models by name                           |
-| `sort`          | string   | No       | Sort field: id, relevance                                       |
-| `order`         | string   | No       | Sort direction: ASC or DESC                                     |
-| `categories`    | string[] | No       | Filter by categories (e.g. image-generation, llm, audio, video) |
-| `tags`          | string[] | No       | Filter by tags                                                  |
-| `slugowner`     | string   | No       | Filter by model owner slug                                      |
-| `hideworkflows` | boolean  | No       | Hide workflow models from results (recommended: true)           |
-| `summary`       | boolean  | No       | Return summarized model data (recommended for listings)         |
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `start` | string | No | Offset for pagination (default: "0") |
+| `limit` | string | No | Number of results to return (default: "20") |
+| `search` | string | No | Search query to filter models by name |
+| `sort` | string | No | Sort field: id, relevance |
+| `order` | string | No | Sort direction: ASC or DESC |
+| `categories` | string[] | No | Filter by categories (e.g. image-generation, llm, audio, video) |
+| `tags` | string[] | No | Filter by tags |
+| `slugowner` | string | No | Filter by model owner slug |
+| `hideworkflows` | boolean | No | Hide workflow models from results (recommended: true) |
+| `summary` | boolean | No | Return summarized model data (recommended for listings) |
 
 ### Response
 
@@ -291,11 +1124,11 @@ Returns full details for a specific model, including its input parameters, prici
 
 #### Request Parameters
 
-| Parameter     | Type    | Required | Description                           |
-| ------------- | ------- | -------- | ------------------------------------- |
-| `slugowner`   | string  | Yes      | Model owner slug (e.g. google)        |
-| `slugproject` | string  | Yes      | Model project slug (e.g. nano-banana) |
-| `summary`     | boolean | No       | Return summarized data                |
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `slugowner` | string | Yes | Model owner slug (e.g. google) |
+| `slugproject` | string | Yes | Model project slug (e.g. nano-banana) |
+| `summary` | boolean | No | Return summarized data |
 
 ### Response
 
@@ -303,59 +1136,380 @@ Returns full details for a specific model, including its input parameters, prici
 {
   "result": true,
   "errors": [],
-  "tool": [
-    {
-      "id": "1562",
-      "title": "Nano Banana API: Create Mobile & Web Apps with Nano Banana",
-      "slugowner": "google",
-      "slugproject": "nano-banana",
-      "cleanslugowner": "google",
-      "cleanslugproject": "nano-banana",
-      "description": "Google's Gemini 2.5 Flash Image Preview, also known as Nano Banana, model for text-to-image and image-to-image generation.",
-      "image": "https://cdn.wiro.ai/uploads/models/google-nano-banana-cover.webp",
-      "computingtime": "10 seconds",
-      "readme": "Google's Gemini 2.5 Flash Image Preview model for text-to-image and image-to-image generation.",
-      "categories": ["image-to-image", "text-to-image", "image-editing"],
-      "parameters": [
-        {
-          "title": "",
-          "subtitle": "",
-          "items": [
-            { "id": "inputImage", "type": "combinefileinput", "required": false, "advanced": false },
-            { "id": "prompt", "type": "textarea", "required": true, "advanced": false },
-            { "id": "temperature", "type": "float", "required": false, "advanced": true },
-            { "id": "aspectRatio", "type": "select", "required": false, "advanced": true },
-            { "id": "safetySetting", "type": "select", "required": false, "advanced": true }
-          ]
-        }
-      ],
-      "inspire": [
-        { "prompt": "Create a Spider Man image flying over Warsaw", "inputImage": "" }
-      ],
-      "samples": ["https://cdn.wiro.ai/uploads/models/google-nano-banana-sample-15.webp"],
-      "tags": ["google"],
-      "marketplace": 1,
-      "onlymembers": "1",
-      "dynamicprice": [{ "inputs": {}, "price": 0.039, "priceMethod": "cpo" }],
-      "averagepoint": "4.38",
-      "commentcount": "10",
-      "ratedusercount": "8",
-      "taskstat": {
-        "runcount": "531554",
-        "successcount": "510396",
-        "errorcount": "21240",
-        "lastruntime": "1789217220"
-      },
-      "seotitle": "Nano Banana API: Create Mobile & Web Apps with Nano Banana",
-      "seodescription": null
-    }
-  ]
+  "tool": [{
+    "id": "1562",
+    "title": "Nano Banana API: Create Mobile & Web Apps with Nano Banana",
+    "slugowner": "google",
+    "slugproject": "nano-banana",
+    "cleanslugowner": "google",
+    "cleanslugproject": "nano-banana",
+    "description": "Google's Gemini 2.5 Flash Image Preview, also known as Nano Banana, model for text-to-image and image-to-image generation.",
+    "image": "https://cdn.wiro.ai/uploads/models/google-nano-banana-cover.webp",
+    "computingtime": "10 seconds",
+    "readme": "Google's Gemini 2.5 Flash Image Preview model for text-to-image and image-to-image generation.",
+    "categories": ["image-to-image", "text-to-image", "image-editing"],
+    "parameters": [
+      {
+        "title": "",
+        "subtitle": "",
+        "items": [
+          { "id": "inputImage", "type": "combinefileinput", "required": false, "advanced": false },
+          { "id": "prompt", "type": "textarea", "required": true, "advanced": false },
+          { "id": "temperature", "type": "float", "required": false, "advanced": true },
+          { "id": "aspectRatio", "type": "select", "required": false, "advanced": true },
+          { "id": "safetySetting", "type": "select", "required": false, "advanced": true }
+        ]
+      }
+    ],
+    "inspire": [
+      { "prompt": "Create a Spider Man image flying over Warsaw", "inputImage": "" }
+    ],
+    "samples": ["https://cdn.wiro.ai/uploads/models/google-nano-banana-sample-15.webp"],
+    "tags": ["google"],
+    "marketplace": 1,
+    "onlymembers": "1",
+    "dynamicprice": [{ "inputs": {}, "price": 0.039, "priceMethod": "cpo" }],
+    "averagepoint": "4.38",
+    "commentcount": "10",
+    "ratedusercount": "8",
+    "taskstat": {
+      "runcount": "531554",
+      "successcount": "510396",
+      "errorcount": "21240",
+      "lastruntime": "1789217220"
+    },
+    "seotitle": "Nano Banana API: Create Mobile & Web Apps with Nano Banana",
+    "seodescription": null
+  }]
 }
 ```
 
 ## Model Browser
 
 Browse available models interactively. Click on a model to see its details on the [Wiro model page](https://wiro.ai/models).
+
+## Code Examples
+
+### curl (List)
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/Tool/List" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "start": "0",
+    "limit": "20",
+    "search": "stable diffusion",
+    "sort": "id",
+    "order": "DESC",
+    "categories": ["image-generation"],
+    "hideworkflows": true,
+    "summary": true
+  }'
+```
+
+### curl (Detail)
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/Tool/Detail" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "slugowner": "google",
+    "slugproject": "nano-banana"
+  }'
+```
+
+### Python
+
+```python
+import requests
+
+headers = {
+    "x-api-key": "YOUR_API_KEY",
+    "Content-Type": "application/json"
+}
+
+# List models
+list_resp = requests.post(
+    "https://api.wiro.ai/v1/Tool/List",
+    headers=headers,
+    json={
+        "start": "0",
+        "limit": "20",
+        "search": "stable diffusion",
+        "categories": ["image-generation"],
+        "hideworkflows": True,
+        "summary": True
+    }
+)
+models = list_resp.json()
+
+# Get model detail
+detail_resp = requests.post(
+    "https://api.wiro.ai/v1/Tool/Detail",
+    headers=headers,
+    json={
+        "slugowner": "google",
+        "slugproject": "nano-banana"
+    }
+)
+model = detail_resp.json()
+```
+
+### Node.js
+
+```javascript
+const axios = require('axios');
+
+const headers = {
+  'x-api-key': 'YOUR_API_KEY',
+  'Content-Type': 'application/json'
+};
+
+// List models
+const listResp = await axios.post(
+  'https://api.wiro.ai/v1/Tool/List',
+  {
+    start: '0',
+    limit: '20',
+    search: 'stable diffusion',
+    categories: ['image-generation'],
+    hideworkflows: true,
+    summary: true
+  },
+  { headers }
+);
+console.log(listResp.data);
+
+// Get model detail
+const detailResp = await axios.post(
+  'https://api.wiro.ai/v1/Tool/Detail',
+  { slugowner: 'google', slugproject: 'nano-banana' },
+  { headers }
+);
+console.log(detailResp.data);
+```
+
+### PHP
+
+```php
+<?php
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, "https://api.wiro.ai/v1/Tool/List");
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Content-Type: application/json",
+    "x-api-key: YOUR_API_KEY"
+]);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    "start" => "0",
+    "limit" => "20",
+    "search" => "stable diffusion",
+    "categories" => ["image-generation"],
+    "hideworkflows" => true,
+    "summary" => true
+]));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = curl_exec($ch);
+curl_close($ch);
+echo $response;
+```
+
+### C#
+
+```csharp
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("x-api-key", "YOUR_API_KEY");
+
+var content = new StringContent(
+    JsonSerializer.Serialize(new {
+        start = "0",
+        limit = "20",
+        search = "stable diffusion",
+        categories = new[] { "image-generation" },
+        hideworkflows = true,
+        summary = true
+    }),
+    Encoding.UTF8, "application/json");
+
+var response = await client.PostAsync(
+    "https://api.wiro.ai/v1/Tool/List", content);
+var result = await response.Content.ReadAsStringAsync();
+Console.WriteLine(result);
+```
+
+### Go
+
+```go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+    "io"
+)
+
+func main() {
+    body, _ := json.Marshal(map[string]interface{}{
+        "start":      "0",
+        "limit":      "20",
+        "search":     "stable diffusion",
+        "categories":    []string{"image-generation"},
+        "hideworkflows": true,
+        "summary":       true,
+    })
+    req, _ := http.NewRequest("POST",
+        "https://api.wiro.ai/v1/Tool/List",
+        bytes.NewBuffer(body))
+    req.Header.Set("Content-Type", "application/json")
+    req.Header.Set("x-api-key", "YOUR_API_KEY")
+
+    resp, _ := http.DefaultClient.Do(req)
+    defer resp.Body.Close()
+    data, _ := io.ReadAll(resp.Body)
+    fmt.Println(string(data))
+}
+```
+
+### Swift
+
+```swift
+import Foundation
+
+let url = URL(string: "https://api.wiro.ai/v1/Tool/List")!
+var request = URLRequest(url: url)
+request.httpMethod = "POST"
+request.setValue("application/json",
+    forHTTPHeaderField: "Content-Type")
+request.setValue("YOUR_API_KEY",
+    forHTTPHeaderField: "x-api-key")
+request.httpBody = try! JSONSerialization.data(
+    withJSONObject: [
+        "start": "0",
+        "limit": "20",
+        "search": "stable diffusion",
+        "categories": ["image-generation"],
+        "hideworkflows": true,
+        "summary": true
+    ])
+
+let (data, _) = try await URLSession.shared
+    .data(for: request)
+print(String(data: data, encoding: .utf8)!)
+```
+
+### Kotlin
+
+```kotlin
+import java.net.HttpURLConnection
+import java.net.URL
+
+val url = URL("https://api.wiro.ai/v1/Tool/List")
+val conn = url.openConnection() as HttpURLConnection
+conn.requestMethod = "POST"
+conn.setRequestProperty("Content-Type", "application/json")
+conn.setRequestProperty("x-api-key", "YOUR_API_KEY")
+conn.doOutput = true
+conn.outputStream.write("""{
+    "start": "0",
+    "limit": "20",
+    "search": "stable diffusion",
+    "categories": ["image-generation"],
+    "hideworkflows": true,
+    "summary": true
+}""".toByteArray())
+
+val response = conn.inputStream.bufferedReader().readText()
+println(response)
+```
+
+### Dart
+
+```dart
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+final response = await http.post(
+  Uri.parse('https://api.wiro.ai/v1/Tool/List'),
+  headers: {
+    'Content-Type': 'application/json',
+    'x-api-key': 'YOUR_API_KEY',
+  },
+  body: jsonEncode({
+    'start': '0',
+    'limit': '20',
+    'search': 'stable diffusion',
+    'categories': ['image-generation'],
+    'hideworkflows': true,
+    'summary': true,
+  }),
+);
+print(response.body);
+```
+
+### Response (List)
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "total": 2,
+  "tool": [{
+    "id": "1611",
+    "title": "Virtual Try-on",
+    "slugowner": "wiro",
+    "slugproject": "Virtual Try-On",
+    "cleanslugowner": "wiro",
+    "cleanslugproject": "virtual-try-on",
+    "description": "Integrate the Wiro Virtual Try-On API...",
+    "image": "https://cdn.wiro.ai/uploads/models/...",
+    "categories": ["tool", "image-to-image", "image-editing"],
+    "tags": [],
+    "marketplace": 1,
+    "dynamicprice": "[{\"inputs\":{},\"price\":0.09}]",
+    "taskstat": { "runcount": 672, "successcount": "254" }
+  }]
+}
+```
+
+### Response (Detail)
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "tool": [{
+    "id": "1562",
+    "title": "Nano Banana API: Create Mobile & Web Apps with Nano Banana",
+    "slugowner": "google",
+    "slugproject": "nano-banana",
+    "cleanslugowner": "google",
+    "cleanslugproject": "nano-banana",
+    "description": "Google's Gemini 2.5 Flash Image Preview, also known as Nano Banana, model for text-to-image and image-to-image generation.",
+    "categories": ["image-to-image", "text-to-image", "image-editing"],
+    "parameters": [{
+      "title": "",
+      "subtitle": "",
+      "items": [
+        { "id": "inputImage", "type": "combinefileinput", "required": false },
+        { "id": "prompt", "type": "textarea", "required": true },
+        { "id": "temperature", "type": "float", "required": false },
+        { "id": "aspectRatio", "type": "select", "required": false },
+        { "id": "safetySetting", "type": "select", "required": false }
+      ]
+    }],
+    "inspire": [{ "prompt": "Create a Spider Man image flying over Warsaw", "inputImage": "" }],
+    "samples": ["https://cdn.wiro.ai/uploads/models/google-nano-banana-sample-15.webp"],
+    "dynamicprice": [{ "inputs": {}, "price": 0.039, "priceMethod": "cpo" }],
+    "averagepoint": "4.38",
+    "taskstat": { "runcount": "531554", "successcount": "510396" },
+    "seotitle": "Nano Banana API: Create Mobile & Web Apps with Nano Banana"
+  }]
+}
+```
 
 ---
 
@@ -365,12 +1519,11 @@ Execute any AI model with a single API call and get real-time updates.
 
 ## **POST** /Run/{owner-slug}/{model-slug}
 
-Starts an AI model run. The endpoint accepts model-specific parameters and returns a **task ID** you can use to track progress via [polling](#tasks), [WebSocket](#websocket), or **webhook** by providing a `callbackUrl` parameter, and Wiro will POST the result to your URL when the task completes.
+Starts an AI model run. The endpoint accepts model-specific parameters and returns a **task ID** you can use to track progress via [polling](/docs/tasks), [WebSocket](/docs/websocket), or **webhook** by providing a `callbackUrl` parameter, and Wiro will POST the result to your URL when the task completes.
 
 If you want one HTTP request to wait for the finished task, use
-[POST /Run/{owner}/{model}/sync](#run-sync) on this same API host. For OpenAI,
-or Anthropic LLM protocols, see the
-[Direct LLM Gateway](#direct-llm-gateway).
+[POST /Run/{owner}/{model}/sync](#run-sync) on this same API host. For OpenAI or Anthropic LLM protocols, see the
+[Direct LLM Gateway](/docs/completions-api).
 
 ## Content Types
 
@@ -384,14 +1537,14 @@ Use multipart when the model requires **file inputs** (images, audio, documents)
 
 ## Request Parameters
 
-Parameters vary by model. Use the [/Tool/Detail](#models) endpoint to discover which parameters a model accepts. The following optional parameters apply to all runs:
+Parameters vary by model. Use the [/Tool/Detail](/docs/models) endpoint to discover which parameters a model accepts. The following optional parameters apply to all runs:
 
 #### Common Parameters
 
-| Parameter     | Type   | Required | Description                                                              |
-| ------------- | ------ | -------- | ------------------------------------------------------------------------ |
-| `callbackUrl` | string | No       | URL to receive a POST webhook when the task completes. It must be a public `http(s)` address: a host that is, or resolves to, a private, loopback or link-local address gets no webhook. The task still runs, and `Task/Detail` returns its result. Any 2xx answer counts as delivered; see [Webhook Callback](/docs/model-parameters#callback-url) for retries and redirects. |
-| `projectid`   | string | No       | Override the default project for billing (if you have multiple projects) |
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `callbackUrl` | string | No | URL to receive a POST webhook when the task completes. It must be a public `http(s)` address: a host that is, or resolves to, a private, loopback or link-local address gets no webhook. The task still runs, and `Task/Detail` returns its result. Any 2xx answer counts as delivered; see [Webhook Callback](/docs/model-parameters#callback-url) for retries and redirects. |
+| `projectid` | string | No | Override the default project for billing (if you have multiple projects) |
 
 > **URL inputs must be public too.** When you send a file input as a URL, Wiro downloads the file itself, so the URL must be a public `http(s)` address, and so must every address it redirects to. A host that is, or resolves to, a private, loopback or link-local address isn't fetched, and the run gets no file for that input.
 
@@ -712,7 +1865,7 @@ unchanged.
 ```
 
 OpenAI Chat/Responses, Anthropic Messages, and Cursor clients belong on
-`https://llm.wiro.ai`. See the [Direct LLM Gateway](#direct-llm-gateway).
+`https://llm.wiro.ai`. See the [Direct LLM Gateway](/docs/completions-api).
 
 ## Full Flow
 
@@ -725,6 +1878,297 @@ The typical workflow after calling the Run endpoint:
    read its outputs
 
 For real-time streaming, use the WebSocket connection with the `socketaccesstoken` returned in the run response. For simpler integrations, poll the Task Detail endpoint every few seconds.
+
+## Code Examples
+
+### curl (JSON)
+
+```bash
+# Run a model with JSON body
+curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "prompt": "A futuristic city at sunset",
+    "negative_prompt": "blurry, low quality",
+    "width": 1024,
+    "height": 1024
+  }'
+```
+
+### curl (Multipart)
+
+```bash
+# Run a model with file input (multipart)
+curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "image=@/path/to/photo.jpg" \
+  -F "scale=4"
+```
+
+### Python
+
+```python
+import requests
+
+headers = {
+    "x-api-key": "YOUR_API_KEY",
+    "Content-Type": "application/json"
+}
+
+# JSON request
+response = requests.post(
+    "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}",
+    headers=headers,
+    json={
+        "prompt": "A futuristic city at sunset",
+        "negative_prompt": "blurry, low quality",
+        "width": 1024,
+        "height": 1024
+    }
+)
+data = response.json()
+task_id = data["taskid"]
+socket_token = data["socketaccesstoken"]
+print(f"Task ID: {task_id}")
+
+# Multipart request (file upload)
+files = {"image": open("photo.jpg", "rb")}
+form_data = {"scale": "4"}
+resp_multi = requests.post(
+    "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}",
+    headers={"x-api-key": "YOUR_API_KEY"},
+    files=files,
+    data=form_data
+)
+```
+
+### Node.js
+
+```javascript
+const axios = require('axios');
+const FormData = require('form-data');
+const fs = require('fs');
+
+const headers = {
+  'x-api-key': 'YOUR_API_KEY',
+  'Content-Type': 'application/json'
+};
+
+// JSON request
+const response = await axios.post(
+  'https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}',
+  {
+    prompt: 'A futuristic city at sunset',
+    negative_prompt: 'blurry, low quality',
+    width: 1024,
+    height: 1024
+  },
+  { headers }
+);
+const { taskid, socketaccesstoken } = response.data;
+console.log('Task ID:', taskid);
+
+// Multipart request (file upload)
+const form = new FormData();
+form.append('image', fs.createReadStream('photo.jpg'));
+form.append('scale', '4');
+const multiResp = await axios.post(
+  'https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}',
+  form,
+  { headers: { 'x-api-key': 'YOUR_API_KEY', ...form.getHeaders() } }
+);
+```
+
+### PHP
+
+```php
+<?php
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}");
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Content-Type: application/json",
+    "x-api-key: YOUR_API_KEY"
+]);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    "prompt" => "A futuristic city at sunset",
+    "negative_prompt" => "blurry, low quality",
+    "width" => 1024,
+    "height" => 1024
+]));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = curl_exec($ch);
+curl_close($ch);
+echo $response;
+```
+
+### C#
+
+```csharp
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("x-api-key", "YOUR_API_KEY");
+
+var content = new StringContent(
+    JsonSerializer.Serialize(new {
+        prompt = "A futuristic city at sunset",
+        negative_prompt = "blurry, low quality",
+        width = 1024,
+        height = 1024
+    }),
+    Encoding.UTF8, "application/json");
+
+var response = await client.PostAsync(
+    "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}", content);
+var result = await response.Content.ReadAsStringAsync();
+Console.WriteLine(result);
+```
+
+### Go
+
+```go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+    "io"
+)
+
+func main() {
+    body, _ := json.Marshal(map[string]interface{}{
+        "prompt":          "A futuristic city at sunset",
+        "negative_prompt": "blurry, low quality",
+        "width":           1024,
+        "height":          1024,
+    })
+    req, _ := http.NewRequest("POST",
+        "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}",
+        bytes.NewBuffer(body))
+    req.Header.Set("Content-Type", "application/json")
+    req.Header.Set("x-api-key", "YOUR_API_KEY")
+
+    resp, _ := http.DefaultClient.Do(req)
+    defer resp.Body.Close()
+    data, _ := io.ReadAll(resp.Body)
+    fmt.Println(string(data))
+}
+```
+
+### Swift
+
+```swift
+import Foundation
+
+let url = URL(string: "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}")!
+var request = URLRequest(url: url)
+request.httpMethod = "POST"
+request.setValue("application/json",
+    forHTTPHeaderField: "Content-Type")
+request.setValue("YOUR_API_KEY",
+    forHTTPHeaderField: "x-api-key")
+request.httpBody = try! JSONSerialization.data(
+    withJSONObject: [
+        "prompt": "A futuristic city at sunset",
+        "negative_prompt": "blurry, low quality",
+        "width": 1024,
+        "height": 1024
+    ])
+
+let (data, _) = try await URLSession.shared
+    .data(for: request)
+print(String(data: data, encoding: .utf8)!)
+```
+
+### Kotlin
+
+```kotlin
+import java.net.HttpURLConnection
+import java.net.URL
+
+val url = URL("https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}")
+val conn = url.openConnection() as HttpURLConnection
+conn.requestMethod = "POST"
+conn.setRequestProperty("Content-Type", "application/json")
+conn.setRequestProperty("x-api-key", "YOUR_API_KEY")
+conn.doOutput = true
+conn.outputStream.write("""{
+    "prompt": "A futuristic city at sunset",
+    "negative_prompt": "blurry, low quality",
+    "width": 1024,
+    "height": 1024
+}""".toByteArray())
+
+val response = conn.inputStream.bufferedReader().readText()
+println(response)
+```
+
+### Dart
+
+```dart
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+final response = await http.post(
+  Uri.parse('https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}'),
+  headers: {
+    'Content-Type': 'application/json',
+    'x-api-key': 'YOUR_API_KEY',
+  },
+  body: jsonEncode({
+    'prompt': 'A futuristic city at sunset',
+    'negative_prompt': 'blurry, low quality',
+    'width': 1024,
+    'height': 1024,
+  }),
+);
+print(response.body);
+```
+
+### curl (Sync wait)
+
+```bash
+# Wait for a finite model on api.wiro.ai
+curl -X POST "https://api.wiro.ai/v1/Run/claude/fable-5/sync" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "prompt": "Reply with one concise sentence about Türkiye.",
+    "session_id": "fable-sync-example",
+    "effort": "medium",
+    "webSearch": "false",
+    "maxOutputTokens": 128
+  }'
+```
+
+### curl (Sync SSE)
+
+```bash
+curl -N -X POST "https://api.wiro.ai/v1/Run/claude/fable-5/sync?stream=true" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Accept: text/event-stream" \
+  -d '{
+    "prompt": "Reply with one concise sentence about Türkiye.",
+    "session_id": "fable-stream-example",
+    "effort": "medium",
+    "webSearch": "false",
+    "maxOutputTokens": 128
+  }'
+```
+
+### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "taskid": "2221",
+  "socketaccesstoken": "eDcCm5yyUfIvMFspTwww49OUfgXkQt"
+}
+```
 
 ---
 
@@ -773,7 +2217,7 @@ name: discover the exact ID and protocol capabilities first.
 - `POST /v1/Run/{owner}/{project}` remains the asynchronous task-creation
   endpoint on `api.wiro.ai`.
 - `POST /v1/Run/{owner}/{project}/sync` is the generic finite-model wait on
-  `api.wiro.ai`; see [Run a Model](#run-a-model). It is not a Direct LLM
+  `api.wiro.ai`; see [Run a Model](/docs/run-a-model). It is not a Direct LLM
   protocol.
 - `GET /v1/models` lists verified `llm-tool-call` models and needs no API key.
   The list is not filtered by [Model Access](/docs/model-access) rules; they
@@ -850,7 +2294,7 @@ the protocol's normal client-history requirements. Responses uses
 Point a compatible client at `llm.wiro.ai`. Use a project Bearer credential:
 API Key Only projects send `YOUR_API_KEY`; Signature projects send
 `YOUR_API_KEY:YOUR_API_SECRET`. Generic finite-model waits stay on
-[Run a Model /sync](#run-a-model).
+[Run a Model /sync](/docs/run-a-model).
 
 Every client below needs the exact lowercase `owner/model` ID. Two places give
 it to you:
@@ -2906,7 +4350,7 @@ the model runs, not on this route.
 ## Generic finite task completion
 
 `POST /v1/Run/{owner}/{project}/sync` lives on `https://api.wiro.ai/v1`, not
-this gateway. See [Run a Model](#run-a-model) for JSON wait, SSE, and
+this gateway. See [Run a Model](/docs/run-a-model) for JSON wait, SSE, and
 timeout recovery. Direct LLM clients should use Chat, Responses, or Messages
 below.
 
@@ -3303,7 +4747,7 @@ parent:
 
 `previous_response_id` is the public continuation field for this gateway route.
 Do not send `previousTaskToken` to `/v1/responses`. Direct Run clients use
-`previousTaskToken` as described in [Run a Model](#run-a-model).
+`previousTaskToken` as described in [Run a Model](/docs/run-a-model).
 `session_id` is not accepted by Responses; use stored
 `previous_response_id` continuation instead.
 
@@ -3659,7 +5103,7 @@ The Direct LLM Gateway does not currently provide:
   Messages routes
 - the legacy `/v1/completions` endpoint
 
-Use Wiro's normal [Run or /sync APIs](#run-a-model) for supported finite
+Use Wiro's normal [Run or /sync APIs](/docs/run-a-model) for supported finite
 media-generation models. Image and document **input** to an LLM is distinct from
 media generation and remains available when the selected model advertises it.
 Remote media fetches must use public HTTPS; validated data/base64 sources and
@@ -3851,23 +5295,23 @@ Every model has its own set of input parameters. Use the `/Tool/Detail` endpoint
 
 ## Parameter Types
 
-| Type               | Description                          | Example Parameters                        |
-| ------------------ | ------------------------------------ | ----------------------------------------- |
-| `text`             | Single-line text input               | URLs, names, short strings                |
-| `textarea`         | Multi-line text input                | `prompt`, `negative_prompt`, descriptions |
-| `select`           | Dropdown with predefined options     | `outputType`, `language`, `style`         |
-| `range`            | Numeric value (slider)               | `width`, `height`, `scale`, `strength`    |
-| `fileinput`        | Single file upload (1 file or 1 URL) | `inputImage`, `inputAudio`                |
-| `multifileinput`   | Multiple files (up to N files/URLs)  | `inputDocumentMultiple`                   |
-| `combinefileinput` | Up to N entries (files, URLs, or mixed) | `inputImageClothes`                    |
+| Type | Description | Example Parameters |
+|------|-------------|-------------------|
+| `text` | Single-line text input | URLs, names, short strings |
+| `textarea` | Multi-line text input | `prompt`, `negative_prompt`, descriptions |
+| `select` | Dropdown with predefined options | `outputType`, `language`, `style` |
+| `range` | Numeric value (slider) | `width`, `height`, `scale`, `strength` |
+| `fileinput` | Single file upload (1 file or 1 URL) | `inputImage`, `inputAudio` |
+| `multifileinput` | Multiple files (up to N files/URLs) | `inputDocumentMultiple` |
+| `combinefileinput` | Up to N entries (files, URLs, or mixed) | `inputImageClothes` |
 
 ## JSON vs Multipart
 
 The content type depends on whether the model requires file inputs:
 
-| Condition           | Content-Type          | When to Use                                                 |
-| ------------------- | --------------------- | ----------------------------------------------------------- |
-| No file parameters  | `application/json`    | Text-only models (LLMs, image generation from prompt)       |
+| Condition | Content-Type | When to Use |
+|-----------|-------------|-------------|
+| No file parameters | `application/json` | Text-only models (LLMs, image generation from prompt) |
 | Has file parameters | `multipart/form-data` | Models that accept image, audio, video, or document uploads |
 
 > **Tip:** For `fileinput` parameters, use the `{id}Url` suffix to send a URL (e.g., `inputImageUrl`). For `multifileinput`, send comma-separated URLs in the field that puts `Url` before `Multiple` (e.g., `inputDocumentUrlMultiple` for `inputDocumentMultiple`). For `combinefileinput`, pass URLs directly in the original parameter. No suffix is needed. A `fileinput` or `multifileinput` with no URL field takes the URL, or the comma-separated list, in the parameter itself. Every URL must be a public `http(s)` address, and so must any address it redirects to: Wiro doesn't fetch a URL whose host is, or resolves to, a private, loopback or link-local address.
@@ -3992,7 +5436,6 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 Realtime voice models accept configuration parameters (voice, system instructions, audio format, etc.) as JSON. Parameters vary per model. Use `/Tool/Detail` to discover them. The actual audio interaction happens over [WebSocket](/docs/realtime-voice-conversation) after the task starts:
 
 Available realtime models include:
-
 - [openai/gpt-realtime-mini](https://wiro.ai/models/openai/gpt-realtime-mini)
 - [openai/gpt-realtime](https://wiro.ai/models/openai/gpt-realtime)
 - [elevenlabs/realtime-conversational-ai](https://wiro.ai/models/elevenlabs/realtime-conversational-ai)
@@ -4014,7 +5457,6 @@ Available realtime models include:
 Realtime TTS models stream synthesized audio back over [WebSocket](/docs/realtime-text-to-speech) as binary frames. Text is required. Reference audio is optional for voice cloning.
 
 Available realtime TTS models include:
-
 - [openmoss/moss-tts-realtime](https://wiro.ai/models/openmoss/moss-tts-realtime)
 
 ```json
@@ -4035,7 +5477,6 @@ Available realtime TTS models include:
 Realtime STT models transcribe audio streamed from the microphone over [WebSocket](/docs/realtime-speech-to-text). No text input is needed: audio is streamed from the microphone. The `transcriptionDelay` controls the speed vs accuracy trade-off.
 
 Available realtime STT models include:
-
 - [mistralai/voxtral-mini-4b-realtime-2602](https://wiro.ai/models/mistralai/voxtral-mini-4b-realtime-2602)
 
 ```json
@@ -4087,32 +5528,32 @@ Every model run creates a task that progresses through a defined set of stages:
 | `task_assign` | The task has been assigned to a specific GPU. The model is being loaded into memory. This may take a few seconds depending on the model size. |
 | `task_start` | The model command has started executing. Inference is now running on the GPU. |
 | `task_output` | The model is producing output. This event is emitted **multiple times**: each time the model writes to stdout, a new `task_output` message is sent via WebSocket. For LLM models, each `task_output` event carries the latest cumulative snapshot of the output, so render the newest one instead of appending. |
-| `task_error` | As a live WebSocket event, this means the model wrote to stderr and is an **interim log**, not necessarily a failure. As persisted `status` in Task/Detail, it marks a pre-execution failure awaiting recovery or requeue; it does not close the task. |
+| `task_error` | As a live WebSocket event, this means the model wrote to stderr and is an **interim log**, not necessarily a failure. As the persisted `status` returned by Task/Detail, it marks a pre-execution failure awaiting recovery or requeue; it does not close the task. |
 | `task_output_full` | Signals that process stdout collection ended. Raw accumulated stdout is not exposed on the public socket. |
 | `task_error_full` | Signals that process stderr collection ended. Raw accumulated stderr is not exposed on the public socket. |
 | `task_end` | The model process has exited. Emitted once. This fires **before** post-processing, so do not use this event to determine success. Wait for `task_postprocess_end` instead. |
 | `task_postprocess_start` | Post-processing has started. The system is preparing the output files: encoding, uploading to CDN, and generating access URLs. |
-| `task_postprocess_end` | Post-processing completed. On the public WebSocket, check `success` and `exitCode` (`0` = success); `message` contains sanitized outputs. Task/Detail continues to use `pexit` as its primary success indicator. **This is the event you should listen for** to get final results. |
+| `task_postprocess_end` | Post-processing completed. On the public WebSocket, check `success` and `exitCode` (`0` = success); the `message` array contains sanitized outputs. Task/Detail continues to use `pexit` as its primary success indicator. **This is the event you should listen for** to get final results. |
 | `task_cancel` | The task was cancelled (if queued) or killed (if running) by the user. |
 
 ### Realtime Sessions
 
 The following statuses are exclusive to realtime models (voice conversation, text-to-speech, and speech-to-text). They are not emitted for standard model runs.
 
-| Status              | Description                                                                         |
-| ------------------- | ----------------------------------------------------------------------------------- |
-| `task_stream_ready` | Realtime model is ready to receive audio/text input, so you can start sending data    |
-| `task_stream_end`   | Realtime session has ended: the model finished speaking or the session was closed  |
-| `task_cost`         | Real-time cost update emitted during execution: shows the running cost of the task |
+| Status | Description |
+|--------|-------------|
+| `task_stream_ready` | Realtime model is ready to receive audio/text input, so you can start sending data |
+| `task_stream_end` | Realtime session has ended: the model finished speaking or the session was closed |
+| `task_cost` | Real-time cost update emitted during execution: shows the running cost of the task |
 | `task_session_stopped` | The server is ending the session after the turn that reached a [spend limit](/docs/spend-limits) (`reason` `spend_limit`, `code` `93`) or used up the balance (`reason` `balance`, `code` `97`). It is not a failure: the usual closing events follow (see [Realtime Voice](/docs/realtime-voice-conversation#realtime-end-session)) |
 
 ## Determining Success or Failure
 
 Normal model executions, both successful and failed, reach
-`task_postprocess_end`. Check `pexit` or `outputs` (or both) to determine the
-result. A setup failure may temporarily set persisted `status: "task_error"`
-with a `debugerror`, but clients must keep waiting until
-`task_postprocess_end` or `task_cancel`:
+`task_postprocess_end`. The status alone does not tell you whether execution
+succeeded; check `pexit` or `outputs` (or both). A setup failure may temporarily
+set persisted `status: "task_error"` with a `debugerror`, but clients must keep
+waiting until `task_postprocess_end` or `task_cancel`:
 
 - `pexit`: the process exit code. `"0"` means success, any other value means the model encountered an error. This is the most reliable indicator.
 - `outputs`: the output files array. For non-LLM models, a successful run populates this with CDN URLs. If it's empty or missing, the task likely failed.
@@ -4177,6 +5618,30 @@ with a `debugerror`, but clients must keep waiting until
 > persisted `status: "task_error"` in Task/Detail. Both are non-terminal; only
 > `task_postprocess_end` and `task_cancel` close the task.
 
+## Billing & Cost
+
+The `totalcost` field in the Task Detail response shows the actual cost charged for the run. **Only successful tasks are billed**. If `pexit` is non-zero (failure), the task is not charged and `totalcost` will be `"0"`.
+
+```json
+// Successful run — billed
+{
+  "status": "task_postprocess_end",
+  "pexit": "0",
+  "totalcost": "0.003510000000",
+  "elapsedseconds": "6.0000"
+}
+
+// Failed run — not billed
+{
+  "status": "task_postprocess_end",
+  "pexit": "1",
+  "totalcost": "0",
+  "elapsedseconds": "4.0000"
+}
+```
+
+Use the `totalcost` field to track spending per task. For more details on how costs are calculated, see [Pricing](/docs/pricing).
+
 <a id="task-surfaces"></a>
 
 ## Surfaces
@@ -4222,9 +5687,9 @@ For LLM requests, `outputs` contains a structured entry with
 `contenttype: "raw"` and ordered `content.segments`; `debugoutput` contains the
 merged plain text. Use the representation that matches your UI.
 
-For real-time streaming, use [WebSocket](#websocket). Each LLM `task_output`
-event contains the latest cumulative `message.segments` snapshot; replace your
-previous snapshot instead of appending it.
+For real-time streaming, use [WebSocket](/docs/websocket). Each LLM
+`task_output` event contains the latest cumulative `message.segments` snapshot;
+replace your previous snapshot instead of appending it.
 
 ### Structured LLM content fields
 
@@ -4273,10 +5738,10 @@ produces a non-zero `pexit`.
 
 Retrieves the current status and output of a task. You can query by either `tasktoken` or `taskid`.
 
-| Parameter   | Type   | Required | Description                                   |
-| ----------- | ------ | -------- | --------------------------------------------- |
-| `tasktoken` | string | No       | The task token returned from the Run endpoint |
-| `taskid`    | string | No       | The task ID (alternative to tasktoken)        |
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `tasktoken` | string | No | The task token returned from the Run endpoint |
+| `taskid` | string | No | The task ID (alternative to tasktoken) |
 
 ### Response
 
@@ -4285,32 +5750,28 @@ Retrieves the current status and output of a task. You can query by either `task
   "result": true,
   "errors": [],
   "total": "1",
-  "tasklist": [
-    {
-      "id": "534574",
-      "socketaccesstoken": "eDcCm5yyUfIvMFspTwww49OUfgXkQt",
-      "parameters": { "prompt": "Hello, world!" },
-      "status": "task_postprocess_end",
-      "pexit": "0",
-      "debugoutput": "",
-      "starttime": "1734513809",
-      "endtime": "1734513813",
-      "elapsedseconds": "6.0000",
-      "totalcost": "0.003510000000",
-      "modeldescription": "FLUX.2 [dev] is a 32 billion parameter rectified flow transformer...",
-      "modelslugowner": "wiro",
-      "modelslugproject": "flux-2-dev",
-      "surface": "api",
-      "outputs": [
-        {
-          "name": "0.png",
-          "contenttype": "image/png",
-          "size": "202472",
-          "url": "https://cdn1.wiro.ai/.../0.png"
-        }
-      ]
-    }
-  ]
+  "tasklist": [{
+    "id": "534574",
+    "socketaccesstoken": "eDcCm5yyUfIvMFspTwww49OUfgXkQt",
+    "parameters": { "prompt": "Hello, world!" },
+    "status": "task_postprocess_end",
+    "pexit": "0",
+    "debugoutput": "",
+    "starttime": "1734513809",
+    "endtime": "1734513813",
+    "elapsedseconds": "6.0000",
+    "totalcost": "0.003510000000",
+    "modeldescription": "FLUX.2 [dev] is a 32 billion parameter rectified flow transformer...",
+    "modelslugowner": "wiro",
+    "modelslugproject": "flux-2-dev",
+    "surface": "api",
+    "outputs": [{
+      "name": "0.png",
+      "contenttype": "image/png",
+      "size": "202472",
+      "url": "https://cdn1.wiro.ai/.../0.png"
+    }]
+  }]
 }
 ```
 
@@ -4367,31 +5828,27 @@ Without `surface`, the list leaves out the tasks that workflow runs start for th
   "result": true,
   "errors": [],
   "total": "1",
-  "tasklist": [
-    {
-      "id": "534602",
-      "socketaccesstoken": "Tq4wZ8nLx2RmKc7VbYp3HdJ9sFgNa1",
-      "parameters": { "prompt": "Square banner for a bakery weekend sale, warm colors" },
-      "status": "task_postprocess_end",
-      "pexit": "0",
-      "debugoutput": "",
-      "starttime": "1734514421",
-      "endtime": "1734514452",
-      "elapsedseconds": "31.0000",
-      "totalcost": "0.140000000000",
-      "modelslugowner": "google",
-      "modelslugproject": "nano-banana-pro",
-      "surface": "studio",
-      "outputs": [
-        {
-          "name": "0.png",
-          "contenttype": "image/png",
-          "size": "1843212",
-          "url": "https://cdn1.wiro.ai/.../0.png"
-        }
-      ]
-    }
-  ]
+  "tasklist": [{
+    "id": "534602",
+    "socketaccesstoken": "Tq4wZ8nLx2RmKc7VbYp3HdJ9sFgNa1",
+    "parameters": { "prompt": "Square banner for a bakery weekend sale, warm colors" },
+    "status": "task_postprocess_end",
+    "pexit": "0",
+    "debugoutput": "",
+    "starttime": "1734514421",
+    "endtime": "1734514452",
+    "elapsedseconds": "31.0000",
+    "totalcost": "0.140000000000",
+    "modelslugowner": "google",
+    "modelslugproject": "nano-banana-pro",
+    "surface": "studio",
+    "outputs": [{
+      "name": "0.png",
+      "contenttype": "image/png",
+      "size": "1843212",
+      "url": "https://cdn1.wiro.ai/.../0.png"
+    }]
+  }]
 }
 ```
 
@@ -4429,9 +5886,9 @@ Provide either `taskid` or `socketaccesstoken`.
 
 Deletes the task's input and output files. Their URLs stop working right away.
 
-| Parameter   | Type   | Required | Description                          |
-| ----------- | ------ | -------- | ------------------------------------ |
-| `tasktoken` | string | Yes      | The task token (socketaccesstoken)   |
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `tasktoken` | string | Yes | The task token (socketaccesstoken) |
 
 The task must be in a terminal state (`task_postprocess_end` or `task_cancel`). Only the task owner can delete files. Shared sample input files are kept.
 
@@ -4457,6 +5914,314 @@ After deletion:
 | `There is no task yet.` | Invalid tasktoken or unauthorized |
 | `Task must be completed or cancelled before deleting files` | Task is still running |
 
+## Code Examples
+
+### curl (Detail)
+
+```bash
+# Get task details by task token
+curl -X POST "https://api.wiro.ai/v1/Task/Detail" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{"tasktoken": "abc123-def456-ghi789"}'
+
+# Or by task ID
+curl -X POST "https://api.wiro.ai/v1/Task/Detail" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{"taskid": "task-id-here"}'
+```
+
+### curl (List)
+
+```bash
+# List the workspace's 10 most recent Studio tasks
+curl -X POST "https://api.wiro.ai/v1/Task/List" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{"surface": "studio", "limit": 10}'
+```
+
+### curl (Cancel/Kill/InputOutputDelete)
+
+```bash
+# Cancel a queued task
+curl -X POST "https://api.wiro.ai/v1/Task/Cancel" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{"taskid": "534574"}'
+
+# Kill a running task
+curl -X POST "https://api.wiro.ai/v1/Task/Kill" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{"socketaccesstoken": "abc123-def456-ghi789"}'
+
+# Delete task input and output files
+curl -X POST "https://api.wiro.ai/v1/Task/InputOutputDelete" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{"tasktoken": "abc123-def456-ghi789"}'
+```
+
+### Python
+
+```python
+import requests, time
+
+headers = {
+    "x-api-key": "YOUR_API_KEY",
+    "Content-Type": "application/json"
+}
+
+task_token = "abc123-def456-ghi789"
+task_id = "534574"
+
+# Poll task detail until completion
+while True:
+    resp = requests.post(
+        "https://api.wiro.ai/v1/Task/Detail",
+        headers=headers,
+        json={"tasktoken": task_token}
+    )
+    task = resp.json()["tasklist"][0]
+    print(f"Status: {task['status']}")
+
+    if task["status"] == "task_postprocess_end":
+        if task["pexit"] == "0":
+            print("Outputs:", task["outputs"])
+        else:
+            print("Failed: pexit", task["pexit"])
+        break
+    elif task["status"] == "task_cancel":
+        print("Task cancelled")
+        break
+
+    time.sleep(3)
+
+# Cancel a queued task
+requests.post(
+    "https://api.wiro.ai/v1/Task/Cancel",
+    headers=headers,
+    json={"taskid": task_id}
+)
+
+# Kill a running task
+requests.post(
+    "https://api.wiro.ai/v1/Task/Kill",
+    headers=headers,
+    json={"socketaccesstoken": task_token}
+)
+```
+
+### Node.js
+
+```javascript
+const axios = require('axios');
+
+const headers = {
+  'x-api-key': 'YOUR_API_KEY',
+  'Content-Type': 'application/json'
+};
+
+const taskToken = 'abc123-def456-ghi789';
+const taskId = '534574';
+
+// Poll task detail until completion
+async function pollTask() {
+  while (true) {
+    const resp = await axios.post(
+      'https://api.wiro.ai/v1/Task/Detail',
+      { tasktoken: taskToken },
+      { headers }
+    );
+    const task = resp.data.tasklist[0];
+    console.log('Status:', task.status);
+
+    if (task.status === 'task_postprocess_end') {
+      if (task.pexit === '0') {
+        console.log('Outputs:', task.outputs);
+      } else {
+        console.log('Failed: pexit', task.pexit);
+      }
+      break;
+    }
+    if (task.status === 'task_cancel') {
+      console.log('Task cancelled');
+      break;
+    }
+
+    await new Promise(r => setTimeout(r, 3000));
+  }
+}
+
+// Cancel / Kill
+await axios.post('https://api.wiro.ai/v1/Task/Cancel',
+  { taskid: taskId }, { headers });
+
+await axios.post('https://api.wiro.ai/v1/Task/Kill',
+  { socketaccesstoken: taskToken }, { headers });
+```
+
+### PHP
+
+```php
+<?php
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, "https://api.wiro.ai/v1/Task/Detail");
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Content-Type: application/json",
+    "x-api-key: YOUR_API_KEY"
+]);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    "tasktoken" => "abc123-def456-ghi789"
+]));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = curl_exec($ch);
+curl_close($ch);
+echo $response;
+```
+
+### C#
+
+```csharp
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("x-api-key", "YOUR_API_KEY");
+
+var content = new StringContent(
+    JsonSerializer.Serialize(new {
+        tasktoken = "abc123-def456-ghi789"
+    }),
+    Encoding.UTF8, "application/json");
+
+var response = await client.PostAsync(
+    "https://api.wiro.ai/v1/Task/Detail", content);
+var result = await response.Content.ReadAsStringAsync();
+Console.WriteLine(result);
+```
+
+### Go
+
+```go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+    "io"
+)
+
+func main() {
+    body, _ := json.Marshal(map[string]string{
+        "tasktoken": "abc123-def456-ghi789",
+    })
+    req, _ := http.NewRequest("POST",
+        "https://api.wiro.ai/v1/Task/Detail",
+        bytes.NewBuffer(body))
+    req.Header.Set("Content-Type", "application/json")
+    req.Header.Set("x-api-key", "YOUR_API_KEY")
+
+    resp, _ := http.DefaultClient.Do(req)
+    defer resp.Body.Close()
+    data, _ := io.ReadAll(resp.Body)
+    fmt.Println(string(data))
+}
+```
+
+### Swift
+
+```swift
+import Foundation
+
+let url = URL(string: "https://api.wiro.ai/v1/Task/Detail")!
+var request = URLRequest(url: url)
+request.httpMethod = "POST"
+request.setValue("application/json",
+    forHTTPHeaderField: "Content-Type")
+request.setValue("YOUR_API_KEY",
+    forHTTPHeaderField: "x-api-key")
+request.httpBody = try! JSONSerialization.data(
+    withJSONObject: [
+        "tasktoken": "abc123-def456-ghi789"
+    ])
+
+let (data, _) = try await URLSession.shared
+    .data(for: request)
+print(String(data: data, encoding: .utf8)!)
+```
+
+### Kotlin
+
+```kotlin
+import java.net.HttpURLConnection
+import java.net.URL
+
+val url = URL("https://api.wiro.ai/v1/Task/Detail")
+val conn = url.openConnection() as HttpURLConnection
+conn.requestMethod = "POST"
+conn.setRequestProperty("Content-Type", "application/json")
+conn.setRequestProperty("x-api-key", "YOUR_API_KEY")
+conn.doOutput = true
+conn.outputStream.write("""{"tasktoken": "abc123-def456-ghi789"}""".toByteArray())
+
+val response = conn.inputStream.bufferedReader().readText()
+println(response)
+```
+
+### Dart
+
+```dart
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+final response = await http.post(
+  Uri.parse('https://api.wiro.ai/v1/Task/Detail'),
+  headers: {
+    'Content-Type': 'application/json',
+    'x-api-key': 'YOUR_API_KEY',
+  },
+  body: jsonEncode({
+    'tasktoken': 'abc123-def456-ghi789',
+  }),
+);
+print(response.body);
+```
+
+### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "total": "1",
+  "tasklist": [{
+    "id": "534574",
+    "socketaccesstoken": "eDcCm5yyUfIvMFspTwww49OUfgXkQt",
+    "parameters": { "prompt": "Hello, world!" },
+    "status": "task_postprocess_end",
+    "pexit": "0",
+    "debugoutput": "",
+    "starttime": "1734513809",
+    "endtime": "1734513813",
+    "elapsedseconds": "6.0000",
+    "totalcost": "0.003510000000",
+    "modeldescription": "FLUX.2 [dev] is a 32 billion parameter rectified flow transformer...",
+    "modelslugowner": "wiro",
+    "modelslugproject": "flux-2-dev",
+    "surface": "api",
+    "outputs": [{
+      "name": "0.png",
+      "contenttype": "image/png",
+      "size": "202472",
+      "url": "https://cdn1.wiro.ai/.../0.png"
+    }]
+  }]
+}
+```
+
 ---
 
 # LLM & Chat Streaming
@@ -4472,24 +6237,23 @@ LLM (Large Language Model) requests on Wiro work differently from standard model
   not plain strings
 - Multi-turn conversations are supported via `session_id` and `user_id` parameters
 - `pexit` is the primary success indicator
-- The [Direct LLM Gateway](#direct-llm-gateway) offers OpenAI Chat/Responses and Anthropic Messages on `llm.wiro.ai`.
-  Generic `/sync` waits stay on [Run a Model](#run-a-model).
+- The [Direct LLM Gateway](/docs/completions-api) offers OpenAI Chat/Responses and Anthropic Messages on `llm.wiro.ai`.
+  Generic `/sync` waits stay on [Run a Model](/docs/run-a-model).
 
 Available LLM models include:
-
 - [openai/gpt-5-2](https://wiro.ai/models/openai/gpt-5-2)
 - [openai/gpt-oss-20b](https://wiro.ai/models/openai/gpt-oss-20b)
 - [qwen/qwen3-5-27b](https://wiro.ai/models/qwen/qwen3-5-27b)
 
 ## Session & Chat History
 
-Wiro maintains conversation history per session. By sending a `session_id` and `user_id` parameters:
+Wiro maintains conversation history per session. Send the same `session_id` together with `user_id` on every message of a conversation (some chat models keep history only when both are present), and the model builds on the earlier messages:
 
-| Parameter    | Type   | Required | Description                                                              |
-| ------------ | ------ | -------- | ------------------------------------------------------------------------ |
-| `session_id` | string | No\*     | Non-empty conversation identifier (up to 256 UTF-8 bytes). Reuse it for follow-up messages. |
-| `user_id`    | string | No       | UUID identifying the user.                                               |
-| `prompt`     | string | Yes      | The user's message or question.                                          |
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `session_id` | string | No* | Non-empty conversation identifier (up to 256 UTF-8 bytes). Reuse it for follow-up messages. |
+| `user_id` | string | No | UUID identifying the user. |
+| `prompt` | string | Yes | The user's message or question. |
 
 ```json
 // First message — start a new session
@@ -4572,16 +6336,16 @@ When streaming via WebSocket, `task_output` messages for LLM models contain a st
 }
 ```
 
-| Field              | Type       | Description                                                     |
-| ------------------ | ---------- | --------------------------------------------------------------- |
-| `message.type`        | `string`   | Progress payload type; currently `"progressGenerate"`.          |
-| `message.segments`    | `array`    | Full ordered text/tool-call snapshot. Replace the prior array rather than appending it. |
+| Field | Type | Description |
+|-------|------|-------------|
+| `message.type` | `string` | Progress payload type; currently `"progressGenerate"`. |
+| `message.segments` | `array` | Full ordered text/tool-call snapshot. Replace the prior array rather than appending it. |
 | `message.finishreason` | `string` | Final reason: `stop`, `tool_calls`, `length`, `content_filter`, or `error`. Usually absent until the turn finishes. |
 | `message.usage` | `object` | Final normalized token/server-tool counters. Detail counters are already included in input/output totals. |
-| `message.isThinking`  | `boolean`  | `true` while the model is in the thinking phase, `false` during the answer phase. |
-| `message.speed`       | `string`   | Generation speed (e.g. "12.4").                                 |
-| `message.speedType`   | `string`   | Unit for speed, typically `"words/s"`.                          |
-| `message.elapsedTime` | `string`   | Elapsed time since generation started (e.g. "3s", "1m 5s").    |
+| `message.isThinking` | `boolean` | `true` while the model is in the thinking phase, `false` during the answer phase. |
+| `message.speed` | `string` | Generation speed (e.g. "12.4"). |
+| `message.speedType` | `string` | Unit for speed, typically `"words/s"`. |
+| `message.elapsedTime` | `string` | Elapsed time since generation started (e.g. "3s", "1m 5s"). |
 
 > **Note:** Standard models may send `message` as a progress object or plain
 > string. For LLM rendering, first verify that `message.segments` is an array.
@@ -4609,21 +6373,20 @@ If you don't need real-time streaming, poll `POST /Task/Detail` instead. The fin
 ```json
 {
   "result": true,
-  "tasklist": [
-    {
-      "status": "task_postprocess_end",
-      "pexit": "0",
-      "debugoutput": "Quantum computing uses qubits that can exist in superposition...",
-      "outputs": [{
-        "contenttype": "raw",
-        "content": {
-          "prompt": "What is quantum computing?",
-          "raw": "Quantum computing uses qubits that can exist in superposition...",
-          "segments": [
-            {
-              "type": "answer",
-              "text": "Quantum computing uses qubits that can exist in superposition..."
-            }
+  "tasklist": [{
+    "status": "task_postprocess_end",
+    "pexit": "0",
+    "debugoutput": "Quantum computing uses qubits that can exist in superposition...",
+    "outputs": [{
+      "contenttype": "raw",
+      "content": {
+        "prompt": "What is quantum computing?",
+        "raw": "Quantum computing uses qubits that can exist in superposition...",
+        "segments": [
+          {
+            "type": "answer",
+            "text": "Quantum computing uses qubits that can exist in superposition..."
+          }
         ],
         "finishreason": "stop",
         "usage": {
@@ -4631,10 +6394,9 @@ If you don't need real-time streaming, poll `POST /Task/Detail` instead. The fin
           "output_tokens": 11,
           "total_tokens": 29
         }
-        }
-      }]
-    }
-  ]
+      }
+    }]
+  }]
 }
 ```
 
@@ -4648,8 +6410,8 @@ For a single HTTP connection instead of manual Run plus WebSocket setup:
 
 - Use `POST /v1/Run/{owner}/{project}/sync?stream=true` on
   `https://api.wiro.ai/v1` for generic task-event SSE. See
-  [Run a Model](#run-a-model).
-- Use the [Direct LLM Gateway](#direct-llm-gateway) on `https://llm.wiro.ai`
+  [Run a Model](/docs/run-a-model).
+- Use the [Direct LLM Gateway](/docs/completions-api) on `https://llm.wiro.ai`
   for OpenAI Chat chunks ending in `[DONE]`, Responses named events, or
   Anthropic events ending in `message_stop`.
 
@@ -4685,8 +6447,8 @@ Registration message format:
 
 ## Message Types
 
-| Message Type             | Description                                         |
-| ------------------------ | --------------------------------------------------- |
+| Message Type | Description |
+|--------------|-------------|
 | `task_queue` | The task is queued and waiting to start. |
 | `task_accept` | The task was accepted and is preparing for execution. |
 | `task_preprocess_start` | Optional input preparation has started. |
@@ -4699,7 +6461,7 @@ Registration message format:
 | `task_error_full` | Signals that error-output collection ended. Treat it as a lifecycle event. |
 | `task_end` | Model execution ended. This is not the final success signal; wait for `task_postprocess_end`. |
 | `task_postprocess_start` | Final output preparation started. |
-| `task_postprocess_end` | Post-processing completed. Check public `success` and `exitCode` (`0` = success); `message` contains sanitized outputs. **This is the event to listen for.** |
+| `task_postprocess_end` | Post-processing completed. Check `success` and `exitCode` (`0` = success). The `message` array contains final outputs. **This is the event to listen for.** |
 | `task_cancel` | The task was cancelled (if queued) or killed (if running) by the user. |
 
 ### Message Format
@@ -4724,13 +6486,25 @@ Use the top-level `id` to correlate server events with the submitted task.
 
 ### Lifecycle Events
 
-Lifecycle events (`task_accept`, `task_preprocess_start`, `task_preprocess_end`, `task_assign`, `task_start`, `task_end`, `task_postprocess_start`) have `message: null`.
+These events signal task state changes. The `message` field is `null`:
+
+```json
+// task_accept, task_preprocess_start, task_preprocess_end,
+// task_assign, task_start, task_end, task_postprocess_start
+{
+  "type": "task_assign",
+  "id": "534574",
+  "message": null,
+  "result": true
+}
+```
 
 ### Output Events
 
 **Standard models**: `message` is a progress object or plain string:
 
 ```json
+// Progress output (image generation, video, etc.)
 {
   "type": "task_output",
   "id": "534574",
@@ -4747,12 +6521,20 @@ Lifecycle events (`task_accept`, `task_preprocess_start`, `task_preprocess_end`,
   },
   "result": true
 }
+
+// Simple string output (when no progress format is detected)
+{
+  "type": "task_output",
+  "id": "534574",
+  "message": "Processing complete.",
+  "result": true
+}
 ```
 
 **LLM models**: `message.segments` is the cumulative ordered output snapshot.
 Replace it on every event. The final active item's `text` grows as chunks arrive,
-so render it before completion; a new item appears when the output phase changes
-(see LLM & Chat Streaming).
+so render it before completion; a new item appears when the output phase changes.
+See [LLM & Chat Streaming](/docs/llm-chat-streaming) for full details:
 
 ```json
 {
@@ -4782,9 +6564,10 @@ so render it before completion; a new item appears when the output phase changes
 }
 ```
 
-Text segments use `thinking` or `answer`. Tool-capable models can also emit
-`function_call` segments with `arguments`, or `custom_tool_call` segments with
-`input`; both carry `id`, `call_id`, `name`, and `status`.
+`message.segments` is always the full accumulated snapshot. Text entries use
+`thinking` or `answer`. Tool-capable models can also emit `function_call`
+entries with `arguments`, or `custom_tool_call` entries with `input`; both
+include `id`, `call_id`, `name`, and `status`.
 
 `message.finishreason` and `message.usage` are final-turn
 metadata and can be absent from earlier `task_output` snapshots:
@@ -4826,19 +6609,108 @@ and there is no `error` field. `task_error_full` has the same shape. Only
 listening for `task_postprocess_end`, or use authenticated `POST /Task/Detail`
 to retrieve the persisted task.
 
+```json
+{
+  "type": "task_output_full",
+  "id": "534574",
+  "message": "",
+  "result": true
+}
+```
+
 ### Final Result
 
-`task_postprocess_end`: `message` contains sanitized outputs. Check `success`
-and `exitCode`; use authenticated Task/Detail when the full persisted task is
-needed. For LLM tasks, each final raw output repeats `segments`,
-`finishreason`, and optional `usage` under `message[].content`.
+`task_postprocess_end` is the event you should listen for. The `message` contains the `outputs` array:
+
+```json
+// Standard model — file outputs with CDN URLs
+{
+  "type": "task_postprocess_end",
+  "id": "534574",
+  "message": [{
+    "name": "0.png",
+    "contenttype": "image/png",
+    "size": "202472",
+    "url": "https://cdn1.wiro.ai/.../0.png"
+  }],
+  "result": true,
+  "success": true,
+  "terminal": true,
+  "exitCode": 0
+}
+
+// LLM model — structured raw content
+{
+  "type": "task_postprocess_end",
+  "id": "534574",
+  "message": [{
+    "contenttype": "raw",
+    "content": {
+      "prompt": "Explain quantum computing",
+      "segments": [
+        { "type": "answer", "text": "Quantum computing uses qubits..." }
+      ],
+      "finishreason": "stop",
+      "usage": {
+        "input_tokens": 18,
+        "output_tokens": 11,
+        "total_tokens": 29
+      }
+    }
+  }],
+  "result": true,
+  "success": true,
+  "terminal": true,
+  "exitCode": 0
+}
+```
 
 ### Realtime Events
 
-`task_stream_ready`, `task_stream_end` have no `message` field. `task_cost`
-includes `turnCost`, `cumulativeCost`, and a provider-specific realtime `usage`
-payload. That payload is separate from normalized structured finite-LLM
-`message.usage` and can omit `total_tokens` or detail objects.
+These events are exclusive to realtime models ([voice conversation](/docs/realtime-voice-conversation), [text-to-speech](/docs/realtime-text-to-speech), and [speech-to-text](/docs/realtime-speech-to-text)):
+
+```json
+// Session is ready — start sending audio (voice conversation, speech-to-text)
+{
+  "type": "task_stream_ready",
+  "id": "534574",
+  "result": true
+}
+
+// The model finished producing output for this turn
+{
+  "type": "task_stream_end",
+  "id": "534574",
+  "result": true
+}
+
+// Cost update per turn
+{
+  "type": "task_cost",
+  "id": "534574",
+  "turnCost": 0.002,
+  "cumulativeCost": 0.012,
+  "usage": { "input_tokens": 150, "output_tokens": 89 },
+  "result": true
+}
+
+// The session is ending: a spend limit was reached or the balance ran out
+{
+  "type": "task_session_stopped",
+  "id": "534574",
+  "reason": "spend_limit",
+  "code": 93,
+  "message": "This team's monthly spend limit is reached ($50.00 of $50.00). It resets on December 1, 2026 at 00:00 UTC.",
+  "result": true,
+  "success": null,
+  "terminal": false,
+  "exitCode": null
+}
+```
+
+`task_cost.usage` is the provider-specific realtime usage payload for that
+turn. It is separate from the normalized structured finite-LLM `message.usage`
+contract described above and can omit `total_tokens` or detail objects.
 
 `task_session_stopped` comes once, right after the `task_cost` of the turn that reached a [spend limit](/docs/spend-limits) (`reason` `spend_limit`, `code` `93`) or used up the balance (`reason` `balance`, `code` `97`). It is not a failure: the session then closes with the usual events. See [Realtime Voice](/docs/realtime-voice-conversation#realtime-end-session).
 
@@ -4859,6 +6731,384 @@ For realtime models that maintain a persistent session, send a `task_session_end
 
 After sending this, wait for the `task_postprocess_end` event before closing the connection. This is the final event that contains the complete results.
 
+## Code Examples
+
+### JavaScript
+
+```javascript
+const taskToken = 'your-socket-access-token';
+
+const ws = new WebSocket('wss://socket.wiro.ai/v1');
+
+ws.onopen = () => {
+  console.log('Connected to Wiro WebSocket');
+  ws.send(JSON.stringify({
+    type: 'task_info',
+    tasktoken: taskToken
+  }));
+};
+
+ws.onmessage = (event) => {
+  if (event.data instanceof Blob) {
+    console.log('Binary frame:', event.data.size, 'bytes');
+    return;
+  }
+
+  const msg = JSON.parse(event.data);
+  console.log('Event:', msg.type, msg);
+
+  switch (msg.type) {
+    case 'task_queue':
+      console.log('Task is queued...');
+      break;
+    case 'task_start':
+      console.log('Model inference started');
+      break;
+    case 'task_output':
+      console.log('Partial output:', msg.message);
+      break;
+    case 'task_postprocess_end':
+      console.log('Done! Outputs:', msg.message);
+      ws.close();
+      break;
+  }
+};
+
+ws.onerror = (err) => {
+  console.error('WebSocket error:', err);
+};
+
+ws.onclose = () => {
+  console.log('Disconnected');
+};
+```
+
+### Python
+
+```python
+import asyncio
+import websockets
+import json
+
+async def listen_task(socket_token):
+    uri = "wss://socket.wiro.ai/v1"
+
+    async with websockets.connect(uri) as ws:
+        await ws.send(json.dumps({
+            "type": "task_info",
+            "tasktoken": socket_token
+        }))
+        print("Registered with WebSocket")
+
+        async for message in ws:
+            if isinstance(message, bytes):
+                print(f"Binary frame: {len(message)} bytes")
+                continue
+
+            msg = json.loads(message)
+            print(f"Event: {msg['type']}")
+
+            if msg["type"] == "task_output":
+                print("Partial output:", msg.get("message"))
+            elif msg["type"] == "task_postprocess_end":
+                print("Done! Outputs:", msg.get("message"))
+                break
+
+asyncio.run(listen_task("your-socket-access-token"))
+```
+
+### Node.js
+
+```javascript
+const WebSocket = require('ws');
+
+const socketToken = 'your-socket-access-token';
+const ws = new WebSocket('wss://socket.wiro.ai/v1');
+
+ws.on('open', () => {
+  console.log('Connected');
+  ws.send(JSON.stringify({
+    type: 'task_info',
+    tasktoken: socketToken
+  }));
+});
+
+ws.on('message', (data, isBinary) => {
+  if (isBinary) {
+    console.log('Binary frame:', data.length, 'bytes');
+    return;
+  }
+
+  const msg = JSON.parse(data.toString());
+  console.log('Event:', msg.type);
+
+  if (msg.type === 'task_output') {
+    console.log('Output:', msg.message);
+  }
+  if (msg.type === 'task_postprocess_end') {
+    console.log('Done! Outputs:', msg.message);
+    ws.close();
+  }
+});
+
+ws.on('error', console.error);
+ws.on('close', () => console.log('Disconnected'));
+```
+
+### PHP
+
+```php
+<?php
+// Requires: composer require textalk/websocket
+use WebSocket\Client;
+
+$client = new Client("wss://socket.wiro.ai/v1");
+
+$client->send(json_encode([
+    "type" => "task_info",
+    "tasktoken" => "your-socket-access-token"
+]));
+
+while (true) {
+    $msg = json_decode($client->receive(), true);
+    echo "Event: " . $msg["type"] . PHP_EOL;
+
+    if ($msg["type"] === "task_output") {
+        echo "Output: " . json_encode($msg["message"])
+            . PHP_EOL;
+    }
+    if ($msg["type"] === "task_postprocess_end") {
+        echo "Done! Outputs: "
+            . json_encode($msg["message"])
+            . PHP_EOL;
+        break;
+    }
+}
+$client->close();
+```
+
+### C#
+
+```csharp
+using System.Net.WebSockets;
+using System.Text;
+using System.Text.Json;
+
+using var ws = new ClientWebSocket();
+await ws.ConnectAsync(
+    new Uri("wss://socket.wiro.ai/v1"),
+    CancellationToken.None);
+
+var taskInfo = JsonSerializer.Serialize(new {
+    type = "task_info",
+    tasktoken = "your-socket-access-token"
+});
+await ws.SendAsync(
+    Encoding.UTF8.GetBytes(taskInfo),
+    WebSocketMessageType.Text, true,
+    CancellationToken.None);
+
+var buffer = new byte[4096];
+while (ws.State == WebSocketState.Open) {
+    var result = await ws.ReceiveAsync(
+        buffer, CancellationToken.None);
+    if (result.MessageType
+        == WebSocketMessageType.Binary) {
+        Console.WriteLine("Binary frame: "
+            + result.Count + " bytes");
+        continue;
+    }
+    var message = Encoding.UTF8.GetString(
+        buffer, 0, result.Count);
+    using var doc = JsonDocument.Parse(message);
+    var type = doc.RootElement
+        .GetProperty("type").GetString();
+    Console.WriteLine("Event: " + type);
+
+    if (type == "task_postprocess_end") {
+        Console.WriteLine("Done!");
+        break;
+    }
+}
+```
+
+### Go
+
+```go
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+    "log"
+    "github.com/gorilla/websocket"
+)
+
+func main() {
+    conn, _, err := websocket.DefaultDialer.Dial(
+        "wss://socket.wiro.ai/v1", nil)
+    if err != nil { log.Fatal(err) }
+    defer conn.Close()
+
+    reg, _ := json.Marshal(map[string]string{
+        "type":  "task_info",
+        "tasktoken": "your-socket-access-token",
+    })
+    conn.WriteMessage(websocket.TextMessage, reg)
+
+    for {
+        _, message, err := conn.ReadMessage()
+        if err != nil { break }
+        var msg map[string]interface{}
+        json.Unmarshal(message, &msg)
+        fmt.Println("Event:", msg["type"])
+
+        if msg["type"] == "task_postprocess_end" {
+            fmt.Println("Done!")
+            break
+        }
+    }
+}
+```
+
+### Swift
+
+```swift
+import Foundation
+
+let url = URL(string: "wss://socket.wiro.ai/v1")!
+let task = URLSession.shared.webSocketTask(with: url)
+task.resume()
+
+let regData = try! JSONSerialization.data(
+    withJSONObject: [
+        "type": "task_info",
+        "tasktoken": "your-socket-access-token"
+    ])
+task.send(.string(
+    String(data: regData, encoding: .utf8)!
+)) { _ in }
+
+func receive() {
+    task.receive { result in
+        switch result {
+        case .success(let message):
+            switch message {
+            case .string(let text):
+                let msg = try! JSONSerialization
+                    .jsonObject(with: text.data(
+                        using: .utf8)!)
+                    as! [String: Any]
+                print("Event:", msg["type"] ?? "")
+                if msg["type"] as? String
+                    == "task_postprocess_end" {
+                    print("Done!")
+                    return
+                }
+            case .data(let data):
+                print("Binary:", data.count, "bytes")
+            @unknown default: break
+            }
+            receive()
+        case .failure(let error):
+            print("Error:", error)
+        }
+    }
+}
+receive()
+```
+
+### Kotlin
+
+```kotlin
+// Requires: org.java-websocket:Java-WebSocket
+import org.java_websocket.client.WebSocketClient
+import org.java_websocket.handshake.ServerHandshake
+import java.net.URI
+import org.json.JSONObject
+
+val client = object : WebSocketClient(
+    URI("wss://socket.wiro.ai/v1")) {
+    override fun onOpen(h: ServerHandshake) {
+        send(JSONObject(mapOf(
+            "type" to "task_info",
+            "tasktoken" to "your-socket-access-token"
+        )).toString())
+    }
+    override fun onMessage(message: String) {
+        val msg = JSONObject(message)
+        println("Event: " + msg.getString("type"))
+        if (msg.getString("type")
+            == "task_postprocess_end") {
+            println("Done!")
+            close()
+        }
+    }
+    override fun onClose(
+        code: Int, reason: String, remote: Boolean
+    ) { println("Disconnected") }
+    override fun onError(ex: Exception) {
+        ex.printStackTrace()
+    }
+}
+client.connect()
+```
+
+### Dart
+
+```dart
+import 'dart:convert';
+import 'package:web_socket_channel/web_socket_channel.dart';
+
+final channel = WebSocketChannel.connect(
+  Uri.parse('wss://socket.wiro.ai/v1'),
+);
+
+channel.sink.add(jsonEncode({
+  'type': 'task_info',
+  'tasktoken': 'your-socket-access-token',
+}));
+
+channel.stream.listen((message) {
+  final msg = jsonDecode(message);
+  print('Event: ' + msg['type'].toString());
+  if (msg['type'] == 'task_output') {
+    print('Output: ' + jsonEncode(msg['message']));
+  }
+  if (msg['type'] == 'task_postprocess_end') {
+    print('Done! Outputs: '
+        + jsonEncode(msg['message']));
+    channel.sink.close();
+  }
+});
+```
+
+### Messages
+
+```json
+// task_queue
+{"type": "task_queue", "id": "534574", "message": null}
+
+// task_start
+{"type": "task_start", "id": "534574", "message": null}
+
+// task_output (streaming log)
+{"type": "task_output", "id": "534574", "message": "Step 1/10..."}
+
+// task_postprocess_end (outputs ready)
+{"type": "task_postprocess_end", "id": "534574", "success": true, "exitCode": 0,
+ "message": [{"name": "0.png", "url": "https://cdn1.wiro.ai/.../0.png"}]}
+
+// task_end
+{"type": "task_end", "id": "534574", "terminal": false}
+```
+
+## Agent WebSocket Events
+
+The same WebSocket connection also supports **AI Agent** real-time streaming. Instead of `task_info`, register with `agent_info` and an `agenttoken` to receive agent response events.
+
+For full documentation on agent events (`agent_subscribed`, `agent_output`, `agent_end`, and more), see [Agent WebSocket](/docs/agent-websocket).
+
 ---
 
 # Realtime Voice
@@ -4871,7 +7121,7 @@ Realtime voice models enable two-way audio conversations with AI. Unlike standar
 
 The flow is:
 
-1. **Run** the realtime model via [POST /Run](#run-a-model) to get a `socketaccesstoken`
+1. **Run** the realtime model via [POST /Run](/docs/run-a-model) to get a `socketaccesstoken`
 2. **Connect** to the WebSocket and send `task_info` with your token
 3. **Wait** for `task_stream_ready`: the model is ready to receive audio
 4. **Stream** microphone audio as binary frames
@@ -4880,7 +7130,7 @@ The flow is:
 
 ## Run Parameters
 
-Each realtime model has its own set of parameters. Use [POST /Tool/Detail](#models) to discover the exact parameters for a specific model. See [Model Parameters](#model-parameters) for details on parameter types.
+Each realtime model has its own set of parameters. Use [POST /Tool/Detail](/docs/models) to discover the exact parameters for a specific model. See [Model Parameters](/docs/model-parameters) for details on parameter types.
 
 Available realtime conversation models include:
 - [openai/gpt-realtime-mini](https://wiro.ai/models/openai/gpt-realtime-mini): GPT Mini Realtime Voice Assistant
@@ -4912,13 +7162,11 @@ After running the task, connect to the WebSocket and register with `task_info` :
 ```javascript
 var ws = new WebSocket("wss://socket.wiro.ai/v1");
 
-ws.onopen = function () {
-  ws.send(
-    JSON.stringify({
-      type: "task_info",
-      tasktoken: "YOUR_SOCKET_ACCESS_TOKEN",
-    }),
-  );
+ws.onopen = function() {
+  ws.send(JSON.stringify({
+    type: "task_info",
+    tasktoken: "YOUR_SOCKET_ACCESS_TOKEN"
+  }));
 };
 ```
 
@@ -4928,30 +7176,30 @@ ws.onopen = function () {
 
 During a realtime session, you'll receive these WebSocket events:
 
-| Event                    | Direction       | Description                                                              |
-| ------------------------ | --------------- | ------------------------------------------------------------------------ |
-| `task_stream_ready`      | server → client | Session is ready: start sending microphone audio                        |
-| `task_stream_end`        | server → client | AI finished speaking for this turn: you can speak again                 |
-| `task_cost`              | server → client | Cost update per turn: includes `turnCost`, `cumulativeCost`, and `usage` (raw cost breakdown from the model provider). On models priced by tokens a turn is one reply; on models priced by time it is the time since the previous update. |
-| `task_output`            | server → client | Transcript messages prefixed with `TRANSCRIPT_USER:` or `TRANSCRIPT_AI:` |
-| `task_session_stopped`   | server → client | The server is ending the session after the turn that reached a spend limit or used up the balance: `reason` is `spend_limit` or `balance`, with `code` and `message`. The closing events follow (see Ending a Session) |
-| `task_end`               | server → client | The model process has exited. Post-processing follows. Wait for `task_postprocess_end` to close the connection. |
-| `task_postprocess_end`   | server → client | Post-processing complete: safe to close the WebSocket connection        |
-| `task_session_end`       | client → server | Gracefully end the session                                               |
+| Event | Direction | Description |
+|-------|-----------|-------------|
+| `task_stream_ready` | server → client | Session is ready: start sending microphone audio |
+| `task_stream_end` | server → client | AI finished speaking for this turn: you can speak again |
+| `task_cost` | server → client | Cost update per turn: includes `turnCost`, `cumulativeCost`, and `usage` (raw cost breakdown from the model provider). On models priced by tokens a turn is one reply; on models priced by time it is the time since the previous update. |
+| `task_output` | server → client | Transcript messages prefixed with `TRANSCRIPT_USER:` or `TRANSCRIPT_AI:` |
+| `task_session_stopped` | server → client | The server is ending the session after the turn that reached a spend limit or used up the balance: `reason` is `spend_limit` or `balance`, with `code` and `message`. The closing events follow (see Ending a Session) |
+| `task_end` | server → client | The model process has exited. Post-processing follows. Wait for `task_postprocess_end` to close the connection. |
+| `task_postprocess_end` | server → client | Post-processing complete: safe to close the WebSocket connection |
+| `task_session_end` | client → server | Gracefully end the session |
 | `task_session_interrupt` | client → server | Stop the current reply on Wiro-hosted models such as PersonaPlex (see Interrupting AI Speech) |
 
 ## Audio Format
 
 Both directions (microphone → server, server → client) use the same format:
 
-| Property    | Value                                |
-| ----------- | ------------------------------------ |
-| Format      | PCM (raw, uncompressed)              |
-| Bit depth   | 16-bit signed integer (Int16)        |
-| Sample rate | 24,000 Hz (24 kHz)                   |
-| Channels    | Mono (1 channel)                     |
-| Byte order  | Little-endian                        |
-| Chunk size  | Any size. The examples on this page send 4,800 samples (200 ms) = 9,600 bytes. |
+| Property | Value |
+|----------|-------|
+| Format | PCM (raw, uncompressed) |
+| Bit depth | 16-bit signed integer (Int16) |
+| Sample rate | 24,000 Hz (24 kHz) |
+| Channels | Mono (1 channel) |
+| Byte order | Little-endian |
+| Chunk size | Any size. The examples on this page send 4,800 samples (200 ms) = 9,600 bytes. |
 
 The server passes each microphone frame to the model as it arrives. Smaller chunks, such as 20 ms (480 samples, 960 bytes), reach the model sooner, so it notices sooner when the user starts talking.
 
@@ -4993,6 +7241,7 @@ Both user and AI speech are transcribed automatically. Transcripts arrive as `ta
 - `TRANSCRIPT_AI:` for what the AI said
 
 ```json
+// Example task_output message
 {
   "type": "task_output",
   "message": "TRANSCRIPT_USER:What's the weather like today?"
@@ -5064,6 +7313,376 @@ When a spend limit or the balance ends the session, the server first sends `task
 
 > **Insufficient balance:** The session is charged turn by turn as it runs. When a charged turn uses up your available balance (the team wallet's balance when you use a team project's API key), the server stops the session right after that turn. That turn is charged in full, and so is any final usage reported while the session closes, so your balance can end slightly below zero. You still receive the final `task_cost` and `task_end` events, and `task_session_stopped` with `reason` `balance` and `code` `97` says why the session ended.
 
+## Code Examples
+
+### JavaScript
+
+```javascript
+// Realtime Voice Session — Connect and Handle Events
+
+var socketToken = 'YOUR_SOCKET_ACCESS_TOKEN';
+var ws = new WebSocket('wss://socket.wiro.ai/v1');
+
+ws.onopen = function() {
+  ws.send(JSON.stringify({ type: 'task_info', tasktoken: socketToken }));
+};
+
+ws.onmessage = function(event) {
+  if (event.data instanceof Blob) {
+    handleAudioResponse(event.data);
+    return;
+  }
+
+  var msg = JSON.parse(event.data);
+
+  if (msg.type === 'task_stream_ready') {
+    console.log('Session ready — start microphone');
+    startMicrophone(ws, socketToken);
+  }
+
+  if (msg.type === 'task_stream_end') {
+    console.log('AI finished speaking — listening');
+  }
+
+  if (msg.type === 'task_cost') {
+    console.log('Turn cost:', msg.turnCost,
+      'Total:', msg.cumulativeCost);
+  }
+
+  if (msg.type === 'task_output' &&
+      typeof msg.message === 'string') {
+    if (msg.message.startsWith('TRANSCRIPT_USER:')) {
+      console.log('You:', msg.message.substring(16));
+    }
+    if (msg.message.startsWith('TRANSCRIPT_AI:')) {
+      console.log('AI:', msg.message.substring(14));
+    }
+  }
+
+  if (msg.type === 'task_end') {
+    console.log('Model process exited — waiting for post-processing');
+  }
+
+  if (msg.type === 'task_postprocess_end') {
+    console.log('Session ended');
+    stopMicrophone();
+    ws.close();
+  }
+};
+
+function interruptAI() {
+  ws.send(JSON.stringify({
+    type: 'task_session_interrupt',
+    tasktoken: socketToken
+  }));
+}
+
+function endSession() {
+  ws.send(JSON.stringify({
+    type: 'task_session_end',
+    tasktoken: socketToken
+  }));
+}
+```
+
+### Mic Capture
+
+```javascript
+// Microphone capture at 24kHz PCM Int16
+// Binary frame: tasktoken|pcm_data
+
+var audioCtx, workletNode, micStream;
+
+async function startMicrophone(ws, token) {
+  micStream = await navigator.mediaDevices
+    .getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true
+      }
+    });
+
+  audioCtx = new AudioContext({ sampleRate: 24000 });
+
+  // Inline AudioWorklet processor
+  var code = `
+    class P extends AudioWorkletProcessor {
+      constructor() { super(); this.buf = new Float32Array(0); }
+      process(inputs) {
+        var inp = inputs[0] && inputs[0][0];
+        if (!inp) return true;
+        var nb = new Float32Array(this.buf.length + inp.length);
+        nb.set(this.buf);
+        nb.set(inp, this.buf.length);
+        this.buf = nb;
+        while (this.buf.length >= 4800) {
+          var c = this.buf.slice(0, 4800);
+          this.buf = this.buf.slice(4800);
+          var i16 = new Int16Array(c.length);
+          for (var i = 0; i < c.length; i++) {
+            var s = Math.max(-1, Math.min(1, c[i]));
+            i16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+          }
+          this.port.postMessage(i16.buffer, [i16.buffer]);
+        }
+        return true;
+      }
+    }
+    registerProcessor('p', P);
+  `;
+  var blob = new Blob([code], { type: 'application/javascript' });
+  await audioCtx.audioWorklet.addModule(
+    URL.createObjectURL(blob)
+  );
+
+  var src = audioCtx.createMediaStreamSource(micStream);
+  workletNode = new AudioWorkletNode(audioCtx, 'p');
+  src.connect(workletNode);
+
+  workletNode.port.onmessage = function(e) {
+    var tokenBytes = new TextEncoder()
+      .encode(token + '|');
+    var frame = new Uint8Array(
+      tokenBytes.length + e.data.byteLength
+    );
+    frame.set(tokenBytes, 0);
+    frame.set(new Uint8Array(e.data), tokenBytes.length);
+    if (ws.readyState === 1) ws.send(frame.buffer);
+  };
+}
+
+function stopMicrophone() {
+  if (workletNode) workletNode.disconnect();
+  if (audioCtx) audioCtx.close();
+  if (micStream)
+    micStream.getTracks().forEach(t => t.stop());
+}
+```
+
+### Play Audio
+
+```javascript
+// Receive and play AI audio (PCM Int16 24kHz)
+
+var playCtx = new AudioContext({ sampleRate: 24000 });
+var nextPlayTime = 0;
+
+function handleAudioResponse(blob) {
+  blob.arrayBuffer().then(function(buffer) {
+    var bytes = new Uint8Array(buffer);
+
+    // Find pipe separator
+    var pipeIndex = bytes.indexOf(0x7C);
+    if (pipeIndex < 0) return;
+
+    var audioData = buffer.slice(pipeIndex + 1);
+
+    // Convert Int16 → Float32
+    var int16 = new Int16Array(audioData);
+    var float32 = new Float32Array(int16.length);
+    for (var i = 0; i < int16.length; i++) {
+      float32[i] = int16[i] / 32768.0;
+    }
+
+    // Schedule gapless playback
+    var audioBuf = playCtx.createBuffer(
+      1, float32.length, 24000
+    );
+    audioBuf.getChannelData(0).set(float32);
+
+    var src = playCtx.createBufferSource();
+    src.buffer = audioBuf;
+    src.connect(playCtx.destination);
+
+    var now = playCtx.currentTime;
+    var t = Math.max(now, nextPlayTime);
+    src.start(t);
+    nextPlayTime = t + audioBuf.duration;
+  });
+}
+```
+
+### Python
+
+```python
+import asyncio
+import json
+import websockets
+import pyaudio
+
+SOCKET_TOKEN = 'YOUR_SOCKET_ACCESS_TOKEN'
+SAMPLE_RATE = 24000
+CHUNK = 4800  # 200ms
+
+async def realtime_session():
+    uri = 'wss://socket.wiro.ai/v1'
+    async with websockets.connect(uri) as ws:
+        # Register
+        await ws.send(json.dumps({
+            'type': 'task_info',
+            'tasktoken': SOCKET_TOKEN
+        }))
+
+        # Audio setup
+        pa = pyaudio.PyAudio()
+        mic = pa.open(format=pyaudio.paInt16,
+            channels=1, rate=SAMPLE_RATE,
+            input=True, frames_per_buffer=CHUNK)
+        speaker = pa.open(format=pyaudio.paInt16,
+            channels=1, rate=SAMPLE_RATE,
+            output=True)
+
+        is_listening = False
+        done = asyncio.Event()
+
+        async def send_audio():
+            while not done.is_set():
+                if is_listening:
+                    data = mic.read(CHUNK,
+                        exception_on_overflow=False)
+                    token = SOCKET_TOKEN.encode() + b'|'
+                    await ws.send(token + data)
+                await asyncio.sleep(0.01)
+
+        async def receive():
+            nonlocal is_listening
+            async for msg in ws:
+                if isinstance(msg, bytes):
+                    pipe = msg.find(0x7C)
+                    if pipe == -1:
+                        continue
+                    speaker.write(msg[pipe+1:])
+                    continue
+                data = json.loads(msg)
+                t = data['type']
+                if t == 'task_stream_ready':
+                    print('Session ready')
+                    is_listening = True
+                elif t == 'task_stream_end':
+                    print('AI finished speaking')
+                    is_listening = True
+                elif t == 'task_cost':
+                    print(f'Cost: {data["cumulativeCost"]}')
+                elif t == 'task_output':
+                    m = data.get('message', '')
+                    if m.startswith('TRANSCRIPT_USER:'):
+                        print(f'You: {m[16:]}')
+                    elif m.startswith('TRANSCRIPT_AI:'):
+                        print(f'AI: {m[14:]}')
+                elif t == 'task_postprocess_end':
+                    print('Session ended')
+                    done.set()
+                    break
+
+        sender = asyncio.create_task(send_audio())
+        try:
+            await receive()
+        finally:
+            sender.cancel()
+            try:
+                await sender
+            except asyncio.CancelledError:
+                pass
+
+asyncio.run(realtime_session())
+```
+
+### Node.js
+
+```javascript
+const WebSocket = require('ws');
+
+const SOCKET_TOKEN = 'YOUR_SOCKET_ACCESS_TOKEN';
+const ws = new WebSocket('wss://socket.wiro.ai/v1');
+
+ws.on('open', () => {
+  ws.send(JSON.stringify({
+    type: 'task_info',
+    tasktoken: SOCKET_TOKEN
+  }));
+});
+
+ws.on('message', (data, isBinary) => {
+  if (isBinary) {
+    const buf = Buffer.from(data);
+    const pipe = buf.indexOf(0x7C);
+    if (pipe !== -1) {
+      const audio = buf.slice(pipe + 1);
+      // Play via speaker or save to file
+      console.log('Audio chunk:', audio.length, 'bytes');
+    }
+    return;
+  }
+
+  const msg = JSON.parse(data.toString());
+
+  if (msg.type === 'task_stream_ready') {
+    console.log('Session ready — start sending audio');
+    // Start mic capture and send as binary
+  }
+
+  if (msg.type === 'task_cost') {
+    console.log('Cost:', msg.cumulativeCost);
+  }
+
+  if (msg.type === 'task_output' &&
+      typeof msg.message === 'string') {
+    if (msg.message.startsWith('TRANSCRIPT_USER:'))
+      console.log('You:', msg.message.substring(16));
+    if (msg.message.startsWith('TRANSCRIPT_AI:'))
+      console.log('AI:', msg.message.substring(14));
+  }
+
+  if (msg.type === 'task_end') {
+    console.log('Model process exited — waiting for post-processing');
+  }
+
+  if (msg.type === 'task_postprocess_end') {
+    console.log('Done');
+    ws.close();
+  }
+});
+
+// End session
+function endSession() {
+  ws.send(JSON.stringify({
+    type: 'task_session_end',
+    tasktoken: SOCKET_TOKEN
+  }));
+}
+```
+
+### Format
+
+```json
+{
+  "audio_format": {
+    "codec": "PCM",
+    "bit_depth": "16-bit Int16",
+    "sample_rate": 24000,
+    "channels": 1,
+    "byte_order": "little-endian"
+  },
+  "binary_frame": "tasktoken|pcm_audio_data",
+  "example_chunk": {
+    "samples": 4800,
+    "duration_ms": 200,
+    "bytes": 9600
+  },
+  "events": {
+    "task_stream_ready": "Start sending audio",
+    "task_stream_end": "AI finished speaking",
+    "task_cost": "Cost per turn + cumulative",
+    "task_output": "TRANSCRIPT_USER: / TRANSCRIPT_AI:",
+    "task_session_stopped": "A spend limit or the balance is ending the session",
+    "task_session_interrupt": "Send to stop the current reply (Wiro-hosted models)",
+    "task_session_end": "Send to end session",
+    "task_end": "Server ended session",
+    "task_postprocess_end": "Post-processing complete: safe to close"
+  }
+}
+```
+
 ---
 
 # Realtime Text to Speech
@@ -5072,13 +7691,13 @@ Build streaming text-to-speech apps with realtime AI models.
 
 ## Overview
 
-Realtime text-to-speech models convert text into streaming audio. Unlike standard TTS that processes a full prompt and returns an audio file, realtime TTS streams AI-generated speech as a continuous PCM audio stream over a WebSocket connection, in real time. The text prompt is submitted via [POST /Run](#run-a-model), not over the WebSocket. The WebSocket carries only task events (`task_info`, `task_stream_ready`, etc.), binary audio frames, and control messages (`task_session_end`).
+Realtime text-to-speech models convert text into streaming audio. Unlike standard TTS that processes a full prompt and returns an audio file, realtime TTS streams AI-generated speech as a continuous PCM audio stream over a WebSocket connection, in real time. The text prompt is submitted via [POST /Run](/docs/run-a-model), not over the WebSocket. The WebSocket carries only task events (`task_info`, `task_stream_ready`, etc.), binary audio frames, and control messages (`task_session_end`).
 
 No microphone is required. The flow is one-directional: text goes in, audio comes out.
 
 The flow is:
 
-1. **Run** the realtime TTS model via [POST /Run](#run-a-model) with your text prompt in the parameters
+1. **Run** the realtime TTS model via [POST /Run](/docs/run-a-model) with your text prompt in the parameters
 2. **Connect** to the WebSocket and send `task_info` with your `socketaccesstoken`
 3. **Wait** for `task_stream_ready`: the model has loaded and is generating audio
 4. **Receive** AI audio as binary frames and play them
@@ -5086,18 +7705,18 @@ The flow is:
 
 ## How It Differs from Realtime Voice Conversation
 
-|              | Realtime Voice Conversation                             | Realtime Text to Speech           |
-| ------------ | ------------------------------------------------------- | --------------------------------- |
-| Input        | Microphone audio (streamed)                             | Text (sent with the run request)  |
-| Output       | AI audio + transcripts                                  | AI audio only                     |
-| Direction    | Bidirectional (client ↔ server)                         | Server → client only              |
-| Microphone   | Required                                                | Not required                      |
-| Transcripts  | `TRANSCRIPT_USER:` / `TRANSCRIPT_AI:` via `task_output` | None                              |
-| Use case     | Interactive voice chat                                  | Narration, voiceover, assistants  |
+| | Realtime Voice Conversation | Realtime Text to Speech |
+|---|---|---|
+| Input | Microphone audio (streamed) | Text (sent with the run request) |
+| Output | AI audio + transcripts | AI audio only |
+| Direction | Bidirectional (client ↔ server) | Server → client only |
+| Microphone | Required | Not required |
+| Transcripts | `TRANSCRIPT_USER:` / `TRANSCRIPT_AI:` via `task_output` | None |
+| Use case | Interactive voice chat | Narration, voiceover, assistants |
 
 ## Run Parameters
 
-Each realtime TTS model has its own set of parameters. Use [POST /Tool/Detail](#models) to discover the exact parameters for a specific model. See [Model Parameters](#model-parameters) for parameter types.
+Each realtime TTS model has its own set of parameters. Use [POST /Tool/Detail](/docs/models) to discover the exact parameters for a specific model. See [Model Parameters](/docs/model-parameters) for parameter types.
 
 Browse available realtime TTS models on the [models page](https://wiro.ai/models) (filter by **Realtime TTS** category). Common parameters typically include the input text and an optional reference audio clip for voice cloning. Example run for MOSS-TTS-Realtime:
 
@@ -5112,33 +7731,63 @@ curl -X POST "https://api.wiro.ai/v1/Run/openmoss/moss-tts-realtime" \
 
 > **Important:** Parameters vary per model. Always check the model's detail page or use `/Tool/Detail` to get the exact parameter list before integrating. The run response returns a `socketaccesstoken` used to subscribe to the WebSocket.
 
+## Connection & Registration
+
+After running the task, connect to the WebSocket and register with `task_info`:
+
+```javascript
+var ws = new WebSocket("wss://socket.wiro.ai/v1");
+
+ws.onopen = function() {
+  ws.send(JSON.stringify({
+    type: "task_info",
+    tasktoken: "YOUR_SOCKET_ACCESS_TOKEN"
+  }));
+};
+```
+
+> **Note:** Both standard and realtime models use `type: "task_info"` with `tasktoken` to register on the WebSocket. The registration flow is identical to [Realtime Voice Conversation](/docs/realtime-voice-conversation).
+
 ## Realtime Events
 
 During a realtime TTS session, you'll receive these WebSocket events:
 
-| Event                  | Description                                                                                      |
-| ---------------------- | ------------------------------------------------------------------------------------------------ |
-| `task_stream_ready`    | Session is ready: the model is generating audio and will begin sending chunks                   |
-| `task_stream_end`      | The model finished generating audio for the current segment                                      |
-| `task_cost`            | Cost update: includes `turnCost`, `cumulativeCost`, and `usage` (raw cost breakdown)            |
+| Event | Description |
+|-------|-------------|
+| `task_stream_ready` | Session is ready: the model is generating audio and will begin sending chunks |
+| `task_stream_end` | The model finished generating audio for the current segment |
+| `task_cost` | Cost update: includes `turnCost`, `cumulativeCost`, and `usage` (raw cost breakdown from the model provider) |
 | `task_session_stopped` | The server is ending the session after the turn that reached a spend limit or used up the balance: `reason` is `spend_limit` or `balance`, with `code` and `message`. The closing events follow (see Ending a Session) |
-| `task_end`             | The model process has exited. Post-processing follows. Wait for `task_postprocess_end` to close |
-| `task_postprocess_end` | Post-processing is complete. Safe to close the WebSocket connection                              |
+| `task_end` | The model process has exited. Post-processing follows. Wait for `task_postprocess_end` to close the connection. |
+| `task_postprocess_end` | Post-processing is complete. Safe to close the WebSocket connection. |
 
 > **No `task_output` events.** Unlike voice conversation, TTS sessions do not produce transcript events. The input text is already known (you provided it), and the AI output is audio, not text.
+
+### Event Sequence
+
+A typical TTS session produces events in this order:
+
+```
+task_stream_ready     ← model is ready, audio chunks start arriving
+[binary frames]       ← PCM audio data (many frames)
+task_stream_end       ← audio generation complete for this segment
+task_cost             ← cost for this segment
+task_end              ← model process exiting
+task_postprocess_end  ← safe to close WebSocket
+```
 
 ## Audio Format
 
 Audio flows in one direction only: **server → client**. The client does not send any audio.
 
-| Property    | Value                                                     |
-| ----------- | --------------------------------------------------------- |
-| Format      | PCM (raw, uncompressed)                                   |
-| Bit depth   | 16-bit signed integer (Int16)                             |
-| Sample rate | 24,000 Hz (24 kHz)                                        |
-| Channels    | Mono (1 channel)                                          |
-| Byte order  | Little-endian                                             |
-| Chunk size  | Variable (typically 200 ms = 4,800 samples = 9,600 bytes) |
+| Property | Value |
+|----------|-------|
+| Format | PCM (raw, uncompressed) |
+| Bit depth | 16-bit signed integer (Int16) |
+| Sample rate | 24,000 Hz (24 kHz) |
+| Channels | Mono (1 channel) |
+| Byte order | Little-endian |
+| Chunk size | Variable (typically 200 ms = 4,800 samples = 9,600 bytes) |
 
 ### Binary Frame Format
 
@@ -5155,6 +7804,24 @@ The pipe character `|` (0x7C) separates the token from the raw audio bytes. To e
 3. Convert Int16 samples to your playback format (e.g., Float32 for Web Audio API)
 
 > **Client → server:** In TTS mode, you do not send binary audio frames. The only messages you send are `task_info` (to register) and `task_session_end` (to end the session).
+
+## Receiving AI Audio
+
+AI speech arrives as binary WebSocket frames in PCM Int16 24 kHz format. To play them:
+
+1. Check if the incoming message is binary (a `Blob` in JavaScript, `bytes` in Python) before attempting JSON parse
+2. Find the pipe `|` separator and extract audio data after it
+3. Convert Int16 → Float32 and create an `AudioBuffer`
+4. Schedule gapless playback using `AudioBufferSourceNode` to avoid clicks between chunks
+
+### Gapless Playback
+
+Audio arrives in many small chunks. To play them seamlessly:
+
+- Track a `nextPlayTime` variable initialized to `0`
+- For each chunk, schedule it at `max(audioContext.currentTime, nextPlayTime)`
+- Advance `nextPlayTime` by the chunk's duration
+- This ensures chunks play back-to-back with no gaps or overlaps
 
 ## Ending a Session
 
@@ -5191,9 +7858,283 @@ When a spend limit or the balance ends the session, the server first sends `task
 
 `reason` is `spend_limit`, with `code` `93`, or `balance`, with `code` `97`. For a spend limit, `message` is the refusal [`/Run`](/docs/run-a-model) would give for that limit, which names it and says when it resets. For the balance it is `The balance ran out, so the session ended.` The event is not a failure: the usual closing events follow, and `task_postprocess_end` reports success. When it arrives, let the audio you already have finish playing, show `message` and keep listening until `task_postprocess_end`. You don't need to send `task_session_end`. The event can also come after you sent `task_session_end`, when that last turn uses up the limit or the balance; the session ends either way. No `task_session_stopped` is sent when a session ends for any other reason.
 
-> **Safety:** If the client disconnects without sending `task_session_end`, the server automatically terminates the session to prevent the pipeline from running indefinitely. Always send `task_session_end` explicitly for a clean shutdown.
+> **Safety:** If the client disconnects without sending `task_session_end`, the server automatically terminates the session to prevent the pipeline from running indefinitely (and the provider from continuing to charge). Always send `task_session_end` explicitly for a clean shutdown.
 
 > **Insufficient balance:** The session is charged turn by turn as it runs. When a charged turn uses up your available balance (the team wallet's balance when you use a team project's API key), the server stops the session right after that turn. That turn is charged in full, and so is any final usage reported while the session closes, so your balance can end slightly below zero. You still receive the final `task_cost` and `task_end` events, and `task_session_stopped` with `reason` `balance` and `code` `97` says why the session ended.
+
+## Code Examples
+
+### JavaScript
+
+```javascript
+// Realtime TTS Session — Connect, Receive Audio, and Play
+
+var socketToken = 'YOUR_SOCKET_ACCESS_TOKEN';
+var ws = new WebSocket('wss://socket.wiro.ai/v1');
+
+// Audio playback state
+var playCtx = new AudioContext({ sampleRate: 24000 });
+var nextPlayTime = 0;
+
+ws.onopen = function() {
+  ws.send(JSON.stringify({
+    type: 'task_info',
+    tasktoken: socketToken
+  }));
+};
+
+ws.onmessage = function(event) {
+  if (event.data instanceof Blob) {
+    playAudioChunk(event.data); // defined in "Play Audio" section below
+    return;
+  }
+
+  var msg = JSON.parse(event.data);
+
+  if (msg.type === 'task_stream_ready') {
+    console.log('TTS stream ready — audio chunks incoming');
+    nextPlayTime = 0;
+  }
+
+  if (msg.type === 'task_stream_end') {
+    console.log('Audio generation complete');
+  }
+
+  if (msg.type === 'task_cost') {
+    console.log('Turn cost:', msg.turnCost,
+      'Total:', msg.cumulativeCost);
+  }
+
+  if (msg.type === 'task_end') {
+    console.log('Session ended');
+  }
+
+  if (msg.type === 'task_postprocess_end') {
+    console.log('Post-processing done — closing');
+    ws.close();
+  }
+};
+
+function endSession() {
+  ws.send(JSON.stringify({
+    type: 'task_session_end',
+    tasktoken: socketToken
+  }));
+}
+```
+
+### Play Audio
+
+```javascript
+// Receive and play AI audio (PCM Int16 24kHz)
+// Gapless scheduling ensures smooth, uninterrupted playback
+
+function playAudioChunk(blob) {
+  blob.arrayBuffer().then(function(buffer) {
+    var bytes = new Uint8Array(buffer);
+
+    // Find pipe separator between token and audio
+    var pipeIndex = bytes.indexOf(0x7C);
+    if (pipeIndex < 0) return;
+
+    var audioData = buffer.slice(pipeIndex + 1);
+    if (audioData.byteLength === 0) return;
+
+    // Convert Int16 → Float32 for Web Audio API
+    var int16 = new Int16Array(audioData);
+    var float32 = new Float32Array(int16.length);
+    for (var i = 0; i < int16.length; i++) {
+      float32[i] = int16[i] / 32768.0;
+    }
+
+    // Create AudioBuffer and schedule gapless playback
+    var audioBuf = playCtx.createBuffer(
+      1, float32.length, 24000
+    );
+    audioBuf.getChannelData(0).set(float32);
+
+    var src = playCtx.createBufferSource();
+    src.buffer = audioBuf;
+    src.connect(playCtx.destination);
+
+    var now = playCtx.currentTime;
+    var startAt = Math.max(now, nextPlayTime);
+    src.start(startAt);
+    nextPlayTime = startAt + audioBuf.duration;
+  });
+}
+```
+
+### Python
+
+```python
+import asyncio
+import json
+import websockets
+import pyaudio
+
+SOCKET_TOKEN = 'YOUR_SOCKET_ACCESS_TOKEN'
+SAMPLE_RATE = 24000
+
+async def tts_session():
+    uri = 'wss://socket.wiro.ai/v1'
+    async with websockets.connect(uri) as ws:
+        # Register
+        await ws.send(json.dumps({
+            'type': 'task_info',
+            'tasktoken': SOCKET_TOKEN
+        }))
+
+        # Audio output setup (speaker only — no mic needed)
+        pa = pyaudio.PyAudio()
+        speaker = pa.open(
+            format=pyaudio.paInt16,
+            channels=1,
+            rate=SAMPLE_RATE,
+            output=True
+        )
+
+        session_active = True
+
+        async def receive():
+            nonlocal session_active
+            async for msg in ws:
+                if isinstance(msg, bytes):
+                    # Binary frame: tasktoken|pcm_data
+                    pipe = msg.find(0x7C)
+                    if pipe == -1:
+                        continue
+                    audio = msg[pipe + 1:]
+                    speaker.write(audio)
+                    continue
+
+                data = json.loads(msg)
+                t = data['type']
+
+                if t == 'task_stream_ready':
+                    print('TTS stream ready', flush=True)
+
+                elif t == 'task_stream_end':
+                    print('Audio generation complete', flush=True)
+
+                elif t == 'task_cost':
+                    print(f'Cost: {data["cumulativeCost"]}', flush=True)
+
+                elif t in ('task_end', 'task_postprocess_end'):
+                    print('Session ended', flush=True)
+                    session_active = False
+                    break
+
+        try:
+            await receive()
+        finally:
+            speaker.stop_stream()
+            speaker.close()
+            pa.terminate()
+
+asyncio.run(tts_session())
+```
+
+### Node.js
+
+```javascript
+const WebSocket = require('ws');
+
+const SOCKET_TOKEN = 'YOUR_SOCKET_ACCESS_TOKEN';
+const ws = new WebSocket('wss://socket.wiro.ai/v1');
+
+var audioChunks = [];
+
+ws.on('open', () => {
+  ws.send(JSON.stringify({
+    type: 'task_info',
+    tasktoken: SOCKET_TOKEN
+  }));
+});
+
+ws.on('message', (data, isBinary) => {
+  if (isBinary) {
+    const buf = Buffer.from(data);
+    const pipe = buf.indexOf(0x7C);
+    if (pipe !== -1) {
+      const audio = buf.slice(pipe + 1);
+      audioChunks.push(audio);
+      console.log('Audio chunk:', audio.length, 'bytes');
+    }
+    return;
+  }
+
+  const msg = JSON.parse(data.toString());
+
+  if (msg.type === 'task_stream_ready') {
+    console.log('TTS stream ready — receiving audio');
+    audioChunks = [];
+  }
+
+  if (msg.type === 'task_stream_end') {
+    console.log('Audio complete:',
+      audioChunks.length, 'chunks received');
+    // Concatenate and save or pipe to speaker
+    var total = Buffer.concat(audioChunks);
+    console.log('Total audio:', total.length, 'bytes',
+      '(' + (total.length / 2 / 24000).toFixed(1) + 's)');
+  }
+
+  if (msg.type === 'task_cost') {
+    console.log('Cost:', msg.cumulativeCost);
+  }
+
+  if (msg.type === 'task_end') {
+    console.log('Done');
+  }
+
+  if (msg.type === 'task_postprocess_end') {
+    ws.close();
+  }
+});
+
+// End session early (optional — stream ends naturally)
+function endSession() {
+  ws.send(JSON.stringify({
+    type: 'task_session_end',
+    tasktoken: SOCKET_TOKEN
+  }));
+}
+```
+
+### Format
+
+```json
+{
+  "audio_format": {
+    "codec": "PCM",
+    "bit_depth": "16-bit Int16",
+    "sample_rate": 24000,
+    "channels": 1,
+    "byte_order": "little-endian"
+  },
+  "binary_frame": {
+    "direction": "server → client",
+    "format": "tasktoken|pcm_audio_data",
+    "separator": "|",
+    "separator_byte": "0x7C"
+  },
+  "typical_chunk": {
+    "samples": 4800,
+    "duration_ms": 200,
+    "bytes": 9600
+  },
+  "events": {
+    "task_stream_ready": "Audio generation started",
+    "task_stream_end": "Audio generation complete",
+    "task_cost": "Cost per turn + cumulative",
+    "task_session_stopped": "A spend limit or the balance is ending the session",
+    "task_session_end": "Send to end session early",
+    "task_end": "Server ended session",
+    "task_postprocess_end": "Post-processing complete — safe to close"
+  }
+}
+```
 
 ---
 
@@ -5203,11 +8144,11 @@ Transcribe live microphone audio into text in real time using streaming ASR mode
 
 ## Overview
 
-Realtime speech-to-text models convert streaming audio into text transcripts as the user speaks. Unlike [Realtime Voice Conversation](#realtime-voice) which produces two-way audio, this mode is **audio in → text out** only. There is no AI audio playback. The server returns transcript strings over the WebSocket.
+Realtime speech-to-text models convert streaming audio into text transcripts as the user speaks. Unlike [Realtime Voice Conversation](/docs/realtime-voice-conversation) which produces two-way audio, this mode is **audio in → text out** only. There is no AI audio playback. The server returns transcript strings over the WebSocket.
 
 The flow is:
 
-1. **Run** the realtime STT model via [POST /Run](#run-a-model) to get a `socketaccesstoken`
+1. **Run** the realtime model via [POST /Run](/docs/run-a-model) to get a `socketaccesstoken`
 2. **Connect** to the WebSocket and send `task_info` with your token
 3. **Wait** for `task_stream_ready`: the model is ready to receive audio
 4. **Stream** microphone audio as binary frames (client → server)
@@ -5229,7 +8170,7 @@ The flow is:
 
 ## Run Parameters
 
-Each realtime STT model has its own set of parameters. Use [POST /Tool/Detail](#models) to discover the exact parameters for a specific model. See [Model Parameters](#model-parameters) for parameter types.
+Each realtime STT model has its own set of parameters. Use [POST /Tool/Detail](/docs/models) to discover the exact parameters for a specific model. See [Model Parameters](/docs/model-parameters) for parameter types.
 
 Browse available realtime STT models on the [models page](https://wiro.ai/models) (filter by **Realtime STT** category). Common parameters typically include a transcription delay setting that trades speed for accuracy; some models also take a language. Example run for Voxtral Mini 4B Realtime:
 
@@ -5244,19 +8185,36 @@ curl -X POST "https://api.wiro.ai/v1/Run/mistralai/voxtral-mini-4b-realtime-2602
 
 > **Important:** Parameters vary per model. Always check the model's detail page or use `/Tool/Detail` to get the exact parameter list before integrating. The run response returns a `socketaccesstoken` used to subscribe to the WebSocket.
 
+## Connection & Registration
+
+After running the task, connect to the WebSocket and register with `task_info`:
+
+```javascript
+var ws = new WebSocket("wss://socket.wiro.ai/v1");
+
+ws.onopen = function() {
+  ws.send(JSON.stringify({
+    type: "task_info",
+    tasktoken: "YOUR_SOCKET_ACCESS_TOKEN"
+  }));
+};
+```
+
+> **Note:** Both standard and realtime models use `type: "task_info"` with `tasktoken` to register on the WebSocket.
+
 ## Realtime Events
 
 During a realtime speech-to-text session, you'll receive these WebSocket events:
 
-| Event                  | Direction       | Description                                                                         |
-| ---------------------- | --------------- | ----------------------------------------------------------------------------------- |
-| `task_stream_ready`    | server → client | Session is ready: start sending microphone audio                                   |
-| `task_output`          | server → client | Transcript text prefixed with `TRANSCRIPT_USER:`                                    |
-| `task_stream_end`      | server → client | Transcription stream has ended: no more transcripts will arrive                    |
-| `task_cost`            | server → client | Cost update: includes `turnCost`, `cumulativeCost`, and `usage` breakdown. On models priced by time, each update covers the time since the previous one. |
+| Event | Direction | Description |
+|-------|-----------|-------------|
+| `task_stream_ready` | server → client | Session is ready: start sending microphone audio |
+| `task_output` | server → client | Transcript text prefixed with `TRANSCRIPT_USER:` |
+| `task_stream_end` | server → client | Transcription stream has ended: no more transcripts will arrive |
+| `task_cost` | server → client | Cost update: includes `turnCost`, `cumulativeCost`, and `usage` breakdown. On models priced by time, each update covers the time since the previous one. |
 | `task_session_stopped` | server → client | The server is ending the session after the turn that reached a spend limit or used up the balance: `reason` is `spend_limit` or `balance`, with `code` and `message`. The closing events follow (see Ending a Session) |
-| `task_end`             | server → client | The model process has exited. Post-processing follows                               |
-| `task_postprocess_end` | server → client | Post-processing complete: safe to close the WebSocket now                          |
+| `task_end` | server → client | The model process has exited. Post-processing follows. Wait for `task_postprocess_end` before closing. |
+| `task_postprocess_end` | server → client | Post-processing complete: safe to close the WebSocket now. |
 
 > Unlike voice conversation, there are no binary audio frames from the server. Every server message is a JSON text event.
 
@@ -5264,14 +8222,14 @@ During a realtime speech-to-text session, you'll receive these WebSocket events:
 
 Audio flows in one direction only: **client → server**.
 
-| Property    | Value                                |
-| ----------- | ------------------------------------ |
-| Format      | PCM (raw, uncompressed)              |
-| Bit depth   | 16-bit signed integer (Int16)        |
-| Sample rate | 24,000 Hz (24 kHz)                   |
-| Channels    | Mono (1 channel)                     |
-| Byte order  | Little-endian                        |
-| Chunk size  | Any size. The examples on this page send 4,800 samples (200 ms) = 9,600 bytes. |
+| Property | Value |
+|----------|-------|
+| Format | PCM (raw, uncompressed) |
+| Bit depth | 16-bit signed integer (Int16) |
+| Sample rate | 24,000 Hz (24 kHz) |
+| Channels | Mono (1 channel) |
+| Byte order | Little-endian |
+| Chunk size | Any size. The examples on this page send 4,800 samples (200 ms) = 9,600 bytes. |
 
 The server passes each frame to the model as it arrives. Smaller chunks, such as 20 ms (480 samples, 960 bytes), reach the model sooner.
 
@@ -5286,6 +8244,20 @@ Every binary WebSocket frame sent from the client is structured as:
 ```
 
 The pipe character `|` (0x7C) separates the token from the raw audio bytes. There are no binary frames from the server. All responses are JSON text.
+
+## Sending Microphone Audio
+
+Capture microphone audio at 24 kHz using the Web Audio API with an AudioWorklet. Convert Float32 samples to Int16, prepend your task token, and send as a binary frame.
+
+Key steps:
+
+1. Request microphone with `getUserMedia` (enable echo cancellation and noise suppression)
+2. Create an `AudioContext` at 24,000 Hz sample rate
+3. Use an AudioWorklet to buffer and convert samples to Int16
+4. Send each chunk as `tasktoken|pcm_data` binary frame
+5. Continue sending until you end the session
+
+> **Tip:** You can send audio continuously. The model handles silence detection and only returns transcripts when speech is detected.
 
 ## Transcripts
 
@@ -5315,6 +8287,7 @@ Transcripts arrive progressively as words and phrases are recognized, not just a
 ```javascript
 var fullTranscript = [];
 
+// Inside your message handler
 if (msg.type === 'task_output' &&
     typeof msg.message === 'string' &&
     msg.message.startsWith('TRANSCRIPT_USER:')) {
@@ -5360,9 +8333,347 @@ When a spend limit or the balance ends the session, the server first sends `task
 
 `reason` is `spend_limit`, with `code` `93`, or `balance`, with `code` `97`. For a spend limit, `message` is the refusal [`/Run`](/docs/run-a-model) would give for that limit, which names it and says when it resets. For the balance it is `The balance ran out, so the session ended.` The event is not a failure: the usual closing events follow, and `task_postprocess_end` reports success. When it arrives, stop sending microphone audio, show `message` and keep listening until `task_postprocess_end`. You don't need to send `task_session_end`. The event can also come after you sent `task_session_end`, when that last turn uses up the limit or the balance; the session ends either way. No `task_session_stopped` is sent when a session ends for any other reason.
 
-> **Safety:** If the client disconnects without sending `task_session_end`, the server automatically terminates the session to prevent the pipeline from running indefinitely. Always send `task_session_end` explicitly for a clean shutdown.
+> **Safety:** If the client disconnects without sending `task_session_end`, the server automatically terminates the session to prevent the pipeline from running indefinitely (and the provider from continuing to charge). Always send `task_session_end` explicitly for a clean shutdown.
 
 > **Insufficient balance:** The session is charged turn by turn as it runs. When a charged turn uses up your available balance (the team wallet's balance when you use a team project's API key), the server stops the session right after that turn. That turn is charged in full, and so is any final usage reported while the session closes, so your balance can end slightly below zero. You still receive the final `task_cost` and `task_end` events, and `task_session_stopped` with `reason` `balance` and `code` `97` says why the session ended.
+
+## Code Examples
+
+### JavaScript
+
+```javascript
+// Realtime Speech-to-Text — Connect and Receive Transcripts
+
+var socketToken = 'YOUR_SOCKET_ACCESS_TOKEN';
+var ws = new WebSocket('wss://socket.wiro.ai/v1');
+var fullTranscript = [];
+
+ws.onopen = function() {
+  ws.send(JSON.stringify({ type: 'task_info', tasktoken: socketToken }));
+};
+
+ws.onmessage = function(event) {
+  var msg = JSON.parse(event.data);
+
+  if (msg.type === 'task_stream_ready') {
+    console.log('Session ready — start microphone');
+    startMicrophone(ws, socketToken);
+  }
+
+  if (msg.type === 'task_output' &&
+      typeof msg.message === 'string' &&
+      msg.message.startsWith('TRANSCRIPT_USER:')) {
+    var text = msg.message.substring(16);
+    fullTranscript.push(text);
+    console.log('Transcript:', text);
+  }
+
+  if (msg.type === 'task_stream_end') {
+    console.log('Transcription stream ended');
+  }
+
+  if (msg.type === 'task_cost') {
+    console.log('Turn cost:', msg.turnCost,
+      'Total:', msg.cumulativeCost);
+  }
+
+  if (msg.type === 'task_end') {
+    console.log('Model process ended — waiting for post-processing');
+  }
+
+  if (msg.type === 'task_postprocess_end') {
+    console.log('Session complete');
+    console.log('Full transcript:', fullTranscript.join(' '));
+    stopMicrophone();
+    ws.close();
+  }
+};
+
+function endSession() {
+  ws.send(JSON.stringify({
+    type: 'task_session_end',
+    tasktoken: socketToken
+  }));
+}
+```
+
+### Mic Capture
+
+```javascript
+// Microphone capture at 24kHz PCM Int16
+// Binary frame: tasktoken|pcm_data
+
+var audioCtx, workletNode, micStream;
+
+async function startMicrophone(ws, token) {
+  micStream = await navigator.mediaDevices
+    .getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true
+      }
+    });
+
+  audioCtx = new AudioContext({ sampleRate: 24000 });
+
+  var code = `
+    class P extends AudioWorkletProcessor {
+      constructor() { super(); this.buf = new Float32Array(0); }
+      process(inputs) {
+        var inp = inputs[0] && inputs[0][0];
+        if (!inp) return true;
+        var nb = new Float32Array(this.buf.length + inp.length);
+        nb.set(this.buf);
+        nb.set(inp, this.buf.length);
+        this.buf = nb;
+        while (this.buf.length >= 4800) {
+          var c = this.buf.slice(0, 4800);
+          this.buf = this.buf.slice(4800);
+          var i16 = new Int16Array(c.length);
+          for (var i = 0; i < c.length; i++) {
+            var s = Math.max(-1, Math.min(1, c[i]));
+            i16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+          }
+          this.port.postMessage(i16.buffer, [i16.buffer]);
+        }
+        return true;
+      }
+    }
+    registerProcessor('pcm-24k-processor', P);
+  `;
+  var blob = new Blob([code], { type: 'application/javascript' });
+  await audioCtx.audioWorklet.addModule(
+    URL.createObjectURL(blob)
+  );
+
+  var src = audioCtx.createMediaStreamSource(micStream);
+  workletNode = new AudioWorkletNode(audioCtx, 'pcm-24k-processor');
+  src.connect(workletNode);
+
+  workletNode.port.onmessage = function(e) {
+    var tokenBytes = new TextEncoder()
+      .encode(token + '|');
+    var frame = new Uint8Array(
+      tokenBytes.length + e.data.byteLength
+    );
+    frame.set(tokenBytes, 0);
+    frame.set(new Uint8Array(e.data), tokenBytes.length);
+    if (ws.readyState === 1) ws.send(frame.buffer);
+  };
+}
+
+function stopMicrophone() {
+  if (workletNode) workletNode.disconnect();
+  if (audioCtx) audioCtx.close();
+  if (micStream)
+    micStream.getTracks().forEach(t => t.stop());
+}
+```
+
+### Python
+
+```python
+import asyncio
+import json
+import websockets
+import pyaudio
+
+SOCKET_TOKEN = 'YOUR_SOCKET_ACCESS_TOKEN'
+SAMPLE_RATE = 24000
+CHUNK = 4800  # 200ms
+
+async def realtime_stt_session():
+    uri = 'wss://socket.wiro.ai/v1'
+    async with websockets.connect(uri) as ws:
+        await ws.send(json.dumps({
+            'type': 'task_info',
+            'tasktoken': SOCKET_TOKEN
+        }))
+
+        pa = pyaudio.PyAudio()
+        mic = pa.open(format=pyaudio.paInt16,
+            channels=1, rate=SAMPLE_RATE,
+            input=True, frames_per_buffer=CHUNK)
+
+        is_listening = False
+        full_transcript = []
+
+        async def send_audio():
+            while True:
+                if is_listening:
+                    data = mic.read(CHUNK,
+                        exception_on_overflow=False)
+                    token = SOCKET_TOKEN.encode() + b'|'
+                    await ws.send(token + data)
+                await asyncio.sleep(0.01)
+
+        async def receive():
+            nonlocal is_listening
+            async for msg in ws:
+                data = json.loads(msg)
+                t = data['type']
+                if t == 'task_stream_ready':
+                    print('Session ready — sending audio')
+                    is_listening = True
+                elif t == 'task_stream_end':
+                    print('Transcription stream ended')
+                    is_listening = False
+                elif t == 'task_cost':
+                    print(f'Cost: {data["cumulativeCost"]}')
+                elif t == 'task_output':
+                    m = data.get('message', '')
+                    if m.startswith('TRANSCRIPT_USER:'):
+                        text = m[16:]
+                        full_transcript.append(text)
+                        print(f'Transcript: {text}')
+                elif t in ('task_end',
+                    'task_postprocess_end'):
+                    print('Session ended')
+                    print(f'Full: {" ".join(full_transcript)}')
+                    break
+
+        sender = asyncio.create_task(send_audio())
+        try:
+            await receive()
+        finally:
+            sender.cancel()
+            try:
+                await sender
+            except asyncio.CancelledError:
+                pass
+
+        mic.stop_stream()
+        mic.close()
+        pa.terminate()
+
+asyncio.run(realtime_stt_session())
+```
+
+### Node.js
+
+```javascript
+const WebSocket = require('ws');
+
+const SOCKET_TOKEN = 'YOUR_SOCKET_ACCESS_TOKEN';
+const ws = new WebSocket('wss://socket.wiro.ai/v1');
+const fullTranscript = [];
+
+ws.on('open', () => {
+  ws.send(JSON.stringify({
+    type: 'task_info',
+    tasktoken: SOCKET_TOKEN
+  }));
+});
+
+ws.on('message', (data, isBinary) => {
+  const msg = JSON.parse(data.toString());
+
+  if (msg.type === 'task_stream_ready') {
+    console.log('Session ready — start sending audio');
+    startAudioCapture(ws, SOCKET_TOKEN);
+  }
+
+  if (msg.type === 'task_output' &&
+      typeof msg.message === 'string' &&
+      msg.message.startsWith('TRANSCRIPT_USER:')) {
+    const text = msg.message.substring(16);
+    fullTranscript.push(text);
+    console.log('Transcript:', text);
+  }
+
+  if (msg.type === 'task_stream_end') {
+    console.log('Transcription stream ended');
+  }
+
+  if (msg.type === 'task_cost') {
+    console.log('Cost:', msg.cumulativeCost);
+  }
+
+  if (msg.type === 'task_end') {
+    console.log('Model process ended — waiting for post-processing');
+  }
+
+  if (msg.type === 'task_postprocess_end') {
+    console.log('Done');
+    console.log('Full transcript:', fullTranscript.join(' '));
+    ws.close();
+  }
+});
+
+// NOTE: arecord is Linux-only (ALSA). Alternatives:
+//   macOS: sox — spawn('sox', ['-d', '-t', 'raw', '-r', '24000', '-b', '16', '-c', '1', '-e', 'signed', '-L', '-'])
+//   Windows: sox or ffmpeg — spawn('ffmpeg', ['-f', 'dshow', '-i', 'audio=Microphone', '-ar', '24000', '-ac', '1', '-f', 's16le', '-'])
+function startAudioCapture(ws, token) {
+  const { spawn } = require('child_process');
+  const rec = spawn('arecord', [
+    '-f', 'S16_LE', '-r', '24000',
+    '-c', '1', '-t', 'raw', '-'
+  ]);
+
+  const CHUNK_BYTES = 9600;
+  let buffer = Buffer.alloc(0);
+
+  rec.stdout.on('data', (chunk) => {
+    buffer = Buffer.concat([buffer, chunk]);
+    while (buffer.length >= CHUNK_BYTES) {
+      const pcm = buffer.slice(0, CHUNK_BYTES);
+      buffer = buffer.slice(CHUNK_BYTES);
+      const tokenBuf = Buffer.from(token + '|');
+      const frame = Buffer.concat([tokenBuf, pcm]);
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(frame);
+      }
+    }
+  });
+
+  ws.on('close', () => rec.kill());
+}
+
+function endSession() {
+  ws.send(JSON.stringify({
+    type: 'task_session_end',
+    tasktoken: SOCKET_TOKEN
+  }));
+}
+```
+
+### Format
+
+```json
+{
+  "audio_format": {
+    "codec": "PCM",
+    "bit_depth": "16-bit Int16",
+    "sample_rate": 24000,
+    "channels": 1,
+    "byte_order": "little-endian"
+  },
+  "binary_frame": {
+    "direction": "client → server only",
+    "format": "tasktoken|pcm_audio_data"
+  },
+  "example_chunk": {
+    "samples": 4800,
+    "duration_ms": 200,
+    "bytes": 9600
+  },
+  "events": {
+    "task_stream_ready": "Start sending audio",
+    "task_stream_end": "Transcription stream ended",
+    "task_cost": "Cost per turn + cumulative",
+    "task_output": "TRANSCRIPT_USER:<transcribed text>",
+    "task_session_stopped": "A spend limit or the balance is ending the session",
+    "task_session_end": "Send to end session",
+    "task_end": "Server ended session",
+    "task_postprocess_end": "Post-processing complete — safe to close"
+  },
+  "output": {
+    "transcript_prefix": "TRANSCRIPT_USER:",
+    "audio_playback": false,
+    "server_binary_frames": false
+  }
+}
+```
 
 ---
 
@@ -5380,23 +8691,29 @@ The Files API lets you organize and upload data that can be referenced in model 
 
 ## Authentication and Public File URLs
 
-All file-management endpoints require project or Bearer authentication. API Key
-Only projects send `x-api-key`; signature projects also send `x-nonce` and
-`x-signature`.
+All file-management endpoints, including `FolderCreate`, `Upload`, `List`,
+`Edit`, `Delete`, `CheckDisk`, and `Unzip`, require normal Wiro project or
+Bearer authentication.
 
-The returned `GET /File/:accessKey/:fileName` URL intentionally remains public
-so browsers and model workers can display the file without account
-credentials. Possession of the generated access key grants read access only,
-not file-management permission.
+- **API Key Only projects:** send `x-api-key`.
+- **Signature projects:** send `x-api-key`, `x-nonce`, and `x-signature`.
+  See [Authentication](/docs/authentication) for signature generation.
+- **Dashboard requests:** use the signed-in user's Bearer token.
+
+The URL returned for an uploaded file is intentionally different:
+`GET /File/:accessKey/:fileName` remains public so browsers, AI model workers,
+and external clients can display the file without forwarding account
+credentials. Possession of the generated access key grants read access; it
+does not grant permission to manage files.
 
 ## **POST** /File/FolderCreate
 
 Creates a new folder to organize your uploaded files.
 
-| Parameter  | Type   | Required | Description                                           |
-| ---------- | ------ | -------- | ----------------------------------------------------- |
-| `name`     | string | Yes      | Folder name (letters, numbers, hyphens, underscores only) |
-| `parentid` | string | No       | Parent folder ID for nested structure (omit for root) |
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `name` | string | Yes | Folder name (letters, numbers, hyphens, underscores only) |
+| `parentid` | string | No | Parent folder ID for nested structure (omit for root) |
 
 ### Response
 
@@ -5417,12 +8734,16 @@ Creates a new folder to organize your uploaded files.
 
 ## **POST** /File/Upload
 
-Uploads a file using `multipart/form-data`. You can optionally assign it to a folder. Max file size: 100 MB.
+Uploads a file using `multipart/form-data`. You can optionally assign it to a folder.
 
-| Parameter  | Type   | Required | Description                                   |
-| ---------- | ------ | -------- | --------------------------------------------- |
-| `file`     | file   | Yes      | The file to upload (multipart form field)     |
-| `folderid` | string | No       | Target folder ID (uploads to user's default folder if omitted) |
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `file` | file | Yes | The file to upload (multipart form field) |
+| `folderid` | string | No | Target folder ID (uploads to user's default folder if omitted) |
+
+**File size limit:** 100 MB per file.
+
+**Supported file types:** Images (jpg, png, gif, jpeg, webp, heic), video (mp4, webm, mov), audio (mp3, wav, m4a), documents (pdf, csv, docx, xlsx, pptx, txt, md, epub), and ZIP archives (automatically extracted).
 
 ### Response
 
@@ -5456,39 +8777,421 @@ You don't always need to upload files first. Most models take a public URL in pl
 }
 ```
 
+## Code Examples
+
+The examples below show **API Key Only** authentication. For a
+signature-authenticated project, include the nonce and signature headers:
+
+```bash
+NONCE="$(date +%s)"
+SIGNATURE="$(printf '%s' "${YOUR_API_SECRET}${NONCE}" \
+  | openssl dgst -sha256 -hmac "${YOUR_API_KEY}" \
+  | awk '{print $NF}')"
+
+curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: ${YOUR_API_KEY}" \
+  -H "x-nonce: ${NONCE}" \
+  -H "x-signature: ${SIGNATURE}" \
+  -d '{"name":"training-data"}'
+```
+
+### curl (Folder)
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "name": "training-data"
+  }'
+```
+
+### curl (Upload)
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/File/Upload" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "file=@/path/to/dataset.csv" \
+  -F "folderid=folder-id-here"
+```
+
+### Python
+
+```python
+import requests
+
+headers = {
+    "x-api-key": "YOUR_API_KEY",
+    "Content-Type": "application/json"
+}
+
+# Create a folder
+folder_resp = requests.post(
+    "https://api.wiro.ai/v1/File/FolderCreate",
+    headers=headers,
+    json={
+        "name": "training-data"
+    }
+)
+folder_id = folder_resp.json()["list"][0]["id"]
+print(f"Folder ID: {folder_id}")
+
+# Upload a file
+with open("dataset.csv", "rb") as f:
+    upload_resp = requests.post(
+        "https://api.wiro.ai/v1/File/Upload",
+        headers={"x-api-key": "YOUR_API_KEY"},
+        files={"file": f},
+        data={"folderid": folder_id}
+    )
+file_url = upload_resp.json()["list"][0]["url"]
+print(f"File URL: {file_url}")
+```
+
+### Node.js
+
+```javascript
+const axios = require('axios');
+const FormData = require('form-data');
+const fs = require('fs');
+
+const headers = {
+  'x-api-key': 'YOUR_API_KEY',
+  'Content-Type': 'application/json'
+};
+
+// Create a folder
+const folderResp = await axios.post(
+  'https://api.wiro.ai/v1/File/FolderCreate',
+  { name: 'training-data' },
+  { headers }
+);
+const folderId = folderResp.data.list[0].id;
+console.log('Folder ID:', folderId);
+
+// Upload a file
+const form = new FormData();
+form.append('file', fs.createReadStream('dataset.csv'));
+form.append('folderid', folderId);
+
+const uploadResp = await axios.post(
+  'https://api.wiro.ai/v1/File/Upload',
+  form,
+  { headers: { 'x-api-key': 'YOUR_API_KEY', ...form.getHeaders() } }
+);
+const fileUrl = uploadResp.data.list[0].url;
+console.log('File URL:', fileUrl);
+```
+
+### PHP
+
+```php
+<?php
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, "https://api.wiro.ai/v1/File/FolderCreate");
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Content-Type: application/json",
+    "x-api-key: YOUR_API_KEY"
+]);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    "name" => "training-data"
+]));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = curl_exec($ch);
+curl_close($ch);
+echo $response;
+```
+
+### C#
+
+```csharp
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Add("x-api-key", "YOUR_API_KEY");
+
+var content = new StringContent(
+    JsonSerializer.Serialize(new {
+        name = "training-data"
+    }),
+    Encoding.UTF8, "application/json");
+
+var response = await client.PostAsync(
+    "https://api.wiro.ai/v1/File/FolderCreate", content);
+var result = await response.Content.ReadAsStringAsync();
+Console.WriteLine(result);
+```
+
+### Go
+
+```go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+    "io"
+)
+
+func main() {
+    body, _ := json.Marshal(map[string]interface{}{
+        "name": "training-data",
+    })
+    req, _ := http.NewRequest("POST",
+        "https://api.wiro.ai/v1/File/FolderCreate",
+        bytes.NewBuffer(body))
+    req.Header.Set("Content-Type", "application/json")
+    req.Header.Set("x-api-key", "YOUR_API_KEY")
+
+    resp, _ := http.DefaultClient.Do(req)
+    defer resp.Body.Close()
+    data, _ := io.ReadAll(resp.Body)
+    fmt.Println(string(data))
+}
+```
+
+### Swift
+
+```swift
+import Foundation
+
+let url = URL(string: "https://api.wiro.ai/v1/File/FolderCreate")!
+var request = URLRequest(url: url)
+request.httpMethod = "POST"
+request.setValue("application/json",
+    forHTTPHeaderField: "Content-Type")
+request.setValue("YOUR_API_KEY",
+    forHTTPHeaderField: "x-api-key")
+request.httpBody = try! JSONSerialization.data(
+    withJSONObject: [
+        "name": "training-data"
+    ])
+
+let (data, _) = try await URLSession.shared
+    .data(for: request)
+print(String(data: data, encoding: .utf8)!)
+```
+
+### Kotlin
+
+```kotlin
+import java.net.HttpURLConnection
+import java.net.URL
+
+val url = URL("https://api.wiro.ai/v1/File/FolderCreate")
+val conn = url.openConnection() as HttpURLConnection
+conn.requestMethod = "POST"
+conn.setRequestProperty("Content-Type", "application/json")
+conn.setRequestProperty("x-api-key", "YOUR_API_KEY")
+conn.doOutput = true
+conn.outputStream.write("""{
+    "name": "training-data"
+}""".toByteArray())
+
+val response = conn.inputStream.bufferedReader().readText()
+println(response)
+```
+
+### Dart
+
+```dart
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+final response = await http.post(
+  Uri.parse('https://api.wiro.ai/v1/File/FolderCreate'),
+  headers: {
+    'Content-Type': 'application/json',
+    'x-api-key': 'YOUR_API_KEY',
+  },
+  body: jsonEncode({
+    'name': 'training-data',
+  }),
+);
+print(response.body);
+```
+
 ---
 
 # Pricing
 
 Understand how billing works for AI model runs on Wiro.
 
+## Overview
+
+When you run an AI model through Wiro, you are billed based on the type of work performed. Each model has its own pricing, visible on the model's page in the [marketplace](https://wiro.ai/models) and on the [pricing page](https://wiro.ai/product/pricing). You pay only for successful runs. Server errors are never billed.
+
+Wiro uses a prepaid credit model. You [add credits](https://wiro.ai/panel/billing) to your account and they are drawn down as you use models. Credits also determine your [concurrency limit](/docs/concurrency-limits). The same balance pays agent plans and the AI usage an agent uses once its plan's included usage is used up (see [Pricing Model](/docs/agent-overview#pricing-model-plans-ai-usage-balance)).
+
 ## Billing Methods
 
-Fixed-rate: `cpr` (per request), `cps` (per second), `cpo` (per output), `cpt` (per token).
-Usage-based: `cp-pixel` (per pixel tier), `cp-audiosecondslength` (per audio second), `cp-promptlength` (per character), `cp-outputVideoLength` (per video second).
-Special: `cp-realtimeturn` (per realtime voice turn), `cp-readoutput` (model-reported cost).
+Every model on Wiro uses one of the following billing methods. The method is set per model and determines how the cost is calculated.
 
-Fallback: when no `dynamicprice`, cost = elapsed_seconds × `cps`. `approximatelycost` = average_elapsed_seconds × cps.
+### Fixed-Rate Methods
+
+| Billing Method | Code | How it works |
+|---|---|---|
+| **Per Request** | `cpr` | Fixed cost per run, regardless of output. Most common for image generation, image editing, and simple models. |
+| **Per Second** | `cps` | Cost per second of processing time. Used for models where runtime varies significantly. When no dynamic pricing is set, this is the default billing method: cost = elapsed seconds × cps rate. |
+| **Per Output** | `cpo` | Cost per output item generated. If the run produces multiple files, you pay per file. If no output is produced, the base price is charged once. |
+| **Per Token** | `cpt` | Cost per token used. Total tokens (input + output) are extracted from the model's usage metadata. Used for LLM models. |
+
+### Usage-Based Methods
+
+| Billing Method | Code | How it works |
+|---|---|---|
+| **Per Pixel** | `cp-pixel` | Cost based on output resolution. Each 1,048,576 pixels (1024×1024) counts as one tier. Higher resolutions cost proportionally more. Can also include per-input-image costs (`priceInput`) when the model processes input images. |
+| **Per Audio Second** | `cp-audiosecondslength` | Cost per second of input audio duration. It is measured from the duration of the input audio files. |
+| **Per Character** | `cp-promptlength` | Cost per character in the input prompt. Total cost = prompt length × price per character. |
+| **Per Video Second** | `cp-outputVideoLength` | Cost per second of generated output video. It is measured from the duration of the output video. |
+
+### Special Methods
+
+| Billing Method | Code | How it works |
+|---|---|---|
+| **Per Realtime Turn** | `cp-realtimeturn` | Used for realtime voice conversation models. Billing happens per turn during the session: each conversation turn has a cost that is deducted in real time. |
+| **Model-Reported** | `cp-readoutput` | The model reports its cost when the run ends. |
 
 ## Dynamic Pricing
 
-Many models have dynamic pricing: cost varies based on input parameters (e.g. resolution, duration). Returned in the `dynamicprice` field of Tool/List and Tool/Detail:
+Many models have **dynamic pricing**: the cost varies based on the input parameters you choose. For example, a video generation model might charge different rates depending on the resolution and duration you select.
+
+The pricing is returned in the `dynamicprice` field of the [Tool/List](/docs/models) and [Tool/Detail](/docs/models) API responses as a JSON array:
 
 ```json
-[{"inputs": {"resolution": "720p", "duration": "5"}, "price": 0.13, "priceMethod": "cpr"}]
+[
+  {
+    "inputs": { "resolution": "720p", "duration": "5" },
+    "price": 0.13,
+    "priceMethod": "cpr"
+  },
+  {
+    "inputs": { "resolution": "1080p", "duration": "5" },
+    "price": 0.29,
+    "priceMethod": "cpr"
+  }
+]
 ```
 
-Empty `inputs` (`{}`) = flat rate for all configurations. Specific `inputs` = price for that parameter combination only.
+### How Dynamic Pricing Works
+
+Each entry in the `dynamicprice` array represents a pricing tier:
+
+| Field | Type | Description |
+|---|---|---|
+| `inputs` | object | The input parameter combination this price applies to. Empty `{}` means the price applies to all configurations. |
+| `price` | number | The cost in USD for this configuration. |
+| `priceMethod` | string | The billing method code (see tables above). |
+| `priceExtra` | number (optional) | Extra cost per additional tier. Currently used by `cp-pixel`: each additional 1MP tier costs this amount. |
+| `priceInput` | number (optional) | Per-input cost. Currently used by `cp-pixel`: each input image incurs this additional cost per 1MP tier. |
+
+When `inputs` contains specific parameter values (e.g. `"resolution": "720p"`), that price only applies when you run the model with those exact parameters. When `inputs` is empty (`{}`), it's a flat rate that applies regardless of input parameters.
+
+Input matching also supports `QUANTITY` values (e.g. `"QUANTITY:1"`, `"QUANTITY:3"`) for models where the number of input files affects pricing.
+
+### Example: Video Generation Pricing
+
+A video model might have pricing tiers based on resolution and duration:
+
+| Resolution | Duration | Price |
+|---|---|---|
+| 480p | 5 seconds | $0.06 |
+| 720p | 5 seconds | $0.13 |
+| 1080p | 5 seconds | $0.29 |
+| 480p | 10 seconds | $0.12 |
+| 720p | 10 seconds | $0.26 |
+| 1080p | 10 seconds | $0.58 |
+
+### Example: Simple Flat Pricing
+
+An image generation model with a flat rate:
+
+```json
+[{ "inputs": {}, "price": 0.03, "priceMethod": "cpr" }]
+```
+
+This means every run costs $0.03, regardless of parameters.
+
+## Fallback Pricing (Per-Second)
+
+When a model does not have `dynamicprice` set, billing falls back to **per-second pricing**. The cost is calculated as:
+
+```
+totalcost = elapsed_seconds × cps
+```
+
+Where `cps` (cost per second) is the model's own rate or Wiro's default per-second rate. The API also returns an `approximatelycost` field, an estimate based on the model's average run time:
+
+```
+approximatelycost = average_elapsed_seconds × cps
+```
+
+This gives you a rough idea of the expected cost before running the model.
+
+## Checking Prices
+
+### Via the API
+
+Pricing information is included in both the [Tool/List](/docs/models) and [Tool/Detail](/docs/models) responses in the `dynamicprice` field. Use `POST /Tool/Detail` with the model's `slugowner` and `slugproject` to get full pricing details.
+
+### Via MCP
+
+When using the [MCP server](/docs/wiro-mcp-server), both `search_models` and `get_model_schema` tools return pricing information in their responses. Your AI assistant can check the cost before running a model.
+
+### Pricing Page
+
+Browse and compare model prices interactively on the [pricing page](https://wiro.ai/product/pricing). Select a budget to see how many runs each model can perform.
 
 ## What You Pay For
 
-Successful runs only (`pexit: "0"`). Cost recorded in `totalcost` field of Task/Detail. Server errors, queue time, and cancelled tasks are never billed.
+You are billed only for **successfully completed** model runs, where the task reaches `task_postprocess_end` status with `pexit` of `"0"`. The actual cost is recorded in the task's `totalcost` field, which you can retrieve via [Task/Detail](/docs/tasks).
 
-The same balance pays agent plans and the AI usage an agent uses once its plan's included usage is used up (see [Pricing Model](/docs/agent-overview#pricing-model-plans-ai-usage-balance)). An agent's plan payments and AI usage have no task: read one agent's with [`UserAgent/TransactionList`](/docs/agent-transactions), or the whole workspace's with `Wallet/TransactionList` and `surface: "agent"` (see [Wallet Billing Flow](/docs/organizations-api-access#billing-flow)).
+**Important:** `task_postprocess_end` does **not** always mean success. Both successful and failed runs reach this status. You must check `pexit` to determine the outcome:
 
-Pricing page: https://wiro.ai/product/pricing
+- `pexit: "0"` means success. You are billed and `totalcost` reflects the charge
+- `pexit: "1"` (or any non-zero) means failure. **You are not charged** and `totalcost` is `"0"`
 
-## Spend Limits
+## What You Are Not Charged For
+
+- **Failed tasks**: if `pexit` is non-zero, no charge is incurred regardless of how long the model ran.
+- **Server errors**: if a run fails due to a server-side error, no charge is incurred.
+- **Queue time**: time spent waiting in the queue before processing starts is free.
+- **Cancelled tasks**: tasks cancelled before processing completes are not billed.
+
+## Monitoring Your Spending
+
+### Via the API
+
+Check the `totalcost` field in [Task/Detail](/docs/tasks) responses to see the cost of individual runs:
+
+```json
+{
+  "tasklist": [{
+    "status": "task_postprocess_end",
+    "pexit": "0",
+    "totalcost": "0.003510000000",
+    "elapsedseconds": "6.0000"
+  }]
+}
+```
+
+An agent's plan payments and AI usage have no task: read one agent's with [`UserAgent/TransactionList`](/docs/agent-transactions), or the whole workspace's with `Wallet/TransactionList` and `surface: "agent"` (see [Wallet Billing Flow](/docs/organizations-api-access#billing-flow)).
+
+### Via MCP
+
+The [MCP server](/docs/wiro-mcp-server) provides three ways to check costs:
+
+- **`get_task`**: returns full task details including `totalcost`
+- **`get_task_price`**: dedicated tool that returns just the cost, billing status, and duration. Clearly indicates whether the task was billed or not.
+- **`get_account`**: with `recent_transactions`, lists the wallet's latest transactions, newest first, with what each one was for. Use it to check that a charge landed.
+
+### Dashboard
+
+View your overall balance, usage history, and billing details in the [Dashboard](https://wiro.ai/panel/billing).
+
+### Spend Limits
 
 To cap what you spend, set monthly or daily spend limits under [Controls > Spend Limits](https://wiro.ai/panel/controls/spend-limits) in the dashboard or with the `/SpendLimit` endpoints: for the whole wallet, one API key, one team member, one way in such as the API or the LLM gateway, or one agent. Once a limit is reached, new work it covers is refused with error code `93`, and an alert email can warn you before that. See [Spend Limits](/docs/spend-limits).
 
@@ -5564,7 +9267,7 @@ The error message includes your current balance and the calculated limit, so you
 
 A refused request returns HTTP `200` with `"result": false` and an error with code `96`. No task is created and nothing is charged. Handle it in one of these ways:
 
-- **Wait and retry:** send the same request again after a growing wait, for example 2, 4, then 8 seconds, up to a minute. The code examples on the [Concurrency Limits](/docs/concurrency-limits) page do this: they look for the number `96` in `errors[].code`, retry only that code, treat `"result": true` as success and stop after 8 attempts.
+- **Wait and retry:** send the same request again after a growing wait, for example 2, 4, then 8 seconds, up to a minute. The code examples on this page do this: they look for the number `96` in `errors[].code`, retry only that code, treat `"result": true` as success and stop after 8 attempts.
 - **Queue on your side:** keep at most as many unfinished tasks as your limit allows, and send the next request when a task reaches `task_postprocess_end` or `task_cancel` ([Task/Detail](/docs/tasks) or the [WebSocket](/docs/websocket)). Tasks started on the website, by Studio for you (from wiro.ai or with your API key), by agents and by workflows, and in a team by other members, use the same slots.
 - **Direct LLM Gateway:** through the [Direct LLM Gateway](/docs/completions-api) the refusal arrives as HTTP `429` with error type `rate_limit_error` and a `retry-after` header; wait that many seconds before you retry. A streamed Responses request has already answered `200`, so it ends with `response.failed` carrying code `rate_limit_exceeded` and has no such header; use a growing wait there.
 - **Wiro MCP server:** through the [Wiro MCP server](/docs/wiro-mcp-server), `run_model` returns the same message as its tool error.
@@ -5583,6 +9286,440 @@ To increase your concurrency limit, [add credits to your account](https://wiro.a
   `wait=false` only when you need the token immediately, and `get_task` for a
   one-time status check.
 - **Implement exponential backoff:** if polling task status, start at 3 seconds and increase the interval for longer tasks.
+
+## Code Examples
+
+Each example sends a run, waits and sends the same request again while the response carries code `96`, and stops after 8 attempts or on any other error.
+
+### curl
+
+```bash
+#!/bin/bash
+# Run a model and, on code 96, send the same request again after a growing wait
+
+API_KEY="YOUR_API_KEY"
+RUN_URL="https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}"
+MAX_ATTEMPTS=8
+DELAY=2
+
+for ATTEMPT in $(seq 1 $MAX_ATTEMPTS); do
+  RESPONSE=$(curl -s -X POST "$RUN_URL" \
+    -H "Content-Type: application/json" \
+    -H "x-api-key: $API_KEY" \
+    -d '{"prompt": "A futuristic city at sunset"}')
+
+  STATE=$(echo "$RESPONSE" | python3 -c "import sys, json; r = json.load(sys.stdin); print('ok' if r.get('result') is True else 'limit' if any(e.get('code') == 96 for e in r.get('errors') or []) else 'other')")
+
+  if [ "$STATE" = "ok" ]; then
+    echo "$RESPONSE"
+    break
+  fi
+  if [ "$STATE" != "limit" ] || [ "$ATTEMPT" -eq "$MAX_ATTEMPTS" ]; then
+    echo "Run not started: $RESPONSE" >&2
+    break
+  fi
+
+  # Code 96 created no task and charged nothing, so the same request can be sent again
+  sleep "$DELAY"
+  DELAY=$(( DELAY * 2 > 60 ? 60 : DELAY * 2 ))
+done
+```
+
+### Python
+
+```python
+import time
+import requests
+
+API_KEY = "YOUR_API_KEY"
+RUN_URL = "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}"
+MAX_ATTEMPTS = 8
+
+
+def run_with_retry(params):
+    delay = 2
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        response = requests.post(
+            RUN_URL,
+            headers={"x-api-key": API_KEY, "Content-Type": "application/json"},
+            json=params,
+        )
+        data = response.json()
+        if data.get("result") is True:
+            return data  # taskid and socketaccesstoken
+
+        codes = [error.get("code") for error in data.get("errors") or []]
+        if 96 not in codes or attempt == MAX_ATTEMPTS:
+            raise RuntimeError(f"Run not started: {data.get('errors')}")
+
+        # Code 96 created no task and charged nothing, so the same request can be sent again
+        time.sleep(delay)
+        delay = min(delay * 2, 60)
+
+
+run = run_with_retry({"prompt": "A futuristic city at sunset"})
+print("Task ID:", run["taskid"])
+```
+
+### Node.js
+
+```javascript
+const axios = require('axios');
+
+const API_KEY = 'YOUR_API_KEY';
+const RUN_URL = 'https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}';
+const MAX_ATTEMPTS = 8;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function runWithRetry(params) {
+  let delay = 2;
+  for (let attempt = 1; ; attempt++) {
+    const { data } = await axios.post(RUN_URL, params, {
+      headers: { 'x-api-key': API_KEY, 'Content-Type': 'application/json' }
+    });
+    if (data.result === true) return data; // taskid and socketaccesstoken
+
+    const limited = (data.errors || []).some((error) => error.code === 96);
+    if (!limited || attempt === MAX_ATTEMPTS) {
+      throw new Error(`Run not started: ${JSON.stringify(data.errors)}`);
+    }
+
+    // Code 96 created no task and charged nothing, so the same request can be sent again
+    await sleep(delay * 1000);
+    delay = Math.min(delay * 2, 60);
+  }
+}
+
+runWithRetry({ prompt: 'A futuristic city at sunset' })
+  .then((run) => console.log('Task ID:', run.taskid))
+  .catch((error) => console.error(error.message));
+```
+
+### PHP
+
+```php
+<?php
+$apiKey = 'YOUR_API_KEY';
+$runUrl = 'https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}';
+$maxAttempts = 8;
+
+function runWithRetry(string $runUrl, string $apiKey, array $params, int $maxAttempts): array {
+    $delay = 2;
+    for ($attempt = 1; ; $attempt++) {
+        $ch = curl_init($runUrl);
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'x-api-key: ' . $apiKey,
+            ],
+            CURLOPT_POSTFIELDS => json_encode($params),
+        ]);
+        $data = json_decode(curl_exec($ch), true);
+        curl_close($ch);
+
+        if (($data['result'] ?? false) === true) {
+            return $data; // taskid and socketaccesstoken
+        }
+
+        $codes = array_column($data['errors'] ?? [], 'code');
+        if (!in_array(96, $codes, true) || $attempt === $maxAttempts) {
+            throw new RuntimeException('Run not started: ' . json_encode($data['errors'] ?? null));
+        }
+
+        // Code 96 created no task and charged nothing, so the same request can be sent again
+        sleep($delay);
+        $delay = min($delay * 2, 60);
+    }
+}
+
+$run = runWithRetry($runUrl, $apiKey, ['prompt' => 'A futuristic city at sunset'], $maxAttempts);
+echo "Task ID: {$run['taskid']}\n";
+```
+
+### C#
+
+```csharp
+using System.Linq;
+using System.Net.Http.Json;
+using System.Text.Json;
+
+var apiKey = "YOUR_API_KEY";
+var runUrl = "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}";
+const int maxAttempts = 8;
+
+using var http = new HttpClient();
+http.DefaultRequestHeaders.Add("x-api-key", apiKey);
+
+async Task<JsonElement> RunWithRetry(object parameters)
+{
+    var delay = 2;
+    for (var attempt = 1; ; attempt++)
+    {
+        var response = await http.PostAsJsonAsync(runUrl, parameters);
+        var data = await response.Content.ReadFromJsonAsync<JsonElement>();
+        if (data.TryGetProperty("result", out var result) && result.ValueKind == JsonValueKind.True)
+            return data; // taskid and socketaccesstoken
+
+        var limited = data.TryGetProperty("errors", out var errors)
+            && errors.ValueKind == JsonValueKind.Array
+            && errors.EnumerateArray().Any(error =>
+                error.TryGetProperty("code", out var code)
+                && code.ValueKind == JsonValueKind.Number
+                && code.GetInt32() == 96);
+        if (!limited || attempt == maxAttempts)
+            throw new Exception($"Run not started: {data}");
+
+        // Code 96 created no task and charged nothing, so the same request can be sent again
+        await Task.Delay(TimeSpan.FromSeconds(delay));
+        delay = Math.Min(delay * 2, 60);
+    }
+}
+
+var run = await RunWithRetry(new { prompt = "A futuristic city at sunset" });
+Console.WriteLine($"Task ID: {run.GetProperty("taskid")}");
+```
+
+### Go
+
+```go
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"time"
+)
+
+const (
+	apiKey      = "YOUR_API_KEY"
+	runURL      = "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}"
+	maxAttempts = 8
+)
+
+type wiroError struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+}
+
+type runResponse struct {
+	Result            bool        `json:"result"`
+	Errors            []wiroError `json:"errors"`
+	TaskID            json.Number `json:"taskid"`
+	SocketAccessToken string      `json:"socketaccesstoken"`
+}
+
+func runOnce(params map[string]interface{}) (*runResponse, error) {
+	body, _ := json.Marshal(params)
+	req, _ := http.NewRequest("POST", runURL, bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-api-key", apiKey)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var data runResponse
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return nil, err
+	}
+	return &data, nil
+}
+
+func hasCode(errs []wiroError, code int) bool {
+	for _, e := range errs {
+		if e.Code == code {
+			return true
+		}
+	}
+	return false
+}
+
+func runWithRetry(params map[string]interface{}) (*runResponse, error) {
+	delay := 2 * time.Second
+	for attempt := 1; ; attempt++ {
+		data, err := runOnce(params)
+		if err != nil {
+			return nil, err
+		}
+		if data.Result {
+			return data, nil // taskid and socketaccesstoken
+		}
+		if !hasCode(data.Errors, 96) || attempt == maxAttempts {
+			return nil, fmt.Errorf("run not started: %+v", data.Errors)
+		}
+
+		// Code 96 created no task and charged nothing, so the same request can be sent again
+		time.Sleep(delay)
+		delay *= 2
+		if delay > 60*time.Second {
+			delay = 60 * time.Second
+		}
+	}
+}
+
+func main() {
+	run, err := runWithRetry(map[string]interface{}{
+		"prompt": "A futuristic city at sunset",
+	})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Printf("Task ID: %s\n", run.TaskID)
+}
+```
+
+### Swift
+
+```swift
+import Foundation
+
+let apiKey = "YOUR_API_KEY"
+let runUrl = URL(string: "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}")!
+let maxAttempts = 8
+
+struct RunNotStarted: Error {
+    let errors: String
+}
+
+func runOnce(_ params: [String: Any]) async throws -> [String: Any] {
+    var request = URLRequest(url: runUrl)
+    request.httpMethod = "POST"
+    request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.addValue(apiKey, forHTTPHeaderField: "x-api-key")
+    request.httpBody = try JSONSerialization.data(withJSONObject: params)
+
+    let (data, _) = try await URLSession.shared.data(for: request)
+    return try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+}
+
+func runWithRetry(_ params: [String: Any]) async throws -> [String: Any] {
+    var delay: UInt64 = 2
+    var attempt = 1
+    while true {
+        let data = try await runOnce(params)
+        if data["result"] as? Bool == true {
+            return data // taskid and socketaccesstoken
+        }
+
+        let errors = data["errors"] as? [[String: Any]] ?? []
+        let limited = errors.contains { ($0["code"] as? Int) == 96 }
+        if !limited || attempt == maxAttempts {
+            throw RunNotStarted(errors: String(describing: errors))
+        }
+
+        // Code 96 created no task and charged nothing, so the same request can be sent again
+        try await Task.sleep(nanoseconds: delay * 1_000_000_000)
+        delay = min(delay * 2, 60)
+        attempt += 1
+    }
+}
+
+let run = try await runWithRetry(["prompt": "A futuristic city at sunset"])
+print("Task ID: \(run["taskid"] ?? "")")
+```
+
+### Kotlin
+
+```kotlin
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import com.google.gson.Gson
+import com.google.gson.JsonObject
+
+val apiKey = "YOUR_API_KEY"
+val runUrl = "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}"
+val maxAttempts = 8
+val client = HttpClient.newHttpClient()
+val gson = Gson()
+
+fun runOnce(params: Map<String, Any?>): JsonObject {
+    val request = HttpRequest.newBuilder()
+        .uri(URI.create(runUrl))
+        .header("Content-Type", "application/json")
+        .header("x-api-key", apiKey)
+        .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(params)))
+        .build()
+    val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+    return gson.fromJson(response.body(), JsonObject::class.java)
+}
+
+fun runWithRetry(params: Map<String, Any?>): JsonObject {
+    var delaySeconds = 2L
+    var attempt = 1
+    while (true) {
+        val data = runOnce(params)
+        if (data.get("result")?.asBoolean == true) return data // taskid and socketaccesstoken
+
+        val errors = data.getAsJsonArray("errors")
+        val limited = errors?.any { it.asJsonObject.get("code")?.asInt == 96 } == true
+        if (!limited || attempt == maxAttempts) {
+            throw IllegalStateException("Run not started: $errors")
+        }
+
+        // Code 96 created no task and charged nothing, so the same request can be sent again
+        Thread.sleep(delaySeconds * 1000)
+        delaySeconds = minOf(delaySeconds * 2, 60L)
+        attempt++
+    }
+}
+
+fun main() {
+    val run = runWithRetry(mapOf("prompt" to "A futuristic city at sunset"))
+    println("Task ID: ${run.get("taskid").asString}")
+}
+```
+
+### Dart
+
+```dart
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+const apiKey = 'YOUR_API_KEY';
+const runUrl = 'https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}';
+const maxAttempts = 8;
+
+Future<Map<String, dynamic>> runWithRetry(Map<String, dynamic> params) async {
+  var delay = 2;
+  for (var attempt = 1; ; attempt++) {
+    final response = await http.post(
+      Uri.parse(runUrl),
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+      },
+      body: jsonEncode(params),
+    );
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    if (data['result'] == true) return data; // taskid and socketaccesstoken
+
+    final errors = (data['errors'] as List?) ?? [];
+    final limited = errors.any((error) => error['code'] == 96);
+    if (!limited || attempt == maxAttempts) {
+      throw Exception('Run not started: ${data['errors']}');
+    }
+
+    // Code 96 created no task and charged nothing, so the same request can be sent again
+    await Future.delayed(Duration(seconds: delay));
+    delay = delay * 2 > 60 ? 60 : delay * 2;
+  }
+}
+
+Future<void> main() async {
+  final run = await runWithRetry({'prompt': 'A futuristic city at sunset'});
+  print('Task ID: ${run['taskid']}');
+}
+```
 
 ---
 
@@ -6640,12 +10777,32 @@ Each applicable rule comes back shaped like a row of `/ModelAccess/List`, with w
 
 Understand API error responses, error codes, and how to handle them.
 
+## Response Format
+
+When an API request fails, the response includes `result: false` and an `errors` array:
+
+```json
+{
+  "result": false,
+  "errors": [
+    {
+      "code": 97,
+      "message": "Insufficient balance"
+    }
+  ]
+}
+```
+
+Most errors return HTTP `200`, so use the `result` field and error `code` to determine success or failure, whatever the status. Some errors also use another HTTP status, such as `401` for a failed API key or bearer token, `404` for an unknown endpoint and `403` for the Studio and Workflow Agent team check (see below).
+
 ## Error Codes
+
+Error codes indicate the category of the problem. Use these for conditional logic in your application.
 
 | Code | Category | Description |
 |------|----------|-------------|
 | `0` | General | Server-side errors, validation failures, missing parameters |
-| `1` | Not Found | Resource not found or not accessible |
+| `1` | Not Found / Client | Resource not found or not accessible |
 | `92` | Model Access | A Model Access rule of the workspace blocks the model. See [Model Access](/docs/model-access) |
 | `93` | Spend Limit | A spend limit of the workspace is reached. See [Spend Limits](/docs/spend-limits) |
 | `96` | Concurrency Limit | Too many concurrent tasks for your balance |
@@ -6654,51 +10811,163 @@ Understand API error responses, error codes, and how to handle them.
 | `99` | Token Invalid | Bearer token missing, invalid, or expired |
 | `110` | Plan Payment Not Finished | The wallet paid for an agent plan (`Deploy`, `CreateSubscriptionCheckout`, `RenewSubscription` or `UpgradeTier`), but the plan change could not be saved. Never send the call again: a retry charges again. Contact support. See [Agent Overview](/docs/agent-overview#error-messages) |
 
-## Error Response Format
+## Authentication Errors
 
-```json
-{
-  "result": false,
-  "errors": [{ "code": 97, "message": "Insufficient balance" }]
+These errors are returned when API key or bearer token authentication fails. All return HTTP `401`.
+
+| Error | Code | Message |
+|-------|------|---------|
+| API key not found | `0` | "Project authorization is not founded." |
+| Signature required | `0` | "Project requires signature authentication. x-signature and x-nonce headers are required." |
+| Invalid signature | `0` | "Project authorization is not valid." |
+| IP not allowed | `0` | "Requested ip {ip} is not allowed." |
+| Key creator left the team | `0` | "The person who created this API key is no longer in its team. Ask a team admin for a new key." |
+| Team change with an API key | `0` | "API keys can't manage teams or organizations. Sign in and try again." |
+| Bearer token missing | `99` | "Authorization bearer token is not founded in headers." |
+| Bearer token invalid | `99` | "Authorization bearer token is invalid." |
+| Bearer token expired | `99` | "Authorization bearer token expired." |
+| Endpoint not found | `0` | "Parsing url error." (HTTP 404) |
+
+### Signature Auth Errors
+
+If your project uses signature-based authentication, ensure all three headers are present and the signature is computed correctly:
+
+```
+x-api-key: YOUR_API_KEY
+x-signature: HMAC-SHA256(key=API_KEY, message=API_SECRET + NONCE)
+x-nonce: Unix timestamp or random integer
+```
+
+See [Authentication](/docs/authentication) for details.
+
+### IP Whitelist Errors
+
+If your project has an IP whitelist configured, requests from unlisted IPs will be rejected. Use `*` in the whitelist to allow all IPs.
+
+### Team API Key Errors
+
+A team project's API key works only while the user who created the project is an active member of the team or the organization owner. Once they leave the team, requests with the key fail with "The person who created this API key is no longer in its team." Public endpoints such as `Tool/List` and `Agent/List` still answer, as if the request had no key. Switch to a key from a project that an active member created.
+
+Creating, changing, deleting or restoring organizations and teams, managing members and invitations, and moving projects, agents or credit need a signed-in user, in the dashboard or with a Bearer token. With an API key, these calls fail with "API keys can't manage teams or organizations." See [Team API Access](/docs/organizations-api-access).
+
+Studio and the Workflow Agent are stricter: the user who created the key's project must be an active member of the team, and being the organization owner is not enough. When that user is the organization owner but not a member of the team, requests to them fail with HTTP `403`:
+
+| Error | Code | Message |
+|-------|------|---------|
+| Not a team member | `0` | "You must be a member of this team to perform this action" |
+
+## Run Errors
+
+These errors are returned by the `POST /Run/{owner}/{model}` endpoint.
+
+### Balance & Limits
+
+| Error | Code | Message | Action |
+|-------|------|---------|--------|
+| Insufficient balance | `97` | "Insufficient balance" | [Add funds](https://wiro.ai/panel/billing): minimum $0.50 required (or $10 for training models) |
+| Model blocked | `92` | "This API key can only use selected models, and openai/gpt-6-2-astra is not one of them. Model Access rules decide which models can run." | Run a model the rules allow, or ask someone who manages the rule to change it under [Controls > Model Access](https://wiro.ai/panel/controls/model-access). The message names the rule. See [Model Access](/docs/model-access) |
+| Spend limit reached | `93` | "This API key's monthly spend limit is reached ($50.20 of $50.00). It resets on December 1, 2026 at 00:00 UTC." | Wait for the limit to reset, or have someone who manages it raise it under [Controls > Spend Limits](https://wiro.ai/panel/controls/spend-limits). The message names the limit. See [Spend Limits](/docs/spend-limits) |
+| Concurrent task limit | `96` | "You have reached your concurrent task limit. With your current balance of ${balance}, you can run up to {maxConcurrent} tasks at the same time. Add funds to increase your limit." | Wait for a task to finish, or [add funds](https://wiro.ai/panel/billing). See [Concurrency Limits](/docs/concurrency-limits) |
+| Sign in required | `98` | "sign in to run this model" | Model requires a registered account |
+
+### Validation Errors
+
+| Error | Code | Message |
+|-------|------|---------|
+| Missing parameter | `0` | "Request parameter [{name}] required" |
+| Invalid number | `0` | "Request parameter [{name}] must be integer or float" |
+| Out of range | `0` | "Request parameter [{name}] must be between {min} and {max}" |
+| File required | `0` | "Request files [{name}] required" |
+| Invalid request body | `0` | "Request parameters are invalid." |
+
+### Model Access Errors
+
+| Error | Code | Message |
+|-------|------|---------|
+| Model not accessible | `1` | "tool-not-accessible" |
+| Model not found | `1` | "slug-owner-project-not-exist" |
+| User banned | `0` | "Your account has been suspended. Please contact support if you believe this is a mistake." |
+| Permission denied | `0` | "You don't have any permission for this action." |
+| Model blocked by a [Model Access](/docs/model-access) rule | `92` | "This API key can't use openai/gpt-6-2-astra. Model Access rules decide which models can run." |
+
+### Training Model Errors
+
+| Error | Code | Message |
+|-------|------|---------|
+| Invalid model name | `0` | "Your model name should be contain (A-Z) (0-9) (-) (_) (.)" |
+| Reserved name | `0` | "This name is not allowed" |
+| Name taken | `0` | "This model name is already in use" |
+
+## Task Errors
+
+These errors are returned by `POST /Task/Detail`, `POST /Task/List`, `POST /Task/Cancel`, `POST /Task/Kill`, and `POST /Task/InputOutputDelete`.
+
+| Error | Code | Message | Endpoint |
+|-------|------|---------|----------|
+| Task not found | `0` | "task-not-founded" | Detail |
+| Task not found | `1` | "There is no task yet." | Cancel |
+| Task not found | `0` | "There is no task yet." | Kill, InputOutputDelete |
+| Missing identifier | `0` | "Request parameter [taskid or tasktoken] required" | Detail |
+| Unknown surface | `0` | "surface must be one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow." | List |
+| Missing identifier | `0` | "taskid or socketaccesstoken is required" | Kill |
+| Not cancellable | `1` | "Task is not in a cancellable state." | Cancel |
+| Kill failed | `1` | "Task could not be killed: {reason}" | Kill |
+| Task not completed | `0` | "Task must be completed or cancelled before deleting files" | InputOutputDelete |
+| Permission denied | `0` | "You don't have any permission for this action." | Detail, Cancel |
+
+## Error Handling Best Practices
+
+### Check the `result` field
+
+Always check `result` first, then inspect the `code` in the `errors` array:
+
+```javascript
+const response = await fetch('https://api.wiro.ai/v1/Run/openai/sora-2', {
+  method: 'POST',
+  headers: { 'x-api-key': API_KEY, 'Content-Type': 'application/json' },
+  body: JSON.stringify({ prompt: 'A sunset over mountains' })
+});
+
+const data = await response.json();
+
+if (!data.result) {
+  const error = data.errors[0];
+  switch (error.code) {
+    case 92:
+      console.log('Model blocked by a Model Access rule: run a model the rules allow');
+      break;
+    case 93:
+      console.log('Spend limit reached: wait for the reset or raise the limit');
+      break;
+    case 96:
+      console.log('Concurrent limit reached — wait for a task to finish');
+      break;
+    case 97:
+      console.log('Insufficient balance — add funds');
+      break;
+    case 98:
+      console.log('Authentication required — sign in');
+      break;
+    default:
+      console.log('Error:', error.message);
+  }
 }
 ```
 
-Most errors return HTTP `200`, so use the `result` field and error `code` to determine success or failure, whatever the status. Some errors also use another HTTP status, such as `401` for a failed API key or bearer token, `404` for an unknown endpoint and `403` for the Studio and Workflow Agent team check (see below).
+### Retry Logic
 
-## Team API Key Errors
-
-| Code | Message | When |
-|------|---------|------|
-| `0` | The person who created this API key is no longer in its team. Ask a team admin for a new key. | HTTP `401`: the user who created the team project left the team |
-| `0` | API keys can't manage teams or organizations. Sign in and try again. | HTTP `401`: an organization, team, member or transfer change sent with an API key |
-| `0` | You must be a member of this team to perform this action | HTTP `403`: a Studio or Workflow Agent request with a team key whose creator is the organization owner but not a member of the team |
-
-Public endpoints such as `Tool/List` and `Agent/List` still answer a key whose creator left the team, as if the request had no key.
-
-## Run Errors (POST /Run)
-
-| Code | Message | Action |
-|------|---------|--------|
-| `92` | Model blocked by a Model Access rule (the message names the rule) | Run a model the rules allow, or ask someone who manages the rule to change it under [Controls > Model Access](https://wiro.ai/panel/controls/model-access); retrying does not help before that |
-| `93` | Spend limit reached (the message names the limit and when it resets) | Wait for the reset, or have someone who manages the limit raise it under [Controls > Spend Limits](https://wiro.ai/panel/controls/spend-limits); retrying does not help before that |
-| `96` | Concurrent task limit reached | Wait for task to finish or add funds |
-| `97` | Insufficient balance | Add funds ($0.50 min, $10 for training) |
-| `98` | Sign in required | Model requires registered account |
-| `0` | Parameter required/invalid | Fix request parameters |
-| `1` | Model not found/accessible | Check model slug |
-
-## Task Errors (POST /Task)
-
-| Code | Message | Endpoint |
-|------|---------|----------|
-| `0` | Task not found | Detail, Kill, InputOutputDelete |
-| `1` | Task not found | Cancel |
-| `1` | Not cancellable | Cancel |
-| `1` | Kill failed | Kill |
-| `0` | Task not completed | InputOutputDelete |
-| `0` | Missing identifier | Detail, Kill |
-| `0` | Unknown surface: "surface must be one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow." | List |
-| `0` | Permission denied | Detail, Cancel |
+| Code | Retryable | Strategy |
+|------|-----------|----------|
+| `0` (validation) | No | Fix the request parameters |
+| `0` (server) | Yes | Retry with exponential backoff |
+| `1` | No | Resource not found: check model slug or task token |
+| `92` | No | Run a model the rules allow, or ask someone who manages the rule to change it |
+| `93` | No | Wait until the limit resets or someone who manages it raises it |
+| `96` | Yes | Wait for a running task to complete, then retry |
+| `97` | No | Add funds, then retry |
+| `98` | No | Sign in or use authenticated credentials |
+| `99` | No | Check your API key or bearer token |
+| `110` | No | Never retry: the wallet already paid and a retry charges again. Contact support |
 
 ---
 
@@ -6708,7 +10977,7 @@ Complete end-to-end examples in all 9 supported languages.
 
 ## Overview
 
-Each example below demonstrates the full Wiro workflow: authenticate, run a model, poll for task completion, and retrieve the result. Choose your preferred language.
+Each example below demonstrates the full Wiro workflow: authenticate, run a model, poll for task completion, and retrieve the result. Choose your preferred language from the tabs.
 
 - **curl**: Shell scripting with bash
 - **Python**: Using the `requests` library
@@ -6728,6 +10997,8 @@ All examples perform the same steps:
 2. Run a model (`POST /Run/{owner-slug}/{model-slug}`)
 3. Poll the task status (`POST /Task/Detail`)
 4. Print the final output
+
+## Code Examples
 
 ### curl
 
@@ -7215,21 +11486,26 @@ func main() {
 
 ---
 
-# MCP Server
+# Wiro MCP Server
 
 Connect AI assistants to Wiro's models, workflows, Studio and agents through the Model Context Protocol.
 
 ## Connect with a browser sign-in
 
-**Easiest way.** No API key to copy. Add `https://mcp.wiro.ai/v1` as a remote
-MCP server in your app, then sign in with your Wiro account when the app asks.
+**Easiest way.** No API key to copy. Add this URL as a remote MCP server in
+your app, then sign in with your Wiro account when the app asks:
+
+```
+https://mcp.wiro.ai/v1
+```
+
 Works with ChatGPT, Claude, Claude Code, Cursor, VS Code, Gemini CLI, Codex,
 Devin, Kiro, goose and Grok.
 
-1. **Add the server.** Add a remote MCP server with the URL `https://mcp.wiro.ai/v1`, without an `Authorization` header.
-2. **Sign in to Wiro.** The app opens wiro.ai. Sign in, or create an account.
+1. **Add the server.** In your app, add a remote MCP server with the URL above. Leave the `Authorization` header out.
+2. **Sign in to Wiro.** The app opens wiro.ai in your browser. Sign in, or create an account.
 3. **Pick a project and how long.** Runs are paid from the project's workspace wallet. The app stays connected for 90 days unless you pick another length, from 7 days to unlimited.
-4. **Click Allow.** The browser goes back to the app.
+4. **Click Allow.** Your browser goes back to the app, and the Wiro tools are ready to use.
 
 One-click install: [Add to Cursor](https://cursor.com/install-mcp?name=wiro&config=eyJ1cmwiOiJodHRwczovL21jcC53aXJvLmFpL3YxIn0=),
 [Install in VS Code](https://vscode.dev/redirect/mcp/install?name=wiro&config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fmcp.wiro.ai%2Fv1%22%7D),
@@ -7246,54 +11522,104 @@ settings and paste the URL above:
 
 [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) is an open standard that lets AI assistants use external tools directly. With the Wiro MCP server, your AI assistant can find and run models, build and run workflows, create media with Studio, deploy and talk to your own agents, and check or change your spend limits and Model Access rules, all without leaving your editor or chat app.
 
-The hosted MCP server is available at `mcp.wiro.ai/v1`. Most apps connect with
-the browser sign-in above. Clients that send custom request headers, including
-Cursor, Claude Code, Windsurf, Kiro, goose, OpenClaw, and Hermes, can use your
-API key instead. Claude Desktop can add the hosted URL as a custom connector, or
-run Wiro's official local `npx` package.
+The hosted MCP server is available at `https://mcp.wiro.ai/v1`. Most apps
+connect with the browser sign-in above. Clients that send custom request
+headers, including Cursor, Claude Code, Windsurf, Kiro, goose, OpenClaw, and
+Hermes, can use your API key instead. An API key sent in a header is never
+stored on the hosted server.
+
+You need a Wiro account. With a browser sign-in you pick a project while connecting. For the API key method, [create a project here](https://wiro.ai/panel/project/new).
+
+### Links
+
+- [Model Context Protocol (MCP)](https://modelcontextprotocol.io/): open standard specification
+- [GitHub: wiroai/Wiro-MCP](https://github.com/wiroai/Wiro-MCP) (source code & self-hosting instructions)
+- [npm: @wiro-ai/wiro-mcp](https://www.npmjs.com/package/@wiro-ai/wiro-mcp) (npm package)
+- [Wiro Model Catalog](https://wiro.ai/models): browse all available models
+- [Create API Key](https://wiro.ai/panel/project/new): get started in seconds
 
 ## Browser sign-in details
 
 ChatGPT, Claude (claude.ai, Claude Desktop and Claude Code), Cursor, VS Code,
 Gemini CLI, Codex, Zed, Devin, Kiro, goose, Grok, Grok Bot, Cline and MCP
 Inspector connect this way, and so does any app on your computer that follows
-the MCP authorization spec. An app that signs in through its own website needs
-its callback on Wiro's list; write to support@wiro.ai to add one.
+the [MCP authorization
+spec](https://modelcontextprotocol.io/specification/latest/basic/authorization).
+An app that signs in through its own website needs its callback address on
+Wiro's list: write to [support@wiro.ai](mailto:support@wiro.ai) to add one.
 
-Team members can connect the projects they created; team admins and the
-organization owner any project of the team. A project with an IP whitelist only
-accepts calls from the addresses on it; ChatGPT and Claude call from their own
-servers.
+### Projects and billing
 
-You pick how long an app stays connected on the sign-in page: 7 days, 30 days,
-90 days (the default), 180 days, 1 year, or unlimited. Connected apps are
-listed under [Projects, Connected Apps](https://wiro.ai/panel/project?view=apps)
-with their project, last use and end date; pick a new length there (it counts
-from that day), or **Disconnect** to end an app's access within a minute. An
-unlimited connection lasts until you disconnect it, and any connection ends when
-its project is removed or when you leave the team or lose the role that allowed
-it. The same happens once the project's API key stops working, for example when
-the person who created a team project leaves the team; the sign-in page then no
-longer offers that project. Access tokens last one hour and renew on their own.
+- Each connection uses one project. A personal project bills your personal wallet, a team project the team's wallet.
+- In a team, members can connect the projects they created. Team admins and the organization owner can connect any project of the team.
+- The connection acts as the person who created the project. Its Controls tools change spend limits and Model Access rules only when that person can: a personal account's owner, or in a team a team admin or the organization owner.
+- A project with an IP whitelist only accepts calls from the addresses on it. ChatGPT and Claude call from their own servers, so pick a project open to all addresses for them. Apps on your computer, such as Claude Code, Cursor and VS Code, call from your own address.
 
-For client developers: protected resource metadata at
-`https://mcp.wiro.ai/.well-known/oauth-protected-resource/v1`, authorization
-server metadata at `https://mcp.wiro.ai/.well-known/oauth-authorization-server`,
-authorization code with PKCE (`S256`), Client ID Metadata Documents or dynamic
-client registration at `https://mcp.wiro.ai/register`, resource
-`https://mcp.wiro.ai/v1`, scope `mcp`, `iss` on authorization responses.
-Sign-in returns only to known apps' callbacks and to loopback addresses (any
-port); write to support@wiro.ai to add a callback.
+### How long it stays connected
+
+You pick it on the sign-in page: 7 days, 30 days, 90 days (the default), 180
+days, 1 year, or unlimited. When the time is up, the app asks you to sign in
+again. An unlimited connection lasts until you disconnect it.
+
+A connection also ends when its project is removed, or when you leave the team
+or lose the role that allowed it. The same happens once the project's API key
+stops working, for example when the person who created a team project leaves
+the team; the sign-in page then no longer offers that project. Access tokens
+last one hour and renew on their own, so there is nothing to copy or rotate.
+
+### See, change and disconnect apps
+
+Every app you connected is listed under
+[Projects, Connected Apps](https://wiro.ai/panel/project?view=apps) in the
+panel, with its project, when it was last used and when it ends. Pick a new
+length there to extend or shorten it; it counts from that day. **Disconnect**
+ends its access within a minute, and the app asks you to sign in again the next
+time.
+
+### For MCP client developers
+
+| Item | Value |
+| --- | --- |
+| Protected resource metadata | `https://mcp.wiro.ai/.well-known/oauth-protected-resource/v1` |
+| Authorization server metadata | `https://mcp.wiro.ai/.well-known/oauth-authorization-server` |
+| Authorize, token, revoke | `https://mcp.wiro.ai/authorize`, `/token`, `/revoke` |
+| Client registration | A Client ID Metadata Document, or dynamic client registration at `https://mcp.wiro.ai/register` |
+| Resource and scope | `https://mcp.wiro.ai/v1`, scope `mcp` |
+
+Use the authorization code flow with PKCE (`S256`). Authorization responses
+carry `iss`. Sign-in returns only to the callbacks of known apps and to loopback
+addresses on your own computer (any port). To add your app's callback, write to
+[support@wiro.ai](mailto:support@wiro.ai).
 
 ## Setup
 
 ### Cursor
 
-Sign in with your browser: click [Add to Cursor](https://cursor.com/install-mcp?name=wiro&config=eyJ1cmwiOiJodHRwczovL21jcC53aXJvLmFpL3YxIn0=), or add
-`{"mcpServers": {"wiro": {"url": "https://mcp.wiro.ai/v1"}}}` to `mcp.json`; Cursor
-asks you to sign in to Wiro the first time it connects.
+#### Sign in with your browser
 
-Or use your API key: open MCP settings (`Cmd+Shift+P` → "Open MCP settings") and add:
+Click
+[Add to Cursor](https://cursor.com/install-mcp?name=wiro&config=eyJ1cmwiOiJodHRwczovL21jcC53aXJvLmFpL3YxIn0=),
+or add the server to your `mcp.json` with only its URL:
+
+```json
+{
+  "mcpServers": {
+    "wiro": {
+      "url": "https://mcp.wiro.ai/v1"
+    }
+  }
+}
+```
+
+Cursor asks you to sign in to Wiro the first time it connects.
+
+#### Or use your API key
+
+1. **Open MCP Settings**: Use `Cmd+Shift+P` (`Ctrl+Shift+P` on Windows) and search for **"Open MCP settings"**.
+
+2. **Add the Wiro server** to your `mcp.json` file:
+
+**Signature Auth** (if your project uses signature-based authentication):
 
 ```json
 {
@@ -7308,9 +11634,28 @@ Or use your API key: open MCP settings (`Cmd+Shift+P` → "Open MCP settings") a
 }
 ```
 
+**API Key Only Auth** (if your project uses API Key Only authentication):
+
+```json
+{
+  "mcpServers": {
+    "wiro": {
+      "url": "https://mcp.wiro.ai/v1",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY"
+      }
+    }
+  }
+}
+```
+
+3. **Restart Cursor**: Save the file and restart Cursor to activate the connection.
+
 ### Claude Code
 
 #### Sign in with your browser
+
+Run this command in your terminal:
 
 ```bash
 claude mcp add --transport http wiro https://mcp.wiro.ai/v1
@@ -7339,24 +11684,32 @@ the results into your project.
 
 #### Or add the server with your API key
 
+Run this command in your terminal:
+
 ```bash
 claude mcp add --transport http wiro \
   https://mcp.wiro.ai/v1 \
   --header "Authorization: Bearer YOUR_API_KEY:YOUR_API_SECRET"
 ```
 
-For API Key Only authentication, use `Bearer YOUR_API_KEY`. Verify with
-`claude mcp get wiro` or `/mcp` inside Claude Code.
+For an API Key Only project, use `Bearer YOUR_API_KEY` without the colon or
+secret. Verify the connection with `claude mcp get wiro`, or run `/mcp` inside
+Claude Code.
 
 ### Claude Desktop
 
 The quickest way is a custom connector: open
 [Connectors](https://claude.ai/customize/connectors) in Claude, click **Add
 custom connector**, enter the URL `https://mcp.wiro.ai/v1` and sign in with
-your Wiro account when Claude asks. The same connector works on claude.ai.
+your Wiro account when Claude asks. See
+[Connect with a browser sign-in](#connect-with-a-browser-sign-in). The same
+connector works on claude.ai.
 
-Or install Node.js 20 or later and add this local stdio entry to
-`claude_desktop_config.json`:
+You can also run the official local package. It provides the same Wiro tools
+through Claude Desktop's stdio MCP support.
+
+Install [Node.js 20 or later](https://nodejs.org/), then add the following to
+your `claude_desktop_config.json`:
 
 ```json
 {
@@ -7374,39 +11727,81 @@ Or install Node.js 20 or later and add this local stdio entry to
 }
 ```
 
-For API Key Only authentication, remove `WIRO_API_SECRET` completely. Fully quit
-and reopen Claude Desktop after saving. The `@latest` in `args`
-makes `npx` look up the newest version on npm at every start, so it does not
-reuse an older cached build. This runs the local package and provides the same
-Wiro tools.
+For API Key Only authentication, keep `WIRO_API_KEY` and remove the
+`WIRO_API_SECRET` entry completely. Save the file, fully quit Claude Desktop,
+and reopen it.
 
-Claude Desktop may enforce a fixed client-side tool timeout. Wiro returns from
-each generation wait within 45 seconds; when `nextAction.tool` is
-`wait_for_task`, execute that action with the returned arguments until the
-existing task completes. Never submit `run_model` again for the same request.
-Adding a `timeout` field to `claude_desktop_config.json` is not a reliable
-workaround because Claude Desktop versions may ignore it.
+Keep `@latest` in `args`: `npx` then looks up the newest version on npm each
+time the client starts the server. Without it, `npx` can keep running an older
+cached build after a package update.
+
+This setup runs the open-source
+[`@wiro-ai/wiro-mcp`](https://www.npmjs.com/package/@wiro-ai/wiro-mcp) bridge on
+your machine and calls Wiro with your project credentials. See
+[Self-Hosted MCP](/docs/mcp-self-hosted) for the complete local package guide.
+
+#### Claude connection and timeout troubleshooting
+
+- **"Not valid MCP server configurations"**: ensure the entry contains
+  `"type": "stdio"`, `command`, `args`, and `env` exactly as shown above.
+- **The Wiro tools do not appear**: confirm `node --version` reports 20 or
+  later, then fully quit and reopen Claude Desktop.
+- **Tools appear but every call fails immediately**: use
+  `@wiro-ai/wiro-mcp@latest` as shown above so `npx` does not reuse an older
+  cached package, then fully quit and reopen Claude Desktop.
+- **A generation reaches Claude's tool timeout**: Wiro waits for at most 45
+  seconds per call. If the task is still running, the response contains
+  `nextAction.tool: "wait_for_task"`. Claude should execute that exact action
+  until completion and must not call `run_model` again.
+- Do not add a `timeout` field to `claude_desktop_config.json`; Claude Desktop
+  versions with a fixed client-side tool timeout may ignore it. Wiro's bounded
+  wait flow is designed to remain below that boundary.
 
 ### ChatGPT
 
 In ChatGPT, open [Plugins](https://chatgpt.com/plugins), click **+**, choose
 **Add custom MCP server**, enter `https://mcp.wiro.ai/v1` and create the
-plugin. ChatGPT opens wiro.ai, where you sign in and pick a project. ChatGPT calls Wiro from its
-own servers, so pick a project that is open to all IP addresses.
+plugin. ChatGPT opens wiro.ai, where you sign in and pick a project.
+
+ChatGPT calls Wiro from its own servers, so pick a project that is open to all
+IP addresses.
 
 ### VS Code
 
-Click [Install in VS Code](https://vscode.dev/redirect/mcp/install?name=wiro&config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fmcp.wiro.ai%2Fv1%22%7D), or add
-`{"servers": {"wiro": {"type": "http", "url": "https://mcp.wiro.ai/v1"}}}` to `mcp.json`.
-VS Code asks you to sign in to Wiro when it starts the server.
+Click
+[Install in VS Code](https://vscode.dev/redirect/mcp/install?name=wiro&config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fmcp.wiro.ai%2Fv1%22%7D),
+or add the server to your `mcp.json`:
+
+```json
+{
+  "servers": {
+    "wiro": {
+      "type": "http",
+      "url": "https://mcp.wiro.ai/v1"
+    }
+  }
+}
+```
+
+VS Code asks you to sign in to Wiro when it starts the server. From a terminal,
+`code --add-mcp '{"name":"wiro","type":"http","url":"https://mcp.wiro.ai/v1"}'`
+adds the same entry.
 
 ### Gemini CLI
 
-Sign in with your browser: run
-`gemini mcp add --transport http wiro https://mcp.wiro.ai/v1`, then
-`/mcp auth wiro` inside Gemini CLI.
+#### Sign in with your browser
 
-Or install Wiro as a Gemini CLI extension from the
+Run this command in your terminal:
+
+```bash
+gemini mcp add --transport http wiro https://mcp.wiro.ai/v1
+```
+
+Then run `/mcp auth wiro` inside Gemini CLI and sign in to Wiro in your browser.
+
+#### Or install the extension
+
+Install Wiro as a Gemini CLI extension from the
 [wiroai/Wiro-Plugin](https://github.com/wiroai/Wiro-Plugin) repository. Run this
 in your terminal:
 
@@ -7477,13 +11872,15 @@ devin plugins install wiroai/Wiro-Plugin
 In the Devin web app, go to
 **Customize > Plugins > Add plugin > From repository** and enter
 `wiroai/Wiro-Plugin`. Devin opens Wiro's sign-in page in your browser the first
-time it connects. In the Devin web app you can also skip the plugin: add
-`https://mcp.wiro.ai/v1` as a custom MCP server under
-[Customize, MCPs](https://app.devin.ai/customize?tab=mcps) and sign in to Wiro
-in your browser.
+time it connects.
 
 The plugin also adds commands you call by name, such as `/wiro-ai:image` and
 `/wiro-ai:video`, plus five agent skills.
+
+In the Devin web app you can also skip the plugin: open
+[Customize, MCPs](https://app.devin.ai/customize?tab=mcps), add a custom MCP
+server with the URL `https://mcp.wiro.ai/v1` and sign in to Wiro in your
+browser.
 
 ### Kiro
 
@@ -7572,9 +11969,32 @@ wallet pays for runs and click **Allow**.
 Ask your Bot to add the MCP server `https://mcp.wiro.ai/v1`. Grok Bot opens
 Wiro's sign-in page in your browser the first time it connects.
 
+### Windsurf
+
+Open **Settings → MCP** and add a new server:
+
+```json
+{
+  "mcpServers": {
+    "wiro": {
+      "serverUrl": "https://mcp.wiro.ai/v1",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY:YOUR_API_SECRET"
+      }
+    }
+  }
+}
+```
+
 ### OpenClaw
 
-Set `WIRO_MCP_AUTH` in the OpenClaw process environment, then configure:
+Store your Wiro bearer value in the environment that starts OpenClaw:
+
+```bash
+export WIRO_MCP_AUTH="YOUR_API_KEY:YOUR_API_SECRET"
+```
+
+Then add this server under `mcp.servers` in your OpenClaw config:
 
 ```json
 {
@@ -7593,13 +12013,27 @@ Set `WIRO_MCP_AUTH` in the OpenClaw process environment, then configure:
 }
 ```
 
-Verify with `openclaw mcp doctor wiro --probe`.
-On older OpenClaw releases without that command, use
-`openclaw mcp show wiro`, restart OpenClaw, and run `/tools verbose`.
+Verify the saved definition, the connection and the advertised tools:
+
+```bash
+openclaw mcp doctor wiro --probe
+```
+
+On older OpenClaw releases without the probe command, run
+`openclaw mcp show wiro`, restart OpenClaw, and use `/tools verbose` to confirm
+that the Wiro tools loaded.
+
+Use only the API key as `WIRO_MCP_AUTH` for an API Key Only project. Wiro's default bounded wait is 45 seconds; if your client has a configurable tool-call timeout, keep it above that value.
 
 ### Hermes
 
-Store `WIRO_MCP_AUTH` in `~/.hermes/.env`, then add this to `~/.hermes/config.yaml`:
+Add the credential to `~/.hermes/.env`:
+
+```bash
+WIRO_MCP_AUTH=YOUR_API_KEY:YOUR_API_SECRET
+```
+
+Then add Wiro under `mcp_servers` in `~/.hermes/config.yaml`:
 
 ```yaml
 mcp_servers:
@@ -7611,13 +12045,56 @@ mcp_servers:
     connect_timeout: 10
 ```
 
-Run `/reload-mcp` and `/tools` in Hermes.
+Reload and inspect the discovered tools:
+
+```text
+/reload-mcp
+/tools
+```
+
+Use only the API key in `WIRO_MCP_AUTH` for an API Key Only project.
+
+### Other MCP Clients
+
+The Wiro MCP server uses the **Streamable HTTP** transport at:
+
+```
+https://mcp.wiro.ai/v1
+```
+
+A client that supports MCP sign-in needs only this URL: it opens a Wiro sign-in
+in your browser (see [Connect with a browser sign-in](#connect-with-a-browser-sign-in)).
+Any other client sends your API key in the `Authorization` header:
+
+```
+Authorization: Bearer YOUR_API_KEY:YOUR_API_SECRET
+```
+
+Or for API Key Only auth: `Bearer YOUR_API_KEY`
+
+Credentials are sent as plain text. No base64 encoding is needed. Any MCP client that supports Streamable HTTP can connect: with a browser sign-in, or **with a custom `Authorization` header**. Refer to your client's documentation for the exact configuration format.
 
 ## Authentication
 
-Signature-Based: `Authorization: Bearer YOUR_API_KEY:YOUR_API_SECRET`
+Apps that support MCP sign-in need no credentials here: see [Connect with a browser sign-in](#connect-with-a-browser-sign-in). With an API key in the header, the MCP server supports both Wiro [authentication types](/docs/authentication). Your project's auth type determines what credentials you provide.
 
-API Key Only: `Authorization: Bearer YOUR_API_KEY`
+### Signature-Based (Recommended)
+
+More secure. Requires both API key and API secret. Pass them as `key:secret` in the Authorization header:
+
+```
+Authorization: Bearer YOUR_API_KEY:YOUR_API_SECRET
+```
+
+### API Key Only
+
+Simpler. Only requires the API key:
+
+```
+Authorization: Bearer YOUR_API_KEY
+```
+
+No base64 encoding needed. Your credentials are sent per-request in the Authorization header and are never stored. The server is fully stateless.
 
 ### Authentication errors
 
@@ -7648,53 +12125,78 @@ Messages you may see while connecting:
 
 A request without an `Authorization` header never reaches a tool. The MCP
 endpoint answers HTTP `401` with `Missing or invalid Authorization header` in
-the body and a `WWW-Authenticate` header that points apps to the sign-in; an
+the body and a `WWW-Authenticate` header that points apps to the sign-in. An
 expired or disconnected sign-in gets the same answer with
-`error="invalid_token"`. See [Error Reference](/docs/error-reference) for every
-Wiro API error.
+`error="invalid_token"`, and the app asks you to sign in again. See
+[Error Reference](/docs/error-reference) for every Wiro API error.
 
 ## Available Tools
 
-**Model slugs:** Use the clean/lowercase format `owner/model` (e.g. `openai/sora-2`, `wiro/virtual-try-on`). These correspond to the `cleanslugowner/cleanslugproject` values returned by `search_models`.
+The MCP server has 56 tools. Most of them belong to one of four groups, Models, Workflows, Agents and Controls, and three tools for your account, the playbooks and the docs are always available. Your AI assistant picks the right tool for each request, and for longer jobs it reads a playbook first.
 
-The server has 56 tools: four groups (Models, Workflows, Agents, Controls) and
-three tools that are always available.
+**Model slugs:** When a tool requires a model identifier, use the clean/lowercase format `owner/model` (e.g. `openai/sora-2`, `wiro/virtual-try-on`). These correspond to the `cleanslugowner/cleanslugproject` values returned by `search_models`.
 
-| Tool | Description |
+### Models
+
+| Tool | What it does |
 |------|-------------|
-| `search_models` | Search models by keyword, category, or owner |
-| `get_model_schema` | Get parameter schema and pricing for any model, or the parameters and output ports of a workflow utility |
+| `search_models` | Search and browse AI models by keyword, category, or owner |
+| `get_model_schema` | Get the full parameter schema and pricing for any model, or the parameters and output ports of a workflow utility |
 | `recommend_model` | Find models for a goal from two or three key words, best matches first |
-| `explore` | Browse curated models by category |
-| `run_model` | Run any model; waits up to 45 seconds by default, then returns a recoverable task token |
-| `wait_for_task` | Continue waiting for an existing task without creating a duplicate run |
+| `explore` | Browse curated models grouped by category, no parameters needed |
+| `run_model` | Run any model, waiting up to 45 seconds by default before it returns a recoverable task token |
+| `wait_for_task` | Continue waiting for an existing task without submitting or billing a duplicate run |
 | `get_task` | Check task status immediately or wait up to 45 seconds with `wait_seconds` |
-| `list_tasks` | Browse authenticated generation history and continue with `get_task` |
+| `list_tasks` | Browse authenticated task history across conversations, then continue with `get_task` |
 | `get_task_price` | Get the cost of a completed task |
 | `cancel_task` | Cancel a queued task |
 | `kill_task` | Stop a queued or running task |
-| `upload_file` | Upload a file from a public http(s) URL for use as model input |
+| `upload_file` | Upload a file from a public http(s) URL (up to about 100 MB) for use as model input |
 
-Workflows ([Workflows](/docs/workflows), [Workflow Agent](/docs/workflow-agent)):
+For long generations, `run_model` returns the existing task ID and token when
+its wait ends. The assistant continues with `wait_for_task`; calling
+`run_model` again would start a separate billable task.
 
-| Tool | Description |
+### Workflows
+
+A workflow chains models and built-in utility steps into one graph with its own
+inputs and outputs. Every model step is charged like a normal model run when it
+finishes. Wiro fills a model input you leave out with the model's default, so
+the save result lists what it filled, and a graph can be at most 40 KB of JSON.
+The API behind these tools is described on the [Workflows](/docs/workflows) page.
+
+| Tool | What it does |
 |------|-------------|
-| `list_workflows` | List your workspace's workflows, or search the public gallery by text, tag or model |
+| `list_workflows` | List the workflows in your workspace, or search the public gallery by text, tag or model |
 | `get_workflow` | Read a workflow's inputs, outputs and step graph |
-| `create_workflow` | Save a new workflow from a step graph; every problem comes back at once |
-| `update_workflow` | Edit title, description, tags or graph without overwriting newer changes; a new graph needs your confirmation |
+| `create_workflow` | Save a new workflow from a step graph. Wiro checks it against the live model catalog and returns every problem it finds at once |
+| `update_workflow` | Edit a workflow's title, description, tags or graph without overwriting newer changes; a new graph is saved only after you confirm a summary of the change |
 | `clone_workflow` | Copy a public workflow into your workspace |
 | `delete_workflow` | Delete a workflow, after your confirmation |
-| `run_workflow` | Run a workflow and wait for its outputs; can stop after a chosen step |
+| `run_workflow` | Run a workflow and wait for its outputs; can stop after a chosen step to test the first steps |
 | `wait_for_workflow_run` | Keep waiting on a run, read its outputs, or see why a step failed |
 | `resume_workflow_run` | Continue a failed or stopped run without paying again for finished steps |
 | `list_workflow_runs` | Browse past and current runs, including runs started on wiro.ai |
-| `save_workflow_from_agent` | Save a Workflow Agent proposal as a new workflow, or onto an existing one after your confirmation |
+| `save_workflow_from_agent` | Save a workflow the Workflow Agent proposed, as a new workflow, or onto an existing one after you confirm a summary of the change |
 
-Agents ([Studio](/docs/studio), [Agent Overview](/docs/agent-overview)). `agent`
-is `"studio"`, `"workflow-agent"` or the guid of one of your own agents:
+The **Workflow Agent** designs workflows with you in plain language: talk to it
+with `send_agent_message` and `agent: "workflow-agent"`, attach an existing
+workflow to edit, then save its proposal with `save_workflow_from_agent`.
+Conversations started through the MCP server belong to the connected project
+and are separate from your Workflow Agent chats on wiro.ai. See
+[Workflow Agent](/docs/workflow-agent).
 
-| Tool | Description |
+### Agents
+
+One set of tools talks to every Wiro agent. `agent` is `"studio"`,
+`"workflow-agent"` or the guid of one of your own agents. Session names use
+letters, digits, dots, dashes, underscores and colons, up to 128 characters
+(100 for the Workflow Agent), and can't end in `-r` followed by a number, such
+as `-r2`. Studio refuses a message under any other name, and nothing is sent. A
+Studio session that already has another name can still be read and deleted; to
+go on with it, start a new session.
+
+| Tool | What it does |
 |------|-------------|
 | `send_agent_message` | Send a message and wait for the reply, with any media, workflows or model runs it produced |
 | `get_agent_message` | Keep waiting on a reply, or read one again |
@@ -7702,6 +12204,16 @@ is `"studio"`, `"workflow-agent"` or the guid of one of your own agents:
 | `cancel_agent_message` | Stop a reply that is still being written |
 | `delete_agent_session` | Delete a conversation and the agent's memory of it, after your confirmation |
 | `list_studio_results` | List the images, videos and other results Studio generated for you |
+
+**Studio** is Wiro's creative agent: it picks and runs models for you and
+charges your wallet after each reply (see [Studio](/docs/studio)). Your own
+agents run while their monthly plan is active. The plan includes AI usage, and
+past it the agent's usage is paid from your Wiro balance; an agent without an
+active plan does not run, whatever the balance holds (see
+[Agent Overview](/docs/agent-overview)).
+
+| Tool | What it does |
+|------|-------------|
 | `list_agent_templates` | Browse ready-made agent templates and the three monthly plans |
 | `get_agent_template` | Read a template's skills, plans, the connectors it suggests and the keys it needs |
 | `list_agent_connectors` | Browse the connectors an agent can connect (ad accounts, stores, social accounts, mailboxes, data sources), what each one needs and the tools it gives the agent; with an agent, its connections |
@@ -7737,54 +12249,95 @@ agent's setup from chat is `all`, the default, which `deploy_agent` and
 `update_agent` set with `chat_setup`. With `webchat`, apply the change in the
 agent's chat on wiro.ai; with `off`, the agent asks for it on the agent page.
 
-Session names use letters, digits, dots, dashes, underscores and colons, up to
-128 characters (100 for the Workflow Agent), and can't end in `-r` followed by
-a number. Studio refuses a message under any other name; a Studio session that
-already has another name can still be read and deleted.
+### Controls
 
-Controls ([Spend Limits](/docs/spend-limits), [Model Access](/docs/model-access)). Only a personal
-account's owner, a team admin or the organization owner can change limits and
-rules, and a connection acts as the person who created its project:
+These tools read and change the workspace's [spend limits](/docs/spend-limits) and [Model Access](/docs/model-access) rules. Reading them is free. They change limits and rules only when the person who created the connected project can change them: a personal account's owner, or in a team a team admin or the organization owner. Other members' connections can read them.
 
-| Tool | Description |
+| Tool | What it does |
 |------|-------------|
 | `get_controls` | Read the workspace's spend limits, with what each has used and when it resets, its Model Access rules, and whether this connection can change them; on request, also this month's or today's spending by surface, member, API key and agent |
 | `check_model_access` | Explain whether a model may run here and why, rule by rule. Nothing runs and nothing is charged |
 | `manage_spend_limit` | Set or remove a spend limit, after your confirmation |
 | `manage_model_access` | Update, replace or remove a Model Access rule, after your confirmation |
 
-The two manage tools show a change summary first and change nothing until you
-confirm.
+The two manage tools always show a change summary first: what the change covers, the old and new values and, for a limit, what was spent this period. Nothing changes until you confirm. If the limit or rule changed in the meantime, nothing is saved and you get a new summary.
 
-Always available:
+### Account and guides
 
-| Tool | Description |
+These three tools are always available, whichever groups are loaded.
+
+| Tool | What it does |
 |------|-------------|
-| `get_account` | Show which workspace the connected project belongs to, its wallet balance, its spend limits (each with what it has used this period and whether it is used up) and, when you ask (`recent_transactions`, `transactions_start`), the wallet's recent transactions |
-| `get_playbook` | Step-by-step guides: `getting-started`, `models`, `workflows`, `workflow-graph`, `workflow-agent`, `studio`, `agents`, `billing`, `controls` |
-| `search_docs` | Search Wiro documentation |
+| `get_account` | Show which workspace the connected project belongs to, its wallet balance, its spend limits and, when you ask, the wallet's recent transactions |
+| `get_playbook` | Step-by-step guides: getting started, models, workflows, workflow graphs, the Workflow Agent, Studio, agents, billing and Controls |
+| `search_docs` | Search the Wiro documentation for guides and API references |
 
-Prompts: `build_workflow`, `deploy_agent`, `create_with_studio` and
-`talk_to_my_agent`. Each one sends the assistant to the matching playbook first.
+### Playbooks
 
-Paid work: model and workflow runs, Studio and Workflow Agent turns, and
-messages to your own agents (from the AI usage the agent's plan includes, then
-your Wiro balance; an agent without an active plan does not run, whatever the
-balance holds) cost money. Before a run or a Studio or Workflow Agent turn,
-the assistant tells you the expected cost and waits for your yes. Agent plans and
-moves to a larger plan are paid from your Wiro balance and first return a quote
-(for a move inside a billing period, the amount Wiro works out for the time left) and act only
-when called again with `confirm: true` and `confirm_charge_usd`; if the price
-changed, nothing is charged and a new quote comes back. Skill changes cost
-nothing, since every plan includes every skill, and a move to a smaller plan
-starts with the next renewal, with nothing charged or refunded. Deletions, connecting
-an agent to a Wiro project with `bind_agent_project` and graph replacements also
-wait for `confirm: true`; a graph replacement's summary shows the old and new
-value of each step input that changes. Changes to a spend limit or a Model
-Access rule with `manage_spend_limit` and `manage_model_access` also wait for
-`confirm: true`, after a summary with the old and new values. No tool adds
-funds or takes a card payment: when the balance can't pay a plan, the quote says
-how much to add on wiro.ai. `buy_credits` is retired and charges nothing.
+A tool description is too short to carry the order of calls, the money rules
+and the formats of a multi-step job, so the server keeps them in playbooks. The
+server tells the assistant to read the matching playbook with `get_playbook`
+before a multi-step job.
+
+| Topic | What it covers |
+|------|-------------|
+| `getting-started` | Which route fits a request, what costs money, keys and workspaces, errors, long waits and the money rules |
+| `models` | Finding and comparing models, schemas and file fields, running, batches, waiting and stopping, prices and limits, earlier tasks and LLM chats |
+| `workflows` | Finding and running workflows, costs, breakpoints, failed runs, editing, cloning and deleting |
+| `workflow-graph` | The graph `create_workflow` and `update_workflow` take: steps, Start fields, references, utilities and examples |
+| `workflow-agent` | Briefing the Workflow Agent, editing a workflow by chat, pricing and saving its proposals, sessions |
+| `studio` | When to use Studio, what a turn costs, the brief, collecting the results and slow turns |
+| `agents` | Templates and plans, deploying, statuses, setup and sign-ins, an agent that does not answer, messages, plan changes, AI usage and the balance, skills and schedules, removal |
+| `billing` | Which wallet pays, what is charged and when, minimums and limits, teams, estimates and where to see past spending |
+| `controls` | Spend limits and Model Access: who can change them, scopes and surfaces, periods, how rules combine, recipes, and the refusals with codes `92` and `93` |
+
+### Prompts
+
+The server also offers prompts for common jobs. Clients that support MCP
+prompts show them as ready-made commands. Each prompt sends the assistant to
+the matching playbook first.
+
+| Prompt | What it does |
+|------|-------------|
+| `build_workflow` | Plan, save and test a multi-step workflow for a goal, confirming costs before any run |
+| `deploy_agent` | Choose a template or skills, quote and deploy an agent, then set it up and test it |
+| `create_with_studio` | Ask Studio to create images, video or audio, after showing what a turn can cost and getting your yes |
+| `talk_to_my_agent` | Find one of your agents, make sure it is running, send it a message and show the reply |
+
+### Paid and irreversible actions
+
+Running a model or a workflow, sending a message to Studio or the Workflow
+Agent, and messages to your own agents (which use the AI usage the agent's plan
+includes, then your Wiro balance) cost money. Before a run or a Studio or Workflow Agent turn, the assistant tells you the expected cost in one line and waits for your yes. A message to your own agent goes out once the assistant has said that it uses the agent's AI usage.
+
+Agent plans and moves to a larger plan are paid from your Wiro balance, so
+`deploy_agent` and `manage_agent_billing` first return the price
+(for a move inside a billing period, the amount Wiro works out for the time
+left). They act only when they are called again with `confirm: true` and
+`confirm_charge_usd`, the approved amount, after you agree. If the price
+changed in between, nothing is charged and you get a new quote. Turning an
+agent's skills on or off with `apply_agent_skills` costs nothing, and so does
+connecting its connectors, since every plan includes every skill and
+connector, and a move to a smaller plan starts with the next renewal, with
+nothing charged or refunded. When the balance can't pay a plan, the quote says
+how much to add on wiro.ai and nothing is charged. `buy_credits` is retired and
+charges nothing: past its plan's included usage, an agent uses the Wiro balance.
+
+Deleting a workflow, an agent, a conversation or a connector connection also
+waits for `confirm: true`, and so do replacing a working connector connection,
+connecting an agent or a connector to a Wiro project with `bind_agent_project`
+or `connect_agent_connector`, and replacing a workflow's steps with `update_workflow` or
+`save_workflow_from_agent`: you see a summary of the change first, with the old
+and new value of each step input that changes. Changing a spend limit or a
+Model Access rule with `manage_spend_limit` or `manage_model_access` also waits
+for `confirm: true`: you see the old and new values first and, for a limit,
+what was spent this period. No tool adds funds or takes a card payment: funds
+are added in the Wiro dashboard.
+
+The connected project decides the workspace: a personal project uses your
+personal wallet, a team project uses the team wallet. `get_account` shows which
+one, its balance and its spend limits, and `get_controls` its spend limits and
+Model Access rules in full.
 
 Calls through the hosted MCP server count toward the workspace's
 [spend limits](/docs/spend-limits) on the `mcp` surface, and calls from the Wiro
@@ -7815,37 +12368,550 @@ the model is blocked, and `manage_model_access` changes the rule after a change
 summary. Rules are also managed under
 [Controls > Model Access](https://wiro.ai/panel/controls/model-access).
 
-If a generation exceeds the wait budget, continue with `wait_for_task` using
-the returned token. Do not call `run_model` again for the same request.
-`task_error` remains non-terminal in Task/Detail; the wait ends only at
-`task_postprocess_end` or `task_cancel`.
-Workflow runs, agent replies and agent start-up use the same bounded waits:
-follow the returned `nextAction` instead of starting the job again.
-An LLM model continues a chat only when its schema lists `session_id`: send the
-same `session_id` on every turn with the next `prompt`. A turn that ended with
-tool calls is continued with `previousTaskToken` and `toolOutputs`.
-Tools advertise typed input/output schemas and return `structuredContent` with
-stable task states and an executable `nextAction` for reliable LLM chaining.
-Every tool that takes arguments refuses an argument it does not know and names
-the right one where it can, such as `taskid` for `task_id`; a call that carries
-`toolCallId`, a key some clients add on their own, reads only the arguments the
-tool takes.
-Completed media responses include standard MCP resource links plus an
-assistant-audience instruction to render images and preserve clickable media
-links in the user-facing response. This works even when a client displays
-resource links as tool metadata instead of previewing them inside the tool card.
-In the text of a result, an agent's reply, the links taken from it and a
-model's answer sit in fenced blocks under fixed labels, apart from the server's
-own guidance, so the assistant treats them as content and acts only on the
-guidance and `nextAction`.
+## MCP Request and Response Contract
+
+Every tool advertises typed MCP `inputSchema` and `outputSchema` values. Successful calls return both:
+
+- `structuredContent` for reliable LLM tool chaining,
+- concise text `content` for clients that only render text,
+- MCP resource links when a result contains generated media.
+
+Every tool that takes arguments refuses an argument it does not know, and
+nothing is run. The answer lists the arguments the tool takes and names the
+right one where it can, such as `taskid` for `task_id`; `run_model` adds that
+model parameters go inside `params`, and `run_workflow` that input values go
+inside `input`. The one exception is a call that carries `toolCallId`, a key
+some clients add on their own: the tool then reads only the arguments it takes.
+
+When a task completes with media, Wiro also returns an assistant-audience
+delivery instruction. MCP clients do not all preview `resource_link` blocks
+inside tool cards, so the assistant is explicitly told to render image URLs and
+preserve clickable video, audio, and file links in its user-facing response.
+The standard resource link and full-resolution URL remain available without
+embedding a large base64 payload.
+
+In the text of a result, an agent's reply, the file and link addresses taken
+from it and a model's answer sit in fenced blocks under fixed labels. The
+server's own guidance, its **Next:** lines and notes, stays outside them, so the
+assistant can treat that text as content and act only on the guidance and
+`nextAction`. A workflow run's text outputs and step errors show the same way.
+A saved workflow's title, description and input list are shown as data too, in
+every result, since an agent or another person can have written them.
+`structuredContent` keeps each text unchanged in its own field.
+
+For example, an LLM submits one generation:
+
+```json
+{
+  "name": "run_model",
+  "arguments": {
+    "model": "owner/model",
+    "params": { "prompt": "A mountain lake at sunset" },
+    "wait": true,
+    "timeout_seconds": 45
+  }
+}
+```
+
+If the generation outlives that bounded wait, `run_model` returns the existing task instead of failing or submitting it again:
+
+```json
+{
+  "state": "running",
+  "task": {
+    "id": "123",
+    "token": "task-token",
+    "status": "task_start"
+  },
+  "outputs": [],
+  "nextAction": {
+    "tool": "wait_for_task",
+    "arguments": { "tasktoken": "task-token" },
+    "reason": "Continue this exact task. Do not call run_model again."
+  }
+}
+```
+
+Task responses use stable states: `submitted`, `running`, `completed`, `failed`, and `cancelled`. The LLM should execute `nextAction` when present. A two- or three-minute video can therefore use several bounded `wait_for_task` calls without creating another billable generation.
+
+Workflow runs, agent replies and agent start-up follow the same pattern: when a
+wait ends before the job does, the result names the tool and arguments that
+keep waiting on that same job, such as `wait_for_workflow_run` or
+`get_agent_message`.
+
+An LLM model can continue a chat only when its schema lists `session_id`. Send
+the same `session_id` on every turn, the first one included, with the next
+`prompt`. A turn that ended with tool calls is continued with
+`previousTaskToken`, that turn's task token, and `toolOutputs`, as the turn's
+`nextAction` template shows.
+
+## Examples
+
+### Generate an image
+
+> "Generate a photorealistic image of a mountain lake at golden hour"
+
+The assistant will:
+1. Use `search_models` to find image generation models
+2. Use `get_model_schema` to check the parameters
+3. Use `run_model` to generate the image
+4. Return the image URL
+
+### Generate a video
+
+> "Create a 5-second cinematic video of a drone shot over mountains using Kling V3"
+
+The assistant will:
+1. Use `get_model_schema` to check parameters for `klingai/kling-v3`
+2. Use `run_model` to submit the generation and wait for the first result window
+3. If it is still running, continue with `wait_for_task` using the returned token
+
+### Find the right model
+
+> "What models are available for text-to-video?"
+
+The assistant will call `search_models` with `categories: ["text-to-video"]` and return a list of available models.
+
+### Check task status
+
+> "Check the status of my last task"
+
+The assistant will call `get_task` with the task token from the previous run.
+
+### Resume a production from another conversation
+
+> "Show my latest productions and open the newest result"
+
+The assistant will call `list_tasks`, select the matching task, and call `get_task` with its task ID. Task history covers the authenticated project's workspace, personal or team: model tasks from every project in it and from wiro.ai. Steps of workflow runs are not listed: `list_workflow_runs` has those. The model runs Studio starts for you are your own tasks and are listed with the rest; `list_studio_results` lists only Studio's. The LLM never sends a user UUID.
+
+### Build and run a workflow
+
+> "Build a workflow that turns a product photo into a short ad video, then run it on this photo"
+
+The assistant reads the `workflows` and `workflow-graph` playbooks, picks a
+model for each step with `search_models` and `get_model_schema`, and saves the
+graph with `create_workflow`. It tells you the expected cost and waits for your yes, then calls
+`run_workflow` and follows `wait_for_workflow_run` until the video is ready.
+
+### Edit a workflow with the Workflow Agent
+
+> "Ask the Workflow Agent to add an upscale step to my product ad workflow and save it"
+
+The assistant finds the workflow with `list_workflows` and sends your request
+with `send_agent_message` (`agent: "workflow-agent"`) with the workflow
+attached. It shows you the proposal and the models it uses, and saves it with
+`save_workflow_from_agent` once you agree to the change.
+
+### Fix a failed run
+
+> "Why did my last workflow run fail? Resume it if it can be resumed"
+
+The assistant calls `list_workflow_runs` with status `failed`, reads the failed
+step with `wait_for_workflow_run`, and continues the run with
+`resume_workflow_run`. Steps that already finished are not charged again.
+
+### Create with Studio
+
+> "Ask Studio for three logo ideas for a coffee shop"
+
+The assistant checks the balance with `get_account`, tells you what a Studio
+turn costs, sends the brief with `send_agent_message` (`agent: "studio"`) and
+shows the images from the reply.
+
+### Deploy an agent
+
+> "Deploy an agent that posts to our Instagram account and tell me what it still needs"
+
+The assistant compares templates with `list_agent_templates` and
+`get_agent_template`, gets the price from `deploy_agent`, and deploys only
+after you confirm the amount. Then it lists the missing setup with
+`get_my_agent` and connects the Instagram connector with
+`connect_agent_connector`. If the agent should run Wiro models itself, it
+connects the Wiro AI Models connector (`wiro`) with `connect_agent_connector`
+once you agree to the project it shows; that also sets the project the agent's
+video and voice skills use.
+
+### Talk to your agent
+
+> "Tell my support agent to summarise today's tickets"
+
+The assistant finds the agent with `list_my_agents`, checks that it is running
+with `get_my_agent`, and sends the message with `send_agent_message`. The
+message uses the agent's AI usage. If the reply proposes a setup change, the
+assistant shows it and sends your yes only after you agree.
+
+### Cap your spending
+
+> "Cap this team's spending at $200 a month"
+
+The assistant calls `manage_spend_limit` to set a $200 monthly limit on the
+whole team (`scope: "account"`). Nothing changes yet: it shows you the change
+summary, with what was already spent this month, and saves the limit with
+`confirm: true` once you agree.
+
+### Find out why a model is blocked
+
+> "Why can't I run this video model here?"
+
+The assistant calls `check_model_access` with the model and shows each rule
+that applies and the one that blocks it. It changes a rule with
+`manage_model_access` only when you ask, after you agree to the change
+summary.
+
+## How It Works
+
+The MCP server is stateless and hosted on Wiro infrastructure. Each request is fully isolated:
+
+1. Your AI assistant sends a request to `mcp.wiro.ai/v1` with your credentials
+2. The server calls the [Wiro API](https://wiro.ai/docs) on your behalf
+3. Results are returned to your assistant
+
+Your credentials are sent per-request in the `Authorization` header and are never stored. The server has no sessions and no state.
+
+All tools are dynamic: they fetch model data from the Wiro API at runtime. When a new model is added to Wiro, it's instantly available through MCP.
+
+## Tool Reference
+
+The model tools are described one by one below. The workflow, conversation,
+agent and Controls tools follow in tables of their main arguments.
+
+### search_models
+
+Search Wiro's model catalog by keyword, category, owner, or any combination. Calls `POST /Tool/List` on the Wiro API.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `search` | string (optional) | Free-text search, e.g. `"flux"`, `"video generation"` |
+| `categories` | string[] (optional) | Filter by category: `text-to-image`, `text-to-video`, `image-to-video`, `llm`, `text-to-speech`, `image-editing`, etc. |
+| `slugowner` | string (optional) | Filter by model owner slug, e.g. `"openai"`, `"google"`, `"klingai"` |
+| `sort` | string (optional) | Sort by: `relevance`, `time`, `ratedusercount`, `commentcount`, `averagepoint` |
+| `start` | number (optional) | Pagination offset (default 0) |
+| `limit` | number (optional) | Max results (default 20, max 100) |
+
+Returns a list of models with their `cleanslugowner/cleanslugproject` (the slug you pass to other tools), title, description, categories, and pricing.
+
+### get_model_schema
+
+Get the full parameter schema for a specific model. Calls `POST /Tool/Detail` on the Wiro API.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `model` | string | Model slug using clean/lowercase format: `"owner/model"`. Use `cleanslugowner/cleanslugproject` from `search_models`. Examples: `"openai/sora-2"`, `"black-forest-labs/flux-2-pro"`, `"wiro/virtual-try-on"` |
+
+Returns the model's parameter groups, each containing items with `id`, `type` (text, textarea, select, range, fileinput, etc.), `label`, `required`, `options`, `default`, and `note`. Also includes pricing information. Use these to construct the `params` object for `run_model`.
+
+### recommend_model
+
+Describe what you want to create and get model recommendations ranked by relevance. Calls `POST /Tool/List` on the Wiro API with relevance sorting.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `task` | string | What you want to do, e.g. `"generate a photorealistic portrait"`, `"upscale an image to 4K"`, `"transcribe audio to text"` |
+
+Returns a list of recommended models with slugs, descriptions, categories, and pricing, sorted by relevance to your task.
+
+### explore
+
+Browse curated AI models on Wiro, organized by category. Calls `POST /Tool/Explore` on the Wiro API. No parameters required.
+
+Returns models grouped into curated sections like "Recently Added", "Image Generation", "Video", etc. Each model includes its slug, description, categories, and rating. Use this to discover what's available without searching.
+
+### run_model
+
+Run any AI model on Wiro. Calls `POST /Run/{owner}/{model}` on the Wiro API.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `model` | string | Model slug in clean/lowercase format. Same as `get_model_schema`. Examples: `"openai/sora-2"`, `"klingai/kling-v3"` |
+| `params` | object | Model-specific parameters as key-value pairs. Use `get_model_schema` to discover accepted fields. Common: `prompt`, `negativePrompt`, `width`, `height`, `aspectRatio` |
+| `wait` | boolean (optional) | If `true` (default), polls `POST /Task/Detail` until the task completes or the wait budget expires. If `false`, returns the task token immediately for `wait_for_task` or one-time `get_task` checks. |
+| `timeout_seconds` | number (optional) | Max seconds to wait, counted from the start of the call (default 45, max 3600). Only applies when `wait=true`. The default suits clients with a 60-second tool timeout; wait longer, such as 300 seconds for a video, when the client allows longer tool calls. |
+
+When `wait=true`, the tool returns the final task result including `pexit` (exit code, `"0"` = success), `outputs` (clickable CDN URLs for generated files), and `debugoutput` (LLM text responses).
+
+If the wait budget expires, the tool returns a normal **Task Still Running**
+result containing `taskid`, `tasktoken`, and the last observed status. The
+generation continues. Call `wait_for_task` with that identifier; do not call
+`run_model` again, because that would create a second billable task.
+
+When `wait=false`, returns `taskid` and `tasktoken` immediately. Use
+`wait_for_task` to wait or `get_task` for a one-time status check.
+
+### wait_for_task
+
+Wait for an existing task without submitting another model run. Calls
+`POST /Task/Detail` repeatedly for a bounded interval.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `tasktoken` | string (optional) | The task token returned from `run_model` |
+| `taskid` | string (optional) | The task ID (alternative to `tasktoken`) |
+| `timeout_seconds` | number (optional) | Max seconds for this wait window (default 45, max 3600) |
+
+If the task completes, this tool returns the final text and file outputs. If it
+is still active, it returns the same identifier so the assistant can call
+`wait_for_task` again in the same conversation. This continuation does not
+create or bill another model run.
+
+### get_task
+
+Check task status and get results. It performs one immediate check by default,
+or a short bounded wait when `wait_seconds` is set. Calls `POST /Task/Detail`
+on the Wiro API.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `tasktoken` | string (optional) | The task token returned from `run_model` |
+| `taskid` | string (optional) | The task ID (alternative to tasktoken) |
+| `wait_seconds` | number (optional) | Short bounded wait before returning (default 0, max 45). Use `wait_for_task` for resumable long generations. |
+
+Returns the task's current `status`, `pexit` (process exit code), `outputs` (file URLs), `debugoutput` (LLM responses), `elapsedseconds`, and `totalcost`.
+
+**Determining success:** Check `pexit`, where `"0"` means success and any other value means failure. For LLM models, the response is available as structured content in `outputs` (with `contenttype: "raw"`) and as merged plain text in `debugoutput`. See [Tasks](/docs/tasks) for the full task lifecycle.
+
+`task_error` needs context: a live WebSocket event with that name is an interim
+stderr log, while `status: "task_error"` returned by Task/Detail marks a
+pre-execution recovery state. Neither closes the task; `wait_for_task` continues
+until `task_postprocess_end` or `task_cancel`.
+
+### list_tasks
+
+List recent model-generation tasks in the authenticated project's workspace (personal or team), from every project in it and from wiro.ai. Steps of workflow runs are not listed: `list_workflow_runs` has those. The model runs Studio starts for you are your own tasks and are listed with the rest; `list_studio_results` lists only Studio's. Calls `POST /Task/List` without a `uuid`; Wiro derives the workspace from the API credential.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `start` | number (optional) | Pagination offset (default 0) |
+| `limit` | number (optional) | Maximum tasks to return (default 20, max 100) |
+| `model` | string (optional) | Model slug or partial model-name filter |
+
+Returns newest-first task summaries with stable state, model, task ID, timestamps, duration, cost, and limited output links. Call `get_task` with a returned `taskid` for the complete result.
+
+### get_task_price
+
+Get the cost of a completed task. Calls `POST /Task/Detail` on the Wiro API and returns billing information.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `tasktoken` | string (optional) | The task token returned from `run_model` |
+| `taskid` | string (optional) | The task ID (alternative to tasktoken) |
+
+Returns the task's billing status, total cost, and duration. Only successful tasks (`pexit: "0"`) are billed. Failed tasks show `$0` with a clear explanation. Useful for checking costs after a run completes.
+
+### cancel_task
+
+Cancel a task that is still queued (before worker assignment). Calls `POST /Task/Cancel` on the Wiro API.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `tasktoken` | string (optional) | The task token returned from `run_model` |
+| `taskid` | string (optional) | The task ID (alternative to `tasktoken`) |
+
+Tasks that have already been assigned to a worker cannot be cancelled. Use `kill_task` instead.
+
+### kill_task
+
+Kill a task that is currently running (after worker assignment). Calls `POST /Task/Kill` on the Wiro API.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `tasktoken` | string (optional) | The task token returned from `run_model` |
+| `taskid` | string (optional) | The task ID (alternative to `tasktoken`) |
+
+The worker will stop processing and the task will move to `task_cancel` status.
+
+### upload_file
+
+Upload a file from a URL to Wiro for use as model input. Downloads the file and uploads it to Wiro's file system via `POST /File/Upload`.
+
+> **Tip:** Most models take a public URL instead of an upload, so you don't need to upload first: in the field itself for a `combinefileinput` (e.g. `inputImage` on most image models), or in the `{id}Url` / `UrlMultiple` field for a `fileinput` or `multifileinput` (e.g. `inputImageUrl`). `get_model_schema` shows each parameter's type. Use `upload_file` when you need to reuse the same file across multiple runs or when the model specifically requires a Wiro-hosted file. See [Model Parameters](/docs/model-parameters) for details.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `url` | string | URL of the file to upload (image, audio, video, document) |
+| `file_name` | string (optional) | Custom filename for the upload. If not provided, derived from the URL. |
+
+Returns the uploaded file's Wiro URL, which can be passed to any model parameter that accepts a file (e.g. `inputImage`, `inputAudio`).
+
+### search_docs
+
+Search the Wiro documentation for guides, API references, and code examples.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `query` | string | What you're looking for, e.g. `"how to upload a file"`, `"websocket"`, `"authentication"`, `"LLM streaming"` |
+
+Returns relevant documentation sections matching your query.
+
+### get_account and get_playbook
+
+`get_account` names the workspace of the connected project, personal or a
+team, and shows that wallet's balance. It is also the call that proves the
+connection works, since model search, schema reads and `search_docs` answer
+without credentials. Without arguments it reads the balance and the
+workspace's spend limits, each with what it has used this period and whether it
+is used up. A used-up limit refuses new work with error code `93` even when the
+wallet has money. With
+`recent_transactions` (1 to 50) it also lists that many of the wallet's latest
+transactions, newest first, as the Transactions page of the Wiro dashboard
+shows them: each row's time, type, whether it adds to the wallet or takes from
+it, the amount in USD and what it was for, such as a model run, a store item or
+an agent. That is how to check that a charge or a credit landed. In a team the
+wallet is shared, so the list holds the whole team's activity.
+`transactions_start` pages back: pass the `nextStart` of the last answer.
+`get_playbook` takes `topics`, one or
+more of the playbook topics listed under [Available Tools](#available-tools),
+such as `["workflows"]` or `["agents", "billing"]`.
+
+### Workflow tools
+
+The workflow, conversation, agent and Controls tools publish their full input
+schemas, which your MCP client reads, so the tables below list only their main
+arguments. A workflow is named by its full slug, such as `product-shots-a1B2c`,
+and a run by its run token. The [Workflows](/docs/workflows) page describes the
+API behind these tools.
+
+| Tool | Main arguments |
+|------|----------------|
+| `list_workflows` | `scope` (`mine` or `public`), `search`, `tags`, `model`, `sort`, `start`, `limit` |
+| `get_workflow` | `slug`, `include_graph` |
+| `create_workflow` | `title`, `contents` (the graph), `description`, `tags` |
+| `update_workflow` | `slug`, `loaded_updatetime`, `title`, `description`, `tags`, `contents`, `confirm` |
+| `clone_workflow` | `slug` |
+| `delete_workflow` | `slug`, `confirm` |
+| `run_workflow` | `slug`, `input` (values keyed by the workflow's input names), `breakpoint_node_id`, `wait_seconds` |
+| `wait_for_workflow_run` | `workflowtoken`, `wait_seconds`, `debug_node_id` (shows what a step's model received) |
+| `resume_workflow_run` | `workflowtoken`, `breakpoint_node_id`, `wait_seconds` |
+| `list_workflow_runs` | `status`, `search`, `start`, `limit` |
+| `save_workflow_from_agent` | `message_id`, `session`, `artifact_hash` (which proposal), `workflow` and `loaded_updatetime` to save onto an existing workflow, `confirm` |
+
+### Conversation tools
+
+These tools work the same for Studio, the Workflow Agent and your own agents.
+`agent` is `"studio"`, `"workflow-agent"` or the guid of one of your agents,
+and `session` names the conversation, following the session name rule under
+[Available Tools](#available-tools). See [Studio](/docs/studio),
+[Workflow Agent](/docs/workflow-agent) and
+[Agent Messaging](/docs/agent-messaging).
+
+| Tool | Main arguments |
+|------|----------------|
+| `send_agent_message` | `agent`, `message`, `session`, `model` (Studio and the Workflow Agent), `attachment_urls`, `workflow` (the workflow to edit, Workflow Agent only), `wait_seconds` |
+| `get_agent_message` | `agent`, `message_id`, `session`, `wait_seconds` |
+| `get_agent_conversation` | `agent`, `session` (leave it out to list the conversations, newest first), `limit`, `before` (older messages: pass `nextBefore`), `start` (older conversations: pass `nextStart`; a list longer than one page also returns `total`) |
+| `cancel_agent_message` | `agent`, `message_id`, `session` |
+| `delete_agent_session` | `agent`, `session`, `confirm` |
+| `list_studio_results` | `limit` (up to 100 recent runs), `state`, `since` |
+
+### Agent tools
+
+An agent is named by its guid, which `list_my_agents` returns. See
+[Agent Overview](/docs/agent-overview), [Agent Builder](/docs/agent-builder),
+[Agent Connectors](/docs/agent-connectors), [Agent Credentials](/docs/agent-credentials) and
+[Agent Skills](/docs/agent-skills) for the API behind these tools.
+
+| Tool | Main arguments |
+|------|----------------|
+| `list_agent_templates` | `search`, `category`, `sort` (`newest`, `popular` or `title`), `start`, `limit` |
+| `get_agent_template` | `template`, `include_tasks` |
+| `list_agent_connectors` | `name`, `search`, `category`, `agent_guid` (its connections too) |
+| `list_agent_skills` | `name`, `capability` |
+| `deploy_agent` | `template`, or `custom: true` with `skills`; `tier` (`starter`, `pro` or `max`), `title`, `credentials`, `chat_setup` (`all`, `webchat` or `off`), `confirm`, `confirm_charge_usd` |
+| `list_my_agents` | `sort`, `start`, `limit` |
+| `get_my_agent` | `agent_guid`, `wait_seconds` (wait until it is running) |
+| `control_agent` | `agent_guid`, `action` (`start`, `stop` or `restart`) |
+| `update_agent` | `agent_guid`, `title`, `description`, `timezone`, `team_session_mode`, `chat_model`, `cron_model`, `enabled_commands`, `chat_setup` (`all`, `webchat` or `off`; `null` goes back to `all`) |
+| `apply_agent_skills` | `agent_guid`, `skills`, `add_dependencies`, `idempotency_key` (only to repeat a change whose answer did not arrive) |
+| `set_agent_credentials` | `agent_guid`, `credential`, `fields` |
+| `connect_agent_connector` | `agent_guid`, `connector`, `action` (`connect` or `status`), `values`, `mode` (`sign_in` or `key`), `project_id`, `redirect_url`, `wait_seconds`, `confirm` |
+| `set_agent_connector_accounts` | `agent_guid`, `connector`, `accounts` (leave it out to see the choices) |
+| `disconnect_agent_connector` | `agent_guid`, `connector`, `confirm` |
+| `list_projects` | `agent_guid` (optional: also says which listed project that agent uses) |
+| `bind_agent_project` | `agent_guid`, `project_id` (from `list_projects`; leave it out for the connection's own project), `confirm` |
+| `manage_agent_custom_skill` | `agent_guid`, `action` (`upsert`, `rename`, `delete`, `history` or `revert`), `key`, `kind`, `value`, `interval`, `enabled`, `confirm` |
+| `manage_agent_billing` | `agent_guid`, `action` (`subscribe`, `change_plan`, `cancel` or `renew`; `buy_credits` is retired and charges nothing), `plan` (`starter`, `pro` or `max`, for `subscribe` and `change_plan`), `confirm`, `confirm_charge_usd` |
+| `get_agent_activity` | `agent_guid`, `kind` (`usage`, `logs` or `log_dates`), `entries` (for `usage`: `all`, `ai-usage`, `model-run`, `plan` or `funds`), `date` |
+| `delete_agent` | `agent_guid`, `confirm` |
+
+`list_projects` lists the projects of the connected project's workspace by id
+and name. It marks the connection's own project, the projects this connection
+can connect to an agent (the ones you created, or any project of a team you are
+an admin of) and the projects with an IP whitelist, and it shows no keys.
+`bind_agent_project` sets the Wiro project an agent's video and voice skills
+run models with. It does not connect the Wiro AI Models connector (`wiro`),
+which gives the agent Wiro's model tools and always runs with this same
+project. Called without `confirm`, it changes nothing: it shows the project, the one it
+replaces, whether a running agent restarts and which wallet pays for the
+agent's model runs (the wallet of the workspace that owns the project). After
+you agree, the assistant repeats the call with `confirm: true`, as its
+`nextAction` shows. Connecting the project an agent already has changes
+nothing and restarts nothing. On a team agent, a team admin can connect any
+project of the team, and the person who deployed the agent the projects they
+created. The API behind it is
+[`POST /UserAgent/CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind).
+
+### Controls tools
+
+A limit or a rule is for one scope: `account`, `member` (a team member, by
+e-mail or user uuid), `project` (an API key, by its project's id or name; left
+out, the key of this connection), `surface` or `agent` (by guid or name). See
+[Spend Limits](/docs/spend-limits) and [Model Access](/docs/model-access) for
+the API behind these tools.
+
+| Tool | Main arguments |
+|------|----------------|
+| `get_controls` | `usage` (`month` or `day`: also that period's spending by surface, member, API key and agent) |
+| `check_model_access` | `model` (`owner/slug` or id), `member`, `project`, `surface`, `agent` |
+| `manage_spend_limit` | `action` (`set` or `remove`), `scope` and its target (`member`, `project`, `surface` or `agent`), `period` (`month` or `day`), `amount_usd`, `alert_percent` (`50`, `80`, `90` or `null`), `limit_guid` (to remove), `confirm` |
+| `manage_model_access` | `action` (`update`, `replace` or `remove`), `scope` and its target, `everything_else` (`allow` or `block`), `categories`, `models`, `rule_guid` (to remove), `confirm` |
+
+Called without `confirm`, the two manage tools change nothing: they return the
+change summary. After you agree, the assistant repeats the call with
+`confirm: true`, as its `nextAction` shows. `update` keeps the entries of a
+rule that you don't name, and `replace` writes the whole rule again.
+
+## FAQ
+
+### What models can I use?
+
+All models in the [Wiro catalog](https://wiro.ai/models): image generation, video, audio, LLMs, 3D, and more. Use `search_models` to discover what's available.
+
+### Is my API key stored?
+
+No. The server is fully stateless. Your credentials are sent per-request and never stored or logged.
+
+### Does it cost extra?
+
+No. The MCP server itself is free. You pay the normal [Wiro prices](https://wiro.ai/pricing) for the work the tools start: model runs, the model steps of workflow runs, Studio and Workflow Agent turns, and agent plans and the AI usage agents pay from the balance.
+
+### What about rate limits?
+
+The hosted MCP endpoint counts requests for each Bearer token, or for each
+caller IP when a request has none, in a fixed 60-second window. Each window
+allows 60 tool calls and prompt reads, where every message of a batch counts,
+and 300 other requests, such as `initialize`, notifications, listings and
+`ping`. Responses carry `RateLimit-Limit`, `RateLimit-Remaining` and
+`RateLimit-Reset` (seconds) for the 60-call budget.
+
+A request over the limit gets HTTP `429` with `Retry-After`, the same RateLimit
+headers for the limit it hit, and a JSON-RPC error (code `-32000`) that says it
+was not run and when to try again. A batch larger than one window allows gets
+HTTP `400` (code `-32600`): it was not run, and it has to be split. These
+limits come on top of Wiro API project limits. Long generations do not require
+rapid polling: follow the returned bounded `wait_for_task` action.
+
+### Can I self-host?
+
+Yes. See the [Self-Hosted MCP](/docs/mcp-self-hosted) page for instructions on running the MCP server locally or on your own infrastructure.
 
 ---
 
 # Self-Hosted MCP
 
-Run the Wiro MCP server locally on your own machine using npx.
+Run the Wiro MCP server locally on your own machine using npx. No server setup required.
 
 ## Quick Start
+
+Add to your AI assistant's MCP config:
 
 ```json
 {
@@ -7863,32 +12929,139 @@ Run the Wiro MCP server locally on your own machine using npx.
 }
 ```
 
-The self-hosted server exposes the same 56 tools, playbooks and prompts as
-the hosted server, including bounded `run_model`, `wait_for_task`, and optional short waits through
-`get_task.wait_seconds`. The `@latest` in the npx `args` makes
-`npx` look up the newest version on npm at every start, so clients do not
-reuse an older cached package.
+That's it. Your assistant can now run Wiro models, build and run workflows,
+and work with Studio and your own agents. The `@latest` in `args` makes
+`npx` look up the newest version on npm each time the client starts the
+server, so it never reuses an older cached build.
 
-## Environment Variables
+## Setup
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `WIRO_API_KEY` | Yes | Your Wiro project API key |
-| `WIRO_API_SECRET` | No | API secret (for signature auth) |
-| `WIRO_API_BASE_URL` | No | Override API URL (default: `https://api.wiro.ai/v1`) |
-| `WIRO_TOOLSETS` | No | Comma-separated tool groups to load: `models`, `workflows`, `agents`, `controls` (default: all) |
+### Cursor
 
-`get_account`, `get_playbook` and `search_docs` are always available, and
-`workflows` also brings the model search tools it needs. The conversation tools
-for Studio and the Workflow Agent come with either `workflows` or `agents`, and
-`controls` loads the four Controls tools, which come with 1.9.0 and later. The
-self-hosted server's calls count on the `mcp` surface of [spend limits](/docs/spend-limits) and
-[Model Access](/docs/model-access) rules (before 2.0.0: `api`, as calls with its API key),
-except its messages to Studio and the Workflow Agent and its workflow runs,
-which count on `studio`, `workflow-agent` and `workflow` (see
-[Surfaces](/docs/tasks#task-surfaces)).
+Open MCP settings (`Cmd+Shift+P` → "Open MCP settings") and add the config above.
 
-## Authentication errors
+### Claude Code
+
+```bash
+claude mcp add wiro -- npx -y @wiro-ai/wiro-mcp@latest
+```
+
+Then set `WIRO_API_KEY` and `WIRO_API_SECRET` environment variables.
+
+### Claude Desktop
+
+Add to `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "wiro": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@wiro-ai/wiro-mcp@latest"],
+      "env": {
+        "WIRO_API_KEY": "your-api-key",
+        "WIRO_API_SECRET": "your-api-secret"
+      }
+    }
+  }
+}
+```
+
+### Windsurf
+
+Add to your MCP settings:
+
+```json
+{
+  "mcpServers": {
+    "wiro": {
+      "command": "npx",
+      "args": ["-y", "@wiro-ai/wiro-mcp@latest"],
+      "env": {
+        "WIRO_API_KEY": "your-api-key",
+        "WIRO_API_SECRET": "your-api-secret"
+      }
+    }
+  }
+}
+```
+
+### Kiro
+
+Add to `~/.kiro/settings/mcp.json` (every workspace) or
+`.kiro/settings/mcp.json` (this workspace):
+
+```json
+{
+  "mcpServers": {
+    "wiro": {
+      "command": "npx",
+      "args": ["-y", "@wiro-ai/wiro-mcp@latest"],
+      "env": {
+        "WIRO_API_KEY": "your-api-key",
+        "WIRO_API_SECRET": "your-api-secret"
+      }
+    }
+  }
+}
+```
+
+### goose
+
+In the goose CLI, run `goose configure`, pick
+**Add Extension > Command-line Extension**, enter
+`npx -y @wiro-ai/wiro-mcp@latest` as the command and add `WIRO_API_KEY` and
+`WIRO_API_SECRET` as environment variables. goose Desktop takes the same command
+and variables under **Extensions > Add custom extension**. Or add Wiro to
+`~/.config/goose/config.yaml`:
+
+```yaml
+extensions:
+  wiro:
+    name: Wiro AI
+    type: stdio
+    cmd: npx
+    args: ["-y", "@wiro-ai/wiro-mcp@latest"]
+    envs:
+      WIRO_API_KEY: your-api-key
+      WIRO_API_SECRET: your-api-secret
+    enabled: true
+    timeout: 300
+```
+
+### Other Clients
+
+Any MCP client that supports the **stdio** transport can connect. The command is:
+
+```bash
+npx -y @wiro-ai/wiro-mcp@latest
+```
+
+Set `WIRO_API_KEY` and `WIRO_API_SECRET` as environment variables in your client's MCP configuration.
+
+## Authentication
+
+The self-hosted MCP server supports both Wiro [authentication types](/docs/authentication) via environment variables.
+
+### Signature-Based (Recommended)
+
+Provide both API key and API secret:
+
+```
+WIRO_API_KEY=your-api-key
+WIRO_API_SECRET=your-api-secret
+```
+
+### API Key Only
+
+Provide only the API key. Omit `WIRO_API_SECRET`:
+
+```
+WIRO_API_KEY=your-api-key
+```
+
+### Authentication errors
 
 If the project uses signature-based auth and `WIRO_API_SECRET` is not set, tool calls fail with:
 
@@ -7898,10 +13071,180 @@ Wiro API error 401: This project uses signature-based auth. Set WIRO_API_SECRET 
 
 Add `WIRO_API_SECRET` to the `env` block of your MCP config and restart the client. The other messages are the same as on the hosted server: see [Authentication errors](/docs/wiro-mcp-server#mcp-auth).
 
+## Available Tools
+
+The self-hosted server provides the same 56 typed tools, playbooks and prompts as the [hosted MCP server](/docs/wiro-mcp-server). Successful calls include `structuredContent` for LLM chaining plus text content for compatibility. Completed media calls return standard MCP resource links and an assistant-audience delivery instruction so the assistant can present image previews and clickable media links in its user-facing response even when the client does not render media inside its tool card.
+
+All four tool groups load by default. To load fewer tools, set `WIRO_TOOLSETS` (see [Environment Variables](#environment-variables)). `get_account`, `get_playbook` and `search_docs` are always available.
+
+**Model slugs:** When a tool requires a model identifier, use the clean/lowercase format `owner/model` (e.g. `openai/sora-2`, `wiro/virtual-try-on`). These correspond to `cleanslugowner/cleanslugproject` values returned by `search_models`.
+
+### Models
+
+| Tool | API Endpoint | What it does |
+|------|-------------|-------------|
+| `search_models` | `POST /Tool/List` | Search and browse AI models by keyword, category, or owner. Returns model slugs, titles, descriptions, categories, and pricing. |
+| `get_model_schema` | `POST /Tool/Detail`, `POST /Workflow/UtilityDetail` | Get full parameter schema and pricing for any model: parameter names, types, options, defaults, and required fields. For a workflow utility, its parameters and output ports. |
+| `recommend_model` | `POST /Tool/List` | Find models for a goal from two or three key words, best matches first. |
+| `explore` | `POST /Tool/Explore` | Browse curated AI models organized by category. No parameters needed. |
+| `run_model` | `POST /Run/{owner}/{model}` | Run any model with parameters. Waits up to 45 seconds by default; if still active, returns a recoverable token for `wait_for_task`. |
+| `wait_for_task` | `POST /Task/Detail` | Continue waiting for an existing task in bounded windows without creating a duplicate model run. |
+| `get_task` | `POST /Task/Detail` | Check task status immediately, or wait up to 45 seconds with `wait_seconds`. Returns `pexit`, outputs, logs, elapsed time, and cost. |
+| `list_tasks` | `POST /Task/List` | Browse authenticated generation history across conversations and continue with `get_task`. |
+| `get_task_price` | `POST /Task/Detail` | Get the cost of a completed task. Shows whether it was billed and the total charge. Only successful tasks (`pexit: "0"`) are billed. |
+| `cancel_task` | `POST /Task/Cancel` | Cancel a task still in queue (before worker assignment). |
+| `kill_task` | `POST /Task/Kill` | Stop a queued or running task. Task moves to `task_cancel` status. |
+| `upload_file` | `POST /File/Upload` | Upload a file from a public http(s) URL (up to about 100 MB). Most models also take a public URL directly, without uploading first. |
+
+### Workflows
+
+| Tool | API Endpoint | What it does |
+|------|-------------|-------------|
+| `list_workflows` | `POST /Workflow/List` | List the workflows in your workspace, or search the public gallery by text, tag or model. |
+| `get_workflow` | `POST /Workflow/Detail` | Read a workflow's inputs, outputs and step graph. |
+| `create_workflow` | `POST /Workflow/Prepare`, `POST /Workflow/Add` | Save a new workflow from a step graph. Wiro checks it against the live model catalog and returns every problem it finds at once. |
+| `update_workflow` | `POST /Workflow/Prepare`, `POST /Workflow/Update` | Edit a workflow's title, description, tags or graph without overwriting newer changes; a new graph is saved only after you confirm a summary of the change. |
+| `clone_workflow` | `POST /Workflow/Clone` | Copy a public workflow into your workspace. |
+| `delete_workflow` | `POST /Workflow/Delete` | Delete a workflow, after your confirmation. |
+| `run_workflow` | `POST /Workflow/Run` | Run a workflow and wait for its outputs; can stop after a chosen step to test the first steps. |
+| `wait_for_workflow_run` | `POST /Workflow/RunDetail`, `POST /Workflow/RunNodeDetail` | Keep waiting on a run, read its outputs, or see why a step failed. |
+| `resume_workflow_run` | `POST /Workflow/RunResume` | Continue a failed or stopped run without paying again for finished steps. |
+| `list_workflow_runs` | `POST /Workflow/RunHistory` | Browse past and current runs, including runs started on wiro.ai. |
+| `save_workflow_from_agent` | `POST /StudioWorkflow/Message/Detail`, then `/Workflow/Add` or `/Workflow/Update` | Save a workflow the Workflow Agent proposed, as a new workflow, or onto an existing one after you confirm a summary of the change. |
+
+### Agents
+
+The conversation tools call the matching `Message/*` route of [Studio](/docs/studio) (`/Studio/`), the [Workflow Agent](/docs/workflow-agent) (`/StudioWorkflow/`) or a deployed agent (`/UserAgent/`), chosen by their `agent` argument.
+
+| Tool | API Endpoint | What it does |
+|------|-------------|-------------|
+| `send_agent_message` | `Message/Send`; with attachments, `Message/SendForm` for Studio and the Workflow Agent, and a multipart `Message/Send` for a deployed agent | Send a message and wait for the reply, with any media, workflows or model runs it produced. |
+| `get_agent_message` | `Message/Detail` | Keep waiting on a reply, or read one again. |
+| `get_agent_conversation` | `Message/Sessions`, `Message/History` | List conversations, or read one conversation's history. |
+| `cancel_agent_message` | `Message/Cancel` | Stop a reply that is still being written. |
+| `delete_agent_session` | `Message/ClearSession` (Studio), `Message/DeleteSession` | Delete a conversation and the agent's memory of it, after your confirmation. |
+| `list_studio_results` | `POST /Studio/Tasks` | List the images, videos and other results Studio generated for you. |
+| `list_agent_templates` | `POST /Agent/List` | Browse ready-made agent templates and the three monthly plans. |
+| `get_agent_template` | `POST /Agent/Detail` | Read a template's skills, plans, the connectors it suggests and the keys it needs. |
+| `list_agent_connectors` | `POST /AgentConnector/List`, `/AgentConnector/Detail`, `/UserAgent/ConnectorList` (with `agent_guid`) | Browse the connectors an agent can connect, what each one needs and the tools it gives the agent; with an agent, its connections. |
+| `list_agent_skills` | `POST /Skills/List`, `/Skills/Detail`, `/Skills/Capabilities` | Browse the skills an agent can have, and what each one needs to work. |
+| `deploy_agent` | `POST /UserAgent/PricingPreview`, `/UserAgent/Deploy` | Deploy an agent from a template or build one from skills, on the Starter, Pro or Max plan; shows the plan's price and the AI usage it includes, the Wiro balance that pays it and the other plans' prices, and asks before charging. |
+| `list_my_agents` | `POST /UserAgent/MyAgents` | List your agents with their status, plan, AI usage and this month's spending. |
+| `get_my_agent` | `POST /UserAgent/Detail` | Read one agent's setup, plan, AI usage and the balance it runs on; can wait until it is running. |
+| `control_agent` | `POST /UserAgent/Start`, `/UserAgent/Stop`, `/UserAgent/Update` (restart) | Start, stop or restart an agent. |
+| `update_agent` | `POST /UserAgent/Update`, `/UserAgent/UpdateSettings` | Change an agent's name, description, time zone, models, chat commands and setup from chat. |
+| `apply_agent_skills` | `POST /Skills/List`, `/UserAgent/Detail`, then `/UserAgent/SkillsApply` | Turn skills on or off; every plan includes every skill, so a change costs nothing. |
+| `set_agent_credentials` | `POST /UserAgent/CredentialUpsert`, `/UserAgent/CredentialFileUpload` | Save an agent's chat channel keys (such as a Telegram bot token), Twilio Voice and settings. |
+| `connect_agent_connector` | `POST /UserAgent/ConnectorConnect`, `/UserAgent/ConnectorList` (status) | Connect a connector to an agent: save its keys, or start its sign-in, which you approve in your browser. The Wiro AI Models connector (`wiro`) gives the agent Wiro's model, task and file upload tools, plus read-only docs search and playbooks; it shows the project it runs with and its wallet first, and connecting it also sets that project, as `bind_agent_project` does. |
+| `set_agent_connector_accounts` | `POST /UserAgent/ConnectorAccounts`, `/UserAgent/ConnectorSetAccounts` | Choose the accounts a connected connector may act on, such as its ad accounts, pages or channels. |
+| `disconnect_agent_connector` | `POST /UserAgent/ConnectorDisconnect` | Disconnect a connector from an agent, after your confirmation. |
+| `list_projects` | `POST /Project/List`, `/UserAgent/Detail` (with `agent_guid`) | List the projects of the connected project's workspace, to pick one for an agent; no keys are shown. |
+| `bind_agent_project` | `POST /UserAgent/Detail`, `/Project/List`, then `/UserAgent/CredentialProjectBind` | Set the Wiro project an agent's video and voice skills run models with, with no key in the chat; shows the project first, then asks for your confirmation. It gives the agent no model tools: connect the Wiro AI Models connector (`wiro`) for those. |
+| `manage_agent_custom_skill` | `POST /UserAgent/CustomSkillUpsert`, `CustomSkillRename`, `CustomSkillDelete`, `CustomSkillHistory`, `CustomSkillRevert` | Add, edit, schedule, restore or remove an agent's own instructions and scheduled tasks; turning off its approval policy or changing its rules needs your confirmation. |
+| `manage_agent_billing` | `POST /UserAgent/CreateSubscriptionCheckout`, `UpgradeTier`, `CancelSubscription`, `RenewSubscription` | Subscribe, move to another plan, cancel or renew, paid from your Wiro balance, after your confirmation; `buy_credits` is retired and charges nothing. |
+| `get_agent_activity` | `POST /UserAgent/TransactionList`, `/UserAgent/LogsList`, `/UserAgent/Logs` | Read an agent's AI usage, its transactions in dollars and its activity logs, including who changed what on it. |
+| `delete_agent` | `POST /UserAgent/Delete` | Delete an agent, after your confirmation. |
+
+### Controls
+
+These tools read and change the workspace's [spend limits](/docs/spend-limits) and [Model Access](/docs/model-access) rules. They come with `@wiro-ai/wiro-mcp` 1.9.0 and later. The self-hosted server's calls count on the `mcp` surface (before 2.0.0: `api`, as calls with its API key), except its messages to Studio and the Workflow Agent and its workflow runs, which count on `studio`, `workflow-agent` and `workflow` (see [Surfaces](/docs/tasks#task-surfaces)). Its Controls tools change limits and rules only when the person who created the key's project can change them: a personal account's owner, or in a team a team admin or the organization owner.
+
+| Tool | API Endpoint | What it does |
+|------|-------------|-------------|
+| `get_controls` | `POST /SpendLimit/List`, `/ModelAccess/List`, `/SpendLimit/Usage` | Read the workspace's spend limits, with what each has used and when it resets, its Model Access rules, and whether this connection can change them; on request, also this month's or today's spending by surface, member, API key and agent. |
+| `check_model_access` | `POST /ModelAccess/Check` | Explain whether a model may run here and why, rule by rule. Nothing runs and nothing is charged. |
+| `manage_spend_limit` | `POST /SpendLimit/List`, `/SpendLimit/Preview`, `/SpendLimit/Set`, `/SpendLimit/Remove` | Set or remove a spend limit. It shows a change summary first and changes nothing until you confirm. |
+| `manage_model_access` | `POST /ModelAccess/List`, `/ModelAccess/Preview`, `/ModelAccess/Set`, `/ModelAccess/Remove` | Update, replace or remove a Model Access rule. It shows a change summary first and changes nothing until you confirm. |
+
+### Account and guides
+
+| Tool | API Endpoint | What it does |
+|------|-------------|-------------|
+| `get_account` | `POST /Wallet/List`, `/SpendLimit/List`, `/Wallet/TransactionList` | Show which workspace the connected project belongs to, its wallet balance, its spend limits and, when you ask, the wallet's recent transactions. |
+| `get_playbook` | Built into the server | Step-by-step guides: getting started, models, workflows, workflow graphs, the Workflow Agent, Studio, agents, billing and Controls. |
+| `search_docs` | Wiro Docs | Search the Wiro documentation for guides, API references, and examples. |
+
+See the [Wiro MCP Server](/docs/wiro-mcp-server) page for the playbook topics, the prompts, the rules for paid and irreversible actions, and the tool arguments.
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `WIRO_API_KEY` | Yes | Your Wiro project API key |
+| `WIRO_API_SECRET` | No | Your API secret (for signature auth) |
+| `WIRO_API_BASE_URL` | No | Override API URL (default: `https://api.wiro.ai/v1`) |
+| `WIRO_TOOLSETS` | No | Comma-separated tool groups to load: `models`, `workflows`, `agents`, `controls` (default: all) |
+
+### Choosing tool groups
+
+Some clients work best with fewer tools. Set `WIRO_TOOLSETS` to load only the groups you need:
+
+```json
+"env": {
+  "WIRO_API_KEY": "your-api-key",
+  "WIRO_TOOLSETS": "models,workflows"
+}
+```
+
+`get_account`, `get_playbook` and `search_docs` are always available, and
+`workflows` also brings the model search tools it needs. `controls` loads the
+four Controls tools. The conversation tools for Studio and the Workflow Agent,
+with `save_workflow_from_agent`, come with either `workflows` or `agents`, and
+each prompt appears only when its tools are loaded. If a job needs a tool from a group that is not loaded, the server
+instructions tell the assistant to say so.
+
 ## GitHub & npm
 
-- GitHub: [github.com/wiroai/Wiro-MCP](https://github.com/wiroai/Wiro-MCP)
-- npm: [@wiro-ai/wiro-mcp](https://www.npmjs.com/package/@wiro-ai/wiro-mcp)
+- **GitHub**: [github.com/wiroai/Wiro-MCP](https://github.com/wiroai/Wiro-MCP)
+- **npm**: [@wiro-ai/wiro-mcp](https://www.npmjs.com/package/@wiro-ai/wiro-mcp)
+
+### Using as a Library
+
+The package exports its core components for building custom MCP servers:
+
+```typescript
+import { WiroClient } from '@wiro-ai/wiro-mcp/client';
+import { createMcpServer } from '@wiro-ai/wiro-mcp/server';
+
+const client = new WiroClient('your-api-key', 'your-api-secret');
+const server = createMcpServer(client);
+
+// Only the model and workflow tools
+const modelsAndWorkflows = createMcpServer(client, { toolsets: ['models', 'workflows'] });
+```
+
+| Export | Description |
+|--------|-------------|
+| `createMcpServer(client, options?)` | Creates an McpServer with the tools, prompts and server instructions registered. `options.toolsets` picks tool groups and the prompts that use them; `options.instructions` replaces the instructions; `options.wrapTool(tool, handler)` returns the handler to register for each tool, for your own logging or permission checks; `options.maxToolInputElements` caps the array elements and object members one tool call may carry (default 10000, `Infinity` turns the check off) |
+| `WiroClient` | API client supporting both auth types (signature + apikey-only); `post(path, body)` calls any Wiro API endpoint with the same credentials, and `isOwnApiKey(value)` says whether a value is this client's API key. Its `requestHeaders` option sends headers of your own with every request (see [Node.js Library](/docs/nodejs-library#nodejs-auth)) and replaces the `trustedProxy` option, which was removed in 1.5.0 |
+| `registerTools(server, client, options?)` | Registers the tools on an McpServer you already have, with the same `toolsets` and `wrapTool` options. That server then lists every tool schema, its own tools included, as JSON Schema 2020-12 |
+| `advertiseJsonSchema2020_12(server)` | Makes an McpServer list its tool schemas as JSON Schema 2020-12. Call it when you register single tools from `@wiro-ai/wiro-mcp/tools` instead of using `registerTools` |
+| `withJsonSchema2020_12(transport)` | The same for one transport: `await server.connect(withJsonSchema2020_12(transport))` |
+| `parseToolsets(value)` | Parse a `WIRO_TOOLSETS`-style list such as `"models,agents"` |
+
+## Self-Hosting on Your Server
+
+To run the MCP server on your own infrastructure:
+
+```bash
+git clone https://github.com/wiroai/Wiro-MCP.git
+cd Wiro-MCP
+npm install
+npm run build
+```
+
+Set environment variables and run:
+
+```bash
+export WIRO_API_KEY="your-api-key"
+export WIRO_API_SECRET="your-api-secret"
+node dist/index.js
+```
+
+## Requirements
+
+- Node.js 20 or later
+- A Wiro project with API key ([create one here](https://wiro.ai/panel/project/new))
 
 ---
 
@@ -7911,13 +13254,21 @@ Use Wiro AI models directly in your Node.js or TypeScript projects with a simple
 
 ## Overview
 
-The [`@wiro-ai/wiro-mcp`](https://www.npmjs.com/package/@wiro-ai/wiro-mcp) package exports a `WiroClient` class that you can use as a standalone API client, with no MCP setup required. It handles authentication, model discovery, execution, task polling, and file uploads.
+The [`@wiro-ai/wiro-mcp`](https://www.npmjs.com/package/@wiro-ai/wiro-mcp) package exports a `WiroClient` class that you can use as a standalone API client, with no MCP setup required. It handles authentication (both signature-based and API key only), model discovery, execution, task polling, and file uploads.
+
+### Links
+
+- [npm: @wiro-ai/wiro-mcp](https://www.npmjs.com/package/@wiro-ai/wiro-mcp)
+- [GitHub: wiroai/Wiro-MCP](https://github.com/wiroai/Wiro-MCP)
+- [Create API Key](https://wiro.ai/panel/project/new)
 
 ## Installation
 
 ```bash
 npm install @wiro-ai/wiro-mcp
 ```
+
+Requires Node.js 20 or later.
 
 ## Quick Start
 
@@ -7926,19 +13277,76 @@ import { WiroClient } from '@wiro-ai/wiro-mcp/client';
 
 const client = new WiroClient('YOUR_API_KEY', 'YOUR_API_SECRET');
 
+// Run an image generation model
 const run = await client.runModel('google/nano-banana-pro', {
   prompt: 'A futuristic city at sunset',
   aspectRatio: '16:9',
   resolution: '2K'
 });
 
+if (!run.result) {
+  console.log('Run failed:', run.errors);
+  process.exit(1);
+}
+
+// Wait for the result (polls Task/Detail until complete)
 const result = await client.waitForTask(run.socketaccesstoken);
 const task = result.tasklist[0];
 
 if (task.pexit === '0') {
   console.log('Output:', task.outputs[0].url);
+} else {
+  console.log('Failed:', task.pexit);
 }
 ```
+
+## Authentication
+
+The client supports both Wiro authentication methods:
+
+### Signature-Based (Recommended)
+
+Provide both API key and secret. HMAC-SHA256 signatures are generated automatically per request.
+
+```javascript
+const client = new WiroClient('your-api-key', 'your-api-secret');
+```
+
+### API Key Only
+
+Omit the secret for simpler server-side usage.
+
+```javascript
+const client = new WiroClient('your-api-key');
+```
+
+### Custom Base URL
+
+Override the API endpoint if needed (third parameter):
+
+```javascript
+const client = new WiroClient('key', 'secret', 'https://custom-api.example.com/v1');
+```
+
+### Your Own Request Headers
+
+To send headers of your own with every API request, pass `requestHeaders` in
+the options (fourth parameter):
+
+```javascript
+const client = new WiroClient('your-api-key', 'your-api-secret', undefined, {
+  requestHeaders: () => ({ 'x-app-name': 'my-app' })
+});
+```
+
+The function runs for every request the client sends, JSON and multipart, and
+gets one object, `{ pathname, apiKey }`, where `pathname` includes the base
+path, such as `/v1/Tool/List`. It returns a plain object of string values, and
+those headers are sent after the client's own. It cannot set `x-api-key`,
+`x-signature`, `x-nonce` or `Content-Type`, in any letter case: such a request
+fails before it is sent. Type it with `RequestHeadersHook`. This option replaces
+`trustedProxy`, which was removed in 1.5.0: a client created with
+`trustedProxy` throws.
 
 ## Available Methods
 
@@ -7948,62 +13356,272 @@ if (task.pexit === '0') {
 | `getModelSchema(model)` | Get full parameter schema and pricing for a model. |
 | `explore()` | Browse curated models organized by category. |
 | `runModel(model, params, signal?)` | Run a model. Returns task ID and socket access token. |
-| `waitForTask(tasktokenOrReference, timeoutMs?, options?)` | Poll until completion. Default timeout: 120s. Supports abort, progress, and transient retries. |
+| `waitForTask(tasktokenOrReference, timeoutMs?, options?)` | Poll until the task completes. Default timeout: 120 seconds. Supports `AbortSignal`, stepped polling, progress callbacks, and transient retries. |
 | `getTask({ tasktoken?, taskid? }, signal?)` | Get current task status and outputs. |
-| `cancelTask(tasktokenOrReference, signal?)` | Cancel a queued task using the API-required task ID. |
-| `killTask(tasktokenOrReference, signal?)` | Kill a running task using its token or task ID. |
+| `cancelTask(tasktokenOrReference, signal?)` | Cancel a queued task. Resolves a token to the `taskid` required by the API. |
+| `killTask(tasktokenOrReference, signal?)` | Kill a running task. Sends the token as `socketaccesstoken` or accepts a `taskid`. |
 | `listTasks(params?, signal?)` | List the tasks of the key's workspace, newest first. |
-| `uploadFile(url, fileName?)` | Upload a file from URL for use as model input. |
-| `post(path, body?, signal?)` | Call any other Wiro API endpoint with the same credentials; check `result` on the returned body. |
-| `postForm(path, form, signal?)` | Same as `post`, for `multipart/form-data` endpoints. |
+| `uploadFile(url, fileName?)` | Upload a file from a URL for use as model input. |
+| `post(path, body?, signal?)` | Call any other Wiro API endpoint with the same credentials, for example `post('/Workflow/List', { scope: 'my' })`. Wiro reports each outcome in the response body, so check `result` on the returned body. |
+| `postForm(path, form, signal?)` | Same as `post`, for endpoints that take `multipart/form-data`. |
 | `isOwnApiKey(value)` | Says whether a value is this client's API key, without handing the key out. |
 
-`TaskWaitTimeoutError` preserves the last Task/Detail response. Resume
-`waitForTask` with the same identifier instead of calling `runModel` again.
+If `waitForTask` exceeds its timeout, it throws `TaskWaitTimeoutError`. The
+error preserves `lastDetail`; call `waitForTask` again with the same token or
+task ID. Do not call `runModel` again for the same generation.
 
-To send headers of your own with every API request, pass `requestHeaders` in
-the options (fourth parameter): a function that gets `{ pathname, apiKey }` and
-returns a plain object of string values. It cannot set `x-api-key`,
-`x-signature`, `x-nonce` or `Content-Type`. It replaces `trustedProxy`, which
-was removed in 1.5.0.
+## Examples
+
+### Search Models
+
+```javascript
+const models = await client.searchModels({
+  search: 'image generation',
+  categories: ['text-to-image'],
+  limit: 5
+});
+
+for (const model of models.tool) {
+  console.log(`${model.cleanslugowner}/${model.cleanslugproject} — ${model.title}`);
+}
+```
+
+### Get Model Parameters
+
+```javascript
+const detail = await client.getModelSchema('google/nano-banana-pro');
+const model = detail.tool[0];
+
+if (model.parameters) {
+  console.log('Parameters:');
+  for (const group of model.parameters) {
+    for (const param of group.items) {
+      console.log(`  ${param.id} (${param.type}) ${param.required ? '— required' : ''}`);
+    }
+  }
+}
+```
+
+### Run an LLM
+
+```javascript
+const run = await client.runModel('openai/gpt-5-2', {
+  prompt: 'Explain quantum computing in 3 sentences'
+});
+
+const result = await client.waitForTask(run.socketaccesstoken);
+const task = result.tasklist[0];
+
+if (task.pexit === '0') {
+  // Merged text
+  console.log(task.debugoutput);
+
+  // Structured thinking/answer
+  const output = task.outputs[0];
+  if (output.contenttype === 'raw') {
+    console.log('Thinking:', output.content.thinking);
+    console.log('Answer:', output.content.answer);
+  }
+}
+```
+
+### Upload a File and Use It
+
+> **Tip:** Most models take a public URL instead of an upload. For most image and video inputs you pass it in the field itself, such as `inputImage: 'https://example.com/photo.jpg'`; a `fileinput` takes it in its `{id}Url` field (such as `inputImageUrl`), so check the model's parameter types. Use `uploadFile()` when you need to reuse files across multiple runs.
+
+```javascript
+// Upload an image
+const upload = await client.uploadFile('https://example.com/photo.jpg');
+const fileUrl = upload.list[0].url;
+
+// Use it in a model run
+const run = await client.runModel('wiro/virtual-try-on', {
+  inputImageHuman: fileUrl,
+  inputImageClothes: 'https://example.com/shirt.jpg'
+});
+
+const result = await client.waitForTask(run.socketaccesstoken);
+console.log('Output:', result.tasklist[0].outputs[0].url);
+```
+
+### Poll Manually
+
+```javascript
+const run = await client.runModel('klingai/kling-v3', {
+  prompt: 'A drone shot over mountains',
+  duration: '5',
+  aspectRatio: '16:9'
+});
+
+// Poll manually instead of using waitForTask
+const interval = setInterval(async () => {
+  const detail = await client.getTask({ tasktoken: run.socketaccesstoken });
+  const task = detail.tasklist[0];
+  console.log('Status:', task.status);
+
+  if (task.status === 'task_postprocess_end') {
+    clearInterval(interval);
+    if (task.pexit === '0') {
+      console.log('Video:', task.outputs[0].url);
+    }
+  }
+}, 5000);
+```
+
+## TypeScript
+
+All types are exported from the package:
+
+```typescript
+import { WiroClient } from '@wiro-ai/wiro-mcp/client';
+import type {
+  RunModelResult,
+  TaskDetailResponse,
+  Task,
+  TaskOutput,
+  ToolListResponse,
+  ToolDetailResponse,
+  ToolListItem,
+  SearchModelsParams,
+  TaskReference,
+  WaitForTaskOptions,
+  RequestHeadersHook,
+} from '@wiro-ai/wiro-mcp/client';
+
+import {
+  TaskPollingError,
+  TaskWaitTimeoutError,
+} from '@wiro-ai/wiro-mcp/client';
+```
+
+| Type | Description |
+|------|-------------|
+| `RunModelResult` | Response from `runModel()`: `taskid`, `socketaccesstoken`. |
+| `TaskDetailResponse` | Response from `getTask()` / `waitForTask()`: contains `tasklist` array. |
+| `Task` | Individual task object: `status`, `pexit`, `outputs`, `debugoutput`, etc. |
+| `TaskOutput` | Output entry: file (`name`, `url`) or LLM (`contenttype: "raw"`, `content`). |
+| `ToolListResponse` | Response from `searchModels()`: contains `tool` array. |
+| `ToolDetailResponse` | Response from `getModelSchema()`: contains model with parameters. |
+| `SearchModelsParams` | Search parameters: `search`, `categories`, `slugowner`, `limit`, etc. |
+| `TaskReference` | Existing task identifier: `tasktoken` or `taskid`. |
+| `WaitForTaskOptions` | Polling options: `signal`, `onPoll`, `pollIntervalMs`, and retry limit. |
+| `RequestHeadersHook` | The `requestHeaders` option: gets `{ pathname, apiKey }` and returns the headers to add. |
+| `TaskWaitTimeoutError` | Bounded wait expired; carries the last Task/Detail response. |
+| `TaskPollingError` | Repeated or permanent status lookup failure; also carries the last response. |
 
 ---
 
 # FAQ
 
-Common questions about using the Wiro API.
+Common questions about using the Wiro API. If you can't find the answer here, [contact support](mailto:support@wiro.ai).
 
-**How do I get an API key?** Sign up at wiro.ai, then create a project at wiro.ai/panel/project. Copy your API key (and secret, if signature-based) and store them securely. You can see them again on the Projects page after you confirm it's you.
+## How do I get an API key?
 
-**Which authentication method should I use?** Signature-Based is recommended. API Key Only is simpler. Use either method only from your own server, never in browser or mobile app code.
+Sign up at [wiro.ai](https://wiro.ai), then create a project at [wiro.ai/panel/project](https://wiro.ai/panel/project/new). Copy your API key (and secret, if signature-based) and store them securely. You can see them again on the Projects page after you confirm it's you.
 
-**Do I pay for failed tasks?** No. Only successfully completed tasks (pexit "0") are billed.
+## Which authentication method should I use?
 
-**How do LLM responses work?** LLM models return their response in `outputs` (structured, with `contenttype: "raw"` containing `prompt`, `raw`, `thinking`, `answer`) and as merged text in `debugoutput`.
+**Signature-Based** is recommended. It uses HMAC-SHA256 so your API secret never leaves your environment. **API Key Only** is simpler and fine for server-side applications where you control the environment. Use either method only from your own server, never in browser or mobile app code. See [Authentication](/docs/authentication) for details.
 
-**Can I send a URL instead of uploading a file?** Yes. For `fileinput` parameters, use the `{id}Url` suffix (e.g., `inputImageUrl`). For `multifileinput`, send comma-separated URLs in the field that puts `Url` before `Multiple` (e.g., `inputDocumentUrlMultiple`). For `combinefileinput`, pass URLs directly in the original parameter. The URL must be a public `http(s)` address. See Model Parameters.
+## Is there a rate limit?
 
-**Does the MCP server cost extra?** No. The [Wiro MCP server](/docs/wiro-mcp-server) is free. You pay the normal prices for the work its tools start: model runs, the model steps of workflow runs, Studio and Workflow Agent turns, and agent plans and the AI usage agents pay from the balance.
+Yes. Every account has a concurrency limit that controls how many tasks can run at the same time. The limit scales automatically based on your account balance. See [Concurrency Limits](/docs/concurrency-limits) for the full table.
 
-**Which other apps have a Wiro AI add-on?** ComfyUI, Dify, WordPress, Obsidian, Figma, Blender, Raycast, Zed, GitHub Actions, Hermes Agent, coding agents such as Claude Code, Codex and Cursor (agent skills), the Vercel AI SDK (with a Next.js starter for Vercel and Railway), and the Chrome, Edge, Opera, Brave, Firefox and Safari browsers. Each add-on is open source in the [wiroai](https://github.com/wiroai) GitHub organization, with its install steps in the repository. Store listings: the [WordPress plugin directory](https://wordpress.org/plugins/wiro-ai/), [Obsidian community plugins](https://community.obsidian.md/plugins/wiro-ai), the [Comfy Registry](https://registry.comfy.org/nodes/comfyui-wiro), the [Chrome Web Store](https://chromewebstore.google.com/detail/wiro-ai-tools-for-images/cehkhdmppbnfeahegjjkdhangjelehab), [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/wiro-ai-tools-for-images/obkibkhehpojlejdoinhlmoofalgaddg), [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/wiro-ai/) and the [Naver Whale Store](https://store.whale.naver.com/detail/elgobhnkemhlhfakdmpijbknhehnkgle); the n8n node is [verified by n8n](https://n8n.io/integrations/wiro-ai/). AI assistants connect through the [Wiro MCP server](/docs/wiro-mcp-server).
+## Do I pay for failed tasks?
 
-**Can I use a webhook instead of polling?** Yes. All models support an optional `callbackUrl` parameter. It must be a public `http(s)` address.
+No. If a task fails (non-zero `pexit`), you are not charged. Only successfully completed tasks are billed.
 
-**What are Wiro Agents?** Wiro Agents are autonomous AI assistants that you deploy and manage via the API. Unlike single model runs, agents can connect to third-party services (X, Google Ads, HubSpot and more), maintain conversation memory across sessions, and run scheduled tasks automatically. See the [Agent Overview](/docs/agent-overview) for details.
+## How do I check the cost before running a model?
 
-**How do I deploy an agent?** Pick a template in the [agent catalog](https://wiro.ai/agents) or build your own, then call `POST /UserAgent/Deploy` with `useprepaid: true` and a plan in `tier`: `starter` ($5 a month), `pro` ($30) or `max` ($100), each including its own price in AI usage a month. Your Wiro balance pays the plan, and Wiro queues the agent to start on its own. Then connect the services it uses. Every plan includes every skill and connector. See [Agent Overview](/docs/agent-overview) for the full lifecycle.
+Use the [POST /Tool/Detail](/docs/models) endpoint. The response includes the model's pricing information. If you're using the [MCP server](/docs/wiro-mcp-server), the `search_models` and `get_model_schema` tools also return pricing.
 
-**How much does an agent cost?** Each agent runs on one of three monthly plans: Starter ($5 a month), Pro ($30) or Max ($100), each paid from the Wiro balance of the agent's workspace and including its own price in AI usage: Pro includes $30 of AI usage a month. Every plan includes every skill and connector, so turning one on or off costs nothing. Each turn the agent runs is priced by the tokens its model uses; once the included usage is used up, the agent uses the Wiro balance of its workspace (for a team agent, the team's), the same balance model runs use, and a new turn needs at least $0.50 there in deposits and store revenue: coupon credit doesn't count toward it. The models the agent runs, such as images and videos, are paid at each model's own price from the wallet of the agent's Wiro project, never from the included usage. A higher plan starts at once; a lower plan starts at the next renewal. See [Pricing Model](/docs/agent-overview#pricing-model-plans-ai-usage-balance).
+## How long are generated files stored?
 
-**How much disk space does my agent have?** Starter gives an agent 250 MB, Pro 500 MB and Max 1 GB for its files: the workspace, generated media and temporary files. Chat history and system files don't count. Downloads and temporary files outside the workspace are cleared when the agent restarts, and when they pass 1 GB. When the disk is full, the agent can't save new files until some are deleted or it moves to a bigger plan. `UserAgent/Detail` shows the usage in `disk`. See [Disk Space](/docs/agent-overview#disk-space).
+Output files are stored on Wiro's CDN and available for a limited time. Download and store any files you need to keep long-term. See [Files](/docs/files) for details on file management.
 
-**Can I build my own product with Wiro Agents?** Yes. Use the Agent Messaging API to send messages programmatically, receive streaming responses via WebSocket, and get async notifications via webhooks. You can build white-label chat interfaces, webhook-driven pipelines, and multi-agent workflows. See [Agent Use Cases](/docs/agent-use-cases). For a chat in your own product, with setup from chat, follow [Agent Chat Integration](/docs/agent-chat-integration).
+## Are generated file URLs public?
 
-**Can I watch my agent work?** Yes. In the Wiro panel, the people who manage an agent can open its Screen beside the chat and watch its computer live (on a team agent, while its Chat Mode is Collaborative). The owner of a personal agent that has never been in a team, or whose browser was reset after it last left one, can also take control and use the keyboard and mouse, for example to sign in to a site for the agent. Products built on the API can show the same Screen, and Take Control, in their own app and decide which of their users see it; the agent's `screen` setting turns it off for everyone. See [Screen and Take Control](/docs/agent-overview#screen-and-take-control) and [Screen and Take Control in Your App](/docs/agent-chat-integration#screen-and-take-control-in-your-app).
+Yes. Output URLs returned by Wiro are publicly accessible. Anyone with the URL can access the file. If you need private storage, download the files to your own infrastructure.
 
-**How do I connect third-party services to an agent?** Agents connect to services like X, Instagram, Google Ads, and HubSpot through connectors, with your customer's own API keys or the vendor's sign-in. Browse them with `POST /AgentConnector/List` and connect one with `POST /UserAgent/ConnectorConnect`. See [Agent Connectors](/docs/agent-connectors). You can also ask the agent in its chat: it proposes a setup card, and an agent admin approves it and gives the key, which the agent never sees. See [Setup From Chat](/docs/agent-messaging#setup-from-chat).
+## What happens when I delete my account?
 
-**What happens when I delete my account?** Your account is closed right away and its API keys stop working. Its subscriptions stop renewing and end with their current billing period, without a refund. A renewal invoice that is still unpaid is cancelled. Its automatic top-ups stop. 30 days later, or later if something still needs it, such as an active subscription, we permanently delete its data, including your files, tasks, projects and API keys. Until then, write to [support@wiro.ai](mailto:support@wiro.ai) if you want it restored. We keep records the law requires, such as payment and invoice records. See [Data Deletion](https://wiro.ai/agreement/data-deletion) for details.
+Your account is closed right away and its API keys stop working. Its subscriptions stop renewing and end with their current billing period, without a refund. A renewal invoice that is still unpaid is cancelled. Its automatic top-ups stop. 30 days later, or later if something still needs it, such as an active subscription, we permanently delete its data, including your files, tasks, projects and API keys. Until then, write to [support@wiro.ai](mailto:support@wiro.ai) if you want it restored. We keep records the law requires, such as payment and invoice records. See [Data Deletion](https://wiro.ai/agreement/data-deletion) for details.
+
+## How do I get real-time task updates?
+
+Connect to the [WebSocket](/docs/websocket) at `wss://socket.wiro.ai/v1` and register with the `socketaccesstoken` from your run response. You'll receive events as the task progresses. For simpler integrations, you can poll the [Task Detail](/docs/tasks) endpoint.
+
+## How do LLM responses work?
+
+LLM models return their response in two places: as merged text in `debugoutput`, and as a structured entry in the `outputs` array with `contenttype: "raw"` containing `prompt`, `raw`, and separate `thinking` and `answer` arrays. For streaming, each `task_output` WebSocket event carries the latest cumulative snapshot of the output. See [LLM & Chat Streaming](/docs/llm-chat-streaming) for details.
+
+## Can I send a URL instead of uploading a file?
+
+Yes. For `fileinput` parameters, use the `{id}Url` suffix (e.g., `inputImageUrl`). For `multifileinput`, send comma-separated URLs in the field that puts `Url` before `Multiple` (e.g., `inputDocumentUrlMultiple`). For `combinefileinput`, pass URLs directly in the original parameter. A `fileinput` or `multifileinput` with no URL field takes them in the parameter itself. The URL must be a public `http(s)` address. See [Model Parameters](/docs/model-parameters).
+
+## What is pexit and how do I use it?
+
+`pexit` is the process exit code: `"0"` means success, any other value means failure. It's the most reliable way to determine if a task succeeded. Always check `pexit` in the `task_postprocess_end` event or Task Detail response. See [Tasks](/docs/tasks).
+
+## Does the MCP server cost extra?
+
+No. The [Wiro MCP server](/docs/wiro-mcp-server) is free. You pay the normal prices for the work its tools start: model runs, the model steps of workflow runs, Studio and Workflow Agent turns, and agent plans and the AI usage agents pay from the balance.
+
+## Can I use Wiro with n8n?
+
+Yes. Install the [Wiro AI community node](/docs/n8n-wiro-integration) (`@wiro-ai/n8n-nodes-wiro`) in your n8n instance to run any Wiro model from your workflows. Pick the model in the node and its inputs load with their defaults. The node is [verified by n8n](https://n8n.io/integrations/wiro-ai/), so an instance owner can also install it from the nodes panel, on n8n Cloud too.
+
+## Which other apps have a Wiro AI add-on?
+
+Wiro AI has open-source add-ons for these apps. Each repository has the install steps:
+
+- [ComfyUI](https://github.com/wiroai/Wiro-ComfyUI): nodes that run image, video, audio, 3D and LLM models inside your graphs, also on the [Comfy Registry](https://registry.comfy.org/nodes/comfyui-wiro)
+- [Dify](https://github.com/wiroai/Wiro-Dify-Plugin): the LLM gateway and voice models as a model provider, plus tools for images, video, speech, music and 3D in workflows and agents
+- [WordPress](https://github.com/wiroai/Wiro-WordPress): featured images, image edits, alt text, narration and SEO suggestions in the block editor, from the [WordPress plugin directory](https://wordpress.org/plugins/wiro-ai/)
+- [Obsidian](https://github.com/wiroai/Wiro-Obsidian): images, video, speech, music, transcription and text tools, saved into your notes, from [Obsidian community plugins](https://community.obsidian.md/plugins/wiro-ai)
+- [Figma](https://github.com/wiroai/Wiro-Figma): images, SVG vectors, image edits, background removal and text rewriting or translation on the canvas
+- [Blender](https://github.com/wiroai/Wiro-Blender): text to 3D, image to 3D and textures, with any model in the catalog
+- [Raycast](https://github.com/wiroai/Wiro-Raycast): image and video generation, LLM chat and model search from your launcher
+- [Zed](https://github.com/wiroai/Wiro-Zed): the Wiro MCP server in Zed's Agent Panel
+- [GitHub Actions](https://github.com/wiroai/Wiro-Action): run models, workflows and LLM prompts from a workflow step
+- [Hermes Agent](https://github.com/wiroai/Wiro-Hermes): media tools, plus the LLM gateway as a model provider
+- [Coding agents](https://github.com/wiroai/Wiro-Skills): agent skills for images, image edits, video, music, speech, transcripts, 3D and model search in Claude Code, Codex, Cursor, Gemini CLI, GitHub Copilot and OpenClaw
+- [Vercel AI SDK](https://github.com/wiroai/Wiro-LLM): chat, image, speech, transcription and video models, with a [Next.js starter](https://github.com/wiroai/Wiro-Next-Starter) for Vercel and Railway
+- [Chrome, Edge, Opera and Brave](https://github.com/wiroai/Wiro-Chromium-Extension), [Firefox](https://github.com/wiroai/Wiro-Firefox-Extension) and [Safari](https://github.com/wiroai/Wiro-Safari-Extension): right-click an image, video, audio clip, text or page to run a model. Install it from the [Chrome Web Store](https://chromewebstore.google.com/detail/wiro-ai-tools-for-images/cehkhdmppbnfeahegjjkdhangjelehab), [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/wiro-ai-tools-for-images/obkibkhehpojlejdoinhlmoofalgaddg), [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/wiro-ai/) or the [Naver Whale Store](https://store.whale.naver.com/detail/elgobhnkemhlhfakdmpijbknhehnkgle)
+
+AI assistants such as Claude, ChatGPT, Cursor and VS Code connect through the [Wiro MCP server](/docs/wiro-mcp-server).
+
+## Can I use a webhook instead of polling?
+
+Yes. All models support an optional `callbackUrl` parameter. When provided, Wiro will POST the task result to your URL when the task completes. It must be a public `http(s)` address. See [Webhook Callback](/docs/model-parameters) in Model Parameters.
+
+### What are Wiro Agents?
+
+Wiro Agents are autonomous AI assistants that you deploy and manage via the API. Unlike single model runs, agents can connect to third-party services (X, Google Ads, HubSpot and more), maintain conversation memory across sessions, and run scheduled tasks automatically. See the [Agent Overview](/docs/agent-overview) for details.
+
+### How do I deploy an agent?
+
+Pick a template in the [agent catalog](https://wiro.ai/agents) or build your own, then call `POST /UserAgent/Deploy` with `useprepaid: true` and a plan in `tier`: `starter` ($5 a month), `pro` ($30) or `max` ($100), each including its own price in AI usage a month. Your Wiro balance pays the plan, and Wiro queues the agent to start on its own. Then connect the services it uses. Every plan includes every skill and connector. See [Agent Overview](/docs/agent-overview) for the full lifecycle.
+
+### How much does an agent cost?
+
+Each agent runs on one of three monthly plans: Starter ($5 a month), Pro ($30) or Max ($100), each paid from the Wiro balance of the agent's workspace and including its own price in AI usage: Pro includes $30 of AI usage a month. Every plan includes every skill and connector, so turning one on or off costs nothing. Each turn the agent runs is priced by the tokens its model uses; once the included usage is used up, the agent uses the Wiro balance of its workspace (for a team agent, the team's), the same balance model runs use, and a new turn needs at least $0.50 there in deposits and store revenue: coupon credit doesn't count toward it. The models the agent runs, such as images and videos, are paid at each model's own price from the wallet of the agent's Wiro project, never from the included usage. A higher plan starts at once; a lower plan starts at the next renewal. See [Pricing Model](/docs/agent-overview#pricing-model-plans-ai-usage-balance).
+
+### How much disk space does my agent have?
+
+Starter gives an agent 250 MB, Pro 500 MB and Max 1 GB for its files: the workspace, generated media and temporary files. Chat history and system files don't count. Downloads and temporary files outside the workspace are cleared when the agent restarts, and when they pass 1 GB. When the disk is full, the agent can't save new files until some are deleted or it moves to a bigger plan. `UserAgent/Detail` shows the usage in `disk`. See [Disk Space](/docs/agent-overview#disk-space).
+
+### Can I build my own product with Wiro Agents?
+
+Yes. Use the Agent Messaging API to send messages programmatically, receive streaming responses via WebSocket, and get async notifications via webhooks. You can build white-label chat interfaces, webhook-driven pipelines, and multi-agent workflows. See [Agent Use Cases](/docs/agent-use-cases). For a chat in your own product, with setup from chat, follow [Agent Chat Integration](/docs/agent-chat-integration).
+
+### Can I watch my agent work?
+
+Yes. In the Wiro panel, the people who manage an agent can open its Screen beside the chat and watch its computer live (on a team agent, while its Chat Mode is Collaborative). The owner of a personal agent that has never been in a team, or whose browser was reset after it last left one, can also take control and use the keyboard and mouse, for example to sign in to a site for the agent. Products built on the API can show the same Screen, and Take Control, in their own app and decide which of their users see it; the agent's `screen` setting turns it off for everyone. See [Screen and Take Control](/docs/agent-overview#screen-and-take-control) and [Screen and Take Control in Your App](/docs/agent-chat-integration#screen-and-take-control-in-your-app).
+
+### How do I connect third-party services to an agent?
+
+Agents connect to services like X, Instagram, Google Ads, and HubSpot through connectors, with your customer's own API keys or the vendor's sign-in. Browse them with `POST /AgentConnector/List` and connect one with `POST /UserAgent/ConnectorConnect`. See [Agent Connectors](/docs/agent-connectors). You can also ask the agent in its chat: it proposes a setup card, and an agent admin approves it and gives the key, which the agent never sees. See [Setup From Chat](/docs/agent-messaging#setup-from-chat).
 
 ---
 
@@ -8011,21 +13629,138 @@ Common questions about using the Wiro API.
 
 Run any Wiro AI model from your n8n workflows: video, image, audio, LLM, 3D, and more.
 
-The **Wiro AI** community node (`@wiro-ai/n8n-nodes-wiro`) runs any model in the Wiro AI catalog from a single node. Pick a model from a searchable list and its inputs load into the node with their default values. **Model > Run** starts a task and returns its output files (`url`, `urls`) or a text model's reply (`text`), with `taskId`, `status`, `costUsd` and `elapsedSeconds`. **Task > Get** and **Task > Wait** read a task by its ID. The node also works as a tool for an n8n AI Agent, and takes a **Wiro AI API** credential: your project's API key, plus the API secret if the project uses signature authentication.
+## Overview
 
-## Installation
+[n8n](https://n8n.io) is a powerful workflow automation platform. The **Wiro AI** community node, published on npm as `@wiro-ai/n8n-nodes-wiro`, runs any model in the Wiro AI catalog from a single node.
 
-The node is [verified by n8n](https://n8n.io/integrations/wiro-ai/): an instance owner can search for **Wiro AI** in the nodes panel of the workflow editor and install it, on n8n Cloud and on self-hosted instances that show verified community nodes.
+Pick a model from a searchable list and its inputs load into the node with their default values. The node starts a task on Wiro, waits for it to finish and returns the output files, or the reply of a text model. It also works as a tool for an n8n AI Agent.
 
-Install via n8n UI: **Settings → Community Nodes → Install → `@wiro-ai/n8n-nodes-wiro`**
-
-Or via command line: `npm install @wiro-ai/n8n-nodes-wiro`
-
-## Links
+### Links
 
 - [npm: @wiro-ai/n8n-nodes-wiro](https://www.npmjs.com/package/@wiro-ai/n8n-nodes-wiro)
 - [GitHub: wiroai/n8n-nodes-wiro](https://github.com/wiroai/n8n-nodes-wiro)
 - [n8n: Wiro AI integration (verified)](https://n8n.io/integrations/wiro-ai/)
+- [n8n Community Nodes Installation Guide](https://docs.n8n.io/integrations/community-nodes/installation/)
+- [Wiro Model Catalog](https://wiro.ai/models): browse all available models
+
+## Available Model Categories
+
+| Category | Models | Examples |
+|----------|--------|----------|
+| Video Generation | Text-to-video, image-to-video | Veo 3.1, Kling V3, Seedance, Hailuo, PixVerse, Runway |
+| Image Generation | Text-to-image, style transfer | GPT Image 2, Flux 2 Pro, Seedream, Nano Banana, Qwen Image |
+| Image Editing | Try-on, face swap, background removal | Virtual Try-On, Face Swap, Prompt-based Editing, Style Transfer |
+| Audio & Speech | TTS, STT, voice clone, music | ElevenLabs TTS, Gemini TTS, Whisper STT, Voice Clone |
+| LLM Chat | Chat completion, RAG | GPT-5.2, GPT-5 Mini, Gemini 3, Claude Fable 5.2, RAG Chat |
+| 3D Generation | Image/text to 3D | Trellis 2, Hunyuan3D 2.1 |
+| Translation | Multi-language with image support | Gemma-based (4B, 12B, 27B) |
+| E-Commerce | Product photos, ads, templates | Product Photoshoot, Shopify Templates, UGC Creator |
+| HR Tools | CV analysis, job descriptions | CV Evaluator, Resume Parser, Culture Fit |
+
+## Wiro AI Node
+
+| Resource | Operation | What it does |
+|----------|-----------|--------------|
+| Model | Run | Runs a model with your inputs and returns its outputs |
+| Task | Get | Reads a task by its ID, with its status and outputs |
+| Task | Wait | Waits until a task finishes, then returns its outputs |
+
+- **Model**: pick the model from the searchable list, paste its wiro.ai link, or type it as `owner/model`, such as `pruna/p-image`.
+- **Inputs**: the inputs of the model you picked load into the node with their default values. Required inputs are always shown; add advanced ones with **Add input to send**. Fill them in or map them from the incoming item. File inputs take public URLs; separate several URLs with commas.
+- **Wait for Completion** is on by default, and the node waits up to 20 minutes (change it with **Max Wait Time**). Turn it off to get the task ID at once, then read the task later with **Task > Get** or **Task > Wait**.
+
+The node returns the task with its output files and cost:
+
+```json
+{
+  "taskId": "5986221",
+  "status": "completed",
+  "model": "pruna/p-image",
+  "url": "https://cdn1.wiro.ai/xyz/0.png",
+  "urls": ["https://cdn1.wiro.ai/xyz/0.png"],
+  "costUsd": 0.005,
+  "elapsedSeconds": 3
+}
+```
+
+| Field | What it holds |
+|-------|---------------|
+| `taskId` | The ID of the Wiro task |
+| `status` | `queued`, `running`, `completed`, `failed` or `cancelled` |
+| `model` | The model, as `owner/model` |
+| `url` | The first output file |
+| `urls` | Every output file |
+| `text` | The reply of a text model |
+| `costUsd` | What the task cost, in US dollars |
+| `elapsedSeconds` | How long the task ran |
+
+A task that fails or is cancelled stops the node with an error. To handle it in its own branch, set the node's **On Error** setting to **Continue (using error output)**. A task still running when the wait ends comes back with `status: "running"`: read it later with **Task > Wait** and the same task ID instead of starting it again.
+
+## Installation
+
+Install the community node package in your n8n instance:
+
+### From the nodes panel
+
+The Wiro AI node is [verified by n8n](https://n8n.io/integrations/wiro-ai/). An instance owner can search for **Wiro AI** in the nodes panel of the workflow editor and install it, on n8n Cloud and on self-hosted instances that show verified community nodes. After that, everyone on the instance can add it to their workflows.
+
+### Via n8n UI (Recommended)
+
+1. Open your n8n instance
+2. Go to **Settings → Community Nodes**
+3. Click **Install a community node**
+4. Enter: `@wiro-ai/n8n-nodes-wiro`
+5. Click **Install**
+
+### Via Command Line
+
+```bash
+npm install @wiro-ai/n8n-nodes-wiro
+```
+
+Run it in `~/.n8n/nodes`, then restart n8n.
+
+## Authentication
+
+The node supports both [Wiro authentication methods](/docs/authentication):
+
+1. Go to **Credentials → Add new → Wiro AI API** in n8n
+2. Paste the project's **API Key**. If the project uses signature authentication, also paste its **API Secret**: the node then signs every request with HMAC-SHA256 and never sends the secret.
+3. Click **Save**, and n8n checks the key
+
+Get your credentials at [wiro.ai/panel/project](https://wiro.ai/panel/project/new). Runs are billed to the wallet of the project's workspace.
+
+## Usage
+
+Search the node picker for "Wiro AI" and add the node with the **Run a model** action, then pick the model.
+
+### Example: Generate an Image with P-Image
+
+1. Add the **Wiro AI** node with the **Run a model** action
+2. In **Model**, search for `p-image` and pick `pruna/p-image`
+3. Under **Inputs**, set **Prompt** to `A red bicycle on a sunny street`
+4. Run the workflow: `url` in the output links to the image
+
+### Example: Generate a Video with Kling V3
+
+1. Add the **Wiro AI** node and pick `klingai/kling-v3` in **Model**
+2. Set **Prompt** to `A cat astronaut floating in space`, and leave **Duration** and **Ratio** at their defaults or pick others
+3. Run the workflow: `url` in the output links to the video
+
+### Example: Turn an LLM Reply into an Image
+
+1. Add a Wiro AI node with `openai/gpt-5-mini` and a **Prompt** that asks for one image prompt. Its reply is in `text`
+2. Add a second Wiro AI node with `pruna/p-image` and map its **Prompt** to `{{ $json.text }}`
+3. Run the workflow: `url` in the second node's output links to the image
+
+The [package README](https://github.com/wiroai/n8n-nodes-wiro#example-workflow) has this workflow as JSON that you can paste into n8n.
+
+## Compatibility
+
+| Requirement | Version |
+|-------------|---------|
+| n8n | v1.85.0+ |
+| Package | `@wiro-ai/n8n-nodes-wiro@latest` |
 
 ---
 
