@@ -30215,7 +30215,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </table>
 </div>
 </div>
-<p>Such a card has a message of its own, sent as the agent's owner, with an empty <code>content</code>, a <code>response</code> such as <code>Approval needed: Create a WordPress post or page in WordPress.</code> and <code>metadata.type</code> <code>"system"</code>. Wiro puts it in the session of the owner's most recent message sent in Wiro's web chat (on a team agent whose sessions are shared, the team's most recent); messages sent with a project API key don't count. Without one, it goes to the agent's <code>approvals</code> session: read it with <a href="/docs/agent-messaging#post-useragentmessagehistory"><code>Message/History</code></a> and <code>sessionkey: "approvals"</code>, and keep that key for it. <a href="#post-useragentconnectorpermissions">ConnectorPermissions</a> lists these cards under <code>pending</code>, so the agent's admins can answer them from there too (a card asked in Telegram, Slack or Discord only shows there).</p>
+<p>Such a card has a message of its own, sent as the agent's owner, with an empty <code>content</code>, a <code>response</code> such as <code>Approval needed: Create a WordPress post or page in WordPress.</code> and <code>metadata.type</code> <code>"system"</code>. Wiro puts it in the session of the owner's most recent message sent in Wiro's web chat (on a team agent whose sessions are shared, the team's most recent); messages sent with a project API key don't count. Without one, it goes to the agent's <code>approvals</code> session: read it with <a href="/docs/agent-messaging#post-useragentmessagehistory"><code>Message/History</code></a> and <code>sessionkey: "approvals"</code>, and keep that key for it. <a href="#post-useragentconnectorpermissions">ConnectorPermissions</a> lists these cards under <code>pending</code>, so the agent's admins can answer them from there too (a card asked in Telegram, Slack or Discord is listed there read-only).</p>
 <p>By default a Scheduled Task creates, sends, changes and deletes without asking, so it gets a card only on a connection that sets Autopilot to <code>ask</code>, such as the one in the <a href="#post-useragentconnectorsetpermissions">ConnectorSetPermissions</a> example. There, a Scheduled Task's card, as History returns its message in the <code>approvals</code> session:</p>
 <pre><code class="language-json">{
   &quot;guid&quot;: &quot;f6a7b8c9-d0e1-4f23-a456-789abcdef012&quot;,
@@ -30320,7 +30320,7 @@ Reply &quot;yes&quot; to allow it once, or &quot;no&quot; to decline it. It expi
 </tr>
 <tr>
 <td>Several actions</td>
-<td><code>Approval needed for &lt;N&gt; actions</code>, each request after its number (<code>1.</code>, <code>2.</code>, ...), then <code>Reply "yes" and the action's number to allow it once, one per message, for example "yes 1". Reply "no" and its number to decline one, or "no" to decline them all. They expire in 24 hours.</code></td>
+<td><code>Approval needed for &lt;N&gt; actions</code>, each request after its number (<code>1.</code>, <code>2.</code>, ...), then <code>Reply "yes" and the action's number to allow it once, one per message, for example "yes &lt;n&gt;". Reply "no" and its number to decline one, or "no" to decline them all. They expire in 24 hours.</code>, <code>&lt;n&gt;</code> being the first number.</td>
 </tr>
 <tr>
 <td>Actions still waiting after one ran</td>
@@ -30371,11 +30371,11 @@ Reply &quot;yes&quot; to allow it once, or &quot;no&quot; to decline it. It expi
 </tr>
 <tr>
 <td><code>yes</code> while several actions wait</td>
-<td><code>&lt;N&gt; actions are waiting. Reply "yes" with the action's number, for example "yes 1", or "no" to decline them all.</code></td>
+<td><code>&lt;N&gt; actions are waiting. Reply "yes" with the action's number, for example "yes &lt;n&gt;", or "no" to decline them all.</code></td>
 </tr>
 <tr>
 <td>A number no waiting action has</td>
-<td><code>There is no action &lt;n&gt; waiting. Reply "yes" or "no" with the number of an action that waits: 1, 2 or 3.</code>, or <code>There is no action &lt;n&gt; waiting. Reply "yes" or "no".</code> when one waits.</td>
+<td><code>There is no action &lt;n&gt; waiting. Reply "yes" or "no" with the number of an action that waits: &lt;n1&gt;, &lt;n2&gt; or &lt;n3&gt;.</code> (the numbers that wait), or <code>There is no action &lt;n&gt; waiting. Reply "yes" or "no".</code> when one waits.</td>
 </tr>
 <tr>
 <td><code>yes</code> while the agent is still replying in that conversation</td>
@@ -30383,7 +30383,7 @@ Reply &quot;yes&quot; to allow it once, or &quot;no&quot; to decline it. It expi
 </tr>
 <tr>
 <td><code>yes</code> while the agent can't take a turn</td>
-<td>The sentence the agent gives in its chats for that, such as <code>This agent is paused for now. It runs again once its owner adds funds or its plan renews.</code> Nothing is allowed.</td>
+<td>The sentence the agent gives in its chats for that, such as <code>This agent is paused for now. It runs again once its owner adds funds or its plan renews.</code> or <code>This agent has no active plan, so it paused.</code> Nothing is allowed.</td>
 </tr>
 <tr>
 <td>An action that can't be answered any more</td>
@@ -35983,7 +35983,7 @@ createServer(async (req, res) =&gt; {
 <li><strong>Keys never go into chat messages.</strong> Collect keys, app keys and tokens in your own forms and send them with <code>SetupCardApply</code> <code>values</code> or <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>ConnectorConnect</code></a>. The agent never sees them. While setup from chat is on for a message, Wiro takes clear keys out of it before it is stored or reaches the agent: each one reads <code>[key removed]</code> in the stored text and in the text the agent gets, and Send answers <code>contentmasked: true</code> with that text in <code>content</code>. A key pasted as the reply while a <code>key</code> connect card is the only <code>connect</code> card waiting can be saved to its connector, and is then stored as <code>[key saved to &lt;Connector title&gt;]</code>. This runs only while setup from chat is on for the message, so treat it as a safety net, never as a way to send keys. See <a href="/docs/agent-messaging#keys-in-chat">Keys in chat</a>.</li>
 <li><strong>Saved secrets read as a mask.</strong> <code>UserAgent/Detail</code> shows every saved <code>password</code> field of a credential as <code>"••••••••"</code>, for every caller, and no answer ever returns a connector's values or tokens: <a href="/docs/agent-connectors#post-useragentconnectorlist"><code>ConnectorList</code></a> names the saved fields in <code>savedvariables</code>, never their values. Show "Saved" instead of a value, and let people replace a secret, not read it.</li>
 <li><strong>The mask sent back keeps the saved value.</strong> A field sent to <code>CredentialUpsert</code> as <code>"••••••••"</code> isn't written, so a form saved as Detail showed it changes only the fields edited. A connector field you leave out of <code>ConnectorConnect</code> keeps its saved value the same way. See <a href="/docs/agent-credentials#field-level-write-rules">Field-level write rules</a>.</li>
-<li><strong>Approvals act with your key's rights.</strong> Show Apply only to the people allowed to change the agent, hold back everyone else's typed approvals (see <a href="#typed-replies">Typed replies</a>), check that a <code>messageguid</code> belongs to the session of the person who clicked, and use <code>chatsetup: "off"</code> for agents whose users must not change them.</li>
+<li><strong>Approvals act with your key's rights.</strong> Show Apply only to the people allowed to change the agent, hold back everyone else's typed approvals (see <a href="#typed-replies">Typed replies</a>), check that a <code>messageguid</code> belongs to the session of the person who clicked, and use <code>chatsetup: "off"</code> for agents whose users must not change them. <code>chatsetup</code> doesn't stop a typed answer to a connector's approval card: hold back a <code>yes</code>, <code>always</code> or <code>no</code> from people who must not approve the agent's actions while a card waits, and answer cards from your own UI with ApprovalCardAct (see <a href="/docs/agent-connectors#answering-with-a-reply">Answering with a reply</a>).</li>
 <li><strong>Your key's owner stays in your backend.</strong> Message rows carry your key owner's <code>uuid</code> and <code>user</code> (name, email, avatar), and cards its <code>uuid</code>, whoever of your users wrote: show your own names instead.</li>
 <li><strong>Your API key stays on your server.</strong> Your app calls your backend, and your backend calls Wiro. A browser holds at most the <code>agenttoken</code> and <code>sessiontoken</code> of its own person's chats, and the one-time <code>screenToken</code> of a screen you chose to show that person.</li>
 <li><strong>The Screen shows the whole agent.</strong> An agent's Screen shows the work of all of its chats, and Take Control reaches every site its browser is signed in to. Ask for a ticket only for the users you allow to see that agent, and for <code>control: true</code> only for the users you allow to use it. Turn the Screen off with <code>screen: "off"</code> on agents whose users must not see each other's work (see <a href="#decide-who-sees-it">Decide who sees it</a>).</li>
@@ -36073,7 +36073,7 @@ page &lt;&gt; binary RFB 3.8 frames: noVNC draws the agent's browser, view only
 <li><code>next</code> from blocks, <code>SetupCardApply</code> answers, <code>setupresult</code> and webhooks turns into your own Connect buttons.</li>
 <li>Every <code>result: false</code> shows its sentence or your own words; code branches on codes and statuses, never on sentences.</li>
 <li>Every restart signal (<code>restarting</code>, <code>restart</code>, <code>connector_connected=true</code>, and the saves that answer none) shows a restarting line until <code>UserAgent/Detail</code> reads <code>status: 4</code>, and the poll stops at <code>0</code>, <code>5</code> or <code>6</code>; Send refusals during a restart are shown as they are.</li>
-<li>Typed approvals and pasted keys from people who must not change the agent never reach Wiro.</li>
+<li>Typed approvals and pasted keys from people who must not change the agent never reach Wiro, and neither do typed answers to approval cards from people who must not approve its actions.</li>
 <li>Keys never go into chat messages; secrets show as "Saved", and the mask sent back is left alone.</li>
 <li>Your <code>redirecturl</code> page handles <code>connector_connected=true</code> and <code>connector_error=&lt;code&gt;</code>, inside a popup or as a full page, and confirms with <code>ConnectorList</code>.</li>
 <li>Your product decides who may watch each agent's Screen and who may take control, and agents whose users must not see each other's work have <code>screen</code> set to <code>"off"</code>.</li>
