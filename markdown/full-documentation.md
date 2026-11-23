@@ -16762,17 +16762,12 @@ Retrieves full details for a single deployed agent instance, including subscript
             "brand_logo_filter": "brightness(0) invert(1)",
             "docs_url": "integration-telegram-skills",
             "credential_mode": "api_key",
-            "connection_modes": [],
-            "default_connection_mode": null,
-            "mode_badges": {},
-            "wiro_connect_pending": false,
             "channel": {
               "id": "telegram",
               "plugin": "telegram",
               "required_fields": ["bottoken", "allowedusers"],
               "capabilities": { "direct": true, "rooms": true, "threads": true, "roles": false, "command_menu": true }
             },
-            "oauth_provider": null,
             "fields": [
               {
                 "key": "bottoken",
