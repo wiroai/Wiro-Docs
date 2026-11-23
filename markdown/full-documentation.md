@@ -114,8 +114,8 @@ Common HTTP status codes:
 
 - `200`: Success
 - `400`: Bad request (check parameters)
-- `401`: Unauthorized (invalid or missing API key)
-- `403`: Forbidden (signature mismatch or insufficient permissions)
+- `401`: Unauthorized (invalid or missing API key, or a signature mismatch)
+- `403`: Forbidden (insufficient permissions)
 - `429`: Rate limit exceeded
 - `500`: Internal server error
 

@@ -509,8 +509,8 @@
                     <ul>
                       <li><code>200</code>: Success</li>
                       <li><code>400</code>: Bad request (check parameters)</li>
-                      <li><code>401</code>: Unauthorized (invalid or missing API key)</li>
-                      <li><code>403</code>: Forbidden (signature mismatch or insufficient permissions)</li>
+                      <li><code>401</code>: Unauthorized (invalid or missing API key, or a signature mismatch)</li>
+                      <li><code>403</code>: Forbidden (insufficient permissions)</li>
                       <li><code>429</code>: Rate limit exceeded</li>
                       <li><code>500</code>: Internal server error</li>
                     </ul>
