@@ -29895,7 +29895,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
     "includedusd": 30,
     "usage": {
       "period": "2026-11",
-      "resetsat": null,
+      "resetsat": 1796083200,
       "includedusd": 30,
       "usedusd": 12.4,
       "leftusd": 17.6,
@@ -29988,7 +29988,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 | `modelrunsusd` | `number\|null` | Models the agent ran. |
 | `fundsaddedusd` | `number\|null` | Funds added for the agent: from its page, and what was left of a pack moved to the balance, less any refund taken back from it. |
 | `includedusd` | `number\|null` | The AI usage the plan includes this period. |
-| `usage` | `object\|null` | The agent's `usage`, as on [`UserAgent/Detail`](/docs/agent-overview#usage-object), except `resetsat`, which is `null` here: read it from `UserAgent/Detail`. |
+| `usage` | `object\|null` | The agent's `usage`, as on [`UserAgent/Detail`](/docs/agent-overview#usage-object). Its `resetsat` is the end of the active plan's period, and `null` when the agent has no active plan. |
 
 A field is `null` when its part of the summary could not be read: ask again, and never read it as zero.
 
@@ -30006,16 +30006,16 @@ The summary also still carries the credit counts it had before dollar billing (`
 | `model` | `string\|null` | `ai-usage` rows: the model of the costliest call the row covers; `tokens` and `costs` add up all its calls, whatever their model. `model-run` rows: the model that ran, by its `owner/slug`. `null` otherwise. |
 | `tokens` | `object\|null` | `ai-usage` rows: `{ input, cacheRead, cacheWrite, output }` token counts, where `input` is uncached input. `null` otherwise. |
 | `costs` | `object\|null` | `ai-usage` rows: what each kind of token cost, in USD, exact to 7 decimals: `{ input, cacheRead, cacheWrite, output }`. `null` on other rows and on legacy rows. |
-| `amountusd` | `number` | The row's amount in USD, in whole cents. When Wiro measures the agent's model calls itself, the exact `costs` can leave a fraction of a cent that carries to the agent's next row, so `amountusd` can differ from their sum by less than a cent. Otherwise each turn is billed on its own at its exact cost rounded up to the next cent, so a turn's `amountusd` can be less than a cent above the sum of its `costs`. |
+| `amountusd` | `number\|null` | The row's amount in USD, in whole cents. When Wiro measures the agent's model calls itself, the exact `costs` can leave a fraction of a cent that carries to the agent's next row, so `amountusd` can differ from their sum by less than a cent. Otherwise each turn is billed on its own at its exact cost rounded up to the next cent, so a turn's `amountusd` can be less than a cent above the sum of its `costs`. `null` only on a legacy `plan` row whose record kept no payment (see below). |
 | `paidfrom` | `string\|null` | How the row was paid: `"plan"` (the plan's included usage), `"balance"` (the Wiro balance), `"coupon"` (coupon credit in the balance) or `"card"` (a card payment, such as a plan renewal from before plans moved to the balance, or funds added by card). |
-| `direction` | `string` | `"out"` for spending, `"in"` for funds added and other credits (for legacy `plan` rows and refunds, see below). |
+| `direction` | `string` | `"out"` for spending and refunds, `"in"` for funds added and other credits. |
 | `surface` | `string\|null` | The surface the row was charged on, such as `"agent"`. `null` on older rows. |
 | `taskid` | `string\|null` | `model-run` rows: the task of the run (see [Tasks](/docs/tasks)). `null` otherwise. |
 | `legacy` | `boolean` | `true` on rows from before dollar billing, converted to dollars. |
 
-A legacy `plan` row keeps the old record's sign and line: its `direction` is `"in"`, its `amountusd` is the AI usage the payment granted, not what was paid, and its `title` is the old record's line, such as `Subscription renewal`, which may not name the plan. A refund taken back from what was left of a pack moved to the balance is a `funds` row titled `Funds Added` with `direction: "in"`, though it took that amount out of the balance; its `description` starts with `Refund:`.
+A legacy `plan` row is a payment like any other `plan` row: its `direction` is `"out"`, its `amountusd` is what was paid, or `null` when the old record kept no payment (never the AI usage the payment granted), and its `title` names the plan, such as `Agent renewal: Pro plan`, `Agent plan started: Starter plan` or `Agent plan change: Starter to Pro`. A legacy `plan` row whose record names no plan keeps that record's line as its `title`. A refund taken back from what was left of a pack moved to the balance is a `funds` row titled `Refund`, with `direction: "out"`; its `description` starts with `Refund:`.
 
-> **Pagination.** With `kind: "all"`, `rowstotal` counts every row, so you can render a precise paginator. With another `kind`, rows from before dollar billing are searched only among the newest `start` + `limit` older records, so `rowstotal` and the pages can leave older ones out: for a full history, page with `kind: "all"` and filter by `kind` yourself. Default page size is 50, max is 500. Use `start` to skip rows.
+> **Pagination.** `rowstotal` counts every row the `kind` lists, rows from before dollar billing included, so you can render a precise paginator for any `kind`. Default page size is 50, max is 500. Use `start` to skip rows.
 
 ## Reading the List: Patterns
 
@@ -30060,7 +30060,7 @@ A batch paid more than one way carries the whole batch's `costs` on each of its 
 
 ### Reconcile a plan change
 
-Every plan payment is a `plan` row: the deploy, a move to a higher plan (the prorated difference) and each renewal, with the plan's name in its `title` (for legacy rows, see the note under Row fields). A move to a lower plan charges nothing when it is asked for: the renewal that starts it is a `plan` row at the lower price. Use these rows to render a plan history in your UI. For an agent from before dollar billing, page with `kind: "all"` and keep the `plan` rows, as the Pagination note says.
+Every plan payment is a `plan` row: the deploy, a move to a higher plan (the prorated difference) and each renewal, with the plan's name in its `title` (for legacy rows, see the note under Row fields). A move to a lower plan charges nothing when it is asked for: the renewal that starts it is a `plan` row at the lower price. Use these rows to render a plan history in your UI: `kind: "plan"` lists every one of them, the legacy rows included.
 
 ### Rows that cover several model calls
 
@@ -30097,7 +30097,7 @@ The payment is a `plan` row like any other, with what the balance paid as `amoun
 | `You don't have access to this user agent` (code `96`) | Caller is neither the owner nor on the agent's team |
 | `Only a team admin can perform this action on a team-owned agent.` (code `97`) | Caller is a member of the agent's team but not a team admin |
 | HTTP `401` (see [Authentication Errors](/docs/error-reference)) | API key is missing or invalid |
-| Any other message (code `0`) | A server-side read failed. Retry: a failed read is never answered as an empty list |
+| `Failed to load transactions — please retry.` (code `0`) | A server-side read failed. Retry: a failed read is never answered as an empty list |
 
 ## Code Examples
 
@@ -30142,7 +30142,8 @@ print(f"Rows: {resp['rowstotal']}")
 
 for row in resp["rows"][:10]:
     sign = "+" if row["direction"] == "in" else "-"
-    print(f"  [{row['kind']:>9}] {sign}${row['amountusd']:.2f}  {row['title']}  ({row['paidfrom']})")
+    amount = "no amount" if row["amountusd"] is None else f"{sign}${row['amountusd']:.2f}"
+    print(f"  [{row['kind']:>9}] {amount}  {row['title']}  ({row['paidfrom']})")
 ```
 
 ### Node.js
@@ -30163,7 +30164,8 @@ console.log(`AI usage this month: $${summary.aiusageplanusd} from the plan, $${s
 
 data.rows.slice(0, 10).forEach(row => {
   const sign = row.direction === 'in' ? '+' : '-';
-  console.log(`  [${row.kind.padStart(9)}] ${sign}$${row.amountusd.toFixed(2)}  ${row.title}`);
+  const amount = row.amountusd === null ? 'no amount' : `${sign}$${row.amountusd.toFixed(2)}`;
+  console.log(`  [${row.kind.padStart(9)}] ${amount}  ${row.title}`);
 });
 ```
 
@@ -30189,7 +30191,8 @@ $s = $resp['summary'];
 echo "Plan: \${$s['planusd']}, model runs: \${$s['modelrunsusd']}\n";
 foreach (array_slice($resp['rows'], 0, 10) as $row) {
     $sign = $row['direction'] === 'in' ? '+' : '-';
-    printf("[%s] %s$%.2f %s\n", $row['kind'], $sign, $row['amountusd'], $row['title']);
+    $amount = $row['amountusd'] === null ? 'no amount' : sprintf('%s$%.2f', $sign, $row['amountusd']);
+    printf("[%s] %s %s\n", $row['kind'], $amount, $row['title']);
 }
 ```
 

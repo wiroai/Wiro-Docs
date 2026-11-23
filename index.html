@@ -36566,7 +36566,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot; \
     "includedusd": 30,
     "usage": {
       "period": "2026-11",
-      "resetsat": null,
+      "resetsat": 1796083200,
       "includedusd": 30,
       "usedusd": 12.4,
       "leftusd": 17.6,
@@ -36662,7 +36662,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot; \
                             <tr><td><code>modelrunsusd</code></td><td><code>number|null</code></td><td>Models the agent ran.</td></tr>
                             <tr><td><code>fundsaddedusd</code></td><td><code>number|null</code></td><td>Funds added for the agent: from its page, and what was left of a pack moved to the balance, less any refund taken back from it.</td></tr>
                             <tr><td><code>includedusd</code></td><td><code>number|null</code></td><td>The AI usage the plan includes this period.</td></tr>
-                            <tr><td><code>usage</code></td><td><code>object|null</code></td><td>The agent's <code>usage</code>, as on <a href="/docs/agent-overview#usage-object"><code>UserAgent/Detail</code></a>, except <code>resetsat</code>, which is <code>null</code> here: read it from <code>UserAgent/Detail</code>.</td></tr>
+                            <tr><td><code>usage</code></td><td><code>object|null</code></td><td>The agent's <code>usage</code>, as on <a href="/docs/agent-overview#usage-object"><code>UserAgent/Detail</code></a>. Its <code>resetsat</code> is the end of the active plan's period, and <code>null</code> when the agent has no active plan.</td></tr>
                           </tbody>
                         </table>
                       </div>
@@ -36686,9 +36686,9 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot; \
                             <tr><td><code>model</code></td><td><code>string|null</code></td><td><code>ai-usage</code> rows: the model of the costliest call the row covers; <code>tokens</code> and <code>costs</code> add up all its calls, whatever their model. <code>model-run</code> rows: the model that ran, by its <code>owner/slug</code>. <code>null</code> otherwise.</td></tr>
                             <tr><td><code>tokens</code></td><td><code>object|null</code></td><td><code>ai-usage</code> rows: <code>{ input, cacheRead, cacheWrite, output }</code> token counts, where <code>input</code> is uncached input. <code>null</code> otherwise.</td></tr>
                             <tr><td><code>costs</code></td><td><code>object|null</code></td><td><code>ai-usage</code> rows: what each kind of token cost, in USD, exact to 7 decimals: <code>{ input, cacheRead, cacheWrite, output }</code>. <code>null</code> on other rows and on legacy rows.</td></tr>
-                            <tr><td><code>amountusd</code></td><td><code>number</code></td><td>The row's amount in USD, in whole cents. When Wiro measures the agent's model calls itself, the exact <code>costs</code> can leave a fraction of a cent that carries to the agent's next row, so <code>amountusd</code> can differ from their sum by less than a cent. Otherwise each turn is billed on its own at its exact cost rounded up to the next cent, so a turn's <code>amountusd</code> can be less than a cent above the sum of its <code>costs</code>.</td></tr>
+                            <tr><td><code>amountusd</code></td><td><code>number|null</code></td><td>The row's amount in USD, in whole cents. When Wiro measures the agent's model calls itself, the exact <code>costs</code> can leave a fraction of a cent that carries to the agent's next row, so <code>amountusd</code> can differ from their sum by less than a cent. Otherwise each turn is billed on its own at its exact cost rounded up to the next cent, so a turn's <code>amountusd</code> can be less than a cent above the sum of its <code>costs</code>. <code>null</code> only on a legacy <code>plan</code> row whose record kept no payment (see below).</td></tr>
                             <tr><td><code>paidfrom</code></td><td><code>string|null</code></td><td>How the row was paid: <code>"plan"</code> (the plan's included usage), <code>"balance"</code> (the Wiro balance), <code>"coupon"</code> (coupon credit in the balance) or <code>"card"</code> (a card payment, such as a plan renewal from before plans moved to the balance, or funds added by card).</td></tr>
-                            <tr><td><code>direction</code></td><td><code>string</code></td><td><code>"out"</code> for spending, <code>"in"</code> for funds added and other credits (for legacy <code>plan</code> rows and refunds, see below).</td></tr>
+                            <tr><td><code>direction</code></td><td><code>string</code></td><td><code>"out"</code> for spending and refunds, <code>"in"</code> for funds added and other credits.</td></tr>
                             <tr><td><code>surface</code></td><td><code>string|null</code></td><td>The surface the row was charged on, such as <code>"agent"</code>. <code>null</code> on older rows.</td></tr>
                             <tr><td><code>taskid</code></td><td><code>string|null</code></td><td><code>model-run</code> rows: the task of the run (see <a href="/docs/tasks">Tasks</a>). <code>null</code> otherwise.</td></tr>
                             <tr><td><code>legacy</code></td><td><code>boolean</code></td><td><code>true</code> on rows from before dollar billing, converted to dollars.</td></tr>
@@ -36696,8 +36696,8 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot; \
                         </table>
                       </div>
                     </div>
-                    <p>A legacy <code>plan</code> row keeps the old record's sign and line: its <code>direction</code> is <code>"in"</code>, its <code>amountusd</code> is the AI usage the payment granted, not what was paid, and its <code>title</code> is the old record's line, such as <code>Subscription renewal</code>, which may not name the plan. A refund taken back from what was left of a pack moved to the balance is a <code>funds</code> row titled <code>Funds Added</code> with <code>direction: "in"</code>, though it took that amount out of the balance; its <code>description</code> starts with <code>Refund:</code>.</p>
-                    <div class="info-callout"><strong>Pagination.</strong> With <code>kind: "all"</code>, <code>rowstotal</code> counts every row, so you can render a precise paginator. With another <code>kind</code>, rows from before dollar billing are searched only among the newest <code>start</code> + <code>limit</code> older records, so <code>rowstotal</code> and the pages can leave older ones out: for a full history, page with <code>kind: "all"</code> and filter by <code>kind</code> yourself. Default page size is 50, max is 500. Use <code>start</code> to skip rows.</div>
+                    <p>A legacy <code>plan</code> row is a payment like any other <code>plan</code> row: its <code>direction</code> is <code>"out"</code>, its <code>amountusd</code> is what was paid, or <code>null</code> when the old record kept no payment (never the AI usage the payment granted), and its <code>title</code> names the plan, such as <code>Agent renewal: Pro plan</code>, <code>Agent plan started: Starter plan</code> or <code>Agent plan change: Starter to Pro</code>. A legacy <code>plan</code> row whose record names no plan keeps that record's line as its <code>title</code>. A refund taken back from what was left of a pack moved to the balance is a <code>funds</code> row titled <code>Refund</code>, with <code>direction: "out"</code>; its <code>description</code> starts with <code>Refund:</code>.</p>
+                    <div class="info-callout"><strong>Pagination.</strong> <code>rowstotal</code> counts every row the <code>kind</code> lists, rows from before dollar billing included, so you can render a precise paginator for any <code>kind</code>. Default page size is 50, max is 500. Use <code>start</code> to skip rows.</div>
                   </section>
 
                   <section id="tx-patterns">
@@ -36734,7 +36734,7 @@ console.log(totals);</code></pre>
                     <p>A batch paid more than one way carries the whole batch's <code>costs</code> on each of its rows (see <a href="#metered-token-rows">Rows that cover several model calls</a>), so these totals can count it twice, as when the plan's included usage runs out partway through a batch.</p>
 
                     <h3>Reconcile a plan change</h3>
-                    <p>Every plan payment is a <code>plan</code> row: the deploy, a move to a higher plan (the prorated difference) and each renewal, with the plan's name in its <code>title</code> (for legacy rows, see the note under Row fields). A move to a lower plan charges nothing when it is asked for: the renewal that starts it is a <code>plan</code> row at the lower price. Use these rows to render a plan history in your UI. For an agent from before dollar billing, page with <code>kind: "all"</code> and keep the <code>plan</code> rows, as the Pagination note says.</p>
+                    <p>Every plan payment is a <code>plan</code> row: the deploy, a move to a higher plan (the prorated difference) and each renewal, with the plan's name in its <code>title</code> (for legacy rows, see the note under Row fields). A move to a lower plan charges nothing when it is asked for: the renewal that starts it is a <code>plan</code> row at the lower price. Use these rows to render a plan history in your UI: <code>kind: "plan"</code> lists every one of them, the legacy rows included.</p>
                     <h3 id="metered-token-rows">Rows that cover several model calls</h3>
                     <p>When Wiro measures an agent's model calls itself, an <code>ai-usage</code> row is not one turn. Each call is priced exactly, and the prices add up until they reach a whole cent; then one <code>ai-usage</code> row takes the whole cents and covers every call billed since the agent's last row, of one turn or of several. What is left under a cent waits for the next row, so no call is billed twice and none is rounded up. Calls a turn makes outside its reply, such as compacting a long conversation, are billed this way too.</p>
                     <p>On such a row:</p>
@@ -36773,7 +36773,7 @@ console.log(totals);</code></pre>
                             <tr><td><code>You don't have access to this user agent</code> (code <code>96</code>)</td><td>Caller is neither the owner nor on the agent's team</td></tr>
                             <tr><td><code>Only a team admin can perform this action on a team-owned agent.</code> (code <code>97</code>)</td><td>Caller is a member of the agent's team but not a team admin</td></tr>
                             <tr><td>HTTP <code>401</code> (see <a href="/docs/error-reference">Authentication Errors</a>)</td><td>API key is missing or invalid</td></tr>
-                            <tr><td>Any other message (code <code>0</code>)</td><td>A server-side read failed. Retry: a failed read is never answered as an empty list</td></tr>
+                            <tr><td><code>Failed to load transactions — please retry.</code> (code <code>0</code>)</td><td>A server-side read failed. Retry: a failed read is never answered as an empty list</td></tr>
                           </tbody>
                         </table>
                       </div>
@@ -36819,7 +36819,8 @@ print(f"Rows: {resp['rowstotal']}")
 
 for row in resp["rows"][:10]:
     sign = "+" if row["direction"] == "in" else "-"
-    print(f"  [{row['kind']:&gt;9}] {sign}${row['amountusd']:.2f}  {row['title']}  ({row['paidfrom']})")</code></pre>
+    amount = "no amount" if row["amountusd"] is None else f"{sign}${row['amountusd']:.2f}"
+    print(f"  [{row['kind']:&gt;9}] {amount}  {row['title']}  ({row['paidfrom']})")</code></pre>
 
                     <h3>Node.js</h3>
                     <pre><code class="language-javascript">const axios = require('axios');
@@ -36837,7 +36838,8 @@ console.log(`AI usage this month: $${summary.aiusageplanusd} from the plan, $${s
 
 data.rows.slice(0, 10).forEach(row =&gt; {
   const sign = row.direction === 'in' ? '+' : '-';
-  console.log(`  [${row.kind.padStart(9)}] ${sign}$${row.amountusd.toFixed(2)}  ${row.title}`);
+  const amount = row.amountusd === null ? 'no amount' : `${sign}$${row.amountusd.toFixed(2)}`;
+  console.log(`  [${row.kind.padStart(9)}] ${amount}  ${row.title}`);
 });</code></pre>
 
                     <h3>PHP</h3>
@@ -36860,7 +36862,8 @@ $s = $resp['summary'];
 echo "Plan: \${$s['planusd']}, model runs: \${$s['modelrunsusd']}\n";
 foreach (array_slice($resp['rows'], 0, 10) as $row) {
     $sign = $row['direction'] === 'in' ? '+' : '-';
-    printf("[%s] %s$%.2f %s\n", $row['kind'], $sign, $row['amountusd'], $row['title']);
+    $amount = $row['amountusd'] === null ? 'no amount' : sprintf('%s$%.2f', $sign, $row['amountusd']);
+    printf("[%s] %s %s\n", $row['kind'], $amount, $row['title']);
 }</code></pre>
                   </section>
 
