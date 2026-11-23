@@ -30,7 +30,7 @@ Error codes indicate the category of the problem. Use these for conditional logi
 | `1` | Not Found / Client | Resource not found or not accessible |
 | `92` | Model Access | A Model Access rule of the workspace blocks the model. See [Model Access](/docs/model-access) |
 | `93` | Spend Limit | A spend limit of the workspace is reached. See [Spend Limits](/docs/spend-limits) |
-| `96` | Concurrency Limit | Too many concurrent tasks for your balance |
+| `96` | Concurrency Limit | Too many concurrent tasks for your balance. See [Concurrency Limits](/docs/concurrency-limits) |
 | `97` | Insufficient Balance | Not enough funds to run the model |
 | `98` | Authentication Required | Sign in required to access this model |
 | `99` | Token Invalid | Bearer token missing, invalid, or expired |
