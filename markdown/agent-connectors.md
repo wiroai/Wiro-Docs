@@ -928,9 +928,9 @@ Each connection decides what the agent may do with the connector's tools without
 | Column | When it applies |
 |--------|-----------------|
 | `chat` | A person is in the conversation: a message sent with [`Message/Send`](/docs/agent-messaging#post-useragentmessagesend), from your app or Wiro's web chat, or a conversation with an allowed user on the agent's Telegram, Slack or Discord channel. |
-| `autopilot` | Nobody is watching: the agent's Scheduled Tasks, and the work before and after a voice call. |
+| `autopilot` | Nobody is watching: the agent's Scheduled Tasks. |
 
-Other work the agent does on its own, such as work it moved to the background, takes the stricter of the two values for each tool.
+Other work the agent does on its own, such as work it moved to the background or the work before and after a voice call, takes the stricter of the two values for each tool.
 
 | Value | What happens |
 |-------|--------------|
