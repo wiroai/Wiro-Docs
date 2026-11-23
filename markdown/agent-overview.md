@@ -129,6 +129,8 @@ When the balance can't pay a plan's price, `Deploy`, `CreateSubscriptionCheckout
 
 Add at least `neededusd` to the balance, then send the same call again.
 
+What pays a plan is the balance's deposits and store revenue, and its coupon credit that isn't limited to certain models: a coupon for certain models pays no plan. The same rule holds for `Deploy`, `CreateSubscriptionCheckout`, `UpgradeTier`, `RenewSubscription` and the automatic renewal, and the balance a code `97` message names is that amount. A team agent's plan counts the team's balance and coupons. The agent's AI usage past its plan counts deposits and store revenue only (see [`usage.balanceusd`](#usage-object)).
+
 Every plan payment also counts on [Spend Limits](/docs/spend-limits): the account's or team's limit and the `agent` surface's, automatic renewals included. When a new plan, a move to a higher plan or a renewal you ask for would take spending over one of them, `Deploy`, `CreateSubscriptionCheckout`, `UpgradeTier` and `RenewSubscription` are refused with code `93` and the limit's message, and nothing is created or charged. An automatic renewal is counted, never refused.
 
 A plan that was paid by card before agent plans moved to the balance keeps its current period as paid. At the end of that period it renews from the balance like every other plan, or ends when the balance can't pay the renewal. Until then its `subscription` reads `provider: "stripe"` with `nextprovider: "prepaid"`, and a move to a higher plan is paid from the balance. The switch itself charges and refunds nothing. Such a plan can also be cancelled with [`CancelSubscription`](#post-useragentcancelsubscription): it then ends at the end of its period instead of switching.
@@ -137,7 +139,7 @@ A plan that was paid by card before agent plans moved to the balance keeps its c
 
 An agent has no balance of its own: past its plan's included usage it uses the Wiro balance of its workspace, which also pays its plan. Add funds to that balance as a normal wallet deposit in the Wiro dashboard, under **Credit Balance** ([add funds](https://wiro.ai/panel/wallet/deposit/credit-card)), with the agent's workspace selected. A team's balance is funded the same way (see [Team Billing](/docs/organizations-billing)). Funds added from an agent's page in the dashboard land in the same balance and are also listed in that agent's [Transactions](/docs/agent-transactions). Automatic Payment tops the balance up when it runs low, agent usage included.
 
-Extra credit packs are retired: [`CreateExtraCreditCheckout`](#post-useragentcreateextracreditcheckout) charges nothing and only answers that they are. What was left of a pack bought earlier moved to the balance that paid for it, as a deposit that keeps the pack's expiry date.
+Extra credit packs are retired: [`CreateExtraCreditCheckout`](#post-useragentcreateextracreditcheckout) charges nothing and only answers that they are. What was left of a pack bought earlier moved to the balance that paid for it, the way it was paid: what coupon credit paid came back as coupon credit, the rest as a deposit. Each keeps the pack's expiry date, but expires no sooner than 30 days after the move.
 
 ### Token Billing
 
