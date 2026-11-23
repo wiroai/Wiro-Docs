@@ -115,6 +115,7 @@ Frames flow in two directions. `↓` = server → client, `↑` = client → ser
 | ↑ | `agent_session_subscribe` | Follow a session with the `sessiontoken` from `Message/History`. See [Following a session](#following-a-session). |
 | ↓ | `agent_session_subscribed` | Session follow acknowledged. |
 | ↓ | `agent_message_inserted` | A message was added to a followed session between turns (a scheduled report, files sent after an answer, the result of background work). Carries the `sessiontoken` and the new row in `message`. |
+| ↓ | `agent_message_block` | A card on a message of a followed session changed: an approval card was answered, expired or its action ran. Carries the `sessiontoken`, and `messageguid` and one `block` in `message`; merge the block into that message's timeline by `blockid` and `version`. |
 | ↑ | `agent_session_unsubscribe` | Stop following a session. No reply. |
 | ↑ | `agent_run_subscribe` | Follow an agent's background runs and model runs with the `runstreamtoken` from `POST /UserAgent/RunStreamToken`. See [Following an agent's background runs](#following-an-agents-background-runs). |
 | ↓ | `agent_run_subscribed` | Run stream follow acknowledged. Carries `expiresat` and the agent's open runs (`runs`) and model runs (`models`). |
@@ -560,13 +561,15 @@ Each message added to that session afterwards arrives as an `agent_message_inser
 | `guid` | string | The new message's GUID. Add each `guid` once; skip it if History already gave it to you. |
 | `uuid` | string | The row's `uuid`, as `Message/History` returns it. |
 | `sessionkey` | string | The session the message was added to. |
-| `content` | string | Always `""`: no prompt of yours belongs to these messages. |
+| `content` | string | `""`: no prompt of yours belongs to these messages. A [resume turn](/docs/agent-connectors#the-resume-turn) is the exception: its `content` is Wiro's message to the agent, so show its label instead. |
 | `response` | string | The message text. |
-| `status` | string | Always `"agent_end"`. |
-| `metadata` | object | `type` is `"subagent"` for the result of work the agent finished in the background, `"system"` for the other messages. Other keys may appear; ignore the ones you don't use. |
+| `status` | string | `"agent_end"`, or `"agent_queue"` for a resume turn just queued: follow it with the `agenttoken` that ApprovalCardAct or History gives. |
+| `metadata` | object | `type` is `"subagent"` for the result of work the agent finished in the background, `"approval_resume"` for a resume turn, `"system"` for the other messages, approval cards from Scheduled Tasks, channels and the agent's own work included. Other keys may appear; ignore the ones you don't use. |
 | `createdat` / `startedat` / `endedat` | number | Unix timestamps in seconds, all set to when the message was added. |
+| `timeline` | array | Present on a message that carries approval cards: its `approval` blocks, as History returns them (see [How an approval works](/docs/agent-connectors#how-an-approval-works)). |
 
 - **What arrives.** A follower receives exactly the new messages its `Message/History` read would show. Turns you start with `Message/Send` keep streaming on their own `agenttoken`; following the session doesn't repeat them.
+- **Cards that change.** When an approval card on such a message is answered, expires or its action runs, followers get `{ "type": "agent_message_block", "sessiontoken": "…", "message": { "messageguid": "…", "block": { … } }, "result": true }`. Replace the block on that message by `blockid` when its `version` is newer.
 - **Stop following** with `{ "type": "agent_session_unsubscribe", "sessiontoken": "…" }`. There is no reply.
 - **Limit.** One connection follows up to 16 sessions. Following another one drops the oldest follow.
 - **Errors.** A malformed `sessiontoken` gets `{ "type": "error", "message": "sessiontoken-invalid", "result": false }`, and the connection stays open. The acknowledgement doesn't check which session a token belongs to, so send the token exactly as History returned it.

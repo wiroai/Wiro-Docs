@@ -15832,7 +15832,7 @@ import type {
 <h3 id="automatic-restart">Automatic Restart</h3>
 <p>When you mutate an agent's configuration while it is <strong>starting</strong> (status <code>3</code>) or <strong>running</strong> (status <code>4</code>), the system automatically triggers a restart cycle: the agent is moved to <strong>Stopping</strong> (status <code>1</code>) and flagged to restart. Once the agent fully stops, the system automatically re-queues it, applying the new configuration on startup.</p>
 <p>This means you can update credentials, toggle skills, or change a custom skill on a running agent without manually stopping and starting it.</p>
-<p>These calls restart a starting or running agent when they change something: <code>CredentialUpsert</code>, <code>CredentialFileUpload</code>, <code>CredentialProjectBind</code> (when the project changes), the connector calls <code>ConnectorConnect</code>, <code>ConnectorSetAccounts</code> and <code>ConnectorDisconnect</code> and a connector's sign-in when it comes back (see <a href="/docs/agent-connectors#restarts">Agent Connectors</a>), <code>SkillsApply</code>, <code>SkillToggle</code>, <code>CustomSkillUpsert</code> (a new custom skill or scheduled task, a new <code>interval</code>, an <code>enabled</code> change, or a change to <code>cs-approval-policy</code>), <code>CustomSkillRename</code>, <code>CustomSkillDelete</code>, <code>CustomSkillRevert</code>, <code>UpdateSettings</code> (a new time zone, Chat Mode, model, slash-command list or Wiro API path list, or turning <code>chatsetup</code> on or off), <code>Update</code> (a changed <code>title</code>, or a body that names no field), and a setup card applied from chat (see <a href="/docs/agent-messaging#setup-from-chat">Setup From Chat</a>). <a href="#post-useragentresetbrowser"><code>ResetBrowser</code></a> restarts a starting or running agent every time: the browser is reset as the agent starts again. A restart takes about a minute. A change saved while a restart is still stopping or queued loads with that restart instead of starting another one.</p>
+<p>These calls restart a starting or running agent when they change something: <code>CredentialUpsert</code>, <code>CredentialFileUpload</code>, <code>CredentialProjectBind</code> (when the project changes), the connector calls <code>ConnectorConnect</code>, <code>ConnectorSetAccounts</code>, <code>ConnectorDisconnect</code> and <code>ConnectorSetPermissions</code> (unless every change only turns <code>ask</code> into <code>allow</code>) and a connector's sign-in when it comes back (see <a href="/docs/agent-connectors#restarts">Agent Connectors</a>), <code>SkillsApply</code>, <code>SkillToggle</code>, <code>CustomSkillUpsert</code> (a new custom skill or scheduled task, a new <code>interval</code>, an <code>enabled</code> change, or a change to <code>cs-approval-policy</code>), <code>CustomSkillRename</code>, <code>CustomSkillDelete</code>, <code>CustomSkillRevert</code>, <code>UpdateSettings</code> (a new time zone, Chat Mode, model, slash-command list or Wiro API path list, or turning <code>chatsetup</code> on or off), <code>Update</code> (a changed <code>title</code>, or a body that names no field), and a setup card applied from chat (see <a href="/docs/agent-messaging#setup-from-chat">Setup From Chat</a>). <a href="#post-useragentresetbrowser"><code>ResetBrowser</code></a> restarts a starting or running agent every time: the browser is reset as the agent starts again. A restart takes about a minute. A change saved while a restart is still stopping or queued loads with that restart instead of starting another one.</p>
 <p><strong>Connectors restart the agent when the connection changes.</strong> A connect that saves new values or tokens, a new account selection and a disconnect of a connected connector answer <code>restart: "scheduled"</code> on a running agent; the same values sent again answer <code>applied: 0</code> and restart nothing. A sign-in restarts the agent when it comes back to your <code>redirecturl</code> with <code>connector_connected=true</code>.</p>
 <p>A change to only the text or description of an existing custom skill or scheduled task, through <code>CustomSkillUpsert</code> or a setup card, reaches a running agent right away, without a restart. These never restart a running agent: a plan change, a renewal or a cancellation, moving <code>chatsetup</code> between <code>"all"</code> and <code>"webchat"</code>, a <code>screen</code> change through <code>UpdateSettings</code>, and a description, categories or cover edit through <code>Update</code>.</p>
 <h2 id="screen-and-take-control">Screen and Take Control</h2>
@@ -18027,6 +18027,10 @@ for the channel contract.</p>
 <tr>
 <td>Connect, list or disconnect the services the agent works with</td>
 <td><a href="/docs/agent-connectors">Agent Connectors</a>: <a href="/docs/agent-connectors#post-useragentconnectorconnect"><code>ConnectorConnect</code></a> · <a href="/docs/agent-connectors#post-useragentconnectorlist"><code>ConnectorList</code></a> · <a href="/docs/agent-connectors#post-useragentconnectordisconnect"><code>ConnectorDisconnect</code></a></td>
+</tr>
+<tr>
+<td>What a connector may do without asking, and the agent's approval cards</td>
+<td><a href="/docs/agent-connectors#permissions-and-approvals">Agent Connectors</a>: <a href="/docs/agent-connectors#post-useragentconnectorpermissions"><code>ConnectorPermissions</code></a> · <a href="/docs/agent-connectors#post-useragentconnectorsetpermissions"><code>ConnectorSetPermissions</code></a> · <a href="/docs/agent-connectors#post-useragentmessageapprovalcardact"><code>Message/ApprovalCardAct</code></a></td>
 </tr>
 <tr>
 <td>Channel and setting credentials (bot tokens, the support email)</td>
@@ -22931,7 +22935,7 @@ print(response.body);
 <h3 id="ordered-turn-timeline">Ordered turn timeline</h3>
 <p>Every Detail or History message row returns a top-level <code>timeline[]</code>. It is the ordered, persisted record of the turn. A turn can contain multiple interleaved blocks, for example:</p>
 <p><code>Thinking → Answer or Tool → Thinking → Answer</code></p>
-<p>Each block has an opaque deterministic <code>blockid</code>, call/content ordering coordinates, <code>type</code> (<code>reasoning</code>, <code>answer</code>, <code>tool</code>, or <code>setup</code>), safe public text, tool state or a setup card, <code>phase</code> (<code>stream</code>, <code>end</code>, or <code>error</code>), its own monotonically increasing <code>version</code>, and timestamps. Reasoning text is a model-provided reasoning summary, never raw hidden chain-of-thought. Tool blocks expose only <code>toollabel</code>, <code>toolstatus</code>, <code>toolintegration</code>, and <code>toolaction</code>, never a tool ID, arguments, results, or other internal execution metadata. <code>toolintegration</code> and <code>toolaction</code> each hold a word from a <a href="#tool-integration-and-action-values">closed list</a> or <code>null</code>. A <code>setup</code> block is a setup change the agent proposes; see <a href="#setup-from-chat">Setup From Chat</a>. When a turn ends with <code>agent_error</code> or <code>agent_cancel</code>, the server closes every block still at <code>stream</code> and sends each one as an <code>agent_timeline_delta</code>, usually just before that final event. After <code>agent_end</code>, open blocks normally close a few seconds later. A tool block that closed with <code>toolstatus</code> <code>requested</code> was cut off before it finished.</p>
+<p>Each block has an opaque deterministic <code>blockid</code>, call/content ordering coordinates, <code>type</code> (<code>reasoning</code>, <code>answer</code>, <code>tool</code>, <code>setup</code> or <code>approval</code>), safe public text, tool state, a setup card or an approval card, <code>phase</code> (<code>stream</code>, <code>end</code>, or <code>error</code>), its own monotonically increasing <code>version</code>, and timestamps. Reasoning text is a model-provided reasoning summary, never raw hidden chain-of-thought. Tool blocks expose only <code>toollabel</code>, <code>toolstatus</code>, <code>toolintegration</code>, and <code>toolaction</code>, never a tool ID, arguments, results, or other internal execution metadata. <code>toolintegration</code> and <code>toolaction</code> each hold a word from a <a href="#tool-integration-and-action-values">closed list</a> or <code>null</code>. A <code>setup</code> block is a setup change the agent proposes; see <a href="#setup-from-chat">Setup From Chat</a>. An <code>approval</code> block is a connector action that waits for a person's approval; see <a href="/docs/agent-connectors#permissions-and-approvals">Permissions and Approvals</a>. When a turn ends with <code>agent_error</code> or <code>agent_cancel</code>, the server closes every block still at <code>stream</code> and sends each one as an <code>agent_timeline_delta</code>, usually just before that final event. After <code>agent_end</code>, open blocks normally close a few seconds later. A tool block that closed with <code>toolstatus</code> <code>requested</code> was cut off before it finished.</p>
 <p>Live WebSocket updates arrive as <code>agent_timeline_delta</code> events carrying one public block. Merge by <code>blockid</code>, replace that block only when its incoming <code>version</code> is strictly newer, then sort by <code>callindex</code>, <code>contentindex</code>, and <code>blockid</code>. <code>agent_subscribed.timeline</code> carries the persisted reconnect snapshot. <code>agent_output</code> stays provisional cumulative output until the corresponding answer block catches up; after completion or reconnect, <code>Message/Detail</code> is authoritative.</p>
 <h2 id="message-lifecycle">Message Lifecycle</h2>
 <p>Every agent message progresses through a defined set of stages:</p>
@@ -23431,7 +23435,7 @@ print(response.body);
 <tr>
 <td><code>metadata</code></td>
 <td><code>object</code></td>
-<td>Parsed JSON object (API returns it already decoded). Filled when the turn ends. Only <code>type</code> and a few keys are returned: on a finished turn (<code>type: "progressGenerate"</code>) <code>task</code>, <code>speed</code>, <code>speedType</code>, <code>elapsedTime</code>, <code>tokenCount</code> and <code>wordCount</code>; on a <code>model_change</code> marker row <code>fromModel</code> and <code>toModel</code>; on a <code>setup_result</code> row, a <a href="#handled-setup-replies">reply Wiro handles itself</a>, the answer's <code>next</code> when it left connectors to connect (as in <code>setupresult</code>), and <code>listed</code> and <code>listedfrom</code> when it was the <a href="#setup-card-listing">card listing</a>: the ids of the cards it showed and the <code>guid</code> of the message they are on; on other rows (<code>system</code>, <code>subagent</code>) usually <code>type</code> alone, and in History <code>systemcost: true</code> on a row whose cost came from a scheduled or background run. The answer text is in <code>response</code> and <code>timeline</code>, never in metadata. A turn that ended with a coded failure, such as <code>[SPEND_LIMIT_REACHED]</code> or <code>[CREDITS_EXHAUSTED]</code>, keeps <code>type: "progressGenerate"</code> and its metrics. Empty object <code>{}</code> for <code>agent_cancel</code>, for an <code>agent_error</code> that cut the turn off, such as <code>[TURN_INTERRUPTED]</code>, and while the turn is still running. Message status lives in the top-level <code>status</code> field, so don't read it from <code>metadata.type</code>: read a turn's outcome from <code>status</code> and <code>response</code>.</td>
+<td>Parsed JSON object (API returns it already decoded). Filled when the turn ends. Only <code>type</code> and a few keys are returned: on a finished turn (<code>type: "progressGenerate"</code>) <code>task</code>, <code>speed</code>, <code>speedType</code>, <code>elapsedTime</code>, <code>tokenCount</code> and <code>wordCount</code>; on a <code>model_change</code> marker row <code>fromModel</code> and <code>toModel</code>; on a <code>setup_result</code> row, a <a href="#handled-setup-replies">reply Wiro handles itself</a>, the answer's <code>next</code> when it left connectors to connect (as in <code>setupresult</code>), and <code>listed</code> and <code>listedfrom</code> when it was the <a href="#setup-card-listing">card listing</a>: the ids of the cards it showed and the <code>guid</code> of the message they are on; on an <code>approval_resume</code> row, the turn Wiro queued after someone answered an approval card, <code>serverProvenance</code>, <code>resumecolumn</code> and <code>approvals</code> (see <a href="/docs/agent-connectors#the-resume-turn">The resume turn</a>); on other rows (<code>system</code>, <code>subagent</code>) usually <code>type</code> alone, and in History <code>systemcost: true</code> on a row whose cost came from a scheduled or background run. The answer text is in <code>response</code> and <code>timeline</code>, never in metadata. A turn that ended with a coded failure, such as <code>[SPEND_LIMIT_REACHED]</code> or <code>[CREDITS_EXHAUSTED]</code>, keeps <code>type: "progressGenerate"</code> and its metrics. Empty object <code>{}</code> for <code>agent_cancel</code>, for an <code>agent_error</code> that cut the turn off, such as <code>[TURN_INTERRUPTED]</code>, and while the turn is still running. Message status lives in the top-level <code>status</code> field, so don't read it from <code>metadata.type</code>: read a turn's outcome from <code>status</code> and <code>response</code>.</td>
 </tr>
 <tr>
 <td><code>attachments</code></td>
@@ -23503,7 +23507,7 @@ print(response.body);
 </div>
 </div>
 <h3 id="public-timeline-block-fields">Public timeline block fields</h3>
-<p>Only the fields below are returned in browser-facing REST and WebSocket timeline blocks. <code>toollabel</code>, <code>toolstatus</code>, <code>toolintegration</code>, and <code>toolaction</code> appear on tool blocks only, and <code>setup</code> on setup blocks only.</p>
+<p>Only the fields below are returned in browser-facing REST and WebSocket timeline blocks. <code>toollabel</code>, <code>toolstatus</code>, <code>toolintegration</code>, and <code>toolaction</code> appear on tool blocks only, <code>setup</code> on setup blocks only, and <code>approval</code> on approval blocks only.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -23533,12 +23537,12 @@ print(response.body);
 <tr>
 <td><code>type</code></td>
 <td><code>string</code></td>
-<td><code>reasoning</code>, <code>answer</code>, <code>tool</code>, or <code>setup</code>.</td>
+<td><code>reasoning</code>, <code>answer</code>, <code>tool</code>, <code>setup</code>, or <code>approval</code>.</td>
 </tr>
 <tr>
 <td><code>text</code></td>
 <td><code>string|null</code></td>
-<td>Safe public text for <code>reasoning</code> and <code>answer</code>; <code>null</code> for tool and setup blocks. Reasoning text is an OpenAI GPT-5 provider summary, not raw chain-of-thought.</td>
+<td>Safe public text for <code>reasoning</code> and <code>answer</code>; <code>null</code> for tool, setup and approval blocks. Reasoning text is an OpenAI GPT-5 provider summary, not raw chain-of-thought.</td>
 </tr>
 <tr>
 <td><code>toollabel</code></td>
@@ -23564,6 +23568,11 @@ print(response.body);
 <td><code>setup</code></td>
 <td><code>object</code></td>
 <td>Setup blocks only. The change the agent proposes and its state; see <a href="#setup-blocks">The setup block</a>.</td>
+</tr>
+<tr>
+<td><code>approval</code></td>
+<td><code>object</code></td>
+<td>Approval blocks only. A connector action waiting for a person's approval, and what became of it; see <a href="/docs/agent-connectors#the-approval-block">The approval block</a>.</td>
 </tr>
 <tr>
 <td><code>phase</code></td>
@@ -23962,7 +23971,7 @@ print(response.body);
 </div>
 <blockquote>
 <p><strong><code>model_change</code> marker rows.</strong> Switching the chat model (via the <a href="#post-useragentmessagesend"><code>model</code></a> param) drops a synthetic marker row into history alongside the real turns. A marker row has <code>status: "agent_done"</code>, <code>model: null</code>, empty <code>content</code> / <code>response</code> / <code>debugoutput</code>, every token column <code>null</code>, and <code>metadata: { "type": "model_change", "fromModel": "…", "toModel": "…" }</code>. Detect it with <code>metadata.type === "model_change"</code> and render it as an inline separator (e.g. "Switched to GPT-5.4") rather than a chat bubble. Its <code>createdat</code> is the triggering turn's <code>createdat</code> minus one second, so it orders immediately before that turn (in the newest-first response it appears directly after the turn that triggered it).</p>
-<p><strong>Messages added between turns.</strong> Not every row answers a <code>Message/Send</code> of yours: the agent can also add a message to the session on its own, such as a scheduled report, files it sends after an answer, or the result of longer work it finished in the background. When it moves work to the background, the turn you sent ends with a short line saying the result will follow, and the result arrives later as a separate row. These rows arrive finished (<code>status: "agent_end"</code>) with an empty <code>content</code> and the text in <code>response</code>. Their <code>metadata.type</code> is <code>"subagent"</code> for the result of work the agent finished in the background (show it as the agent's reply) and <code>"system"</code> for the rest. They have no turn of their own: nothing streams on an <code>agenttoken</code> for them and no <code>callbackurl</code> is called. Read them with History, or follow the session with <code>sessiontoken</code> to receive each one as it is added; see <a href="/docs/agent-websocket#following-a-session">Following a session</a>.</p>
+<p><strong>Messages added between turns.</strong> Not every row answers a <code>Message/Send</code> of yours: the agent can also add a message to the session on its own, such as a scheduled report, files it sends after an answer, or the result of longer work it finished in the background. When it moves work to the background, the turn you sent ends with a short line saying the result will follow, and the result arrives later as a separate row. These rows arrive finished (<code>status: "agent_end"</code>) with an empty <code>content</code> and the text in <code>response</code>. Their <code>metadata.type</code> is <code>"subagent"</code> for the result of work the agent finished in the background (show it as the agent's reply) and <code>"system"</code> for the rest. An approval card that a Scheduled Task, a channel conversation or the agent's own work asked for arrives as such a <code>"system"</code> row too, with the card in its <code>timeline</code> (see <a href="/docs/agent-connectors#how-an-approval-works">How an approval works</a>). They have no turn of their own: nothing streams on an <code>agenttoken</code> for them and no <code>callbackurl</code> is called. Read them with History, or follow the session with <code>sessiontoken</code> to receive each one as it is added; see <a href="/docs/agent-websocket#following-a-session">Following a session</a>.</p>
 </blockquote>
 <h3 id="pagination">Pagination</h3>
 <p>To paginate through a long conversation:</p>
@@ -24064,7 +24073,7 @@ print(response.body);
 <tr>
 <td><code>lastmessage</code></td>
 <td><code>string</code></td>
-<td>The most recent message body: the message's <code>content</code> if the user sent a message, falling back to its <code>response</code> (assistant reply) when <code>content</code> is empty.</td>
+<td>The most recent message body: the message's <code>content</code> if the user sent a message, falling back to its <code>response</code> (assistant reply) when <code>content</code> is empty. A <a href="/docs/agent-connectors#the-resume-turn">resume turn</a> reads as its label instead, such as <code>Allowed: Update or publish a WordPress post or page in WordPress</code>.</td>
 </tr>
 <tr>
 <td><code>name</code></td>
@@ -25908,6 +25917,11 @@ func main() {
 <td>A message was added to a followed session between turns (a scheduled report, files sent after an answer, the result of background work). Carries the <code>sessiontoken</code> and the new row in <code>message</code>.</td>
 </tr>
 <tr>
+<td>↓</td>
+<td><code>agent_message_block</code></td>
+<td>A card on a message of a followed session changed: an approval card was answered, expired or its action ran. Carries the <code>sessiontoken</code>, and <code>messageguid</code> and one <code>block</code> in <code>message</code>; merge the block into that message's timeline by <code>blockid</code> and <code>version</code>.</td>
+</tr>
+<tr>
 <td>↑</td>
 <td><code>agent_session_unsubscribe</code></td>
 <td>Stop following a session. No reply.</td>
@@ -26493,7 +26507,7 @@ func main() {
 <tr>
 <td><code>content</code></td>
 <td>string</td>
-<td>Always <code>""</code>: no prompt of yours belongs to these messages.</td>
+<td><code>""</code>: no prompt of yours belongs to these messages. A <a href="/docs/agent-connectors#the-resume-turn">resume turn</a> is the exception: its <code>content</code> is Wiro's message to the agent, so show its label instead.</td>
 </tr>
 <tr>
 <td><code>response</code></td>
@@ -26503,17 +26517,22 @@ func main() {
 <tr>
 <td><code>status</code></td>
 <td>string</td>
-<td>Always <code>"agent_end"</code>.</td>
+<td><code>"agent_end"</code>, or <code>"agent_queue"</code> for a resume turn just queued: follow it with the <code>agenttoken</code> that ApprovalCardAct or History gives.</td>
 </tr>
 <tr>
 <td><code>metadata</code></td>
 <td>object</td>
-<td><code>type</code> is <code>"subagent"</code> for the result of work the agent finished in the background, <code>"system"</code> for the other messages. Other keys may appear; ignore the ones you don't use.</td>
+<td><code>type</code> is <code>"subagent"</code> for the result of work the agent finished in the background, <code>"approval_resume"</code> for a resume turn, <code>"system"</code> for the other messages, approval cards from Scheduled Tasks, channels and the agent's own work included. Other keys may appear; ignore the ones you don't use.</td>
 </tr>
 <tr>
 <td><code>createdat</code> / <code>startedat</code> / <code>endedat</code></td>
 <td>number</td>
 <td>Unix timestamps in seconds, all set to when the message was added.</td>
+</tr>
+<tr>
+<td><code>timeline</code></td>
+<td>array</td>
+<td>Present on a message that carries approval cards: its <code>approval</code> blocks, as History returns them (see <a href="/docs/agent-connectors#how-an-approval-works">How an approval works</a>).</td>
 </tr>
 </tbody>
 </table>
@@ -26521,6 +26540,7 @@ func main() {
 </div>
 <ul>
 <li><strong>What arrives.</strong> A follower receives exactly the new messages its <code>Message/History</code> read would show. Turns you start with <code>Message/Send</code> keep streaming on their own <code>agenttoken</code>; following the session doesn't repeat them.</li>
+<li><strong>Cards that change.</strong> When an approval card on such a message is answered, expires or its action runs, followers get <code>{ "type": "agent_message_block", "sessiontoken": "…", "message": { "messageguid": "…", "block": { … } }, "result": true }</code>. Replace the block on that message by <code>blockid</code> when its <code>version</code> is newer.</li>
 <li><strong>Stop following</strong> with <code>{ "type": "agent_session_unsubscribe", "sessiontoken": "…" }</code>. There is no reply.</li>
 <li><strong>Limit.</strong> One connection follows up to 16 sessions. Following another one drops the oldest follow.</li>
 <li><strong>Errors.</strong> A malformed <code>sessiontoken</code> gets <code>{ "type": "error", "message": "sessiontoken-invalid", "result": false }</code>, and the connection stays open. The acknowledgement doesn't check which session a token belongs to, so send the token exactly as History returned it.</li>
@@ -28198,7 +28218,7 @@ echo json_encode(['ok' =&gt; true]);
                 <article class="docs-section">
                   <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="/docs/markdown/agent-connectors.md" target="_blank" class="docs-section-md-btn">View</a> <a href="/docs/markdown/agent-connectors.md" download class="docs-section-md-btn">Download</a></div>
 <h1>Agent Connectors</h1>
-<p class="section-subtitle">Connect a Wiro agent to the services it works with: browse the connector catalog, connect a connector with its fields or its vendor's sign-in, pick the accounts it may act on, read each connection's state and disconnect it. Every call of the cycle, with its request and answer.</p>
+<p class="section-subtitle">Connect a Wiro agent to the services it works with: browse the connector catalog, connect a connector with its fields or its vendor's sign-in, pick the accounts it may act on, choose what it may do without asking, answer its approval requests, read each connection's state and disconnect it. Every call of the cycle, with its request and answer.</p>
 <h2 id="overview">Overview</h2>
 <p>A connector gives an agent the tools of one outside service: Google search through Serper, a Shopify store, Google Ads, HubSpot, a Facebook Page. Each connector is one row of Wiro's connector catalog, named by its <code>slug</code>, such as <code>serper</code>, <code>shopify</code> or <code>facebook-pages</code>. You connect a connector to one agent at a time, in one of three ways. The first two always take your customer's own credentials:</p>
 <ul>
@@ -28206,7 +28226,7 @@ echo json_encode(['ok' =&gt; true]);
 <li><strong>Sign-in.</strong> The vendor's own consent screen in a browser. <code>ConnectorConnect</code> answers with an <code>authorizeUrl</code>; your customer opens it, agrees, and the vendor sends the browser back through Wiro to your page. Vendors whose sign-in needs an app of your own (Blogger, Gmail, Google Ads, Google Analytics 4, Google Business Profile, Google Merchant Center, Google Search Console, YouTube, Facebook Pages, Instagram, Meta Ads, Threads, LinkedIn, TikTok, X, Reddit, Pinterest, Tumblr, HubSpot, Mailchimp and Shopify) take that app's client id and secret with the connect. Google Calendar, Google Drive and Google Play Console don't sign in: they take a service account's JSON as a field.</li>
 <li><strong>A Wiro project.</strong> Wiro AI Models (<code>wiro</code>), Wiro's own model and task tools, takes one of your Wiro projects instead of values: see <a href="#the-wiro-connector">Wiro AI Models</a>.</li>
 </ul>
-<p>Once a connector is connected, the agent restarts and has the connector's tools, named <code>&lt;slug&gt;__&lt;tool&gt;</code>. Values and tokens are never sent back in an answer and never reach the agent's chat.</p>
+<p>Once a connector is connected, the agent restarts and has the connector's tools, named <code>&lt;slug&gt;__&lt;tool&gt;</code>. Values and tokens are never sent back in an answer and never reach the agent's chat. By default the agent runs the tools that only read, and asks a person in the chat before it creates, sends, changes or deletes anything: see <a href="#permissions-and-approvals">Permissions and Approvals</a>.</p>
 <p>Every connector also has a public page, <code>https://wiro.ai/connectors/{slug}</code>, with its fields, setup steps, tools and the calls to connect it.</p>
 <h3 id="the-cycle-at-a-glance">The cycle at a glance</h3>
 <div class="docs-param-table">
@@ -28256,7 +28276,17 @@ echo json_encode(['ok' =&gt; true]);
 <td>The Pages, ad accounts, advertisers or properties the connection can reach, and the ones it may act on.</td>
 </tr>
 <tr>
-<td>7. Disconnect</td>
+<td>7. Choose what runs without asking</td>
+<td><a href="#post-useragentconnectorpermissions"><code>POST /UserAgent/ConnectorPermissions</code></a>, <a href="#post-useragentconnectorsetpermissions"><code>POST /UserAgent/ConnectorSetPermissions</code></a></td>
+<td>Each tool's value in Chat and in Autopilot: <code>allow</code>, <code>ask</code> or <code>block</code>.</td>
+</tr>
+<tr>
+<td>8. Answer approvals</td>
+<td><a href="#post-useragentmessageapprovalcardact"><code>POST /UserAgent/Message/ApprovalCardAct</code></a></td>
+<td>An action that asked runs once (or from now on), or is declined, and the agent goes on in the chat.</td>
+</tr>
+<tr>
+<td>9. Disconnect</td>
 <td><a href="#post-useragentconnectordisconnect"><code>POST /UserAgent/ConnectorDisconnect</code></a></td>
 <td>The connection, its values and tokens deleted, and the agent restarts.</td>
 </tr>
@@ -28291,9 +28321,14 @@ echo json_encode(['ok' =&gt; true]);
 <td>The agent's owner, or a member of the agent's team.</td>
 </tr>
 <tr>
-<td><code>UserAgent/ConnectorConnect</code>, <code>UserAgent/ConnectorAccounts</code>, <code>UserAgent/ConnectorSetAccounts</code>, <code>UserAgent/ConnectorDisconnect</code></td>
+<td><code>UserAgent/ConnectorConnect</code>, <code>UserAgent/ConnectorAccounts</code>, <code>UserAgent/ConnectorSetAccounts</code>, <code>UserAgent/ConnectorDisconnect</code>, <code>UserAgent/ConnectorPermissions</code>, <code>UserAgent/ConnectorSetPermissions</code></td>
 <td>Required</td>
 <td>The agent's owner, or an admin of the agent's team.</td>
+</tr>
+<tr>
+<td><code>UserAgent/Message/ApprovalCardAct</code></td>
+<td>Required</td>
+<td>The agent's owner, or a member of the agent's team who sees the card in the chat. <code>always</code> takes the owner or a team admin. See <a href="#post-useragentmessageapprovalcardact">Who may answer</a>.</td>
 </tr>
 <tr>
 <td><code>AgentConnector/OAuthCallback</code></td>
@@ -28321,11 +28356,11 @@ echo json_encode(['ok' =&gt; true]);
 </tr>
 <tr>
 <td><code>96</code></td>
-<td><code>You don't have access to this user agent</code></td>
+<td><code>You don't have access to this user agent</code> (ApprovalCardAct: <code>Only the agent's owner and its team can answer its approvals.</code>)</td>
 </tr>
 <tr>
 <td><code>97</code></td>
-<td><code>Only a team admin can perform this action on a team-owned agent.</code></td>
+<td><code>Only a team admin can perform this action on a team-owned agent.</code> (ApprovalCardAct's <code>always</code>: <code>Only an agent admin can allow this for good.</code>)</td>
 </tr>
 </tbody>
 </table>
@@ -28422,14 +28457,17 @@ echo json_encode(['ok' =&gt; true]);
       &quot;modes&quot;: [&quot;oauth&quot;, &quot;key&quot;],
       &quot;wiroapp&quot;: false,
       &quot;tools&quot;: [
-        { &quot;name&quot;: &quot;list_pages&quot;, &quot;title&quot;: &quot;List Facebook Pages&quot;, &quot;description&quot;: &quot;Lists the Facebook Pages this connection can use ...&quot;, &quot;readonly&quot;: true, &quot;destructive&quot;: false }
+        { &quot;name&quot;: &quot;list_pages&quot;, &quot;title&quot;: &quot;List Facebook Pages&quot;, &quot;description&quot;: &quot;Lists the Facebook Pages this connection can use ...&quot;, &quot;readonly&quot;: true, &quot;destructive&quot;: false, &quot;category&quot;: &quot;read&quot;, &quot;defaults&quot;: { &quot;chat&quot;: &quot;allow&quot;, &quot;autopilot&quot;: &quot;allow&quot; } },
+        { &quot;name&quot;: &quot;create_post&quot;, &quot;title&quot;: &quot;Create a Facebook Page post&quot;, &quot;description&quot;: &quot;Publishes a text post on a Page, optionally with a link ...&quot;, &quot;readonly&quot;: false, &quot;destructive&quot;: false, &quot;category&quot;: &quot;create&quot;, &quot;defaults&quot;: { &quot;chat&quot;: &quot;ask&quot;, &quot;autopilot&quot;: &quot;ask&quot; } }
       ],
       &quot;docs&quot;: {
         &quot;overview&quot;: &quot;Publish posts, photos and videos to your Facebook Pages and read their engagement.&quot;,
         &quot;revoke&quot;: &quot;Remove the app's access in your Facebook Pages account's connected apps settings, then disconnect it here.&quot;
       },
       &quot;sortorder&quot;: 110,
-      &quot;updatedat&quot;: 1795390000
+      &quot;updatedat&quot;: 1795390000,
+      &quot;runs&quot;: &quot;agent&quot;,
+      &quot;hosts&quot;: { &quot;api&quot;: [&quot;graph.facebook.com&quot;, &quot;rupload.facebook.com&quot;], &quot;site&quot;: false, &quot;uploads&quot;: [] }
     }
   ]
 }
@@ -28491,7 +28529,7 @@ echo json_encode(['ok' =&gt; true]);
 </tr>
 <tr>
 <td><code>tools</code></td>
-<td>The tools the agent gets, each <code>{ name, title, description, readonly, destructive }</code>. <code>name</code> is the tool's name before the slug prefix. A connector on a vendor's own MCP server (TikTok Ads, DataForSEO, lemlist, GitBook, HackMD and Wiro AI Models) lists no tools until an agent first connects it, by sign-in, key or project: its <code>tools</code> is <code>[]</code> until then.</td>
+<td>The tools the agent gets, each <code>{ name, title, description, readonly, destructive, category, defaults }</code>. <code>name</code> is the tool's name before the slug prefix. <code>readonly</code> and <code>destructive</code> say what the tool does; for a vendor's own MCP server they are the vendor's hints, with Wiro's corrections where a hint is wrong. <code>category</code> (<code>read</code>, <code>create</code> or <code>change</code>) and <code>defaults</code> (<code>{ chat, autopilot }</code>, each <code>allow</code>, <code>ask</code> or <code>block</code>) are what an agent's <a href="#permissions-and-approvals">permissions</a> start from. A connector on a vendor's own MCP server (TikTok Ads, DataForSEO, lemlist, GitBook, HackMD and Wiro AI Models) lists no tools until an agent first connects it, by sign-in, key or project: its <code>tools</code> is <code>[]</code> until then.</td>
 </tr>
 <tr>
 <td><code>docs</code></td>
@@ -28500,6 +28538,14 @@ echo json_encode(['ok' =&gt; true]);
 <tr>
 <td><code>sortorder</code>, <code>updatedat</code></td>
 <td>Display order and the row's last change (Unix seconds).</td>
+</tr>
+<tr>
+<td><code>runs</code></td>
+<td><code>agent</code> when the connector's tools run inside the agent, which sends their requests straight to the vendor, or <code>vendor</code> when they run on the vendor's own MCP server, which the agent sends each request to.</td>
+</tr>
+<tr>
+<td><code>hosts</code></td>
+<td>Where its requests go: <code>{ api, site, uploads }</code>. <code>api</code> lists the vendor's hosts (for <code>vendor</code>, its MCP server's host), <code>site</code> is <code>true</code> when the connector also calls the site your customer connects (WordPress, WooCommerce, Shopify, Mastodon), and <code>uploads</code> lists the hosts it may upload files to.</td>
 </tr>
 </tbody>
 </table>
@@ -28568,12 +28614,16 @@ echo json_encode(['ok' =&gt; true]);
           &quot;title&quot;: &quot;Search the web (Google results via Serper)&quot;,
           &quot;description&quot;: &quot;Searches Google through Serper and returns the organic results (title, link, snippet, position, date), plus the answer box, knowledge graph, related questions and related searches when Google shows them.&quot;,
           &quot;readonly&quot;: true,
-          &quot;destructive&quot;: false
+          &quot;destructive&quot;: false,
+          &quot;category&quot;: &quot;read&quot;,
+          &quot;defaults&quot;: { &quot;chat&quot;: &quot;allow&quot;, &quot;autopilot&quot;: &quot;allow&quot; }
         }
       ],
       &quot;docs&quot;: { &quot;overview&quot;: &quot;Google search results through Serper: organic results, answer box and related questions.&quot; },
       &quot;sortorder&quot;: 380,
-      &quot;updatedat&quot;: 1795390000
+      &quot;updatedat&quot;: 1795390000,
+      &quot;runs&quot;: &quot;agent&quot;,
+      &quot;hosts&quot;: { &quot;api&quot;: [&quot;google.serper.dev&quot;, &quot;api.serper.dev&quot;], &quot;site&quot;: false, &quot;uploads&quot;: [] }
     }
   ]
 }
@@ -29052,7 +29102,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 <li>It is used exactly as you send it, with your own query kept.</li>
 </ul>
 <h3 id="restarts">Restarts</h3>
-<p>A connect that changes something, a new account selection and a disconnect of a connected connector restart a running agent so it loads the change: <code>restart: "scheduled"</code> in the answer, and for a sign-in, <code>connector_connected=true</code> on your page. The agent's <code>status</code> on <a href="/docs/agent-overview#post-useragentdetail"><code>POST /UserAgent/Detail</code></a> then goes <code>1</code> (stopping), <code>2</code> (queued), <code>3</code> (starting) and back to <code>4</code> (running), in about a minute; a message sent meanwhile is refused with a sentence you can show. See <a href="/docs/agent-chat-integration#restarts">Restarts</a> for what to show. A stopped agent loads the change when it next starts.</p>
+<p>A connect that changes something, a new account selection, a <a href="#post-useragentconnectorsetpermissions">permission change</a> that does more than turn <code>ask</code> into <code>allow</code>, and a disconnect of a connected connector restart a running agent so it loads the change: <code>restart: "scheduled"</code> in the answer, and for a sign-in, <code>connector_connected=true</code> on your page. The agent's <code>status</code> on <a href="/docs/agent-overview#post-useragentdetail"><code>POST /UserAgent/Detail</code></a> then goes <code>1</code> (stopping), <code>2</code> (queued), <code>3</code> (starting) and back to <code>4</code> (running), in about a minute; a message sent meanwhile is refused with a sentence you can show. See <a href="/docs/agent-chat-integration#restarts">Restarts</a> for what to show. A stopped agent loads the change when it next starts.</p>
 <h2 id="connection-state">Connection State</h2>
 <h3 id="post-useragentconnectorlist"><strong>POST</strong> /UserAgent/ConnectorList</h3>
 <p>Every connection of one agent, including sign-ins under way and ones that need attention. Names and states only, never a value or token.</p>
@@ -29536,7 +29586,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </ul>
 <h2 id="disconnecting">Disconnecting</h2>
 <h3 id="post-useragentconnectordisconnect"><strong>POST</strong> /UserAgent/ConnectorDisconnect</h3>
-<p>Deletes the connection: its values, tokens and account selection. For a sign-in, Wiro first asks the vendor to revoke the token where the vendor supports it. A connected connector's agent restarts without its tools.</p>
+<p>Deletes the connection: its values, tokens, account selection and <a href="#permissions-and-approvals">permissions</a>, and the approvals waiting for it. For a sign-in, Wiro first asks the vendor to revoke the token where the vendor supports it. A connected connector's agent restarts without its tools.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -29641,11 +29691,1019 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </div>
 </div>
 <ul>
-<li><code>readonly: true</code> tools only read. <code>destructive: true</code> tools can change or delete something at the vendor.</li>
+<li><code>readonly: true</code> tools only read. <code>destructive: true</code> tools can change or delete something at the vendor. The connection's <a href="#permissions-and-approvals">permissions</a> say which tools run without asking, which wait for a person's approval and which never run.</li>
 <li>A tool acts with the connection's own credentials and, where the connector has pickers, only on the selected accounts.</li>
 <li>To tell the agent when and how to use the tools, write a <a href="/docs/agent-skills#using-connectors-in-skills">Custom Skill</a> that names them, such as: "Before you write an article, research the topic with <code>serper__web_search</code> and cite the top three results."</li>
 <li>A scheduled task of an agent template that works with a connector runs only while that connector is connected; connecting or disconnecting it never changes the task's <code>enabled</code>.</li>
 <li>A disconnected connector's tools are gone after the restart. A <code>reauth</code> connection's tools answer that it must be connected again, in words your customer can read (they name no Wiro place or link), until the agent's next restart; after it, the agent no longer has them.</li>
+</ul>
+<h2 id="permissions-and-approvals">Permissions and Approvals</h2>
+<p>Each connection decides what the agent may do with the connector's tools without asking a person. Every tool has one value in each of two columns:</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>When it applies</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>chat</code></td>
+<td>A person is in the conversation: a message sent with <a href="/docs/agent-messaging#post-useragentmessagesend"><code>Message/Send</code></a>, from your app or Wiro's web chat, or a conversation with an allowed user on the agent's Telegram, Slack or Discord channel.</td>
+</tr>
+<tr>
+<td><code>autopilot</code></td>
+<td>Nobody is watching: the agent's Scheduled Tasks, and the work before and after a voice call.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Other work the agent does on its own, such as work it moved to the background, takes the stricter of the two values for each tool.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>What happens</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>allow</code></td>
+<td>The tool runs.</td>
+</tr>
+<tr>
+<td><code>ask</code></td>
+<td>The call waits for a person's approval: an <a href="#the-approval-block">approval card</a> appears in the chat, and the agent says what is waiting.</td>
+</tr>
+<tr>
+<td><code>block</code></td>
+<td>The tool never runs. Blocked in both columns, it is not shown to the agent at all. Blocked in one column, a call there is refused: in a chat the agent says the action is blocked, and in a Scheduled Task it finishes the rest and writes in its report that the action is blocked in autopilot and can be asked for in chat.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Each tool belongs to one category, set by its <code>readonly</code> and <code>destructive</code> flags on <a href="#post-agentconnectordetail">Detail</a>. The category's values are the defaults:</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Its tools</th>
+<th><code>chat</code></th>
+<th><code>autopilot</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>read</code> (Read-only)</td>
+<td><code>readonly: true</code></td>
+<td><code>allow</code></td>
+<td><code>allow</code></td>
+</tr>
+<tr>
+<td><code>create</code> (Create and send)</td>
+<td>neither <code>readonly</code> nor <code>destructive</code></td>
+<td><code>ask</code></td>
+<td><code>ask</code></td>
+</tr>
+<tr>
+<td><code>change</code> (Change and delete)</td>
+<td><code>destructive: true</code></td>
+<td><code>ask</code></td>
+<td><code>block</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>A connector can set its own default for a tool. Each tool's <code>category</code> and <code>defaults</code> are on <a href="#post-agentconnectorlist">List</a> and Detail. These connectors have defaults of their own:</p>
+<ul>
+<li><strong>Wiro AI Models</strong> (<code>wiro</code>): <code>run_model</code> is <code>allow</code> in both columns, since the agent's spend limit and Model Access already govern its model runs. <code>upload_file</code> asks in both columns, <code>cancel_task</code> and <code>kill_task</code> ask in Chat and never run in Autopilot, and its other tools only read.</li>
+<li><strong>Reddit</strong> (<code>reddit</code>): <code>submit_post</code>, <code>add_comment</code>, <code>edit_text</code> and <code>delete_item</code> are <code>allow</code> in Chat and <code>block</code> in Autopilot. Reddit's requests are not kept, so no approval card can show them: the person asking in the chat is the approval, and an unattended run never posts.</li>
+</ul>
+<p>A tool's value is the first one set of: its own value on the connection, its category's value on the connection, the connector's default for the tool, and its category's default. A connector on a vendor's own MCP server lists its tools after its first connect. Until then, each of its tools without a value of its own or a default of the connector's follows the connection's Change and delete values.</p>
+<p>The agent's Approval Policy (<code>cs-approval-policy</code>) can still ask before more actions, but it never lets a tool run that its value asks about or blocks. Studio and the Workflow Agent have no permissions or approvals.</p>
+<h3 id="permissions-and-approvals-at-a-glance">Permissions and approvals at a glance</h3>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Call</th>
+<th>What you get</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1. Read the permissions</td>
+<td><a href="#post-useragentconnectorpermissions"><code>POST /UserAgent/ConnectorPermissions</code></a></td>
+<td>Each category's and each tool's values in both columns, and the cards waiting that came from Scheduled Tasks, channels or the agent's own work.</td>
+</tr>
+<tr>
+<td>2. Change them</td>
+<td><a href="#post-useragentconnectorsetpermissions"><code>POST /UserAgent/ConnectorSetPermissions</code></a></td>
+<td>The new values. The agent restarts, unless every change only turns <code>ask</code> into <code>allow</code>.</td>
+</tr>
+<tr>
+<td>3. The agent asks</td>
+<td>None: the card arrives in the chat</td>
+<td>An <code>approval</code> block in the timeline of a message, in <a href="/docs/agent-messaging#post-useragentmessagehistory">History</a>, <a href="/docs/agent-messaging#post-useragentmessagedetail">Detail</a> and on the <a href="/docs/agent-websocket">WebSocket</a>. See <a href="#how-an-approval-works">How an approval works</a>.</td>
+</tr>
+<tr>
+<td>4. Answer the card</td>
+<td><a href="#post-useragentmessageapprovalcardact"><code>POST /UserAgent/Message/ApprovalCardAct</code></a></td>
+<td>The card's new state, and a turn queued in the same chat that tells the agent.</td>
+</tr>
+<tr>
+<td>5. The agent goes on</td>
+<td><a href="#the-resume-turn">The resume turn</a></td>
+<td>The approved call runs once, and the agent's answer arrives as the chat's next message.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<h3 id="post-useragentconnectorpermissions"><strong>POST</strong> /UserAgent/ConnectorPermissions</h3>
+<p>What one connection may do without asking, per category and per tool, in both columns. Any connection of the agent, whatever its <code>status</code>. The agent's owner or an admin of the agent's team (a team member gets code <code>97</code>, anyone else <code>96</code>).</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>useragentguid</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The agent.</td>
+</tr>
+<tr>
+<td><code>slug</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The connector.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorPermissions&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;,
+    &quot;slug&quot;: &quot;wordpress&quot;
+  }'
+</code></pre>
+<h5 id="response_11" aria-level="3">Response</h5>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;connector&quot;: { &quot;slug&quot;: &quot;wordpress&quot;, &quot;title&quot;: &quot;WordPress&quot;, &quot;toolscached&quot;: true, &quot;catalogstatus&quot;: &quot;active&quot; },
+  &quot;permissions&quot;: {
+    &quot;categories&quot;: [
+      { &quot;key&quot;: &quot;read&quot;, &quot;tools&quot;: 6, &quot;chat&quot;: { &quot;value&quot;: &quot;allow&quot;, &quot;mixed&quot;: false }, &quot;autopilot&quot;: { &quot;value&quot;: &quot;allow&quot;, &quot;mixed&quot;: false }, &quot;chosen&quot;: {} },
+      { &quot;key&quot;: &quot;create&quot;, &quot;tools&quot;: 3, &quot;chat&quot;: { &quot;value&quot;: &quot;ask&quot;, &quot;mixed&quot;: false }, &quot;autopilot&quot;: { &quot;value&quot;: &quot;ask&quot;, &quot;mixed&quot;: false }, &quot;chosen&quot;: {} },
+      { &quot;key&quot;: &quot;change&quot;, &quot;tools&quot;: 4, &quot;chat&quot;: { &quot;value&quot;: &quot;ask&quot;, &quot;mixed&quot;: false }, &quot;autopilot&quot;: { &quot;value&quot;: &quot;block&quot;, &quot;mixed&quot;: false }, &quot;chosen&quot;: {} }
+    ],
+    &quot;tools&quot;: [
+      {
+        &quot;name&quot;: &quot;get_site&quot;,
+        &quot;title&quot;: &quot;Get the WordPress site and the connected user&quot;,
+        &quot;description&quot;: &quot;The connected WordPress site (name, tagline, address, time zone) and the user ...&quot;,
+        &quot;category&quot;: &quot;read&quot;,
+        &quot;chat&quot;: &quot;allow&quot;,
+        &quot;autopilot&quot;: &quot;allow&quot;,
+        &quot;source&quot;: { &quot;chat&quot;: &quot;default&quot;, &quot;autopilot&quot;: &quot;default&quot; },
+        &quot;defaults&quot;: { &quot;chat&quot;: &quot;allow&quot;, &quot;autopilot&quot;: &quot;allow&quot; },
+        &quot;hidden&quot;: false,
+        &quot;cached&quot;: true
+      },
+      {
+        &quot;name&quot;: &quot;create_post&quot;,
+        &quot;title&quot;: &quot;Create a WordPress post or page&quot;,
+        &quot;description&quot;: &quot;Creates a post (or page). It is a draft unless status says otherwise ...&quot;,
+        &quot;category&quot;: &quot;create&quot;,
+        &quot;chat&quot;: &quot;ask&quot;,
+        &quot;autopilot&quot;: &quot;ask&quot;,
+        &quot;source&quot;: { &quot;chat&quot;: &quot;default&quot;, &quot;autopilot&quot;: &quot;default&quot; },
+        &quot;defaults&quot;: { &quot;chat&quot;: &quot;ask&quot;, &quot;autopilot&quot;: &quot;ask&quot; },
+        &quot;hidden&quot;: false,
+        &quot;cached&quot;: true
+      },
+      {
+        &quot;name&quot;: &quot;update_post&quot;,
+        &quot;title&quot;: &quot;Update or publish a WordPress post or page&quot;,
+        &quot;description&quot;: &quot;Changes a post (or page): only the fields given change ...&quot;,
+        &quot;category&quot;: &quot;change&quot;,
+        &quot;chat&quot;: &quot;ask&quot;,
+        &quot;autopilot&quot;: &quot;block&quot;,
+        &quot;source&quot;: { &quot;chat&quot;: &quot;default&quot;, &quot;autopilot&quot;: &quot;default&quot; },
+        &quot;defaults&quot;: { &quot;chat&quot;: &quot;ask&quot;, &quot;autopilot&quot;: &quot;block&quot; },
+        &quot;hidden&quot;: false,
+        &quot;cached&quot;: true
+      }
+    ],
+    &quot;unknown&quot;: { &quot;chat&quot;: &quot;ask&quot;, &quot;autopilot&quot;: &quot;block&quot; },
+    &quot;updatedat&quot;: null,
+    &quot;updatedby&quot;: null
+  },
+  &quot;pending&quot;: []
+}
+</code></pre>
+<p>The example is shortened: <code>tools</code> lists all 13 WordPress tools, and descriptions are longer.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>connector</code></td>
+<td><code>{ slug, title, toolscached, catalogstatus }</code>. <code>toolscached</code> is <code>false</code> while a connector on a vendor's own MCP server has not listed its tools yet: then only categories can be set.</td>
+</tr>
+<tr>
+<td><code>permissions.categories</code></td>
+<td>One entry per category, <code>read</code>, <code>create</code> and <code>change</code>, in that order: <code>tools</code> (how many tools it has), <code>chat</code> and <code>autopilot</code> (<code>{ value, mixed }</code>: the value its tools share, or <code>value: null</code> with <code>mixed: true</code> when they differ), and <code>chosen</code>, the connection's own value per column (<code>{}</code> when it has none).</td>
+</tr>
+<tr>
+<td><code>permissions.tools</code></td>
+<td>Every tool the connection has values for: <code>name</code>, <code>title</code>, <code>description</code>, <code>category</code>, its values <code>chat</code> and <code>autopilot</code>, <code>source</code> (where each value comes from: <code>tool</code>, its own value; <code>category</code>, its category's value on the connection; <code>catalog</code>, the connector's default for the tool; <code>default</code>, the category's default; <code>unknown</code>, the connection's Change and delete value), <code>defaults</code> (the values without the connection's own), <code>hidden</code> (<code>true</code> when blocked in both columns: the agent doesn't see it) and <code>cached</code> (<code>false</code> for a name the connector doesn't list yet, such as a tool its vendor added later that already has a value of its own; it reads <code>change</code>).</td>
+</tr>
+<tr>
+<td><code>permissions.unknown</code></td>
+<td>What a tool the connector doesn't list yet gets in each column: the connection's Change and delete values.</td>
+</tr>
+<tr>
+<td><code>permissions.updatedat</code>, <code>permissions.updatedby</code></td>
+<td>When the connection's values last changed (Unix seconds) and the account that changed them, or <code>null</code> when they never did.</td>
+</tr>
+<tr>
+<td><code>pending</code></td>
+<td>The cards for this connector still waiting that have a message of their own: the ones Scheduled Tasks, channel conversations and the agent's own work asked for (see <a href="#how-an-approval-works">How an approval works</a>), newest first, at most 20. Each is <code>{ cardid, messageguid, tool, tooltitle, origin, createdat, expiresat, args, argspreview, argsbytes, argsredacted }</code>, as on <a href="#the-approval-block">the card</a>. Answer one with <a href="#post-useragentmessageapprovalcardact">ApprovalCardAct</a> and its <code>messageguid</code> and <code>cardid</code>. A card on a person's own message is not listed: it is in that chat.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<h3 id="post-useragentconnectorsetpermissions"><strong>POST</strong> /UserAgent/ConnectorSetPermissions</h3>
+<p>Changes what one connection may do without asking. The agent's owner or an admin of the agent's team, as for ConnectorPermissions.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>useragentguid</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The agent.</td>
+</tr>
+<tr>
+<td><code>slug</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The connector. It needs a connection, whatever its <code>status</code>.</td>
+</tr>
+<tr>
+<td><code>reset</code></td>
+<td>boolean</td>
+<td>No</td>
+<td><code>true</code>: drop every value of the connection's own first, so each tool goes back to its default.</td>
+</tr>
+<tr>
+<td><code>categories</code></td>
+<td>object</td>
+<td>No</td>
+<td><code>{ &lt;category&gt;: { chat?, autopilot? } }</code>, each <code>allow</code>, <code>ask</code>, <code>block</code>, or <code>null</code> to drop the connection's own value. Setting a category's column also drops that column from the values of its tools.</td>
+</tr>
+<tr>
+<td><code>tools</code></td>
+<td>object</td>
+<td>No</td>
+<td><code>{ &lt;tool name&gt;: { chat?, autopilot? } }</code>, the same values, for one tool. A name the connection doesn't list is refused. At most 500 tools have their own values.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Send at least one of <code>reset</code>, <code>categories</code> and <code>tools</code>. They apply in that order, so a tool's value sent in the same call as its category's stays.</p>
+<p>To let Create and send run in Chat without asking while Autopilot keeps asking, and to block <code>api_request</code> in both columns so the agent no longer sees it:</p>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorSetPermissions&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;,
+    &quot;slug&quot;: &quot;wordpress&quot;,
+    &quot;categories&quot;: { &quot;create&quot;: { &quot;chat&quot;: &quot;allow&quot; } },
+    &quot;tools&quot;: { &quot;api_request&quot;: { &quot;chat&quot;: &quot;block&quot;, &quot;autopilot&quot;: &quot;block&quot; } }
+  }'
+</code></pre>
+<h5 id="response_12" aria-level="3">Response</h5>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;applied&quot;: 1,
+  &quot;restart&quot;: &quot;scheduled&quot;,
+  &quot;permissions&quot;: {
+    &quot;categories&quot;: [
+      { &quot;key&quot;: &quot;read&quot;, &quot;tools&quot;: 6, &quot;chat&quot;: { &quot;value&quot;: &quot;allow&quot;, &quot;mixed&quot;: false }, &quot;autopilot&quot;: { &quot;value&quot;: &quot;allow&quot;, &quot;mixed&quot;: false }, &quot;chosen&quot;: {} },
+      { &quot;key&quot;: &quot;create&quot;, &quot;tools&quot;: 3, &quot;chat&quot;: { &quot;value&quot;: &quot;allow&quot;, &quot;mixed&quot;: false }, &quot;autopilot&quot;: { &quot;value&quot;: &quot;ask&quot;, &quot;mixed&quot;: false }, &quot;chosen&quot;: { &quot;chat&quot;: &quot;allow&quot; } },
+      { &quot;key&quot;: &quot;change&quot;, &quot;tools&quot;: 4, &quot;chat&quot;: { &quot;value&quot;: null, &quot;mixed&quot;: true }, &quot;autopilot&quot;: { &quot;value&quot;: &quot;block&quot;, &quot;mixed&quot;: false }, &quot;chosen&quot;: {} }
+    ],
+    &quot;tools&quot;: [
+      {
+        &quot;name&quot;: &quot;create_post&quot;,
+        &quot;title&quot;: &quot;Create a WordPress post or page&quot;,
+        &quot;description&quot;: &quot;Creates a post (or page). It is a draft unless status says otherwise ...&quot;,
+        &quot;category&quot;: &quot;create&quot;,
+        &quot;chat&quot;: &quot;allow&quot;,
+        &quot;autopilot&quot;: &quot;ask&quot;,
+        &quot;source&quot;: { &quot;chat&quot;: &quot;category&quot;, &quot;autopilot&quot;: &quot;default&quot; },
+        &quot;defaults&quot;: { &quot;chat&quot;: &quot;ask&quot;, &quot;autopilot&quot;: &quot;ask&quot; },
+        &quot;hidden&quot;: false,
+        &quot;cached&quot;: true
+      },
+      {
+        &quot;name&quot;: &quot;api_request&quot;,
+        &quot;title&quot;: &quot;Send a request to the WordPress API&quot;,
+        &quot;description&quot;: &quot;Sends one request to the WordPress API with the connection's credentials ...&quot;,
+        &quot;category&quot;: &quot;change&quot;,
+        &quot;chat&quot;: &quot;block&quot;,
+        &quot;autopilot&quot;: &quot;block&quot;,
+        &quot;source&quot;: { &quot;chat&quot;: &quot;tool&quot;, &quot;autopilot&quot;: &quot;tool&quot; },
+        &quot;defaults&quot;: { &quot;chat&quot;: &quot;ask&quot;, &quot;autopilot&quot;: &quot;block&quot; },
+        &quot;hidden&quot;: true,
+        &quot;cached&quot;: true
+      }
+    ],
+    &quot;unknown&quot;: { &quot;chat&quot;: &quot;ask&quot;, &quot;autopilot&quot;: &quot;block&quot; },
+    &quot;updatedat&quot;: 1795390600,
+    &quot;updatedby&quot;: &quot;ada-uuid&quot;
+  }
+}
+</code></pre>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>applied</code></td>
+<td><code>1</code> when something changed, <code>0</code> when the values were already so: then nothing restarts.</td>
+</tr>
+<tr>
+<td><code>restart</code></td>
+<td><code>scheduled</code> (the running agent restarts to load the change), <code>none</code> (the agent isn't running, the connection isn't <code>connected</code>, or every change only turned <code>ask</code> into <code>allow</code>, which a running agent uses at once) or <code>failed</code> (the change is saved, but the agent could not restart: it applies at the agent's next start).</td>
+</tr>
+<tr>
+<td><code>permissions</code></td>
+<td>The connection's permissions after the change, as on <a href="#post-useragentconnectorpermissions">ConnectorPermissions</a>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Each change also writes a <code>CONNECTOR_PERMISSIONS_SET</code> row to the agent's <a href="/docs/agent-logs#who-did-what-rows">activity log</a>. The refusals, with nothing saved:</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Message</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Send reset, categories or tools.</code></td>
+<td>None of the three was sent.</td>
+</tr>
+<tr>
+<td><code>reset is true or false.</code></td>
+<td><code>reset</code> isn't a boolean.</td>
+</tr>
+<tr>
+<td><code>categories takes read, create and change.</code></td>
+<td>Another key in <code>categories</code>.</td>
+</tr>
+<tr>
+<td><code>Each category and tool takes chat and autopilot.</code></td>
+<td>Another key in a category's or a tool's values.</td>
+</tr>
+<tr>
+<td><code>A permission is allow, ask or block.</code></td>
+<td>Another value.</td>
+</tr>
+<tr>
+<td><code>&lt;name&gt; is not one of &lt;Title&gt;'s tools.</code></td>
+<td>A tool the connection doesn't list.</td>
+</tr>
+<tr>
+<td><code>&lt;Title&gt;'s tools are listed after its first connection, so only its categories can be set now.</code></td>
+<td>A tool, on a connector that hasn't listed its tools yet.</td>
+</tr>
+<tr>
+<td><code>&lt;Title&gt; already has 500 action overrides.</code></td>
+<td>More than 500 tools would have their own values.</td>
+</tr>
+<tr>
+<td><code>&lt;Title&gt; is no longer offered.</code></td>
+<td>The connector left the catalog.</td>
+</tr>
+<tr>
+<td><code>This connector is not connected to the agent.</code></td>
+<td>The agent has no connection for this slug.</td>
+</tr>
+<tr>
+<td><code>This agent's connectors are fixed.</code></td>
+<td>Studio and the Workflow Agent.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<h3 id="how-an-approval-works">How an approval works</h3>
+<p>When the agent calls a tool whose value is <code>ask</code>, the call waits, and Wiro adds an approval card for exactly that call: the same tool with the same arguments. The agent tells the person what is waiting and ends its reply; a Scheduled Task finishes the rest of its work and writes in its report what is waiting. Where the card goes depends on where the call came from:</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>The call came from</th>
+<th>The card is</th>
+<th>It arrives live as</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A message sent with <code>Message/Send</code>, from your app or Wiro's web chat</td>
+<td>On that message: an <code>approval</code> block in its <code>timeline</code></td>
+<td><code>agent_timeline_delta</code> on the message's <code>agenttoken</code></td>
+</tr>
+<tr>
+<td>A Scheduled Task, a Telegram, Slack or Discord conversation, or the agent's own work</td>
+<td>On a message of its own in the owner's chat (below)</td>
+<td><code>agent_message_inserted</code> on the session's stream, then <code>agent_message_block</code> each time the card changes (see <a href="/docs/agent-websocket#following-a-session">Following a session</a>)</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Such a card has a message of its own, sent as the agent's owner, with an empty <code>content</code>, a <code>response</code> such as <code>Approval needed: Create a WordPress post or page in WordPress.</code> and <code>metadata.type</code> <code>"system"</code>. Wiro puts it in the session of the owner's most recent message sent in Wiro's web chat (on a team agent whose sessions are shared, the team's most recent); messages sent with a project API key don't count. Without one, it goes to the agent's <code>approvals</code> session: read it with <a href="/docs/agent-messaging#post-useragentmessagehistory"><code>Message/History</code></a> and <code>sessionkey: "approvals"</code>, and keep that key for it. <a href="#post-useragentconnectorpermissions">ConnectorPermissions</a> lists these cards under <code>pending</code>, so the agent's admins can answer them from there too.</p>
+<p>A Scheduled Task's card, as History returns its message in the <code>approvals</code> session:</p>
+<pre><code class="language-json">{
+  &quot;guid&quot;: &quot;f6a7b8c9-d0e1-4f23-a456-789abcdef012&quot;,
+  &quot;uuid&quot;: &quot;ada-uuid&quot;,
+  &quot;content&quot;: &quot;&quot;,
+  &quot;response&quot;: &quot;Approval needed: Create a WordPress post or page in WordPress.&quot;,
+  &quot;timeline&quot;: [
+    {
+      &quot;blockid&quot;: &quot;a:q9w8e7r6t5y4&quot;,
+      &quot;type&quot;: &quot;approval&quot;,
+      &quot;callindex&quot;: 1000001,
+      &quot;contentindex&quot;: 0,
+      &quot;text&quot;: null,
+      &quot;approval&quot;: {
+        &quot;v&quot;: 1,
+        &quot;id&quot;: &quot;q9w8e7r6t5y4&quot;,
+        &quot;kind&quot;: &quot;approval&quot;,
+        &quot;connector&quot;: &quot;wordpress&quot;,
+        &quot;title&quot;: &quot;WordPress&quot;,
+        &quot;tool&quot;: &quot;create_post&quot;,
+        &quot;tooltitle&quot;: &quot;Create a WordPress post or page&quot;,
+        &quot;modeltool&quot;: &quot;wordpress__create_post&quot;,
+        &quot;category&quot;: &quot;create&quot;,
+        &quot;columns&quot;: [&quot;autopilot&quot;],
+        &quot;column&quot;: &quot;autopilot&quot;,
+        &quot;origin&quot;: { &quot;kind&quot;: &quot;task&quot;, &quot;task&quot;: &quot;cs-cron-weekly-post&quot;, &quot;tasktitle&quot;: &quot;Weekly Post&quot; },
+        &quot;connectedat&quot;: 1795390000,
+        &quot;argshash&quot;: &quot;a69d47264c7cb3b12dab175f55db0eb439adb33efe6a4c6eaaeee062a5ec7b05&quot;,
+        &quot;args&quot;: { &quot;title&quot;: &quot;What we shipped this week&quot;, &quot;content&quot;: &quot;&lt;p&gt;Three updates landed this week.&lt;/p&gt;&quot;, &quot;status&quot;: &quot;publish&quot; },
+        &quot;argspreview&quot;: null,
+        &quot;argsbytes&quot;: 107,
+        &quot;argsredacted&quot;: false,
+        &quot;always&quot;: { &quot;chat&quot;: false, &quot;autopilot&quot;: true },
+        &quot;requestedby&quot;: &quot;ada-uuid&quot;,
+        &quot;createdat&quot;: 1795403600,
+        &quot;expiresat&quot;: 1795490000,
+        &quot;status&quot;: &quot;pending&quot;
+      },
+      &quot;phase&quot;: &quot;end&quot;,
+      &quot;version&quot;: 1,
+      &quot;startedat&quot;: 1795403600,
+      &quot;updatedat&quot;: 1795403600
+    }
+  ],
+  &quot;status&quot;: &quot;agent_end&quot;,
+  &quot;metadata&quot;: { &quot;type&quot;: &quot;system&quot; },
+  &quot;createdat&quot;: 1795403600
+}
+</code></pre>
+<p>(Shortened: the message has the other fields of a History row too.) <code>always</code> reads <code>{ "chat": false, "autopilot": true }</code> because this connection already lets Create and send run in Chat. The same card is in ConnectorPermissions' <code>pending</code> for <code>wordpress</code>:</p>
+<pre><code class="language-json">&quot;pending&quot;: [
+  {
+    &quot;cardid&quot;: &quot;q9w8e7r6t5y4&quot;,
+    &quot;messageguid&quot;: &quot;f6a7b8c9-d0e1-4f23-a456-789abcdef012&quot;,
+    &quot;tool&quot;: &quot;create_post&quot;,
+    &quot;tooltitle&quot;: &quot;Create a WordPress post or page&quot;,
+    &quot;origin&quot;: { &quot;kind&quot;: &quot;task&quot;, &quot;task&quot;: &quot;cs-cron-weekly-post&quot;, &quot;tasktitle&quot;: &quot;Weekly Post&quot; },
+    &quot;createdat&quot;: 1795403600,
+    &quot;expiresat&quot;: 1795490000,
+    &quot;args&quot;: { &quot;title&quot;: &quot;What we shipped this week&quot;, &quot;content&quot;: &quot;&lt;p&gt;Three updates landed this week.&lt;/p&gt;&quot;, &quot;status&quot;: &quot;publish&quot; },
+    &quot;argspreview&quot;: null,
+    &quot;argsbytes&quot;: 107,
+    &quot;argsredacted&quot;: false
+  }
+]
+</code></pre>
+<p>Telegram, Slack and Discord show no buttons: the card goes to the web chat as above, and the agent tells the person on the channel that the approval waits in its web chat. Once it is answered, the action runs in that web chat, and its result is there.</p>
+<p>A reply such as "yes" typed in the chat answers no card: only <a href="#post-useragentmessageapprovalcardact">ApprovalCardAct</a> (and the card's buttons on wiro.ai) do. Approvals work whatever the agent's <a href="/docs/agent-messaging#setup-from-chat">Setup From Chat</a> setting.</p>
+<h3 id="the-approval-block">The approval block</h3>
+<p>A card is a timeline block of type <code>approval</code>, in the message's <code>timeline</code> on History and Detail, and in <code>agent_subscribed</code>, <code>agent_timeline_delta</code>, <code>agent_message_inserted</code> and <code>agent_message_block</code> frames. A card on a message sent from your app, as History returns it:</p>
+<pre><code class="language-json">{
+  &quot;blockid&quot;: &quot;a:k3v9q2m7x1pd&quot;,
+  &quot;type&quot;: &quot;approval&quot;,
+  &quot;callindex&quot;: 1000001,
+  &quot;contentindex&quot;: 0,
+  &quot;text&quot;: null,
+  &quot;approval&quot;: {
+    &quot;v&quot;: 1,
+    &quot;id&quot;: &quot;k3v9q2m7x1pd&quot;,
+    &quot;kind&quot;: &quot;approval&quot;,
+    &quot;connector&quot;: &quot;wordpress&quot;,
+    &quot;title&quot;: &quot;WordPress&quot;,
+    &quot;tool&quot;: &quot;update_post&quot;,
+    &quot;tooltitle&quot;: &quot;Update or publish a WordPress post or page&quot;,
+    &quot;modeltool&quot;: &quot;wordpress__update_post&quot;,
+    &quot;category&quot;: &quot;change&quot;,
+    &quot;columns&quot;: [&quot;chat&quot;],
+    &quot;column&quot;: &quot;chat&quot;,
+    &quot;origin&quot;: { &quot;kind&quot;: &quot;chat&quot; },
+    &quot;connectedat&quot;: 1795390000,
+    &quot;argshash&quot;: &quot;6d95350045568e2684818ac6bebb0ba83894016d346ac3f93991d7acc23e7862&quot;,
+    &quot;args&quot;: { &quot;id&quot;: 4182, &quot;status&quot;: &quot;publish&quot; },
+    &quot;argspreview&quot;: null,
+    &quot;argsbytes&quot;: 30,
+    &quot;argsredacted&quot;: false,
+    &quot;always&quot;: { &quot;chat&quot;: true, &quot;autopilot&quot;: false },
+    &quot;requestedby&quot;: &quot;ada-uuid&quot;,
+    &quot;createdat&quot;: 1795400000,
+    &quot;expiresat&quot;: 1795486400,
+    &quot;status&quot;: &quot;pending&quot;
+  },
+  &quot;phase&quot;: &quot;end&quot;,
+  &quot;version&quot;: 1,
+  &quot;startedat&quot;: 1795400000,
+  &quot;updatedat&quot;: 1795400000
+}
+</code></pre>
+<p>The block's <code>blockid</code> is <code>a:</code> and the card's <code>id</code>. Approval blocks sort after the message's other blocks, and a message holds at most three (<code>contentindex</code> <code>0</code> to <code>2</code>). The block's <code>version</code> is <code>1</code> while the card waits, <code>2</code> once it is answered or expired, and <code>3</code> once the approved call ran: keep the copy with the higher <code>version</code>, whichever arrives first.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>The card's id: send it as <code>cardid</code>.</td>
+</tr>
+<tr>
+<td><code>connector</code>, <code>title</code></td>
+<td>The connector's slug and title.</td>
+</tr>
+<tr>
+<td><code>tool</code>, <code>tooltitle</code></td>
+<td>The tool's name and title.</td>
+</tr>
+<tr>
+<td><code>modeltool</code></td>
+<td>The name the agent calls the tool by, <code>&lt;slug&gt;__&lt;tool&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>category</code></td>
+<td><code>read</code>, <code>create</code> or <code>change</code>.</td>
+</tr>
+<tr>
+<td><code>columns</code></td>
+<td>The columns of the run that asked: <code>["chat"]</code>, <code>["autopilot"]</code>, or <code>["chat", "autopilot"]</code> for other work the agent did on its own and for the resume of a card that didn't come from a chat.</td>
+</tr>
+<tr>
+<td><code>column</code></td>
+<td>The column whose <code>ask</code> made the card.</td>
+</tr>
+<tr>
+<td><code>origin</code></td>
+<td>Where the call came from: <code>{ "kind": "chat" }</code>; <code>{ "kind": "channel", "channel": "telegram" }</code> (or <code>slack</code>, <code>discord</code>); <code>{ "kind": "task", "task": "cs-cron-weekly-post", "tasktitle": "Weekly Post" }</code>, a Scheduled Task (<code>task</code> and <code>tasktitle</code> can be absent); or <code>{ "kind": "background" }</code>, work the agent did on its own.</td>
+</tr>
+<tr>
+<td><code>connectedat</code></td>
+<td>When the connection last connected. A card made before a later connect can't be answered.</td>
+</tr>
+<tr>
+<td><code>argshash</code></td>
+<td>A hash of the exact request: the approval holds for this request only.</td>
+</tr>
+<tr>
+<td><code>args</code></td>
+<td>The exact arguments of the call, as an object. Show them before anyone answers. <code>null</code> when the request is too long or not kept.</td>
+</tr>
+<tr>
+<td><code>argspreview</code></td>
+<td>For a request over 64 KB (<code>argsbytes</code> over 65536): its first 4,000 characters, with <code>args</code> <code>null</code>. Show it with the request's size. Otherwise <code>null</code>.</td>
+</tr>
+<tr>
+<td><code>argsbytes</code></td>
+<td>The request's size in bytes.</td>
+</tr>
+<tr>
+<td><code>argsredacted</code></td>
+<td><code>true</code> for a connector whose requests are not kept, such as Reddit: <code>args</code> and <code>argspreview</code> are <code>null</code>, so say the request can't be shown under the connector's data terms.</td>
+</tr>
+<tr>
+<td><code>always</code></td>
+<td>The columns that read <code>ask</code> when the card was made: the ones Always allow would turn into <code>allow</code>. <code>{ "chat": true, "autopilot": false }</code> means Always allow lets the tool run without asking in Chat, and it stays as it is in Autopilot.</td>
+</tr>
+<tr>
+<td><code>requestedby</code></td>
+<td>The account whose message asked, or the agent's owner for a card with a message of its own.</td>
+</tr>
+<tr>
+<td><code>createdat</code>, <code>expiresat</code></td>
+<td>When the card was made, and when it expires, 24 hours later.</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>pending</code>, <code>allowed</code> (allowed once), <code>always</code> (allowed, and from now on), <code>declined</code> or <code>expired</code>. A <code>pending</code> card whose <code>expiresat</code> has passed reads as expired.</td>
+</tr>
+<tr>
+<td><code>actedat</code>, <code>actedby</code></td>
+<td>Once answered: when, and the account that answered. An expired card has <code>actedat</code> and no <code>actedby</code>.</td>
+</tr>
+<tr>
+<td><code>usedat</code></td>
+<td>When the approved call ran.</td>
+</tr>
+<tr>
+<td><code>resume</code></td>
+<td>After an Allow or Always allow: <code>{ "status": "queued", "messageguid" }</code>, <code>{ "status": "not_running" }</code> or <code>{ "status": "refused" }</code>. See <a href="#the-resume-turn">The resume turn</a>.</td>
+</tr>
+<tr>
+<td><code>error</code></td>
+<td>Why the card expired early or why its turn could not run, in one sentence. Show it as it is.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>While a card is <code>pending</code>, show its arguments and three buttons: Allow, Always Allow and Decline. Show Always Allow only to the agent's owner and the admins of its team. A card from a Scheduled Task or a channel names where it came from; a card on a message from your app was asked for in that chat.</p>
+<p>A request over 64 KB, as its card shows it:</p>
+<pre><code class="language-json">&quot;args&quot;: null,
+&quot;argspreview&quot;: &quot;{\&quot;content\&quot;:\&quot;&lt;h2&gt;What we shipped&lt;/h2&gt;&lt;p&gt;Three updates landed this week ...&quot;,
+&quot;argsbytes&quot;: 91240,
+&quot;argsredacted&quot;: false
+</code></pre>
+<p>A Reddit request, which is not kept:</p>
+<pre><code class="language-json">&quot;args&quot;: null,
+&quot;argspreview&quot;: null,
+&quot;argsbytes&quot;: 126,
+&quot;argsredacted&quot;: true
+</code></pre>
+<h3 id="post-useragentmessageapprovalcardact"><strong>POST</strong> /UserAgent/Message/ApprovalCardAct</h3>
+<p>Answers one approval card, with your session or your project API key.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>useragentguid</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The agent.</td>
+</tr>
+<tr>
+<td><code>messageguid</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The <code>guid</code> of the message the card is on.</td>
+</tr>
+<tr>
+<td><code>cardid</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The card's <code>id</code>.</td>
+</tr>
+<tr>
+<td><code>action</code></td>
+<td>string</td>
+<td>Yes</td>
+<td><code>allow</code>: this call runs, once. <code>always</code>: this call runs, and from now on the tool runs without asking in every column the card's <code>always</code> names; a <code>block</code> column stays blocked. <code>decline</code>: this call doesn't run.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Who may answer:</p>
+<ul>
+<li><strong><code>allow</code> and <code>decline</code>:</strong> the agent's owner and anyone in the agent's team who sees the card's message in the chat. On a team agent whose sessions are private, the team's admins can also answer the cards that have a message of their own (the ones <code>pending</code> lists).</li>
+<li><strong><code>always</code>:</strong> the agent's owner or an admin of the agent's team, since it changes the agent's settings. Anyone else gets code <code>97</code>.</li>
+</ul>
+<p>An answer works while the agent's turn is still running, and restarts nothing.</p>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/Message/ApprovalCardAct&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;,
+    &quot;messageguid&quot;: &quot;d4e5f6a7-b8c9-4d0e-8f12-3456789abcde&quot;,
+    &quot;cardid&quot;: &quot;k3v9q2m7x1pd&quot;,
+    &quot;action&quot;: &quot;allow&quot;
+  }'
+</code></pre>
+<h5 id="response_13" aria-level="3">Response</h5>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;approval&quot;: {
+    &quot;v&quot;: 1,
+    &quot;id&quot;: &quot;k3v9q2m7x1pd&quot;,
+    &quot;kind&quot;: &quot;approval&quot;,
+    &quot;connector&quot;: &quot;wordpress&quot;,
+    &quot;title&quot;: &quot;WordPress&quot;,
+    &quot;tool&quot;: &quot;update_post&quot;,
+    &quot;tooltitle&quot;: &quot;Update or publish a WordPress post or page&quot;,
+    &quot;modeltool&quot;: &quot;wordpress__update_post&quot;,
+    &quot;category&quot;: &quot;change&quot;,
+    &quot;columns&quot;: [&quot;chat&quot;],
+    &quot;column&quot;: &quot;chat&quot;,
+    &quot;origin&quot;: { &quot;kind&quot;: &quot;chat&quot; },
+    &quot;connectedat&quot;: 1795390000,
+    &quot;argshash&quot;: &quot;6d95350045568e2684818ac6bebb0ba83894016d346ac3f93991d7acc23e7862&quot;,
+    &quot;args&quot;: { &quot;id&quot;: 4182, &quot;status&quot;: &quot;publish&quot; },
+    &quot;argspreview&quot;: null,
+    &quot;argsbytes&quot;: 30,
+    &quot;argsredacted&quot;: false,
+    &quot;always&quot;: { &quot;chat&quot;: true, &quot;autopilot&quot;: false },
+    &quot;requestedby&quot;: &quot;ada-uuid&quot;,
+    &quot;createdat&quot;: 1795400000,
+    &quot;expiresat&quot;: 1795486400,
+    &quot;status&quot;: &quot;allowed&quot;,
+    &quot;actedat&quot;: 1795400120,
+    &quot;actedby&quot;: &quot;ada-uuid&quot;,
+    &quot;resume&quot;: { &quot;status&quot;: &quot;queued&quot;, &quot;messageguid&quot;: &quot;e5f6a7b8-c9d0-4e1f-9a23-456789abcdef&quot; }
+  },
+  &quot;summary&quot;: &quot;Allowed once.&quot;,
+  &quot;resume&quot;: {
+    &quot;status&quot;: &quot;queued&quot;,
+    &quot;messageguid&quot;: &quot;e5f6a7b8-c9d0-4e1f-9a23-456789abcdef&quot;,
+    &quot;agenttoken&quot;: &quot;Wq7nR2kXv9LpT4mYb8HcJd3sFg6ZaE&quot;,
+    &quot;sessionkey&quot;: &quot;user-42&quot;
+  }
+}
+</code></pre>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>approval</code></td>
+<td>The card after the answer. Refusals carry it too, as it is now, or <code>null</code> when there is none.</td>
+</tr>
+<tr>
+<td><code>summary</code></td>
+<td>One sentence to show: <code>Allowed once.</code>, <code>Always allowed.</code> or <code>Declined.</code> When Always allow could not change the tool's values, the call still runs once and the sentence says why: <code>Allowed once. &lt;Title&gt;'s actions are listed after its first connection, so this one can't be allowed for good yet.</code> or <code>Allowed once. &lt;Title&gt; already has 500 action overrides, so this one could not be allowed for good.</code></td>
+</tr>
+<tr>
+<td><code>resume</code></td>
+<td>What happens next, after <code>allow</code> and <code>always</code>; <code>null</code> after <code>decline</code>. See <a href="#the-resume-turn">The resume turn</a>.</td>
+</tr>
+<tr>
+<td><code>permissions</code></td>
+<td><code>always</code> only: the tool's values after it, <code>{ connector, tool, chat, autopilot }</code>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The same card answered with <code>always</code> gets:</p>
+<pre><code class="language-json">&quot;summary&quot;: &quot;Always allowed.&quot;,
+&quot;permissions&quot;: { &quot;connector&quot;: &quot;wordpress&quot;, &quot;tool&quot;: &quot;update_post&quot;, &quot;chat&quot;: &quot;allow&quot;, &quot;autopilot&quot;: &quot;block&quot; }
+</code></pre>
+<p>Always allow changes only the columns that read <code>ask</code>: <code>update_post</code> still never runs in Autopilot. It writes the tool's own values, as <a href="#post-useragentconnectorsetpermissions">ConnectorSetPermissions</a> would, and two rows to the agent's activity log: <code>CONNECTOR_APPROVAL_ANSWERED</code> and <code>CONNECTOR_PERMISSIONS_SET</code>. Every answer writes the first.</p>
+<p>Answered with <code>decline</code>:</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;approval&quot;: { &quot;id&quot;: &quot;k3v9q2m7x1pd&quot;, &quot;status&quot;: &quot;declined&quot;, &quot;actedat&quot;: 1795400120, &quot;actedby&quot;: &quot;ada-uuid&quot; },
+  &quot;summary&quot;: &quot;Declined.&quot;,
+  &quot;resume&quot;: null
+}
+</code></pre>
+<p>(<code>approval</code> shortened.) A decline starts no turn and leaves the tool's values as they are: the agent is refused the same call for the rest of that turn, and a later request asks again with a new card.</p>
+<p>A card that can't be answered any more:</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: false,
+  &quot;errors&quot;: [{ &quot;code&quot;: &quot;approval_expired&quot;, &quot;message&quot;: &quot;This approval expired. Ask the agent again.&quot; }],
+  &quot;approval&quot;: { &quot;id&quot;: &quot;k3v9q2m7x1pd&quot;, &quot;status&quot;: &quot;expired&quot;, &quot;actedat&quot;: 1795486460 }
+}
+</code></pre>
+<p>(<code>approval</code> shortened.) Three refusal codes are words, where the others are numbers:</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Message</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>approval_expired</code></td>
+<td><code>This approval expired. Ask the agent again.</code></td>
+<td>The card's 24 hours have passed. It now reads <code>expired</code>.</td>
+</tr>
+<tr>
+<td><code>approval_expired</code></td>
+<td><code>&lt;Title&gt; is not connected any more.</code></td>
+<td>The connection was disconnected or isn't <code>connected</code>. The card now reads <code>expired</code> with this <code>error</code>.</td>
+</tr>
+<tr>
+<td><code>approval_expired</code></td>
+<td><code>&lt;Title&gt; was connected again, so this approval no longer applies. Ask the agent again.</code></td>
+<td>The connector was connected again, signed in again or given new accounts since the card was made.</td>
+</tr>
+<tr>
+<td><code>approval_blocked</code></td>
+<td><code>This action is blocked now. Change it in the connector's permissions.</code></td>
+<td>The tool is now <code>block</code> in a column its approved call would run in. The card now reads <code>expired</code>.</td>
+</tr>
+<tr>
+<td><code>approval_done</code></td>
+<td><code>This approval was already answered.</code></td>
+<td>Someone answered it first: <code>approval</code> shows how.</td>
+</tr>
+<tr>
+<td><code>97</code></td>
+<td><code>Only an agent admin can allow this for good.</code></td>
+<td><code>always</code> from someone who is neither the agent's owner nor a team admin.</td>
+</tr>
+<tr>
+<td><code>96</code></td>
+<td><code>Only the agent's owner and its team can answer its approvals.</code></td>
+<td>The caller isn't the agent's owner and isn't in its team.</td>
+</tr>
+<tr>
+<td><code>95</code></td>
+<td><code>Agent not found or access denied</code></td>
+<td>No such agent.</td>
+</tr>
+<tr>
+<td><code>0</code></td>
+<td><code>This approval card was not found.</code></td>
+<td>No card with this id on the message, or a message the caller doesn't see in the chat.</td>
+</tr>
+<tr>
+<td><code>0</code></td>
+<td><code>This agent has no approvals.</code></td>
+<td>Studio and the Workflow Agent.</td>
+</tr>
+<tr>
+<td><code>0</code></td>
+<td><code>action must be allow, always or decline</code></td>
+<td>Another <code>action</code>.</td>
+</tr>
+<tr>
+<td><code>0</code></td>
+<td><code>Request parameter [messageguid] required</code> (or <code>[useragentguid]</code>, <code>[cardid]</code>)</td>
+<td>A missing or malformed parameter.</td>
+</tr>
+<tr>
+<td><code>0</code></td>
+<td><code>The approval could not be saved. Try again.</code></td>
+<td>A temporary failure: the card still waits.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>A request from outside the agent's workspace gets the same refusal as other agent calls, such as <code>This agent belongs to a team. Switch to the team context to access it.</code></p>
+<h3 id="the-resume-turn">The resume turn</h3>
+<p>After <code>allow</code> or <code>always</code>, Wiro queues a new turn in the chat the card is in: the same session, as the account whose message asked (for a card with a message of its own, the agent's owner). The turn tells the agent the call was approved; the agent makes the approved call, which now runs once, and finishes what it was doing. The turn's message holds the agent's answer, as any turn's does. <code>resume</code> says what happened:</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th><code>resume.status</code></th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>queued</code></td>
+<td>The turn is queued: follow it like a turn you sent. <code>messageguid</code> is its message, <code>agenttoken</code> the token to subscribe to on the <a href="/docs/agent-websocket">WebSocket</a>, and <code>sessionkey</code> its session. When the card's message was sent with a <code>callbackurl</code>, Wiro calls it again when this turn ends, with this turn's <code>messageguid</code>.</td>
+</tr>
+<tr>
+<td><code>not_running</code></td>
+<td>The agent isn't running, so nothing ran: <code>message</code> reads <code>Allowed. The agent isn't running, so nothing ran. It can use this approval if it's asked again in this chat within an hour.</code></td>
+</tr>
+<tr>
+<td><code>refused</code></td>
+<td>The agent can't take a turn now, for the reason a <a href="/docs/agent-messaging#post-useragentmessagesend"><code>Message/Send</code></a> would give, such as no active plan, a spend limit or the balance; <code>message</code> is that sentence (or <code>Allowed, but the agent could not be told. It can use this approval if it's asked again in this chat within an hour.</code>).</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Either way the approval holds for an hour: when the agent is asked again in the same chat within that hour, it can use it without a new card. <code>messageguid</code>, <code>agenttoken</code> and <code>sessionkey</code> go only to someone who reads that chat: the person whose message asked, or anyone on a team agent whose sessions are shared. A team admin answering a card in the owner's private chat gets <code>{ "status": "queued" }</code> alone.</p>
+<p>The resume turn is a message of the session like any other, and History returns it with <code>metadata.type</code> <code>"approval_resume"</code>:</p>
+<pre><code class="language-json">{
+  &quot;guid&quot;: &quot;e5f6a7b8-c9d0-4e1f-9a23-456789abcdef&quot;,
+  &quot;uuid&quot;: &quot;ada-uuid&quot;,
+  &quot;agenttoken&quot;: &quot;Wq7nR2kXv9LpT4mYb8HcJd3sFg6ZaE&quot;,
+  &quot;content&quot;: &quot;[APPROVED] The person allowed Update or publish a WordPress post or page in WordPress (wordpress__update_post) once. ...&quot;,
+  &quot;response&quot;: &quot;Done: the post is live at https://blog.example.com/what-we-shipped/.&quot;,
+  &quot;status&quot;: &quot;agent_end&quot;,
+  &quot;metadata&quot;: {
+    &quot;type&quot;: &quot;approval_resume&quot;,
+    &quot;serverProvenance&quot;: &quot;connector_approval_resume&quot;,
+    &quot;resumecolumn&quot;: &quot;chat&quot;,
+    &quot;approvals&quot;: [
+      {
+        &quot;cardid&quot;: &quot;k3v9q2m7x1pd&quot;,
+        &quot;connector&quot;: &quot;wordpress&quot;,
+        &quot;title&quot;: &quot;WordPress&quot;,
+        &quot;tool&quot;: &quot;update_post&quot;,
+        &quot;tooltitle&quot;: &quot;Update or publish a WordPress post or page&quot;,
+        &quot;answer&quot;: &quot;allow&quot;,
+        &quot;messageguid&quot;: &quot;d4e5f6a7-b8c9-4d0e-8f12-3456789abcde&quot;
+      }
+    ]
+  },
+  &quot;createdat&quot;: 1795400121
+}
+</code></pre>
+<p>(Shortened; once the turn ends, <code>metadata</code> also has the finished turn's metrics.) Its <code>content</code> is Wiro's message to the agent, not a person's: don't show it as one. Show one line instead, <code>Allowed: &lt;tooltitle&gt; in &lt;title&gt;</code> (<code>Always allowed: ...</code> when <code>answer</code> is <code>always</code>), then the agent's answer. <a href="/docs/agent-messaging#post-useragentmessagesessions"><code>Message/Sessions</code></a> shows the same line as the session's <code>lastmessage</code>.</p>
+<p>A card with a message of its own resumes in the chat where the card is, and its resume hands the agent the call's stored arguments as data. When they can't be repeated (a request over 64 KB, or Reddit's), the agent does that step again in the chat, which can ask for a new approval. The resume of a card from a Scheduled Task or the agent's own work takes the stricter of the two columns for every tool it calls (<code>resumecolumn: "autopilot"</code>), so a tool blocked in Autopilot stays blocked. A card from a chat message or a channel conversation resumes in Chat (<code>resumecolumn: "chat"</code>).</p>
+<p>Once the approved call ran, the card gets <code>usedat</code> and its block version <code>3</code>. If the agent already made the call in the turn that asked, before the resume ran, the resume doesn't make it a second time.</p>
+<h3 id="expiries-and-limits">Expiries and limits</h3>
+<ul>
+<li>A card waits 24 hours (<code>expiresat</code>). After that it reads <code>expired</code>, and the agent asks again with a new card when the action is still wanted.</li>
+<li>An approval is used within an hour of the answer, in the chat the card is in, once. After that hour, the next call asks again.</li>
+<li>Connecting the connector again with new values, a new sign-in and new account choices end every card still waiting for it: each reads <code>expired</code>, with the <code>error</code> <code>&lt;Title&gt; was connected again, so this approval no longer applies. Ask the agent again.</code> A call that changes nothing keeps them.</li>
+<li><a href="#post-useragentconnectordisconnect">Disconnecting</a> deletes the connection's permissions and its waiting approvals with it. Connecting again after <code>reauth</code> keeps the permissions.</li>
+<li>A message holds at most three approval cards, and a connection at most 20 cards waiting or approved and not used yet. Past that, the agent tells the person what is waiting and asks no more.</li>
+<li>The agent can't change its own permissions or answer its own cards: ConnectorSetPermissions and ApprovalCardAct answer HTTP <code>403</code> to a request the agent makes itself.</li>
 </ul>
 <h2 id="the-wiro-connector">Wiro AI Models</h2>
 <p>Wiro AI Models (<code>wiro</code>) gives the agent Wiro's own model and task tools, named <code>wiro__&lt;tool&gt;</code>, from the <a href="/docs/wiro-mcp-server">Wiro MCP server</a>. Its calls are the agent's own: they always act with the agent's own Wiro project key, the key the agent runs every Wiro model with (see <a href="/docs/agent-credentials#the-agents-wiro-project">The agent's Wiro project</a>). So:</p>
@@ -29653,6 +30711,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 <li>The models they run are billed to the wallet of the workspace that owns that project, at each model's usual price.</li>
 <li>Wiro counts them as the agent's own runs: the agent's own <a href="/docs/spend-limits">spend limit</a> and <a href="/docs/model-access">Model Access</a> rule apply to them (the <code>agent</code> scope, on the <code>agent</code> surface), as to every model the agent runs.</li>
 <li>Account, agent, team and billing endpoints are refused to them, as to every call the agent makes: see the note "An agent's own calls never manage an account" under <a href="/docs/agent-overview#post-useragentupdatesettings"><code>UserAgent/UpdateSettings</code></a>. The agent changes its own setup only through <a href="/docs/agent-messaging#setup-from-chat">setup cards</a> that an agent admin approves.</li>
+<li>Its <a href="#permissions-and-approvals">permissions</a> cover these tools only: by default <code>run_model</code> runs without asking, <code>upload_file</code> asks, and <code>cancel_task</code> and <code>kill_task</code> ask in Chat and never run in Autopilot. The models a Skill runs with the agent's own Wiro project, such as video creation, follow the agent's spend limit and Model Access instead.</li>
 </ul>
 <h3 id="its-tools">Its tools</h3>
 <p>The agent gets these tools of the Wiro MCP server, and no others:</p>
@@ -29754,7 +30813,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
     &quot;wiroprojectguid&quot;: &quot;1234&quot;
   }'
 </code></pre>
-<h5 id="response_11" aria-level="3">Response</h5>
+<h5 id="response_14" aria-level="3">Response</h5>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
   &quot;errors&quot;: [],
@@ -29962,6 +31021,21 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 <td>The shape of <code>accounts</code>: at most 10 keys and 500 ids per key.</td>
 </tr>
 <tr>
+<td><code>ConnectorPermissions</code>, <code>ConnectorSetPermissions</code></td>
+<td><code>This connector is not connected to the agent.</code></td>
+<td>The agent has no connection for this slug.</td>
+</tr>
+<tr>
+<td><code>ConnectorSetPermissions</code></td>
+<td><code>Send reset, categories or tools.</code>, <code>categories takes read, create and change.</code>, <code>Each category and tool takes chat and autopilot.</code>, <code>A permission is allow, ask or block.</code>, <code>&lt;name&gt; is not one of &lt;Title&gt;'s tools.</code></td>
+<td>The body's shape: see <a href="#post-useragentconnectorsetpermissions">ConnectorSetPermissions</a> for every refusal.</td>
+</tr>
+<tr>
+<td><code>ApprovalCardAct</code></td>
+<td><code>This approval expired. Ask the agent again.</code> (code <code>approval_expired</code>), <code>This approval was already answered.</code> (<code>approval_done</code>), <code>This action is blocked now. Change it in the connector's permissions.</code> (<code>approval_blocked</code>)</td>
+<td>The card can't be answered any more: see <a href="#post-useragentmessageapprovalcardact">ApprovalCardAct</a> for every refusal.</td>
+</tr>
+<tr>
 <td>any</td>
 <td><code>Something went wrong. Try again.</code></td>
 <td>A temporary failure: nothing was changed.</td>
@@ -29970,7 +31044,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </table>
 </div>
 </div>
-<p>The account picker refusals are under <a href="#post-useragentconnectorsetaccounts">ConnectorSetAccounts</a>, the callback codes under <a href="#the-callback-and-your-redirect-url">The callback and your redirect URL</a>, and what Deploy, <code>SkillsApply</code> and <code>CredentialUpsert</code> answer for a connector under <a href="#connectors-skills-and-credentials">Connectors, Skills and Credentials</a>.</p>
+<p>The account picker refusals are under <a href="#post-useragentconnectorsetaccounts">ConnectorSetAccounts</a>, the callback codes under <a href="#the-callback-and-your-redirect-url">The callback and your redirect URL</a>, the permission and approval refusals under <a href="#permissions-and-approvals">Permissions and Approvals</a>, and what Deploy, <code>SkillsApply</code> and <code>CredentialUpsert</code> answer for a connector under <a href="#connectors-skills-and-credentials">Connectors, Skills and Credentials</a>.</p>
 <h2 id="connectors-skills-and-credentials">Connectors, Skills and Credentials</h2>
 <p>A connector is on while it is connected: it is never a Skill to turn on or a credential to save. The calls that take Skills or credentials refuse a connector before anything is saved, created or charged:</p>
 <div class="docs-param-table">
@@ -30312,6 +31386,7 @@ Future&lt;void&gt; main() async {
 <li><a href="/docs/agent-skills">Agent Skills</a>: Skills, Custom Skills and scheduled tasks that put a connector's tools to work.</li>
 <li><a href="/docs/agent-credentials">Agent Credentials</a>: channels and the other values an agent keeps as credentials.</li>
 <li><a href="/docs/agent-chat-integration">Agent Chat Integration</a>: build your own chat, setup from chat included.</li>
+<li><a href="/docs/agent-messaging">Agent Messaging</a>: the message timeline that carries approval cards.</li>
 </ul>
                 </article>
                 <script type="application/json" class="code-examples-data">
@@ -31448,11 +32523,16 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <td><code>setup</code>: a setup card; on a pending <code>connect</code> card, also <code>next</code></td>
 <td>A card with buttons. See <a href="#setup-cards">Setup Cards</a>.</td>
 </tr>
+<tr>
+<td><code>approval</code></td>
+<td><code>approval</code>: a connector action waiting for a person's approval, with the call's arguments</td>
+<td>A card with the arguments and Allow, Always Allow (for the agent's owner and team admins) and Decline buttons that call <a href="/docs/agent-connectors#post-useragentmessageapprovalcardact"><code>Message/ApprovalCardAct</code></a>. A typed <code>yes</code> doesn't answer it. See <a href="/docs/agent-connectors#the-approval-block">The approval block</a>.</td>
+</tr>
 </tbody>
 </table>
 </div>
 </div>
-<p>Setup blocks have <code>callindex: 1000000</code>, so they sort after the reply's other blocks, in the order the agent proposed them, at most three per message. Skip a block whose <code>type</code> you don't know. The block fields are listed in <a href="/docs/agent-messaging#public-timeline-block-fields">Public timeline block fields</a>.</p>
+<p>Setup blocks have <code>callindex: 1000000</code>, so they sort after the reply's other blocks, in the order the agent proposed them, at most three per message. Approval blocks have <code>callindex: 1000001</code> and sort after them, also at most three per message. Skip a block whose <code>type</code> you don't know. The block fields are listed in <a href="/docs/agent-messaging#public-timeline-block-fields">Public timeline block fields</a>.</p>
 <p>Wiro cleans the agent's text before it reaches you, in the blocks, in <code>response</code> and in every event: a link to a private address or into the agent's own system reads <code>[link removed]</code>, and a path inside the agent's system reads <code>[private detail removed]</code>. A turn in which the agent wrote nothing, older ones included, can read <code>No response from agent.</code> Show these as they are, or your own words. Public links stay as written, the Wiro model links of <a href="#your-product-shows-everything">Your product shows everything</a> included.</p>
 <h3 id="replies-the-api-answers-itself">Replies the API answers itself</h3>
 <p>Some messages are answered by Wiro itself, with no agent turn: a <code>yes</code> that applies a card or gets the card listing, a <code>yes</code> while a sign-in or project <code>connect</code> card waits, a key typed as the reply while the latest reply has one pending <code>connect</code> card and it is a <code>key</code> card with one secret field, and the others listed in <a href="#chats-without-cards">Chats Without Cards</a>. <code>Message/Send</code> then answers at once with <code>status: "agent_end"</code>, <code>agenttoken: null</code>, the answer in <code>response</code> and the outcome in <code>setupresult</code>:</p>
@@ -37029,6 +38109,14 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
                             <tr><td><code>CONNECTOR_CONNECTED</code>, <code>CONNECTOR_DISCONNECTED</code></td><td><code>Connector connected: serper</code>, <code>Connector disconnected: serper</code> (see <a href="/docs/agent-connectors">Agent Connectors</a>). When the agent moves to a workspace its Wiro project isn't in, or its Wiro project's team or organization is deleted, Wiro writes <code>Connector disconnected: wiro</code> with <code>summary.reason</code> <code>"workspace"</code> next to the <code>AGENT_CREDENTIAL_REMOVED</code> row (see <a href="/docs/agent-connectors#moving-the-agent-to-another-workspace">Moving the agent to another workspace</a>)</td></tr>
                             <tr><td><code>CONNECTOR_ACCOUNTS_SET</code></td><td><code>Connector accounts set: facebook-pages</code></td></tr>
                             <tr><td><code>CONNECTOR_REAUTH</code></td><td><code>Connector needs to be connected again: facebook-pages</code> (written by Wiro when a sign-in expired or was revoked)</td></tr>
+<tr>
+<td><code>CONNECTOR_PERMISSIONS_SET</code></td>
+<td><code>Connector permissions changed: wordpress</code> (see <a href="/docs/agent-connectors#post-useragentconnectorsetpermissions">ConnectorSetPermissions</a>); <code>Connector permissions changed: wordpress (update_post), from chat</code> when Always allow on an approval card changed a tool's values</td>
+</tr>
+<tr>
+<td><code>CONNECTOR_APPROVAL_ANSWERED</code></td>
+<td><code>Approval allow: wordpress update_post</code> (<code>allow</code>, <code>always</code> or <code>decline</code>; see <a href="/docs/agent-connectors#post-useragentmessageapprovalcardact">ApprovalCardAct</a>)</td>
+</tr>
                             <tr><td><code>AGENT_PLAN_STARTED</code>, <code>AGENT_PLAN_RENEWED</code>, <code>AGENT_PLAN_CANCELLED</code>, <code>AGENT_PLAN_RESUMED</code></td><td><code>Starter plan started: $5.00 charged</code>, <code>Starter plan renewed: $5.00 charged</code>, <code>Plan cancelled, ends 2026-06-01</code>, <code>Plan cancellation undone</code></td></tr>
                             <tr><td><code>AGENT_PLAN_ENDED</code></td><td><code>Starter plan ended: the wallet could not pay the renewal</code>, <code>Pro plan ended: it was set to cancel</code> (written by Wiro; the agent stops when its plan ends)</td></tr>
                             <tr><td><code>AGENT_PLAN_NOT_SAVED</code></td><td><code>Pro plan renewal did not finish: $24.00 charged</code>, <code>Max plan start did not finish: $100.00 charged</code> (the wallet paid and the plan could not be saved; see <a href="/docs/agent-transactions#plan-not-saved">Plan payments that did not finish</a>)</td></tr>
