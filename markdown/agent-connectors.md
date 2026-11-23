@@ -155,7 +155,7 @@ The example is shortened: real help texts and tool descriptions are longer, and 
 | `scopes` | The OAuth scopes the sign-in asks for (`oauth` and `provider-oauth` rows). |
 | `modes` | `provider-oauth` rows only: `["oauth"]` (sign-in only) or `["oauth", "key"]` (a sign-in, or a key or token instead). Empty for other rows. |
 | `wiroapp` | `true` when the vendor can also be signed in with Wiro's own app, which only Wiro's own panel uses. With your API key you always send your own app's keys. |
-| `tools` | The tools the agent gets, each `{ name, title, description, readonly, destructive }`. `name` is the tool's name before the slug prefix. A connector on a vendor's own MCP server (TikTok Ads, DataForSEO, lemlist, GitBook and HackMD) lists no tools until an agent first connects it, by sign-in or key: its `tools` is `[]` until then. |
+| `tools` | The tools the agent gets, each `{ name, title, description, readonly, destructive }`. `name` is the tool's name before the slug prefix. A connector on a vendor's own MCP server (TikTok Ads, DataForSEO, lemlist, GitBook, HackMD and Wiro AI Models) lists no tools until an agent first connects it, by sign-in, key or project: its `tools` is `[]` until then. |
 | `docs` | Optional public page copy: `{ overview, setup, revoke, limits }` (`setup` is a list of steps), or `null`. |
 | `sortorder`, `updatedat` | Display order and the row's last change (Unix seconds). |
 
@@ -972,7 +972,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
     {
       "slug": "wiro",
       "title": "Wiro AI Models",
-      "iconurl": "https://wiro.ai/images/icons/skills/wiro.svg",
+      "iconurl": "https://cdn.wiro.ai/uploads/agents/connector-wiro-icon-edaf64170f3a.webp",
       "category": "ai",
       "authtype": "headers",
       "transport": "streamable-http",
