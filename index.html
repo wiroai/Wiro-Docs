@@ -17303,7 +17303,8 @@ for the channel contract.</p>
         &quot;wallet&quot;: &quot;personal&quot;,
         &quot;minbalanceusd&quot;: 0.5,
         &quot;paused&quot;: false,
-        &quot;pausedreason&quot;: null
+        &quot;pausedreason&quot;: null,
+        &quot;planbalanceusd&quot;: 42.1
       },
       &quot;spend&quot;: {
         &quot;month&quot;: &quot;2026-05&quot;,
@@ -17474,7 +17475,7 @@ for the channel contract.</p>
 <tr>
 <td><code>usage</code></td>
 <td><code>object</code></td>
-<td>The agent's AI usage this period and the balance it runs on once the included usage is used up: <code>{ period, resetsat, includedusd, usedusd, leftusd, renewalusd, frombalanceusd, balanceusd, wallet, minbalanceusd, paused, pausedreason }</code> (see <a href="#usage-object">Usage object</a>). Also on <code>MyAgents</code> and <code>PinnedAgents</code> rows.</td>
+<td>The agent's AI usage this period and the balance it runs on once the included usage is used up: <code>{ period, resetsat, includedusd, usedusd, leftusd, renewalusd, frombalanceusd, balanceusd, wallet, minbalanceusd, paused, pausedreason }</code>, and on Detail also <code>planbalanceusd</code>, what can pay a plan (see <a href="#usage-object">Usage object</a>). Also on <code>MyAgents</code> and <code>PinnedAgents</code> rows, without <code>planbalanceusd</code>.</td>
 </tr>
 <tr>
 <td><code>spend</code></td>
@@ -17801,6 +17802,11 @@ for the channel contract.</p>
 <td><code>pausedreason</code></td>
 <td><code>string|null</code></td>
 <td><code>"plan"</code>: the agent has no active plan, because its plan ended or it never had one. It doesn't run until a plan is paid: <a href="#post-useragentrenewsubscription"><code>RenewSubscription</code></a> renews a plan that ended, and <a href="#post-useragentcreatesubscriptioncheckout"><code>CreateSubscriptionCheckout</code></a> (<code>useprepaid: true</code>) starts a new one. Adding funds doesn't start it. <code>"balance"</code>: the included usage is used up and the balance is under <code>minbalanceusd</code>; adding funds runs it again. <code>null</code> otherwise, also while a spend limit holds the agent.</td>
+</tr>
+<tr>
+<td><code>planbalanceusd</code></td>
+<td><code>number|null</code></td>
+<td><a href="#post-useragentdetail"><code>UserAgent/Detail</code></a> only: what the wallet that pays for the agent can pay a plan with, in USD with two decimals: deposits, store revenue and coupons that can pay a plan. A coupon limited to models doesn't count, so this can read less than the wallet shows. <code>null</code> when it can't be read.</td>
 </tr>
 </tbody>
 </table>

@@ -1202,7 +1202,8 @@ Retrieves full details for a single deployed agent instance, including subscript
         "wallet": "personal",
         "minbalanceusd": 0.5,
         "paused": false,
-        "pausedreason": null
+        "pausedreason": null,
+        "planbalanceusd": 42.1
       },
       "spend": {
         "month": "2026-05",
@@ -1305,7 +1306,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `tier` | `string` | The agent's plan: `"starter"`, `"pro"` or `"max"`. |
 | `nextplan` | `string\|null` | The plan the agent moves to at its next renewal, set by a move to a lower plan with [`UpgradeTier`](#post-useragentupgradetier). An agent subscribed before the three plans also shows here the plan it renews on. `null` when no change is scheduled. Also on `MyAgents` and `PinnedAgents` rows. |
 | `monthlypriceusd` | `number` | The monthly USD price the agent pays, set at deploy, at a plan change and at renewal. Mirrors `subscription.amount`. Once a plan has ended, it shows the price the plan renews at, with that plan in `tier`: [`RenewSubscription`](#post-useragentrenewsubscription) never charges more. |
-| `usage` | `object` | The agent's AI usage this period and the balance it runs on once the included usage is used up: `{ period, resetsat, includedusd, usedusd, leftusd, renewalusd, frombalanceusd, balanceusd, wallet, minbalanceusd, paused, pausedreason }` (see [Usage object](#usage-object)). Also on `MyAgents` and `PinnedAgents` rows. |
+| `usage` | `object` | The agent's AI usage this period and the balance it runs on once the included usage is used up: `{ period, resetsat, includedusd, usedusd, leftusd, renewalusd, frombalanceusd, balanceusd, wallet, minbalanceusd, paused, pausedreason }`, and on Detail also `planbalanceusd`, what can pay a plan (see [Usage object](#usage-object)). Also on `MyAgents` and `PinnedAgents` rows, without `planbalanceusd`. |
 | `spend` | `object` | What the agent cost this calendar month: `{ month, planusd, aiusageplanusd, aiusagebalanceusd, modelrunsusd, fundsaddedusd, totalusd }` (see [Spend object](#spend-object)). Also on `MyAgents` and `PinnedAgents` rows. |
 | `creditperiod` | `string` | `'YYYY-MM'` tag of the current billing period. Rolls over on subscription renewal. |
 | `creditsyncat` | `number\|null` | Unix seconds of the last monthly usage reset, which starts the current billing period (`null` until the first reset). |
@@ -1394,6 +1395,7 @@ Every provider entry under `credentials.<key>` carries:
 | `minbalanceusd` | `number` | The balance a new turn needs once the included usage is used up: `0.5`. |
 | `paused` | `boolean` | `true` while the agent can't start a new turn because it has no active plan or its balance is short (see `pausedreason`). A reached [spend limit](/docs/spend-limits) doesn't set it: `Message/Send` then answers code `93`. |
 | `pausedreason` | `string\|null` | `"plan"`: the agent has no active plan, because its plan ended or it never had one. It doesn't run until a plan is paid: [`RenewSubscription`](#post-useragentrenewsubscription) renews a plan that ended, and [`CreateSubscriptionCheckout`](#post-useragentcreatesubscriptioncheckout) (`useprepaid: true`) starts a new one. Adding funds doesn't start it. `"balance"`: the included usage is used up and the balance is under `minbalanceusd`; adding funds runs it again. `null` otherwise, also while a spend limit holds the agent. |
+| `planbalanceusd` | `number\|null` | [`UserAgent/Detail`](#post-useragentdetail) only: what the wallet that pays for the agent can pay a plan with, in USD with two decimals: deposits, store revenue and coupons that can pay a plan. A coupon limited to models doesn't count, so this can read less than the wallet shows. `null` when it can't be read. |
 
 ##### Spend object
 
