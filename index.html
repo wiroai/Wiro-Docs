@@ -30554,7 +30554,7 @@ Reply &quot;yes&quot; to allow it once, or &quot;no&quot; to decline it. It expi
 <blockquote>
 <p><strong>Agents your customers talk to.</strong> A message sent with your project API key acts as you, even when one of your users typed it. If people who must not approve the agent's actions write in your chat, hold back from Wiro the messages that are only these words while a card waits, and answer cards from your own UI with ApprovalCardAct.</p>
 </blockquote>
-<p><strong>A setup card and an approval card on the same reply.</strong> A plain <code>yes</code> or <code>always</code> applies and answers nothing: Wiro lists both, setup cards first, each under its number. A setup card a reply can't apply (Setup From Chat doesn't allow the message, the sender isn't an agent admin, the card is older than 30 minutes, or it is a <code>connect</code> card that takes values or signs in) is shown without a number, with <code>A reply can't apply this one.</code> Then <code>yes N</code> acts on one card. <code>no</code> declines the approval cards and turns the setup cards down.</p>
+<p><strong>A setup card and an approval card on the same reply.</strong> A plain <code>yes</code> or <code>always</code> applies and answers nothing: Wiro lists both, setup cards first, each under its number. A setup card a reply can't apply (Setup From Chat doesn't allow the message, the sender is neither the agent's owner nor an admin of its team, the card is older than 30 minutes, or it is a <code>connect</code> card that takes values or signs in) is shown without a number, with <code>A reply can't apply this one.</code> Then <code>yes N</code> acts on one card. <code>no</code> declines the approval cards and turns the setup cards down.</p>
 <p><strong>The listing.</strong> For one card, <code>response</code> reads:</p>
 <pre><code class="language-text">The agent asks to run this action. Nothing ran yet.
 
@@ -30718,7 +30718,7 @@ Reply &quot;yes&quot; to allow exactly this call once, or &quot;no&quot; to decl
 </tr>
 <tr>
 <td><code>✅ Always allowed: &lt;tooltitle&gt; in &lt;title&gt;.</code></td>
-<td>An agent admin's <code>always</code> in Wiro's web chat changed the tool's values.</td>
+<td>An <code>always</code> from the agent's owner or an admin of its team, in Wiro's web chat, changed the tool's values.</td>
 </tr>
 <tr>
 <td><code>Declined: &lt;tooltitle&gt; in &lt;title&gt;.</code></td>
@@ -30726,7 +30726,7 @@ Reply &quot;yes&quot; to allow exactly this call once, or &quot;no&quot; to decl
 </tr>
 <tr>
 <td><code>Only an agent admin can allow this for good.</code></td>
-<td>After the allowed-once line: an <code>always</code> in the web chat from someone who isn't an agent admin.</td>
+<td>After the allowed-once line: an <code>always</code> in the web chat from someone who is neither the agent's owner nor an admin of its team.</td>
 </tr>
 <tr>
 <td><code>A reply in this chat allows a call only once. An agent admin can allow it for good in the connector's permissions.</code></td>
@@ -30734,7 +30734,7 @@ Reply &quot;yes&quot; to allow exactly this call once, or &quot;no&quot; to decl
 </tr>
 <tr>
 <td><code>&lt;Title&gt;'s actions are listed after its first connection, so this one can't be allowed for good yet.</code>, <code>&lt;Title&gt; already has 500 action overrides, so this one could not be allowed for good.</code></td>
-<td>After the allowed-once line: an agent admin's <code>always</code> that could not change the tool's values.</td>
+<td>After the allowed-once line: an <code>always</code> from the agent's owner or an admin of its team that could not change the tool's values.</td>
 </tr>
 <tr>
 <td><code>The agent goes on with it now.</code></td>
@@ -32217,7 +32217,7 @@ and free-form room names are not authorization identifiers. Unlisted users and
 rooms are rejected, and room messages must mention the bot. To disable a
 channel, clear at least one of its <code>required_fields</code> with <code>CredentialUpsert</code>.
 Completing the required fields again reactivates it automatically.</p>
-<p><strong>Approvals in these chats.</strong> When an action of a connector needs a person's approval in a Telegram, Slack or Discord conversation, the agent asks there: its reply ends with a question that shows the action and its whole request, and an answer in that conversation of <code>yes</code> allows the action once and <code>no</code> declines it. Always allow isn't offered there: an agent admin sets it in the connector's Permissions. In a group, any member allowed to talk to the agent there answers. See <a href="/docs/agent-connectors#approvals-in-telegram-slack-and-discord">Approvals in Telegram, Slack and Discord</a>.</p>
+<p><strong>Approvals in these chats.</strong> When an action of a connector needs a person's approval in a Telegram, Slack or Discord conversation, the agent asks there: its reply ends with a question that shows the action and its whole request, and an answer in that conversation of <code>yes</code> allows the action once and <code>no</code> declines it. Always allow isn't offered there: the agent's owner or an admin of its team sets it in the connector's Permissions. In a group, any member allowed to talk to the agent there answers. See <a href="/docs/agent-connectors#approvals-in-telegram-slack-and-discord">Approvals in Telegram, Slack and Discord</a>.</p>
 <h2 id="credential-registry-endpoints">Credential Registry Endpoints</h2>
 <p>These endpoints are <strong>public, so no authentication is required</strong>. They return data straight from the credential registry, which is useful when you want to render a credential's form without a deployed useragent (e.g. inside an onboarding wizard).</p>
 <h3 id="post-credentialslist"><strong>POST</strong> /Credentials/List</h3>
@@ -39408,7 +39408,7 @@ for e in cron_runs:
                       <li>Group messages are accepted only in configured <code>groups[].chatid</code> rooms and only from that room's <code>allowedusers</code>.</li>
                       <li>Group turns must mention the bot.</li>
                       <li>Usernames and display names are never accepted as authorization values.</li>
-                      <li>Approvals: when a connector action needs a person's approval, the agent's reply ends with a question that shows the action and its whole request. Reply <code>yes</code> to allow it once or <code>no</code> to decline it; in a group, any allowed member answers, by replying to the question or mentioning the bot. Always allow isn't offered in Telegram: an agent admin sets it in the connector's Permissions. See <a href="/docs/agent-connectors#approvals-in-telegram-slack-and-discord">Approvals in Telegram, Slack and Discord</a>.</li>
+                      <li>Approvals: when a connector action needs a person's approval, the agent's reply ends with a question that shows the action and its whole request. Reply <code>yes</code> to allow it once or <code>no</code> to decline it; in a group, any allowed member answers, by replying to the question or mentioning the bot. Always allow isn't offered in Telegram: the agent's owner or an admin of its team sets it in the connector's Permissions. See <a href="/docs/agent-connectors#approvals-in-telegram-slack-and-discord">Approvals in Telegram, Slack and Discord</a>.</li>
                       <li>Telegram is optional. Clear either <code>bottoken</code> or <code>allowedusers</code> with <code>CredentialUpsert</code> to disable it; completing both fields reactivates it.</li>
                     </ul>
                   </section>

@@ -1402,7 +1402,7 @@ One reply answers one approval. When it starts the agent's turn, that turn is th
 
 > **Agents your customers talk to.** A message sent with your project API key acts as you, even when one of your users typed it. If people who must not approve the agent's actions write in your chat, hold back from Wiro the messages that are only these words while a card waits, and answer cards from your own UI with ApprovalCardAct.
 
-**A setup card and an approval card on the same reply.** A plain `yes` or `always` applies and answers nothing: Wiro lists both, setup cards first, each under its number. A setup card a reply can't apply (Setup From Chat doesn't allow the message, the sender isn't an agent admin, the card is older than 30 minutes, or it is a `connect` card that takes values or signs in) is shown without a number, with `A reply can't apply this one.` Then `yes N` acts on one card. `no` declines the approval cards and turns the setup cards down.
+**A setup card and an approval card on the same reply.** A plain `yes` or `always` applies and answers nothing: Wiro lists both, setup cards first, each under its number. A setup card a reply can't apply (Setup From Chat doesn't allow the message, the sender is neither the agent's owner nor an admin of its team, the card is older than 30 minutes, or it is a `connect` card that takes values or signs in) is shown without a number, with `A reply can't apply this one.` Then `yes N` acts on one card. `no` declines the approval cards and turns the setup cards down.
 
 **The listing.** For one card, `response` reads:
 
@@ -1558,11 +1558,11 @@ These replies cost nothing and start no agent turn; the turn an Allow starts is 
 | Line | When |
 |------|------|
 | `✅ Allowed once: <tooltitle> in <title>.` | The call was allowed once. |
-| `✅ Always allowed: <tooltitle> in <title>.` | An agent admin's `always` in Wiro's web chat changed the tool's values. |
+| `✅ Always allowed: <tooltitle> in <title>.` | An `always` from the agent's owner or an admin of its team, in Wiro's web chat, changed the tool's values. |
 | `Declined: <tooltitle> in <title>.` | A card was declined, one line per card. |
-| `Only an agent admin can allow this for good.` | After the allowed-once line: an `always` in the web chat from someone who isn't an agent admin. |
+| `Only an agent admin can allow this for good.` | After the allowed-once line: an `always` in the web chat from someone who is neither the agent's owner nor an admin of its team. |
 | `A reply in this chat allows a call only once. An agent admin can allow it for good in the connector's permissions.` | After the allowed-once line: an `always` sent with a project API key. |
-| `<Title>'s actions are listed after its first connection, so this one can't be allowed for good yet.`, `<Title> already has 500 action overrides, so this one could not be allowed for good.` | After the allowed-once line: an agent admin's `always` that could not change the tool's values. |
+| `<Title>'s actions are listed after its first connection, so this one can't be allowed for good yet.`, `<Title> already has 500 action overrides, so this one could not be allowed for good.` | After the allowed-once line: an `always` from the agent's owner or an admin of its team that could not change the tool's values. |
 | `The agent goes on with it now.` | The turn that runs the call is queued. |
 | `The agent isn't running, so nothing ran. It can use this approval if it's asked again in this chat within an hour.` | The agent isn't running. |
 | The sentence a [`Message/Send`](/docs/agent-messaging#post-useragentmessagesend) would refuse a turn with | The agent can't take a turn now, for its plan, a spend limit or the balance. The approval holds for an hour. |

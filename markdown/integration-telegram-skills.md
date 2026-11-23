@@ -136,8 +136,8 @@ the shared direct-message conversation.
   reply ends with a question that shows the action and its whole request.
   Reply `yes` to allow it once or `no` to decline it; in a group, any allowed
   member answers, by replying to the question or mentioning the bot. Always
-  allow isn't offered in Telegram: an agent admin sets it in the connector's
-  Permissions. See [Approvals in Telegram, Slack and Discord](/docs/agent-connectors#approvals-in-telegram-slack-and-discord).
+  allow isn't offered in Telegram: the agent's owner or an admin of its team
+  sets it in the connector's Permissions. See [Approvals in Telegram, Slack and Discord](/docs/agent-connectors#approvals-in-telegram-slack-and-discord).
 - Telegram is optional. Clear either `bottoken` or `allowedusers` with
   `CredentialUpsert` to disable it; completing both fields reactivates it.
 
