@@ -16840,7 +16840,7 @@ Retrieves full details for a single deployed agent instance, including subscript
           "requires_credentials": [],
           "requires_connectors": ["facebook-pages", "instagram", "linkedin", "tiktok", "twitter"],
           "_source": "skill-bundle",
-          "_editable": true,
+          "_editable": false,
           "_edited": false,
           "_owner_skills": ["util-social-posting-common"],
           "_skill_off": false,
@@ -17061,7 +17061,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 |-------|------|-------------|
 | `credentials` | `object` | Per-provider credential map keyed by credential name (`telegram`, `twilio-voice`, `wiro`, `var-support-email`, …). Each provider object carries its saved field values, every saved secret read as the mask `"••••••••"`, plus a fixed metadata header (see "Credential object shape" below). |
 | `customskills` | `array` | Composed list of preset strategies and custom skills that aren't Scheduled Tasks (writable instructions). Each entry: `{ key, description, value, enabled, interval: null, requires_credentials, requires_connectors, _source, _editable, _edited, _user_created? }`. `requires_credentials` (`string[]`) lists the channels and settings the entry needs, such as `telegram` or `wiro`; one of them set up is enough. `requires_connectors` (`string[]`) lists the Connectors a scheduled task needs, by catalog slug; one of them connected is enough. `_source` ∈ `"preset-strategy"` \| `"user-created"`. |
-| `scheduledskills` | `array` | Composed list of Scheduled Tasks (`cs-cron-*`). Same shape as `customskills` plus `interval` (cron expression). A task whose `requires_connectors` isn't empty runs only while one of those Connectors is connected. `_source` ∈ `"skill-bundle"` (a Scheduled Task the template or a skill brings) \| `"user-created"`. A scheduled task that skills bring also carries the fields in [Scheduled task skill fields](#scheduled-task-skill-fields). |
+| `scheduledskills` | `array` | Composed list of Scheduled Tasks (`cs-cron-*`). Same shape as `customskills` plus `interval` (cron expression). A task whose `requires_connectors` isn't empty runs only while one of those Connectors is connected. `_source` ∈ `"skill-bundle"` (a Scheduled Task the template or a skill brings) \| `"user-created"`. `_editable` is `false` on a Scheduled Task the agent's template brings with a text of its own: `value` is the template's text, the one the agent runs, and [`CustomSkillUpsert`](#post-useragentcustomskillupsert) refuses another; its `enabled` and `interval` are still yours. A scheduled task that skills bring also carries the fields in [Scheduled task skill fields](#scheduled-task-skill-fields). |
 | `skills` | `array<object>` | Currently-enabled Skills (`util-*`). Each entry: `{ name, enabled: true, _edited, _user_created }`. Toggle via `SkillsApply` (single-skill or batch). Note: object array (not string array). |
 | `skillsmeta` | `object` | Inline registry snapshot keyed by skill name: `title`, `icon`, `brand_color`, `category`, `docs_url`, `credential_key`, `requires_credentials`, `user_invocable`, `description`. Lets the panel render skill chips without a `Skills/List` round-trip. |
 | `communicationChannels` | `array` | Every external channel with this agent's state: `id`, `title`, `credentialkey`, `required_fields`, `capabilities`, `schema`, `enabled`, `configured` and `missingfields`. Also on the `Deploy` and `Update` responses; not on `MyAgents` / `PinnedAgents` rows. |
@@ -17774,12 +17774,12 @@ The endpoint auto-normalises the skillkey to its canonical form. Bare slugs beco
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid |
 | `skillkey` | string | Yes | The skill key. Strategies use bare names (e.g. `"content-tone"` → stored as `cs-content-tone`). For a scheduled task, send its full key (e.g. `"cs-cron-social-content-scanner"`), or a bare slug together with `interval` (`"weekly-report"` → `cs-cron-weekly-report`). A `cron-<slug>` key becomes `cs-cron-<slug>` too, with or without `interval`. |
-| `value` | string | No | Strategy body / scheduled task prompt text. On a template agent, a scheduled task the template brings runs the template's text: a `value` sent for it is saved and shows on Detail and in CustomSkillHistory, but the agent doesn't use it. Every other skill and task runs its saved text, a custom build's bundled tasks included. |
+| `value` | string | No | Strategy body / scheduled task prompt text. On a template agent, a scheduled task the template brings with a text of its own runs that text (`_editable: false` on Detail), so a different `value` is refused and nothing in the call is saved: `This scheduled task comes with the agent's template, so its instructions cannot be changed. You can still turn it on or off and change its schedule.` The template's text sent back, as Detail shows it, is no change, and the call's `enabled` and `interval` still apply. Every other skill and task runs its saved text, a custom build's bundled tasks included. |
 | `interval` | string | No | Cron expression (e.g. `"0 */4 * * *"`). Only persisted on `cs-cron-*` rows. On a scheduled task it must be a schedule the agent can run (see below). |
 | `enabled` | boolean | No | Turn the skill on or off. **Writable for both strategies (`cs-*`) and crons (`cs-cron-*`)**. A disabled strategy is suppressed end-to-end (it still appears in the list, but the agent never loads it). Defaults to `true` on insert. |
 | `description` | string | No | Only persisted for user-created skills (preset descriptions are template-owned). On a preset row, sending the current description back unchanged is ignored; a different text is rejected with `customskill-preset-description-not-editable`. |
 
-> **Text edits reach a running agent without a restart.** A change to the `value` or `description` of an existing skill or task goes to a running agent right away, and the agent keeps running; a starting agent restarts to load it. A new skill or task, a new `interval`, or turning one on or off with `enabled` restarts a starting or running agent, and so does any change to `cs-approval-policy`. If the running agent can't take the new text, Wiro restarts it instead. `restarting` in the response says whether the call restarted the agent. A template's own scheduled task is the exception: its text never reaches the agent.
+> **Text edits reach a running agent without a restart.** A change to the `value` or `description` of an existing skill or task goes to a running agent right away, and the agent keeps running; a starting agent restarts to load it. A new skill or task, a new `interval`, or turning one on or off with `enabled` restarts a starting or running agent, and so does any change to `cs-approval-policy`. If the running agent can't take the new text, Wiro restarts it instead. `restarting` in the response says whether the call restarted the agent. A template's own scheduled task takes no new text (see `value`).
 
 > **Schedules the agent can't run are refused.** A scheduled task's `interval` is a cron expression with five fields, `minute hour day month weekday`, such as `0 9 * * 1-5`. A schedule the agent can't run, or one whose date never comes, such as 30 February, is refused before anything is saved, and the error says what is wrong and what to write: `0 25 * * *` gets `This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.`, and `0 0 30 2 *` gets `This schedule never comes up: February has no 30th. Pick a day February has, such as 28.` Only a schedule sent in the request is checked, so a task that already has one can still be edited or turned on and off.
 
@@ -29812,7 +29812,7 @@ Once you've deployed a useragent, its current custom skills live under `customsk
       "requires_credentials": [],
       "requires_connectors": ["facebook-pages", "instagram", "linkedin", "tiktok", "twitter"],
       "_source": "skill-bundle",
-      "_editable": true,
+      "_editable": false,
       "_edited": false
     },
     {
@@ -29848,7 +29848,7 @@ Once you've deployed a useragent, its current custom skills live under `customsk
 | `requires_connectors` | string[] | Scheduled tasks only (`[]` on preferences): the connectors the task works with, by catalog slug. The task runs only while at least one of them is connected, that is, its row on [`POST /UserAgent/ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist) has `status: "connected"` and `catalogstatus: "active"`; until then the agent skips every run. This gate never changes `enabled`: a task waiting for a connector can still read `enabled: true`. `[]` means no connector gate; a task you add with `CustomSkillUpsert` has `[]`. |
 | `requires_credentials` | string[] | The channels and settings the task needs, by credential key, such as `telegram`: one of them set up is enough. Saving or clearing one of them turns the task on or off. Usually `[]`. |
 | `_source` | string | `preset-strategy` (editable preference), `skill-bundle` (a scheduled task that comes with the agent template; on a custom build, any row the agent came with, such as Approval Policy), or `user-created` (a row added via `CustomSkillUpsert`). |
-| `_editable` | boolean | `true` for preferences, your own rows and the scheduled tasks the template marks editable, `false` for its other scheduled tasks. On a template agent, every scheduled task that came with the template runs the template's text, whatever `value` you write; a custom build runs the text you write. |
+| `_editable` | boolean | Whether the row takes a new `value`. `false` on a scheduled task that came with the agent's template with a text of its own: the agent runs the template's text, which `value` shows, and `CustomSkillUpsert` refuses a different one; its `enabled` and `interval` are still yours. `true` for preferences, your own rows, a template's task without a text of its own, and every row of a custom build, which runs the text you write. |
 | `_user_created` | boolean | `true` on rows you created (`_source: "user-created"`). A template's own rows leave it out; on a custom build, the rows the agent came with read `false`. |
 
 ### Understanding `_source`
@@ -29856,7 +29856,7 @@ Once you've deployed a useragent, its current custom skills live under `customsk
 Agent responses merge three sources into a single set of custom-skill rows:
 
 1. **Preset strategies** (`_source: "preset-strategy"`): preferences defined by the agent preset (e.g. `cs-content-tone`, `cs-ad-strategy`). You can write `value`.
-2. **Bundled crons** (`_source: "skill-bundle"`): scheduled tasks that come with the agent template, such as a daily performance report. A task that works with connectors runs only while one of them is connected, and that never changes its `enabled`. You can write `interval` and `enabled`. A `value` you write is saved, but on a template agent the task keeps running the template's instruction text. On a custom build, the rows the agent came with, such as the tasks its Skills bring, read `skill-bundle` too and run the text you write.
+2. **Bundled crons** (`_source: "skill-bundle"`): scheduled tasks that come with the agent template, such as a daily performance report. A task that works with connectors runs only while one of them is connected, and that never changes its `enabled`. You can write `interval` and `enabled`. On a template agent, the task runs the template's instruction text, which `value` shows with `_editable: false`, and `CustomSkillUpsert` refuses a different `value`; the same text sent back changes nothing. On a custom build, the rows the agent came with, such as the tasks its Skills bring, read `skill-bundle` too and run the text you write.
 3. **User-created rows** (`_source: "user-created"`): entries added via `POST /UserAgent/CustomSkillUpsert`. You can write all fields. Crons are flagged via `interval` (or an explicit `cs-cron-` prefix), not `usercreated`.
 
 ## Updating Preference Skills
@@ -29897,7 +29897,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
 
 Scheduled tasks run on a cron schedule: bundled ones (`_source: "skill-bundle"`) come with the agent template, and a new agent starts with them turned on (`enabled: true`); one that works with connectors runs only while one of them is connected. User-created ones (`_source: "user-created"`) are added at any time.
 
-> **On a template agent, bundled crons run the template's text.** Write `enabled` and `interval`: a `value` you send is saved and shown on `UserAgent/Detail`, but the agent keeps running the task body (`value`) the template has. To change **what** a bundled scheduled task does, edit the paired preference skill (e.g. `content-tone` is read by `cs-cron-social-content-scanner` at runtime). For user-created crons, and for every cron of a custom build, all three (`value`, `interval`, `enabled`) take effect.
+> **On a template agent, bundled crons run the template's text.** Write `enabled` and `interval`. A different `value` is refused, and nothing in the call is saved: `This scheduled task comes with the agent's template, so its instructions cannot be changed. You can still turn it on or off and change its schedule.` The template's text sent back as `UserAgent/Detail` shows it is no change, so a client that writes back every field it read still works. To change **what** a bundled scheduled task does, edit the paired preference skill (e.g. `content-tone` is read by `cs-cron-social-content-scanner` at runtime), or turn the task off and add your own. For user-created crons, and for every cron of a custom build, all three (`value`, `interval`, `enabled`) take effect.
 
 ### Example: Change a bundled cron's frequency
 
@@ -30416,7 +30416,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialProjectBind" \
 
 | Operation | Endpoint | Allowed on preset strategy (`_source: preset-strategy`) | Allowed on skill-bundled cron (`_source: skill-bundle`) | Allowed on user-created cron (`_source: user-created`) |
 |---|---|---|---|---|
-| Write `value` | `CustomSkillUpsert` | Yes | Saved and shown, but a template agent runs the template's text (a custom build runs yours) | Yes |
+| Write `value` | `CustomSkillUpsert` | Yes | **No on a template agent: a different text is refused** (the template's text sent back is no change); yes on a custom build | Yes |
 | Write `interval` | `CustomSkillUpsert` | **No: silently dropped** (strategies aren't scheduled) | Yes | Yes |
 | Write `enabled` | `CustomSkillUpsert` | Yes (disabling suppresses the strategy end-to-end) | Yes | Yes |
 | Write `description` | `CustomSkillUpsert` | **No: a changed text is rejected** with `customskill-preset-description-not-editable` (the current text is ignored) | **No: a changed text is rejected** with `customskill-preset-description-not-editable` (the current text is ignored) | Yes |

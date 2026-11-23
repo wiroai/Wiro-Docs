@@ -17211,7 +17211,7 @@ for the channel contract.</p>
           &quot;requires_credentials&quot;: [],
           &quot;requires_connectors&quot;: [&quot;facebook-pages&quot;, &quot;instagram&quot;, &quot;linkedin&quot;, &quot;tiktok&quot;, &quot;twitter&quot;],
           &quot;_source&quot;: &quot;skill-bundle&quot;,
-          &quot;_editable&quot;: true,
+          &quot;_editable&quot;: false,
           &quot;_edited&quot;: false,
           &quot;_owner_skills&quot;: [&quot;util-social-posting-common&quot;],
           &quot;_skill_off&quot;: false,
@@ -17590,7 +17590,7 @@ for the channel contract.</p>
 <tr>
 <td><code>scheduledskills</code></td>
 <td><code>array</code></td>
-<td>Composed list of Scheduled Tasks (<code>cs-cron-*</code>). Same shape as <code>customskills</code> plus <code>interval</code> (cron expression). A task whose <code>requires_connectors</code> isn't empty runs only while one of those Connectors is connected. <code>_source</code> ∈ <code>"skill-bundle"</code> (a Scheduled Task the template or a skill brings) | <code>"user-created"</code>. A scheduled task that skills bring also carries the fields in <a href="#scheduled-task-skill-fields">Scheduled task skill fields</a>.</td>
+<td>Composed list of Scheduled Tasks (<code>cs-cron-*</code>). Same shape as <code>customskills</code> plus <code>interval</code> (cron expression). A task whose <code>requires_connectors</code> isn't empty runs only while one of those Connectors is connected. <code>_source</code> ∈ <code>"skill-bundle"</code> (a Scheduled Task the template or a skill brings) | <code>"user-created"</code>. <code>_editable</code> is <code>false</code> on a Scheduled Task the agent's template brings with a text of its own: <code>value</code> is the template's text, the one the agent runs, and <a href="#post-useragentcustomskillupsert"><code>CustomSkillUpsert</code></a> refuses another; its <code>enabled</code> and <code>interval</code> are still yours. A scheduled task that skills bring also carries the fields in <a href="#scheduled-task-skill-fields">Scheduled task skill fields</a>.</td>
 </tr>
 <tr>
 <td><code>skills</code></td>
@@ -19180,7 +19180,7 @@ channel-enable endpoint or persisted switch.</p>
 <td><code>value</code></td>
 <td>string</td>
 <td>No</td>
-<td>Strategy body / scheduled task prompt text. On a template agent, a scheduled task the template brings runs the template's text: a <code>value</code> sent for it is saved and shows on Detail and in CustomSkillHistory, but the agent doesn't use it. Every other skill and task runs its saved text, a custom build's bundled tasks included.</td>
+<td>Strategy body / scheduled task prompt text. On a template agent, a scheduled task the template brings with a text of its own runs that text (<code>_editable: false</code> on Detail), so a different <code>value</code> is refused and nothing in the call is saved: <code>This scheduled task comes with the agent's template, so its instructions cannot be changed. You can still turn it on or off and change its schedule.</code> The template's text sent back, as Detail shows it, is no change, and the call's <code>enabled</code> and <code>interval</code> still apply. Every other skill and task runs its saved text, a custom build's bundled tasks included.</td>
 </tr>
 <tr>
 <td><code>interval</code></td>
@@ -19205,7 +19205,7 @@ channel-enable endpoint or persisted switch.</p>
 </div>
 </div>
 <blockquote>
-<p><strong>Text edits reach a running agent without a restart.</strong> A change to the <code>value</code> or <code>description</code> of an existing skill or task goes to a running agent right away, and the agent keeps running; a starting agent restarts to load it. A new skill or task, a new <code>interval</code>, or turning one on or off with <code>enabled</code> restarts a starting or running agent, and so does any change to <code>cs-approval-policy</code>. If the running agent can't take the new text, Wiro restarts it instead. <code>restarting</code> in the response says whether the call restarted the agent. A template's own scheduled task is the exception: its text never reaches the agent.</p>
+<p><strong>Text edits reach a running agent without a restart.</strong> A change to the <code>value</code> or <code>description</code> of an existing skill or task goes to a running agent right away, and the agent keeps running; a starting agent restarts to load it. A new skill or task, a new <code>interval</code>, or turning one on or off with <code>enabled</code> restarts a starting or running agent, and so does any change to <code>cs-approval-policy</code>. If the running agent can't take the new text, Wiro restarts it instead. <code>restarting</code> in the response says whether the call restarted the agent. A template's own scheduled task takes no new text (see <code>value</code>).</p>
 <p><strong>Schedules the agent can't run are refused.</strong> A scheduled task's <code>interval</code> is a cron expression with five fields, <code>minute hour day month weekday</code>, such as <code>0 9 * * 1-5</code>. A schedule the agent can't run, or one whose date never comes, such as 30 February, is refused before anything is saved, and the error says what is wrong and what to write: <code>0 25 * * *</code> gets <code>This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.</code>, and <code>0 0 30 2 *</code> gets <code>This schedule never comes up: February has no 30th. Pick a day February has, such as 28.</code> Only a schedule sent in the request is checked, so a task that already has one can still be edited or turned on and off.</p>
 <p><strong>A task that is on doesn't always run.</strong> A scheduled task runs only while its gates are open: one of the Connectors in its <code>requires_connectors</code> connected, one of the channels or settings in its <code>requires_credentials</code> set up, and, for a task Wiro's skills bring, one of those Skills on (see <a href="#scheduled-task-skill-fields">Scheduled task skill fields</a>). An empty list is no gate, and <code>enabled: true</code> doesn't lift one. <code>CustomSkillUpsert</code> takes neither list: a task you create here has none and runs on its schedule. Saving or clearing a credential sets <code>enabled</code> on every custom skill and scheduled task whose own <code>requires_credentials</code> names it: on while one of the credentials it lists is set up, off while none is, whatever <code>enabled</code> was before.</p>
 </blockquote>
@@ -36036,7 +36036,7 @@ complete. These channels (Telegram, Slack, Discord) are not Skills and do not af
       &quot;requires_credentials&quot;: [],
       &quot;requires_connectors&quot;: [&quot;facebook-pages&quot;, &quot;instagram&quot;, &quot;linkedin&quot;, &quot;tiktok&quot;, &quot;twitter&quot;],
       &quot;_source&quot;: &quot;skill-bundle&quot;,
-      &quot;_editable&quot;: true,
+      &quot;_editable&quot;: false,
       &quot;_edited&quot;: false
     },
     {
@@ -36116,7 +36116,7 @@ complete. These channels (Telegram, Slack, Discord) are not Skills and do not af
 <tr>
 <td><code>_editable</code></td>
 <td>boolean</td>
-<td><code>true</code> for preferences, your own rows and the scheduled tasks the template marks editable, <code>false</code> for its other scheduled tasks. On a template agent, every scheduled task that came with the template runs the template's text, whatever <code>value</code> you write; a custom build runs the text you write.</td>
+<td>Whether the row takes a new <code>value</code>. <code>false</code> on a scheduled task that came with the agent's template with a text of its own: the agent runs the template's text, which <code>value</code> shows, and <code>CustomSkillUpsert</code> refuses a different one; its <code>enabled</code> and <code>interval</code> are still yours. <code>true</code> for preferences, your own rows, a template's task without a text of its own, and every row of a custom build, which runs the text you write.</td>
 </tr>
 <tr>
 <td><code>_user_created</code></td>
@@ -36131,7 +36131,7 @@ complete. These channels (Telegram, Slack, Discord) are not Skills and do not af
 <p>Agent responses merge three sources into a single set of custom-skill rows:</p>
 <ol>
 <li><strong>Preset strategies</strong> (<code>_source: "preset-strategy"</code>): preferences defined by the agent preset (e.g. <code>cs-content-tone</code>, <code>cs-ad-strategy</code>). You can write <code>value</code>.</li>
-<li><strong>Bundled crons</strong> (<code>_source: "skill-bundle"</code>): scheduled tasks that come with the agent template, such as a daily performance report. A task that works with connectors runs only while one of them is connected, and that never changes its <code>enabled</code>. You can write <code>interval</code> and <code>enabled</code>. A <code>value</code> you write is saved, but on a template agent the task keeps running the template's instruction text. On a custom build, the rows the agent came with, such as the tasks its Skills bring, read <code>skill-bundle</code> too and run the text you write.</li>
+<li><strong>Bundled crons</strong> (<code>_source: "skill-bundle"</code>): scheduled tasks that come with the agent template, such as a daily performance report. A task that works with connectors runs only while one of them is connected, and that never changes its <code>enabled</code>. You can write <code>interval</code> and <code>enabled</code>. On a template agent, the task runs the template's instruction text, which <code>value</code> shows with <code>_editable: false</code>, and <code>CustomSkillUpsert</code> refuses a different <code>value</code>; the same text sent back changes nothing. On a custom build, the rows the agent came with, such as the tasks its Skills bring, read <code>skill-bundle</code> too and run the text you write.</li>
 <li><strong>User-created rows</strong> (<code>_source: "user-created"</code>): entries added via <code>POST /UserAgent/CustomSkillUpsert</code>. You can write all fields. Crons are flagged via <code>interval</code> (or an explicit <code>cs-cron-</code> prefix), not <code>usercreated</code>.</li>
 </ol>
 <h2 id="updating-preference-skills">Updating Preference Skills</h2>
@@ -36161,7 +36161,7 @@ complete. These channels (Telegram, Slack, Discord) are not Skills and do not af
 <h2 id="managing-scheduled-tasks">Managing Scheduled Tasks</h2>
 <p>Scheduled tasks run on a cron schedule: bundled ones (<code>_source: "skill-bundle"</code>) come with the agent template, and a new agent starts with them turned on (<code>enabled: true</code>); one that works with connectors runs only while one of them is connected. User-created ones (<code>_source: "user-created"</code>) are added at any time.</p>
 <blockquote>
-<p><strong>On a template agent, bundled crons run the template's text.</strong> Write <code>enabled</code> and <code>interval</code>: a <code>value</code> you send is saved and shown on <code>UserAgent/Detail</code>, but the agent keeps running the task body (<code>value</code>) the template has. To change <strong>what</strong> a bundled scheduled task does, edit the paired preference skill (e.g. <code>content-tone</code> is read by <code>cs-cron-social-content-scanner</code> at runtime). For user-created crons, and for every cron of a custom build, all three (<code>value</code>, <code>interval</code>, <code>enabled</code>) take effect.</p>
+<p><strong>On a template agent, bundled crons run the template's text.</strong> Write <code>enabled</code> and <code>interval</code>. A different <code>value</code> is refused, and nothing in the call is saved: <code>This scheduled task comes with the agent's template, so its instructions cannot be changed. You can still turn it on or off and change its schedule.</code> The template's text sent back as <code>UserAgent/Detail</code> shows it is no change, so a client that writes back every field it read still works. To change <strong>what</strong> a bundled scheduled task does, edit the paired preference skill (e.g. <code>content-tone</code> is read by <code>cs-cron-social-content-scanner</code> at runtime), or turn the task off and add your own. For user-created crons, and for every cron of a custom build, all three (<code>value</code>, <code>interval</code>, <code>enabled</code>) take effect.</p>
 </blockquote>
 <h3 id="example-change-a-bundled-crons-frequency">Example: Change a bundled cron's frequency</h3>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
@@ -36950,7 +36950,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <td>Write <code>value</code></td>
 <td><code>CustomSkillUpsert</code></td>
 <td>Yes</td>
-<td>Saved and shown, but a template agent runs the template's text (a custom build runs yours)</td>
+<td><strong>No on a template agent: a different text is refused</strong> (the template's text sent back is no change); yes on a custom build</td>
 <td>Yes</td>
 </tr>
 <tr>
