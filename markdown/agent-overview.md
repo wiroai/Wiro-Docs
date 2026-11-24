@@ -133,7 +133,7 @@ What pays a plan is the balance's deposits and store revenue, and its coupon cre
 
 Every plan payment also counts on [Spend Limits](/docs/spend-limits): the account's or team's limit and the `agent` surface's, automatic renewals included. When a new plan, a move to a higher plan or a renewal you ask for would take spending over one of them, `Deploy`, `CreateSubscriptionCheckout`, `UpgradeTier` and `RenewSubscription` are refused with code `93` and the limit's message, and nothing is created or charged. An automatic renewal is counted, never refused.
 
-A plan that was paid by card before agent plans moved to the balance keeps its current period as paid. At the end of that period it renews from the balance like every other plan; when the balance can't pay the renewal, it gets the same day to add funds before it ends. Until then its `subscription` reads `provider: "stripe"` with `nextprovider: "prepaid"`, and a move to a higher plan is paid from the balance. A card plan whose period ends within 7 days of the email announcing its move to the balance renews once more by card; until it switches, its `subscription` reads `provider: "stripe"` with `nextprovider: null`. The switch itself charges and refunds nothing. Such a plan can also be cancelled with [`CancelSubscription`](#post-useragentcancelsubscription): it then ends at the end of its period instead of switching.
+A plan that was paid by card before agent plans moved to the balance keeps its current period as paid. Until that period ends, its `subscription` reads `provider: "stripe"` with `nextprovider: "prepaid"`, and a move to a higher plan is paid from the balance. At the end of the period the plan switches to the balance (`provider: "prepaid"`) and renews from it like every other plan: when the balance can't pay the renewal, it gets up to one day to add funds before it ends. A card plan whose period ends within 7 days of the email announcing its move to the balance renews once more by card; until it switches, its `subscription` reads `provider: "stripe"` with `nextprovider: null`. The switch itself charges and refunds nothing. Such a plan can also be cancelled with [`CancelSubscription`](#post-useragentcancelsubscription): it then ends at the end of its period instead of switching.
 
 ### Adding Funds
 
@@ -890,10 +890,11 @@ Lists all agent instances deployed under your account.
       "nextplan": null,
       "monthlypriceusd": 30,
       "creditperiod": "2026-05",
-      "creditsyncat": 1714694410,
+      "creditsyncat": 1777680610,
       "usage": {
         "period": "2026-05",
         "resetsat": 1780272000,
+        "renewaldue": false,
         "includedusd": 30,
         "usedusd": 12.4,
         "leftusd": 17.6,
@@ -925,7 +926,7 @@ Lists all agent instances deployed under your account.
         "currency": "usd",
         "currentperiodend": 1780272000,
         "renewaldate": "2026-06-01T00:00:00.000Z",
-        "daysremaining": 62,
+        "daysremaining": 28,
         "pendingdowngrade": null,
         "provider": "prepaid"
       },
@@ -1189,10 +1190,11 @@ Retrieves full details for a single deployed agent instance, including subscript
       },
       "monthlypriceusd": 30,
       "creditperiod": "2026-05",
-      "creditsyncat": 1714694410,
+      "creditsyncat": 1777680610,
       "usage": {
         "period": "2026-05",
         "resetsat": 1780272000,
+        "renewaldue": false,
         "includedusd": 30,
         "usedusd": 12.4,
         "leftusd": 17.6,
@@ -1306,10 +1308,10 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `tier` | `string` | The agent's plan: `"starter"`, `"pro"` or `"max"`. |
 | `nextplan` | `string\|null` | The plan the agent moves to at its next renewal, set by a move to a lower plan with [`UpgradeTier`](#post-useragentupgradetier). An agent subscribed before the three plans also shows here the plan it renews on. `null` when no change is scheduled. Also on `MyAgents` and `PinnedAgents` rows. |
 | `monthlypriceusd` | `number` | The monthly USD price the agent pays, set at deploy, at a plan change and at renewal. Mirrors `subscription.amount`. Once a plan has ended, it shows the price the plan renews at, with that plan in `tier`: [`RenewSubscription`](#post-useragentrenewsubscription) never charges more. |
-| `usage` | `object` | The agent's AI usage this period and the balance it runs on once the included usage is used up: `{ period, resetsat, includedusd, usedusd, leftusd, renewalusd, frombalanceusd, balanceusd, wallet, minbalanceusd, paused, pausedreason }`, and on Detail also `planbalanceusd`, what can pay a plan (see [Usage object](#usage-object)). Also on `MyAgents` and `PinnedAgents` rows, without `planbalanceusd`. |
+| `usage` | `object` | The agent's AI usage this period and the balance it runs on once the included usage is used up: `{ period, resetsat, renewaldue, includedusd, usedusd, leftusd, renewalusd, frombalanceusd, balanceusd, wallet, minbalanceusd, paused, pausedreason }`, and on Detail also `planbalanceusd`, what can pay a plan (see [Usage object](#usage-object)). Also on `MyAgents` and `PinnedAgents` rows, without `planbalanceusd`. |
 | `spend` | `object` | What the agent cost this calendar month: `{ month, planusd, aiusageplanusd, aiusagebalanceusd, modelrunsusd, fundsaddedusd, totalusd }` (see [Spend object](#spend-object)). Also on `MyAgents` and `PinnedAgents` rows. |
 | `creditperiod` | `string` | `'YYYY-MM'` tag (UTC) of the month the plan last started or renewed in. Periods run 30 days, so two periods in a row can carry the same tag. |
-| `creditsyncat` | `number\|null` | Unix seconds of the last monthly usage reset, which starts the current billing period (`null` until the first reset). |
+| `creditsyncat` | `number\|null` | Unix seconds of the last usage reset: when the plan last started or renewed, or when it ended (`null` until the first reset). A renewal runs at its period end or up to a day after it (see [Plans](#plans)), and the new period still starts at that period end, so this can be up to a day after the current period's start. |
 | `tokenRates` | `object\|null` | Per-model token rates, in cents per 1,000,000 tokens. Shape: `{ default_model, fallback_rate, models: { "<slug>": { input_per_1m, output_per_1m, cached_input_per_1m?, cache_write_per_1m?, selectable?, label?, tier? } } }`. Each turn's AI usage is priced from these rates. See [Token Billing](#token-billing). `null` only on registry-read failure. |
 | `agentModel` | `object` | The resolved model slugs this instance runs: `{ chatModel, cronModel, voicePrepModel, voicePostcallModel }` (camelCase). Each falls back to the platform default when the operator hasn't overridden it. Change them via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) using the lowercase keys `chatmodel` / `cronmodel` / `voiceprepmodel` / `voicepostcallmodel`. |
 | `enabledCommands` | `array<string>\|null` | The in-chat slash-command allowlist (camelCase read). `null` = the operator never customized it, so **all** slash commands are available. An array (including `[]`) is an explicit allowlist of command keys (no leading slash); `[]` hides the slash-command menu. Write it via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) with the lowercase `enabledcommands` key. Also present on `MyAgents` / `PinnedAgents` rows. |
@@ -1385,6 +1387,7 @@ Every provider entry under `credentials.<key>` carries:
 |-----------|------|-------------|
 | `period` | `string` | `'YYYY-MM'` tag (UTC) of the month the plan last started or renewed in, as `creditperiod`. Two periods in a row can carry the same tag. |
 | `resetsat` | `number\|null` | Unix seconds when the plan renews and its included AI usage starts again, or ends when it is cancelled: its period end (`subscription.currentperiodend`). Once the period has ended and the renewal hasn't run yet, such as while it waits for funds (see [Plans](#plans)), it reads the current time, never a past one. `null` when the agent has no active plan or its period can't be read. |
+| `renewaldue` | `boolean` | `true` while the renewal of a plan paid from the balance is due: its period has ended and the renewal hasn't run yet, because the balance can't pay it or Wiro's check, about every 15 minutes, hasn't reached it (see [Plans](#plans)). `resetsat` then reads the current time. `false` otherwise, also for a cancelled plan, a plan paid by card and an agent with no active plan. Only on `Detail`, `MyAgents` and `PinnedAgents`. |
 | `includedusd` | `number` | The AI usage this period includes. After a move to a higher plan inside the period, the higher plan counts only for the time left, so it reads between the two plans' amounts until the next renewal. |
 | `usedusd` | `number` | The included AI usage used this period. |
 | `leftusd` | `number` | The included AI usage left this period. |
@@ -1495,7 +1498,7 @@ A changed `title` on a running agent:
       "tier": "starter",
       "monthlypriceusd": 5,
       "creditperiod": "2026-05",
-      "creditsyncat": 1714694400,
+      "creditsyncat": 1777680610,
       "status": 1,
       "pinned": false,
       "setuprequired": false,
@@ -1787,7 +1790,7 @@ If you already have a hosted URL, use `POST /UserAgent/Update` with `cover: "<ur
       "tier": "starter",
       "monthlypriceusd": 5,
       "creditperiod": "2026-05",
-      "creditsyncat": 1714694400,
+      "creditsyncat": 1777680610,
       "status": 4,
       "pinned": false,
       "teamsessionmode": "private",
@@ -2565,7 +2568,7 @@ A Pro agent previewing Max with 15 days left of 30:
 | `planChange.priceUsd` | `number` | The previewed plan's monthly price, which is also the AI usage it includes each month. |
 | `planChange.effectiveAt` | `number\|null` | Unix seconds when the change would take effect: now for a higher plan; for a lower plan, the renewal at `periodEnd`, or now once the period has ended and the renewal is still due. `null` for `"none"`. |
 | `planChange.newPeriod` | `boolean` | `false`: a higher plan starts inside the current period. |
-| `planChange.periodEnd` | `number` | Unix seconds when the current period ends, which is when a lower plan starts. |
+| `planChange.periodEnd` | `number` | Unix seconds when the current period ends, even once it has passed. A lower plan starts at `effectiveAt`. |
 | `planChange.secondsLeft` | `number` | Seconds left in the current period. |
 | `planChange.chargeNowUsd` | `number` | What a higher plan costs now, at list price before any discount: the prorated difference, paid from the balance. `0` for `"downgrade"` and `"none"`. |
 
@@ -2992,10 +2995,11 @@ No request body fields are required: the workspace of your API key's project sco
       "nextplan": null,
       "monthlypriceusd": 30,
       "creditperiod": "2026-05",
-      "creditsyncat": 1714694410,
+      "creditsyncat": 1777680610,
       "usage": {
         "period": "2026-05",
         "resetsat": 1780272000,
+        "renewaldue": false,
         "includedusd": 30,
         "usedusd": 12.4,
         "leftusd": 17.6,
@@ -3676,7 +3680,7 @@ Agent plans are paid from your Wiro balance, in the dashboard, the API and MCP a
 
 AI usage is counted as the agent works, not at `Message/Send` time. Wiro prices the tokens of each call with the per-model `tokenRates` and takes the cost from the plan's included usage while it lasts, then from the balance. You don't send anything: billing is fully server-side. The agent's `usage` shows where it stands: `usedusd` and `leftusd` of this period's `includedusd`, `frombalanceusd` taken from the balance, and `balanceusd`, the balance it can still use. Per-turn token counts and cost also ride on each assistant message and arrive over the message WebSocket as an `agent_usage_report` frame (see [Agent Messaging](/docs/agent-messaging) and [Agent WebSocket](/docs/agent-websocket)).
 
-A new turn needs an active plan, and included usage left or a balance of at least $0.50 (`usage.minbalanceusd`) in deposits and store revenue: coupon credit doesn't count (see [`usage.balanceusd`](#usage-object)). When the included usage is used up and the balance is under $0.50, the agent pauses: `usage.paused` reads `true` with `pausedreason: "balance"`, and `POST /UserAgent/Message/Send` and `POST /UserAgent/Start` answer code `97` with a sentence for whoever pays for the agent and the agent's `usage` as `agentusage`, whose `resetsat` is the end of the plan's period. A turn that is already running stops at its next model call and ends with `[CREDITS_EXHAUSTED]` (see [Failed turns](/docs/agent-messaging#failed-turns)). The calls it made before that are still charged, so the balance can end a few cents lower, even below zero, as it can with model runs. Start refuses an agent without an active plan the same way, whatever its balance: code `97` with `agentusage.pausedreason: "plan"` and `<agent> has no active plan. Choose a plan to keep it running.` Tell this refusal by `agentusage`: a plan payment the balance can't cover carries `neededusd` instead, and a plain team member's code `97` carries neither. Send's answer:
+A new turn needs an active plan, and included usage left or a balance of at least $0.50 (`usage.minbalanceusd`) in deposits and store revenue: coupon credit doesn't count (see [`usage.balanceusd`](#usage-object)). When the included usage is used up and the balance is under $0.50, the agent pauses: `usage.paused` reads `true` with `pausedreason: "balance"`, and `POST /UserAgent/Message/Send` and `POST /UserAgent/Start` answer code `97` with a sentence for whoever pays for the agent and the agent's `usage` as `agentusage`, whose `resetsat` is the plan's period end, or now once the period has ended and the renewal is due. A turn that is already running stops at its next model call and ends with `[CREDITS_EXHAUSTED]` (see [Failed turns](/docs/agent-messaging#failed-turns)). The calls it made before that are still charged, so the balance can end a few cents lower, even below zero, as it can with model runs. Start refuses an agent without an active plan the same way, whatever its balance: code `97` with `agentusage.pausedreason: "plan"` and `<agent> has no active plan. Choose a plan to keep it running.` Tell this refusal by `agentusage`: a plan payment the balance can't cover carries `neededusd` instead, and a plain team member's code `97` carries neither. Send's answer:
 
 ```json
 {
@@ -3705,11 +3709,11 @@ A new turn needs an active plan, and included usage left or a balance of at leas
 }
 ```
 
-The date is left out when the plan's renewal can't be read. Once the plan's period has ended and its renewal waits for funds, the second sentence reads `Its plan's renewal is due: add funds to renew it and keep it running.` instead. For a team agent the sentence says `the team's balance`. `agentusage.frombalanceusd` is the AI usage charged to the balance this period, as on [`UserAgent/Detail`](#post-useragentdetail). In Telegram, Slack and Discord people who write to it then read `This agent's plan usage and its owner's balance are used up.`, and a reply it cuts off ends with `This agent is paused for now. It runs again once its owner adds funds or its plan renews.`, both with no amount. Once funds are added, the agent answers again.
+The date is left out when the plan's renewal can't be read, or when a plan paid by card is past its period end and hasn't renewed yet. Once the period of a plan paid from the balance has ended and its renewal hasn't run yet (the balance can't pay it, or Wiro's check, about every 15 minutes, hasn't reached it), the second sentence reads `Its plan's renewal is due: add funds to renew it and keep it running.` instead, and `usage.renewaldue` on `Detail`, `MyAgents` and `PinnedAgents` reads `true`. A cancelled plan's second sentence reads `Add funds to keep it running until its plan ends on 1 June 2026.`, with the day the plan ends, never a past day (no date when it can't be read). For a team agent the sentence says `the team's balance`. `agentusage.frombalanceusd` is the AI usage charged to the balance this period, as on [`UserAgent/Detail`](#post-useragentdetail). In Telegram, Slack and Discord people who write to it then read `This agent's plan usage and its owner's balance are used up.`, and a reply it cuts off ends with `This agent is paused for now. It runs again once its owner adds funds or its plan renews.`, both with no amount. Once funds are added, the agent answers again.
 
 An agent runs only while its plan is active, whatever its balance. When its plan ends, the agent stops and its `usage` reads `paused: true` with `pausedreason: "plan"`, as does an agent that never had a plan. Adding funds doesn't start it: renew the plan with [`RenewSubscription`](#post-useragentrenewsubscription), or start a new one with [`CreateSubscriptionCheckout`](#post-useragentcreatesubscriptioncheckout) and `useprepaid: true`. Either call queues the agent to start. Until then, `Start` answers code `97` with `agentusage` (`pausedreason: "plan"`) and `<agent> has no active plan. Choose a plan to keep it running.` A message sent before the agent has stopped gets code `97` from `Message/Send`, with `agentstatus`, `agentusage` and `<agent> has no active plan. Choose a plan to keep it running.`
 
-On each renewal the included usage starts again in full (`usedusd` back to `0`), and `usage.period` and `creditperiod` take the month of the renewal (`'YYYY-MM'`, UTC): two periods that start in the same month carry the same tag. Funds added to the balance reset nothing: the agent just has more to use.
+On each renewal the included usage starts again in full (`usedusd` back to `0`), and `usage.period` and `creditperiod` take the month the renewal ran in (`'YYYY-MM'`, UTC), which isn't always the month its period starts in: two renewals that run in the same month carry the same tag. Funds added to the balance reset nothing: the agent just has more to use.
 
 For the full record (every AI usage charge, model run, plan payment and funds added), call [`POST /UserAgent/TransactionList`](/docs/agent-transactions#tx-transactionlist) (see [Agent Transactions](/docs/agent-transactions)).
 
@@ -3762,7 +3766,7 @@ Agent-specific errors you may encounter:
 | `Agent not found or access denied` | Message endpoint with invalid useragentguid |
 | `User agent not found` (code `95`) | `Message/Send`, `Message/History`, `Message/Sessions`, `Message/DeleteSession`, `Message/RenameSession` or `Message/Delete` called for an agent that has been deleted |
 | The sentence for the agent's status: `Agent is stopped. Start it before sending messages.` (status `0`), `Agent is stopping. Please wait a moment and try again.` (status `1`, when the agent is shutting down to stay stopped), `Agent is restarting. Please wait a moment and try again.` (status `1`, when the agent is shutting down to start again, as in a [restart](#automatic-restart)), `Agent is starting up. Please wait a moment and try again.` (status `2` or `3`), `Agent is in error state. Restart it before sending messages.` (status `5`) or `Agent setup is incomplete. Complete the setup before sending messages.` (status `6`) | `Message/Send` while the agent isn't running (any status other than `4`), for every message Wiro doesn't answer itself as a setup reply (see [Replies Wiro handles itself](/docs/agent-messaging#handled-setup-replies)). Response includes `agentstatus` (the integer) so your client can branch on it. |
-| `My Instagram Bot used the $30.00 of AI usage its plan includes, and your balance is under $0.50. Add funds to keep it running, or it starts again when the plan renews on 1 June 2026.` (the agent's name, the amount and the renewal date, left out when it can't be read; once the plan's period has ended and its renewal waits for funds, the second sentence reads `Its plan's renewal is due: add funds to renew it and keep it running.`; for a team agent, `the team's balance`) | `Message/Send` or `Start` (code `97`) while the agent has used the AI usage its plan includes and the balance is under $0.50. The response includes `agentusage` (the agent's `usage`), and Send's also `agentstatus`, so your client can offer to add funds. |
+| `My Instagram Bot used the $30.00 of AI usage its plan includes, and your balance is under $0.50. Add funds to keep it running, or it starts again when the plan renews on 1 June 2026.` (the agent's name, the amount and the renewal date, left out when it can't be read or a plan paid by card is past its period end; once the period of a plan paid from the balance has ended and its renewal hasn't run yet, the second sentence reads `Its plan's renewal is due: add funds to renew it and keep it running.`, and a cancelled plan's reads `Add funds to keep it running until its plan ends on 1 June 2026.`; for a team agent, `the team's balance`) | `Message/Send` or `Start` (code `97`) while the agent has used the AI usage its plan includes and the balance is under $0.50. The response includes `agentusage` (the agent's `usage`), and Send's also `agentstatus`, so your client can offer to add funds. |
 | `My Instagram Bot has no active plan. Choose a plan to keep it running.` (the agent's name) | `Message/Send` (code `97`) to an agent whose plan has ended, before it has stopped, and `Start` (code `97`) on a stopped or errored agent with no active plan, whatever its balance. The response includes `agentusage` with `pausedreason: "plan"`, and Send's also `agentstatus`. Adding funds doesn't help: renew a plan that ended with `RenewSubscription` (`{ guid }`). For an agent that never had a plan, `RenewSubscription` answers `No expired subscription found to renew`: start one with `CreateSubscriptionCheckout` (`useprepaid: true`). |
 | A spend limit refusal (code `93`), such as `This agent's monthly spend limit is reached ($20.35 of $20.00). It resets on December 1, 2026 at 00:00 UTC.` | `Message/Send` while the agent's own [spend limit](/docs/spend-limits) is used up or, once its included AI usage is used up, a limit of the wallet that covers it: the account's or team's, or the `agent` surface's. The response includes `agentstatus`. Paying from the balance with `Deploy`, `CreateSubscriptionCheckout`, `UpgradeTier` or `RenewSubscription` is refused the same way when the price would take spending over a limit of the wallet. Nothing runs and nothing is charged |
 | A Model Access refusal (code `92`), such as `This agent can't use openai/gpt-5-6-sol. Model Access rules decide which models can run.` | `Message/Send` with a `model` that a [Model Access](/docs/model-access) rule for the agent blocks: its own rule, the account's or team's rule, or the `agent` surface's rule. `UpdateSettings` with such a model override too. Nothing runs and nothing is charged |
