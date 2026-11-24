@@ -152,7 +152,7 @@ When `result: false`, the response shape is `{ result: false, errors: [{ code, m
 
 A deleted agent answers code `95`, `User agent not found`, with no extra fields.
 
-A `message` that isn't a string, such as a JSON array or object, a number, `true` or `message[]` fields in a form, is refused with code `0` and `Request parameters [message] not valid.`, whatever the agent's status, with no extra fields: nothing is stored or sent. An empty one, such as `""` or `[]`, sent without files gets `Request parameter [message] required`.
+A `message` that isn't a string, such as a JSON array or object, a non-zero number, `true` or more than one non-empty `message` field in a multipart form, is refused with code `0` and `Request parameters [message] not valid.`, whatever the agent's status, with no extra fields: nothing is stored or sent. Sent without files, `""`, `[]`, `0` and `false` count as missing and get `Request parameter [message] required`.
 
 ### Unknown or disabled commands
 

@@ -22345,7 +22345,7 @@ channel-enable endpoint or persisted switch.</p>
 </tr>
 <tr>
 <td><code>Request parameters [message] not valid.</code></td>
-<td><code>Message/Send</code> with a <code>message</code> that isn't a string, such as a JSON array or object or a number. Nothing is stored or sent</td>
+<td><code>Message/Send</code> with a <code>message</code> that isn't a string, such as a JSON array or object, a non-zero number or <code>true</code>. Nothing is stored or sent. Sent without files, <code>[]</code>, <code>0</code> and <code>false</code> count as missing and get <code>Request parameter [message] required</code></td>
 </tr>
 <tr>
 <td>The sentence for the agent's status: <code>Agent is stopped. Start it before sending messages.</code> (status <code>0</code>), <code>Agent is stopping. Please wait a moment and try again.</code> (status <code>1</code>, when the agent is shutting down to stay stopped), <code>Agent is restarting. Please wait a moment and try again.</code> (status <code>1</code>, when the agent is shutting down to start again, as in a <a href="#automatic-restart">restart</a>), <code>Agent is starting up. Please wait a moment and try again.</code> (status <code>2</code> or <code>3</code>), <code>Agent is in error state. Restart it before sending messages.</code> (status <code>5</code>) or <code>Agent setup is incomplete. Complete the setup before sending messages.</code> (status <code>6</code>)</td>
@@ -23276,7 +23276,7 @@ print(response.body);
 </div>
 </div>
 <p>A deleted agent answers code <code>95</code>, <code>User agent not found</code>, with no extra fields.</p>
-<p>A <code>message</code> that isn't a string, such as a JSON array or object, a number, <code>true</code> or <code>message[]</code> fields in a form, is refused with code <code>0</code> and <code>Request parameters [message] not valid.</code>, whatever the agent's status, with no extra fields: nothing is stored or sent. An empty one, such as <code>""</code> or <code>[]</code>, sent without files gets <code>Request parameter [message] required</code>.</p>
+<p>A <code>message</code> that isn't a string, such as a JSON array or object, a non-zero number, <code>true</code> or more than one non-empty <code>message</code> field in a multipart form, is refused with code <code>0</code> and <code>Request parameters [message] not valid.</code>, whatever the agent's status, with no extra fields: nothing is stored or sent. Sent without files, <code>""</code>, <code>[]</code>, <code>0</code> and <code>false</code> count as missing and get <code>Request parameter [message] required</code>.</p>
 <h3 id="unknown-or-disabled-commands">Unknown or disabled commands</h3>
 <p>While the agent is running, Wiro answers a slash command the agent doesn't run, such as <code>/status</code>, or one of its commands that is turned off in <a href="/docs/agent-overview#post-useragentupdatesettings"><code>enabledcommands</code></a>. No agent turn runs and nothing is charged, even while the agent is paused for its balance. Send answers at once:</p>
 <pre><code class="language-json">{
