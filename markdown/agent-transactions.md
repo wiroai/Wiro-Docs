@@ -153,7 +153,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 | `modelrunsusd` | `number\|null` | Models the agent ran. |
 | `fundsaddedusd` | `number\|null` | Funds added for the agent: from its page, and what was left of a pack moved to the balance, less any refund taken back from it. |
 | `includedusd` | `number\|null` | The AI usage the plan includes this period. |
-| `usage` | `object\|null` | The agent's `usage`, as on [`UserAgent/Detail`](/docs/agent-overview#usage-object). Its `resetsat` is the end of the active plan's period, and `null` when the agent has no active plan. |
+| `usage` | `object\|null` | The agent's `usage`, as on [`UserAgent/Detail`](/docs/agent-overview#usage-object). Its `resetsat` is the end of the active plan's period, or the current time once that has passed and the renewal is due, and `null` when the agent has no active plan. |
 
 A field is `null` when its part of the summary could not be read: ask again, and never read it as zero.
 

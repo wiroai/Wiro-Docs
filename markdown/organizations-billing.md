@@ -116,7 +116,7 @@ Both wallets get a transaction row:
 ### Important Behaviors
 
 - **Auto-pay may trigger:** If the source wallet (personal or team) has auto-pay enabled and the transfer takes its deposited balance below the auto-pay threshold, the next auto-pay check charges the saved card. The confirmation dialog doesn't warn about this, so check the source's auto-pay settings before a large transfer.
-- **Agents may stop:** Agent plans renew from the wallet, and agents use it for AI usage past their plan's included usage. Transferring too much can leave too little for a renewal, and the agent's plan ends on its renewal date, or pause an agent that needs the balance.
+- **Agents may stop:** Agent plans renew from the wallet, and agents use it for AI usage past their plan's included usage. Transferring too much can leave too little for a renewal, and the agent's plan then ends a day after its renewal date unless funds are added, or pause an agent that needs the balance.
 - **Expired deposits are not transferred:** Only credit that hasn't expired yet can be moved.
 - **Partial transfers preserve FIFO:** When a deposit is partially transferred, the rest stays on the source wallet with its original expiry date.
 
