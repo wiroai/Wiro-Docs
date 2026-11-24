@@ -964,6 +964,11 @@ Lists all agent instances deployed under your account.
         "voicePrepModel": "openai/gpt-5.4-mini",
         "voicePostcallModel": "openai/gpt-5.4"
       },
+      "connectors": [
+        { "slug": "calendarific", "title": "Calendarific" },
+        { "slug": "instagram", "title": "Instagram" }
+      ],
+      "skilltitles": ["Anti-AI Human Copy", "Chat Markdown Reporting", "Content Sources", "Content Tone", "Social Posting Common Rules"],
       "lastactivityat": 1714698000,
       "createdat": 1714608000,
       "updatedat": 1714694400,
@@ -978,9 +983,11 @@ Lists all agent instances deployed under your account.
 }
 ```
 
-> **`MyAgents` returns one row per useragent with its scalar fields, the trimmed `agent` template summary, `subscription`, `setuprequired` (status-based check only), `usage` (the agent's AI usage and balance, see [Usage object](#usage-object)), `spend` (what it cost this month, see [Spend object](#spend-object)), `lastactivityat`, the resolved `enabledSkills` (template defaults ∪ user overrides, including transitive `depends_on` closure), `tokenRates` (per-model token rates, the same map as `UserAgent/Detail.tokenRates`), `agentModel` (the resolved chat / cron / voice-prep / voice-postcall model slugs), and `enabledCommands` (the slash-command allowlist, `null` when uncustomized).** Heavier composed children (`credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `communicationChannels`, `enabledChannels`) are **not** included. Call `UserAgent/Detail` on a single guid for the full composed shape.
+> **`MyAgents` returns one row per useragent with its scalar fields, the trimmed `agent` template summary, `subscription`, `setuprequired` (status-based check only), `usage` (the agent's AI usage and balance, see [Usage object](#usage-object)), `spend` (what it cost this month, see [Spend object](#spend-object)), `lastactivityat`, the resolved `enabledSkills` (template defaults ∪ user overrides, including transitive `depends_on` closure), `tokenRates` (per-model token rates, the same map as `UserAgent/Detail.tokenRates`), `agentModel` (the resolved chat / cron / voice-prep / voice-postcall model slugs), `enabledCommands` (the slash-command allowlist, `null` when uncustomized), `connectors` (the agent's connectors, by `slug` and `title`), and `skilltitles` (the names of its skills that are on).** Heavier composed children (`credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `communicationChannels`, `enabledChannels`) are **not** included. Call `UserAgent/Detail` on a single guid for the full composed shape.
 
 > **`enabledSkills`, `tokenRates`, and `agentModel`** ride on each list row so a chat or pinned-agents UI can decide whether to show the realtime voice-call button (`enabledSkills` includes Web Voice Channel, `util-web-channel`) and render the model picker + live token-rate card without round-tripping `UserAgent/Detail` per row.
+
+> **`connectors` and `skilltitles`** let a search of your agents list match more than an agent's title and description: searching for `calendarific` can find every agent that has a Calendarific connection. `connectors` is `[{ slug, title }]`: each connector the agent has a connection to, whatever the connection's `status` on [`ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist), listed once with its catalog `title` and sorted by title. A connector you disconnected isn't listed, nor is one whose `catalogstatus` is `retired`; a `hidden` one stays. `skilltitles` holds the names of the agent's skills that are on, sorted: the `title` of each Skill in `enabledSkills`, as [`Skills/List`](/docs/agent-skills#post-skillslist) gives it, and the name of each of its `customskills` (see [`Detail`](#post-useragentdetail)) that is on, made from its key: `cs-content-tone` reads `Content Tone`. Scheduled Tasks aren't skills and aren't listed. Each list is `[]` when the agent has none, and also when it couldn't be read: `MyAgents` answers all the same. `PinnedAgents` rows don't carry them.
 
 #### **POST** /UserAgent/Detail
 
@@ -2972,7 +2979,7 @@ Pins or unpins an agent in its workspace. `pinned` is a flag on the agent: on a 
 
 #### **POST** /UserAgent/PinnedAgents
 
-Lists the pinned agents of the API key's workspace. Returns the **same composed shape as `MyAgents`**: every field that appears on a `MyAgents` row except `lastactivityat` appears here, just filtered to `pinned: true`.
+Lists the pinned agents of the API key's workspace. Returns the **same composed shape as `MyAgents`**: every field that appears on a `MyAgents` row except `lastactivityat`, `connectors` and `skilltitles` appears here, just filtered to `pinned: true`.
 
 No request body fields are required: the workspace of your API key's project scopes the response.
 
