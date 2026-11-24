@@ -1287,7 +1287,7 @@ The first line is the agent's. In the app, `Approval needed` is bold and the req
 | `yes` while several actions wait | `<N> actions are waiting. Reply "yes" with the action's number, for example "yes <n>", or "no" to decline them all.` |
 | A number no waiting action has | `There is no action <n> waiting. Reply "yes" or "no" with the number of an action that waits: <n1>, <n2> or <n3>.` (the numbers that wait), or `There is no action <n> waiting. Reply "yes" or "no".` when one waits. |
 | `yes` while the agent is still replying in that conversation | `The agent is still replying in this chat. Answer again when it's done.` The question stays, with its numbers. A `no` is taken at any time. |
-| `yes` while the agent can't take a turn | The sentence the agent gives in its chats for that, such as `This agent is paused for now. It runs again once its owner adds funds or its plan renews.` or `This agent has no active plan, so it paused.` Nothing is allowed. |
+| `yes` while the agent can't take a turn | The sentence the agent answers a message with at that time, such as `This agent's plan usage and its owner's balance are used up.` or `This agent has no active plan, so it paused.` Nothing is allowed. |
 | An action that can't be answered any more | Wiro's sentence, as ApprovalCardAct gives it: `This approval expired. Ask the agent again.`, `This approval was already answered.`, `This action is blocked now. Change it in the connector's permissions.` or `This approval was asked in another chat.` The action leaves the question. |
 | An answer that could not be saved | `Your answer could not be saved right now. Try again in a minute.` The question stays. |
 

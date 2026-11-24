@@ -79,7 +79,7 @@ The full texts:
 
 Match the code in brackets, never the sentence after it, which can change. Turns that failed before the codes existed are returned in the same form.
 
-In Telegram, Slack and Discord the agent says the same without the code in brackets, when a turn stops and when a message arrives while its spend limit is used up or its rule blocks its model. The spend limit sentence also names the limit's period and when it resets, when the agent knows them: `This agent's daily spend limit is used up, so it paused. It runs again when the limit resets at 00:00 UTC or is raised.` When its plan's usage and its balance are used up, it says `This agent is paused for now. It runs again once its owner adds funds or its plan renews.`, with no amount, and when it has no active plan, `This agent has no active plan, so it paused.`
+In Telegram, Slack and Discord the agent says the same without the code in brackets, when a turn stops and when a message arrives while its spend limit is used up or its rule blocks its model. The spend limit sentence also names the limit's period and when it resets, when the agent knows them: `This agent's daily spend limit is used up, so it paused. It runs again when the limit resets at 00:00 UTC or is raised.` When its plan's usage and its balance are used up, a message that arrives gets `This agent's plan usage and its owner's balance are used up.`, and a turn that stops ends with `This agent is paused for now. It runs again once its owner adds funds or its plan renews.`, both with no amount. When it has no active plan, it says `This agent has no active plan, so it paused.` in both cases.
 
 ## **POST** /UserAgent/Message/Send
 

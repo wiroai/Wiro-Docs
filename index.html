@@ -23083,7 +23083,7 @@ print(response.body);
 [REQUEST_CANCELLED] Request cancelled.
 </code></pre>
 <p>Match the code in brackets, never the sentence after it, which can change. Turns that failed before the codes existed are returned in the same form.</p>
-<p>In Telegram, Slack and Discord the agent says the same without the code in brackets, when a turn stops and when a message arrives while its spend limit is used up or its rule blocks its model. The spend limit sentence also names the limit's period and when it resets, when the agent knows them: <code>This agent's daily spend limit is used up, so it paused. It runs again when the limit resets at 00:00 UTC or is raised.</code> When its plan's usage and its balance are used up, it says <code>This agent is paused for now. It runs again once its owner adds funds or its plan renews.</code>, with no amount, and when it has no active plan, <code>This agent has no active plan, so it paused.</code></p>
+<p>In Telegram, Slack and Discord the agent says the same without the code in brackets, when a turn stops and when a message arrives while its spend limit is used up or its rule blocks its model. The spend limit sentence also names the limit's period and when it resets, when the agent knows them: <code>This agent's daily spend limit is used up, so it paused. It runs again when the limit resets at 00:00 UTC or is raised.</code> When its plan's usage and its balance are used up, a message that arrives gets <code>This agent's plan usage and its owner's balance are used up.</code>, and a turn that stops ends with <code>This agent is paused for now. It runs again once its owner adds funds or its plan renews.</code>, both with no amount. When it has no active plan, it says <code>This agent has no active plan, so it paused.</code> in both cases.</p>
 <h2 id="post-useragentmessagesend"><strong>POST</strong> /UserAgent/Message/Send</h2>
 <p>Sends a user message to a deployed agent. The agent must be in running state (status <code>4</code>), except for a reply that Wiro answers itself, such as a <code>yes</code> that applies a setup card or answers a connector's approval card, which works in any status (see <a href="#handled-setup-replies">Replies Wiro handles itself</a>). Returns immediately with an <code>agenttoken</code> that you use to track the response via WebSocket, polling, or webhook.</p>
 <p>Accepts either <code>application/json</code> (text-only) or <code>multipart/form-data</code> (text + file attachments). When sending files, the <code>message</code> field can be empty. The agent receives the attachments and any accompanying text.</p>
@@ -30383,7 +30383,7 @@ Reply &quot;yes&quot; to allow it once, or &quot;no&quot; to decline it. It expi
 </tr>
 <tr>
 <td><code>yes</code> while the agent can't take a turn</td>
-<td>The sentence the agent gives in its chats for that, such as <code>This agent is paused for now. It runs again once its owner adds funds or its plan renews.</code> or <code>This agent has no active plan, so it paused.</code> Nothing is allowed.</td>
+<td>The sentence the agent answers a message with at that time, such as <code>This agent's plan usage and its owner's balance are used up.</code> or <code>This agent has no active plan, so it paused.</code> Nothing is allowed.</td>
 </tr>
 <tr>
 <td>An action that can't be answered any more</td>
