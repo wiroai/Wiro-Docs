@@ -157,7 +157,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 
 A field is `null` when its part of the summary could not be read: ask again, and never read it as zero.
 
-The summary also still carries the credit counts it had before dollar billing (`monthlycredits`, `renewalcredits`, `extracredits`, `usedcredits`, `remainingcredits`, `extrapacks`, `byModel` and the period fields), and the answer still carries the old `transactions` list and its `total`. They are deprecated and will be removed: read `rows`, `rowstotal` and the fields above.
+The summary also still carries the credit counts it had before dollar billing (`monthlycredits`, `renewalcredits`, `extracredits`, `usedcredits`, `remainingcredits`, `extrapacks`, `byModel` and the period fields), and the answer still carries the old `transactions` list and its `total`, except on a call made with a signed-in session, such as the Wiro dashboard's. They are deprecated and will be removed: read `rows`, `rowstotal` and the fields above.
 
 **Row fields:**
 

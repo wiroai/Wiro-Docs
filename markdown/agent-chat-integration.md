@@ -160,7 +160,7 @@ When the agent has used the AI usage its plan includes and the balance is under 
 ```json
 {
   "result": false,
-  "errors": [{ "code": 97, "message": "Support Desk used the $30.00 of AI usage its plan includes, and your balance is under $0.50. Add funds to keep it running, or it starts again when the plan renews on 1 December 2026.", "time": 1794654900 }],
+  "errors": [{ "code": 97, "message": "Support Desk used the $30.00 of AI usage its plan includes, and your balance is under $0.50. Add funds to keep it running, or it starts again when the plan renews on 1 December 2026 (UTC).", "time": 1794654900 }],
   "messageguid": null,
   "agenttoken": null,
   "status": null,
@@ -169,9 +169,9 @@ When the agent has used the AI usage its plan includes and the balance is under 
 }
 ```
 
-That sentence speaks to whoever pays for the agent, which is you; it leaves out the date when the plan's renewal can't be read, or when a plan paid by card is past its period end and hasn't renewed yet. Once the period of a plan paid from the balance has ended and its renewal hasn't run yet (the balance can't pay it, or Wiro's check, about every 15 minutes, hasn't reached it), the message's second sentence reads `Its plan's renewal is due: add funds to renew it and keep it running.` instead, and a cancelled plan's reads `Add funds to keep it running until its plan ends on 1 December 2026.` Detect the refusal by `agentusage` with `pausedreason: "balance"`, show your users your own words, and add funds to the balance of the agent's workspace (see [Adding Funds](/docs/agent-overview#adding-funds)). While its plan is live, the agent answers again as soon as the balance is back at $0.50 or more. A larger plan, with [`UpgradeTier`](/docs/agent-overview#post-useragentupgradetier), gives the agent more AI usage at once but is paid from the same balance, so add funds first: while the balance is short, UpgradeTier answers code `97` with `neededusd`. `agentusage.frombalanceusd` is the AI usage charged to the balance this period, as on [`UserAgent/Detail`](/docs/agent-overview#post-useragentdetail). Your users in Telegram, Slack and Discord read `This agent's plan usage and its owner's balance are used up.` when they write while it is paused, or `This agent is paused for now. It runs again once its owner adds funds or its plan renews.` when a reply is cut off, with no amount. Setup replies that Wiro answers itself still work while the agent is paused: see [Replies the API answers itself](#replies-the-api-answers-itself).
+That sentence speaks to whoever pays for the agent, which is you. Its date is the day in UTC and says so, and is left out when the plan's renewal can't be read, or when a plan paid by card is past its period end and hasn't renewed yet. Once the period of a plan paid from the balance has ended and its renewal hasn't run yet (the balance can't pay it, or Wiro's check, about every 15 minutes, hasn't reached it), the message's second sentence reads `Its plan's renewal is due: add funds to renew it and keep it running.` instead, and a cancelled plan's reads `Add funds to keep it running until its plan ends on 1 December 2026 (UTC).` Detect the refusal by `agentusage` with `pausedreason: "balance"`, show your users your own words, and add funds to the balance of the agent's workspace (see [Adding Funds](/docs/agent-overview#adding-funds)). While its plan is live, the agent answers again as soon as the balance is back at $0.50 or more. A larger plan, with [`UpgradeTier`](/docs/agent-overview#post-useragentupgradetier), gives the agent more AI usage at once but is paid from the same balance, so add funds first: while the balance is short, UpgradeTier answers code `97` with `neededusd`, and while the plan's renewal is due it refuses a larger plan until the plan has renewed. `agentusage.frombalanceusd` is the AI usage charged to the balance this period, as on [`UserAgent/Detail`](/docs/agent-overview#post-useragentdetail). Your users in Telegram, Slack and Discord read `This agent's plan usage and its owner's balance are used up.` when they write while it is paused, or `This agent is paused for now. It runs again once its owner adds funds or its plan renews.` when a reply is cut off, with no amount. Setup replies that Wiro answers itself still work while the agent is paused: see [Replies the API answers itself](#replies-the-api-answers-itself).
 
-An agent runs only with a live plan. When its plan ends, cancelled or with a renewal the balance couldn't pay, the agent stops whatever the balance holds, and adding funds doesn't start it again. Send then answers `Agent is stopped. Start it before sending messages.` with `agentstatus: 0`, and [`Start`](/docs/agent-overview#post-useragentstart) answers code `97` with `agentusage.pausedreason: "plan"` and `<agent> has no active plan. Choose a plan to keep it running.` Renew the plan with [`RenewSubscription`](/docs/agent-overview#post-useragentrenewsubscription), or start a new one with [`CreateSubscriptionCheckout`](/docs/agent-overview#post-useragentcreatesubscriptioncheckout) and `useprepaid: true`: both are paid from the balance, and either one queues the agent to start by itself. A Send that reaches the agent before it has stopped answers code `97` with `agentusage.pausedreason: "plan"` and `<agent> has no active plan. Choose a plan to keep it running.`, and your users in Telegram, Slack and Discord read `This agent has no active plan, so it paused.`: offer a plan there, not funds.
+An agent runs only with a live plan. When its plan ends, cancelled or with a renewal the balance couldn't pay, the agent stops whatever the balance holds, and adding funds doesn't start it again. Send (with `agentstatus: 0`) and [`Start`](/docs/agent-overview#post-useragentstart) then answer code `97` with `agentusage.pausedreason: "plan"` and `<agent> has no active plan. Choose a plan to keep it running.` Renew the plan with [`RenewSubscription`](/docs/agent-overview#post-useragentrenewsubscription), or start a new one with [`CreateSubscriptionCheckout`](/docs/agent-overview#post-useragentcreatesubscriptioncheckout) and `useprepaid: true`: both are paid from the balance, and either one queues the agent to start by itself. A Send that reaches the agent before it has stopped answers the same, and your users in Telegram, Slack and Discord read `This agent has no active plan, so it paused.`: offer a plan there, not funds.
 
 When a [spend limit](/docs/spend-limits) that covers the agent is used up, Send answers `result: false` with code `93` and `agentstatus`. The limit is the agent's own or, once its plan's included AI usage is used up, the account's or team's limit or the `agent` surface's limit:
 
@@ -185,6 +185,8 @@ When a [spend limit](/docs/spend-limits) that covers the agent is used up, Send 
   "agentstatus": 4
 }
 ```
+
+While such a limit is used up, the agent's [`usage`](/docs/agent-overview#usage-object) on `Detail`, `MyAgents` and `PinnedAgents` reads `paused: true` with `pausedreason: "spendlimit"`, so your app can show the agent paused before anyone writes. It runs again when the limit resets or is raised.
 
 When a [Model Access](/docs/model-access) rule for the agent blocks the `model` you send for the turn (its own rule, the account's or team's rule, or the `agent` surface's rule), Send answers `result: false` with code `92`:
 
@@ -342,7 +344,7 @@ Some messages are answered by Wiro itself, with no agent turn: a `yes` that appl
   "messageguid": "d4e5f6a7-b8c9-0123-def4-567890123456",
   "agenttoken": null,
   "status": "agent_end",
-  "response": "✅ Applied: Scheduled task Weekly traffic report created.\nYour agent is restarting to load the change. Continue in about a minute.",
+  "response": "✅ Applied: Scheduled task Weekly traffic report created.\nYour agent is restarting to load the change. Continue in a minute or two.",
   "content": "yes",
   "setupresult": {
     "applied": ["k3v9q2m8x1za"],
@@ -399,7 +401,7 @@ Wiro also answers a slash command the agent doesn't run, such as `/status`, or o
 }
 ```
 
-The second line comes only when the agent has `agent_help` on. Show `response` as the reply, and the row in History as you show the other replies Wiro answers itself. A command counts anywhere in the message, as in `Check the /pricing page`, but never inside a link or a quoted line. A message that holds one of the agent's [enabled commands](/docs/agent-overview#post-useragentupdatesettings), written in lower case and followed by a space, a line break or the end of the message, goes to the agent, which runs it, and so does a message whose first command is `/model`, `/models` or one of a few common words and paths, such as `/start`, `/help` or `/usr/bin/env`. While the agent isn't running, the message gets the refusal in [Messages during a restart](#messages-during-a-restart). The full rules are in [Unknown or disabled commands](/docs/agent-messaging#unknown-or-disabled-commands).
+The second line comes only when the agent has `agent_help` on. Show `response` as the reply, and the row in History as you show the other replies Wiro answers itself. Wiro answers only a command that starts the message and is followed by a space, a line break or the end of the message, as in `/status` or `/status please`, and never one inside a link or a quoted line. A `/` word later in the message, as in `Update the /pricing page`, and a path such as `/data/report.csv` go to the agent as plain text. A message that holds one of the agent's [enabled commands](/docs/agent-overview#post-useragentupdatesettings) anywhere, written in lower case and followed by a space, a line break or the end of the message, goes to the agent, which runs it, and so does a message that starts with `/model`, `/models` or one of a few common words, such as `/start` or `/help`. While the agent isn't running, the message gets the refusal in [Messages during a restart](#messages-during-a-restart). The full rules are in [Unknown or disabled commands](/docs/agent-messaging#unknown-or-disabled-commands).
 
 ## Setup Cards
 
@@ -695,7 +697,7 @@ Show `note`, when there is one, under the title.
 | Signing in (`signin` cards) | "Waiting for the sign-in" until the browser is back on your page | Sign in again (a new sign-in), Dismiss |
 | Refused | `errors[0].message` under the card | Enabled |
 | Applied | "Applied", and `summary` from the answer when you have it | None |
-| Applied, agent restarting | "Applied" and "Restarting, about a minute" until the agent runs again | None |
+| Applied, agent restarting | "Applied" and "Restarting, a minute or two" until the agent runs again | None |
 | Dismissed | "Turned down" | None |
 | Failed | "Not applied" and `setup.error` | None |
 
@@ -936,7 +938,7 @@ Wiro AI Models (`wiro`) gets a `project` card. Its one field has `source: "wiro_
   "authtype": "headers",
   "mode": "project",
   "fields": [
-    { "name": "wiro_credentials", "label": "Wiro credentials", "description": "", "required": true, "secret": true, "format": "password", "source": "wiro_project" }
+    { "name": "wiro_credentials", "label": "Wiro Credentials", "description": "", "required": true, "secret": true, "format": "password", "source": "wiro_project" }
   ],
   "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
   "createdat": 1794655500
@@ -971,7 +973,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
     "authtype": "headers",
     "mode": "project",
     "fields": [
-      { "name": "wiro_credentials", "label": "Wiro credentials", "description": "", "required": true, "secret": true, "format": "password", "source": "wiro_project" }
+      { "name": "wiro_credentials", "label": "Wiro Credentials", "description": "", "required": true, "secret": true, "format": "password", "source": "wiro_project" }
     ],
     "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
     "createdat": 1794655500,
@@ -1477,11 +1479,11 @@ Read the agent's `status` with [`POST /UserAgent/Detail`](/docs/agent-overview#p
 | `3` Starting | It is starting. |
 | `4` Running | Ready for messages again. |
 
-A restart takes about a minute. If the poll reads `0` (stopped), `5` (error) or `6` (setup required) instead, the agent won't start by itself: stop polling and say so. `0` and `5` start again with [`POST /UserAgent/Start`](/docs/agent-overview#post-useragentstart), unless the agent's plan has ended: Start then answers code `97` with `agentusage.pausedreason: "plan"` and `<agent> has no active plan. Choose a plan to keep it running.`, and renewing the plan starts the agent (see [Send a message](#send-a-message)). `6` has no plan yet: pay it with [`CreateSubscriptionCheckout`](/docs/agent-overview#post-useragentcreatesubscriptioncheckout) (`useprepaid: true`), which queues it (credentials and connectors never hold an agent at `6`); see [UserAgent Statuses](/docs/agent-overview#useragent-statuses).
+A restart takes a minute or two. If the poll reads `0` (stopped), `5` (error) or `6` (setup required) instead, the agent won't start by itself: stop polling and say so. `0` and `5` start again with [`POST /UserAgent/Start`](/docs/agent-overview#post-useragentstart), unless the agent's plan has ended: Start then answers code `97` with `agentusage.pausedreason: "plan"` and `<agent> has no active plan. Choose a plan to keep it running.`, and renewing the plan starts the agent (see [Send a message](#send-a-message)). `6` has no plan yet: pay it with [`CreateSubscriptionCheckout`](/docs/agent-overview#post-useragentcreatesubscriptioncheckout) (`useprepaid: true`), which queues it (credentials and connectors never hold an agent at `6`); see [UserAgent Statuses](/docs/agent-overview#useragent-statuses).
 
 ### Showing a restart
 
-When an answer says the agent restarts, show a line such as "Restarting to load the change, about a minute" above the message box, and poll `UserAgent/Detail` every five seconds until `status` is `4`. Then hide the line. You can leave the message box on: a message sent too early gets a clear refusal you can show.
+When an answer says the agent restarts, show a line such as "Restarting to load the change, a minute or two" above the message box, and poll `UserAgent/Detail` every five seconds until `status` is `4`. Then hide the line. You can leave the message box on: a message sent too early gets a clear refusal you can show.
 
 Each call says it in its own field:
 
@@ -1504,6 +1506,8 @@ While the agent isn't running, `Message/Send` answers `result: false` with `agen
 | `0` | `Agent is stopped. Start it before sending messages.` |
 | `5` | `Agent is in error state. Restart it before sending messages.` |
 | `6` | `Agent setup is incomplete. Complete the setup before sending messages.` |
+
+An agent that is stopped (`0`) or in error (`5`) and has no active plan gets code `97` instead, with `agentstatus`, `agentusage` (`pausedreason: "plan"`) and `<agent> has no active plan. Choose a plan to keep it running.`: offer a plan, since `Start` can't run it (see [Send a message](#send-a-message)).
 
 Before this refusal, Wiro still answers the replies it handles itself:
 
@@ -1580,7 +1584,7 @@ The second `yes` applies the card:
   "messageguid": "f6a7b8c9-d0e1-2345-f678-901234567890",
   "agenttoken": null,
   "status": "agent_end",
-  "response": "✅ Applied: Weather added.\nYour agent is restarting to load the change. Continue in about a minute.",
+  "response": "✅ Applied: Weather added.\nYour agent is restarting to load the change. Continue in a minute or two.",
   "content": "yes",
   "setupresult": {
     "applied": ["71xb9zrcd1sb"],
@@ -1605,7 +1609,7 @@ Wiro writes these lines in `response`, always in English. They name no site, pag
 | `<N> connector cards still need their keys: add each key on its card.` | Several `key` connect cards wait. |
 | `This setup change was already handled.` | Someone acted on the card first, or it is gone. |
 | `This setup change is being applied right now. Try again in a moment.` | Another call is applying the card. |
-| `Your agent is restarting to load the change. Continue in about a minute.` | The change restarts the agent (shorter when a `Next:` line follows). |
+| `Your agent is restarting to load the change. Continue in a minute or two.` | The change restarts the agent (shorter when a `Next:` line follows). |
 | `Next: paste your <Title> key as your reply.` | A `key` card waits for its key. While the agent restarts, it goes on with `Send it now and it loads with this same restart.` |
 | `Next: connect <Title> to finish. Its sign-in and any app keys are entered outside this chat, never in it.` | A `yes` applied an `add` card whose `signin` card still waits. `setupresult.next` names that card. |
 | `Next: connect <Title> to finish. Its project is picked outside this chat.` | A `yes` applied an `add` card whose `project` card still waits. `setupresult.next` names that card. |
@@ -2446,7 +2450,7 @@ The first two examples start with a person's message in your chat and end with t
 ```text
 Message/Send  "<the Serper API key>"
            -> content: "[key saved to Serper]"
-              response: "✅ Applied: Serper connected.\nYour agent is restarting to load the change. Continue in about a minute."
+              response: "✅ Applied: Serper connected.\nYour agent is restarting to load the change. Continue in a minute or two."
               setupresult: { "applied": ["h6w3k9p2m5tc"], "dismissed": [], "failed": [], "restarting": true }
 ```
 

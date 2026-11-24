@@ -349,11 +349,11 @@ Show that sentence next to the form: it names the vendor only.
 
 **Changing a value later.** Send only the fields that change: the others keep their saved values. To replace a key, send the new one; to remove an optional value, send `""`.
 
-A `headers` connector (a vendor's own MCP server that takes a key or login: lemlist (`apikey`), DataForSEO (`login`, `password`), GitBook and HackMD (`token`)) connects the same way: its `credentialfields` are the values it takes, each named by its `name`. Their labels are made from those names (`Apikey`, `Login`, `Password`, `Token`), and a secret value has `format: "password"`. Its values are at most 4,096 characters each, on one line, and its refusals name the value by that `name` (`apikey is required.`). It has no credential check: the vendor's server answers the agent's first call. DataForSEO's fields on [Detail](#post-agentconnectordetail):
+A `headers` connector (a vendor's own MCP server that takes a key or login: lemlist (`apikey`), DataForSEO (`login`, `password`), GitBook and HackMD (`token`)) connects the same way: its `credentialfields` are the values it takes, each named by its `name`. Their labels are made from those names, in Title Case (`API Key`, `Login`, `Password`, `Token`), and a secret value has `format: "password"`: DataForSEO's `login` is not a secret (`secret: false`, `format: "text"`); its `password` is. Its values are at most 4,096 characters each, on one line, and its refusals name the value by that `name` (`apikey is required.`). It has no credential check: the vendor's server answers the agent's first call. DataForSEO's fields on [Detail](#post-agentconnectordetail):
 
 ```json
 "credentialfields": [
-  { "name": "login", "label": "Login", "description": "Keyword, search and app store data from your own [DataForSEO](https://dataforseo.com) account. 1. Sign in to [DataForSEO](https://app.dataforseo.com) and open **API Access** ...", "required": true, "secret": true, "format": "password" },
+  { "name": "login", "label": "Login", "description": "Keyword, search and app store data from your own [DataForSEO](https://dataforseo.com) account. 1. Sign in to [DataForSEO](https://app.dataforseo.com) and open **API Access** ...", "required": true, "secret": false, "format": "text" },
   { "name": "password", "label": "Password", "description": "The **API password** is not the password you sign in with: DataForSEO generates a separate one for the API. ...", "required": true, "secret": true, "format": "password" }
 ]
 ```
@@ -551,7 +551,7 @@ A callback whose sign-in is unknown (no `state`, or one Wiro never issued) ends 
 
 ### Restarts
 
-A connect that changes something, a new account selection, a [permission change](#post-useragentconnectorsetpermissions) that does more than turn `ask` into `allow`, and a disconnect of a connected connector restart a running agent so it loads the change: `restart: "scheduled"` in the answer, and for a sign-in, `connector_connected=true` on your page. The agent's `status` on [`POST /UserAgent/Detail`](/docs/agent-overview#post-useragentdetail) then goes `1` (stopping), `2` (queued), `3` (starting) and back to `4` (running), in about a minute; a message sent meanwhile is refused with a sentence you can show. See [Restarts](/docs/agent-chat-integration#restarts) for what to show. A stopped agent loads the change when it next starts.
+A connect that changes something, a new account selection, a [permission change](#post-useragentconnectorsetpermissions) that does more than turn `ask` into `allow`, and a disconnect of a connected connector restart a running agent so it loads the change: `restart: "scheduled"` in the answer, and for a sign-in, `connector_connected=true` on your page. The agent's `status` on [`POST /UserAgent/Detail`](/docs/agent-overview#post-useragentdetail) then goes `1` (stopping), `2` (queued), `3` (starting) and back to `4` (running), in a minute or two; a message sent meanwhile is refused with a sentence you can show. See [Restarts](/docs/agent-chat-integration#restarts) for what to show. A stopped agent loads the change when it next starts.
 
 ## Connection State
 
