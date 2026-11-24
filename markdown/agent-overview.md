@@ -2557,7 +2557,7 @@ A Pro agent previewing Max with 15 days left of 30:
 
 `scheduledTasks` comes only when the body sends `withScheduledTasks: true`: `{ stop, resume }`, the keys of the scheduled tasks that run now and would not after the change, and of those that would start running. Each task whose own `enabled` is `true` is checked twice, with the skills on now and with the skills the change leaves on, the way the agent runs it (see [Scheduled task skill fields](#scheduled-task-skill-fields)). Both lists are empty when `skillOverrides` is missing or empty, and `scheduledTasks` is `null` when Wiro could not work them out; that is not "no change".
 
-`planChange` comes with a preview of an existing agent that has an active plan, and is `null` otherwise. `planChange.change` says what the previewed `tier` would do: `"upgrade"` shows the charge that comes with a higher plan, `"downgrade"` a lower plan that starts at the renewal with nothing charged now, and `"none"` the agent's own plan or a preview that only changes skills, with no charge. A higher plan also raises the period's included AI usage by exactly `chargeNowUsd`: once it is made, `usage.includedusd` on [`Detail`](#post-useragentdetail) shows it. While the plan's renewal is due (`usage.renewaldue: true`), `UpgradeTier` refuses a higher plan until the plan renews, whatever `planChange` shows.
+`planChange` comes with a preview of an existing agent that has an active plan, and is `null` otherwise. `planChange.change` says what the previewed `tier` would do: `"upgrade"` shows the charge that comes with a higher plan, `"downgrade"` a lower plan that starts at the renewal with nothing charged now, and `"none"` the agent's own plan or a preview that only changes skills, with no charge. A higher plan also raises the period's included AI usage by exactly `chargeNowUsd`: once it is made, `usage.includedusd` on [`Detail`](#post-useragentdetail) shows it. While the plan's renewal is due (`usage.renewaldue: true`), `UpgradeTier` refuses a higher plan until the plan renews, and `planChange` for a higher plan says so: it still reads `change: "upgrade"`, names no charge (`chargeNowUsd` `0`, `effectiveAt` `null`) and carries `refusal`, the sentence `UpgradeTier` refuses with. Show that sentence in place of a price, and don't offer the upgrade until the plan has renewed.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -2566,11 +2566,12 @@ A Pro agent previewing Max with 15 days left of 30:
 | `planChange.fromTier` / `toTier` | `string` | The agent's plan and the plan previewed. |
 | `planChange.nextplan` | `string\|null` | A lower plan already scheduled for the renewal. |
 | `planChange.priceUsd` | `number` | The previewed plan's monthly price, which is also the AI usage it includes each month. |
-| `planChange.effectiveAt` | `number\|null` | Unix seconds when the change would take effect: now for a higher plan; for a lower plan, the renewal at `periodEnd`, or now once the period has ended and the renewal is still due. `null` for `"none"`. |
+| `planChange.effectiveAt` | `number\|null` | Unix seconds when the change would take effect: now for a higher plan; for a lower plan, the renewal at `periodEnd`, or now once the period has ended and the renewal is still due. `null` for `"none"`, and for a higher plan while the renewal is due (`refusal`). |
 | `planChange.newPeriod` | `boolean` | `false`: a higher plan starts inside the current period. |
 | `planChange.periodEnd` | `number` | Unix seconds when the current period ends, even once it has passed. A lower plan starts at `effectiveAt`. |
 | `planChange.secondsLeft` | `number` | Seconds left in the current period. |
-| `planChange.chargeNowUsd` | `number` | What a higher plan costs now, at list price before any discount: the prorated difference, paid from the balance. `0` for `"downgrade"` and `"none"`. |
+| `planChange.chargeNowUsd` | `number` | What a higher plan costs now, at list price before any discount: the prorated difference, paid from the balance. `0` for `"downgrade"` and `"none"`, and for a higher plan while the renewal is due (`refusal`). |
+| `planChange.refusal` | `string` | Only for a higher plan while the plan's renewal is due: `This plan's renewal is due, so it can't be upgraded until it renews. Once the balance can pay the renewal, it renews within 15 minutes; then upgrade it. Nothing was charged.`, the sentence [`UpgradeTier`](#post-useragentupgradetier) refuses it with. Absent otherwise. |
 
 #### **POST** /UserAgent/CreateSubscriptionCheckout
 

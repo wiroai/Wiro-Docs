@@ -59,7 +59,7 @@ Every event is a JSON object with this base shape:
 | `summary` | `object?` | Structured event-specific payload. Opaque on the wire, so render it as JSON when expanding the row. Secret values (`apikey`, `apppassword`, `clientsecret`, `bearer`, `token`, …) are masked before the event is written. Common keys: `file`, `method`, `host`, `path`, `preview`, `messageCount`, `code`, `jobId`, `status`, `reason`. |
 | `durationMs` | `number?` | Wall-clock duration in milliseconds. Populated on `tool_completed`, `turn_ended`, `cron_finished` and `token_usage` events. |
 | `ok` | `boolean?` | `true` for a successful completion, `false` for a failure. Populated on `tool_completed`, `turn_ended` and `cron_finished` events, and always `false` on `tool_blocked`. Pair with `error` for failure rows. It is always `true` on `AGENT_*` and `CONNECTOR_*` rows. A `turn_ended` for a turn the caller cancelled has no `ok`, and its title reads `Agent turn cancelled`. One for a turn that failed, such as a turn whose model calls were refused, has `ok: false` and the title `Agent turn failed`. A `cron_finished` for a Scheduled Task run that was paused has no `ok` either. Its title starts with `Paused without an active plan:` when the agent has no active plan, else with `Paused by a spend limit:` when the agent's spend limit is reached, else with `Paused by a Model Access rule:` when its Model Access rule blocks the task's model. |
-| `error` | `string?` | On a failure row (`ok: false`): always the fixed sentence `Agent is temporarily unavailable. Please try again shortly.`, whatever failed. The failure's own reason never reaches the log. |
+| `error` | `string?` | On a failure row (`ok: false`): the fixed sentence `Agent is temporarily unavailable. Please try again shortly.`, whatever failed. The failure's own reason never reaches the log. A failed turn whose failure has a code is the exception: its `turn_ended` row reads that code in brackets, the one `summary.code` holds, and the sentence the agent says for it in Telegram, Slack and Discord (see [Failed turns](/docs/agent-messaging#failed-turns)), such as `[NO_ACTIVE_PLAN] This agent has no active plan, so it paused.` Match the code, never the sentence. |
 | `cost` | `object?` | Legacy per-action charge, `{ credits, skill, action }`. Only events recorded before agents switched to per-turn token billing can carry it; current events never do. See the `token_usage` event for what a turn cost. |
 | `userUuid` | `string?` | UUID of the actor who triggered the event. `"system"` for Scheduled Task runs and other automatic events. May be missing on older rows, in which case the server falls back to the agent owner. |
 | `user` | `object\|null` | Resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. `null` when `userUuid` is `"system"` (automation, Scheduled Tasks) or when the user record was deleted. |
@@ -124,7 +124,7 @@ A `token_usage` event records the tokens and the AI usage of one billed turn: a 
 }
 ```
 
-`title` is the line to show. `summary` holds the names and amounts behind it, never a connector value. `userUuid` and `user` name who did it. When an API key made the change, the title ends with `(API key "<project name>")` or `(via API key)`.
+`title` is the line to show. `summary` holds the names and amounts behind it, never a connector value. `userUuid` and `user` name who did it. When an API key made the change, the title ends with `(API key "<project name>")` or `(via API key)`. A date in a title, such as the day a plan ends or a plan change starts, is the day in UTC and says so: `2026-06-01 (UTC)`.
 
 | `kind` | Example `title` |
 |--------|-----------------|
@@ -143,12 +143,12 @@ A `token_usage` event records the tokens and the AI usage of one billed turn: a 
 | `CONNECTOR_REAUTH` | `Connector needs to be connected again: facebook-pages` (written by Wiro when a sign-in expired or was revoked) |
 | `CONNECTOR_PERMISSIONS_SET` | `Connector permissions changed: wordpress` (see [ConnectorSetPermissions](/docs/agent-connectors#post-useragentconnectorsetpermissions)); `Connector permissions changed: wordpress (update_post), from chat` when Always allow on an approval card changed a tool's values |
 | `CONNECTOR_APPROVAL_ANSWERED` | `Approval allow: wordpress update_post` (`allow`, `always` or `decline`: the answer that took effect, so an Always allow that allowed the call once reads `allow`; see [ApprovalCardAct](/docs/agent-connectors#post-useragentmessageapprovalcardact)). A card answered in its Telegram, Slack or Discord conversation reads `Approval allow: wordpress create_post in Telegram` |
-| `AGENT_PLAN_STARTED`, `AGENT_PLAN_RENEWED`, `AGENT_PLAN_CANCELLED`, `AGENT_PLAN_RESUMED` | `Starter plan started: $5.00 charged`, `Starter plan renewed: $5.00 charged`, `Plan cancelled, ends 2026-06-01`, `Plan cancellation undone` |
+| `AGENT_PLAN_STARTED`, `AGENT_PLAN_RENEWED`, `AGENT_PLAN_CANCELLED`, `AGENT_PLAN_RESUMED` | `Starter plan started: $5.00 charged`, `Starter plan renewed: $5.00 charged`, `Plan cancelled, ends 2026-06-01 (UTC)`, `Plan cancellation undone` |
 | `AGENT_PLAN_ENDED` | `Starter plan ended: the wallet could not pay the renewal`, `Pro plan ended: it was set to cancel` (written by Wiro; the agent stops when its plan ends) |
 | `AGENT_PLAN_NOT_SAVED` | `Pro plan renewal did not finish: $24.00 charged`, `Max plan start did not finish: $100.00 charged` (the wallet paid and the plan could not be saved; see [Plan payments that did not finish](/docs/agent-transactions#plan-not-saved)) |
 | `AGENT_TIER_UPGRADED` | `Plan upgraded from Starter to Pro; $12.50 charged` |
-| `AGENT_PLAN_CHANGE_SCHEDULED`, `AGENT_PLAN_CHANGE_CANCELLED` | `Plan change scheduled: Pro to Starter on 2026-06-01`, `Scheduled plan change cancelled: stays on Pro` |
-| `AGENT_PLAN_MOVE_SCHEDULED` | `Moves to the Starter plan ($5.00 a month) on 2026-06-01` (an agent subscribed before the three plans) |
+| `AGENT_PLAN_CHANGE_SCHEDULED`, `AGENT_PLAN_CHANGE_CANCELLED` | `Plan change scheduled: Pro to Starter on 2026-06-01 (UTC)`, `Scheduled plan change cancelled: stays on Pro` |
+| `AGENT_PLAN_MOVE_SCHEDULED` | `Moves to the Starter plan ($5.00 a month) on 2026-06-01 (UTC)` (an agent subscribed before the three plans) |
 | `AGENT_CREDITS_PURCHASED` | Older rows only: a pack bought before packs were retired, with what it cost |
 | `AGENT_CHECKOUT_CREATED` | Older rows only: a card checkout link for a plan, from before plans moved to the balance |
 | `AGENT_LOG_DAY_DELETED` | `Activity log day deleted: 2026-05-02` |
