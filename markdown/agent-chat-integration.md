@@ -357,7 +357,7 @@ Some messages are answered by Wiro itself, with no agent turn: a `yes` that appl
 
 Show `response` as the reply, as plain text. There is nothing to follow on the WebSocket. In `Message/History` the row reads `status: "agent_end"`, `metadata: { "type": "setup_result" }` and an empty `timeline`. When the answer leaves connectors to connect, `metadata` also keeps its `next`, and a card listing keeps `listed` and `listedfrom` there: see [Replies Wiro handles itself](/docs/agent-messaging#handled-setup-replies). These replies cost nothing, and Wiro gives them while the agent is stopped or restarting too: see [Messages during a restart](#messages-during-a-restart) for which ones.
 
-A `yes`, `always` or `no` while a connector's approval card waits on the agent's latest reply is answered the same way, with `approvalresult` instead of the setup fields. Once none waits there, so are replies to the cards still waiting on earlier messages of the session, which Wiro lists first (see [Cards on earlier messages](/docs/agent-connectors#cards-on-earlier-messages)). Sent with your API key, the first `yes` gets Wiro's listing of the card's exact request, and a second `yes` allows it once:
+A `yes`, `always` or `no` while a connector's approval card waits on the agent's latest reply is answered the same way, with `approvalresult` instead of the setup fields. Once none waits there, so are replies to the cards still waiting on earlier messages of the session, which Wiro lists first, while that reply is the turn an approval started or one in which the agent asked again for a call whose card still waits; after any other reply, such as the agent's own question, they don't reach those cards (see [Cards on earlier messages](/docs/agent-connectors#cards-on-earlier-messages)). Sent with your API key, the first `yes` gets Wiro's listing of the card's exact request, and a second `yes` allows it once:
 
 ```json
 {
@@ -1530,10 +1530,10 @@ Your chat can work with text alone, or people may type `yes` even where you show
 - **Approve.** A message that is only an approval, such as `yes`, `ok`, `approve`, `go ahead`, `evet` or `👍`, acts on the pending cards of the agent's latest reply in the same `sessionkey`, when they are less than 30 minutes old. In a chat sent with your API key, the first approval applies nothing: Wiro answers with the card listing, the exact content of the cards. A second one applies the one card listed. With several cards, `yes 2` applies card 2 once the listing has shown it, one card per reply.
 - **Turn down.** A message that is only a refusal, such as `no` or `cancel`, dismisses the pending cards of the latest reply that are less than 30 minutes old, then goes to the agent as a normal message. Older cards aren't dismissed, and the `no` goes to the agent all the same. While the agent isn't running, Wiro answers it itself: `The setup change was turned down.`, or `The <N> setup changes were turned down.` for several cards. Anyone who can write in the chat can turn cards down.
 - **A key as the reply.** When the latest reply has one pending `connect` card and it is a `key` card with one secret field (never a `project` card), a key pasted as the reply can be saved to it with your key owner's rights: the key is saved, and the message is stored as `[key saved to <Connector title>]`. When the connector needs more than that key, nothing is saved and the answer names what is missing: use the card's form. In a chat sent with your API key, when the only pending cards are an `add` card and its `connect` card, and the key is all the connector needs, the key typed after the listing applies both cards at once. A key typed before that listing saves nothing: the message is stored with `[key removed]` in its place, and Wiro answers with the listing.
-- **Approval cards.** While a connector's approval card waits on the agent's latest reply, `yes`, `always` and `no` answer it instead: in a chat sent with your API key the first `yes` gets Wiro's listing of each card's exact request, and a second `yes` (or `yes 2`) allows one card once; `always` from your API key allows once too; `no` declines every waiting card at once and, where `chatsetup` allows the message, turns the reply's setup cards down with them. No agent turn runs for any of these. A setup card and an approval card on the same reply get one listing of both. While no approval card waits on the latest reply, the first `yes` lists the cards still waiting on earlier messages of the session, and later replies answer them by that listing; a `no` sent before it goes to the agent. See [Answering with a reply](/docs/agent-connectors#answering-with-a-reply).
+- **Approval cards.** While a connector's approval card waits on the agent's latest reply, `yes`, `always` and `no` answer it instead: in a chat sent with your API key the first `yes` gets Wiro's listing of each card's exact request, and a second `yes` (or `yes 2`) allows one card once; `always` from your API key allows once too; `no` declines every waiting card at once and, where `chatsetup` allows the message, turns the reply's setup cards down with them. No agent turn runs for any of these. A setup card and an approval card on the same reply get one listing of both. While no approval card waits on the latest reply and it is the turn an approval started, or one in which the agent asked again for a call whose card still waits, the first `yes` lists the cards still waiting on earlier messages of the session, and later replies answer them by that listing; a `no` sent before it goes to the agent. After any other reply, such as the agent's own question, a reply doesn't reach those cards. See [Answering with a reply](/docs/agent-connectors#answering-with-a-reply).
 - A `yes` applies a `connect` card only when it needs no values. A `key` card waits for its key, and a `signin` card never connects from a typed reply: a `yes` while it waits is answered `A yes cannot connect <Title>. Its sign-in and any app keys are entered outside this chat, never in it.`, applies nothing and starts no agent turn. Its card's Sign in connects it. A `project` card never connects from a typed reply either: a `yes` while it waits is answered `A yes cannot connect <Title>. Its project is picked outside this chat.`, and its card's Connect, with the project picked, connects it.
 
-The latest reply is the newest row of the session, other than the replies Wiro answers itself and model switches. A row added between turns counts, such as a scheduled task's report written into that session: once it comes, a `yes` or `no` typed after it finds no setup cards, and reaches the approval cards before it only through Wiro's listing of them (see [Cards on earlier messages](/docs/agent-connectors#cards-on-earlier-messages)). Your buttons still act on those cards, since `SetupCardApply` takes a pending card by its `messageguid` and `cardid`, at any age, as `ApprovalCardAct` does an approval card until it expires.
+The latest reply is the newest row of the session, other than the replies Wiro answers itself and model switches. A row added between turns counts, such as a scheduled task's report written into that session: once it comes, a `yes` or `no` typed after it finds no setup cards, and doesn't reach the approval cards before it either, since such a row is neither the turn an approval started nor a reply in which the agent asked again (see [Cards on earlier messages](/docs/agent-connectors#cards-on-earlier-messages)). Your buttons still act on those cards, since `SetupCardApply` takes a pending card by its `messageguid` and `cardid`, at any age, as `ApprovalCardAct` does an approval card until it expires.
 
 A message counts as an approval or a refusal when it is sent with no attachment and has at most four words, no question mark and nothing but these words. Case, accents and other punctuation don't matter:
 
@@ -2399,7 +2399,7 @@ Every screen your key opens adds the [Screen rows](/docs/agent-overview#screen-i
 {
   "ts": "2026-11-20T18:03:05.000Z",
   "kind": "AGENT_SCREEN_CONTROLLED",
-  "title": "Took control of the agent's screen (API key \"Acme App\")",
+  "title": "Took control of the agent's screen, via API key \"Acme App\"",
   "ok": true,
   "summary": { "project": "Acme App" },
   "userUuid": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
@@ -2417,9 +2417,9 @@ Every screen your key opens adds the [Screen rows](/docs/agent-overview#screen-i
 
 | `kind` | When | With your key |
 |--------|------|---------------|
-| `AGENT_SCREEN_VIEWED` | `ScreenStart` issued a view ticket. | At most one row an hour on each agent for each project's key, for all of your users together, apart from the rows the owner's own sessions in the Wiro panel write. The title ends with `(API key "<project name>")` and `summary` holds `{ "project": "<project name>" }`, or the title ends with `(via API key)` for a personal project's key on a team agent. |
+| `AGENT_SCREEN_VIEWED` | `ScreenStart` issued a view ticket. | At most one row an hour on each agent for each project's key, for all of your users together, apart from the rows the owner's own sessions in the Wiro panel write. The title ends with `, via API key "<project name>"` and `summary` holds `{ "project": "<project name>" }`, or the title ends with `, via API key` for a personal project's key on a team agent. |
 | `AGENT_SCREEN_CONTROLLED` | `ScreenStart` issued a Take Control ticket. | At most one row every 10 minutes on each agent for each project's key, with the same title ending and `summary`. |
-| `AGENT_SCREEN_CONTROL_ENDED` | A control session that started has ended. | One row for every session, with `summary: { seconds, reason }`, named after your key's owner; the title ends with `(via API key)`. |
+| `AGENT_SCREEN_CONTROL_ENDED` | A control session that started has ended. | One row for every session, with `summary: { seconds, reason }`, named after your key's owner; the title ends with `, via API key`. |
 
 The rows never say which of your users watched or took control. Keep that in your own records, for example a line for every ticket your backend hands out, as `server.mjs` does.
 
@@ -2510,7 +2510,7 @@ page <> binary RFB 3.8 frames: noVNC draws the agent's browser, view only
   {
     "ts": "2026-11-20T18:06:47.000Z",
     "kind": "AGENT_SCREEN_CONTROL_ENDED",
-    "title": "Control of the agent's screen ended after 3 minutes 40 seconds: handed back (via API key)",
+    "title": "Control of the agent's screen ended after 3 minutes 40 seconds: handed back, via API key",
     "ok": true,
     "summary": { "seconds": 220, "reason": "hand_back" },
     "userUuid": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
@@ -2518,7 +2518,7 @@ page <> binary RFB 3.8 frames: noVNC draws the agent's browser, view only
   {
     "ts": "2026-11-20T18:03:05.000Z",
     "kind": "AGENT_SCREEN_CONTROLLED",
-    "title": "Took control of the agent's screen (API key \"Acme App\")",
+    "title": "Took control of the agent's screen, via API key \"Acme App\"",
     "ok": true,
     "summary": { "project": "Acme App" },
     "userUuid": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
@@ -2526,7 +2526,7 @@ page <> binary RFB 3.8 frames: noVNC draws the agent's browser, view only
   {
     "ts": "2026-11-20T18:02:11.000Z",
     "kind": "AGENT_SCREEN_VIEWED",
-    "title": "Watched the agent's screen (API key \"Acme App\")",
+    "title": "Watched the agent's screen, via API key \"Acme App\"",
     "ok": true,
     "summary": { "project": "Acme App" },
     "userUuid": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
