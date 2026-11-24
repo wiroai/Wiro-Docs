@@ -90,7 +90,7 @@ Accepts either `application/json` (text-only) or `multipart/form-data` (text + f
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | The agent instance GUID (from Deploy or MyAgents). |
-| `message` | string | Conditional | The user message text. Required unless sending files via multipart. |
+| `message` | string | Conditional | The user message text. Required unless sending files via multipart. A value that isn't a string, such as a JSON array or object or a number, is refused (see [Failure responses](#failure-responses)). |
 | `sessionkey` | string | No | Session identifier for conversation continuity. Defaults to `"default"`. |
 | `callbackurl` | string | No | Webhook URL: the system will POST the final response to this URL when the agent finishes. It must be a public `http(s)` address: a host that is, or resolves to, a private, loopback or link-local address gets no webhook. |
 | `model` | string | No | Canonical model slug to run **this turn** on (e.g. `"openai/gpt-5.6-sol"`), chosen from the agent's selectable set. Validated server-side: an unknown or non-selectable slug is rejected in `errors[]` and the turn is **not** sent. So is a model that a [Model Access](/docs/model-access) rule for the agent blocks (code `92`): its own rule, the account's or team's rule, or the `agent` surface's rule. Omit to use the agent's configured chat model. |
@@ -118,7 +118,7 @@ Accepts either `application/json` (text-only) or `multipart/form-data` (text + f
 |-------|------|-------------|
 | `messageguid` | `string` | Unique identifier for this message. Use it with Detail, History, or Cancel. |
 | `agenttoken` | `string\|null` | Token for WebSocket subscription and polling. Equivalent to `tasktoken` in model runs. `null` when Wiro handled the message itself (see below). |
-| `status` | `string` | Initial status: `"agent_queue"` on success, or `"agent_end"` when Wiro handled the message itself: a setup reply (see [Replies Wiro handles itself](#handled-setup-replies)), a reply to an approval card (see [Answering with a reply](/docs/agent-connectors#answering-with-a-reply)) or an [unknown or disabled command](#unknown-or-disabled-commands). |
+| `status` | `string` | Initial status: `"agent_queue"` on success, or `"agent_end"` when Wiro handled the message itself: a setup reply (see [Replies Wiro handles itself](#handled-setup-replies)), a reply to an approval card (see [Answering with a reply](/docs/agent-connectors#answering-with-a-reply)), an [unknown or disabled command](#unknown-or-disabled-commands) or an [operator-only command](#operator-only-commands) sent with a project API key. |
 | `modelChangeMarker` | `object\|null` | Present **only** when this turn's `model` selects a different chat model than the session was running, i.e. it rotates the model mid-session. Shape: `{ guid, type: "model_change", fromModel, toModel, createdat }`. The platform also writes a matching marker row into history (see [Message/History](#post-useragentmessagehistory)). Absent on turns that keep the session's model. |
 | `content` | `string` | Present when Wiro handled the message itself or removed a key from it: the message text as stored. See [Keys in chat](#keys-in-chat). |
 | `contentmasked` | `boolean` | Present (`true`) when Wiro removed a key from the message before the agent saw it; `content` holds the text the agent got. |
@@ -152,6 +152,8 @@ When `result: false`, the response shape is `{ result: false, errors: [{ code, m
 
 A deleted agent answers code `95`, `User agent not found`, with no extra fields.
 
+A `message` that isn't a string, such as a JSON array or object, a number, `true` or `message[]` fields in a form, is refused with code `0` and `Request parameters [message] not valid.`, whatever the agent's status, with no extra fields: nothing is stored or sent. An empty one, such as `""` or `[]`, sent without files gets `Request parameter [message] required`.
+
 ### Unknown or disabled commands
 
 While the agent is running, Wiro answers a slash command the agent doesn't run, such as `/status`, or one of its commands that is turned off in [`enabledcommands`](/docs/agent-overview#post-useragentupdatesettings). No agent turn runs and nothing is charged, even while the agent is paused for its balance. Send answers at once:
@@ -177,7 +179,31 @@ Wiro finds the command this way:
 - Otherwise only a command that starts the message counts: a `/` and a name that starts with a letter or `_`, followed by a space, tab, line break or the end of the message, such as `/status` or `/status please`. The name is read in lower case: `/AGENT_STATUS` doesn't run the command and gets the answer for `/agent_status`. A `/` word later in the message, as in `Update the /pricing page`, and one followed by anything else, as in `/pricing,`, `/agent_status.` or a path such as `/data/report.csv`, are plain text for the agent, and so is a `/` before a digit, as in `/2fa`.
 - When that first command is `/model` or `/models`, one of `/start`, `/help`, `/settings`, `/app`, `/tmp`, `/run`, `/usr`, `/bin`, `/etc`, `/home` and `/var`, or a name of more than 32 characters, the message goes to the agent as usual: `/start /pricing` reaches the agent. Any other first command gets the answer.
 
+A message sent with a project API key that names one of the [operator-only commands](#operator-only-commands) gets the operator-only answer instead, even when the command comes later in the message, on a quoted line or turned off.
+
 While the agent isn't running, the message gets the [not-running refusal](#failure-responses) with `agentstatus`, as every message does that Wiro doesn't answer as a setup reply.
+
+### Operator-only commands
+
+Five commands act as the agent's owner, so only its operator can run them: `/new_session`, `/agent_limits`, `/agent_restart`, `/clear_all_sessions` and `/clear_history`. They run in Wiro's web chat and for the allowed users on the agent's Telegram, Slack or Discord channel. A message sent with a project API key carries the key owner's identity, whoever typed it, so Wiro answers these commands itself for such a message, as it answers an unknown command: no agent turn runs and nothing is charged, even while the agent is paused for its balance. Send answers at once:
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "messageguid": "f6a7b8c9-d0e1-2345-f678-901234567890",
+  "agenttoken": null,
+  "status": "agent_end",
+  "response": "This command requires an authenticated operator or an allowlisted channel operator.",
+  "content": "/agent_limits"
+}
+```
+
+The message is stored and posted to the `callbackurl` like an [unknown or disabled command](#unknown-or-disabled-commands), and the callback's `metadata` holds `command`, the command's name, such as `"agent_limits"`. Files sent with the message are not kept.
+
+Wiro looks for these commands in the whole message, quoted lines included, after leaving out links: a `/` at the start of the message or after a space, tab or line break, then the command in lower case, followed by a space, tab, line break or the end of the message. So `Please run /agent_limits now`, `/agent_status /agent_limits` and `> /agent_restart` get this answer too, and so does one of these commands that is turned off in [`enabledcommands`](/docs/agent-overview#post-useragentupdatesettings). A link such as `https://example.com/agent_restart` holds none, and `/AGENT_LIMITS` and `/agent_limits.` follow the rules for [unknown or disabled commands](#unknown-or-disabled-commands).
+
+Do these jobs with the endpoints: [`Stop`](/docs/agent-overview#post-useragentstop) and, once the agent has stopped, [`Start`](/docs/agent-overview#post-useragentstart) restart it, a new `sessionkey` starts a fresh conversation, [`Message/DeleteSession`](#post-useragentmessagedeletesession) deletes a session (with `rotate: true`, the agent's memory of it too), and the [`usage`](/docs/agent-overview#usage-object) on [`UserAgent/Detail`](/docs/agent-overview#post-useragentdetail) shows the AI usage. While the agent isn't running, the message gets the [not-running refusal](#failure-responses) with `agentstatus`.
 
 ## **POST** /UserAgent/Message/Detail
 
