@@ -28899,7 +28899,7 @@ A message counts as an approval or a refusal when it is sent with no attachment 
 | Approval | `yes`, `y`, `yeah`, `yep`, `yup`, `ok`, `okay`, `sure`, `approve`, `approved`, `confirm`, `confirmed`, `apply`, `lgtm`, `do it`, `go ahead`, `go for it`, `sounds good`, `looks good`, `please do`, `of course`, `evet`, `e`, `tamam`, `tamamdır`, `olur`, `onay`, `onayla`, `onaylıyorum`, `onayladım`, `uygula`, `kabul`, `kabul ediyorum`, `ja`, `oui`, `si`, `sim`, `da`, `hai`, `👍`, `✅`, `✔` |
 | Refusal | `no`, `n`, `nope`, `nah`, `cancel`, `stop`, `don't`, `do not`, `never mind`, `not now`, `hayır`, `yok`, `iptal`, `vazgeç`, `vazgeçtim`, `istemiyorum`, `nein`, `non`, `não` |
 | Courtesy, allowed next to either | `please`, `pls`, `plz`, `thanks`, `thx`, `ty`, `thank you`, `lütfen`, `teşekkürler`, `teşekkür ederim`, `sağol`, `sağolun`, `bitte`, `danke`, `merci`, `gracias`, `por favor` |
-| A card number, with an approval | One number from 1 to 3, as in `yes 2`, `apply #1`, `evet 3` or `yes card 2`; 1 to 6 when approval cards wait on the same reply, where `no 2` declines one card |
+| A card number, with an approval | One number from 1 to 3, as in `yes 2`, `apply #1`, `evet 3` or `yes card 2`; 1 to 6 when approval cards wait on the same reply, where `no 2` declines the card the newest listing of that reply showed as 2 |
 
 For approval cards, `always`, `always allow`, `hep` and `her zaman` are words too: see [Answering with a reply](/docs/agent-connectors#answering-with-a-reply).
 
