@@ -1111,7 +1111,7 @@ A `signin` card for HubSpot, which signs in with an app of your own:
   "authtype": "oauth",
   "mode": "signin",
   "fields": [
-    { "name": "clientid", "label": "Client ID", "description": "1. Sign in to your developer account at [developers.hubspot.com](https://developers.hubspot.com) ...", "required": true, "secret": false, "format": "text", "maxlength": 200, "serveronly": true, "mode": "oauth" },
+    { "name": "clientid", "label": "Client ID", "description": "1. Sign in to your HubSpot account ...", "required": true, "secret": false, "format": "text", "maxlength": 200, "serveronly": true, "mode": "oauth" },
     { "name": "clientsecret", "label": "Client Secret", "description": "", "required": true, "secret": true, "format": "password", "serveronly": true, "mode": "oauth" }
   ],
   "requestedby": "ada-uuid",

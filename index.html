@@ -24782,7 +24782,7 @@ End every post with three questions readers ask, each with a two-sentence answer
   &quot;authtype&quot;: &quot;oauth&quot;,
   &quot;mode&quot;: &quot;signin&quot;,
   &quot;fields&quot;: [
-    { &quot;name&quot;: &quot;clientid&quot;, &quot;label&quot;: &quot;Client ID&quot;, &quot;description&quot;: &quot;1. Sign in to your developer account at [developers.hubspot.com](https://developers.hubspot.com) ...&quot;, &quot;required&quot;: true, &quot;secret&quot;: false, &quot;format&quot;: &quot;text&quot;, &quot;maxlength&quot;: 200, &quot;serveronly&quot;: true, &quot;mode&quot;: &quot;oauth&quot; },
+    { &quot;name&quot;: &quot;clientid&quot;, &quot;label&quot;: &quot;Client ID&quot;, &quot;description&quot;: &quot;1. Sign in to your HubSpot account ...&quot;, &quot;required&quot;: true, &quot;secret&quot;: false, &quot;format&quot;: &quot;text&quot;, &quot;maxlength&quot;: 200, &quot;serveronly&quot;: true, &quot;mode&quot;: &quot;oauth&quot; },
     { &quot;name&quot;: &quot;clientsecret&quot;, &quot;label&quot;: &quot;Client Secret&quot;, &quot;description&quot;: &quot;&quot;, &quot;required&quot;: true, &quot;secret&quot;: true, &quot;format&quot;: &quot;password&quot;, &quot;serveronly&quot;: true, &quot;mode&quot;: &quot;oauth&quot; }
   ],
   &quot;requestedby&quot;: &quot;ada-uuid&quot;,
@@ -29041,7 +29041,7 @@ echo json_encode(['ok' =&gt; true]);
 <p>The answer has the fields of <a href="#connect-with-fields">Connect with fields</a>, with <code>authmode: "key"</code> on the connection. Fields of the other way are not kept: a connection holds either a sign-in or a key. A vendor that only signs in refuses <code>mode: "key"</code> with <code>This connector connects only by signing in.</code> Facebook Pages has account pickers: choose its Pages next, as in <a href="#account-pickers">Account Pickers</a>.</p>
 <h3 id="connect-with-a-sign-in">Connect with a sign-in</h3>
 <p>A sign-in takes four steps: start it, open the vendor's page, let the vendor send the browser back, and read the outcome on your page.</p>
-<p><strong>1. Start it.</strong> For a <code>provider-oauth</code> connector, and for HubSpot, send your own app's keys (the <code>serveronly</code> fields with <code>mode: "oauth"</code>, or no <code>mode</code>) and any other field the sign-in needs, such as Shopify's shop domain. Keys saved by an earlier connect are used again when you leave them out. Register the redirect URI the field help names in your app first: <code>https://api.wiro.ai/v1/AgentConnector/OAuthCallback</code>. HubSpot signs in on its own MCP server, <code>https://mcp.hubspot.com</code>: its app is an MCP connector you create in your HubSpot developer account (<strong>Development</strong> → <strong>MCP Connectors</strong> → <strong>Create MCP connector</strong>), with the redirect URI as its redirect URL, and its consent screen shows that connector's name. From Wiro's own panel, HubSpot can also sign in with Wiro's own HubSpot app, with nothing to type; a request made with your API key always takes your own app's keys.</p>
+<p><strong>1. Start it.</strong> For a <code>provider-oauth</code> connector, and for HubSpot, send your own app's keys (the <code>serveronly</code> fields with <code>mode: "oauth"</code>, or no <code>mode</code>) and any other field the sign-in needs, such as Shopify's shop domain. Keys saved by an earlier connect are used again when you leave them out. Register the redirect URI the field help names in your app first: <code>https://api.wiro.ai/v1/AgentConnector/OAuthCallback</code>. HubSpot signs in on its own MCP server, <code>https://mcp.hubspot.com</code>: its app is an MCP connector you create in your HubSpot account (<strong>Development</strong> → <strong>MCP Connectors</strong> → <strong>Create MCP connector</strong>), with the redirect URI as its redirect URL, and its consent screen shows that connector's name. From Wiro's own panel, HubSpot can also sign in with Wiro's own HubSpot app, with nothing to type; a request made with your API key always takes your own app's keys.</p>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot; \
   -H &quot;Content-Type: application/json&quot; \
   -H &quot;x-api-key: YOUR_API_KEY&quot; \
@@ -34113,7 +34113,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <li>A <code>project</code> card never connects from a typed reply and never takes a pasted key. In a chat sent with your API key, a <code>yes</code> while only <code>connect</code> cards wait, this one among them, is answered <code>A yes cannot connect Wiro AI Models. Its project is picked outside this chat.</code>: nothing is applied and no agent turn starts.</li>
 </ul>
 <h3 id="sign-in-hubspot">Sign-in: HubSpot</h3>
-<p>A connector that signs in gets a <code>signin</code> card. HubSpot signs in on its own MCP server with an app of your own there, an MCP connector in your HubSpot developer account, so its card's <code>fields</code> are that app's client id and secret, and the help text names the redirect URI to register in the app:</p>
+<p>A connector that signs in gets a <code>signin</code> card. HubSpot signs in on its own MCP server with an app of your own there, an MCP connector in your HubSpot account, so its card's <code>fields</code> are that app's client id and secret, and the help text names the redirect URI to register in the app:</p>
 <pre><code class="language-json">{
   &quot;v&quot;: 1,
   &quot;id&quot;: &quot;q8n2v5k1m7xt&quot;,
@@ -34126,7 +34126,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
     {
       &quot;name&quot;: &quot;clientid&quot;,
       &quot;label&quot;: &quot;Client ID&quot;,
-      &quot;description&quot;: &quot;1. Sign in to your developer account at [developers.hubspot.com](https://developers.hubspot.com)\n2. Go to **Development** → **MCP Connectors** and click **Create MCP connector**\n3. Give it a name: HubSpot shows it on its consent screen\n4. Add this **Redirect URL**:\n`https://api.wiro.ai/v1/AgentConnector/OAuthCallback`\n5. Save, then copy the connector's **Client ID** here and its **Client Secret** below&quot;,
+      &quot;description&quot;: &quot;1. Sign in to your HubSpot account\n2. Go to **Development** → **MCP Connectors** and click **Create MCP connector**\n3. Give it a name: HubSpot shows it on its consent screen\n4. Add this **Redirect URL**:\n`https://api.wiro.ai/v1/AgentConnector/OAuthCallback`\n5. Click **Create**, then copy the **Client ID** from the connector's details page here and its **Client Secret** below&quot;,
       &quot;required&quot;: true,
       &quot;secret&quot;: false,
       &quot;format&quot;: &quot;text&quot;,
@@ -34176,7 +34176,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
     &quot;authtype&quot;: &quot;oauth&quot;,
     &quot;mode&quot;: &quot;signin&quot;,
     &quot;fields&quot;: [
-      { &quot;name&quot;: &quot;clientid&quot;, &quot;label&quot;: &quot;Client ID&quot;, &quot;description&quot;: &quot;1. Sign in to your developer account at [developers.hubspot.com](https://developers.hubspot.com) ...&quot;, &quot;required&quot;: true, &quot;secret&quot;: false, &quot;format&quot;: &quot;text&quot;, &quot;maxlength&quot;: 200, &quot;serveronly&quot;: true, &quot;mode&quot;: &quot;oauth&quot; },
+      { &quot;name&quot;: &quot;clientid&quot;, &quot;label&quot;: &quot;Client ID&quot;, &quot;description&quot;: &quot;1. Sign in to your HubSpot account ...&quot;, &quot;required&quot;: true, &quot;secret&quot;: false, &quot;format&quot;: &quot;text&quot;, &quot;maxlength&quot;: 200, &quot;serveronly&quot;: true, &quot;mode&quot;: &quot;oauth&quot; },
       { &quot;name&quot;: &quot;clientsecret&quot;, &quot;label&quot;: &quot;Client Secret&quot;, &quot;description&quot;: &quot;&quot;, &quot;required&quot;: true, &quot;secret&quot;: true, &quot;format&quot;: &quot;password&quot;, &quot;serveronly&quot;: true, &quot;mode&quot;: &quot;oauth&quot; }
     ],
     &quot;requestedby&quot;: &quot;5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f&quot;,
@@ -34203,7 +34203,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
     &quot;authtype&quot;: &quot;oauth&quot;,
     &quot;mode&quot;: &quot;signin&quot;,
     &quot;fields&quot;: [
-      { &quot;name&quot;: &quot;clientid&quot;, &quot;label&quot;: &quot;Client ID&quot;, &quot;description&quot;: &quot;1. Sign in to your developer account at [developers.hubspot.com](https://developers.hubspot.com) ...&quot;, &quot;required&quot;: true, &quot;secret&quot;: false, &quot;format&quot;: &quot;text&quot;, &quot;maxlength&quot;: 200, &quot;serveronly&quot;: true, &quot;mode&quot;: &quot;oauth&quot; },
+      { &quot;name&quot;: &quot;clientid&quot;, &quot;label&quot;: &quot;Client ID&quot;, &quot;description&quot;: &quot;1. Sign in to your HubSpot account ...&quot;, &quot;required&quot;: true, &quot;secret&quot;: false, &quot;format&quot;: &quot;text&quot;, &quot;maxlength&quot;: 200, &quot;serveronly&quot;: true, &quot;mode&quot;: &quot;oauth&quot; },
       { &quot;name&quot;: &quot;clientsecret&quot;, &quot;label&quot;: &quot;Client Secret&quot;, &quot;description&quot;: &quot;&quot;, &quot;required&quot;: true, &quot;secret&quot;: true, &quot;format&quot;: &quot;password&quot;, &quot;serveronly&quot;: true, &quot;mode&quot;: &quot;oauth&quot; }
     ],
     &quot;requestedby&quot;: &quot;5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f&quot;,
@@ -34282,7 +34282,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 }
 </code></pre>
 <p>A value that fails the field's checks, such as a required field left out, applies neither card: the answer is <code>result: false</code> with the sentence, both cards stay pending, and <code>paired</code> holds the <code>connect</code> card with the same sentence in <code>error</code>. A key the vendor refuses once the skill is added leaves the <code>add</code> card applied (<code>result: true</code>, <code>summary</code> names only the skill) and the <code>connect</code> card pending: <code>paired[0]</code> has <code>result: false</code> and the vendor's sentence in <code>error</code>, and <code>next</code> names the <code>connect</code> card for the person to try again.</p>
-<p><strong>With a sign-in.</strong> On an agent that has Google Ads and Meta Ads connected, Ads Manager Common Rules needs only TikTok Ads. TikTok Ads signs in on the vendor's own MCP server (<code>authtype: "oauth"</code>), so its card has no fields:</p>
+<p><strong>With a sign-in.</strong> On an agent that has Google Ads and Meta Ads connected, Ads Manager Common Rules needs only TikTok Ads. TikTok Ads signs in on the vendor's own MCP server (<code>authtype: "oauth"</code>) and needs no app of yours, so its card has no fields:</p>
 <pre><code class="language-json">{
   &quot;v&quot;: 1,
   &quot;id&quot;: &quot;a3d6s9m2k7qe&quot;,
