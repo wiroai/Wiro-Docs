@@ -19266,7 +19266,7 @@ channel-enable endpoint or persisted switch.</p>
 <tr>
 <td><code>live</code></td>
 <td><code>boolean</code></td>
-<td><code>true</code> when the running agent got the change with no restart: it uses it from its next message.</td>
+<td><code>true</code> when the running agent has the change from its next message, with no restart.</td>
 </tr>
 </tbody>
 </table>
@@ -25159,7 +25159,7 @@ Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it
 <tr>
 <td><code>live</code></td>
 <td><code>boolean</code></td>
-<td><code>true</code> when the running agent got the change with no restart: it uses it from its next message.</td>
+<td><code>true</code> when the running agent has the change from its next message, with no restart.</td>
 </tr>
 <tr>
 <td><code>summary</code></td>
@@ -37227,7 +37227,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
     &quot;interval&quot;: &quot;0 */2 * * *&quot;
   }'
 </code></pre>
-<p>All three requests succeed independently, and each reaches a running agent with no restart: it uses the change from its next message.</p>
+<p>All three requests succeed independently, and each reaches a running agent with no restart: it has the new preferences from its next message, and the two scheduled tasks run on their new schedules.</p>
 <h2 id="available-skills-by-agent">Available Skills by Agent</h2>
 <blockquote>
 <p><strong>Connectors:</strong> the services these agents work with (Google Ads, Meta Ads, WordPress, Brevo and the rest) are connectors, each connected with your own credentials. See <a href="/docs/agent-connectors">Agent Connectors</a>, and each connector's page at <code>https://wiro.ai/connectors/{slug}</code>.</p>
@@ -37632,7 +37632,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <p>The voice channels are Skills too: Twilio Voice Channel (<code>util-twilio-channel</code>) answers phone calls through Twilio Voice and saves its account in the <code>twilio-voice</code> credential (see <a href="/docs/integration-twiliovoice-skills">Twilio Voice Channel</a>), and Web Voice Channel (<code>util-web-channel</code>) takes calls in the browser (see <a href="/docs/integration-webvoice-skills">Web Voice Channel</a>). Each needs Voice Receptionist Rules (<code>util-voice-receptionist</code>) and Voice Call Prep Rules (<code>util-voice-call-prep</code>). With <a href="#turning-skills-on-and-off"><code>SkillsApply</code></a> send them in the same call, for example <code>{ "util-twilio-channel": true, "util-voice-receptionist": true, "util-voice-call-prep": true }</code>: sent alone while the two are off, a channel is refused with code <code>101</code> and <code>deps[]</code>. Deploy's <code>skills</code> turns them on by itself.</p>
 <p><code>POST /Skills/List</code> with <code>{ "category": "util" }</code> returns every Skill.</p>
 <blockquote>
-<p><strong>No restart for most changes:</strong> <code>SkillsApply</code>, <code>CustomSkillUpsert</code>, <code>CustomSkillRename</code>, <code>CustomSkillDelete</code> and <code>CustomSkillRevert</code> reach a running agent (status 4) with no restart: it uses the new skill set, or the new or changed skill or task (<code>cs-approval-policy</code> included), from its next message. Turning <code>util-voice-receptionist</code>, <code>util-twilio-channel</code>, <code>util-web-channel</code> or <code>util-newsletter-compose</code> on or off restarts it, as credential updates do. <code>live</code> and <code>restarting</code> in the answer say which happened. See <a href="/docs/agent-overview#live-changes-and-restarts">Live Changes and Restarts</a>.</p>
+<p><strong>No restart for most changes:</strong> <code>SkillsApply</code>, <code>CustomSkillUpsert</code>, <code>CustomSkillRename</code>, <code>CustomSkillDelete</code> and <code>CustomSkillRevert</code> reach a running agent (status 4) with no restart: from its next message it has the new skill set and every skill and task as saved, <code>cs-approval-policy</code> included, and no longer has the ones turned off or deleted. Turning <code>util-voice-receptionist</code>, <code>util-twilio-channel</code>, <code>util-web-channel</code> or <code>util-newsletter-compose</code> on or off restarts it, as credential updates do. <code>live</code> and <code>restarting</code> in the answer say which happened. See <a href="/docs/agent-overview#live-changes-and-restarts">Live Changes and Restarts</a>.</p>
 </blockquote>
 <h2 id="using-wiro-ai-models-from-your-agent">Using Wiro AI Models from Your Agent</h2>
 <p>An agent runs Wiro's own AI models (image, video, audio and LLM generation, cover images, model discovery) two ways:</p>
@@ -38853,7 +38853,7 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
                             <tr><td><code>AGENT_BROWSER_RESET</code></td><td><code>Agent browser reset</code> (see <a href="/docs/agent-overview#resetting-the-browser">Resetting the Browser</a>)</td></tr>
                             <tr><td><code>AGENT_DISK_ALMOST_FULL</code>, <code>AGENT_DISK_FULL</code></td><td><code>Disk almost full: 210 MB of 250 MB used.</code>, <code>Disk full: 260 MB of 250 MB used. The agent can't save new files until some are deleted.</code> (see <a href="/docs/agent-overview#disk-space">Disk Space</a>)</td></tr>
                             <tr><td><code>AGENT_DISK_TEMP_CLEARED</code>, <code>AGENT_DISK_HOST_RESTART</code></td><td><code>Temporary files passed 1 GB, so the agent restarted and cleared them.</code>, <code>The agent restarted to clear its temporary files.</code> (see <a href="/docs/agent-overview#disk-space">Disk Space</a>)</td></tr>
-                            <tr><td><code>AGENT_CHANGE_APPLIED</code>, <code>AGENT_CHANGE_RESTARTED</code></td><td><code>Change applied without a restart: Connectors, Your Setup</code>, <code>Agent restarted to load a change</code> (written by Wiro: a change reached the running agent with no restart, naming what it touched, or the agent restarted to load one; see <a href="/docs/agent-overview#live-changes-and-restarts">Live Changes and Restarts</a>)</td></tr>
+                            <tr><td><code>AGENT_CHANGE_APPLIED</code>, <code>AGENT_CHANGE_RESTARTED</code></td><td><code>Change applied without a restart: Connectors</code>, <code>Agent restarted to load a change</code> (written by Wiro: a change reached the running agent with no restart, naming what it touched, or the agent restarted to load one; see <a href="/docs/agent-overview#live-changes-and-restarts">Live Changes and Restarts</a>)</td></tr>
                           </tbody>
                         </table>
                       </div>

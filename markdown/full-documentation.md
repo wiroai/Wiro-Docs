@@ -17827,7 +17827,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
 | Field | Type | Description |
 |-------|------|-------------|
 | `restarting` | `boolean` | `true` when the call restarted the agent to load the change. `false` when the agent wasn't starting or running, or got the change without a restart. |
-| `live` | `boolean` | `true` when the running agent got the change with no restart: it uses it from its next message. |
+| `live` | `boolean` | `true` when the running agent has the change from its next message, with no restart. |
 
 #### **POST** /UserAgent/CustomSkillRename
 
@@ -21890,7 +21890,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
 |-------|------|-------------|
 | `setup` | `object\|null` | The card after the action, in the same shape as a [setup block](#setup-blocks)'s `setup`. `null` when the call is refused before the card is read: a missing parameter, an agent or message the caller can't reach, Setup From Chat off, a reply still being written, a caller who isn't an agent admin, a card someone else is applying at that moment, or a card that isn't there. |
 | `restarting` | `boolean` | `true` when the agent restarts to load the change. Continue the chat in a minute or two. |
-| `live` | `boolean` | `true` when the running agent got the change with no restart: it uses it from its next message. |
+| `live` | `boolean` | `true` when the running agent has the change from its next message, with no restart. |
 | `summary` | `string` | A short English phrase that says what changed, such as `Scheduled task Morning summary created`, `Serper connected` or `Weather added`. An `add` card applied with its `connect` card names both, and one whose connectors have no `connect` card to finish them goes on with `Still to connect: <titles>`. Empty when nothing was applied. |
 | `authorizeUrl` | `string` | Only when a `signin` card's sign-in started: the vendor's sign-in address, to open in the browser, for 10 minutes and once. `result` is `true`, `setup` is still pending, `summary` is empty, and `next` names the card. Once the browser is back, apply the card again to record it. |
 | `paired` | `object[]` | Only when `values` or `signin: true` are sent with a pending `add` card: its `connect` card after the call, as `[{ setup, result, error }]`. `setup` has the same shape as above, `result` is `true` when the card was applied too, and `error` is `null` or the sentence that says why not. Empty when there is no single `connect` card for it. |
@@ -30778,7 +30778,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   }'
 ```
 
-All three requests succeed independently, and each reaches a running agent with no restart: it uses the change from its next message.
+All three requests succeed independently, and each reaches a running agent with no restart: it has the new preferences from its next message, and the two scheduled tasks run on their new schedules.
 
 ## Available Skills by Agent
 
@@ -30888,7 +30888,7 @@ The voice channels are Skills too: Twilio Voice Channel (`util-twilio-channel`) 
 
 `POST /Skills/List` with `{ "category": "util" }` returns every Skill.
 
-> **No restart for most changes:** `SkillsApply`, `CustomSkillUpsert`, `CustomSkillRename`, `CustomSkillDelete` and `CustomSkillRevert` reach a running agent (status 4) with no restart: it uses the new skill set, or the new or changed skill or task (`cs-approval-policy` included), from its next message. Turning `util-voice-receptionist`, `util-twilio-channel`, `util-web-channel` or `util-newsletter-compose` on or off restarts it, as credential updates do. `live` and `restarting` in the answer say which happened. See [Live Changes and Restarts](/docs/agent-overview#live-changes-and-restarts).
+> **No restart for most changes:** `SkillsApply`, `CustomSkillUpsert`, `CustomSkillRename`, `CustomSkillDelete` and `CustomSkillRevert` reach a running agent (status 4) with no restart: from its next message it has the new skill set and every skill and task as saved, `cs-approval-policy` included, and no longer has the ones turned off or deleted. Turning `util-voice-receptionist`, `util-twilio-channel`, `util-web-channel` or `util-newsletter-compose` on or off restarts it, as credential updates do. `live` and `restarting` in the answer say which happened. See [Live Changes and Restarts](/docs/agent-overview#live-changes-and-restarts).
 
 ## Using Wiro AI Models from Your Agent
 
@@ -31482,7 +31482,7 @@ A `token_usage` event records the tokens and the AI usage of one billed turn: a 
 | `AGENT_BROWSER_RESET` | `Agent browser reset` (see [Resetting the Browser](/docs/agent-overview#resetting-the-browser)) |
 | `AGENT_DISK_ALMOST_FULL`, `AGENT_DISK_FULL` | `Disk almost full: 210 MB of 250 MB used.`, `Disk full: 260 MB of 250 MB used. The agent can't save new files until some are deleted.` (see [Disk Space](/docs/agent-overview#disk-space)) |
 | `AGENT_DISK_TEMP_CLEARED`, `AGENT_DISK_HOST_RESTART` | `Temporary files passed 1 GB, so the agent restarted and cleared them.`, `The agent restarted to clear its temporary files.` (see [Disk Space](/docs/agent-overview#disk-space)) |
-| `AGENT_CHANGE_APPLIED`, `AGENT_CHANGE_RESTARTED` | `Change applied without a restart: Connectors, Your Setup`, `Agent restarted to load a change` (written by Wiro: a change reached the running agent with no restart, naming what it touched, or the agent restarted to load one; see [Live Changes and Restarts](/docs/agent-overview#live-changes-and-restarts)) |
+| `AGENT_CHANGE_APPLIED`, `AGENT_CHANGE_RESTARTED` | `Change applied without a restart: Connectors`, `Agent restarted to load a change` (written by Wiro: a change reached the running agent with no restart, naming what it touched, or the agent restarted to load one; see [Live Changes and Restarts](/docs/agent-overview#live-changes-and-restarts)) |
 
 #### Note rows
 

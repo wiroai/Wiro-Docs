@@ -747,7 +747,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   }'
 ```
 
-All three requests succeed independently, and each reaches a running agent with no restart: it uses the change from its next message.
+All three requests succeed independently, and each reaches a running agent with no restart: it has the new preferences from its next message, and the two scheduled tasks run on their new schedules.
 
 ## Available Skills by Agent
 
@@ -857,7 +857,7 @@ The voice channels are Skills too: Twilio Voice Channel (`util-twilio-channel`) 
 
 `POST /Skills/List` with `{ "category": "util" }` returns every Skill.
 
-> **No restart for most changes:** `SkillsApply`, `CustomSkillUpsert`, `CustomSkillRename`, `CustomSkillDelete` and `CustomSkillRevert` reach a running agent (status 4) with no restart: it uses the new skill set, or the new or changed skill or task (`cs-approval-policy` included), from its next message. Turning `util-voice-receptionist`, `util-twilio-channel`, `util-web-channel` or `util-newsletter-compose` on or off restarts it, as credential updates do. `live` and `restarting` in the answer say which happened. See [Live Changes and Restarts](/docs/agent-overview#live-changes-and-restarts).
+> **No restart for most changes:** `SkillsApply`, `CustomSkillUpsert`, `CustomSkillRename`, `CustomSkillDelete` and `CustomSkillRevert` reach a running agent (status 4) with no restart: from its next message it has the new skill set and every skill and task as saved, `cs-approval-policy` included, and no longer has the ones turned off or deleted. Turning `util-voice-receptionist`, `util-twilio-channel`, `util-web-channel` or `util-newsletter-compose` on or off restarts it, as credential updates do. `live` and `restarting` in the answer say which happened. See [Live Changes and Restarts](/docs/agent-overview#live-changes-and-restarts).
 
 ## Using Wiro AI Models from Your Agent
 

@@ -2096,7 +2096,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
 | Field | Type | Description |
 |-------|------|-------------|
 | `restarting` | `boolean` | `true` when the call restarted the agent to load the change. `false` when the agent wasn't starting or running, or got the change without a restart. |
-| `live` | `boolean` | `true` when the running agent got the change with no restart: it uses it from its next message. |
+| `live` | `boolean` | `true` when the running agent has the change from its next message, with no restart. |
 
 #### **POST** /UserAgent/CustomSkillRename
 
