@@ -21690,10 +21690,10 @@ A `signin` card for HubSpot, which signs in with an app of your own:
   "kind": "connect",
   "connector": "hubspot",
   "title": "HubSpot",
-  "authtype": "provider-oauth",
+  "authtype": "oauth",
   "mode": "signin",
   "fields": [
-    { "name": "clientid", "label": "Client ID", "description": "1. Go to [developers.hubspot.com](https://developers.hubspot.com) and create an app ...", "required": true, "secret": false, "format": "text", "maxlength": 200, "serveronly": true, "mode": "oauth" },
+    { "name": "clientid", "label": "Client ID", "description": "1. Sign in to your HubSpot account ...", "required": true, "secret": false, "format": "text", "maxlength": 200, "serveronly": true, "mode": "oauth" },
     { "name": "clientsecret", "label": "Client Secret", "description": "", "required": true, "secret": true, "format": "password", "serveronly": true, "mode": "oauth" }
   ],
   "requestedby": "ada-uuid",
@@ -24666,14 +24666,14 @@ The example is shortened: real help texts and tool descriptions are longer, and 
 | `title`, `description` | Display name and one-line summary. |
 | `category` | One lower-case word for grouping, or `null`. |
 | `iconurl`, `websiteurl` | The vendor's logo and site, or `null`. |
-| `authtype` | How it connects: `fields` (values on a Connect card), `provider-oauth` (the vendor's sign-in with your own app, and for some vendors a key instead), `headers` (values the vendor's own MCP server takes, such as an API key), `oauth` (the vendor's MCP sign-in, no app of yours needed) or `none` (nothing to enter). |
+| `authtype` | How it connects: `fields` (values on a Connect card), `provider-oauth` (the vendor's sign-in with your own app, and for some vendors a key instead), `headers` (values the vendor's own MCP server takes, such as an API key), `oauth` (the vendor's own MCP server's sign-in: no app of yours needed, or, when `credentialfields` lists your app's keys as HubSpot's does, an app of yours at that server) or `none` (nothing to enter). |
 | `transport` | Where its tools run: `local` (inside the agent), `streamable-http` or `sse` (the vendor's own MCP server). Nothing you send depends on it. |
 | `credentialfields` | The Connect card: one entry per value to ask for. See [Connect card fields](#connect-card-fields). A `headers` row lists its values in the same shape. Never a value. |
 | `accountpickers` | The account lists a connection chooses from after it connects, each `{ key, label, description, multiple }`. Empty when there is nothing to pick. See [Account Pickers](#account-pickers). |
 | `scopes` | The OAuth scopes the sign-in asks for (`oauth` and `provider-oauth` rows). |
 | `modes` | `provider-oauth` rows only: `["oauth"]` (sign-in only) or `["oauth", "key"]` (a sign-in, or a key or token instead). Empty for other rows. |
 | `wiroapp` | `true` when the vendor can also be signed in with Wiro's own app, which only Wiro's own panel uses. With your API key you always send your own app's keys. |
-| `tools` | The tools the agent gets, each `{ name, title, description, readonly, destructive, category, defaults }`. `name` is the tool's name before the slug prefix. `readonly` and `destructive` say what the tool does; for a vendor's own MCP server they are the vendor's hints, with Wiro's corrections where a hint is wrong. `category` (`read`, `create` or `change`) and `defaults` (`{ chat, autopilot }`, each `allow`, `ask` or `block`) are what an agent's [permissions](#permissions-and-approvals) start from. A connector on a vendor's own MCP server (TikTok Ads, DataForSEO, lemlist, GitBook, HackMD and Wiro AI Models) lists no tools until an agent first connects it, by sign-in, key or project: its `tools` is `[]` until then. |
+| `tools` | The tools the agent gets, each `{ name, title, description, readonly, destructive, category, defaults }`. `name` is the tool's name before the slug prefix. `readonly` and `destructive` say what the tool does; for a vendor's own MCP server they are the vendor's hints, with Wiro's corrections where a hint is wrong. `category` (`read`, `create` or `change`) and `defaults` (`{ chat, autopilot }`, each `allow`, `ask` or `block`) are what an agent's [permissions](#permissions-and-approvals) start from. A connector on a vendor's own MCP server (TikTok Ads, HubSpot, DataForSEO, lemlist, GitBook, HackMD and Wiro AI Models) lists no tools until an agent first connects it, by sign-in, key or project: its `tools` is `[]` until then. |
 | `docs` | Optional public page copy: `{ overview, setup, revoke, limits }` (`setup` is a list of steps), or `null`. |
 | `sortorder`, `updatedat` | Display order and the row's last change (Unix seconds). |
 | `runs` | `agent` when the connector's tools run inside the agent, which sends their requests straight to the vendor, or `vendor` when they run on the vendor's own MCP server, which the agent sends each request to. |
@@ -24764,7 +24764,7 @@ Build your Connect form from `credentialfields`, in their order:
 | `options` | `select` only: `[{ value, label }]`. Send the `value`. |
 | `placeholder`, `pattern`, `maxlength` | Optional input hints. Wiro checks `pattern` (a regular expression) and `maxlength` too. A value is at most 65,536 characters. A `headers` connector's values are at most 4,096 characters each, on one line. |
 | `serveronly` | `true` for your own OAuth app's keys (client id and secret): Wiro uses them for the sign-in and its token refreshes only, and they never reach the agent. |
-| `mode` | `provider-oauth` rows only: `oauth` (a field of the sign-in way: your own app's keys, or another value the sign-in needs, such as Reddit's Developer Profile Username) or `key` (the key way in, such as a Meta System User token). A field without `mode` belongs to both ways. Show the two ways as two choices on the card. |
+| `mode` | `provider-oauth` rows, and the app keys of an `oauth` row that takes them (HubSpot): `oauth` (a field of the sign-in way: your own app's keys, or another value the sign-in needs, such as Reddit's Developer Profile Username) or `key` (the key way in, such as a Meta System User token). A field without `mode` belongs to both ways. Show the two ways as two choices on the card. |
 | `source` | `wiro_project` on the project field of Wiro AI Models (`wiro`): show a picker of your Wiro projects instead of an input, and send the chosen project's id as `wiroprojectguid`, never in `values`. See [Wiro AI Models](#the-wiro-connector). |
 
 ## Connecting
@@ -24779,6 +24779,7 @@ Every way goes through one call, `POST /UserAgent/ConnectorConnect`. The connect
 | `provider-oauth` with `mode: "key"` | `values` of the `key` way | `connected` |
 | `provider-oauth` (`mode` `oauth`, the default) | the sign-in's fields in `values` (no `mode` or `mode: "oauth"`: your app's keys and any other, such as Shopify's Shop Domain or LinkedIn's Organization ID), and `redirecturl` | `pending` and `authorizeUrl` |
 | `oauth` | `redirecturl` | `pending` and `authorizeUrl` |
+| `oauth` whose `credentialfields` are your app's keys (HubSpot) | those keys in `values`, and `redirecturl` | `pending` and `authorizeUrl` |
 
 ### **POST** /UserAgent/ConnectorConnect
 
@@ -24968,7 +24969,7 @@ The answer has the fields of [Connect with fields](#connect-with-fields), with `
 
 A sign-in takes four steps: start it, open the vendor's page, let the vendor send the browser back, and read the outcome on your page.
 
-**1. Start it.** For a `provider-oauth` connector, send your own app's keys (the `serveronly` fields with `mode: "oauth"`, or no `mode`) and any other field the sign-in needs, such as Shopify's shop domain. Keys saved by an earlier connect are used again when you leave them out. Register the redirect URI the field help names in your app first: `https://api.wiro.ai/v1/AgentConnector/OAuthCallback`.
+**1. Start it.** For a `provider-oauth` connector, and for HubSpot, send your own app's keys (the `serveronly` fields with `mode: "oauth"`, or no `mode`) and any other field the sign-in needs, such as Shopify's shop domain. Keys saved by an earlier connect are used again when you leave them out. Register the redirect URI the field help names in your app first: `https://api.wiro.ai/v1/AgentConnector/OAuthCallback`. HubSpot signs in on its own MCP server, `https://mcp.hubspot.com`: its app is an MCP connector you create in your HubSpot account (**Development** → **MCP Connectors** → **Create MCP connector**), with the redirect URI as its redirect URL, and its consent screen shows that connector's name. From Wiro's own panel, HubSpot can also sign in with Wiro's own HubSpot app, with nothing to type; a request made with your API key always takes your own app's keys.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
@@ -24993,7 +24994,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
 }
 ```
 
-An `oauth` connector, a vendor's own MCP server with its own sign-in such as TikTok Ads, needs no app of yours: send `useragentguid`, `slug` and `redirecturl` only. Its consent screen names your organization.
+An `oauth` connector with no fields, a vendor's own MCP server with its own sign-in such as TikTok Ads, needs no app of yours: send `useragentguid`, `slug` and `redirecturl` only. Its consent screen names your organization.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
@@ -25136,7 +25137,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorList" \
 | Field | Description |
 |-------|-------------|
 | `slug`, `title`, `iconurl`, `category`, `authtype`, `transport` | The connector, as the catalog shows it. |
-| `authmode` | `provider-oauth` rows: `own` (signed in with your app), `key` (connected with a key or token) or `wiro` (signed in from Wiro's own panel). `null` for other rows. |
+| `authmode` | `provider-oauth` rows and HubSpot: `own` (signed in with your app), `wiro` (signed in from Wiro's own panel) or, on `provider-oauth` rows, `key` (connected with a key or token). `null` for other rows, and on a HubSpot connection that has not signed in since HubSpot moved to its own MCP server. |
 | `catalogstatus` | `active` while the connector is offered. `hidden` or `retired` when it left the catalog: the agent no longer gets its tools, and only a disconnect is left. |
 | `status` | See the table below. |
 | `connectedat`, `updatedat` | When the connection last connected, and its last change (Unix seconds). |
@@ -25151,7 +25152,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorList" \
 |----------|---------|--------------|
 | `connected` | The agent has the connector's tools. | Connected, with Disconnect and, when it has pickers, the account choice. |
 | `pending` | A sign-in was started and has not come back yet, or the connection misses a required value. | Waiting for the sign-in, with a way to start it again; or the form, to send the missing value with ConnectorConnect. |
-| `reauth` | The sign-in expired or was revoked at the vendor: refreshing it failed (`lasterror` is a code: `token_not_refreshable` when a Facebook Pages or Meta Ads sign-in's 60-day token ran out), or the vendor's own MCP server refused it with HTTP 401 or 403 as Wiro listed the connection's accounts (`lasterror: "unauthorized"`; `"no_access_token"` when the connection held no token to send). Or the connection holds a way in the connector no longer takes (`lasterror: "auth_changed"`): a Gmail app password, or a sign-in with Wiro's own app on a connector whose `wiroapp` is `false`; sign in again with an OAuth app of your own. Until the agent next restarts or gets a change, the connector's tools answer that it must be connected again; after that, the agent no longer has them. | Reconnect: start a new sign-in with ConnectorConnect. |
+| `reauth` | The sign-in expired or was revoked at the vendor: refreshing it failed (`lasterror` is a code: `token_not_refreshable` when a Facebook Pages or Meta Ads sign-in's 60-day token ran out), or the vendor's own MCP server refused it with HTTP 401 or 403 as Wiro listed the connection's accounts (`lasterror: "unauthorized"`; `"no_access_token"` when the connection held no token to send). Or the connection holds a way in the connector no longer takes (`lasterror: "auth_changed"`): a Gmail app password, a HubSpot sign-in made before HubSpot moved to its own MCP server, or a sign-in with Wiro's own app on a connector whose `wiroapp` is `false`; sign in again with an OAuth app of your own. Until the agent next restarts or gets a change, the connector's tools answer that it must be connected again; after that, the agent no longer has them. | Reconnect: start a new sign-in with ConnectorConnect. |
 | `error` | The last sign-in failed (`lasterror` says how). | Connect again. |
 
 A connector that was never connected, or was disconnected, has no row.
@@ -26507,7 +26508,7 @@ Refusals come as `result: false` with one sentence per problem in `errors`. Show
 | `List` | `search is text of at most 100 characters.` | `search` too long. |
 | `List` | `category must be one lowercase word (letters, digits or dashes, at most 40).` | A malformed `category`. |
 | `ConnectorConnect` | `This connector is not available.` | The slug is not in the catalog. |
-| `ConnectorConnect` | `<Label> is required.` (a `headers` connector: `<name> is required.`) | A required field has no value, sent or saved. A `provider-oauth` sign-in gets one for each of your app's keys it lacks, such as `Client ID is required. Client Secret is required.` |
+| `ConnectorConnect` | `<Label> is required.` (a `headers` connector: `<name> is required.`) | A required field has no value, sent or saved. A sign-in with your own app (`provider-oauth`, or HubSpot) gets one for each of your app's keys it lacks, such as `Client ID is required. Client Secret is required.` |
 | `ConnectorConnect` | `Unknown field <name>. This connector takes: <names>.` (a `headers` connector: `Unknown variable <name>. This connector takes: <names>.`) | A key in `values` the connector does not take. |
 | `ConnectorConnect` | `values must be an object of field names and values.` (a `headers` connector: `values must be an object of variable names and values.`), `<Label> must be text.` | The shape of `values`. |
 | `ConnectorConnect` | `<Label> must be an https address.`, `<Label> must be valid JSON.`, `<Label> must be an email address.`, `<Label> must be one of: <values>.`, `<Label> is not in the expected format.`, `<Label> must be at most <n> characters.`, `<Label> must be on one line.`, `<Label> has characters it cannot take.` | A value that fails its field's `format`, `pattern` or `maxlength` (65,536 characters at most). |
@@ -28440,7 +28441,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
 
 ### Sign-in: HubSpot
 
-A connector that signs in gets a `signin` card. HubSpot signs in with an app of your own, so its card's `fields` are that app's client id and secret, and the help text names the redirect URI to register in the app:
+A connector that signs in gets a `signin` card. HubSpot signs in on its own MCP server with an app of your own there, an MCP connector in your HubSpot account, so its card's `fields` are that app's client id and secret, and the help text names the redirect URI to register in the app:
 
 ```json
 {
@@ -28449,13 +28450,13 @@ A connector that signs in gets a `signin` card. HubSpot signs in with an app of 
   "kind": "connect",
   "connector": "hubspot",
   "title": "HubSpot",
-  "authtype": "provider-oauth",
+  "authtype": "oauth",
   "mode": "signin",
   "fields": [
     {
       "name": "clientid",
       "label": "Client ID",
-      "description": "1. Go to [developers.hubspot.com](https://developers.hubspot.com) and create an app (or open an existing one)\n2. Open the app's **Auth** tab\n3. Add this **Redirect URL**:\n`https://api.wiro.ai/v1/AgentConnector/OAuthCallback`\n4. Under **Scopes**, add these as **Required**: `oauth`, `crm.objects.contacts.read`, `crm.objects.contacts.write`, `crm.lists.read`, `crm.lists.write`; and these as **Optional**: `crm.objects.companies.read`, `crm.objects.companies.write`, `crm.objects.deals.read`, `crm.objects.deals.write`, `crm.objects.owners.read`, `crm.schemas.contacts.read`, `tickets`, `content`, `marketing-email`, `transactional-email`, `files`. HubSpot refuses a sign-in that asks for a scope the app does not list, and leaves out an optional scope the account's plan does not include\n5. Save and copy the **Client ID**",
+      "description": "1. Sign in to your HubSpot account\n2. Go to **Development** → **MCP Connectors** and click **Create MCP connector**\n3. Give it a name: HubSpot shows it on its consent screen\n4. Add this **Redirect URL**:\n`https://api.wiro.ai/v1/AgentConnector/OAuthCallback`\n5. Click **Create**, then copy the **Client ID** from the connector's details page here and its **Client Secret** below",
       "required": true,
       "secret": false,
       "format": "text",
@@ -28509,10 +28510,10 @@ The answer gives the vendor's sign-in address. The card stays pending, and `next
     "kind": "connect",
     "connector": "hubspot",
     "title": "HubSpot",
-    "authtype": "provider-oauth",
+    "authtype": "oauth",
     "mode": "signin",
     "fields": [
-      { "name": "clientid", "label": "Client ID", "description": "1. Go to [developers.hubspot.com](https://developers.hubspot.com) and create an app ...", "required": true, "secret": false, "format": "text", "maxlength": 200, "serveronly": true, "mode": "oauth" },
+      { "name": "clientid", "label": "Client ID", "description": "1. Sign in to your HubSpot account ...", "required": true, "secret": false, "format": "text", "maxlength": 200, "serveronly": true, "mode": "oauth" },
       { "name": "clientsecret", "label": "Client Secret", "description": "", "required": true, "secret": true, "format": "password", "serveronly": true, "mode": "oauth" }
     ],
     "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
@@ -28521,7 +28522,7 @@ The answer gives the vendor's sign-in address. The card stays pending, and `next
   "restarting": false,
   "live": false,
   "summary": "",
-  "authorizeUrl": "https://app.hubspot.com/oauth/authorize?client_id=YOUR_HUBSPOT_CLIENT_ID&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FAgentConnector%2FOAuthCallback&scope=crm.objects.contacts.read+crm.objects.contacts.write+crm.lists.read+crm.lists.write+oauth&response_type=code&state=7f3c...",
+  "authorizeUrl": "https://mcp.hubspot.com/oauth/authorize/user?response_type=code&client_id=YOUR_HUBSPOT_CLIENT_ID&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FAgentConnector%2FOAuthCallback&state=7f3c...&code_challenge=Xk2f...&code_challenge_method=S256&resource=https%3A%2F%2Fmcp.hubspot.com",
   "next": [{ "connector": "hubspot", "title": "HubSpot", "mode": "signin", "cardid": "q8n2v5k1m7xt", "messageguid": "a7b8c9d0-e1f2-3456-a789-0123456789ab" }]
 }
 ```
@@ -28542,10 +28543,10 @@ The answer gives the vendor's sign-in address. The card stays pending, and `next
     "kind": "connect",
     "connector": "hubspot",
     "title": "HubSpot",
-    "authtype": "provider-oauth",
+    "authtype": "oauth",
     "mode": "signin",
     "fields": [
-      { "name": "clientid", "label": "Client ID", "description": "1. Go to [developers.hubspot.com](https://developers.hubspot.com) and create an app ...", "required": true, "secret": false, "format": "text", "maxlength": 200, "serveronly": true, "mode": "oauth" },
+      { "name": "clientid", "label": "Client ID", "description": "1. Sign in to your HubSpot account ...", "required": true, "secret": false, "format": "text", "maxlength": 200, "serveronly": true, "mode": "oauth" },
       { "name": "clientsecret", "label": "Client Secret", "description": "", "required": true, "secret": true, "format": "password", "serveronly": true, "mode": "oauth" }
     ],
     "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
@@ -28563,7 +28564,8 @@ The answer gives the vendor's sign-in address. The card stays pending, and `next
 The agent already got the connector when the sign-in came back, so `restarting` and `live` are `false`. Without this call, the card is recorded applied the next time a card of the same person's is applied or dismissed in that chat; until then it still shows its Sign in.
 
 - A card from a chat sent with your API key never carries `wiroapp: true`: its sign-in always uses your own app, and HubSpot's consent screen shows that app. Send the app's keys with the first sign-in; a later sign-in of the same connection may leave them out and use the saved ones. Without them, the answer is `Client ID is required. Client Secret is required.` and the card stays pending.
-- An `oauth` connector, a vendor's own MCP server with its own sign-in such as TikTok Ads, has no fields on its card: send `redirecturl` only. Its consent screen names your organization. Its card and answers are in [Add and Connect](#add-and-connect).
+- A card from a Wiro web chat turn carries `wiroapp: true`: there the person may also sign in with Wiro's own HubSpot app, with nothing to type.
+- An `oauth` connector with no fields, a vendor's own MCP server with its own sign-in such as TikTok Ads, has none on its card: send `redirecturl` only. Its consent screen names your organization. Its card and answers are in [Add and Connect](#add-and-connect).
 - A connector with account pickers, such as Facebook Pages, lists its candidates once it is connected, and acts on no account until a selection is saved. After its card is applied, read `accountpickers` on [`AgentConnector/Detail`](/docs/agent-connectors#post-agentconnectordetail): when `accounts` on [`ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist) holds nothing for a picker, let the person choose on your settings screen with [`ConnectorAccounts`](/docs/agent-connectors#post-useragentconnectoraccounts) and [`ConnectorSetAccounts`](/docs/agent-connectors#post-useragentconnectorsetaccounts): no card picks accounts.
 - A connection can later need a new sign-in: `ConnectorList` reads `reauth` when the sign-in expired or was revoked, and until the agent next restarts or gets a change, the connector's tools answer `The sign-in for this connector expired or was revoked, so it has to be connected again. Ask the agent's operator to reconnect it.` ConnectorAccounts refuses it with code `"reauth"` and the same sentence. Offer Reconnect. The agent may propose a new `connect` card for it, which signs in again like any `signin` card and reuses the saved app keys when `values` leaves them out, or you start a new sign-in with ConnectorConnect on your settings screen.
 
@@ -28635,7 +28637,7 @@ Both cards apply in one step, and `paired` is the `connect` card after the call:
 
 A value that fails the field's checks, such as a required field left out, applies neither card: the answer is `result: false` with the sentence, both cards stay pending, and `paired` holds the `connect` card with the same sentence in `error`. A key the vendor refuses once the skill is added leaves the `add` card applied (`result: true`, `summary` names only the skill) and the `connect` card pending: `paired[0]` has `result: false` and the vendor's sentence in `error`, and `next` names the `connect` card for the person to try again.
 
-**With a sign-in.** On an agent that has Google Ads and Meta Ads connected, Ads Manager Common Rules needs only TikTok Ads. TikTok Ads signs in on the vendor's own MCP server (`authtype: "oauth"`), so its card has no fields:
+**With a sign-in.** On an agent that has Google Ads and Meta Ads connected, Ads Manager Common Rules needs only TikTok Ads. TikTok Ads signs in on the vendor's own MCP server (`authtype: "oauth"`) and needs no app of yours, so its card has no fields:
 
 ```json
 {

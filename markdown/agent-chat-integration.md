@@ -1002,7 +1002,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
 
 ### Sign-in: HubSpot
 
-A connector that signs in gets a `signin` card. HubSpot signs in with an app of your own, so its card's `fields` are that app's client id and secret, and the help text names the redirect URI to register in the app:
+A connector that signs in gets a `signin` card. HubSpot signs in on its own MCP server with an app of your own there, an MCP connector in your HubSpot account, so its card's `fields` are that app's client id and secret, and the help text names the redirect URI to register in the app:
 
 ```json
 {
@@ -1011,13 +1011,13 @@ A connector that signs in gets a `signin` card. HubSpot signs in with an app of 
   "kind": "connect",
   "connector": "hubspot",
   "title": "HubSpot",
-  "authtype": "provider-oauth",
+  "authtype": "oauth",
   "mode": "signin",
   "fields": [
     {
       "name": "clientid",
       "label": "Client ID",
-      "description": "1. Go to [developers.hubspot.com](https://developers.hubspot.com) and create an app (or open an existing one)\n2. Open the app's **Auth** tab\n3. Add this **Redirect URL**:\n`https://api.wiro.ai/v1/AgentConnector/OAuthCallback`\n4. Under **Scopes**, add these as **Required**: `oauth`, `crm.objects.contacts.read`, `crm.objects.contacts.write`, `crm.lists.read`, `crm.lists.write`; and these as **Optional**: `crm.objects.companies.read`, `crm.objects.companies.write`, `crm.objects.deals.read`, `crm.objects.deals.write`, `crm.objects.owners.read`, `crm.schemas.contacts.read`, `tickets`, `content`, `marketing-email`, `transactional-email`, `files`. HubSpot refuses a sign-in that asks for a scope the app does not list, and leaves out an optional scope the account's plan does not include\n5. Save and copy the **Client ID**",
+      "description": "1. Sign in to your HubSpot account\n2. Go to **Development** → **MCP Connectors** and click **Create MCP connector**\n3. Give it a name: HubSpot shows it on its consent screen\n4. Add this **Redirect URL**:\n`https://api.wiro.ai/v1/AgentConnector/OAuthCallback`\n5. Click **Create**, then copy the **Client ID** from the connector's details page here and its **Client Secret** below",
       "required": true,
       "secret": false,
       "format": "text",
@@ -1071,10 +1071,10 @@ The answer gives the vendor's sign-in address. The card stays pending, and `next
     "kind": "connect",
     "connector": "hubspot",
     "title": "HubSpot",
-    "authtype": "provider-oauth",
+    "authtype": "oauth",
     "mode": "signin",
     "fields": [
-      { "name": "clientid", "label": "Client ID", "description": "1. Go to [developers.hubspot.com](https://developers.hubspot.com) and create an app ...", "required": true, "secret": false, "format": "text", "maxlength": 200, "serveronly": true, "mode": "oauth" },
+      { "name": "clientid", "label": "Client ID", "description": "1. Sign in to your HubSpot account ...", "required": true, "secret": false, "format": "text", "maxlength": 200, "serveronly": true, "mode": "oauth" },
       { "name": "clientsecret", "label": "Client Secret", "description": "", "required": true, "secret": true, "format": "password", "serveronly": true, "mode": "oauth" }
     ],
     "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
@@ -1083,7 +1083,7 @@ The answer gives the vendor's sign-in address. The card stays pending, and `next
   "restarting": false,
   "live": false,
   "summary": "",
-  "authorizeUrl": "https://app.hubspot.com/oauth/authorize?client_id=YOUR_HUBSPOT_CLIENT_ID&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FAgentConnector%2FOAuthCallback&scope=crm.objects.contacts.read+crm.objects.contacts.write+crm.lists.read+crm.lists.write+oauth&response_type=code&state=7f3c...",
+  "authorizeUrl": "https://mcp.hubspot.com/oauth/authorize/user?response_type=code&client_id=YOUR_HUBSPOT_CLIENT_ID&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FAgentConnector%2FOAuthCallback&state=7f3c...&code_challenge=Xk2f...&code_challenge_method=S256&resource=https%3A%2F%2Fmcp.hubspot.com",
   "next": [{ "connector": "hubspot", "title": "HubSpot", "mode": "signin", "cardid": "q8n2v5k1m7xt", "messageguid": "a7b8c9d0-e1f2-3456-a789-0123456789ab" }]
 }
 ```
@@ -1104,10 +1104,10 @@ The answer gives the vendor's sign-in address. The card stays pending, and `next
     "kind": "connect",
     "connector": "hubspot",
     "title": "HubSpot",
-    "authtype": "provider-oauth",
+    "authtype": "oauth",
     "mode": "signin",
     "fields": [
-      { "name": "clientid", "label": "Client ID", "description": "1. Go to [developers.hubspot.com](https://developers.hubspot.com) and create an app ...", "required": true, "secret": false, "format": "text", "maxlength": 200, "serveronly": true, "mode": "oauth" },
+      { "name": "clientid", "label": "Client ID", "description": "1. Sign in to your HubSpot account ...", "required": true, "secret": false, "format": "text", "maxlength": 200, "serveronly": true, "mode": "oauth" },
       { "name": "clientsecret", "label": "Client Secret", "description": "", "required": true, "secret": true, "format": "password", "serveronly": true, "mode": "oauth" }
     ],
     "requestedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f",
@@ -1125,7 +1125,8 @@ The answer gives the vendor's sign-in address. The card stays pending, and `next
 The agent already got the connector when the sign-in came back, so `restarting` and `live` are `false`. Without this call, the card is recorded applied the next time a card of the same person's is applied or dismissed in that chat; until then it still shows its Sign in.
 
 - A card from a chat sent with your API key never carries `wiroapp: true`: its sign-in always uses your own app, and HubSpot's consent screen shows that app. Send the app's keys with the first sign-in; a later sign-in of the same connection may leave them out and use the saved ones. Without them, the answer is `Client ID is required. Client Secret is required.` and the card stays pending.
-- An `oauth` connector, a vendor's own MCP server with its own sign-in such as TikTok Ads, has no fields on its card: send `redirecturl` only. Its consent screen names your organization. Its card and answers are in [Add and Connect](#add-and-connect).
+- A card from a Wiro web chat turn carries `wiroapp: true`: there the person may also sign in with Wiro's own HubSpot app, with nothing to type.
+- An `oauth` connector with no fields, a vendor's own MCP server with its own sign-in such as TikTok Ads, has none on its card: send `redirecturl` only. Its consent screen names your organization. Its card and answers are in [Add and Connect](#add-and-connect).
 - A connector with account pickers, such as Facebook Pages, lists its candidates once it is connected, and acts on no account until a selection is saved. After its card is applied, read `accountpickers` on [`AgentConnector/Detail`](/docs/agent-connectors#post-agentconnectordetail): when `accounts` on [`ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist) holds nothing for a picker, let the person choose on your settings screen with [`ConnectorAccounts`](/docs/agent-connectors#post-useragentconnectoraccounts) and [`ConnectorSetAccounts`](/docs/agent-connectors#post-useragentconnectorsetaccounts): no card picks accounts.
 - A connection can later need a new sign-in: `ConnectorList` reads `reauth` when the sign-in expired or was revoked, and until the agent next restarts or gets a change, the connector's tools answer `The sign-in for this connector expired or was revoked, so it has to be connected again. Ask the agent's operator to reconnect it.` ConnectorAccounts refuses it with code `"reauth"` and the same sentence. Offer Reconnect. The agent may propose a new `connect` card for it, which signs in again like any `signin` card and reuses the saved app keys when `values` leaves them out, or you start a new sign-in with ConnectorConnect on your settings screen.
 
@@ -1197,7 +1198,7 @@ Both cards apply in one step, and `paired` is the `connect` card after the call:
 
 A value that fails the field's checks, such as a required field left out, applies neither card: the answer is `result: false` with the sentence, both cards stay pending, and `paired` holds the `connect` card with the same sentence in `error`. A key the vendor refuses once the skill is added leaves the `add` card applied (`result: true`, `summary` names only the skill) and the `connect` card pending: `paired[0]` has `result: false` and the vendor's sentence in `error`, and `next` names the `connect` card for the person to try again.
 
-**With a sign-in.** On an agent that has Google Ads and Meta Ads connected, Ads Manager Common Rules needs only TikTok Ads. TikTok Ads signs in on the vendor's own MCP server (`authtype: "oauth"`), so its card has no fields:
+**With a sign-in.** On an agent that has Google Ads and Meta Ads connected, Ads Manager Common Rules needs only TikTok Ads. TikTok Ads signs in on the vendor's own MCP server (`authtype: "oauth"`) and needs no app of yours, so its card has no fields:
 
 ```json
 {
