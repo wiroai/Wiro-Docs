@@ -944,7 +944,7 @@ If the generation outlives that bounded wait, `run_model` returns the existing t
 }
 ```
 
-Task responses use stable states: `submitted`, `running`, `completed`, `failed`, and `cancelled`. A task's `status` is Wiro's status code, such as `task_postprocess_end`, for programs, and `statusText` is the same status in words, such as `Completed`, `Failed` or `Running: producing output`, as the result's Status line says it: the assistant tells a person the words. The LLM should execute `nextAction` when present. A two- or three-minute video can therefore use several bounded `wait_for_task` calls without creating another billable generation.
+Task states are `submitted`, `running`, `completed`, `failed`, or `cancelled`. A task's `status` is Wiro's status code, such as `task_postprocess_end`, for programs, and `statusText` is the same status in words, such as `Completed`, `Failed` or `Running: producing output`, as the result's Status line says it: the assistant tells a person the words. The LLM should execute `nextAction` when present. A two- or three-minute video can therefore use several bounded `wait_for_task` calls without creating another billable generation.
 
 Workflow runs, agent replies and agent start-up follow the same pattern: when a
 wait ends before the job does, the result names the tool and arguments that
