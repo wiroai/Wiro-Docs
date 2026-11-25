@@ -340,11 +340,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
   }'
 ```
 
-Each answers `status: "connected"` and restarts the running agent, which then has the connector's tools (`serper__web_search`, `wordpress__*`) that the scheduled task above names. A connector that signs in with its vendor answers an `authorizeUrl` instead: see [Connect with a sign-in](/docs/agent-connectors#connect-with-a-sign-in). Check every connection with [`POST /UserAgent/ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist).
+Each answers `status: "connected"`, and the running agent has the connector's tools from its next message, with no restart (`serper__web_search`, `wordpress__*`) that the scheduled task above names. A connector that signs in with its vendor answers an `authorizeUrl` instead: see [Connect with a sign-in](/docs/agent-connectors#connect-with-a-sign-in). Check every connection with [`POST /UserAgent/ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist).
 
 ## Step 4: Refine Skills After Deploy
 
-Toggle skills on/off after deploy with [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply). Even when you only want to flip a single skill, send it as a one-entry `skills` map. Turning a Skill on needs its `depends_on` on too: add the ones that are off to the same map, since `SkillsApply` turns on only the names you send and refuses the change with code `101` and `deps[]` otherwise. The endpoint triggers exactly one agent restart, applies the whole batch or none of it, and never charges: every plan includes every skill, so the price and the included AI usage stay the same. Template deploys accept the same call.
+Toggle skills on/off after deploy with [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply). Even when you only want to flip a single skill, send it as a one-entry `skills` map. Turning a Skill on needs its `depends_on` on too: add the ones that are off to the same map, since `SkillsApply` turns on only the names you send and refuses the change with code `101` and `deps[]` otherwise. The endpoint applies the whole batch or none of it, reaches a running agent with no restart unless a Skill needs one (`util-voice-receptionist`, `util-twilio-channel`, `util-web-channel` or `util-newsletter-compose`), and never charges: every plan includes every skill, so the price and the included AI usage stay the same. Template deploys accept the same call.
 
 ### Single-skill enable
 
@@ -361,15 +361,17 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   }'
 ```
 
-The response confirms the skill set and the restart:
+The response confirms the skill set, and that the running agent got it with no restart:
 
 ```json
 {
   "result": true,
   "errors": [],
   "tier": "pro",
-  "restartTriggered": true,
-  "restartedAt": 1714694520,
+  "restartTriggered": false,
+  "restartedAt": null,
+  "restart": "live",
+  "live": true,
   "stripeProrationApplied": false,
   "prepaidWalletDelta": null,
   "usedCreditsUsd": 0,
@@ -507,7 +509,7 @@ Turning a skill on or off never changes the subscription: the plan's price and i
 
 - **A build costs its plan's price, whatever its skills.** One skill or twenty, Starter is $5 a month, Pro $30 and Max $100, each including its own price in AI usage.
 - **Conflict / dependency violations are surfaced eagerly.** If you toggle on two mutually-exclusive skills, `SkillsApply` returns code `102` with a `conflicts[]` array; if a `depends_on` is missing, code `101` with `deps[]`. Resolve in the UI before committing.
-- **Custom builds receive the same auto-restart on configuration changes** as template deploys (status `3`/`4` → status `1`, then re-queued).
+- **Custom builds get configuration changes the same way** as template deploys: most reach a running agent with no restart, and the rest restart it (status `3`/`4` → status `1`, then re-queued). See [Live Changes and Restarts](/docs/agent-overview#live-changes-and-restarts).
 - **Cover image:** custom builds can ship a `cover` URL in the Deploy body, or upload one later via [`POST /UserAgent/Cover`](/docs/agent-overview#post-useragentcover).
 - **The agent's persona** is editable via the standard `customskills` flow. Add a `cs-persona` strategy via `CustomSkillUpsert` to set the agent's voice, role, and constraints.
 

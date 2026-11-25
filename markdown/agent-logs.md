@@ -157,6 +157,7 @@ A `token_usage` event records the tokens and the AI usage of one billed turn: a 
 | `AGENT_BROWSER_RESET` | `Agent browser reset` (see [Resetting the Browser](/docs/agent-overview#resetting-the-browser)) |
 | `AGENT_DISK_ALMOST_FULL`, `AGENT_DISK_FULL` | `Disk almost full: 210 MB of 250 MB used.`, `Disk full: 260 MB of 250 MB used. The agent can't save new files until some are deleted.` (see [Disk Space](/docs/agent-overview#disk-space)) |
 | `AGENT_DISK_TEMP_CLEARED`, `AGENT_DISK_HOST_RESTART` | `Temporary files passed 1 GB, so the agent restarted and cleared them.`, `The agent restarted to clear its temporary files.` (see [Disk Space](/docs/agent-overview#disk-space)) |
+| `AGENT_CHANGE_APPLIED`, `AGENT_CHANGE_RESTARTED` | `Change applied without a restart: Connectors, Your Setup`, `Agent restarted to load a change` (written by Wiro: a change reached the running agent with no restart, naming what it touched, or the agent restarted to load one; see [Live Changes and Restarts](/docs/agent-overview#live-changes-and-restarts)) |
 
 #### Note rows
 

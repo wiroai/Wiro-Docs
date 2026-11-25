@@ -10,7 +10,7 @@ A connector gives an agent the tools of one outside service: Google search throu
 - **Sign-in.** The vendor's own consent screen in a browser. `ConnectorConnect` answers with an `authorizeUrl`; your customer opens it, agrees, and the vendor sends the browser back through Wiro to your page. Vendors whose sign-in needs an app of your own (Blogger, Gmail, Google Ads, Google Analytics 4, Google Business Profile, Google Merchant Center, Google Search Console, YouTube, Facebook Pages, Instagram, Meta Ads, Threads, LinkedIn, TikTok, X, Reddit, Pinterest, Tumblr, HubSpot, Mailchimp and Shopify) take that app's client id and secret with the connect. Google Calendar, Google Drive and Google Play Console don't sign in: they take a service account's JSON as a field.
 - **A Wiro project.** Wiro AI Models (`wiro`), Wiro's own model and task tools, takes one of your Wiro projects instead of values: see [Wiro AI Models](#the-wiro-connector).
 
-Once a connector is connected, the agent restarts and has the connector's tools, named `<slug>__<tool>`. Values and tokens are never sent back in an answer and never reach the agent's chat. By default the agent runs the tools that only read, asks a person in the chat before it creates, sends, changes or deletes anything, and does those in its Scheduled Tasks without asking: see [Permissions and Approvals](#permissions-and-approvals).
+Once a connector is connected, the agent has the connector's tools, named `<slug>__<tool>`: a running agent gets them from its next message, with no restart. Values and tokens are never sent back in an answer and never reach the agent's chat. By default the agent runs the tools that only read, asks a person in the chat before it creates, sends, changes or deletes anything, and does those in its Scheduled Tasks without asking: see [Permissions and Approvals](#permissions-and-approvals).
 
 Every connector also has a public page, `https://wiro.ai/connectors/{slug}`, with its fields, setup steps, tools and the calls to connect it.
 
@@ -20,14 +20,14 @@ Every connector also has a public page, `https://wiro.ai/connectors/{slug}`, wit
 |------|------|--------------|
 | 1. Browse the catalog | [`POST /AgentConnector/List`](#post-agentconnectorlist) | Every available connector with its Connect fields and tools. No API key needed. |
 | 2. Read one connector | [`POST /AgentConnector/Detail`](#post-agentconnectordetail) | The same row for one `slug`. No API key needed. |
-| 3a. Connect with fields | [`POST /UserAgent/ConnectorConnect`](#connect-with-fields) with `values` | `status: "connected"`, and the agent restarts. |
+| 3a. Connect with fields | [`POST /UserAgent/ConnectorConnect`](#connect-with-fields) with `values` | `status: "connected"`, and a running agent gets the connector with no restart. |
 | 3b. Or start a sign-in | [`POST /UserAgent/ConnectorConnect`](#connect-with-a-sign-in) with `redirecturl` | `status: "pending"` and the `authorizeUrl` to open in the browser. |
 | 4. The browser comes back | [`GET /AgentConnector/OAuthCallback`](#the-callback-and-your-redirect-url), called by the vendor | A redirect to your `redirecturl` with `connector_connected=true` or `connector_error=<code>`. |
 | 5. Read the state | [`POST /UserAgent/ConnectorList`](#post-useragentconnectorlist) | Each connection's `status`: `connected`, `pending`, `reauth` or `error`. |
 | 6. Pick accounts | [`POST /UserAgent/ConnectorAccounts`](#post-useragentconnectoraccounts), [`POST /UserAgent/ConnectorSetAccounts`](#post-useragentconnectorsetaccounts) | The Pages, ad accounts, advertisers or properties the connection can reach, and the ones it may act on. |
 | 7. Choose what runs without asking | [`POST /UserAgent/ConnectorPermissions`](#post-useragentconnectorpermissions), [`POST /UserAgent/ConnectorSetPermissions`](#post-useragentconnectorsetpermissions) | Each tool's value in Chat and in Autopilot: `allow`, `ask` or `block`. |
 | 8. Answer approvals | [`POST /UserAgent/Message/ApprovalCardAct`](#post-useragentmessageapprovalcardact), or a [reply](#answering-with-a-reply) | An action that asked runs once (or from now on), or is declined, and the agent goes on in the chat. Answer the card with ApprovalCardAct, or reply `yes`, `always` or `no` in the chat; in Telegram, Slack and Discord, answer the agent's question there. |
-| 9. Disconnect | [`POST /UserAgent/ConnectorDisconnect`](#post-useragentconnectordisconnect) | The connection, its values and tokens deleted, and the agent restarts. |
+| 9. Disconnect | [`POST /UserAgent/ConnectorDisconnect`](#post-useragentconnectordisconnect) | The connection, its values and tokens deleted, and a running agent loses the connector with no restart. |
 
 ### Who your customer sees
 
@@ -303,7 +303,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
   "errors": [],
   "status": "connected",
   "applied": 1,
-  "restart": "scheduled",
+  "restart": "live",
   "useragentconnectors": [
     {
       "slug": "serper",
@@ -333,7 +333,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
 |-------|-------------|
 | `status` | `connected`. |
 | `applied` | `1` when something changed, `0` when you sent what was already saved: then nothing restarts. |
-| `restart` | `scheduled` (the running agent restarts to pick up the connector), `none` (it was not running, or nothing changed) or `failed` (the change is saved, but the restart could not be scheduled: restart the agent yourself). See [Restarts](#restarts). |
+| `restart` | `live` (the running agent got the change with no restart: it uses the connector from its next message), `scheduled` (it restarts to pick up the connector), `none` (it was not running, or nothing changed) or `failed` (the change is saved, but the restart could not be scheduled: restart the agent yourself). See [Live Changes and Restarts](#live-changes-and-restarts). |
 | `useragentconnectors` | The connection as [ConnectorList](#post-useragentconnectorlist) shows it. |
 
 **The credential check.** Where the connector has one, Wiro makes one read call to the vendor with the values before it saves them. When the vendor refuses them, nothing is saved and the answer carries the vendor's own sentence:
@@ -377,7 +377,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
   "errors": [],
   "status": "connected",
   "applied": 1,
-  "restart": "scheduled",
+  "restart": "live",
   "useragentconnectors": [
     {
       "slug": "dataforseo",
@@ -424,7 +424,7 @@ Some vendors that sign in with your own app also take a key or token (`modes: ["
   "errors": [],
   "status": "connected",
   "applied": 1,
-  "restart": "scheduled",
+  "restart": "live",
   "useragentconnectors": [
     {
       "slug": "facebook-pages",
@@ -509,7 +509,7 @@ The connection is now `pending`. A connection that was already `connected` stays
 
 **2. Open `authorizeUrl`** in your customer's browser: a new tab, a popup, or the same window. The address works for 10 minutes and once. Start a new sign-in to get a fresh one.
 
-**3. The vendor sends the browser back.** After your customer agrees, the vendor redirects to Wiro's callback, `GET /AgentConnector/OAuthCallback`. Wiro exchanges the code for tokens, stores them encrypted, marks the connection `connected`, restarts the agent, and redirects the browser to your `redirecturl`.
+**3. The vendor sends the browser back.** After your customer agrees, the vendor redirects to Wiro's callback, `GET /AgentConnector/OAuthCallback`. Wiro exchanges the code for tokens, stores them encrypted, marks the connection `connected`, gives the connector to a running agent, and redirects the browser to your `redirecturl`.
 
 **4. Read the outcome on your page.** See [The callback and your redirect URL](#the-callback-and-your-redirect-url).
 
@@ -519,7 +519,7 @@ Wiro adds one parameter to your `redirecturl`, with `?`, or `&` when it already 
 
 | Parameter | Meaning |
 |-----------|---------|
-| `connector_connected=true` | The connection is connected and the agent is restarting. |
+| `connector_connected=true` | The connection is connected. A running agent has the connector from its next message, or once a restart it needed is done. |
 | `connector_error=<code>` | The sign-in did not finish. A new connection is left `error` (or still `pending`); one that was connected before stays connected. |
 
 ```
@@ -549,9 +549,9 @@ A callback whose sign-in is unknown (no `state`, or one Wiro never issued) ends 
 - Send your own page with every sign-in, from a [setup card](/docs/agent-chat-integration#sign-in-hubspot) too. Without one, the browser comes back to Wiro's own connect-return page on wiro.ai.
 - It is used exactly as you send it, with your own query kept.
 
-### Restarts
+### Live Changes and Restarts
 
-A connect that changes something, a new account selection, a [permission change](#post-useragentconnectorsetpermissions) that does more than turn `ask` into `allow`, and a disconnect of a connected connector restart a running agent so it loads the change: `restart: "scheduled"` in the answer, and for a sign-in, `connector_connected=true` on your page. The agent's `status` on [`POST /UserAgent/Detail`](/docs/agent-overview#post-useragentdetail) then goes `1` (stopping), `2` (queued), `3` (starting) and back to `4` (running), in a minute or two; a message sent meanwhile is refused with a sentence you can show. See [Restarts](/docs/agent-chat-integration#restarts) for what to show. A stopped agent loads the change when it next starts.
+A connect that changes something, a new account selection, a [permission change](#post-useragentconnectorsetpermissions) and a disconnect of a connected connector reach a running agent with no restart: `restart: "live"` in the answer, and for a sign-in, `connector_connected=true` on your page. The agent keeps running, a reply it is writing goes on, and its next message uses the change. When a change can't be applied that way, Wiro restarts the agent instead and the answer reads `restart: "scheduled"`: the agent's `status` on [`POST /UserAgent/Detail`](/docs/agent-overview#post-useragentdetail) then goes `1` (stopping), `2` (queued), `3` (starting) and back to `4` (running), in a minute or two, and a message sent meanwhile is refused with a sentence you can show. Connecting [Wiro AI Models](#the-wiro-connector) with another project restarts the agent too, as binding a project does. See [Live Changes and Restarts](/docs/agent-chat-integration#live-changes-and-restarts) for what to show. A stopped agent loads the change when it next starts.
 
 ## Connection State
 
@@ -639,7 +639,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorList" \
 |----------|---------|--------------|
 | `connected` | The agent has the connector's tools. | Connected, with Disconnect and, when it has pickers, the account choice. |
 | `pending` | A sign-in was started and has not come back yet, or the connection misses a required value. | Waiting for the sign-in, with a way to start it again; or the form, to send the missing value with ConnectorConnect. |
-| `reauth` | The sign-in expired or was revoked at the vendor: refreshing it failed (`lasterror` is a code: `token_not_refreshable` when a Facebook Pages or Meta Ads sign-in's 60-day token ran out), or the vendor's own MCP server refused it with HTTP 401 or 403 as Wiro listed the connection's accounts (`lasterror: "unauthorized"`; `"no_access_token"` when the connection held no token to send). Or the connection holds a way in the connector no longer takes (`lasterror: "auth_changed"`): a Gmail app password, or a sign-in with Wiro's own app on a connector whose `wiroapp` is `false`; sign in again with an OAuth app of your own. Until the agent's next restart, the connector's tools answer that it must be connected again; after it, the agent no longer has them. | Reconnect: start a new sign-in with ConnectorConnect. |
+| `reauth` | The sign-in expired or was revoked at the vendor: refreshing it failed (`lasterror` is a code: `token_not_refreshable` when a Facebook Pages or Meta Ads sign-in's 60-day token ran out), or the vendor's own MCP server refused it with HTTP 401 or 403 as Wiro listed the connection's accounts (`lasterror: "unauthorized"`; `"no_access_token"` when the connection held no token to send). Or the connection holds a way in the connector no longer takes (`lasterror: "auth_changed"`): a Gmail app password, or a sign-in with Wiro's own app on a connector whose `wiroapp` is `false`; sign in again with an OAuth app of your own. Until the agent next restarts or gets a change, the connector's tools answer that it must be connected again; after that, the agent no longer has them. | Reconnect: start a new sign-in with ConnectorConnect. |
 | `error` | The last sign-in failed (`lasterror` says how). | Connect again. |
 
 A connector that was never connected, or was disconnected, has no row.
@@ -730,7 +730,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetAccounts" \
   "errors": [],
   "accounts": { "pages": ["123456789012345", "234567890123456"] },
   "applied": 1,
-  "restart": "scheduled",
+  "restart": "live",
   "useragentconnectors": [
     {
       "slug": "facebook-pages",
@@ -833,7 +833,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetAccounts" \
   "errors": [],
   "accounts": { "advertisers": ["7301234567890123456"] },
   "applied": 1,
-  "restart": "scheduled",
+  "restart": "live",
   "useragentconnectors": [
     {
       "slug": "tiktok-ads",
@@ -859,7 +859,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetAccounts" \
 }
 ```
 
-Once the agent restarts, its TikTok Ads tools work with the saved advertisers only: a call that names any other advertiser is refused before it leaves the agent.
+From the agent's next message, its TikTok Ads tools work with the saved advertisers only: a call that names any other advertiser is refused before it leaves the agent.
 
 - Campaigns, ad groups, campaign copies, and Smart+ campaigns, ad groups and ads that the agent creates start paused: turn them on with the status update tools or in TikTok Ads Manager.
 - A call that names a Business Center (`bc_id`) is refused before it leaves the agent: the connector picks advertisers only.
@@ -870,7 +870,7 @@ Once the agent restarts, its TikTok Ads tools work with the saved advertisers on
 
 ### **POST** /UserAgent/ConnectorDisconnect
 
-Deletes the connection: its values, tokens, account selection and [permissions](#permissions-and-approvals), and the approvals waiting for it. For a sign-in, Wiro first asks the vendor to revoke the token where the vendor supports it. A connected connector's agent restarts without its tools.
+Deletes the connection: its values, tokens, account selection and [permissions](#permissions-and-approvals), and the approvals waiting for it. For a sign-in, Wiro first asks the vendor to revoke the token where the vendor supports it. A running agent loses a connected connector's tools from its next message, with no restart.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -895,7 +895,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorDisconnect" \
   "errors": [],
   "removed": true,
   "revoked": true,
-  "restart": "scheduled"
+  "restart": "live"
 }
 ```
 
@@ -907,7 +907,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorDisconnect" \
 
 ## What the Agent Gets
 
-When the agent is back up, every `connected` connection whose connector is still `active` gives it that connector's tools. A tool is named `<slug>__<tool>`: the slug, two underscores, and the tool's `name` from `tools` on [Detail](#post-agentconnectordetail).
+Every `connected` connection whose connector is still `active` gives the agent that connector's tools, from its next message after the connection. A tool is named `<slug>__<tool>`: the slug, two underscores, and the tool's `name` from `tools` on [Detail](#post-agentconnectordetail).
 
 | Connector | Tool `name` | The agent calls it |
 |-----------|-------------|--------------------|
@@ -919,7 +919,7 @@ When the agent is back up, every `connected` connection whose connector is still
 - A tool acts with the connection's own credentials and, where the connector has pickers, only on the selected accounts.
 - To tell the agent when and how to use the tools, write a [Custom Skill](/docs/agent-skills#using-connectors-in-skills) that names them, such as: "Before you write an article, research the topic with `serper__web_search` and cite the top three results."
 - A scheduled task of an agent template that works with a connector runs only while that connector is connected; connecting or disconnecting it never changes the task's `enabled`.
-- A disconnected connector's tools are gone after the restart. A `reauth` connection's tools answer that it must be connected again, in words your customer can read (they name no Wiro place or link), until the agent's next restart; after it, the agent no longer has them.
+- A disconnected connector's tools are gone from the agent's next message. A `reauth` connection's tools answer that it must be connected again, in words your customer can read (they name no Wiro place or link), until the agent next restarts or gets a change; after that, the agent no longer has them.
 
 ## Permissions and Approvals
 
@@ -964,7 +964,7 @@ Studio and the Workflow Agent have no permissions or approvals: they never show 
 | Step | Call | What you get |
 |------|------|--------------|
 | 1. Read the permissions | [`POST /UserAgent/ConnectorPermissions`](#post-useragentconnectorpermissions) | Each category's and each tool's values in both columns, and the cards waiting that came from Scheduled Tasks, channels or the agent's own work. |
-| 2. Change them | [`POST /UserAgent/ConnectorSetPermissions`](#post-useragentconnectorsetpermissions) | The new values. The agent restarts, unless every change only turns `ask` into `allow`. |
+| 2. Change them | [`POST /UserAgent/ConnectorSetPermissions`](#post-useragentconnectorsetpermissions) | The new values, which a running agent uses from its next action, with no restart. |
 | 3. The agent asks | None: the card arrives in the chat | An `approval` block in the timeline of a message, in [History](/docs/agent-messaging#post-useragentmessagehistory), [Detail](/docs/agent-messaging#post-useragentmessagedetail) and on the [WebSocket](/docs/agent-websocket). See [How an approval works](#how-an-approval-works). In Telegram, Slack and Discord, a question at the end of the agent's reply. |
 | 4. Answer the card | [`POST /UserAgent/Message/ApprovalCardAct`](#post-useragentmessageapprovalcardact), or a [reply](#answering-with-a-reply) | The card's new state, and a turn queued in the same chat that tells the agent. Answer the card with ApprovalCardAct, or reply `yes`, `always` or `no` in the chat; in Telegram, Slack and Discord, answer the agent's question there. |
 | 5. The agent goes on | [The resume turn](#the-resume-turn) | The approved call runs once, and the agent's answer arrives as the chat's next message. |
@@ -1095,7 +1095,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetPermissions" \
   "result": true,
   "errors": [],
   "applied": 1,
-  "restart": "scheduled",
+  "restart": "live",
   "permissions": {
     "categories": [
       { "key": "read", "tools": 6, "chat": { "value": "allow", "mixed": false }, "autopilot": { "value": "allow", "mixed": false }, "chosen": {} },
@@ -1138,7 +1138,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetPermissions" \
 | Field | Description |
 |-------|-------------|
 | `applied` | `1` when something changed, `0` when the values were already so: then nothing restarts. |
-| `restart` | `scheduled` (the running agent restarts to load the change), `none` (the agent isn't running, the connection isn't `connected`, or every change only turned `ask` into `allow`, which a running agent uses at once) or `failed` (the change is saved, but the agent could not restart: it applies at the agent's next start). |
+| `restart` | `live` (the running agent got the change with no restart: it applies to the agent's next action), `scheduled` (the running agent restarts to load the change), `none` (the agent isn't running or the connection isn't `connected`, so there was nothing to load) or `failed` (the change is saved, but the agent could not restart: it applies at the agent's next start). |
 | `permissions` | The connection's permissions after the change, as on [ConnectorPermissions](#post-useragentconnectorpermissions). |
 
 Each change also writes a `CONNECTOR_PERMISSIONS_SET` row to the agent's [activity log](/docs/agent-logs#who-did-what-rows). The refusals, with nothing saved:
@@ -1441,7 +1441,7 @@ Reply "yes" to allow exactly this call once, or "no" to decline it.
 |-------|-------------|
 | `approvalresult.answered` | The cards answered: one for a `yes` or an `always`, one per card for a `no`. Each is `{ cardid, messageguid, action, result, approval, summary, resume, permissions? }`: `messageguid` is the message the card is on, `action` what Wiro did (`allow`, `always` or `decline`), `approval` the card after the answer, `summary` and `resume` as [ApprovalCardAct](#post-useragentmessageapprovalcardact) answers them (an `always` that allowed once reads `Allowed once. ` and the reason), and `permissions` after an Always allow. A card that could not be answered has `result: false`, `approval` as it is now (or `null`) and `error: { code, message }`, ApprovalCardAct's refusal. |
 | `approvalresult.listed` | The cards a listing showed, each `{ number, cardid, messageguid, approval }`: `messageguid` is the message the card is on. |
-| `setupresult` | Only when the reply listed setup cards too, or turned them down: `{ applied: [], dismissed, failed: [], restarting: false }`. |
+| `setupresult` | Only when the reply listed setup cards too, or turned them down: `{ applied: [], dismissed, failed: [], restarting: false, live: false }`. |
 
 Both lists are empty when the agent was still replying. Sent with a project API key, the first `yes` gets the listing:
 
@@ -1972,7 +1972,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
 - The project must be one you created, or any project of a team you are an admin of, and in the agent's workspace: a personal agent takes one of its owner's personal projects, a team agent one of its team's projects. The request must come from the agent's workspace too.
 - The connector follows the agent's project: a project bound later with `CredentialProjectBind` or another `ConnectorConnect` is the one its tools use after the restart. [ConnectorList](#post-useragentconnectorlist) shows the agent's current project as `wiroprojectid`, a string.
 - An agent left with no Wiro project keeps the connection, but gets no `wiro__*` tools until a project is bound again, and `wiroprojectid` reads `null`.
-- Disconnecting it ([ConnectorDisconnect](#post-useragentconnectordisconnect), or a `disconnect` card) removes only the connection. The agent keeps its Wiro project, and the models its Skills run keep using it; only its `wiro__*` tools go after the restart.
+- Disconnecting it ([ConnectorDisconnect](#post-useragentconnectordisconnect), or a `disconnect` card) removes only the connection. The agent keeps its Wiro project, and the models its Skills run keep using it; only its `wiro__*` tools go, from the agent's next message.
 - The agent's [Wiro API path list](/docs/agent-overview#post-useragentupdatesettings) (`wiroapiallowedpaths`) limits the Wiro API calls its skills make with the agent's own Wiro project; it doesn't apply to this connector's tools, which the list above fixes.
 - In chat, the agent proposes a `project` card for it, which binds the project the same way: see [Project: Wiro AI Models](/docs/agent-chat-integration#project-wiro-ai-models).
 
@@ -2096,7 +2096,7 @@ connect = requests.post(f"{API}/UserAgent/ConnectorConnect", headers=HEADERS, js
 }).json()
 if not connect["result"]:
     raise SystemExit(connect["errors"][0]["message"])
-print(connect["status"], connect["restart"])  # connected scheduled
+print(connect["status"], connect["restart"])  # connected live
 
 # 3. Read the agent's connections
 for conn in requests.post(f"{API}/UserAgent/ConnectorList", headers=HEADERS,
@@ -2125,7 +2125,7 @@ const connect = await post('/UserAgent/ConnectorConnect', {
   values: { apikey: 'YOUR_SERPER_API_KEY' },
 });
 if (!connect.result) throw new Error(connect.errors[0].message);
-console.log(connect.status, connect.restart); // connected scheduled
+console.log(connect.status, connect.restart); // connected live
 
 // 3. Read the agent's connections
 const list = await post('/UserAgent/ConnectorList', { useragentguid: AGENT });

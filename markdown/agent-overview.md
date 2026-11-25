@@ -204,24 +204,24 @@ Every deployed agent instance has a numeric status that reflects its current sta
 | Status | Name | Description |
 |--------|------|-------------|
 | `0` | Stopped | Agent is not running. Call Start to launch it. |
-| `1` | Stopping | Agent is shutting down. After a stop, wait for it to reach Stopped before taking action. During a [restart](#automatic-restart), it goes on to Queued and Starting by itself. |
+| `1` | Stopping | Agent is shutting down. After a stop, wait for it to reach Stopped before taking action. During a [restart](#live-changes-and-restarts), it goes on to Queued and Starting by itself. |
 | `2` | Queued | Agent is queued and waiting to start. |
 | `3` | Starting | The agent is starting up. |
 | `4` | Running | Agent is live and ready to receive messages. |
 | `5` | Error | Agent encountered an error during execution. Call Start to retry. |
 | `6` | Setup Required | The agent has no plan yet: it was deployed without `useprepaid: true`, and nothing was charged. Pay its plan with [`CreateSubscriptionCheckout`](#post-useragentcreatesubscriptioncheckout) (`useprepaid: true`), which queues it (status `2`). Credentials and connectors never hold an agent here. An agent that has never had a plan and has never started is deleted about an hour after Deploy. |
 
-### Automatic Restart
+### Live Changes and Restarts
 
-When you mutate an agent's configuration while it is **starting** (status `3`) or **running** (status `4`), the system automatically triggers a restart cycle: the agent is moved to **Stopping** (status `1`) and flagged to restart. Once the agent fully stops, the system automatically re-queues it, applying the new configuration on startup.
+Most changes reach a **running** agent (status `4`) live: it keeps running, a reply it is writing goes on, and it uses the change from its next message. The rest restart it: the agent is moved to **Stopping** (status `1`) and flagged to restart, Wiro queues it again once it has fully stopped, and it loads the change as it starts, in a minute or two. Either way, you never stop and start the agent yourself.
 
-This means you can update credentials, toggle skills, or change a custom skill on a running agent without manually stopping and starting it.
+These reach a running agent live when they change something: the connector calls `ConnectorConnect`, `ConnectorSetAccounts`, `ConnectorDisconnect` and `ConnectorSetPermissions`, and a connector's sign-in when it comes back (see [Agent Connectors](/docs/agent-connectors#live-changes-and-restarts)), `SkillsApply` and `SkillToggle` (except for the Skills `util-voice-receptionist`, `util-twilio-channel`, `util-web-channel` and `util-newsletter-compose`), `CustomSkillUpsert` (a new custom skill or scheduled task, its text, description, `interval` or `enabled` state, `cs-approval-policy` included), `CustomSkillRename`, `CustomSkillDelete`, `CustomSkillRevert`, `Update` with a changed `title`, and a setup card applied from chat that makes one of these changes (see [Setup From Chat](/docs/agent-messaging#setup-from-chat)).
 
-These calls restart a starting or running agent when they change something: `CredentialUpsert`, `CredentialFileUpload`, `CredentialProjectBind` (when the project changes), the connector calls `ConnectorConnect`, `ConnectorSetAccounts`, `ConnectorDisconnect` and `ConnectorSetPermissions` (unless every change only turns `ask` into `allow`) and a connector's sign-in when it comes back (see [Agent Connectors](/docs/agent-connectors#restarts)), `SkillsApply`, `SkillToggle`, `CustomSkillUpsert` (a new custom skill or scheduled task, a new `interval`, an `enabled` change, or a change to `cs-approval-policy`), `CustomSkillRename`, `CustomSkillDelete`, `CustomSkillRevert`, `UpdateSettings` (a new time zone, Chat Mode, model, slash-command list or Wiro API path list, or turning `chatsetup` on or off), `Update` (a changed `title`, or a body that names no field), and a setup card applied from chat (see [Setup From Chat](/docs/agent-messaging#setup-from-chat)). [`ResetBrowser`](#post-useragentresetbrowser) restarts a starting or running agent every time: the browser is reset as the agent starts again. A restart takes a minute or two. A change saved while a restart is still stopping or queued loads with that restart instead of starting another one.
+These restart a starting or running agent when they change something: `CredentialUpsert`, `CredentialFileUpload`, `CredentialProjectBind` (when the project changes), `UpdateSettings` (a new time zone, Chat Mode, model, slash-command list or Wiro API path list, or turning `chatsetup` on or off), `Update` with a body that names no field, which is how you ask for a restart, turning one of the four Skills above on or off, and a setup card that sets the time zone. [`ResetBrowser`](#post-useragentresetbrowser) restarts a starting or running agent every time: the browser is reset as the agent starts again.
 
-**Connectors restart the agent when the connection changes.** A connect that saves new values or tokens, a new account selection and a disconnect of a connected connector answer `restart: "scheduled"` on a running agent; the same values sent again answer `applied: 0` and restart nothing. A sign-in restarts the agent when it comes back to your `redirecturl` with `connector_connected=true`.
+The answer says which happened: `live: true` (`restart: "live"` on the connector calls) when the running agent got the change with no restart, and `restarting: true` (`restart: "scheduled"`) when it restarts. A live change that can't be applied in full restarts the agent instead, by itself. A change saved while the agent is still stopping or queued for a restart loads with that restart. One saved while it is starting reaches it once it runs: live, with no second restart, or with one more restart when the change needs one; its answer reads `restarting: true`. The agent's activity log records each one: `AGENT_CHANGE_APPLIED` for a change it got with no restart, and `AGENT_CHANGE_RESTARTED` when it restarted to load one (see [Who-did-what rows](/docs/agent-logs#who-did-what-rows)).
 
-A change to only the text or description of an existing custom skill or scheduled task, through `CustomSkillUpsert` or a setup card, reaches a running agent right away, without a restart. These never restart a running agent: a plan change, a renewal or a cancellation, moving `chatsetup` between `"all"` and `"webchat"`, a `screen` change through `UpdateSettings`, and a description, categories or cover edit through `Update`.
+These never restart a running agent: a plan change, a renewal or a cancellation, moving `chatsetup` between `"all"` and `"webchat"`, a `screen` change through `UpdateSettings`, and a description, categories or cover edit through `Update`.
 
 ## Screen and Take Control
 
@@ -832,7 +832,7 @@ Next steps for the API integration flow:
 1. Inspect `credentials` in the Deploy response (or call `POST /UserAgent/Detail`) to see each credential's fields, the `optional` / `extra` flags and the registry-driven `_schema`.
 2. Connect the services the agent works with through [Agent Connectors](/docs/agent-connectors): `POST /UserAgent/ConnectorConnect` with a connector's fields, or its vendor's sign-in. A template's `suggestedconnectors` on [`Agent/Detail`](#post-agentdetail) lists the ones it works with. Call `POST /UserAgent/CredentialUpsert` for channels and settings (bot tokens, the support email), and `POST /UserAgent/CredentialProjectBind` to connect the Wiro project the agent runs models with.
 3. Call `POST /UserAgent/CustomSkillUpsert` per skill to customize strategy text or Scheduled Task intervals, if the template exposes any.
-4. Once every non-optional credential is set up, `setuprequired` reads `false`. The start doesn't wait for it: the prepaid Deploy already queued the agent, Wiro starts it from the queue (`2` → `3` (Starting) → `4` (Running)), and a running agent restarts to pick up each connector you connect.
+4. Once every non-optional credential is set up, `setuprequired` reads `false`. The start doesn't wait for it: the prepaid Deploy already queued the agent, Wiro starts it from the queue (`2` → `3` (Starting) → `4` (Running)), and a running agent gets each connector you connect from its next message, with no restart.
 5. If you want to re-launch a stopped agent (status `0`) or recover an errored one (status `5`), call `POST /UserAgent/Start` explicitly.
 
 ##### Idempotency: duplicate Deploy guard
@@ -1448,7 +1448,7 @@ Every provider entry under `credentials.<key>` carries:
 
 #### **POST** /UserAgent/Update
 
-Updates an agent instance's **scalar fields only** (title, description, categories, cover URL). A **starting (status `3`)** or **running (status `4`)** agent restarts in two cases: the call changes its `title`, or the body names none of those four fields, which is how you ask for a restart (`{ "guid": "<useragent-guid>" }`). The agent is moved to Stopping and re-queued after it fully stops. A description, categories or cover edit, or a `title` equal to the saved one, doesn't restart it. `restarting` in the response says which happened.
+Updates an agent instance's **scalar fields only** (title, description, categories, cover URL). A changed `title` reaches a **running (status `4`)** agent with no restart: it uses the new name from its next message. A **starting (status `3`)** or running agent restarts when the body names none of those four fields, which is how you ask for a restart (`{ "guid": "<useragent-guid>" }`): the agent is moved to Stopping and re-queued after it fully stops. A description, categories or cover edit, or a `title` equal to the saved one, doesn't restart it. `restarting` and `live` in the response say which happened (see [Live Changes and Restarts](#live-changes-and-restarts)).
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -1485,13 +1485,14 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 
 ##### Response
 
-A changed `title` on a running agent:
+A changed `title` on a running agent, which gets it with no restart:
 
 ```json
 {
   "result": true,
   "errors": [],
-  "restarting": true,
+  "restarting": false,
+  "live": true,
   "useragents": [
     {
       "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
@@ -1506,7 +1507,7 @@ A changed `title` on a running agent:
       "monthlypriceusd": 5,
       "creditperiod": "2026-05",
       "creditsyncat": 1777680610,
-      "status": 1,
+      "status": 4,
       "pinned": false,
       "setuprequired": false,
       "teamsessionmode": "private",
@@ -1536,7 +1537,7 @@ A changed `title` on a running agent:
       "queuedat": 1714694395,
       "startedat": 1714694400,
       "runningat": 1714694410,
-      "stoppingat": 1714694500,
+      "stoppingat": null,
       "stopdat": null,
       "errordat": null
     }
@@ -1546,7 +1547,7 @@ A changed `title` on a running agent:
 
 > **`Update` returns the full composed useragent shape**: same composition path as `UserAgent/Detail`, so `credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `tokenRates`, `agentModel`, `communicationChannels`, `enabledChannels`, and the `agent` template summary (with `tiers` and `plans`) are all included. The fields `Update` cannot safely populate without an extra round-trip (`subscription`, `lastactivityat`) stay omitted. Call `UserAgent/Detail` next if you need them, or the agent's `usage` and `spend`. Otherwise the response is suitable for an in-place panel re-render without a follow-up call.
 
-> **`restarting`.** `true` when this call restarts the agent, `false` otherwise. With `true`, the row shows the transition mid-flight: `status: 1` (Stopping) with a fresh `stoppingat` timestamp. Wiro re-queues the agent once it has stopped, so it comes back with the new title. A restart request that can't be carried out answers `Failed to restart user agent`; try again.
+> **`restarting` and `live`.** `restarting` is `true` when this call restarts the agent, `false` otherwise. With `true`, the row shows the transition mid-flight: `status: 1` (Stopping) with a fresh `stoppingat` timestamp, and Wiro re-queues the agent once it has stopped, so it comes back with what was saved. `live` is `true` when a running agent got the new `title` with no restart. A restart request that can't be carried out answers `Failed to restart user agent`; try again.
 
 #### **POST** /UserAgent/UpdateSettings
 
@@ -1554,7 +1555,7 @@ Writes per-agent preference toggles that are not credentials and not skill rows.
 
 **Permission**: owner or team admin only, as for `/UserAgent/Update`. Team members cannot change these settings.
 
-**Restart**: if the agent is **starting (status `3`)** or **running (status `4`)** and the call changes a setting, the agent restarts so it applies: a new time zone, Chat Mode (`teamsessionmode`), model, slash-command list (`enabledcommands`) or Wiro API path list (`wiroapiallowedpaths`), or turning `chatsetup` on or off. Moving `chatsetup` between `"all"` and `"webchat"` doesn't restart it: Wiro checks that difference on each message. Changing `screen` never restarts it. A call that changes nothing restarts nothing. For agents in status `0`/`1`/`2`/`5`/`6` the change applies on the next start.
+**Restart**: if the agent is **starting (status `3`)** or **running (status `4`)** and the call changes a setting, the agent restarts so it applies: a new time zone, Chat Mode (`teamsessionmode`), model, slash-command list (`enabledcommands`) or Wiro API path list (`wiroapiallowedpaths`), or turning `chatsetup` on or off. Moving `chatsetup` between `"all"` and `"webchat"` doesn't restart it: Wiro checks that difference on each message. Changing `screen` never restarts it. A call that changes nothing restarts nothing. For agents in status `0`/`1`/`2`/`5`/`6` the change applies on the next start. The response says what the call did to the agent: `restart` is `scheduled` (it restarts to apply the change), `live` (a running agent got it with no restart), `none` (nothing for the agent to load, or it isn't starting or running) or `failed` (the change is saved, but the restart could not be scheduled: restart the agent yourself), with `restarting: true` for `scheduled` and `live: true` for `live`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -1667,14 +1668,19 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
 
 ##### Response
 
+A new time zone on a running agent:
+
 ```json
 {
   "result": true,
-  "errors": []
+  "errors": [],
+  "restart": "scheduled",
+  "restarting": true,
+  "live": false
 }
 ```
 
-> **Light response by design.** `UpdateSettings` returns just `result` + `errors`, not the full useragent shape. Pull the refreshed row with `POST /UserAgent/Detail` if you need to re-render the panel after the write.
+> **Light response by design.** `UpdateSettings` returns `result`, `errors` and what the call did to the agent (`restart`, `restarting`, `live`), not the full useragent shape. Pull the refreshed row with `POST /UserAgent/Detail` if you need to re-render the panel after the write.
 
 ##### Common errors
 
@@ -1705,7 +1711,7 @@ Signs the agent's browser out of every site. The agent's whole browser profile i
 
 **Permission**: owner or team admin only, as for `UpdateSettings`, with a signed-in session or a project API key. Team members can't reset it.
 
-**Restart**: only a **starting (status `3`)** or **running (status `4`)** agent can be reset. The call moves it to Stopping (status `1`), and its browser is reset as it starts again, a minute or two later (see [Automatic Restart](#automatic-restart)). An agent in any other status is refused, and a refused call restarts nothing.
+**Restart**: only a **starting (status `3`)** or **running (status `4`)** agent can be reset. The call moves it to Stopping (status `1`), and its browser is reset as it starts again, a minute or two later (see [Live Changes and Restarts](#live-changes-and-restarts)). An agent in any other status is refused, and a refused call restarts nothing.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -1830,7 +1836,7 @@ If you already have a hosted URL, use `POST /UserAgent/Update` with `cover: "<ur
 
 Writes one or more credential fields for one or multiple providers in a single call.
 
-If the agent is **starting** or **running**, an upsert that changes a saved value triggers an automatic restart (see [Automatic Restart](#automatic-restart)).
+If the agent is **starting** or **running**, an upsert that changes a saved value triggers an automatic restart (see [Live Changes and Restarts](#live-changes-and-restarts)).
 
 `CredentialUpsert` writes the agent's credentials: the Telegram, Slack and Discord channels, Twilio Voice, the Wiro project's key and settings such as the support email (see [Agent Credentials](/docs/agent-credentials)). The services the agent works with are connectors: connect them with [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect). A `credentialkey` that isn't a credential, a connector's slug included, refuses the whole request (see [Common errors](#credentialupsert-errors)).
 
@@ -2062,7 +2068,7 @@ The endpoint auto-normalises the skillkey to its canonical form. Bare slugs beco
 | `enabled` | boolean | No | Turn the skill on or off. **Writable for both strategies (`cs-*`) and crons (`cs-cron-*`)**. A disabled strategy is suppressed end-to-end (it still appears in the list, but the agent never loads it). Defaults to `true` on insert. |
 | `description` | string | No | Only persisted for user-created skills (preset descriptions are template-owned). On a preset row, sending the current description back unchanged is ignored; a different text is rejected with `This skill comes with the agent's template, so its description can't be changed for one agent.` |
 
-> **Text edits reach a running agent without a restart.** A change to the `value` or `description` of an existing skill or task goes to a running agent right away, and the agent keeps running; a starting agent restarts to load it. A new skill or task, a new `interval`, or turning one on or off with `enabled` restarts a starting or running agent, and so does any change to `cs-approval-policy`. If the running agent can't take the new text, Wiro restarts it instead. `restarting` in the response says whether the call restarted the agent. A template's own scheduled task takes no new text (see `value`).
+> **Changes reach a running agent without a restart.** A new skill or task, a change to its `value`, `description` or `interval`, and turning one on or off with `enabled` go to a running agent right away, `cs-approval-policy` included: the agent keeps running and uses the change from its next message. A starting agent gets the change once it runs. If the running agent can't take the change, Wiro restarts it instead. `restarting` and `live` in the response say which happened. A template's own scheduled task takes no new text (see `value`).
 
 > **Schedules the agent can't run are refused.** A scheduled task's `interval` is a cron expression with five fields, `minute hour day month weekday`, such as `0 9 * * 1-5`. A schedule the agent can't run, or one whose date never comes, such as 30 February, is refused before anything is saved, and the error says what is wrong and what to write: `0 25 * * *` gets `This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.`, and `0 0 30 2 *` gets `This schedule never comes up: February has no 30th. Pick a day February has, such as 28.` Only a schedule sent in the request is checked, so a task that already has one can still be edited or turned on and off.
 
@@ -2084,12 +2090,13 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
 ##### Response
 
 ```json
-{ "result": true, "errors": [], "restarting": false }
+{ "result": true, "errors": [], "restarting": false, "live": true }
 ```
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `restarting` | `boolean` | `true` when the call restarted the agent to load the change. `false` when the agent wasn't starting or running, or got the new text without a restart. |
+| `restarting` | `boolean` | `true` when the call restarted the agent to load the change. `false` when the agent wasn't starting or running, or got the change without a restart. |
+| `live` | `boolean` | `true` when the running agent got the change with no restart: it uses it from its next message. |
 
 #### **POST** /UserAgent/CustomSkillRename
 
@@ -2106,7 +2113,7 @@ Version history is migrated under the new key so the full audit chain stays cont
 | `newskillkey` | string | Yes | The new skill key. The server canonicalises bare slugs using the flavour of `oldskillkey`: if old is `cs-cron-*` the new slug lands on `cs-cron-*`; otherwise `cs-*`. |
 | `description` | string | No | New description. Omit to leave unchanged; pass an empty string to clear. |
 
-> **Restart.** A starting or running agent restarts on success so it uses the renamed key, as it does when a custom skill is added.
+> **No restart.** A running agent gets the renamed key with no restart, from its next message, as it does when a custom skill is added. `restart`, `restarting` and `live` in the response say what happened (see [Live Changes and Restarts](#live-changes-and-restarts)).
 
 ##### Request
 
@@ -2125,7 +2132,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillRename" \
 ##### Response
 
 ```json
-{ "result": true, "errors": [], "newskillkey": "cs-my-renamed-strategy" }
+{ "result": true, "errors": [], "newskillkey": "cs-my-renamed-strategy", "restart": "live", "restarting": false, "live": true }
 ```
 
 ##### Error cases
@@ -2188,7 +2195,7 @@ Removes a user-created custom skill. The endpoint enforces a **hybrid delete pol
 
 | Row type | Delete result |
 |----------|--------------|
-| User-created (`usercreated: true`) under a key the agent's template doesn't have | **Allowed**: the row and its version history are deleted, and a starting or running agent restarts. |
+| User-created (`usercreated: true`) under a key the agent's template doesn't have | **Allowed**: the row and its version history are deleted, and a running agent drops it from its next message, with no restart. |
 | `usercreated: false`: a template's skills and tasks, copied to the agent at deploy, and a custom build's registry rows (e.g. `cs-approval-policy`, bundled `cs-cron-*` tasks) | **Rejected** with `This skill is registry-owned and cannot be deleted. Use enabled=false to disable it instead.` Disable it via `CustomSkillUpsert` with `enabled: false` instead. |
 | User-created, under a key the agent's template also has | **Rejected** with `This skill belongs to the agent preset and cannot be deleted. Use enabled=false to disable it instead.` Disable it via `CustomSkillUpsert` with `enabled: false` instead. |
 
@@ -2202,7 +2209,7 @@ In both reject branches the response carries `suggestion: "disable-via-upsert"` 
 ##### Response (delete allowed)
 
 ```json
-{ "result": true, "errors": [] }
+{ "result": true, "errors": [], "restarting": false, "live": true }
 ```
 
 ##### Response (preset-owned or registry-owned, rejected with suggestion)
@@ -2301,7 +2308,7 @@ Returns the version history for one custom skill on a useragent: one entry per c
 
 #### **POST** /UserAgent/CustomSkillRevert
 
-Reverts a custom skill to either (a) the agent template's preset default or (b) a specific historical version. Auto-triggers a restart on success unless the action is a no-op.
+Reverts a custom skill to either (a) the agent template's preset default or (b) a specific historical version. A running agent gets the reverted entry with no restart, from its next message, unless the action is a no-op. `restart`, `restarting` and `live` in the response say what happened.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -2319,7 +2326,10 @@ Reverts a custom skill to either (a) the agent template's preset default or (b) 
   "action": "reverted",
   "current_value": "## Brand Voice\nTone: ...",
   "current_interval": null,
-  "current_enabled": true
+  "current_enabled": true,
+  "restart": "live",
+  "restarting": false,
+  "live": true
 }
 ```
 
@@ -2381,7 +2391,7 @@ Every plan includes every skill, so a skill change never moves money: the plan's
 
 Designed for both the Skill Editor modal (multiple toggles in one save) and one-off API mutations:
 
-1. Triggers exactly **one agent restart** after all toggles land.
+1. Applies the new skill set to a running agent in one step, with no restart unless a Skill needs one: turning `util-voice-receptionist`, `util-twilio-channel`, `util-web-channel` or `util-newsletter-compose` on or off restarts it once.
 2. Uses **idempotency**: concurrent calls or client retries can't apply the change twice.
 3. **Atomic**: the whole batch lands, or none of it does.
 
@@ -2418,8 +2428,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   "result": true,
   "errors": [],
   "tier": "pro",
-  "restartTriggered": true,
-  "restartedAt": 1714694520,
+  "restartTriggered": false,
+  "restartedAt": null,
+  "restart": "live",
+  "live": true,
   "stripeProrationApplied": false,
   "prepaidWalletDelta": null,
   "usedCreditsUsd": 0,
@@ -2453,8 +2465,10 @@ When every entry in your `skills` map already matches the persisted state, the e
 |-------|------|-------------|
 | `noOp` | `boolean` | Present and `true` only on the no-op short-circuit response. Absent on the regular success path. When you see `noOp: true`, the rest of the field set (`tier`, `restartTriggered`, `pricing`) is omitted, because there was nothing to apply. |
 | `tier` | `string` | The agent's plan (`"starter"`, `"pro"` or `"max"`), which a skill change never moves. |
-| `restartTriggered` | `boolean` | `true` when the call changed the skill set: a starting or running agent restarts to load it, and a stopped one loads it at its next start. `false` when nothing on the agent changed. |
+| `restartTriggered` | `boolean` | `true` when the call restarts the agent to load the new skill set. `false` when a running agent got it with no restart (`live: true`), when the agent isn't running (it loads the change at its next start) or when nothing on the agent changed. |
 | `restartedAt` | `number\|null` | Unix seconds when the change was saved and the restart was asked for. `null` when `restartTriggered` is `false`. |
+| `restart` | `string` | What the call did to the agent: `live` (the running agent got the new skill set with no restart), `scheduled` (it restarts to load it), `none` (it isn't running, or nothing changed) or `failed` (the change is saved, but the restart could not be scheduled: restart the agent yourself). |
+| `live` | `boolean` | `true` when `restart` is `live`: the agent uses the new skill set from its next message. |
 | `pricing.enabledSkills` | `array<string>` | Final enabled skill set including transitive `depends_on` closure, as a flat array of skill names. The matching `useragent.skills` array on the next `Detail` call is an object array (`{ name, enabled: true, _edited, _user_created }`, only the Skills that are on); take `.name` from each entry to compare. |
 | `pricing.delta` / `deltaUsd` | `number` | Always `0`: a skill change moves no money. The rest of `pricing` is kept for older clients and repeats the plan as it stands: its price in `previousPriceUsd` and `newPriceUsd`, and `periodEnd: null`; its credit counts are deprecated (see [Fields Kept for Older Clients](#fields-kept-for-older-clients)). `stripeProrationApplied` is always `false`, `prepaidWalletDelta` `null` and `usedCreditsUsd` `0`, in `pricing` and at the top level. |
 
@@ -3775,7 +3789,7 @@ Agent-specific errors you may encounter:
 | `Agent not found or access denied` | Message endpoint with invalid useragentguid |
 | `User agent not found` (code `95`) | `Message/Send`, `Message/History`, `Message/Sessions`, `Message/DeleteSession`, `Message/RenameSession` or `Message/Delete` called for an agent that has been deleted |
 | `Request parameters [message] not valid.` | `Message/Send` with a `message` that isn't a string, such as a JSON array or object, a non-zero number or `true`. Nothing is stored or sent. Sent without files, `[]`, `0` and `false` count as missing and get `Request parameter [message] required` |
-| The sentence for the agent's status: `Agent is stopped. Start it before sending messages.` (status `0`), `Agent is stopping. Please wait a moment and try again.` (status `1`, when the agent is shutting down to stay stopped), `Agent is restarting. Please wait a moment and try again.` (status `1`, when the agent is shutting down to start again, as in a [restart](#automatic-restart)), `Agent is starting up. Please wait a moment and try again.` (status `2` or `3`), `Agent is in error state. Restart it before sending messages.` (status `5`) or `Agent setup is incomplete. Complete the setup before sending messages.` (status `6`) | `Message/Send` while the agent isn't running (any status other than `4`), for every message Wiro doesn't answer itself as a setup reply (see [Replies Wiro handles itself](/docs/agent-messaging#handled-setup-replies)). Response includes `agentstatus` (the integer) so your client can branch on it. A stopped (`0`) or errored (`5`) agent with no active plan gets the no-plan refusal below instead (code `97`). |
+| The sentence for the agent's status: `Agent is stopped. Start it before sending messages.` (status `0`), `Agent is stopping. Please wait a moment and try again.` (status `1`, when the agent is shutting down to stay stopped), `Agent is restarting. Please wait a moment and try again.` (status `1`, when the agent is shutting down to start again, as in a [restart](#live-changes-and-restarts)), `Agent is starting up. Please wait a moment and try again.` (status `2` or `3`), `Agent is in error state. Restart it before sending messages.` (status `5`) or `Agent setup is incomplete. Complete the setup before sending messages.` (status `6`) | `Message/Send` while the agent isn't running (any status other than `4`), for every message Wiro doesn't answer itself as a setup reply (see [Replies Wiro handles itself](/docs/agent-messaging#handled-setup-replies)). Response includes `agentstatus` (the integer) so your client can branch on it. A stopped (`0`) or errored (`5`) agent with no active plan gets the no-plan refusal below instead (code `97`). |
 | `My Instagram Bot used the $30.00 of AI usage its plan includes, and your balance is under $0.50. Add funds to keep it running, or it starts again when the plan renews on 1 June 2026 (UTC).` (the agent's name, the amount and the renewal date, the day in UTC, left out when it can't be read or a plan paid by card is past its period end; once the period of a plan paid from the balance has ended and its renewal hasn't run yet, the second sentence reads `Its plan's renewal is due: add funds to renew it and keep it running.`, and a cancelled plan's reads `Add funds to keep it running until its plan ends on 1 June 2026 (UTC).`; for a team agent, `the team's balance`) | `Message/Send` or `Start` (code `97`) while the agent has used the AI usage its plan includes and the balance is under $0.50. The response includes `agentusage` (the agent's `usage`), and Send's also `agentstatus`, so your client can offer to add funds. |
 | `My Instagram Bot has no active plan. Choose a plan to keep it running.` (the agent's name) | `Message/Send` (code `97`) to an agent with no active plan while it is running, stopped or in error, and `Start` (code `97`) on a stopped or errored agent with no active plan, whatever its balance. The response includes `agentusage` with `pausedreason: "plan"`, and Send's also `agentstatus`. Adding funds doesn't help: renew a plan that ended with `RenewSubscription` (`{ guid }`). For an agent that never had a plan, `RenewSubscription` answers `No expired subscription found to renew`: start one with `CreateSubscriptionCheckout` (`useprepaid: true`). |
 | A spend limit refusal (code `93`), such as `This agent's monthly spend limit is reached ($20.35 of $20.00). It resets on December 1, 2026 at 00:00 UTC.` | `Message/Send` while the agent's own [spend limit](/docs/spend-limits) is used up or, once its included AI usage is used up, a limit of the wallet that covers it: the account's or team's, or the `agent` surface's. The response includes `agentstatus`. Paying from the balance with `Deploy`, `CreateSubscriptionCheckout`, `UpgradeTier` or `RenewSubscription` is refused the same way when the price would take spending over a limit of the wallet. Nothing runs and nothing is charged |
@@ -3876,7 +3890,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{"guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321"}'
 
-# Connect a connector on a running agent (triggers automatic restart)
+# Connect a connector on a running agent (it gets the connector with no restart)
 curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \

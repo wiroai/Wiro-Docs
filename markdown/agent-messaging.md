@@ -123,7 +123,7 @@ Accepts either `application/json` (text-only) or `multipart/form-data` (text + f
 | `content` | `string` | Present when Wiro handled the message itself or removed a key from it: the message text as stored. See [Keys in chat](#keys-in-chat). |
 | `contentmasked` | `boolean` | Present (`true`) when Wiro removed a key from the message before the agent saw it; `content` holds the text the agent got. |
 | `response` | `string` | Only when Wiro handled the message itself: its result text. |
-| `setupresult` | `object` | Only when Wiro handled the message itself as a setup reply: `{ applied, dismissed, failed, restarting, next? }`. See [Replies Wiro handles itself](#handled-setup-replies). |
+| `setupresult` | `object` | Only when Wiro handled the message itself as a setup reply: `{ applied, dismissed, failed, restarting, live, next? }`. See [Replies Wiro handles itself](#handled-setup-replies). |
 | `approvalresult` | `object` | Only when Wiro handled the message itself as a reply to an approval card: `{ answered, listed }`, the cards it answered (each with what Wiro did, the card after, `summary` and `resume`) and the cards its listing showed. Both lists are empty when the agent was still replying. See [Answering with a reply](/docs/agent-connectors#answering-with-a-reply). |
 
 > **`model_change` marker.** When `model` rotates the session to a different chat model, the Send response carries a `modelChangeMarker` describing the switch, and a standalone marker row (status `agent_done`) is written into history at the same time:
@@ -146,7 +146,7 @@ When `result: false`, the response shape is `{ result: false, errors: [{ code, m
 
 | Failure branch | Extra fields | Notes |
 |----------------|--------------|-------|
-| Agent not running (`status` ≠ 4) | `agentstatus: <int>` | Returned for every message Wiro doesn't answer itself as a setup reply or a reply to an approval card (see [Replies Wiro handles itself](#handled-setup-replies)). Echoes the agent's current `status` so the caller can decide whether to wait, call `Start`, or surface "Setup Required" UI: `0` Stopped (call `Start`), `1` Stopping, `2` Queued and `3` Starting (wait and retry), `5` Error (call `Start` to retry), `6` Setup Required. With status `1`, the error reads `Agent is stopping. Please wait a moment and try again.` when the agent is shutting down to stay stopped, and `Agent is restarting. Please wait a moment and try again.` when it is shutting down to start again, as in a [restart](/docs/agent-overview#automatic-restart). See [UserAgent Statuses](/docs/agent-overview#useragent-statuses). A stopped (`0`) or errored (`5`) agent with no active plan gets the paused answer below instead: code `97` with `pausedreason: "plan"`. |
+| Agent not running (`status` ≠ 4) | `agentstatus: <int>` | Returned for every message Wiro doesn't answer itself as a setup reply or a reply to an approval card (see [Replies Wiro handles itself](#handled-setup-replies)). Echoes the agent's current `status` so the caller can decide whether to wait, call `Start`, or surface "Setup Required" UI: `0` Stopped (call `Start`), `1` Stopping, `2` Queued and `3` Starting (wait and retry), `5` Error (call `Start` to retry), `6` Setup Required. With status `1`, the error reads `Agent is stopping. Please wait a moment and try again.` when the agent is shutting down to stay stopped, and `Agent is restarting. Please wait a moment and try again.` when it is shutting down to start again, as in a [restart](/docs/agent-overview#live-changes-and-restarts). See [UserAgent Statuses](/docs/agent-overview#useragent-statuses). A stopped (`0`) or errored (`5`) agent with no active plan gets the paused answer below instead: code `97` with `pausedreason: "plan"`. |
 | Spend limit used up | `agentstatus` | Code `93`: a [spend limit](/docs/spend-limits) that covers the agent is used up: its own limit or, once its plan's included AI usage is used up, the account's or team's limit or the `agent` surface's limit. The message names the limit and when it resets, such as `This agent's monthly spend limit is reached ($20.35 of $20.00). It resets on December 1, 2026 at 00:00 UTC.` It is checked before the balance's code `97`; an agent with no active plan gets the plan's code `97` instead, whatever its limits. `agentstatus` is `4` here, so branch on the code. Nothing is queued or charged. Meanwhile the agent's [`usage`](/docs/agent-overview#usage-object) on `Detail`, `MyAgents` and `PinnedAgents` reads `pausedreason: "spendlimit"`. When the limits can't be checked at that moment, this branch answers code `0` `Spend limits could not be checked. Try again in a moment.` instead: send the message again shortly. |
 | Agent paused (balance or plan) | `agentstatus`, `agentusage` | Code `97`. `agentusage` is the agent's [`usage`](/docs/agent-overview#usage-object) with `paused: true`, and its `pausedreason` says why. `"balance"`: the agent has used the AI usage its plan includes and the balance is under $0.50. The message speaks to whoever pays for the agent: surface an "Add funds" action. `"plan"`: the agent has no active plan, and the message reads `<Agent name> has no active plan. Choose a plan to keep it running.` It comes while the agent is running, stopped (`0`) or in error (`5`). Surface a "Choose a plan" action that renews the plan with [`RenewSubscription`](/docs/agent-overview#post-useragentrenewsubscription): adding funds doesn't run it. See [AI Usage and the Balance](/docs/agent-overview#ai-usage-and-the-balance). |
 
@@ -916,7 +916,7 @@ Wiro applies a card that has `before` only while the skill still holds that text
 
 ### Adding and removing skills
 
-An `add` card turns on one skill (`util-<name>`) that the agent doesn't have, and a `remove` card turns off one it has, as the agent page does. `key` holds its name as [`POST /Skills/List`](/docs/agent-skills#post-skillslist) lists it, one name per card. A change costs nothing: every plan includes every skill, so the plan's price and included AI usage stay the same. Cards work on agents deployed from a template and on custom builds, and once a card is applied, the agent restarts to load the change. Connectors are not turned on or off: a connected connector is on, and a [`disconnect` card](#setup-disconnect-cards) disconnects it.
+An `add` card turns on one skill (`util-<name>`) that the agent doesn't have, and a `remove` card turns off one it has, as the agent page does. `key` holds its name as [`POST /Skills/List`](/docs/agent-skills#post-skillslist) lists it, one name per card. A change costs nothing: every plan includes every skill, so the plan's price and included AI usage stay the same. Cards work on agents deployed from a template and on custom builds, and once a card is applied, a running agent uses the change from its next message, with no restart (turning `util-voice-receptionist`, `util-twilio-channel`, `util-web-channel` or `util-newsletter-compose` on or off restarts it). Connectors are not turned on or off: a connected connector is on, and a [`disconnect` card](#setup-disconnect-cards) disconnects it.
 
 A change can turn on or off more than its `key`, so Wiro works out the rest and writes it on the card, and the person who approves sees the whole change. The agent never writes these fields: a proposal that sends them has them dropped.
 
@@ -960,7 +960,7 @@ A card refused as the agent proposes it is never stored. A card refused as it is
 
 ### Adding and connecting in one step
 
-An `add` card can finish its `connect` card's step itself, so both apply with one call and one restart:
+An `add` card can finish its `connect` card's step itself, so both apply with one call:
 
 - **With a key.** When its `needs` names one connector with `mode: "key"` whose `connect` card waits on the same reply, send the `add` card's id to [`SetupCardApply`](#post-useragentmessagesetupcardapply) with that card's values in `values`. Wiro checks the values first: when a value is refused, nothing is applied and both cards stay pending. When they pass, Wiro applies the `add` card and, right after it, the `connect` card.
 - **With a sign-in.** When its `needs` names one connector with `mode: "signin"` whose `connect` card waits, start the sign-in on that `connect` card (see [Connecting a connector](#setup-signin-cards)). Once the browser is back, send the `add` card with `signin: true`. Wiro checks that the connector reads connected: when it doesn't, nothing is applied and the answer is `<Title> is not connected yet. Finish the sign-in on the card first.` with `errorcode: "not_connected"`. Otherwise it applies the `add` card, then the `connect` card.
@@ -998,7 +998,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
     "actedat": 1743350460,
     "actedby": "ada-uuid"
   },
-  "restarting": true,
+  "restarting": false,
+  "live": true,
   "summary": "Google Play Promotional Content added. Google Play Console connected.",
   "paired": [
     {
@@ -1125,7 +1126,7 @@ The agent never sees a key, a token or an account list. A connector's account pi
 
 ### Disconnecting a connector
 
-A `disconnect` card disconnects a connector, as [`ConnectorDisconnect`](/docs/agent-connectors#post-useragentconnectordisconnect) does: Wiro asks the vendor to revoke a sign-in where it can, and deletes the connection. It names the connector in `connector`, carries its `title`, and never holds a value. Once it is applied, the agent restarts without the connector's tools until it is connected again. Wiro takes a `disconnect` card only for a connector the agent has a connection for; when the connection is gone by the time the card is applied, the card fails with `<Title> is not connected.` Channels (Telegram, Slack or Discord) are refused, and they are changed outside the chat, with the credential endpoints or on the agent page. A `disconnect` card for Wiro AI Models (`wiro`) removes the connector only: the agent keeps its Wiro project. A `yes` applies a `disconnect` card as it does any card that needs no values.
+A `disconnect` card disconnects a connector, as [`ConnectorDisconnect`](/docs/agent-connectors#post-useragentconnectordisconnect) does: Wiro asks the vendor to revoke a sign-in where it can, and deletes the connection. It names the connector in `connector`, carries its `title`, and never holds a value. Once it is applied, a running agent no longer has the connector's tools from its next message, until it is connected again. Wiro takes a `disconnect` card only for a connector the agent has a connection for; when the connection is gone by the time the card is applied, the card fails with `<Title> is not connected.` Channels (Telegram, Slack or Discord) are refused, and they are changed outside the chat, with the credential endpoints or on the agent page. A `disconnect` card for Wiro AI Models (`wiro`) removes the connector only: the agent keeps its Wiro project. A `yes` applies a `disconnect` card as it does any card that needs no values.
 
 <a id="approving-setup-cards"></a>
 
@@ -1195,12 +1196,13 @@ When Wiro handles a message itself (a `yes` that applies a card or gets the [car
   "agenttoken": null,
   "status": "agent_end",
   "content": "yes",
-  "response": "✅ Applied: Scheduled task Morning summary created.\nYour agent is restarting to load the change. Continue in a minute or two.",
+  "response": "✅ Applied: Scheduled task Morning summary created.\nYour agent uses the change from its next message.",
   "setupresult": {
     "applied": ["k3v9q2m8x1za"],
     "dismissed": [],
     "failed": [],
-    "restarting": true
+    "restarting": false,
+    "live": true
   }
 }
 ```
@@ -1211,12 +1213,12 @@ When Wiro handles a message itself (a `yes` that applies a card or gets the [car
 | `status` | `string` | `"agent_end"`: the message is already finished. |
 | `content` | `string` | The message as stored. A saved key reads `[key saved to <Connector title>]`. |
 | `response` | `string` | Wiro's answer, always in English: the lines in [Wiro's answers](#setup-reply-lines), or the [card listing](#setup-card-listing). Read `setupresult` in code, not this text. |
-| `setupresult` | `object` | `applied` and `dismissed`: the ids of the cards applied and dismissed. `failed`: `[{ id, error }]`. `restarting`: `true` when the agent restarts to load the change. All three lists are empty for a card listing. `next`: only when the answer leaves connectors to connect, `[{ connector, title, mode, cardid?, messageguid? }]`: first the `connect` cards its last lines name, each with its `cardid` and the `messageguid` of the message it is on, then each connector an applied `add` card brings that no card connects, without a card. Never on a listing, a refusal or a `no`. |
+| `setupresult` | `object` | `applied` and `dismissed`: the ids of the cards applied and dismissed. `failed`: `[{ id, error }]`. `restarting`: `true` when the agent restarts to load the change. `live`: `true` when a running agent got the change with no restart. All three lists are empty for a card listing. `next`: only when the answer leaves connectors to connect, `[{ connector, title, mode, cardid?, messageguid? }]`: first the `connect` cards its last lines name, each with its `cardid` and the `messageguid` of the message it is on, then each connector an applied `add` card brings that no card connects, without a card. Never on a listing, a refusal or a `no`. |
 | `approvalresult` | `object` | Only for a reply to a connector's approval card: `{ answered, listed }`, what Wiro did with each card and the cards its listing showed. See [Answering with a reply](/docs/agent-connectors#answering-with-a-reply). |
 
 The message is stored like any finished exchange: Message/Detail and Message/History return it with `status: "agent_end"`, `metadata.type: "setup_result"` and `model: null`. Its `metadata` also keeps `next` when the answer has one, the same as in `setupresult`, and, for a [card listing](#setup-card-listing), `listed` and `listedfrom`: the ids of the cards the listing showed and the `guid` of the message they are on. A reply to an approval card keeps `approvalresult`: `answered` entries `{ cardid, messageguid, action, result, code? }` and `listed` entries `{ number, cardid, messageguid }`, with `listedfrom` for a listing. A chat you load again later can still show what is left to connect. When the Send has a `callbackurl`, Wiro posts the result to it right away with `status: "agent_end"`, as for a finished turn, and its `metadata` holds `type: "setup_result"`, `cards` (the ids of the cards it acted on), when there is one, the same `next` as `setupresult`, and for a reply to an approval card, `approvalresult` as stored; see [Agent Webhooks](/docs/agent-webhooks).
 
-A card applied while the agent is stopped doesn't start it: the agent loads the change the next time it starts, and `restarting` is `false`. While the agent isn't running, every message Wiro doesn't answer itself gets the [not-running refusal](#failure-responses) with `agentstatus`, a message with attachments or over 2,000 characters included.
+A card applied while the agent is stopped doesn't start it: the agent loads the change the next time it starts, and `restarting` and `live` are `false`. While the agent isn't running, every message Wiro doesn't answer itself gets the [not-running refusal](#failure-responses) with `agentstatus`, a message with attachments or over 2,000 characters included.
 
 <a id="setup-reply-lines"></a>
 
@@ -1228,7 +1230,8 @@ The lines Wiro writes in `response`:
 |------|------|
 | `✅ Applied: <summary>.` | The card was applied. The summary says what changed, such as `Scheduled task Morning summary created`, `Custom skill Weekly report updated` (also for an `append` card), `Custom skill Weekly report restored`, `Custom skill Weekly report turned off`, `Time zone set to Europe/Istanbul`, `<Connector> connected`, `<Connector> disconnected`, `Weather added` or `Weather removed`. An `add` card applied together with its `connect` card names both. An applied `add` card whose connectors have no `connect` card to finish them goes on with `Still to connect: <titles>`. |
 | `⚠️ Not applied: <reason>` | The change failed. The card's `status` is now `failed`, with the same reason in `error`. For example, `This skill changed after the card was made. Ask the agent again.` means the skill's text changed after an `update`, `append` or `revert` card was made. |
-| `Your agent is restarting to load the change. Continue in a minute or two.` or `Your agent is restarting to load the change.` | The change restarts the agent, or loads with a restart already under way, such as the one an `add` card started. The shorter line comes when the answer ends with a `Next:` line, which follows it. |
+| `Your agent uses the change from its next message.` | A running agent got the change with no restart. |
+| `Your agent is restarting to load the change. Continue in a minute or two.` or `Your agent is restarting to load the change.` | The change restarts the agent, or loads with a restart already under way. The shorter line comes when the answer ends with a `Next:` line, which follows it. |
 | `1 more setup change is still pending.` or `<N> more setup changes are still pending.` | Other cards of the same reply still wait. Reply `yes` and a card's number to apply the next one. |
 | `Next: paste your <Title> key as your reply.` or `<N> connector cards still need their keys: add each key on its card.` | `connect` cards of the same reply still wait for their keys, such as the `connect` card that came with an `add` card just applied. When one card is counted, the `Next:` line ends the answer. `<Title>` is the connector's title. When the answer says the agent is restarting, the `Next:` line goes on with `Send it now and it loads with this same restart.` |
 | `Next: connect <Title> to finish. Its sign-in and any app keys are entered outside this chat, never in it.` | In a message sent with a project API key, a `yes` applied an `add` card whose `signin` card still waits. `setupresult.next` names that card. In the Wiro web chat the line reads `Next: connect <Title> with its card in this chat.` |
@@ -1297,7 +1300,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
     "actedat": 1743350460,
     "actedby": "ada-uuid"
   },
-  "restarting": true,
+  "restarting": false,
+  "live": true,
   "summary": "Scheduled task Morning summary created"
 }
 ```
@@ -1306,6 +1310,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
 |-------|------|-------------|
 | `setup` | `object\|null` | The card after the action, in the same shape as a [setup block](#setup-blocks)'s `setup`. `null` when the call is refused before the card is read: a missing parameter, an agent or message the caller can't reach, Setup From Chat off, a reply still being written, a caller who isn't an agent admin, a card someone else is applying at that moment, or a card that isn't there. |
 | `restarting` | `boolean` | `true` when the agent restarts to load the change. Continue the chat in a minute or two. |
+| `live` | `boolean` | `true` when the running agent got the change with no restart: it uses it from its next message. |
 | `summary` | `string` | A short English phrase that says what changed, such as `Scheduled task Morning summary created`, `Serper connected` or `Weather added`. An `add` card applied with its `connect` card names both, and one whose connectors have no `connect` card to finish them goes on with `Still to connect: <titles>`. Empty when nothing was applied. |
 | `authorizeUrl` | `string` | Only when a `signin` card's sign-in started: the vendor's sign-in address, to open in the browser, for 10 minutes and once. `result` is `true`, `setup` is still pending, `summary` is empty, and `next` names the card. Once the browser is back, apply the card again to record it. |
 | `paired` | `object[]` | Only when `values` or `signin: true` are sent with a pending `add` card: its `connect` card after the call, as `[{ setup, result, error }]`. `setup` has the same shape as above, `result` is `true` when the card was applied too, and `error` is `null` or the sentence that says why not. Empty when there is no single `connect` card for it. |

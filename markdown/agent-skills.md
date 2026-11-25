@@ -350,7 +350,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   }'
 ```
 
-Response: `{ "result": true, "errors": [], "restarting": false }`. A running agent gets the new text right away, without a restart.
+Response: `{ "result": true, "errors": [], "restarting": false, "live": true }`. A running agent gets the new text right away, without a restart.
 
 ### Example: Lead Generation Manager (ICP Definition)
 
@@ -588,7 +588,7 @@ The response carries the post-revert state (`current_value`, `current_interval`,
 
 The top-level `skills[]` array on `UserAgent/Detail` lists the Skills that are on, as an **object array** sorted by name: `[{ name, enabled: true, _edited, _user_created }, ...]`. A Skill that is off is not in it, so `enabled` is always `true`; the full catalog of Skills is on [`POST /Skills/List`](#post-skillslist). `_edited` is `true` for a Skill you turned on yourself rather than one the template or a dependency brought, and `_user_created` is `true` for a name neither the template nor the registry has. Example: `[{ "name": "util-diagram", "enabled": true, "_edited": false, "_user_created": false }, { "name": "util-weather", "enabled": true, "_edited": true, "_user_created": false }]`. To enable or disable several skills in one shot, use **`POST /UserAgent/SkillsApply`**. Even when you only want to flip a single skill, send it as a one-entry `skills` map. Connectors are not in this list: a connected connector is on (see [Agent Connectors](/docs/agent-connectors)). The endpoint:
 
-1. Triggers exactly **one agent restart** after the new skill set lands.
+1. Applies the new skill set to a running agent with no restart, unless a Skill needs one: turning `util-voice-receptionist`, `util-twilio-channel`, `util-web-channel` or `util-newsletter-compose` on or off restarts it once.
 2. Uses **idempotency**: concurrent calls or client retries can't apply the change twice.
 3. Is **atomic**: the whole batch lands, or none of it does.
 
@@ -747,7 +747,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   }'
 ```
 
-All three requests succeed independently. The agent restarts once: the server coalesces the restart trigger after all three succeed within the same request window.
+All three requests succeed independently, and each reaches a running agent with no restart: it uses the change from its next message.
 
 ## Available Skills by Agent
 
@@ -857,7 +857,7 @@ The voice channels are Skills too: Twilio Voice Channel (`util-twilio-channel`) 
 
 `POST /Skills/List` with `{ "category": "util" }` returns every Skill.
 
-> **Restart behavior:** On a starting or running agent (status 3 or 4), `SkillsApply`, `CustomSkillRename`, `CustomSkillDelete` and `CustomSkillRevert` restart it so the new skill configuration is picked up, as credential updates do. `CustomSkillUpsert` restarts it for a new skill or task, a new `interval` or an `enabled` change. A change to the text or description of an existing one reaches the running agent without a restart, except for `cs-approval-policy`. See [Automatic Restart](/docs/agent-overview#automatic-restart).
+> **No restart for most changes:** `SkillsApply`, `CustomSkillUpsert`, `CustomSkillRename`, `CustomSkillDelete` and `CustomSkillRevert` reach a running agent (status 4) with no restart: it uses the new skill set, or the new or changed skill or task (`cs-approval-policy` included), from its next message. Turning `util-voice-receptionist`, `util-twilio-channel`, `util-web-channel` or `util-newsletter-compose` on or off restarts it, as credential updates do. `live` and `restarting` in the answer say which happened. See [Live Changes and Restarts](/docs/agent-overview#live-changes-and-restarts).
 
 ## Using Wiro AI Models from Your Agent
 

@@ -15935,24 +15935,24 @@ Every deployed agent instance has a numeric status that reflects its current sta
 | Status | Name | Description |
 |--------|------|-------------|
 | `0` | Stopped | Agent is not running. Call Start to launch it. |
-| `1` | Stopping | Agent is shutting down. After a stop, wait for it to reach Stopped before taking action. During a [restart](#automatic-restart), it goes on to Queued and Starting by itself. |
+| `1` | Stopping | Agent is shutting down. After a stop, wait for it to reach Stopped before taking action. During a [restart](#live-changes-and-restarts), it goes on to Queued and Starting by itself. |
 | `2` | Queued | Agent is queued and waiting to start. |
 | `3` | Starting | The agent is starting up. |
 | `4` | Running | Agent is live and ready to receive messages. |
 | `5` | Error | Agent encountered an error during execution. Call Start to retry. |
 | `6` | Setup Required | The agent has no plan yet: it was deployed without `useprepaid: true`, and nothing was charged. Pay its plan with [`CreateSubscriptionCheckout`](#post-useragentcreatesubscriptioncheckout) (`useprepaid: true`), which queues it (status `2`). Credentials and connectors never hold an agent here. An agent that has never had a plan and has never started is deleted about an hour after Deploy. |
 
-### Automatic Restart
+### Live Changes and Restarts
 
-When you mutate an agent's configuration while it is **starting** (status `3`) or **running** (status `4`), the system automatically triggers a restart cycle: the agent is moved to **Stopping** (status `1`) and flagged to restart. Once the agent fully stops, the system automatically re-queues it, applying the new configuration on startup.
+Most changes reach a **running** agent (status `4`) live: it keeps running, a reply it is writing goes on, and it uses the change from its next message. The rest restart it: the agent is moved to **Stopping** (status `1`) and flagged to restart, Wiro queues it again once it has fully stopped, and it loads the change as it starts, in a minute or two. Either way, you never stop and start the agent yourself.
 
-This means you can update credentials, toggle skills, or change a custom skill on a running agent without manually stopping and starting it.
+These reach a running agent live when they change something: the connector calls `ConnectorConnect`, `ConnectorSetAccounts`, `ConnectorDisconnect` and `ConnectorSetPermissions`, and a connector's sign-in when it comes back (see [Agent Connectors](/docs/agent-connectors#live-changes-and-restarts)), `SkillsApply` and `SkillToggle` (except for the Skills `util-voice-receptionist`, `util-twilio-channel`, `util-web-channel` and `util-newsletter-compose`), `CustomSkillUpsert` (a new custom skill or scheduled task, its text, description, `interval` or `enabled` state, `cs-approval-policy` included), `CustomSkillRename`, `CustomSkillDelete`, `CustomSkillRevert`, `Update` with a changed `title`, and a setup card applied from chat that makes one of these changes (see [Setup From Chat](/docs/agent-messaging#setup-from-chat)).
 
-These calls restart a starting or running agent when they change something: `CredentialUpsert`, `CredentialFileUpload`, `CredentialProjectBind` (when the project changes), the connector calls `ConnectorConnect`, `ConnectorSetAccounts`, `ConnectorDisconnect` and `ConnectorSetPermissions` (unless every change only turns `ask` into `allow`) and a connector's sign-in when it comes back (see [Agent Connectors](/docs/agent-connectors#restarts)), `SkillsApply`, `SkillToggle`, `CustomSkillUpsert` (a new custom skill or scheduled task, a new `interval`, an `enabled` change, or a change to `cs-approval-policy`), `CustomSkillRename`, `CustomSkillDelete`, `CustomSkillRevert`, `UpdateSettings` (a new time zone, Chat Mode, model, slash-command list or Wiro API path list, or turning `chatsetup` on or off), `Update` (a changed `title`, or a body that names no field), and a setup card applied from chat (see [Setup From Chat](/docs/agent-messaging#setup-from-chat)). [`ResetBrowser`](#post-useragentresetbrowser) restarts a starting or running agent every time: the browser is reset as the agent starts again. A restart takes a minute or two. A change saved while a restart is still stopping or queued loads with that restart instead of starting another one.
+These restart a starting or running agent when they change something: `CredentialUpsert`, `CredentialFileUpload`, `CredentialProjectBind` (when the project changes), `UpdateSettings` (a new time zone, Chat Mode, model, slash-command list or Wiro API path list, or turning `chatsetup` on or off), `Update` with a body that names no field, which is how you ask for a restart, turning one of the four Skills above on or off, and a setup card that sets the time zone. [`ResetBrowser`](#post-useragentresetbrowser) restarts a starting or running agent every time: the browser is reset as the agent starts again.
 
-**Connectors restart the agent when the connection changes.** A connect that saves new values or tokens, a new account selection and a disconnect of a connected connector answer `restart: "scheduled"` on a running agent; the same values sent again answer `applied: 0` and restart nothing. A sign-in restarts the agent when it comes back to your `redirecturl` with `connector_connected=true`.
+The answer says which happened: `live: true` (`restart: "live"` on the connector calls) when the running agent got the change with no restart, and `restarting: true` (`restart: "scheduled"`) when it restarts. A live change that can't be applied in full restarts the agent instead, by itself. A change saved while the agent is still stopping or queued for a restart loads with that restart. One saved while it is starting reaches it once it runs: live, with no second restart, or with one more restart when the change needs one; its answer reads `restarting: true`. The agent's activity log records each one: `AGENT_CHANGE_APPLIED` for a change it got with no restart, and `AGENT_CHANGE_RESTARTED` when it restarted to load one (see [Who-did-what rows](/docs/agent-logs#who-did-what-rows)).
 
-A change to only the text or description of an existing custom skill or scheduled task, through `CustomSkillUpsert` or a setup card, reaches a running agent right away, without a restart. These never restart a running agent: a plan change, a renewal or a cancellation, moving `chatsetup` between `"all"` and `"webchat"`, a `screen` change through `UpdateSettings`, and a description, categories or cover edit through `Update`.
+These never restart a running agent: a plan change, a renewal or a cancellation, moving `chatsetup` between `"all"` and `"webchat"`, a `screen` change through `UpdateSettings`, and a description, categories or cover edit through `Update`.
 
 ## Screen and Take Control
 
@@ -16563,7 +16563,7 @@ Next steps for the API integration flow:
 1. Inspect `credentials` in the Deploy response (or call `POST /UserAgent/Detail`) to see each credential's fields, the `optional` / `extra` flags and the registry-driven `_schema`.
 2. Connect the services the agent works with through [Agent Connectors](/docs/agent-connectors): `POST /UserAgent/ConnectorConnect` with a connector's fields, or its vendor's sign-in. A template's `suggestedconnectors` on [`Agent/Detail`](#post-agentdetail) lists the ones it works with. Call `POST /UserAgent/CredentialUpsert` for channels and settings (bot tokens, the support email), and `POST /UserAgent/CredentialProjectBind` to connect the Wiro project the agent runs models with.
 3. Call `POST /UserAgent/CustomSkillUpsert` per skill to customize strategy text or Scheduled Task intervals, if the template exposes any.
-4. Once every non-optional credential is set up, `setuprequired` reads `false`. The start doesn't wait for it: the prepaid Deploy already queued the agent, Wiro starts it from the queue (`2` → `3` (Starting) → `4` (Running)), and a running agent restarts to pick up each connector you connect.
+4. Once every non-optional credential is set up, `setuprequired` reads `false`. The start doesn't wait for it: the prepaid Deploy already queued the agent, Wiro starts it from the queue (`2` → `3` (Starting) → `4` (Running)), and a running agent gets each connector you connect from its next message, with no restart.
 5. If you want to re-launch a stopped agent (status `0`) or recover an errored one (status `5`), call `POST /UserAgent/Start` explicitly.
 
 ##### Idempotency: duplicate Deploy guard
@@ -17179,7 +17179,7 @@ Every provider entry under `credentials.<key>` carries:
 
 #### **POST** /UserAgent/Update
 
-Updates an agent instance's **scalar fields only** (title, description, categories, cover URL). A **starting (status `3`)** or **running (status `4`)** agent restarts in two cases: the call changes its `title`, or the body names none of those four fields, which is how you ask for a restart (`{ "guid": "<useragent-guid>" }`). The agent is moved to Stopping and re-queued after it fully stops. A description, categories or cover edit, or a `title` equal to the saved one, doesn't restart it. `restarting` in the response says which happened.
+Updates an agent instance's **scalar fields only** (title, description, categories, cover URL). A changed `title` reaches a **running (status `4`)** agent with no restart: it uses the new name from its next message. A **starting (status `3`)** or running agent restarts when the body names none of those four fields, which is how you ask for a restart (`{ "guid": "<useragent-guid>" }`): the agent is moved to Stopping and re-queued after it fully stops. A description, categories or cover edit, or a `title` equal to the saved one, doesn't restart it. `restarting` and `live` in the response say which happened (see [Live Changes and Restarts](#live-changes-and-restarts)).
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -17216,13 +17216,14 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 
 ##### Response
 
-A changed `title` on a running agent:
+A changed `title` on a running agent, which gets it with no restart:
 
 ```json
 {
   "result": true,
   "errors": [],
-  "restarting": true,
+  "restarting": false,
+  "live": true,
   "useragents": [
     {
       "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
@@ -17237,7 +17238,7 @@ A changed `title` on a running agent:
       "monthlypriceusd": 5,
       "creditperiod": "2026-05",
       "creditsyncat": 1777680610,
-      "status": 1,
+      "status": 4,
       "pinned": false,
       "setuprequired": false,
       "teamsessionmode": "private",
@@ -17267,7 +17268,7 @@ A changed `title` on a running agent:
       "queuedat": 1714694395,
       "startedat": 1714694400,
       "runningat": 1714694410,
-      "stoppingat": 1714694500,
+      "stoppingat": null,
       "stopdat": null,
       "errordat": null
     }
@@ -17277,7 +17278,7 @@ A changed `title` on a running agent:
 
 > **`Update` returns the full composed useragent shape**: same composition path as `UserAgent/Detail`, so `credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `tokenRates`, `agentModel`, `communicationChannels`, `enabledChannels`, and the `agent` template summary (with `tiers` and `plans`) are all included. The fields `Update` cannot safely populate without an extra round-trip (`subscription`, `lastactivityat`) stay omitted. Call `UserAgent/Detail` next if you need them, or the agent's `usage` and `spend`. Otherwise the response is suitable for an in-place panel re-render without a follow-up call.
 
-> **`restarting`.** `true` when this call restarts the agent, `false` otherwise. With `true`, the row shows the transition mid-flight: `status: 1` (Stopping) with a fresh `stoppingat` timestamp. Wiro re-queues the agent once it has stopped, so it comes back with the new title. A restart request that can't be carried out answers `Failed to restart user agent`; try again.
+> **`restarting` and `live`.** `restarting` is `true` when this call restarts the agent, `false` otherwise. With `true`, the row shows the transition mid-flight: `status: 1` (Stopping) with a fresh `stoppingat` timestamp, and Wiro re-queues the agent once it has stopped, so it comes back with what was saved. `live` is `true` when a running agent got the new `title` with no restart. A restart request that can't be carried out answers `Failed to restart user agent`; try again.
 
 #### **POST** /UserAgent/UpdateSettings
 
@@ -17285,7 +17286,7 @@ Writes per-agent preference toggles that are not credentials and not skill rows.
 
 **Permission**: owner or team admin only, as for `/UserAgent/Update`. Team members cannot change these settings.
 
-**Restart**: if the agent is **starting (status `3`)** or **running (status `4`)** and the call changes a setting, the agent restarts so it applies: a new time zone, Chat Mode (`teamsessionmode`), model, slash-command list (`enabledcommands`) or Wiro API path list (`wiroapiallowedpaths`), or turning `chatsetup` on or off. Moving `chatsetup` between `"all"` and `"webchat"` doesn't restart it: Wiro checks that difference on each message. Changing `screen` never restarts it. A call that changes nothing restarts nothing. For agents in status `0`/`1`/`2`/`5`/`6` the change applies on the next start.
+**Restart**: if the agent is **starting (status `3`)** or **running (status `4`)** and the call changes a setting, the agent restarts so it applies: a new time zone, Chat Mode (`teamsessionmode`), model, slash-command list (`enabledcommands`) or Wiro API path list (`wiroapiallowedpaths`), or turning `chatsetup` on or off. Moving `chatsetup` between `"all"` and `"webchat"` doesn't restart it: Wiro checks that difference on each message. Changing `screen` never restarts it. A call that changes nothing restarts nothing. For agents in status `0`/`1`/`2`/`5`/`6` the change applies on the next start. The response says what the call did to the agent: `restart` is `scheduled` (it restarts to apply the change), `live` (a running agent got it with no restart), `none` (nothing for the agent to load, or it isn't starting or running) or `failed` (the change is saved, but the restart could not be scheduled: restart the agent yourself), with `restarting: true` for `scheduled` and `live: true` for `live`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -17398,14 +17399,19 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
 
 ##### Response
 
+A new time zone on a running agent:
+
 ```json
 {
   "result": true,
-  "errors": []
+  "errors": [],
+  "restart": "scheduled",
+  "restarting": true,
+  "live": false
 }
 ```
 
-> **Light response by design.** `UpdateSettings` returns just `result` + `errors`, not the full useragent shape. Pull the refreshed row with `POST /UserAgent/Detail` if you need to re-render the panel after the write.
+> **Light response by design.** `UpdateSettings` returns `result`, `errors` and what the call did to the agent (`restart`, `restarting`, `live`), not the full useragent shape. Pull the refreshed row with `POST /UserAgent/Detail` if you need to re-render the panel after the write.
 
 ##### Common errors
 
@@ -17436,7 +17442,7 @@ Signs the agent's browser out of every site. The agent's whole browser profile i
 
 **Permission**: owner or team admin only, as for `UpdateSettings`, with a signed-in session or a project API key. Team members can't reset it.
 
-**Restart**: only a **starting (status `3`)** or **running (status `4`)** agent can be reset. The call moves it to Stopping (status `1`), and its browser is reset as it starts again, a minute or two later (see [Automatic Restart](#automatic-restart)). An agent in any other status is refused, and a refused call restarts nothing.
+**Restart**: only a **starting (status `3`)** or **running (status `4`)** agent can be reset. The call moves it to Stopping (status `1`), and its browser is reset as it starts again, a minute or two later (see [Live Changes and Restarts](#live-changes-and-restarts)). An agent in any other status is refused, and a refused call restarts nothing.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -17561,7 +17567,7 @@ If you already have a hosted URL, use `POST /UserAgent/Update` with `cover: "<ur
 
 Writes one or more credential fields for one or multiple providers in a single call.
 
-If the agent is **starting** or **running**, an upsert that changes a saved value triggers an automatic restart (see [Automatic Restart](#automatic-restart)).
+If the agent is **starting** or **running**, an upsert that changes a saved value triggers an automatic restart (see [Live Changes and Restarts](#live-changes-and-restarts)).
 
 `CredentialUpsert` writes the agent's credentials: the Telegram, Slack and Discord channels, Twilio Voice, the Wiro project's key and settings such as the support email (see [Agent Credentials](/docs/agent-credentials)). The services the agent works with are connectors: connect them with [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect). A `credentialkey` that isn't a credential, a connector's slug included, refuses the whole request (see [Common errors](#credentialupsert-errors)).
 
@@ -17793,7 +17799,7 @@ The endpoint auto-normalises the skillkey to its canonical form. Bare slugs beco
 | `enabled` | boolean | No | Turn the skill on or off. **Writable for both strategies (`cs-*`) and crons (`cs-cron-*`)**. A disabled strategy is suppressed end-to-end (it still appears in the list, but the agent never loads it). Defaults to `true` on insert. |
 | `description` | string | No | Only persisted for user-created skills (preset descriptions are template-owned). On a preset row, sending the current description back unchanged is ignored; a different text is rejected with `This skill comes with the agent's template, so its description can't be changed for one agent.` |
 
-> **Text edits reach a running agent without a restart.** A change to the `value` or `description` of an existing skill or task goes to a running agent right away, and the agent keeps running; a starting agent restarts to load it. A new skill or task, a new `interval`, or turning one on or off with `enabled` restarts a starting or running agent, and so does any change to `cs-approval-policy`. If the running agent can't take the new text, Wiro restarts it instead. `restarting` in the response says whether the call restarted the agent. A template's own scheduled task takes no new text (see `value`).
+> **Changes reach a running agent without a restart.** A new skill or task, a change to its `value`, `description` or `interval`, and turning one on or off with `enabled` go to a running agent right away, `cs-approval-policy` included: the agent keeps running and uses the change from its next message. A starting agent gets the change once it runs. If the running agent can't take the change, Wiro restarts it instead. `restarting` and `live` in the response say which happened. A template's own scheduled task takes no new text (see `value`).
 
 > **Schedules the agent can't run are refused.** A scheduled task's `interval` is a cron expression with five fields, `minute hour day month weekday`, such as `0 9 * * 1-5`. A schedule the agent can't run, or one whose date never comes, such as 30 February, is refused before anything is saved, and the error says what is wrong and what to write: `0 25 * * *` gets `This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.`, and `0 0 30 2 *` gets `This schedule never comes up: February has no 30th. Pick a day February has, such as 28.` Only a schedule sent in the request is checked, so a task that already has one can still be edited or turned on and off.
 
@@ -17815,12 +17821,13 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
 ##### Response
 
 ```json
-{ "result": true, "errors": [], "restarting": false }
+{ "result": true, "errors": [], "restarting": false, "live": true }
 ```
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `restarting` | `boolean` | `true` when the call restarted the agent to load the change. `false` when the agent wasn't starting or running, or got the new text without a restart. |
+| `restarting` | `boolean` | `true` when the call restarted the agent to load the change. `false` when the agent wasn't starting or running, or got the change without a restart. |
+| `live` | `boolean` | `true` when the running agent got the change with no restart: it uses it from its next message. |
 
 #### **POST** /UserAgent/CustomSkillRename
 
@@ -17837,7 +17844,7 @@ Version history is migrated under the new key so the full audit chain stays cont
 | `newskillkey` | string | Yes | The new skill key. The server canonicalises bare slugs using the flavour of `oldskillkey`: if old is `cs-cron-*` the new slug lands on `cs-cron-*`; otherwise `cs-*`. |
 | `description` | string | No | New description. Omit to leave unchanged; pass an empty string to clear. |
 
-> **Restart.** A starting or running agent restarts on success so it uses the renamed key, as it does when a custom skill is added.
+> **No restart.** A running agent gets the renamed key with no restart, from its next message, as it does when a custom skill is added. `restart`, `restarting` and `live` in the response say what happened (see [Live Changes and Restarts](#live-changes-and-restarts)).
 
 ##### Request
 
@@ -17856,7 +17863,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillRename" \
 ##### Response
 
 ```json
-{ "result": true, "errors": [], "newskillkey": "cs-my-renamed-strategy" }
+{ "result": true, "errors": [], "newskillkey": "cs-my-renamed-strategy", "restart": "live", "restarting": false, "live": true }
 ```
 
 ##### Error cases
@@ -17919,7 +17926,7 @@ Removes a user-created custom skill. The endpoint enforces a **hybrid delete pol
 
 | Row type | Delete result |
 |----------|--------------|
-| User-created (`usercreated: true`) under a key the agent's template doesn't have | **Allowed**: the row and its version history are deleted, and a starting or running agent restarts. |
+| User-created (`usercreated: true`) under a key the agent's template doesn't have | **Allowed**: the row and its version history are deleted, and a running agent drops it from its next message, with no restart. |
 | `usercreated: false`: a template's skills and tasks, copied to the agent at deploy, and a custom build's registry rows (e.g. `cs-approval-policy`, bundled `cs-cron-*` tasks) | **Rejected** with `This skill is registry-owned and cannot be deleted. Use enabled=false to disable it instead.` Disable it via `CustomSkillUpsert` with `enabled: false` instead. |
 | User-created, under a key the agent's template also has | **Rejected** with `This skill belongs to the agent preset and cannot be deleted. Use enabled=false to disable it instead.` Disable it via `CustomSkillUpsert` with `enabled: false` instead. |
 
@@ -17933,7 +17940,7 @@ In both reject branches the response carries `suggestion: "disable-via-upsert"` 
 ##### Response (delete allowed)
 
 ```json
-{ "result": true, "errors": [] }
+{ "result": true, "errors": [], "restarting": false, "live": true }
 ```
 
 ##### Response (preset-owned or registry-owned, rejected with suggestion)
@@ -18032,7 +18039,7 @@ Returns the version history for one custom skill on a useragent: one entry per c
 
 #### **POST** /UserAgent/CustomSkillRevert
 
-Reverts a custom skill to either (a) the agent template's preset default or (b) a specific historical version. Auto-triggers a restart on success unless the action is a no-op.
+Reverts a custom skill to either (a) the agent template's preset default or (b) a specific historical version. A running agent gets the reverted entry with no restart, from its next message, unless the action is a no-op. `restart`, `restarting` and `live` in the response say what happened.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -18050,7 +18057,10 @@ Reverts a custom skill to either (a) the agent template's preset default or (b) 
   "action": "reverted",
   "current_value": "## Brand Voice\nTone: ...",
   "current_interval": null,
-  "current_enabled": true
+  "current_enabled": true,
+  "restart": "live",
+  "restarting": false,
+  "live": true
 }
 ```
 
@@ -18112,7 +18122,7 @@ Every plan includes every skill, so a skill change never moves money: the plan's
 
 Designed for both the Skill Editor modal (multiple toggles in one save) and one-off API mutations:
 
-1. Triggers exactly **one agent restart** after all toggles land.
+1. Applies the new skill set to a running agent in one step, with no restart unless a Skill needs one: turning `util-voice-receptionist`, `util-twilio-channel`, `util-web-channel` or `util-newsletter-compose` on or off restarts it once.
 2. Uses **idempotency**: concurrent calls or client retries can't apply the change twice.
 3. **Atomic**: the whole batch lands, or none of it does.
 
@@ -18149,8 +18159,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   "result": true,
   "errors": [],
   "tier": "pro",
-  "restartTriggered": true,
-  "restartedAt": 1714694520,
+  "restartTriggered": false,
+  "restartedAt": null,
+  "restart": "live",
+  "live": true,
   "stripeProrationApplied": false,
   "prepaidWalletDelta": null,
   "usedCreditsUsd": 0,
@@ -18184,8 +18196,10 @@ When every entry in your `skills` map already matches the persisted state, the e
 |-------|------|-------------|
 | `noOp` | `boolean` | Present and `true` only on the no-op short-circuit response. Absent on the regular success path. When you see `noOp: true`, the rest of the field set (`tier`, `restartTriggered`, `pricing`) is omitted, because there was nothing to apply. |
 | `tier` | `string` | The agent's plan (`"starter"`, `"pro"` or `"max"`), which a skill change never moves. |
-| `restartTriggered` | `boolean` | `true` when the call changed the skill set: a starting or running agent restarts to load it, and a stopped one loads it at its next start. `false` when nothing on the agent changed. |
+| `restartTriggered` | `boolean` | `true` when the call restarts the agent to load the new skill set. `false` when a running agent got it with no restart (`live: true`), when the agent isn't running (it loads the change at its next start) or when nothing on the agent changed. |
 | `restartedAt` | `number\|null` | Unix seconds when the change was saved and the restart was asked for. `null` when `restartTriggered` is `false`. |
+| `restart` | `string` | What the call did to the agent: `live` (the running agent got the new skill set with no restart), `scheduled` (it restarts to load it), `none` (it isn't running, or nothing changed) or `failed` (the change is saved, but the restart could not be scheduled: restart the agent yourself). |
+| `live` | `boolean` | `true` when `restart` is `live`: the agent uses the new skill set from its next message. |
 | `pricing.enabledSkills` | `array<string>` | Final enabled skill set including transitive `depends_on` closure, as a flat array of skill names. The matching `useragent.skills` array on the next `Detail` call is an object array (`{ name, enabled: true, _edited, _user_created }`, only the Skills that are on); take `.name` from each entry to compare. |
 | `pricing.delta` / `deltaUsd` | `number` | Always `0`: a skill change moves no money. The rest of `pricing` is kept for older clients and repeats the plan as it stands: its price in `previousPriceUsd` and `newPriceUsd`, and `periodEnd: null`; its credit counts are deprecated (see [Fields Kept for Older Clients](#fields-kept-for-older-clients)). `stripeProrationApplied` is always `false`, `prepaidWalletDelta` `null` and `usedCreditsUsd` `0`, in `pricing` and at the top level. |
 
@@ -19506,7 +19520,7 @@ Agent-specific errors you may encounter:
 | `Agent not found or access denied` | Message endpoint with invalid useragentguid |
 | `User agent not found` (code `95`) | `Message/Send`, `Message/History`, `Message/Sessions`, `Message/DeleteSession`, `Message/RenameSession` or `Message/Delete` called for an agent that has been deleted |
 | `Request parameters [message] not valid.` | `Message/Send` with a `message` that isn't a string, such as a JSON array or object, a non-zero number or `true`. Nothing is stored or sent. Sent without files, `[]`, `0` and `false` count as missing and get `Request parameter [message] required` |
-| The sentence for the agent's status: `Agent is stopped. Start it before sending messages.` (status `0`), `Agent is stopping. Please wait a moment and try again.` (status `1`, when the agent is shutting down to stay stopped), `Agent is restarting. Please wait a moment and try again.` (status `1`, when the agent is shutting down to start again, as in a [restart](#automatic-restart)), `Agent is starting up. Please wait a moment and try again.` (status `2` or `3`), `Agent is in error state. Restart it before sending messages.` (status `5`) or `Agent setup is incomplete. Complete the setup before sending messages.` (status `6`) | `Message/Send` while the agent isn't running (any status other than `4`), for every message Wiro doesn't answer itself as a setup reply (see [Replies Wiro handles itself](/docs/agent-messaging#handled-setup-replies)). Response includes `agentstatus` (the integer) so your client can branch on it. A stopped (`0`) or errored (`5`) agent with no active plan gets the no-plan refusal below instead (code `97`). |
+| The sentence for the agent's status: `Agent is stopped. Start it before sending messages.` (status `0`), `Agent is stopping. Please wait a moment and try again.` (status `1`, when the agent is shutting down to stay stopped), `Agent is restarting. Please wait a moment and try again.` (status `1`, when the agent is shutting down to start again, as in a [restart](#live-changes-and-restarts)), `Agent is starting up. Please wait a moment and try again.` (status `2` or `3`), `Agent is in error state. Restart it before sending messages.` (status `5`) or `Agent setup is incomplete. Complete the setup before sending messages.` (status `6`) | `Message/Send` while the agent isn't running (any status other than `4`), for every message Wiro doesn't answer itself as a setup reply (see [Replies Wiro handles itself](/docs/agent-messaging#handled-setup-replies)). Response includes `agentstatus` (the integer) so your client can branch on it. A stopped (`0`) or errored (`5`) agent with no active plan gets the no-plan refusal below instead (code `97`). |
 | `My Instagram Bot used the $30.00 of AI usage its plan includes, and your balance is under $0.50. Add funds to keep it running, or it starts again when the plan renews on 1 June 2026 (UTC).` (the agent's name, the amount and the renewal date, the day in UTC, left out when it can't be read or a plan paid by card is past its period end; once the period of a plan paid from the balance has ended and its renewal hasn't run yet, the second sentence reads `Its plan's renewal is due: add funds to renew it and keep it running.`, and a cancelled plan's reads `Add funds to keep it running until its plan ends on 1 June 2026 (UTC).`; for a team agent, `the team's balance`) | `Message/Send` or `Start` (code `97`) while the agent has used the AI usage its plan includes and the balance is under $0.50. The response includes `agentusage` (the agent's `usage`), and Send's also `agentstatus`, so your client can offer to add funds. |
 | `My Instagram Bot has no active plan. Choose a plan to keep it running.` (the agent's name) | `Message/Send` (code `97`) to an agent with no active plan while it is running, stopped or in error, and `Start` (code `97`) on a stopped or errored agent with no active plan, whatever its balance. The response includes `agentusage` with `pausedreason: "plan"`, and Send's also `agentstatus`. Adding funds doesn't help: renew a plan that ended with `RenewSubscription` (`{ guid }`). For an agent that never had a plan, `RenewSubscription` answers `No expired subscription found to renew`: start one with `CreateSubscriptionCheckout` (`useprepaid: true`). |
 | A spend limit refusal (code `93`), such as `This agent's monthly spend limit is reached ($20.35 of $20.00). It resets on December 1, 2026 at 00:00 UTC.` | `Message/Send` while the agent's own [spend limit](/docs/spend-limits) is used up or, once its included AI usage is used up, a limit of the wallet that covers it: the account's or team's, or the `agent` surface's. The response includes `agentstatus`. Paying from the balance with `Deploy`, `CreateSubscriptionCheckout`, `UpgradeTier` or `RenewSubscription` is refused the same way when the price would take spending over a limit of the wallet. Nothing runs and nothing is charged |
@@ -19607,7 +19621,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{"guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321"}'
 
-# Connect a connector on a running agent (triggers automatic restart)
+# Connect a connector on a running agent (it gets the connector with no restart)
 curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -20381,11 +20395,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
   }'
 ```
 
-Each answers `status: "connected"` and restarts the running agent, which then has the connector's tools (`serper__web_search`, `wordpress__*`) that the scheduled task above names. A connector that signs in with its vendor answers an `authorizeUrl` instead: see [Connect with a sign-in](/docs/agent-connectors#connect-with-a-sign-in). Check every connection with [`POST /UserAgent/ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist).
+Each answers `status: "connected"`, and the running agent has the connector's tools from its next message, with no restart (`serper__web_search`, `wordpress__*`) that the scheduled task above names. A connector that signs in with its vendor answers an `authorizeUrl` instead: see [Connect with a sign-in](/docs/agent-connectors#connect-with-a-sign-in). Check every connection with [`POST /UserAgent/ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist).
 
 ## Step 4: Refine Skills After Deploy
 
-Toggle skills on/off after deploy with [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply). Even when you only want to flip a single skill, send it as a one-entry `skills` map. Turning a Skill on needs its `depends_on` on too: add the ones that are off to the same map, since `SkillsApply` turns on only the names you send and refuses the change with code `101` and `deps[]` otherwise. The endpoint triggers exactly one agent restart, applies the whole batch or none of it, and never charges: every plan includes every skill, so the price and the included AI usage stay the same. Template deploys accept the same call.
+Toggle skills on/off after deploy with [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply). Even when you only want to flip a single skill, send it as a one-entry `skills` map. Turning a Skill on needs its `depends_on` on too: add the ones that are off to the same map, since `SkillsApply` turns on only the names you send and refuses the change with code `101` and `deps[]` otherwise. The endpoint applies the whole batch or none of it, reaches a running agent with no restart unless a Skill needs one (`util-voice-receptionist`, `util-twilio-channel`, `util-web-channel` or `util-newsletter-compose`), and never charges: every plan includes every skill, so the price and the included AI usage stay the same. Template deploys accept the same call.
 
 ### Single-skill enable
 
@@ -20402,15 +20416,17 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   }'
 ```
 
-The response confirms the skill set and the restart:
+The response confirms the skill set, and that the running agent got it with no restart:
 
 ```json
 {
   "result": true,
   "errors": [],
   "tier": "pro",
-  "restartTriggered": true,
-  "restartedAt": 1714694520,
+  "restartTriggered": false,
+  "restartedAt": null,
+  "restart": "live",
+  "live": true,
   "stripeProrationApplied": false,
   "prepaidWalletDelta": null,
   "usedCreditsUsd": 0,
@@ -20548,7 +20564,7 @@ Turning a skill on or off never changes the subscription: the plan's price and i
 
 - **A build costs its plan's price, whatever its skills.** One skill or twenty, Starter is $5 a month, Pro $30 and Max $100, each including its own price in AI usage.
 - **Conflict / dependency violations are surfaced eagerly.** If you toggle on two mutually-exclusive skills, `SkillsApply` returns code `102` with a `conflicts[]` array; if a `depends_on` is missing, code `101` with `deps[]`. Resolve in the UI before committing.
-- **Custom builds receive the same auto-restart on configuration changes** as template deploys (status `3`/`4` → status `1`, then re-queued).
+- **Custom builds get configuration changes the same way** as template deploys: most reach a running agent with no restart, and the rest restart it (status `3`/`4` → status `1`, then re-queued). See [Live Changes and Restarts](/docs/agent-overview#live-changes-and-restarts).
 - **Cover image:** custom builds can ship a `cover` URL in the Deploy body, or upload one later via [`POST /UserAgent/Cover`](/docs/agent-overview#post-useragentcover).
 - **The agent's persona** is editable via the standard `customskills` flow. Add a `cs-persona` strategy via `CustomSkillUpsert` to set the agent's voice, role, and constraints.
 
@@ -20687,7 +20703,7 @@ Accepts either `application/json` (text-only) or `multipart/form-data` (text + f
 | `content` | `string` | Present when Wiro handled the message itself or removed a key from it: the message text as stored. See [Keys in chat](#keys-in-chat). |
 | `contentmasked` | `boolean` | Present (`true`) when Wiro removed a key from the message before the agent saw it; `content` holds the text the agent got. |
 | `response` | `string` | Only when Wiro handled the message itself: its result text. |
-| `setupresult` | `object` | Only when Wiro handled the message itself as a setup reply: `{ applied, dismissed, failed, restarting, next? }`. See [Replies Wiro handles itself](#handled-setup-replies). |
+| `setupresult` | `object` | Only when Wiro handled the message itself as a setup reply: `{ applied, dismissed, failed, restarting, live, next? }`. See [Replies Wiro handles itself](#handled-setup-replies). |
 | `approvalresult` | `object` | Only when Wiro handled the message itself as a reply to an approval card: `{ answered, listed }`, the cards it answered (each with what Wiro did, the card after, `summary` and `resume`) and the cards its listing showed. Both lists are empty when the agent was still replying. See [Answering with a reply](/docs/agent-connectors#answering-with-a-reply). |
 
 > **`model_change` marker.** When `model` rotates the session to a different chat model, the Send response carries a `modelChangeMarker` describing the switch, and a standalone marker row (status `agent_done`) is written into history at the same time:
@@ -20710,7 +20726,7 @@ When `result: false`, the response shape is `{ result: false, errors: [{ code, m
 
 | Failure branch | Extra fields | Notes |
 |----------------|--------------|-------|
-| Agent not running (`status` ≠ 4) | `agentstatus: <int>` | Returned for every message Wiro doesn't answer itself as a setup reply or a reply to an approval card (see [Replies Wiro handles itself](#handled-setup-replies)). Echoes the agent's current `status` so the caller can decide whether to wait, call `Start`, or surface "Setup Required" UI: `0` Stopped (call `Start`), `1` Stopping, `2` Queued and `3` Starting (wait and retry), `5` Error (call `Start` to retry), `6` Setup Required. With status `1`, the error reads `Agent is stopping. Please wait a moment and try again.` when the agent is shutting down to stay stopped, and `Agent is restarting. Please wait a moment and try again.` when it is shutting down to start again, as in a [restart](/docs/agent-overview#automatic-restart). See [UserAgent Statuses](/docs/agent-overview#useragent-statuses). A stopped (`0`) or errored (`5`) agent with no active plan gets the paused answer below instead: code `97` with `pausedreason: "plan"`. |
+| Agent not running (`status` ≠ 4) | `agentstatus: <int>` | Returned for every message Wiro doesn't answer itself as a setup reply or a reply to an approval card (see [Replies Wiro handles itself](#handled-setup-replies)). Echoes the agent's current `status` so the caller can decide whether to wait, call `Start`, or surface "Setup Required" UI: `0` Stopped (call `Start`), `1` Stopping, `2` Queued and `3` Starting (wait and retry), `5` Error (call `Start` to retry), `6` Setup Required. With status `1`, the error reads `Agent is stopping. Please wait a moment and try again.` when the agent is shutting down to stay stopped, and `Agent is restarting. Please wait a moment and try again.` when it is shutting down to start again, as in a [restart](/docs/agent-overview#live-changes-and-restarts). See [UserAgent Statuses](/docs/agent-overview#useragent-statuses). A stopped (`0`) or errored (`5`) agent with no active plan gets the paused answer below instead: code `97` with `pausedreason: "plan"`. |
 | Spend limit used up | `agentstatus` | Code `93`: a [spend limit](/docs/spend-limits) that covers the agent is used up: its own limit or, once its plan's included AI usage is used up, the account's or team's limit or the `agent` surface's limit. The message names the limit and when it resets, such as `This agent's monthly spend limit is reached ($20.35 of $20.00). It resets on December 1, 2026 at 00:00 UTC.` It is checked before the balance's code `97`; an agent with no active plan gets the plan's code `97` instead, whatever its limits. `agentstatus` is `4` here, so branch on the code. Nothing is queued or charged. Meanwhile the agent's [`usage`](/docs/agent-overview#usage-object) on `Detail`, `MyAgents` and `PinnedAgents` reads `pausedreason: "spendlimit"`. When the limits can't be checked at that moment, this branch answers code `0` `Spend limits could not be checked. Try again in a moment.` instead: send the message again shortly. |
 | Agent paused (balance or plan) | `agentstatus`, `agentusage` | Code `97`. `agentusage` is the agent's [`usage`](/docs/agent-overview#usage-object) with `paused: true`, and its `pausedreason` says why. `"balance"`: the agent has used the AI usage its plan includes and the balance is under $0.50. The message speaks to whoever pays for the agent: surface an "Add funds" action. `"plan"`: the agent has no active plan, and the message reads `<Agent name> has no active plan. Choose a plan to keep it running.` It comes while the agent is running, stopped (`0`) or in error (`5`). Surface a "Choose a plan" action that renews the plan with [`RenewSubscription`](/docs/agent-overview#post-useragentrenewsubscription): adding funds doesn't run it. See [AI Usage and the Balance](/docs/agent-overview#ai-usage-and-the-balance). |
 
@@ -21480,7 +21496,7 @@ Wiro applies a card that has `before` only while the skill still holds that text
 
 ### Adding and removing skills
 
-An `add` card turns on one skill (`util-<name>`) that the agent doesn't have, and a `remove` card turns off one it has, as the agent page does. `key` holds its name as [`POST /Skills/List`](/docs/agent-skills#post-skillslist) lists it, one name per card. A change costs nothing: every plan includes every skill, so the plan's price and included AI usage stay the same. Cards work on agents deployed from a template and on custom builds, and once a card is applied, the agent restarts to load the change. Connectors are not turned on or off: a connected connector is on, and a [`disconnect` card](#setup-disconnect-cards) disconnects it.
+An `add` card turns on one skill (`util-<name>`) that the agent doesn't have, and a `remove` card turns off one it has, as the agent page does. `key` holds its name as [`POST /Skills/List`](/docs/agent-skills#post-skillslist) lists it, one name per card. A change costs nothing: every plan includes every skill, so the plan's price and included AI usage stay the same. Cards work on agents deployed from a template and on custom builds, and once a card is applied, a running agent uses the change from its next message, with no restart (turning `util-voice-receptionist`, `util-twilio-channel`, `util-web-channel` or `util-newsletter-compose` on or off restarts it). Connectors are not turned on or off: a connected connector is on, and a [`disconnect` card](#setup-disconnect-cards) disconnects it.
 
 A change can turn on or off more than its `key`, so Wiro works out the rest and writes it on the card, and the person who approves sees the whole change. The agent never writes these fields: a proposal that sends them has them dropped.
 
@@ -21524,7 +21540,7 @@ A card refused as the agent proposes it is never stored. A card refused as it is
 
 ### Adding and connecting in one step
 
-An `add` card can finish its `connect` card's step itself, so both apply with one call and one restart:
+An `add` card can finish its `connect` card's step itself, so both apply with one call:
 
 - **With a key.** When its `needs` names one connector with `mode: "key"` whose `connect` card waits on the same reply, send the `add` card's id to [`SetupCardApply`](#post-useragentmessagesetupcardapply) with that card's values in `values`. Wiro checks the values first: when a value is refused, nothing is applied and both cards stay pending. When they pass, Wiro applies the `add` card and, right after it, the `connect` card.
 - **With a sign-in.** When its `needs` names one connector with `mode: "signin"` whose `connect` card waits, start the sign-in on that `connect` card (see [Connecting a connector](#setup-signin-cards)). Once the browser is back, send the `add` card with `signin: true`. Wiro checks that the connector reads connected: when it doesn't, nothing is applied and the answer is `<Title> is not connected yet. Finish the sign-in on the card first.` with `errorcode: "not_connected"`. Otherwise it applies the `add` card, then the `connect` card.
@@ -21562,7 +21578,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
     "actedat": 1743350460,
     "actedby": "ada-uuid"
   },
-  "restarting": true,
+  "restarting": false,
+  "live": true,
   "summary": "Google Play Promotional Content added. Google Play Console connected.",
   "paired": [
     {
@@ -21689,7 +21706,7 @@ The agent never sees a key, a token or an account list. A connector's account pi
 
 ### Disconnecting a connector
 
-A `disconnect` card disconnects a connector, as [`ConnectorDisconnect`](/docs/agent-connectors#post-useragentconnectordisconnect) does: Wiro asks the vendor to revoke a sign-in where it can, and deletes the connection. It names the connector in `connector`, carries its `title`, and never holds a value. Once it is applied, the agent restarts without the connector's tools until it is connected again. Wiro takes a `disconnect` card only for a connector the agent has a connection for; when the connection is gone by the time the card is applied, the card fails with `<Title> is not connected.` Channels (Telegram, Slack or Discord) are refused, and they are changed outside the chat, with the credential endpoints or on the agent page. A `disconnect` card for Wiro AI Models (`wiro`) removes the connector only: the agent keeps its Wiro project. A `yes` applies a `disconnect` card as it does any card that needs no values.
+A `disconnect` card disconnects a connector, as [`ConnectorDisconnect`](/docs/agent-connectors#post-useragentconnectordisconnect) does: Wiro asks the vendor to revoke a sign-in where it can, and deletes the connection. It names the connector in `connector`, carries its `title`, and never holds a value. Once it is applied, a running agent no longer has the connector's tools from its next message, until it is connected again. Wiro takes a `disconnect` card only for a connector the agent has a connection for; when the connection is gone by the time the card is applied, the card fails with `<Title> is not connected.` Channels (Telegram, Slack or Discord) are refused, and they are changed outside the chat, with the credential endpoints or on the agent page. A `disconnect` card for Wiro AI Models (`wiro`) removes the connector only: the agent keeps its Wiro project. A `yes` applies a `disconnect` card as it does any card that needs no values.
 
 <a id="approving-setup-cards"></a>
 
@@ -21759,12 +21776,13 @@ When Wiro handles a message itself (a `yes` that applies a card or gets the [car
   "agenttoken": null,
   "status": "agent_end",
   "content": "yes",
-  "response": "✅ Applied: Scheduled task Morning summary created.\nYour agent is restarting to load the change. Continue in a minute or two.",
+  "response": "✅ Applied: Scheduled task Morning summary created.\nYour agent uses the change from its next message.",
   "setupresult": {
     "applied": ["k3v9q2m8x1za"],
     "dismissed": [],
     "failed": [],
-    "restarting": true
+    "restarting": false,
+    "live": true
   }
 }
 ```
@@ -21775,12 +21793,12 @@ When Wiro handles a message itself (a `yes` that applies a card or gets the [car
 | `status` | `string` | `"agent_end"`: the message is already finished. |
 | `content` | `string` | The message as stored. A saved key reads `[key saved to <Connector title>]`. |
 | `response` | `string` | Wiro's answer, always in English: the lines in [Wiro's answers](#setup-reply-lines), or the [card listing](#setup-card-listing). Read `setupresult` in code, not this text. |
-| `setupresult` | `object` | `applied` and `dismissed`: the ids of the cards applied and dismissed. `failed`: `[{ id, error }]`. `restarting`: `true` when the agent restarts to load the change. All three lists are empty for a card listing. `next`: only when the answer leaves connectors to connect, `[{ connector, title, mode, cardid?, messageguid? }]`: first the `connect` cards its last lines name, each with its `cardid` and the `messageguid` of the message it is on, then each connector an applied `add` card brings that no card connects, without a card. Never on a listing, a refusal or a `no`. |
+| `setupresult` | `object` | `applied` and `dismissed`: the ids of the cards applied and dismissed. `failed`: `[{ id, error }]`. `restarting`: `true` when the agent restarts to load the change. `live`: `true` when a running agent got the change with no restart. All three lists are empty for a card listing. `next`: only when the answer leaves connectors to connect, `[{ connector, title, mode, cardid?, messageguid? }]`: first the `connect` cards its last lines name, each with its `cardid` and the `messageguid` of the message it is on, then each connector an applied `add` card brings that no card connects, without a card. Never on a listing, a refusal or a `no`. |
 | `approvalresult` | `object` | Only for a reply to a connector's approval card: `{ answered, listed }`, what Wiro did with each card and the cards its listing showed. See [Answering with a reply](/docs/agent-connectors#answering-with-a-reply). |
 
 The message is stored like any finished exchange: Message/Detail and Message/History return it with `status: "agent_end"`, `metadata.type: "setup_result"` and `model: null`. Its `metadata` also keeps `next` when the answer has one, the same as in `setupresult`, and, for a [card listing](#setup-card-listing), `listed` and `listedfrom`: the ids of the cards the listing showed and the `guid` of the message they are on. A reply to an approval card keeps `approvalresult`: `answered` entries `{ cardid, messageguid, action, result, code? }` and `listed` entries `{ number, cardid, messageguid }`, with `listedfrom` for a listing. A chat you load again later can still show what is left to connect. When the Send has a `callbackurl`, Wiro posts the result to it right away with `status: "agent_end"`, as for a finished turn, and its `metadata` holds `type: "setup_result"`, `cards` (the ids of the cards it acted on), when there is one, the same `next` as `setupresult`, and for a reply to an approval card, `approvalresult` as stored; see [Agent Webhooks](/docs/agent-webhooks).
 
-A card applied while the agent is stopped doesn't start it: the agent loads the change the next time it starts, and `restarting` is `false`. While the agent isn't running, every message Wiro doesn't answer itself gets the [not-running refusal](#failure-responses) with `agentstatus`, a message with attachments or over 2,000 characters included.
+A card applied while the agent is stopped doesn't start it: the agent loads the change the next time it starts, and `restarting` and `live` are `false`. While the agent isn't running, every message Wiro doesn't answer itself gets the [not-running refusal](#failure-responses) with `agentstatus`, a message with attachments or over 2,000 characters included.
 
 <a id="setup-reply-lines"></a>
 
@@ -21792,7 +21810,8 @@ The lines Wiro writes in `response`:
 |------|------|
 | `✅ Applied: <summary>.` | The card was applied. The summary says what changed, such as `Scheduled task Morning summary created`, `Custom skill Weekly report updated` (also for an `append` card), `Custom skill Weekly report restored`, `Custom skill Weekly report turned off`, `Time zone set to Europe/Istanbul`, `<Connector> connected`, `<Connector> disconnected`, `Weather added` or `Weather removed`. An `add` card applied together with its `connect` card names both. An applied `add` card whose connectors have no `connect` card to finish them goes on with `Still to connect: <titles>`. |
 | `⚠️ Not applied: <reason>` | The change failed. The card's `status` is now `failed`, with the same reason in `error`. For example, `This skill changed after the card was made. Ask the agent again.` means the skill's text changed after an `update`, `append` or `revert` card was made. |
-| `Your agent is restarting to load the change. Continue in a minute or two.` or `Your agent is restarting to load the change.` | The change restarts the agent, or loads with a restart already under way, such as the one an `add` card started. The shorter line comes when the answer ends with a `Next:` line, which follows it. |
+| `Your agent uses the change from its next message.` | A running agent got the change with no restart. |
+| `Your agent is restarting to load the change. Continue in a minute or two.` or `Your agent is restarting to load the change.` | The change restarts the agent, or loads with a restart already under way. The shorter line comes when the answer ends with a `Next:` line, which follows it. |
 | `1 more setup change is still pending.` or `<N> more setup changes are still pending.` | Other cards of the same reply still wait. Reply `yes` and a card's number to apply the next one. |
 | `Next: paste your <Title> key as your reply.` or `<N> connector cards still need their keys: add each key on its card.` | `connect` cards of the same reply still wait for their keys, such as the `connect` card that came with an `add` card just applied. When one card is counted, the `Next:` line ends the answer. `<Title>` is the connector's title. When the answer says the agent is restarting, the `Next:` line goes on with `Send it now and it loads with this same restart.` |
 | `Next: connect <Title> to finish. Its sign-in and any app keys are entered outside this chat, never in it.` | In a message sent with a project API key, a `yes` applied an `add` card whose `signin` card still waits. `setupresult.next` names that card. In the Wiro web chat the line reads `Next: connect <Title> with its card in this chat.` |
@@ -21861,7 +21880,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
     "actedat": 1743350460,
     "actedby": "ada-uuid"
   },
-  "restarting": true,
+  "restarting": false,
+  "live": true,
   "summary": "Scheduled task Morning summary created"
 }
 ```
@@ -21870,6 +21890,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
 |-------|------|-------------|
 | `setup` | `object\|null` | The card after the action, in the same shape as a [setup block](#setup-blocks)'s `setup`. `null` when the call is refused before the card is read: a missing parameter, an agent or message the caller can't reach, Setup From Chat off, a reply still being written, a caller who isn't an agent admin, a card someone else is applying at that moment, or a card that isn't there. |
 | `restarting` | `boolean` | `true` when the agent restarts to load the change. Continue the chat in a minute or two. |
+| `live` | `boolean` | `true` when the running agent got the change with no restart: it uses it from its next message. |
 | `summary` | `string` | A short English phrase that says what changed, such as `Scheduled task Morning summary created`, `Serper connected` or `Weather added`. An `add` card applied with its `connect` card names both, and one whose connectors have no `connect` card to finish them goes on with `Still to connect: <titles>`. Empty when nothing was applied. |
 | `authorizeUrl` | `string` | Only when a `signin` card's sign-in started: the vendor's sign-in address, to open in the browser, for 10 minutes and once. `result` is `true`, `setup` is still pending, `summary` is empty, and `next` names the card. Once the browser is back, apply the card again to record it. |
 | `paired` | `object[]` | Only when `values` or `signin: true` are sent with a pending `add` card: its `connect` card after the call, as `[{ setup, result, error }]`. `setup` has the same shape as above, `result` is `true` when the card was applied too, and `error` is `null` or the sentence that says why not. Empty when there is no single `connect` card for it. |
@@ -24500,7 +24521,7 @@ A connector gives an agent the tools of one outside service: Google search throu
 - **Sign-in.** The vendor's own consent screen in a browser. `ConnectorConnect` answers with an `authorizeUrl`; your customer opens it, agrees, and the vendor sends the browser back through Wiro to your page. Vendors whose sign-in needs an app of your own (Blogger, Gmail, Google Ads, Google Analytics 4, Google Business Profile, Google Merchant Center, Google Search Console, YouTube, Facebook Pages, Instagram, Meta Ads, Threads, LinkedIn, TikTok, X, Reddit, Pinterest, Tumblr, HubSpot, Mailchimp and Shopify) take that app's client id and secret with the connect. Google Calendar, Google Drive and Google Play Console don't sign in: they take a service account's JSON as a field.
 - **A Wiro project.** Wiro AI Models (`wiro`), Wiro's own model and task tools, takes one of your Wiro projects instead of values: see [Wiro AI Models](#the-wiro-connector).
 
-Once a connector is connected, the agent restarts and has the connector's tools, named `<slug>__<tool>`. Values and tokens are never sent back in an answer and never reach the agent's chat. By default the agent runs the tools that only read, asks a person in the chat before it creates, sends, changes or deletes anything, and does those in its Scheduled Tasks without asking: see [Permissions and Approvals](#permissions-and-approvals).
+Once a connector is connected, the agent has the connector's tools, named `<slug>__<tool>`: a running agent gets them from its next message, with no restart. Values and tokens are never sent back in an answer and never reach the agent's chat. By default the agent runs the tools that only read, asks a person in the chat before it creates, sends, changes or deletes anything, and does those in its Scheduled Tasks without asking: see [Permissions and Approvals](#permissions-and-approvals).
 
 Every connector also has a public page, `https://wiro.ai/connectors/{slug}`, with its fields, setup steps, tools and the calls to connect it.
 
@@ -24510,14 +24531,14 @@ Every connector also has a public page, `https://wiro.ai/connectors/{slug}`, wit
 |------|------|--------------|
 | 1. Browse the catalog | [`POST /AgentConnector/List`](#post-agentconnectorlist) | Every available connector with its Connect fields and tools. No API key needed. |
 | 2. Read one connector | [`POST /AgentConnector/Detail`](#post-agentconnectordetail) | The same row for one `slug`. No API key needed. |
-| 3a. Connect with fields | [`POST /UserAgent/ConnectorConnect`](#connect-with-fields) with `values` | `status: "connected"`, and the agent restarts. |
+| 3a. Connect with fields | [`POST /UserAgent/ConnectorConnect`](#connect-with-fields) with `values` | `status: "connected"`, and a running agent gets the connector with no restart. |
 | 3b. Or start a sign-in | [`POST /UserAgent/ConnectorConnect`](#connect-with-a-sign-in) with `redirecturl` | `status: "pending"` and the `authorizeUrl` to open in the browser. |
 | 4. The browser comes back | [`GET /AgentConnector/OAuthCallback`](#the-callback-and-your-redirect-url), called by the vendor | A redirect to your `redirecturl` with `connector_connected=true` or `connector_error=<code>`. |
 | 5. Read the state | [`POST /UserAgent/ConnectorList`](#post-useragentconnectorlist) | Each connection's `status`: `connected`, `pending`, `reauth` or `error`. |
 | 6. Pick accounts | [`POST /UserAgent/ConnectorAccounts`](#post-useragentconnectoraccounts), [`POST /UserAgent/ConnectorSetAccounts`](#post-useragentconnectorsetaccounts) | The Pages, ad accounts, advertisers or properties the connection can reach, and the ones it may act on. |
 | 7. Choose what runs without asking | [`POST /UserAgent/ConnectorPermissions`](#post-useragentconnectorpermissions), [`POST /UserAgent/ConnectorSetPermissions`](#post-useragentconnectorsetpermissions) | Each tool's value in Chat and in Autopilot: `allow`, `ask` or `block`. |
 | 8. Answer approvals | [`POST /UserAgent/Message/ApprovalCardAct`](#post-useragentmessageapprovalcardact), or a [reply](#answering-with-a-reply) | An action that asked runs once (or from now on), or is declined, and the agent goes on in the chat. Answer the card with ApprovalCardAct, or reply `yes`, `always` or `no` in the chat; in Telegram, Slack and Discord, answer the agent's question there. |
-| 9. Disconnect | [`POST /UserAgent/ConnectorDisconnect`](#post-useragentconnectordisconnect) | The connection, its values and tokens deleted, and the agent restarts. |
+| 9. Disconnect | [`POST /UserAgent/ConnectorDisconnect`](#post-useragentconnectordisconnect) | The connection, its values and tokens deleted, and a running agent loses the connector with no restart. |
 
 ### Who your customer sees
 
@@ -24793,7 +24814,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
   "errors": [],
   "status": "connected",
   "applied": 1,
-  "restart": "scheduled",
+  "restart": "live",
   "useragentconnectors": [
     {
       "slug": "serper",
@@ -24823,7 +24844,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
 |-------|-------------|
 | `status` | `connected`. |
 | `applied` | `1` when something changed, `0` when you sent what was already saved: then nothing restarts. |
-| `restart` | `scheduled` (the running agent restarts to pick up the connector), `none` (it was not running, or nothing changed) or `failed` (the change is saved, but the restart could not be scheduled: restart the agent yourself). See [Restarts](#restarts). |
+| `restart` | `live` (the running agent got the change with no restart: it uses the connector from its next message), `scheduled` (it restarts to pick up the connector), `none` (it was not running, or nothing changed) or `failed` (the change is saved, but the restart could not be scheduled: restart the agent yourself). See [Live Changes and Restarts](#live-changes-and-restarts). |
 | `useragentconnectors` | The connection as [ConnectorList](#post-useragentconnectorlist) shows it. |
 
 **The credential check.** Where the connector has one, Wiro makes one read call to the vendor with the values before it saves them. When the vendor refuses them, nothing is saved and the answer carries the vendor's own sentence:
@@ -24867,7 +24888,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
   "errors": [],
   "status": "connected",
   "applied": 1,
-  "restart": "scheduled",
+  "restart": "live",
   "useragentconnectors": [
     {
       "slug": "dataforseo",
@@ -24914,7 +24935,7 @@ Some vendors that sign in with your own app also take a key or token (`modes: ["
   "errors": [],
   "status": "connected",
   "applied": 1,
-  "restart": "scheduled",
+  "restart": "live",
   "useragentconnectors": [
     {
       "slug": "facebook-pages",
@@ -24999,7 +25020,7 @@ The connection is now `pending`. A connection that was already `connected` stays
 
 **2. Open `authorizeUrl`** in your customer's browser: a new tab, a popup, or the same window. The address works for 10 minutes and once. Start a new sign-in to get a fresh one.
 
-**3. The vendor sends the browser back.** After your customer agrees, the vendor redirects to Wiro's callback, `GET /AgentConnector/OAuthCallback`. Wiro exchanges the code for tokens, stores them encrypted, marks the connection `connected`, restarts the agent, and redirects the browser to your `redirecturl`.
+**3. The vendor sends the browser back.** After your customer agrees, the vendor redirects to Wiro's callback, `GET /AgentConnector/OAuthCallback`. Wiro exchanges the code for tokens, stores them encrypted, marks the connection `connected`, gives the connector to a running agent, and redirects the browser to your `redirecturl`.
 
 **4. Read the outcome on your page.** See [The callback and your redirect URL](#the-callback-and-your-redirect-url).
 
@@ -25009,7 +25030,7 @@ Wiro adds one parameter to your `redirecturl`, with `?`, or `&` when it already 
 
 | Parameter | Meaning |
 |-----------|---------|
-| `connector_connected=true` | The connection is connected and the agent is restarting. |
+| `connector_connected=true` | The connection is connected. A running agent has the connector from its next message, or once a restart it needed is done. |
 | `connector_error=<code>` | The sign-in did not finish. A new connection is left `error` (or still `pending`); one that was connected before stays connected. |
 
 ```
@@ -25039,9 +25060,9 @@ A callback whose sign-in is unknown (no `state`, or one Wiro never issued) ends 
 - Send your own page with every sign-in, from a [setup card](/docs/agent-chat-integration#sign-in-hubspot) too. Without one, the browser comes back to Wiro's own connect-return page on wiro.ai.
 - It is used exactly as you send it, with your own query kept.
 
-### Restarts
+### Live Changes and Restarts
 
-A connect that changes something, a new account selection, a [permission change](#post-useragentconnectorsetpermissions) that does more than turn `ask` into `allow`, and a disconnect of a connected connector restart a running agent so it loads the change: `restart: "scheduled"` in the answer, and for a sign-in, `connector_connected=true` on your page. The agent's `status` on [`POST /UserAgent/Detail`](/docs/agent-overview#post-useragentdetail) then goes `1` (stopping), `2` (queued), `3` (starting) and back to `4` (running), in a minute or two; a message sent meanwhile is refused with a sentence you can show. See [Restarts](/docs/agent-chat-integration#restarts) for what to show. A stopped agent loads the change when it next starts.
+A connect that changes something, a new account selection, a [permission change](#post-useragentconnectorsetpermissions) and a disconnect of a connected connector reach a running agent with no restart: `restart: "live"` in the answer, and for a sign-in, `connector_connected=true` on your page. The agent keeps running, a reply it is writing goes on, and its next message uses the change. When a change can't be applied that way, Wiro restarts the agent instead and the answer reads `restart: "scheduled"`: the agent's `status` on [`POST /UserAgent/Detail`](/docs/agent-overview#post-useragentdetail) then goes `1` (stopping), `2` (queued), `3` (starting) and back to `4` (running), in a minute or two, and a message sent meanwhile is refused with a sentence you can show. Connecting [Wiro AI Models](#the-wiro-connector) with another project restarts the agent too, as binding a project does. See [Live Changes and Restarts](/docs/agent-chat-integration#live-changes-and-restarts) for what to show. A stopped agent loads the change when it next starts.
 
 ## Connection State
 
@@ -25129,7 +25150,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorList" \
 |----------|---------|--------------|
 | `connected` | The agent has the connector's tools. | Connected, with Disconnect and, when it has pickers, the account choice. |
 | `pending` | A sign-in was started and has not come back yet, or the connection misses a required value. | Waiting for the sign-in, with a way to start it again; or the form, to send the missing value with ConnectorConnect. |
-| `reauth` | The sign-in expired or was revoked at the vendor: refreshing it failed (`lasterror` is a code: `token_not_refreshable` when a Facebook Pages or Meta Ads sign-in's 60-day token ran out), or the vendor's own MCP server refused it with HTTP 401 or 403 as Wiro listed the connection's accounts (`lasterror: "unauthorized"`; `"no_access_token"` when the connection held no token to send). Or the connection holds a way in the connector no longer takes (`lasterror: "auth_changed"`): a Gmail app password, or a sign-in with Wiro's own app on a connector whose `wiroapp` is `false`; sign in again with an OAuth app of your own. Until the agent's next restart, the connector's tools answer that it must be connected again; after it, the agent no longer has them. | Reconnect: start a new sign-in with ConnectorConnect. |
+| `reauth` | The sign-in expired or was revoked at the vendor: refreshing it failed (`lasterror` is a code: `token_not_refreshable` when a Facebook Pages or Meta Ads sign-in's 60-day token ran out), or the vendor's own MCP server refused it with HTTP 401 or 403 as Wiro listed the connection's accounts (`lasterror: "unauthorized"`; `"no_access_token"` when the connection held no token to send). Or the connection holds a way in the connector no longer takes (`lasterror: "auth_changed"`): a Gmail app password, or a sign-in with Wiro's own app on a connector whose `wiroapp` is `false`; sign in again with an OAuth app of your own. Until the agent next restarts or gets a change, the connector's tools answer that it must be connected again; after that, the agent no longer has them. | Reconnect: start a new sign-in with ConnectorConnect. |
 | `error` | The last sign-in failed (`lasterror` says how). | Connect again. |
 
 A connector that was never connected, or was disconnected, has no row.
@@ -25220,7 +25241,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetAccounts" \
   "errors": [],
   "accounts": { "pages": ["123456789012345", "234567890123456"] },
   "applied": 1,
-  "restart": "scheduled",
+  "restart": "live",
   "useragentconnectors": [
     {
       "slug": "facebook-pages",
@@ -25323,7 +25344,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetAccounts" \
   "errors": [],
   "accounts": { "advertisers": ["7301234567890123456"] },
   "applied": 1,
-  "restart": "scheduled",
+  "restart": "live",
   "useragentconnectors": [
     {
       "slug": "tiktok-ads",
@@ -25349,7 +25370,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetAccounts" \
 }
 ```
 
-Once the agent restarts, its TikTok Ads tools work with the saved advertisers only: a call that names any other advertiser is refused before it leaves the agent.
+From the agent's next message, its TikTok Ads tools work with the saved advertisers only: a call that names any other advertiser is refused before it leaves the agent.
 
 - Campaigns, ad groups, campaign copies, and Smart+ campaigns, ad groups and ads that the agent creates start paused: turn them on with the status update tools or in TikTok Ads Manager.
 - A call that names a Business Center (`bc_id`) is refused before it leaves the agent: the connector picks advertisers only.
@@ -25360,7 +25381,7 @@ Once the agent restarts, its TikTok Ads tools work with the saved advertisers on
 
 ### **POST** /UserAgent/ConnectorDisconnect
 
-Deletes the connection: its values, tokens, account selection and [permissions](#permissions-and-approvals), and the approvals waiting for it. For a sign-in, Wiro first asks the vendor to revoke the token where the vendor supports it. A connected connector's agent restarts without its tools.
+Deletes the connection: its values, tokens, account selection and [permissions](#permissions-and-approvals), and the approvals waiting for it. For a sign-in, Wiro first asks the vendor to revoke the token where the vendor supports it. A running agent loses a connected connector's tools from its next message, with no restart.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -25385,7 +25406,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorDisconnect" \
   "errors": [],
   "removed": true,
   "revoked": true,
-  "restart": "scheduled"
+  "restart": "live"
 }
 ```
 
@@ -25397,7 +25418,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorDisconnect" \
 
 ## What the Agent Gets
 
-When the agent is back up, every `connected` connection whose connector is still `active` gives it that connector's tools. A tool is named `<slug>__<tool>`: the slug, two underscores, and the tool's `name` from `tools` on [Detail](#post-agentconnectordetail).
+Every `connected` connection whose connector is still `active` gives the agent that connector's tools, from its next message after the connection. A tool is named `<slug>__<tool>`: the slug, two underscores, and the tool's `name` from `tools` on [Detail](#post-agentconnectordetail).
 
 | Connector | Tool `name` | The agent calls it |
 |-----------|-------------|--------------------|
@@ -25409,7 +25430,7 @@ When the agent is back up, every `connected` connection whose connector is still
 - A tool acts with the connection's own credentials and, where the connector has pickers, only on the selected accounts.
 - To tell the agent when and how to use the tools, write a [Custom Skill](/docs/agent-skills#using-connectors-in-skills) that names them, such as: "Before you write an article, research the topic with `serper__web_search` and cite the top three results."
 - A scheduled task of an agent template that works with a connector runs only while that connector is connected; connecting or disconnecting it never changes the task's `enabled`.
-- A disconnected connector's tools are gone after the restart. A `reauth` connection's tools answer that it must be connected again, in words your customer can read (they name no Wiro place or link), until the agent's next restart; after it, the agent no longer has them.
+- A disconnected connector's tools are gone from the agent's next message. A `reauth` connection's tools answer that it must be connected again, in words your customer can read (they name no Wiro place or link), until the agent next restarts or gets a change; after that, the agent no longer has them.
 
 ## Permissions and Approvals
 
@@ -25454,7 +25475,7 @@ Studio and the Workflow Agent have no permissions or approvals: they never show 
 | Step | Call | What you get |
 |------|------|--------------|
 | 1. Read the permissions | [`POST /UserAgent/ConnectorPermissions`](#post-useragentconnectorpermissions) | Each category's and each tool's values in both columns, and the cards waiting that came from Scheduled Tasks, channels or the agent's own work. |
-| 2. Change them | [`POST /UserAgent/ConnectorSetPermissions`](#post-useragentconnectorsetpermissions) | The new values. The agent restarts, unless every change only turns `ask` into `allow`. |
+| 2. Change them | [`POST /UserAgent/ConnectorSetPermissions`](#post-useragentconnectorsetpermissions) | The new values, which a running agent uses from its next action, with no restart. |
 | 3. The agent asks | None: the card arrives in the chat | An `approval` block in the timeline of a message, in [History](/docs/agent-messaging#post-useragentmessagehistory), [Detail](/docs/agent-messaging#post-useragentmessagedetail) and on the [WebSocket](/docs/agent-websocket). See [How an approval works](#how-an-approval-works). In Telegram, Slack and Discord, a question at the end of the agent's reply. |
 | 4. Answer the card | [`POST /UserAgent/Message/ApprovalCardAct`](#post-useragentmessageapprovalcardact), or a [reply](#answering-with-a-reply) | The card's new state, and a turn queued in the same chat that tells the agent. Answer the card with ApprovalCardAct, or reply `yes`, `always` or `no` in the chat; in Telegram, Slack and Discord, answer the agent's question there. |
 | 5. The agent goes on | [The resume turn](#the-resume-turn) | The approved call runs once, and the agent's answer arrives as the chat's next message. |
@@ -25585,7 +25606,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetPermissions" \
   "result": true,
   "errors": [],
   "applied": 1,
-  "restart": "scheduled",
+  "restart": "live",
   "permissions": {
     "categories": [
       { "key": "read", "tools": 6, "chat": { "value": "allow", "mixed": false }, "autopilot": { "value": "allow", "mixed": false }, "chosen": {} },
@@ -25628,7 +25649,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetPermissions" \
 | Field | Description |
 |-------|-------------|
 | `applied` | `1` when something changed, `0` when the values were already so: then nothing restarts. |
-| `restart` | `scheduled` (the running agent restarts to load the change), `none` (the agent isn't running, the connection isn't `connected`, or every change only turned `ask` into `allow`, which a running agent uses at once) or `failed` (the change is saved, but the agent could not restart: it applies at the agent's next start). |
+| `restart` | `live` (the running agent got the change with no restart: it applies to the agent's next action), `scheduled` (the running agent restarts to load the change), `none` (the agent isn't running or the connection isn't `connected`, so there was nothing to load) or `failed` (the change is saved, but the agent could not restart: it applies at the agent's next start). |
 | `permissions` | The connection's permissions after the change, as on [ConnectorPermissions](#post-useragentconnectorpermissions). |
 
 Each change also writes a `CONNECTOR_PERMISSIONS_SET` row to the agent's [activity log](/docs/agent-logs#who-did-what-rows). The refusals, with nothing saved:
@@ -25931,7 +25952,7 @@ Reply "yes" to allow exactly this call once, or "no" to decline it.
 |-------|-------------|
 | `approvalresult.answered` | The cards answered: one for a `yes` or an `always`, one per card for a `no`. Each is `{ cardid, messageguid, action, result, approval, summary, resume, permissions? }`: `messageguid` is the message the card is on, `action` what Wiro did (`allow`, `always` or `decline`), `approval` the card after the answer, `summary` and `resume` as [ApprovalCardAct](#post-useragentmessageapprovalcardact) answers them (an `always` that allowed once reads `Allowed once. ` and the reason), and `permissions` after an Always allow. A card that could not be answered has `result: false`, `approval` as it is now (or `null`) and `error: { code, message }`, ApprovalCardAct's refusal. |
 | `approvalresult.listed` | The cards a listing showed, each `{ number, cardid, messageguid, approval }`: `messageguid` is the message the card is on. |
-| `setupresult` | Only when the reply listed setup cards too, or turned them down: `{ applied: [], dismissed, failed: [], restarting: false }`. |
+| `setupresult` | Only when the reply listed setup cards too, or turned them down: `{ applied: [], dismissed, failed: [], restarting: false, live: false }`. |
 
 Both lists are empty when the agent was still replying. Sent with a project API key, the first `yes` gets the listing:
 
@@ -26462,7 +26483,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
 - The project must be one you created, or any project of a team you are an admin of, and in the agent's workspace: a personal agent takes one of its owner's personal projects, a team agent one of its team's projects. The request must come from the agent's workspace too.
 - The connector follows the agent's project: a project bound later with `CredentialProjectBind` or another `ConnectorConnect` is the one its tools use after the restart. [ConnectorList](#post-useragentconnectorlist) shows the agent's current project as `wiroprojectid`, a string.
 - An agent left with no Wiro project keeps the connection, but gets no `wiro__*` tools until a project is bound again, and `wiroprojectid` reads `null`.
-- Disconnecting it ([ConnectorDisconnect](#post-useragentconnectordisconnect), or a `disconnect` card) removes only the connection. The agent keeps its Wiro project, and the models its Skills run keep using it; only its `wiro__*` tools go after the restart.
+- Disconnecting it ([ConnectorDisconnect](#post-useragentconnectordisconnect), or a `disconnect` card) removes only the connection. The agent keeps its Wiro project, and the models its Skills run keep using it; only its `wiro__*` tools go, from the agent's next message.
 - The agent's [Wiro API path list](/docs/agent-overview#post-useragentupdatesettings) (`wiroapiallowedpaths`) limits the Wiro API calls its skills make with the agent's own Wiro project; it doesn't apply to this connector's tools, which the list above fixes.
 - In chat, the agent proposes a `project` card for it, which binds the project the same way: see [Project: Wiro AI Models](/docs/agent-chat-integration#project-wiro-ai-models).
 
@@ -26586,7 +26607,7 @@ connect = requests.post(f"{API}/UserAgent/ConnectorConnect", headers=HEADERS, js
 }).json()
 if not connect["result"]:
     raise SystemExit(connect["errors"][0]["message"])
-print(connect["status"], connect["restart"])  # connected scheduled
+print(connect["status"], connect["restart"])  # connected live
 
 # 3. Read the agent's connections
 for conn in requests.post(f"{API}/UserAgent/ConnectorList", headers=HEADERS,
@@ -26615,7 +26636,7 @@ const connect = await post('/UserAgent/ConnectorConnect', {
   values: { apikey: 'YOUR_SERPER_API_KEY' },
 });
 if (!connect.result) throw new Error(connect.errors[0].message);
-console.log(connect.status, connect.restart); // connected scheduled
+console.log(connect.status, connect.restart); // connected live
 
 // 3. Read the agent's connections
 const list = await post('/UserAgent/ConnectorList', { useragentguid: AGENT });
@@ -27448,14 +27469,14 @@ Your user types           Your backend                     Wiro
 "Report our traffic"  ->  Message/Send ------------------>  agent turn runs
                           WebSocket or Message/Detail <---  timeline: answer + setup blocks
 Your app shows the card
-User presses Save     ->  SetupCardApply with values ---->  key saved, card applied, agent restarts
+User presses Save     ->  SetupCardApply with values ---->  key saved, card applied, agent has it
   (a key card)
 User presses Sign in  ->  SetupCardApply with redirecturl ->  authorizeUrl, the card stays pending
   (a sign-in card)        the browser signs in ---------->  consent, callback, your redirecturl;
-                                                            the agent restarts
+                                                            the agent has the connector
                           SetupCardApply again ---------->  card applied
-User presses Apply    ->  Message/SetupCardApply -------->  change applied, agent restarts
-Your app shows "Restarting", then the agent answers again
+User presses Apply    ->  Message/SetupCardApply -------->  change applied, agent has it
+Your app shows "Applied", and the agent uses the change from its next message
 ```
 
 ## Before You Start
@@ -27505,7 +27526,7 @@ Where setup cards can be proposed and applied is the agent's `chatsetup` setting
 | `webchat` | No: only the Wiro web chat gets cards. In your product, the same as `off`. | Refused: `Setup from chat is off for this agent.` |
 | `off` | No | Refused: `Setup from chat is off for this agent.` |
 
-So an integration that shows setup cards needs `"all"`. Set it at Deploy with `chatsetup`, or later with [`POST /UserAgent/UpdateSettings`](/docs/agent-overview#post-useragentupdatesettings), and read it back as `chatSetup` on `UserAgent/Detail`. A change from or to `"off"` restarts a starting or running agent once, and a change between `"all"` and `"webchat"` restarts nothing. `UpdateSettings` doesn't say whether it restarted the agent: read `UserAgent/Detail` after it, as in [Showing a restart](#showing-a-restart).
+So an integration that shows setup cards needs `"all"`. Set it at Deploy with `chatsetup`, or later with [`POST /UserAgent/UpdateSettings`](/docs/agent-overview#post-useragentupdatesettings), and read it back as `chatSetup` on `UserAgent/Detail`. A change from or to `"off"` restarts a starting or running agent once, and a change between `"all"` and `"webchat"` restarts nothing. `UpdateSettings` answers `restart` and `restarting`, which say whether it restarted the agent: see [Showing a restart](#showing-a-restart).
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
@@ -27569,7 +27590,7 @@ When the agent isn't running, Send answers `result: false` with `agentstatus` an
 }
 ```
 
-See [Restarts](#restarts) for the other sentences.
+See [Live Changes and Restarts](#live-changes-and-restarts) for the other sentences.
 
 When the agent has used the AI usage its plan includes and the balance is under $0.50, Send answers `result: false` with code `97`, `agentstatus` and `agentusage`, the agent's [`usage`](/docs/agent-overview#usage-object):
 
@@ -27760,13 +27781,14 @@ Some messages are answered by Wiro itself, with no agent turn: a `yes` that appl
   "messageguid": "d4e5f6a7-b8c9-0123-def4-567890123456",
   "agenttoken": null,
   "status": "agent_end",
-  "response": "✅ Applied: Scheduled task Weekly traffic report created.\nYour agent is restarting to load the change. Continue in a minute or two.",
+  "response": "✅ Applied: Scheduled task Weekly traffic report created.\nYour agent uses the change from its next message.",
   "content": "yes",
   "setupresult": {
     "applied": ["k3v9q2m8x1za"],
     "dismissed": [],
     "failed": [],
-    "restarting": true
+    "restarting": false,
+    "live": true
   }
 }
 ```
@@ -28083,11 +28105,11 @@ The full rules of each kind, such as what `with`, `pauses` and `before` mean, ar
 | State | How you know | What it means |
 |-------|--------------|---------------|
 | Pending | No `status` (block `version` 1) | Waiting for someone to apply or dismiss it. |
-| Applied | `status: "applied"` | The change is made. The answer that applied it says in `restarting` whether the agent restarts. |
+| Applied | `status: "applied"` | The change is made. The answer that applied it says in `live` and `restarting` whether a running agent got it with no restart or restarts to load it. |
 | Dismissed | `status: "dismissed"` | Turned down. Nothing changed. |
 | Failed | `status: "failed"` | Wiro tried to apply it and couldn't: `error` says why. Nothing changed. |
 
-Two more states exist only in your interface, between a click and the answer: **applying** (your call is under way), and **refused**, when `SetupCardApply` answers `result: false` and the card is still pending, for example a key the vendor refused or an add card whose sign-in hasn't finished. A refused card keeps its buttons. A `signin` card has one more: **signing in**, from the answer that gives `authorizeUrl` until the browser is back on your page. While the agent restarts after a change, show the card as applied with a **restarting** note; see [Restarts](#restarts).
+Two more states exist only in your interface, between a click and the answer: **applying** (your call is under way), and **refused**, when `SetupCardApply` answers `result: false` and the card is still pending, for example a key the vendor refused or an add card whose sign-in hasn't finished. A refused card keeps its buttons. A `signin` card has one more: **signing in**, from the answer that gives `authorizeUrl` until the browser is back on your page. A change a running agent gets live needs nothing more than **applied**. While the agent restarts after a change, show the card as applied with a **restarting** note; see [Live Changes and Restarts](#live-changes-and-restarts).
 
 Whenever a card is applied, dismissed or fails, Wiro also marks applied the same person's pending `connect` cards in that chat from the last 7 days whose connectors now read connected: the one this card connected, and any whose sign-in finished or that were connected on a settings screen. Their blocks come again on their own `agenttoken`s, and History shows them applied.
 
@@ -28115,7 +28137,7 @@ Show `note`, when there is one, under the title.
 | Signing in (`signin` cards) | "Waiting for the sign-in" until the browser is back on your page | Sign in again (a new sign-in), Dismiss |
 | Refused | `errors[0].message` under the card | Enabled |
 | Applied | "Applied", and `summary` from the answer when you have it | None |
-| Applied, agent restarting | "Applied" and "Restarting, a minute or two" until the agent runs again | None |
+| Applied, agent restarting (`restarting: true`) | "Applied" and "Restarting, a minute or two" until the agent runs again | None |
 | Dismissed | "Turned down" | None |
 | Failed | "Not applied" and `setup.error` | None |
 
@@ -28127,7 +28149,7 @@ Show `note`, when there is one, under the title.
 - **A `signin` card**: show every field in its `fields` (your own app's keys are the `serveronly: true` ones; some sign-ins need more, such as LinkedIn's Organization ID, Reddit's Developer Profile Username or Shopify's Shop Domain), and **Sign in**: `SetupCardApply` with their values in `values` and your `redirecturl`. Open the answer's `authorizeUrl`. Once the browser is back on your `redirecturl` with `connector_connected=true`, call `SetupCardApply` on the card again, with no `values`: it records the card applied. It records the card only while the connector reads connected: if it doesn't yet, the same call starts a new sign-in and answers a new `authorizeUrl`, with the card still pending. After `connector_error=<code>`, show that code's sentence and offer **Sign in** again instead. See [Sign-in: HubSpot](#sign-in-hubspot).
 - **A `project` card**: show a picker of your projects and **Connect**: `SetupCardApply` with the chosen project's id as `wiroprojectguid`, and no `values`. See [Project: Wiro AI Models](#project-wiro-ai-models).
 - **An `add` card with its `connect` cards**: the `connect` cards on the same message whose `connector` is in the `add` card's `needs` belong to it. Show them inside the `add` card.
-- **Add and connect, with a key**: when the `add` card has one `key` card, show its fields and **Add and connect**: `SetupCardApply` on the `add` card with the values in `values`. Both cards apply in one step, with one restart. See [Add and Connect](#add-and-connect).
+- **Add and connect, with a key**: when the `add` card has one `key` card, show its fields and **Add and connect**: `SetupCardApply` on the `add` card with the values in `values`. Both cards apply in one step. See [Add and Connect](#add-and-connect).
 - **Add and connect, with a sign-in**: when the `add` card has one `signin` card, run **Sign in** on that `connect` card first, as above. Once the browser is back, **Add**: `SetupCardApply` on the `add` card with `signin: true` applies both cards, once the connector reads connected. See [Add and Connect](#add-and-connect).
 - **Add, then pick a project**: a `project` card takes its own step. Offer **Add** on the `add` card, and **Connect** on the `project` card, in either order.
 - **Several `connect` cards**: offer **Add** alone, then each `connect` card's own button.
@@ -28183,7 +28205,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
     "actedat": 1794654870,
     "actedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
   },
-  "restarting": true,
+  "restarting": false,
+  "live": true,
   "summary": "Scheduled task Weekly traffic report created"
 }
 ```
@@ -28193,14 +28216,15 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
 | `result` | `true` when the action went through. `false` when it was refused or failed: read `errors[0].message`, and `setup.status` when `setup` isn't `null`. |
 | `errors` | `[{ code, message, time }]`. `message` is one plain sentence you can show as it is. |
 | `setup` | The card after the call: still pending after a refusal, `applied`, `dismissed` or `failed` otherwise. `null` when the call was refused before the card was read: a missing parameter, an agent or message your key can't reach, setup from chat off, a reply still running, code `97`, a card someone is applying at that moment, or a card that isn't there. |
-| `restarting` | `true` when the agent restarts to load the change. See [Restarts](#restarts). |
+| `restarting` | `true` when the agent restarts to load the change. See [Live Changes and Restarts](#live-changes-and-restarts). |
+| `live` | `true` when the running agent got the change with no restart: keep the chat open, there is nothing to wait for. |
 | `summary` | A short phrase that says what changed, such as `Scheduled task Weekly traffic report created`, `Serper connected` or, for an `add` card applied with its `connect` card, `Google Play Promotional Content added. Google Play Console connected.` An applied `add` card whose connectors have no `connect` card to finish them goes on with `Still to connect: <titles>`. Empty when nothing was applied. |
 | `authorizeUrl` | Only when a `signin` card's sign-in started: the vendor's sign-in address, to open in the browser. It works for 10 minutes and once. `result` is `true`, the card in `setup` is still pending, `summary` is empty, and `next` names the card. See [Sign-in: HubSpot](#sign-in-hubspot). |
 | `paired` | Only when `values` or `signin: true` came with an `add` card: its `connect` card after the call, `[{ setup, result, error }]`. `result` is `true` when that card was applied too, and `error` is `null` or the sentence that says why not. `[]` when the `add` card has no single `connect` card for them. |
 | `errorcode` | Only on some refusals of an `add` card sent with `signin: true`: `not_connected` (the connector doesn't read connected yet), `signin_no_pair` (no pending `signin` card on the message for it) or `signin_many` (more than one). |
 | `next` | Only when something is left to connect: `[{ connector, title, mode, cardid?, messageguid? }]`. An applied `add` card lists the connectors it needs that still aren't connected, and a `connect` card left pending (a refused key or project, or a sign-in just started) lists its own connector and card. See [Your Own Connect Button](#your-own-connect-button). |
 
-Dismissing answers the card with `status: "dismissed"`, `restarting: false` and an empty `summary`. Dismissing the `timezone` card `z4x8c1v6b3nm` (`"action": "dismiss"`) answers:
+Dismissing answers the card with `status: "dismissed"`, `restarting: false`, `live: false` and an empty `summary`. Dismissing the `timezone` card `z4x8c1v6b3nm` (`"action": "dismiss"`) answers:
 
 ```json
 {
@@ -28218,6 +28242,7 @@ Dismissing answers the card with `status: "dismissed"`, `restarting: false` and 
     "actedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
   },
   "restarting": false,
+  "live": false,
   "summary": ""
 }
 ```
@@ -28240,7 +28265,8 @@ Applying the `disconnect` card `b7k1m4t9w2zs` on a running agent answers:
     "actedat": 1794654870,
     "actedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
   },
-  "restarting": true,
+  "restarting": false,
+  "live": true,
   "summary": "Serper disconnected"
 }
 ```
@@ -28261,7 +28287,7 @@ With your project API key, a call acts as the key's owner, and works when all of
 
 ## Connecting a Connector
 
-A `connect` card connects its connector through `SetupCardApply`, with the checks and the outcome of [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect): the connection is saved, the agent restarts with the connector's tools, and the agent never sees a key or a token. The card carries what its form needs (`title`, `mode` and `fields`), so you can draw it without another call.
+A `connect` card connects its connector through `SetupCardApply`, with the checks and the outcome of [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect): the connection is saved, a running agent has the connector's tools from its next message, and the agent never sees a key or a token. The card carries what its form needs (`title`, `mode` and `fields`), so you can draw it without another call.
 
 ### Modes
 
@@ -28311,7 +28337,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
     "actedat": 1794654900,
     "actedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
   },
-  "restarting": true,
+  "restarting": false,
+  "live": true,
   "summary": "Serper connected"
 }
 ```
@@ -28337,6 +28364,7 @@ A value Wiro refuses (a required field missing, a format that doesn't fit, or a 
     "createdat": 1794654811
   },
   "restarting": false,
+  "live": false,
   "summary": "",
   "next": [{ "connector": "serper", "title": "Serper", "mode": "key", "cardid": "h6w3k9p2m5tc", "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234" }]
 }
@@ -28400,6 +28428,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
     "actedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
   },
   "restarting": true,
+  "live": false,
   "summary": "Wiro AI Models connected"
 }
 ```
@@ -28489,6 +28518,7 @@ The answer gives the vendor's sign-in address. The card stays pending, and `next
     "createdat": 1794655200
   },
   "restarting": false,
+  "live": false,
   "summary": "",
   "authorizeUrl": "https://app.hubspot.com/oauth/authorize?client_id=YOUR_HUBSPOT_CLIENT_ID&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FAgentConnector%2FOAuthCallback&scope=crm.objects.contacts.read+crm.objects.contacts.write+crm.lists.read+crm.lists.write+oauth&response_type=code&state=7f3c...",
   "next": [{ "connector": "hubspot", "title": "HubSpot", "mode": "signin", "cardid": "q8n2v5k1m7xt", "messageguid": "a7b8c9d0-e1f2-3456-a789-0123456789ab" }]
@@ -28497,7 +28527,7 @@ The answer gives the vendor's sign-in address. The card stays pending, and `next
 
 **2. Open `authorizeUrl`** in the person's browser, in a popup or the same window. HubSpot's consent screen shows the app whose keys you sent. The address works for 10 minutes and once: a new **Sign in** gets a fresh one.
 
-**3. The browser comes back.** HubSpot sends the browser to the API's callback, which stores the tokens, marks the connection `connected`, restarts the agent and sends the browser on to your `redirecturl` with `connector_connected=true`, or with `connector_error=<code>` when the sign-in didn't finish (see [The callback and your redirect URL](/docs/agent-connectors#the-callback-and-your-redirect-url)).
+**3. The browser comes back.** HubSpot sends the browser to the API's callback, which stores the tokens, marks the connection `connected`, gives the connector to a running agent and sends the browser on to your `redirecturl` with `connector_connected=true`, or with `connector_error=<code>` when the sign-in didn't finish (see [The callback and your redirect URL](/docs/agent-connectors#the-callback-and-your-redirect-url)).
 
 **4. Record the card.** Once the browser is back with `connector_connected=true`, call `SetupCardApply` on the card again, with no `values`. Make this call only then: while the connector doesn't read connected, after `connector_error=<code>` or a closed window, it starts a new sign-in instead and answers a new `authorizeUrl`. It answers the card applied:
 
@@ -28524,16 +28554,17 @@ The answer gives the vendor's sign-in address. The card stays pending, and `next
     "actedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
   },
   "restarting": false,
+  "live": false,
   "summary": "HubSpot connected"
 }
 ```
 
-The agent already restarted when the sign-in came back, so `restarting` is `false`. Without this call, the card is recorded applied the next time a card of the same person's is applied or dismissed in that chat; until then it still shows its Sign in.
+The agent already got the connector when the sign-in came back, so `restarting` and `live` are `false`. Without this call, the card is recorded applied the next time a card of the same person's is applied or dismissed in that chat; until then it still shows its Sign in.
 
 - A card from a chat sent with your API key never carries `wiroapp: true`: its sign-in always uses your own app, and HubSpot's consent screen shows that app. Send the app's keys with the first sign-in; a later sign-in of the same connection may leave them out and use the saved ones. Without them, the answer is `Client ID is required. Client Secret is required.` and the card stays pending.
 - An `oauth` connector, a vendor's own MCP server with its own sign-in such as TikTok Ads, has no fields on its card: send `redirecturl` only. Its consent screen names your organization. Its card and answers are in [Add and Connect](#add-and-connect).
 - A connector with account pickers, such as Facebook Pages, lists its candidates once it is connected, and acts on no account until a selection is saved. After its card is applied, read `accountpickers` on [`AgentConnector/Detail`](/docs/agent-connectors#post-agentconnectordetail): when `accounts` on [`ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist) holds nothing for a picker, let the person choose on your settings screen with [`ConnectorAccounts`](/docs/agent-connectors#post-useragentconnectoraccounts) and [`ConnectorSetAccounts`](/docs/agent-connectors#post-useragentconnectorsetaccounts): no card picks accounts.
-- A connection can later need a new sign-in: `ConnectorList` reads `reauth` when the sign-in expired or was revoked, and until the agent's next restart the connector's tools answer `The sign-in for this connector expired or was revoked, so it has to be connected again. Ask the agent's operator to reconnect it.` ConnectorAccounts refuses it with code `"reauth"` and the same sentence. Offer Reconnect. The agent may propose a new `connect` card for it, which signs in again like any `signin` card and reuses the saved app keys when `values` leaves them out, or you start a new sign-in with ConnectorConnect on your settings screen.
+- A connection can later need a new sign-in: `ConnectorList` reads `reauth` when the sign-in expired or was revoked, and until the agent next restarts or gets a change, the connector's tools answer `The sign-in for this connector expired or was revoked, so it has to be connected again. Ask the agent's operator to reconnect it.` ConnectorAccounts refuses it with code `"reauth"` and the same sentence. Offer Reconnect. The agent may propose a new `connect` card for it, which signs in again like any `signin` card and reuses the saved app keys when `values` leaves them out, or you start a new sign-in with ConnectorConnect on your settings screen.
 
 ### Add and Connect
 
@@ -28554,7 +28585,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
   }'
 ```
 
-Both cards apply, with one restart, and `paired` is the `connect` card after the call:
+Both cards apply in one step, and `paired` is the `connect` card after the call:
 
 ```json
 {
@@ -28572,7 +28603,8 @@ Both cards apply, with one restart, and `paired` is the `connect` card after the
     "actedat": 1794656090,
     "actedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
   },
-  "restarting": true,
+  "restarting": false,
+  "live": true,
   "summary": "Google Play Promotional Content added. Google Play Console connected.",
   "paired": [
     {
@@ -28663,13 +28695,14 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
     "createdat": 1794657000
   },
   "restarting": false,
+  "live": false,
   "summary": "",
   "authorizeUrl": "https://business-api.tiktok.com/portal/mcp-tt4b-authorize?response_type=code&client_id=...&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FAgentConnector%2FOAuthCallback&state=...&code_challenge=...&code_challenge_method=S256&resource=...&scope=mcp%3Att4b",
   "next": [{ "connector": "tiktok-ads", "title": "TikTok Ads", "mode": "signin", "cardid": "t5k8a1d4s7wn", "messageguid": "e1f2a3b4-c5d6-7890-e123-4567890abcde" }]
 }
 ```
 
-**2. Open `authorizeUrl`.** The browser signs in on TikTok's page and comes back to your `redirecturl` with `connector_connected=true`, and the agent restarts with TikTok Ads' tools.
+**2. Open `authorizeUrl`.** The browser signs in on TikTok's page and comes back to your `redirecturl` with `connector_connected=true`, and a running agent has TikTok Ads' tools from its next message.
 
 **3. Add.** Send the `add` card with `signin: true`:
 
@@ -28704,7 +28737,8 @@ Both cards are recorded applied:
     "actedat": 1794657180,
     "actedby": "5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f"
   },
-  "restarting": true,
+  "restarting": false,
+  "live": true,
   "summary": "Ads Manager Common Rules added. TikTok Ads connected.",
   "paired": [
     {
@@ -28746,6 +28780,7 @@ Sent before the sign-in came back, it applies nothing, and `errorcode` says why:
     "createdat": 1794657000
   },
   "restarting": false,
+  "live": false,
   "summary": "",
   "errorcode": "not_connected",
   "paired": [
@@ -28773,7 +28808,7 @@ TikTok Ads acts on the advertisers picked for it: list and save them next, as in
 
 ### Connecting on your settings screen
 
-Every connector also connects without a card, on your own settings screens, with the Agent Connectors calls: [fields](/docs/agent-connectors#connect-with-fields), a [key instead of a sign-in](/docs/agent-connectors#connect-with-a-key-instead-of-a-sign-in), or the vendor's [sign-in](/docs/agent-connectors#connect-with-a-sign-in) with a `redirecturl` on your own site, then its [account pickers](/docs/agent-connectors#account-pickers). Each answers `restart` (or `connector_connected=true` on your page after a sign-in): see [Showing a restart](#showing-a-restart). A pending `connect` card for a connector connected there is recorded applied when you apply it, with no values, or the next time a card of the same person's in that chat is applied or dismissed. A channel is saved with [`CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert): no card saves it. The agent's Wiro project is bound with [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind), or by the `project` card of Wiro AI Models (`wiro`), which binds it the same way.
+Every connector also connects without a card, on your own settings screens, with the Agent Connectors calls: [fields](/docs/agent-connectors#connect-with-fields), a [key instead of a sign-in](/docs/agent-connectors#connect-with-a-key-instead-of-a-sign-in), or the vendor's [sign-in](/docs/agent-connectors#connect-with-a-sign-in) with a `redirecturl` on your own site, then its [account pickers](/docs/agent-connectors#account-pickers). Each answers `restart` (or `connector_connected=true` on your page after a sign-in): see [Live Changes and Restarts](#live-changes-and-restarts). A pending `connect` card for a connector connected there is recorded applied when you apply it, with no values, or the next time a card of the same person's in that chat is applied or dismissed. A channel is saved with [`CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert): no card saves it. The agent's Wiro project is bound with [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind), or by the `project` card of Wiro AI Models (`wiro`), which binds it the same way.
 
 ## Your Own Connect Button
 
@@ -28871,20 +28906,20 @@ A card that fails as it is applied gets `status: "failed"` and its sentence in `
 
 The calls your settings screens make answer their own refusals, and a sign-in returns to your `redirecturl` with `connector_connected=true` or `connector_error=<code>`. Both lists, with what to show, are on Agent Connectors: [Errors](/docs/agent-connectors#errors) and [The callback and your redirect URL](/docs/agent-connectors#the-callback-and-your-redirect-url).
 
-## Restarts
+## Live Changes and Restarts
 
-### When the agent restarts
+### What reaches the agent live
 
-An agent loads its setup when it starts, so most changes restart it:
+A running agent takes most changes live: it keeps running, a reply it is writing goes on, and it uses the change from its next message. Keep the chat open and show nothing more than the applied card.
 
-- `add`, `remove`, `connect` (a key saved, or a project bound), `disconnect` and `timezone` cards, a `schedule` or `skill` card that creates one, a `schedule` card that changes `cron`, and `pause`, `resume`, `delete`, `disable` and `enable` cards.
-- A card that changes only the text of a custom skill or scheduled task (`append`, `revert`, or an `update` that keeps the schedule) reaches a running agent without a restart.
-- One change, one restart. An `add` card applied with its key restarts the agent once for both cards, and a change made while a restart is still stopping or queued loads with that restart.
-- A `signin` card's sign-in restarts the agent when the browser comes back with `connector_connected=true`. Recording the card afterwards restarts nothing.
-- A connector connected on your settings screen restarts a starting or running agent when the connection changes something: `ConnectorConnect`, `ConnectorSetAccounts` and `ConnectorDisconnect` answer `restart: "scheduled"` then, and a sign-in returns `connector_connected=true` once the agent is restarting.
-- An agent that is stopped doesn't start: it loads the change when it next starts, and `restarting` is `false`.
+- `add`, `remove`, `connect` (a key saved), `disconnect`, `schedule` and `skill` cards of every kind reach a running agent live. An `add` card applied with its key brings both cards in one step.
+- A `signin` card's sign-in reaches the agent when the browser comes back with `connector_connected=true`. Recording the card afterwards changes nothing more.
+- A connector connected on your settings screen reaches a running agent the same way: `ConnectorConnect`, `ConnectorSetAccounts`, `ConnectorDisconnect` and `ConnectorSetPermissions` answer `restart: "live"`.
+- These restart the agent: a `timezone` card, a `project` card that binds another project (as `CredentialProjectBind` does), an `add` or `remove` card for `util-voice-receptionist`, `util-twilio-channel`, `util-web-channel` or `util-newsletter-compose`, and a live change that can't be applied in full, which restarts the agent by itself.
+- A change made while a restart is still stopping or queued loads with that restart, and one made while the agent is starting reaches it once it runs.
+- An agent that is stopped doesn't start: it loads the change when it next starts, and `restarting` and `live` are `false`.
 
-`restarting` in the `SetupCardApply` answer and in `setupresult` says whether this change restarts the agent.
+`live` and `restarting` in the `SetupCardApply` answer and in `setupresult` say which happened.
 
 ### Status values
 
@@ -28901,16 +28936,18 @@ A restart takes a minute or two. If the poll reads `0` (stopped), `5` (error) or
 
 ### Showing a restart
 
-When an answer says the agent restarts, show a line such as "Restarting to load the change, a minute or two" above the message box, and poll `UserAgent/Detail` every five seconds until `status` is `4`. Then hide the line. You can leave the message box on: a message sent too early gets a clear refusal you can show.
+When an answer says the agent restarts, show a line such as "Restarting to load the change, a minute or two" above the message box, and poll `UserAgent/Detail` every five seconds until `status` is `4`. Then hide the line. You can leave the message box on: a message sent too early gets a clear refusal you can show. When it says the change is live, show it as applied and nothing more: the agent runs on.
 
 Each call says it in its own field:
 
-| Call | Says the agent restarts with |
+| Call | Says the agent restarts, or got the change live, with |
 |------|------------------------------|
-| `SetupCardApply`, and `Message/Send` in `setupresult` | `restarting: true` |
-| `ConnectorConnect`, `ConnectorSetAccounts`, `ConnectorDisconnect`, `CredentialProjectBind` | `restart: "scheduled"` |
-| A sign-in that came back to your `redirecturl` | `connector_connected=true` |
-| `CredentialUpsert`, `UpdateSettings` | Nothing. After a save that can restart the agent, such as a channel's fields, or `chatsetup` changed from or to `"off"`, poll `UserAgent/Detail` the same way. |
+| `SetupCardApply`, and `Message/Send` in `setupresult` | `restarting: true`; `live: true` when the running agent got the change with no restart |
+| `ConnectorConnect`, `ConnectorSetAccounts`, `ConnectorDisconnect`, `ConnectorSetPermissions`, `CredentialProjectBind` | `restart: "scheduled"`; `"live"` when the running agent got the change with no restart |
+| `UpdateSettings`, `SkillToggle` and the custom skill calls | `restarting: true`, with `restart: "scheduled"` where the answer has `restart`; `live: true` for a change with no restart |
+| `SkillsApply` | `restartTriggered: true` and `restart: "scheduled"`; `restart: "live"` and `live: true` for a change with no restart |
+| A sign-in that came back to your `redirecturl` | `connector_connected=true`; read `status` on `UserAgent/Detail` once: `4` means the agent got the connector with no restart |
+| `CredentialUpsert` | Nothing. After a save that can restart the agent, such as a channel's fields, poll `UserAgent/Detail` the same way. |
 
 
 ### Messages during a restart
@@ -28977,7 +29014,7 @@ The first `yes` in a chat sent with your API key gets the listing:
   "status": "agent_end",
   "response": "The agent proposes this setup change. Nothing is applied yet.\n\nCard 1: Add Weather (skill).\n\nReply \"yes\" to apply exactly this change, or \"no\" to turn it down.",
   "content": "yes",
-  "setupresult": { "applied": [], "dismissed": [], "failed": [], "restarting": false }
+  "setupresult": { "applied": [], "dismissed": [], "failed": [], "restarting": false, "live": false }
 }
 ```
 
@@ -28991,6 +29028,7 @@ Show `response` as it is. Its lines are described in [The card listing](/docs/ag
 | `dismissed` | Ids of the cards turned down. |
 | `failed` | `[{ id, error }]` for cards that failed. |
 | `restarting` | `true` when the agent restarts to load the change. |
+| `live` | `true` when the running agent got the change with no restart. |
 | `next` | Only when the answer leaves connectors to connect: `[{ connector, title, mode, cardid?, messageguid? }]`, as in [Your Own Connect Button](#your-own-connect-button). |
 
 The second `yes` applies the card:
@@ -29002,13 +29040,14 @@ The second `yes` applies the card:
   "messageguid": "f6a7b8c9-d0e1-2345-f678-901234567890",
   "agenttoken": null,
   "status": "agent_end",
-  "response": "✅ Applied: Weather added.\nYour agent is restarting to load the change. Continue in a minute or two.",
+  "response": "✅ Applied: Weather added.\nYour agent uses the change from its next message.",
   "content": "yes",
   "setupresult": {
     "applied": ["71xb9zrcd1sb"],
     "dismissed": [],
     "failed": [],
-    "restarting": true
+    "restarting": false,
+    "live": true
   }
 }
 ```
@@ -29027,6 +29066,7 @@ Wiro writes these lines in `response`, always in English. They name no site, pag
 | `<N> connector cards still need their keys: add each key on its card.` | Several `key` connect cards wait. |
 | `This setup change was already handled.` | Someone acted on the card first, or it is gone. |
 | `This setup change is being applied right now. Try again in a moment.` | Another call is applying the card. |
+| `Your agent uses the change from its next message.` | A running agent got the change with no restart. |
 | `Your agent is restarting to load the change. Continue in a minute or two.` | The change restarts the agent (shorter when a `Next:` line follows). |
 | `Next: paste your <Title> key as your reply.` | A `key` card waits for its key. While the agent restarts, it goes on with `Send it now and it loads with this same restart.` |
 | `Next: connect <Title> to finish. Its sign-in and any app keys are entered outside this chat, never in it.` | A `yes` applied an `add` card whose `signin` card still waits. `setupresult.next` names that card. |
@@ -29861,15 +29901,15 @@ The first two examples start with a person's message in your chat and end with t
 
 **2. Your app shows** "Connect Serper" with one field, "Serper API Key", from the card's `fields`, and a **Save** button.
 
-**3. The person pastes the key and presses Save.** Your backend sends the card with `values: { "apikey": "..." }`; the answer is in [Key](#key-serper). The agent restarts once and has `serper__web_search`.
+**3. The person pastes the key and presses Save.** Your backend sends the card with `values: { "apikey": "..." }`; the answer is in [Key](#key-serper). The running agent has `serper__web_search` from its next message, with no restart.
 
 **In a chat without cards**, the person pastes the key as the reply:
 
 ```text
 Message/Send  "<the Serper API key>"
            -> content: "[key saved to Serper]"
-              response: "✅ Applied: Serper connected.\nYour agent is restarting to load the change. Continue in a minute or two."
-              setupresult: { "applied": ["h6w3k9p2m5tc"], "dismissed": [], "failed": [], "restarting": true }
+              response: "✅ Applied: Serper connected.\nYour agent uses the change from its next message."
+              setupresult: { "applied": ["h6w3k9p2m5tc"], "dismissed": [], "failed": [], "restarting": false, "live": true }
 ```
 
 Even here, a form is safer than the chat: send the key from it with `SetupCardApply` `values`.
@@ -29882,7 +29922,7 @@ Even here, a form is safer than the chat: send the key from it with `SetupCardAp
 
 **3. The person enters the app's keys and presses Sign in.** Your backend sends the card with the keys in `values` and your `redirecturl`, and opens the answer's `authorizeUrl` in a popup. The card shows "Waiting for the sign-in".
 
-**4. The person agrees on HubSpot's page.** The popup lands on your `redirecturl` with `connector_connected=true`, and the agent restarts with HubSpot's tools. Your page closes the popup.
+**4. The person agrees on HubSpot's page.** The popup lands on your `redirecturl` with `connector_connected=true`, and the running agent has HubSpot's tools from its next message. Your page closes the popup.
 
 **5. Your backend records the card** with `SetupCardApply` and no `values`, and the card shows "Applied" and `HubSpot connected`.
 
@@ -29891,7 +29931,7 @@ Even here, a form is safer than the chat: send the key from it with `SetupCardAp
 ```text
 Message/Send  "yes"
            -> response: "A yes cannot connect HubSpot. Its sign-in and any app keys are entered outside this chat, never in it."
-              setupresult: { "applied": [], "dismissed": [], "failed": [], "restarting": false,
+              setupresult: { "applied": [], "dismissed": [], "failed": [], "restarting": false, "live": false,
                              "next": [{ "connector": "hubspot", "title": "HubSpot", "mode": "signin", "cardid": "q8n2v5k1m7xt", "messageguid": "a7b8c9d0-e1f2-3456-a789-0123456789ab" }] }
 ```
 
@@ -29967,7 +30007,7 @@ Each row also carries `user`, your key owner's account, left out here. The rows 
 - Each connect mode has its flow: `key` (the card's `fields` as `values`), `signin` (`SetupCardApply` with your `redirecturl` and the card's `fields` as `values`, your app's keys among them, the browser sign-in, then `SetupCardApply` again to record the card, only after `connector_connected=true`) and `project` (your project picker, then `SetupCardApply` with `wiroprojectguid`); any connector also connects on your settings screens with the [Agent Connectors](/docs/agent-connectors) calls, account pickers included.
 - `next` from blocks, `SetupCardApply` answers, `setupresult` and webhooks turns into your own Connect buttons.
 - Every `result: false` shows its sentence or your own words; code branches on codes and statuses, never on sentences.
-- Every restart signal (`restarting`, `restart`, `connector_connected=true`, and the saves that answer none) shows a restarting line until `UserAgent/Detail` reads `status: 4`, and the poll stops at `0`, `5` or `6`; Send refusals during a restart are shown as they are.
+- A change the running agent got live (`live: true`, `restart: "live"`) shows as applied with no wait. Every restart signal (`restarting: true`, `restart: "scheduled"`, and the saves that answer none) shows a restarting line until `UserAgent/Detail` reads `status: 4`, and the poll stops at `0`, `5` or `6`; Send refusals during a restart are shown as they are.
 - Typed approvals and pasted keys from people who must not change the agent never reach Wiro, and neither do typed answers to approval cards from people who must not approve its actions.
 - Keys never go into chat messages; secrets show as "Saved", and the mask sent back is left alone.
 - Your `redirecturl` page handles `connector_connected=true` and `connector_error=<code>`, inside a popup or as a full page, and confirms with `ConnectorList`.
@@ -29983,7 +30023,7 @@ Each row also carries `user`, your key owner's account, left out here. The rows 
 - [Agent Webhooks](/docs/agent-webhooks): the callback payload.
 - [Agent Connectors](/docs/agent-connectors): the connector catalog, connecting, sign-ins, account pickers and disconnecting.
 - [Agent Credentials](/docs/agent-credentials): channels, the Wiro project and settings.
-- [Agent Overview](/docs/agent-overview): Deploy, Detail, UpdateSettings and restarts.
+- [Agent Overview](/docs/agent-overview): Deploy, Detail, UpdateSettings, and [Live Changes and Restarts](/docs/agent-overview#live-changes-and-restarts).
 - [Screen and Take Control](/docs/agent-overview#screen-and-take-control): the agent's Screen in the Wiro panel, with its rules, limits and log rows, and the [`ScreenInfo`](/docs/agent-overview#post-useragentrealtimescreeninfo) and [`ScreenStart`](/docs/agent-overview#post-useragentrealtimescreenstart) reference.
 - Each connector's own page, such as `https://wiro.ai/connectors/serper`: its fields, setup steps and tools.
 
@@ -30341,7 +30381,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   }'
 ```
 
-Response: `{ "result": true, "errors": [], "restarting": false }`. A running agent gets the new text right away, without a restart.
+Response: `{ "result": true, "errors": [], "restarting": false, "live": true }`. A running agent gets the new text right away, without a restart.
 
 ### Example: Lead Generation Manager (ICP Definition)
 
@@ -30579,7 +30619,7 @@ The response carries the post-revert state (`current_value`, `current_interval`,
 
 The top-level `skills[]` array on `UserAgent/Detail` lists the Skills that are on, as an **object array** sorted by name: `[{ name, enabled: true, _edited, _user_created }, ...]`. A Skill that is off is not in it, so `enabled` is always `true`; the full catalog of Skills is on [`POST /Skills/List`](#post-skillslist). `_edited` is `true` for a Skill you turned on yourself rather than one the template or a dependency brought, and `_user_created` is `true` for a name neither the template nor the registry has. Example: `[{ "name": "util-diagram", "enabled": true, "_edited": false, "_user_created": false }, { "name": "util-weather", "enabled": true, "_edited": true, "_user_created": false }]`. To enable or disable several skills in one shot, use **`POST /UserAgent/SkillsApply`**. Even when you only want to flip a single skill, send it as a one-entry `skills` map. Connectors are not in this list: a connected connector is on (see [Agent Connectors](/docs/agent-connectors)). The endpoint:
 
-1. Triggers exactly **one agent restart** after the new skill set lands.
+1. Applies the new skill set to a running agent with no restart, unless a Skill needs one: turning `util-voice-receptionist`, `util-twilio-channel`, `util-web-channel` or `util-newsletter-compose` on or off restarts it once.
 2. Uses **idempotency**: concurrent calls or client retries can't apply the change twice.
 3. Is **atomic**: the whole batch lands, or none of it does.
 
@@ -30738,7 +30778,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   }'
 ```
 
-All three requests succeed independently. The agent restarts once: the server coalesces the restart trigger after all three succeed within the same request window.
+All three requests succeed independently, and each reaches a running agent with no restart: it uses the change from its next message.
 
 ## Available Skills by Agent
 
@@ -30848,7 +30888,7 @@ The voice channels are Skills too: Twilio Voice Channel (`util-twilio-channel`) 
 
 `POST /Skills/List` with `{ "category": "util" }` returns every Skill.
 
-> **Restart behavior:** On a starting or running agent (status 3 or 4), `SkillsApply`, `CustomSkillRename`, `CustomSkillDelete` and `CustomSkillRevert` restart it so the new skill configuration is picked up, as credential updates do. `CustomSkillUpsert` restarts it for a new skill or task, a new `interval` or an `enabled` change. A change to the text or description of an existing one reaches the running agent without a restart, except for `cs-approval-policy`. See [Automatic Restart](/docs/agent-overview#automatic-restart).
+> **No restart for most changes:** `SkillsApply`, `CustomSkillUpsert`, `CustomSkillRename`, `CustomSkillDelete` and `CustomSkillRevert` reach a running agent (status 4) with no restart: it uses the new skill set, or the new or changed skill or task (`cs-approval-policy` included), from its next message. Turning `util-voice-receptionist`, `util-twilio-channel`, `util-web-channel` or `util-newsletter-compose` on or off restarts it, as credential updates do. `live` and `restarting` in the answer say which happened. See [Live Changes and Restarts](/docs/agent-overview#live-changes-and-restarts).
 
 ## Using Wiro AI Models from Your Agent
 
@@ -31442,6 +31482,7 @@ A `token_usage` event records the tokens and the AI usage of one billed turn: a 
 | `AGENT_BROWSER_RESET` | `Agent browser reset` (see [Resetting the Browser](/docs/agent-overview#resetting-the-browser)) |
 | `AGENT_DISK_ALMOST_FULL`, `AGENT_DISK_FULL` | `Disk almost full: 210 MB of 250 MB used.`, `Disk full: 260 MB of 250 MB used. The agent can't save new files until some are deleted.` (see [Disk Space](/docs/agent-overview#disk-space)) |
 | `AGENT_DISK_TEMP_CLEARED`, `AGENT_DISK_HOST_RESTART` | `Temporary files passed 1 GB, so the agent restarted and cleared them.`, `The agent restarted to clear its temporary files.` (see [Disk Space](/docs/agent-overview#disk-space)) |
+| `AGENT_CHANGE_APPLIED`, `AGENT_CHANGE_RESTARTED` | `Change applied without a restart: Connectors, Your Setup`, `Agent restarted to load a change` (written by Wiro: a change reached the running agent with no restart, naming what it touched, or the agent restarted to load one; see [Live Changes and Restarts](/docs/agent-overview#live-changes-and-restarts)) |
 
 #### Note rows
 
