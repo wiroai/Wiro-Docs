@@ -78,6 +78,7 @@ A `token_usage` event records the tokens and the AI usage of one billed turn: a 
 | `model` | `string` | Canonical model slug that served the turn (e.g. `"openai/gpt-5.4"`). |
 | `tokens` | `object` | Nested token counts in **camelCase**: `{ input, output, cacheRead, cacheWrite, total }` (each an integer). |
 | `tokencost` | `number` | The turn's AI usage, in cents (`5` is $0.05). |
+| `tokencostestimate` | `boolean?` | `true` when Wiro measures the agent's model calls itself (see [Rows that cover several model calls](/docs/agent-transactions#metered-token-rows)): `tokencost` is then an estimate, the turn's calls priced at the agent's rates. What was billed is in the agent's `ai-usage` rows in [Transactions](/docs/agent-transactions), which add calls up across turns, carry what is left under a cent to the next row and can include calls the turn's row doesn't count. Missing when the turn was billed exactly its `tokencost`. |
 | `durationMs` | `number` | Wall-clock duration of the turn in milliseconds. |
 | `calls` | `number` | Number of LLM calls made during the turn. |
 | `remainingcredits` | `number` | Deprecated: kept for older readers and will be removed. Read the agent's AI usage and balance from `usage` on [`UserAgent/Detail`](/docs/agent-overview#usage-object). |
@@ -127,23 +128,26 @@ A `token_usage` event records the tokens and the AI usage of one billed turn: a 
 
 `title` is the line to show. `summary` holds the names and amounts behind it, never a connector value. `userUuid` and `user` name who did it. When an API key made the change, the title ends with `, via API key "<project name>"` or `, via API key`. A date in a title, such as the day a plan ends or a plan change starts, is the day in UTC and says so: `2026-06-01 (UTC)`. With both, the key comes last: `Plan cancelled, ends 2026-06-01 (UTC), via API key "Acme App"`.
 
+A title names what changed as the agent's page does: a Skill by its title, a custom skill or Scheduled Task by its key in words (`cs-brand-voice` reads `Brand Voice`), a setting by its label with the new value in parentheses, a saved field by its label, and a connector by its catalog `title`. `summary` keeps the keys, such as `util-weather`, `cs-brand-voice`, `timezone Europe/Istanbul` or `wiro.apikey`, and a connector's `slug` as `summary.connector`. A name that has no title stays as it is, and a connector row written before connectors were named by title names its `slug`.
+
 | `kind` | Example `title` |
 |--------|-----------------|
 | `AGENT_STARTED`, `AGENT_STOPPED`, `AGENT_RESTARTED` | `Agent started`, `Agent stopped`, `Agent restarted` |
+| `AGENT_RUNNING` | `Agent running: started in 32 seconds` (written by Wiro once a start has the agent running, whatever started it: the first start after a deploy, a restart to load a change or a `Start`; `summary.seconds` is how long the start took, and without it the title reads `Agent running`) |
 | `AGENT_RENAMED` | `Agent renamed from "Inbox Bot" to "Inbox Watcher"` |
 | `AGENT_UPDATED` | `Agent details updated: description, cover` |
-| `AGENT_SETTINGS_UPDATED` | `Agent settings updated: timezone Europe/Istanbul`, `Agent settings updated: screen off` |
+| `AGENT_SETTINGS_UPDATED` | `Agent settings updated: Time Zone (Europe/Istanbul)`, `Agent settings updated: Screen (off)` |
 | `AGENT_TRANSFERRED` | `Agent moved to a team workspace`, `Agent moved to the personal workspace`; the system's rows when the agent's team or organization is deleted read `Agent moved to the personal workspace: its team was deleted` and `Agent moved to the personal workspace: its organization was deleted` |
-| `AGENT_INSTRUCTION_ADDED`, `AGENT_INSTRUCTION_UPDATED`, `AGENT_INSTRUCTION_RENAMED`, `AGENT_INSTRUCTION_DELETED`, `AGENT_INSTRUCTION_REVERTED` | `Custom skill added: cs-brand-voice`, `Scheduled task updated: cs-cron-blog-scanner (text, schedule 0 9 * * 1)`, `Custom skill renamed: cs-brand-voice to cs-house-style`, `Scheduled task deleted: cs-cron-blog-scanner`, `Custom skill reverted to its preset: cs-brand-voice` |
-| `AGENT_SKILLS_UPDATED` | `Skills updated: util-web-channel off` |
-| `AGENT_CREDENTIAL_SAVED` | `Setting saved: wiro.apikey` (a channel, the agent's Wiro project or another setting of the agent; several fields read `Settings saved: …`; connecting a connector writes `CONNECTOR_CONNECTED`) |
-| `AGENT_CREDENTIAL_REVEALED` | `Setting revealed: telegram.bottoken` (someone showed a saved key in full in the Wiro panel; the row never holds the key) |
+| `AGENT_INSTRUCTION_ADDED`, `AGENT_INSTRUCTION_UPDATED`, `AGENT_INSTRUCTION_RENAMED`, `AGENT_INSTRUCTION_DELETED`, `AGENT_INSTRUCTION_REVERTED` | `Custom skill added: Brand Voice`, `Scheduled task updated: Blog Scanner (text, schedule 0 9 * * 1)`, `Custom skill renamed: Brand Voice to House Style`, `Scheduled task deleted: Blog Scanner`, `Custom skill reverted to its preset: Brand Voice` |
+| `AGENT_SKILLS_UPDATED` | `Skills updated: Diagrams on, Weather off` |
+| `AGENT_CREDENTIAL_SAVED` | `Setting saved: Wiro Project`, `Settings saved: Telegram Bot Token, Allowed Telegram DM User IDs` (a channel, the agent's Wiro project or another setting of the agent; connecting a connector writes `CONNECTOR_CONNECTED`, and connecting Wiro AI Models with a project writes only that) |
+| `AGENT_CREDENTIAL_REVEALED` | `Setting revealed: Telegram Bot Token` (someone showed a saved key in full in the Wiro panel; the row never holds the key) |
 | `AGENT_CREDENTIAL_REMOVED` | `Disconnected: wiro` (the agent's Wiro project was disconnected because the agent moved to a workspace the project isn't in, or because the project's team or organization was deleted) |
-| `CONNECTOR_CONNECTED`, `CONNECTOR_DISCONNECTED` | `Connector connected: serper`, `Connector disconnected: serper` (see [Agent Connectors](/docs/agent-connectors)). When the agent moves to a workspace its Wiro project isn't in, or its Wiro project's team or organization is deleted, Wiro writes `Connector disconnected: wiro` with `summary.reason` `"workspace"` next to the `AGENT_CREDENTIAL_REMOVED` row (see [Moving the agent to another workspace](/docs/agent-connectors#moving-the-agent-to-another-workspace)) |
-| `CONNECTOR_ACCOUNTS_SET` | `Connector accounts set: facebook-pages` |
-| `CONNECTOR_REAUTH` | `Connector needs to be connected again: facebook-pages` (written by Wiro when a sign-in expired or was revoked) |
-| `CONNECTOR_PERMISSIONS_SET` | `Connector permissions changed: wordpress` (see [ConnectorSetPermissions](/docs/agent-connectors#post-useragentconnectorsetpermissions)); `Connector permissions changed: wordpress (update_post), from chat` when Always allow on an approval card changed a tool's values |
-| `CONNECTOR_APPROVAL_ANSWERED` | `Approval allow: wordpress update_post` (`allow`, `always` or `decline`: the answer that took effect, so an Always allow that allowed the call once reads `allow`; see [ApprovalCardAct](/docs/agent-connectors#post-useragentmessageapprovalcardact)). A card answered in its Telegram, Slack or Discord conversation reads `Approval allow: wordpress create_post in Telegram` |
+| `CONNECTOR_CONNECTED`, `CONNECTOR_DISCONNECTED` | `Connector connected: Serper`, `Connector disconnected: Serper` (see [Agent Connectors](/docs/agent-connectors)). When the agent moves to a workspace its Wiro project isn't in, or its Wiro project's team or organization is deleted, Wiro writes `Connector disconnected: Wiro AI Models` with `summary.reason` `"workspace"` next to the `AGENT_CREDENTIAL_REMOVED` row (see [Moving the agent to another workspace](/docs/agent-connectors#moving-the-agent-to-another-workspace)) |
+| `CONNECTOR_ACCOUNTS_SET` | `Connector accounts set: Facebook Pages` |
+| `CONNECTOR_REAUTH` | `Connector needs to be connected again: Facebook Pages` (written by Wiro when a sign-in expired or was revoked) |
+| `CONNECTOR_PERMISSIONS_SET` | `Connector permissions changed: Serper web_search, Chat Ask to Block`: up to three of the cells the change moved, then how many more, or `Connector permissions changed: Serper reset to the defaults`, with each cell in `summary.changes` (see [ConnectorSetPermissions](/docs/agent-connectors#post-useragentconnectorsetpermissions)); `Connector permissions changed: WordPress (update_post), from chat` when Always allow on an approval card changed a tool's values |
+| `CONNECTOR_APPROVAL_ANSWERED` | `Approval allow: WordPress update_post` (`allow`, `always` or `decline`: the answer that took effect, so an Always allow that allowed the call once reads `allow`; see [ApprovalCardAct](/docs/agent-connectors#post-useragentmessageapprovalcardact)). A card answered in its Telegram, Slack or Discord conversation reads `Approval allow: WordPress create_post in Telegram` |
 | `AGENT_PLAN_STARTED`, `AGENT_PLAN_RENEWED`, `AGENT_PLAN_CANCELLED`, `AGENT_PLAN_RESUMED` | `Starter plan started: $5.00 charged`, `Starter plan renewed: $5.00 charged`, `Plan cancelled, ends 2026-06-01 (UTC)`, `Plan cancellation undone` |
 | `AGENT_PLAN_ENDED` | `Starter plan ended: the wallet could not pay the renewal`, `Pro plan ended: it was set to cancel` (written by Wiro; the agent stops when its plan ends) |
 | `AGENT_PLAN_NOT_SAVED` | `Pro plan renewal did not finish: $24.00 charged`, `Max plan start did not finish: $100.00 charged` (the wallet paid and the plan could not be saved; see [Plan payments that did not finish](/docs/agent-transactions#plan-not-saved)) |
@@ -312,7 +316,7 @@ With a `lines` cap, older who-did-what rows of the day can take the place of the
     {
       "ts": "2026-05-03T09:12:44.000Z",
       "kind": "AGENT_CREDENTIAL_SAVED",
-      "title": "Setting saved: wiro.apikey",
+      "title": "Setting saved: Wiro Project",
       "ok": true,
       "summary": { "fields": ["wiro.apikey"] },
       "userUuid": "ada-uuid",

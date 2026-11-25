@@ -32,6 +32,20 @@ Sent alone while the two rules are off, the channel is refused and nothing chang
 }
 ```
 
+Turning the channel off later also turns the two rules off, in the same change, when Web Voice Channel (`util-web-channel`) is off too: Voice Receptionist Rules needs a voice channel on, and the agent can't start without one. A change that would leave the rules on with neither channel on, such as turning Voice Receptionist Rules on by itself, is refused and nothing changes:
+
+```json
+{
+  "result": false,
+  "errors": [
+    { "code": 101, "message": "Voice calls need Twilio Voice Channel or Web Voice Channel on." }
+  ],
+  "deps": [
+    { "skill": "util-voice-receptionist", "requires": "util-twilio-channel", "requiresoneof": ["util-twilio-channel", "util-web-channel"] }
+  ]
+}
+```
+
 **Skill:** Twilio Voice Channel (`util-twilio-channel`), the phone channel. Its `docs_url` in [`Skills/List`](/docs/agent-skills#post-skillslist) is this page, `integration-twiliovoice-skills`.
 
 **Credential:** `twilio-voice`, the Account SID, Auth Token and phone numbers below.

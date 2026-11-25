@@ -16131,7 +16131,7 @@ Three [who-did-what rows](/docs/agent-logs#who-did-what-rows) in the agent's act
 }
 ```
 
-Read the rows in the panel under the agent's **Logs**, which its owner and the team's admins can open, or with [`POST /UserAgent/Logs`](/docs/agent-logs#logs-tail) and `LogsFile`, which also take an API key (`LogsList` lists the days that have rows). The owner's Account Activity page at [wiro.ai/panel/account/activity](https://wiro.ai/panel/account/activity) lists them too, by `kind`. A change to the `screen` setting writes an `AGENT_SETTINGS_UPDATED` row: `Agent settings updated: screen off` or `screen on`. A browser reset writes an `AGENT_BROWSER_RESET` row: `Agent browser reset` (see [Resetting the Browser](#resetting-the-browser)).
+Read the rows in the panel under the agent's **Logs**, which its owner and the team's admins can open, or with [`POST /UserAgent/Logs`](/docs/agent-logs#logs-tail) and `LogsFile`, which also take an API key (`LogsList` lists the days that have rows). The owner's Account Activity page at [wiro.ai/panel/account/activity](https://wiro.ai/panel/account/activity) lists them too, by `kind`. A change to the `screen` setting writes an `AGENT_SETTINGS_UPDATED` row: `Agent settings updated: Screen (off)` or `Screen (on)`. A browser reset writes an `AGENT_BROWSER_RESET` row: `Agent browser reset` (see [Resetting the Browser](#resetting-the-browser)).
 
 **With a project API key.** A screen your app opens with a key adds the same rows, named after the key's owner, the person who created its project, whichever of your users it was for. All of your users count as one: on each agent, a project's key writes at most one `Watched the agent's screen` row an hour and one `Took control of the agent's screen` row every 10 minutes, apart from the rows the owner's own sessions in the Wiro panel write. Those two titles end with `, via API key "<project name>"` and carry `summary: { "project": "<project name>" }`, or end with `, via API key` for a personal project's key on a team agent. `AGENT_SCREEN_CONTROL_ENDED` names the key's owner too: its title ends with `, via API key`, never with the project name, and its `summary` stays `{ seconds, reason }`. Keep your own record of which of your users got each ticket (see [Screen in Your Own App](#screen-in-your-own-app)).
 
@@ -17038,6 +17038,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `cover` | `string\|null` | Per-instance cover URL, `null` until one is set with `Deploy`, `Update` or `Cover`. Show `agent.cover` when it is `null`. |
 | `categories` | `array<string>` | Inherited from the template at deploy; editable via `Update`. |
 | `pinned` | `boolean` | `true` when the agent is pinned to its workspace's header dropdown (on a team agent, for every member). Mutate via `Pin`. |
+| `studioprojectid` | `string\|null` | Detail only: the id of the agent's workspace's [Studio project](/docs/studio#costs), the project Studio and the Workflow Agent work on. A project picker for the [Wiro AI Models connector](/docs/agent-connectors#connecting-it) can list it last and say Studio uses it: an agent connected with it runs its models on that same project. `null` when the workspace has none yet, or when it can't be read. |
 
 **Plan & AI usage**
 
@@ -17140,7 +17141,7 @@ Every provider entry under `credentials.<key>` carries:
 
 ##### Spend object
 
-`spend` says what the agent cost in the current calendar month (UTC), in USD. It counts only the rows of the wallet that pays for the agent now: after a move to another workspace, the earlier wallet's rows are not in it.
+`spend` says what the agent cost in the current calendar month (UTC), in USD with up to 4 decimals, so model runs that cost a fraction of a cent count as they were charged. It counts only the rows of the wallet that pays for the agent now: after a move to another workspace, the earlier wallet's rows are not in it.
 
 | Sub-field | Type | Description |
 |-----------|------|-------------|
@@ -18116,7 +18117,7 @@ Returns the earlier values of one credential's fields, newest first (up to 500).
 
 #### **POST** /UserAgent/SkillsApply
 
-Applies a batch of skill toggles in a single transactional unit. **This is the only skill-toggle endpoint API consumers should use**. Even when you're flipping a single skill, send it as a one-entry `skills` map. The single-skill `SkillToggle` endpoint also exists, but `SkillsApply` is the one to use from the API.
+Applies a batch of skill toggles in a single transactional unit. **This is the only skill-toggle endpoint API consumers should use**. Even when you're flipping a single skill, send it as a one-entry `skills` map. The single-skill `SkillToggle` endpoint also exists, but `SkillsApply` is the one to use from the API. `SkillToggle` follows the same rules, and its answer's `alsodisabled` lists the supporting parts that went off with the skill (see below), `[]` when none did.
 
 Every plan includes every skill, so a skill change never moves money: the plan's price and included AI usage stay as they are, and the agent needs no active plan for it. Change the plan itself with [`UpgradeTier`](#post-useragentupgradetier).
 
@@ -18132,6 +18133,8 @@ Designed for both the Skill Editor modal (multiple toggles in one save) and one-
 | `skills` | object | Yes | Map of `{ "skillname": true \| false }` for every Skill (`util-*`) you want to set. Skills not in the map keep their current state. A Skill you turn on needs the Skills in its `depends_on`, and theirs, on already or in the same map: `SkillsApply` doesn't turn them on and refuses the change with `101`. [`PricingPreview`](#post-useragentpricingpreview) with the same `skillOverrides` lists the whole set in `enabledSkills`. Connectors aren't in this map: connect one with [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect). |
 | `tier` | string | No | Kept for older clients. Skills never change the plan: a value other than the agent's current plan is refused with `Change the plan with UpgradeTier.` |
 | `idempotencyKey` | string | Yes | Caller-generated unique key (UUID recommended), a new one for each change. For 10 minutes, the same key with the same `skills` returns the first call's answer without applying the change again, and the same key with other `skills` is refused with `107`. After that, the key of a change that was applied is spent: a call with it that would change something is refused with `107`, and one that changes nothing answers `noOp: true`. |
+
+**Supporting parts and voice channels.** A Skill you turn off also turns off, in the same change, the supporting parts (`user_invocable: false` in [`Skills/List`](/docs/agent-skills#post-skillslist)) that nothing left on still needs, unless you set them in `skills` yourself. Turning off the last voice channel, Twilio Voice Channel (`util-twilio-channel`) or Web Voice Channel (`util-web-channel`), turns off Voice Receptionist Rules (`util-voice-receptionist`) and Voice Call Prep Rules (`util-voice-call-prep`) with it, and `pricing.enabledSkills` shows the set the change left. Voice Receptionist Rules needs one of the two channels on (its `requires_one_of`), since the agent can't start with it on alone: a change that would leave it on with neither, such as turning it on by itself, is refused with code `101` (see below).
 
 **Headers:** No extra header is needed. For team agents, use an API key from a project in the agent's team. Keys from another workspace are rejected. The caller must be the agent's owner or a team admin of its team. Plain team members are refused with code `97`, `Only a team admin can perform this action on a team-owned agent.`
 
@@ -18208,7 +18211,7 @@ When every entry in your `skills` map already matches the persisted state, the e
 | Code | Meaning |
 |------|---------|
 | `0` | `Unknown skill: <names>`: a name in `skills` that is not a Skill, such as one that starts with `int-` (Connectors are connected with [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect), not toggled). Nothing is changed. A name the agent still has can still be turned off. |
-| `101` | `Cannot apply: some skills require other skills to be enabled.`: a Skill that would be on needs one in its `depends_on` that would be off. Body includes `deps[]` (`{ skill, requires }`). Send those Skills in the same map. |
+| `101` | `Cannot apply: some skills require other skills to be enabled.`: a Skill that would be on needs one in its `depends_on` that would be off. Body includes `deps[]` (`{ skill, requires }`). Send those Skills in the same map. `Voice calls need Twilio Voice Channel or Web Voice Channel on.`: the change would leave Voice Receptionist Rules (`util-voice-receptionist`) on with neither voice channel on. Its `deps[]` entry adds `requiresoneof`, the Skills of which one must be on: `{ "skill": "util-voice-receptionist", "requires": "util-twilio-channel", "requiresoneof": ["util-twilio-channel", "util-web-channel"] }`. Turn one of them on in the same map, or turn both voice rules off. |
 | `102` | `Cannot apply: some skills conflict with each other.`: two Skills that would be on are mutually exclusive. Body includes `conflicts[]`. |
 | `104` | `A skill update is already in progress for this agent — please retry shortly.`: another skill change or plan change of this agent is running. Wait and retry. |
 | `105` | `Change the plan with UpgradeTier.`: the `tier` sent is not the agent's current plan. Nothing is changed. Change the plan with [`UpgradeTier`](#post-useragentupgradetier), and send skill changes without `tier`. |
@@ -18555,6 +18558,7 @@ Poll every 30 seconds or more.
 | `events[].model` | string \| null | Canonical model slug billed for the turn. Present on `token_usage` / `token_usage_idempotent` events. |
 | `events[].tokens` | object \| null | Token breakdown on `token_usage` events: `{ input, output, cacheRead, cacheWrite, total }`, **nested camelCase** (distinct from the flat lowercase `inputtokens` / `outputtokens` / … columns on message + transaction rows; same underlying data, different shape). |
 | `events[].tokencost` | number \| null | The turn's AI usage, in cents: `5` is $0.05. Present on `token_usage` events. |
+| `events[].tokencostestimate` | boolean \| null | `true` on the `token_usage` and `token_usage_idempotent` events of an agent whose model calls Wiro measures itself: `tokencost` is then an estimate, and the agent's [`ai-usage` rows](/docs/agent-transactions#metered-token-rows) say what was billed. Missing otherwise. |
 | `events[].calls` | number \| null | Number of LLM calls made in the billed turn. Present on `token_usage` events. |
 | `events[].userUuid` | string \| null | Originating actor's UUID. `"system"` for Scheduled Task runs and internal events. May be missing on older rows, in which case the server falls back to the agent owner. |
 | `events[].user` | object \| null | Resolved user shape (`uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`) when the actor is a real user. `null` for `system` events. |
@@ -25654,7 +25658,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetPermissions" \
 | `restart` | `live` (the running agent got the change with no restart: it applies to the agent's next action), `scheduled` (the running agent restarts to load the change), `none` (the agent isn't running or the connection isn't `connected`, so there was nothing to load) or `failed` (the change is saved, but the agent could not restart: it applies at the agent's next start). |
 | `permissions` | The connection's permissions after the change, as on [ConnectorPermissions](#post-useragentconnectorpermissions). |
 
-Each change also writes a `CONNECTOR_PERMISSIONS_SET` row to the agent's [activity log](/docs/agent-logs#who-did-what-rows). The refusals, with nothing saved:
+Each change also writes a `CONNECTOR_PERMISSIONS_SET` row to the agent's [activity log](/docs/agent-logs#who-did-what-rows), titled with the cells it moved, such as `Connector permissions changed: Serper web_search, Chat Ask to Block`: up to three, then `; and 2 more` for the rest, or `reset to the defaults` after a reset. Its `summary.changes` lists them, at most 10: `{ reset: true }` first after a reset, then each category column as `{ category, column, from, to }` and each tool column as `{ tool, column, from, to }`, where `column` is `chat` or `autopilot`, and `from` and `to` are the values before and after the change (for a category, the value its tools share, or `mixed` when they differ). `summary.more` counts the cells past 10, and a cell the change didn't move isn't listed. The refusals, with nothing saved:
 
 | Message | Why |
 |---------|-----|
@@ -26455,7 +26459,7 @@ The list can't be widened. Whatever the connector's catalog row says, Wiro gives
 
 ### Connecting it
 
-Its `credentialfields` have one field with `source: "wiro_project"`: show a picker of your projects ([`POST /Project/List`](/docs/projects)) instead of an input, and send the chosen project's id as `wiroprojectguid`. Connecting binds that project to the agent as its own Wiro project, exactly as [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) does: the same checks, the project's key saved as the agent's `wiro` credential, and a `Setting saved: wiro.apikey` row (`AGENT_CREDENTIAL_SAVED`) in the agent's [activity log](/docs/agent-logs#who-did-what-rows) when the project changed. The connector and every other Wiro call of the agent always use the same project.
+Its `credentialfields` have one field with `source: "wiro_project"`: show a picker of your projects ([`POST /Project/List`](/docs/projects)) instead of an input, and send the chosen project's id as `wiroprojectguid`. List the workspace's [Studio project](/docs/studio#costs), whose id [`UserAgent/Detail`](/docs/agent-overview#post-useragentdetail) gives as `studioprojectid`, last, and say Studio uses it: an agent connected with it runs its models on the project Studio and the Workflow Agent work on. Connecting binds that project to the agent as its own Wiro project, as [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) does: the same checks, and the project's key saved as the agent's `wiro` credential. When the project or anything else changed, the agent's [activity log](/docs/agent-logs#who-did-what-rows) gets the connect's own row, `Connector connected: Wiro AI Models` (`CONNECTOR_CONNECTED`), and no `Setting saved: Wiro Project` row (`AGENT_CREDENTIAL_SAVED`), which `CredentialProjectBind` writes. The connector and every other Wiro call of the agent always use the same project.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
@@ -26516,7 +26520,7 @@ When the agent moves to a workspace its Wiro project isn't in, with [`Team/Trans
 
 The same happens without a move when the team that owns the agent's Wiro project, or that team's organization, is deleted. The team's projects then go to their creators' personal workspaces, so an agent of another workspace that ran with one of them is disconnected from it and restarted too. Only a personal agent of the project's creator keeps it.
 
-Either way, the agent's activity log shows both: `Disconnected: wiro` (`AGENT_CREDENTIAL_REMOVED`) and `Connector disconnected: wiro` (`CONNECTOR_DISCONNECTED`, with `summary.reason` `"workspace"`). To give the agent a project again, connect Wiro AI Models with a project of the agent's workspace: that binds the project to the agent too.
+Either way, the agent's activity log shows both: `Disconnected: wiro` (`AGENT_CREDENTIAL_REMOVED`) and `Connector disconnected: Wiro AI Models` (`CONNECTOR_DISCONNECTED`, with `summary.reason` `"workspace"`). To give the agent a project again, connect Wiro AI Models with a project of the agent's workspace: that binds the project to the agent too.
 
 ## Errors
 
@@ -30180,6 +30184,7 @@ Lists all skills in the registry.
 | `capabilities` | `array<string>` | High-level snake_case capability tags from the closed vocabulary returned by [`POST /Skills/Capabilities`](#post-skillscapabilities). Drives the "Find skills that can: ___" picker. |
 | `suggested_connectors` | `array<string>` | **Optional: only present when set.** The connectors the skill works with, by catalog slug, such as `["google-ads", "meta-ads", "tiktok-ads"]` on Ads Manager Common Rules (`util-ads-manager-common`). Nothing connects by itself: connect the ones you want with [`POST /UserAgent/ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect). An `add` setup card names up to 3 of them that aren't connected yet in its `needs` (see [Setup From Chat](/docs/agent-messaging#setup-from-chat)). |
 | `depends_on` | `array<string>` | Other skill names that must be on while this one is. Deploy's `skills` and an `add` setup card turn them on with it. `SkillsApply` turns on only the names you send and refuses, with code `101` and `deps[]`, a change that leaves one of them off, so send them in the same call. |
+| `requires_one_of` | `array<string>` | **Optional: only present when set.** Skills of which one must be on while this one is, such as `["util-twilio-channel", "util-web-channel"]` on Voice Receptionist Rules (`util-voice-receptionist`), which the agent can't start with unless a voice channel is on. `SkillsApply` refuses a change that would leave such a Skill on with none of them on (code `101`), and turning off the last voice channel turns Voice Receptionist Rules off with it (see [`SkillsApply`](/docs/agent-overview#post-useragentskillsapply)). |
 | `conflicts_with` | `array<string>` | Mutually-exclusive skill names. `SkillsApply` rejects toggle batches that would enable two conflicting skills. |
 | `user_invocable` | `boolean` | `true` when end users can call the skill via chat. `false` marks supporting parts that come with another skill, such as Video Story & Shots (`util-video-shots`) and Document Videos (`util-video-docs`), which come with Video Creator (`util-video-creator`). |
 | `deprecated` | `boolean` | `true` for skills slated for removal, and `replacement` (if any) names the migration target. |
@@ -30681,7 +30686,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   }'
 ```
 
-`idempotencyKey` is required: use a UUID per "user clicks Save" event. A Skill whose `depends_on` would stay off is refused with code `101` and `deps[]`, and nothing changes: send its dependencies in the same call. The full response shape and error-code table live on [`SkillsApply`](/docs/agent-overview#post-useragentskillsapply).
+`idempotencyKey` is required: use a UUID per "user clicks Save" event. A Skill whose `depends_on` would stay off is refused with code `101` and `deps[]`, and nothing changes: send its dependencies in the same call. A Skill you turn off takes with it the supporting parts that nothing left on still needs, such as Voice Receptionist Rules and Voice Call Prep Rules with the last voice channel, and a change that would leave Voice Receptionist Rules on without a voice channel is refused with code `101`. The full response shape and error-code table live on [`SkillsApply`](/docs/agent-overview#post-useragentskillsapply).
 
 > **Template deploys too.** `SkillsApply` works on agents deployed from a marketplace template as well as on custom builds. On a template agent, a skill you change overrides the template for that skill only; later template updates still reach every skill you never changed.
 
@@ -31133,7 +31138,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 | `includedusd` | `number\|null` | The AI usage the plan includes this period. |
 | `usage` | `object\|null` | The agent's `usage`, as on [`UserAgent/Detail`](/docs/agent-overview#usage-object). Its `resetsat` is the end of the active plan's period, or the current time once that has passed and the renewal is due, and `null` when the agent has no active plan. |
 
-A field is `null` when its part of the summary could not be read: ask again, and never read it as zero.
+A field is `null` when its part of the summary could not be read: ask again, and never read it as zero. The amounts keep up to 4 decimals, as each row's `amountusd` does, so model runs that cost a fraction of a cent add up to what they cost, such as `0.0075`, rather than being rounded to whole cents.
 
 The summary also still carries the credit counts it had before dollar billing (`monthlycredits`, `renewalcredits`, `extracredits`, `usedcredits`, `remainingcredits`, `extrapacks`, `byModel` and the period fields), and the answer still carries the old `transactions` list and its `total`, except on a call made with a signed-in session, such as the Wiro dashboard's. They are deprecated and will be removed: read `rows`, `rowstotal` and the fields above.
 
@@ -31147,9 +31152,9 @@ The summary also still carries the credit counts it had before dollar billing (`
 | `title` | `string` | A short line that says what the row is, such as `AI Usage`, `Model Run` or the plan payment's line. Show it as it is: its wording can change. |
 | `description` | `string\|null` | The ledger's own line for the row, when it has one, such as `AI usage: Sales Desk (openai/gpt-5.6-terra, 54,969 tokens)`. |
 | `model` | `string\|null` | `ai-usage` rows: the model of the costliest call the row covers; `tokens` and `costs` add up all its calls, whatever their model. `model-run` rows: the model that ran, by its `owner/slug`. `null` otherwise. |
-| `tokens` | `object\|null` | `ai-usage` rows: `{ input, cacheRead, cacheWrite, output }` token counts, where `input` is uncached input. `null` otherwise. |
+| `tokens` | `object\|null` | `ai-usage` rows: `{ input, cacheRead, cacheWrite, output }` token counts, where `input` is uncached input. A row that paid only part of a charge holds its share of them, and its `costs` its share of the costs (see [Rows that cover several model calls](#metered-token-rows)). `null` otherwise. |
 | `costs` | `object\|null` | `ai-usage` rows: what each kind of token cost, in USD, exact to 7 decimals: `{ input, cacheRead, cacheWrite, output }`. `null` on other rows and on legacy rows. |
-| `amountusd` | `number\|null` | The row's amount in USD, in whole cents. When Wiro measures the agent's model calls itself, the exact `costs` can leave a fraction of a cent that carries to the agent's next row, so `amountusd` can differ from their sum by less than a cent. Otherwise each turn is billed on its own at its exact cost rounded up to the next cent, so a turn's `amountusd` can be less than a cent above the sum of its `costs`. `null` only on a legacy `plan` row whose record kept no payment (see below). |
+| `amountusd` | `number\|null` | The row's amount in USD, with up to 4 decimals, so a model run that cost less than a cent reads as it was charged, such as `0.0054`: show it so, not rounded to `$0.01`. AI usage is charged in whole cents. When Wiro measures the agent's model calls itself, the exact `costs` can leave a fraction of a cent that carries to the agent's next row, so `amountusd` can differ from their sum by less than a cent. Otherwise each turn is billed on its own at its exact cost rounded up to the next cent, so a turn's `amountusd` can be less than a cent above the sum of its `costs`. A charge the balance paid from more than one of its parts is split between their rows (see [Rows that cover several model calls](#metered-token-rows)). `null` only on a legacy `plan` row whose record kept no payment (see below). |
 | `paidfrom` | `string\|null` | How the row was paid: `"plan"` (the plan's included usage), `"balance"` (the Wiro balance), `"coupon"` (coupon credit in the balance) or `"card"` (a card payment, such as a plan renewal from before plans moved to the balance, or funds added by card). |
 | `direction` | `string` | `"out"` for spending and refunds, `"in"` for funds added and other credits. |
 | `surface` | `string\|null` | The surface the row was charged on, such as `"agent"`. `null` on older rows. |
@@ -31199,7 +31204,7 @@ for (const row of rows.filter(r => r.kind === 'ai-usage' && r.costs)) {
 console.log(totals);
 ```
 
-A batch paid more than one way carries the whole batch's `costs` on each of its rows (see [Rows that cover several model calls](#metered-token-rows)), so these totals can count it twice, as when the plan's included usage runs out partway through a batch.
+A batch paid partly by the plan's included usage and partly by the balance carries the whole batch's `costs` on its plan row and again across the rows the balance paid (see [Rows that cover several model calls](#metered-token-rows)), so these totals can count it twice. The rows of a charge the balance paid from more than one of its parts carry only their shares, so they count it once.
 
 ### Reconcile a plan change
 
@@ -31215,11 +31220,14 @@ On such a row:
 
 | Field | What it holds |
 |-------|---------------|
-| `amountusd` | The whole cents the row takes. |
-| `tokens`, `costs` | The sums of the calls it covers, by kind of token. |
+| `amountusd` | The whole cents the row takes, or its part of them when the balance paid them from more than one of its parts (see below). |
+| `tokens`, `costs` | The sums of the calls it covers, by kind of token, or its share of them when the balance paid from more than one of its parts (see below). |
 | `model`, `description` | The model of the costliest call; the description names the agent, that model and the calls' total tokens. |
 
-A batch paid more than one way gives a row for each way, such as when the plan's included usage runs out partway through it: one row with `paidfrom: "plan"`, then one paid from the balance. Each row takes its own part as `amountusd`, and each carries the whole batch's `tokens` and `costs`.
+A batch paid more than one way gives a row for each way, and each row takes its own part as `amountusd`:
+
+- When the plan's included usage runs out partway through a batch, one row has `paidfrom: "plan"` and the balance pays the rest. The plan's row carries the whole batch's `tokens` and `costs`, and so do the balance's rows together.
+- When the balance pays from more than one of its parts, such as coupon credit and then deposits, each part has a row that carries only its share of the `tokens` and `costs`, in proportion to its `amountusd`, so together they add up to the batch's. In [`Wallet/TransactionList`](/docs/organizations-api-access#billing-flow), such a row's `usage.share` is the part of the charge it paid. Older rows of such a charge carry the whole batch's `tokens` and `costs` on each.
 
 No field ties such a row to the turns it covers. To show usage per turn or per day, add up the rows by `createdat`.
 
@@ -31279,13 +31287,17 @@ resp = requests.post(
     json={"useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "limit": 100}
 ).json()
 
+def usd(amount):
+    # Up to 4 decimals for an amount under a cent, such as $0.0054
+    return f"${amount:.4f}".rstrip("0") if 0 < amount < 0.01 else f"${amount:.2f}"
+
 s = resp["summary"]
-print(f"{s['month']}: plan ${s['planusd']:.2f}, AI usage from the balance ${s['aiusagebalanceusd']:.2f}, model runs ${s['modelrunsusd']:.2f}")
+print(f"{s['month']}: plan {usd(s['planusd'])}, AI usage from the balance {usd(s['aiusagebalanceusd'])}, model runs {usd(s['modelrunsusd'])}")
 print(f"Rows: {resp['rowstotal']}")
 
 for row in resp["rows"][:10]:
     sign = "+" if row["direction"] == "in" else "-"
-    amount = "no amount" if row["amountusd"] is None else f"{sign}${row['amountusd']:.2f}"
+    amount = "no amount" if row["amountusd"] is None else f"{sign}{usd(row['amountusd'])}"
     print(f"  [{row['kind']:>9}] {amount}  {row['title']}  ({row['paidfrom']})")
 ```
 
@@ -31305,9 +31317,12 @@ const { data } = await axios.post(
 const { summary } = data;
 console.log(`AI usage this month: $${summary.aiusageplanusd} from the plan, $${summary.aiusagebalanceusd} from the balance`);
 
+// Up to 4 decimals for an amount under a cent, such as $0.0054
+const usd = (amount) => '$' + (amount > 0 && amount < 0.01 ? amount.toFixed(4).replace(/0+$/, '') : amount.toFixed(2));
+
 data.rows.slice(0, 10).forEach(row => {
   const sign = row.direction === 'in' ? '+' : '-';
-  const amount = row.amountusd === null ? 'no amount' : `${sign}$${row.amountusd.toFixed(2)}`;
+  const amount = row.amountusd === null ? 'no amount' : `${sign}${usd(row.amountusd)}`;
   console.log(`  [${row.kind.padStart(9)}] ${amount}  ${row.title}`);
 });
 ```
@@ -31330,11 +31345,16 @@ curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 $resp = json_decode(curl_exec($ch), true);
 curl_close($ch);
 
+// Up to 4 decimals for an amount under a cent, such as $0.0054
+function usd($amount) {
+    return $amount > 0 && $amount < 0.01 ? '$' . rtrim(sprintf('%.4f', $amount), '0') : sprintf('$%.2f', $amount);
+}
+
 $s = $resp['summary'];
 echo "Plan: \${$s['planusd']}, model runs: \${$s['modelrunsusd']}\n";
 foreach (array_slice($resp['rows'], 0, 10) as $row) {
     $sign = $row['direction'] === 'in' ? '+' : '-';
-    $amount = $row['amountusd'] === null ? 'no amount' : sprintf('%s$%.2f', $sign, $row['amountusd']);
+    $amount = $row['amountusd'] === null ? 'no amount' : $sign . usd($row['amountusd']);
     printf("[%s] %s %s\n", $row['kind'], $amount, $row['title']);
 }
 ```
@@ -31427,6 +31447,7 @@ A `token_usage` event records the tokens and the AI usage of one billed turn: a 
 | `model` | `string` | Canonical model slug that served the turn (e.g. `"openai/gpt-5.4"`). |
 | `tokens` | `object` | Nested token counts in **camelCase**: `{ input, output, cacheRead, cacheWrite, total }` (each an integer). |
 | `tokencost` | `number` | The turn's AI usage, in cents (`5` is $0.05). |
+| `tokencostestimate` | `boolean?` | `true` when Wiro measures the agent's model calls itself (see [Rows that cover several model calls](/docs/agent-transactions#metered-token-rows)): `tokencost` is then an estimate, the turn's calls priced at the agent's rates. What was billed is in the agent's `ai-usage` rows in [Transactions](/docs/agent-transactions), which add calls up across turns, carry what is left under a cent to the next row and can include calls the turn's row doesn't count. Missing when the turn was billed exactly its `tokencost`. |
 | `durationMs` | `number` | Wall-clock duration of the turn in milliseconds. |
 | `calls` | `number` | Number of LLM calls made during the turn. |
 | `remainingcredits` | `number` | Deprecated: kept for older readers and will be removed. Read the agent's AI usage and balance from `usage` on [`UserAgent/Detail`](/docs/agent-overview#usage-object). |
@@ -31476,23 +31497,26 @@ A `token_usage` event records the tokens and the AI usage of one billed turn: a 
 
 `title` is the line to show. `summary` holds the names and amounts behind it, never a connector value. `userUuid` and `user` name who did it. When an API key made the change, the title ends with `, via API key "<project name>"` or `, via API key`. A date in a title, such as the day a plan ends or a plan change starts, is the day in UTC and says so: `2026-06-01 (UTC)`. With both, the key comes last: `Plan cancelled, ends 2026-06-01 (UTC), via API key "Acme App"`.
 
+A title names what changed as the agent's page does: a Skill by its title, a custom skill or Scheduled Task by its key in words (`cs-brand-voice` reads `Brand Voice`), a setting by its label with the new value in parentheses, a saved field by its label, and a connector by its catalog `title`. `summary` keeps the keys, such as `util-weather`, `cs-brand-voice`, `timezone Europe/Istanbul` or `wiro.apikey`, and a connector's `slug` as `summary.connector`. A name that has no title stays as it is, and a connector row written before connectors were named by title names its `slug`.
+
 | `kind` | Example `title` |
 |--------|-----------------|
 | `AGENT_STARTED`, `AGENT_STOPPED`, `AGENT_RESTARTED` | `Agent started`, `Agent stopped`, `Agent restarted` |
+| `AGENT_RUNNING` | `Agent running: started in 32 seconds` (written by Wiro once a start has the agent running, whatever started it: the first start after a deploy, a restart to load a change or a `Start`; `summary.seconds` is how long the start took, and without it the title reads `Agent running`) |
 | `AGENT_RENAMED` | `Agent renamed from "Inbox Bot" to "Inbox Watcher"` |
 | `AGENT_UPDATED` | `Agent details updated: description, cover` |
-| `AGENT_SETTINGS_UPDATED` | `Agent settings updated: timezone Europe/Istanbul`, `Agent settings updated: screen off` |
+| `AGENT_SETTINGS_UPDATED` | `Agent settings updated: Time Zone (Europe/Istanbul)`, `Agent settings updated: Screen (off)` |
 | `AGENT_TRANSFERRED` | `Agent moved to a team workspace`, `Agent moved to the personal workspace`; the system's rows when the agent's team or organization is deleted read `Agent moved to the personal workspace: its team was deleted` and `Agent moved to the personal workspace: its organization was deleted` |
-| `AGENT_INSTRUCTION_ADDED`, `AGENT_INSTRUCTION_UPDATED`, `AGENT_INSTRUCTION_RENAMED`, `AGENT_INSTRUCTION_DELETED`, `AGENT_INSTRUCTION_REVERTED` | `Custom skill added: cs-brand-voice`, `Scheduled task updated: cs-cron-blog-scanner (text, schedule 0 9 * * 1)`, `Custom skill renamed: cs-brand-voice to cs-house-style`, `Scheduled task deleted: cs-cron-blog-scanner`, `Custom skill reverted to its preset: cs-brand-voice` |
-| `AGENT_SKILLS_UPDATED` | `Skills updated: util-web-channel off` |
-| `AGENT_CREDENTIAL_SAVED` | `Setting saved: wiro.apikey` (a channel, the agent's Wiro project or another setting of the agent; several fields read `Settings saved: …`; connecting a connector writes `CONNECTOR_CONNECTED`) |
-| `AGENT_CREDENTIAL_REVEALED` | `Setting revealed: telegram.bottoken` (someone showed a saved key in full in the Wiro panel; the row never holds the key) |
+| `AGENT_INSTRUCTION_ADDED`, `AGENT_INSTRUCTION_UPDATED`, `AGENT_INSTRUCTION_RENAMED`, `AGENT_INSTRUCTION_DELETED`, `AGENT_INSTRUCTION_REVERTED` | `Custom skill added: Brand Voice`, `Scheduled task updated: Blog Scanner (text, schedule 0 9 * * 1)`, `Custom skill renamed: Brand Voice to House Style`, `Scheduled task deleted: Blog Scanner`, `Custom skill reverted to its preset: Brand Voice` |
+| `AGENT_SKILLS_UPDATED` | `Skills updated: Diagrams on, Weather off` |
+| `AGENT_CREDENTIAL_SAVED` | `Setting saved: Wiro Project`, `Settings saved: Telegram Bot Token, Allowed Telegram DM User IDs` (a channel, the agent's Wiro project or another setting of the agent; connecting a connector writes `CONNECTOR_CONNECTED`, and connecting Wiro AI Models with a project writes only that) |
+| `AGENT_CREDENTIAL_REVEALED` | `Setting revealed: Telegram Bot Token` (someone showed a saved key in full in the Wiro panel; the row never holds the key) |
 | `AGENT_CREDENTIAL_REMOVED` | `Disconnected: wiro` (the agent's Wiro project was disconnected because the agent moved to a workspace the project isn't in, or because the project's team or organization was deleted) |
-| `CONNECTOR_CONNECTED`, `CONNECTOR_DISCONNECTED` | `Connector connected: serper`, `Connector disconnected: serper` (see [Agent Connectors](/docs/agent-connectors)). When the agent moves to a workspace its Wiro project isn't in, or its Wiro project's team or organization is deleted, Wiro writes `Connector disconnected: wiro` with `summary.reason` `"workspace"` next to the `AGENT_CREDENTIAL_REMOVED` row (see [Moving the agent to another workspace](/docs/agent-connectors#moving-the-agent-to-another-workspace)) |
-| `CONNECTOR_ACCOUNTS_SET` | `Connector accounts set: facebook-pages` |
-| `CONNECTOR_REAUTH` | `Connector needs to be connected again: facebook-pages` (written by Wiro when a sign-in expired or was revoked) |
-| `CONNECTOR_PERMISSIONS_SET` | `Connector permissions changed: wordpress` (see [ConnectorSetPermissions](/docs/agent-connectors#post-useragentconnectorsetpermissions)); `Connector permissions changed: wordpress (update_post), from chat` when Always allow on an approval card changed a tool's values |
-| `CONNECTOR_APPROVAL_ANSWERED` | `Approval allow: wordpress update_post` (`allow`, `always` or `decline`: the answer that took effect, so an Always allow that allowed the call once reads `allow`; see [ApprovalCardAct](/docs/agent-connectors#post-useragentmessageapprovalcardact)). A card answered in its Telegram, Slack or Discord conversation reads `Approval allow: wordpress create_post in Telegram` |
+| `CONNECTOR_CONNECTED`, `CONNECTOR_DISCONNECTED` | `Connector connected: Serper`, `Connector disconnected: Serper` (see [Agent Connectors](/docs/agent-connectors)). When the agent moves to a workspace its Wiro project isn't in, or its Wiro project's team or organization is deleted, Wiro writes `Connector disconnected: Wiro AI Models` with `summary.reason` `"workspace"` next to the `AGENT_CREDENTIAL_REMOVED` row (see [Moving the agent to another workspace](/docs/agent-connectors#moving-the-agent-to-another-workspace)) |
+| `CONNECTOR_ACCOUNTS_SET` | `Connector accounts set: Facebook Pages` |
+| `CONNECTOR_REAUTH` | `Connector needs to be connected again: Facebook Pages` (written by Wiro when a sign-in expired or was revoked) |
+| `CONNECTOR_PERMISSIONS_SET` | `Connector permissions changed: Serper web_search, Chat Ask to Block`: up to three of the cells the change moved, then how many more, or `Connector permissions changed: Serper reset to the defaults`, with each cell in `summary.changes` (see [ConnectorSetPermissions](/docs/agent-connectors#post-useragentconnectorsetpermissions)); `Connector permissions changed: WordPress (update_post), from chat` when Always allow on an approval card changed a tool's values |
+| `CONNECTOR_APPROVAL_ANSWERED` | `Approval allow: WordPress update_post` (`allow`, `always` or `decline`: the answer that took effect, so an Always allow that allowed the call once reads `allow`; see [ApprovalCardAct](/docs/agent-connectors#post-useragentmessageapprovalcardact)). A card answered in its Telegram, Slack or Discord conversation reads `Approval allow: WordPress create_post in Telegram` |
 | `AGENT_PLAN_STARTED`, `AGENT_PLAN_RENEWED`, `AGENT_PLAN_CANCELLED`, `AGENT_PLAN_RESUMED` | `Starter plan started: $5.00 charged`, `Starter plan renewed: $5.00 charged`, `Plan cancelled, ends 2026-06-01 (UTC)`, `Plan cancellation undone` |
 | `AGENT_PLAN_ENDED` | `Starter plan ended: the wallet could not pay the renewal`, `Pro plan ended: it was set to cancel` (written by Wiro; the agent stops when its plan ends) |
 | `AGENT_PLAN_NOT_SAVED` | `Pro plan renewal did not finish: $24.00 charged`, `Max plan start did not finish: $100.00 charged` (the wallet paid and the plan could not be saved; see [Plan payments that did not finish](/docs/agent-transactions#plan-not-saved)) |
@@ -31661,7 +31685,7 @@ With a `lines` cap, older who-did-what rows of the day can take the place of the
     {
       "ts": "2026-05-03T09:12:44.000Z",
       "kind": "AGENT_CREDENTIAL_SAVED",
-      "title": "Setting saved: wiro.apikey",
+      "title": "Setting saved: Wiro Project",
       "ok": true,
       "summary": { "fields": ["wiro.apikey"] },
       "userUuid": "ada-uuid",
@@ -33081,7 +33105,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
 
 ### Wallet Billing Flow
 
-Runs made with a team project's key are charged to the team wallet and appear in the team's `Wallet/TransactionList`; personal project keys charge your personal wallet. Call it with `{ "uuid": "me", "type": "all", "start": 0, "limit": 100 }` (`limit` up to 400); another `type`, such as `"payment"`, lists only the rows whose type contains it. The list also holds your agents' rows (their plan payments, AI usage and model runs, and funds added from an agent's page), each with the agent's `useragentguid`. A charge carries the `surface` that made it, and an agent's AI usage row carries `usage`: the model, the number of calls, and the `tokens` and `costs` (in USD) of each kind of token. A batch paid more than one way gives a row for each way, each with the whole batch's `usage`. AI usage an agent's plan covered is a `USAGE (AGENT PLAN)` row: it is listed for the record but took nothing from the balance, so leave it out when you add up spending (`type: "payment"` lists only the rows that took money from the balance). To narrow the list, pass `useragentguid` or `surface` (`web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, `studio`, `workflow-agent` or `workflow`; any other value answers `surface must be one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow.`). Older rows carry neither field. For one agent's rows in dollars with a monthly summary, use [`UserAgent/TransactionList`](/docs/agent-transactions).
+Runs made with a team project's key are charged to the team wallet and appear in the team's `Wallet/TransactionList`; personal project keys charge your personal wallet. Call it with `{ "uuid": "me", "type": "all", "start": 0, "limit": 100 }` (`limit` up to 400); another `type`, such as `"payment"`, lists only the rows whose type contains it. The list also holds your agents' rows (their plan payments, AI usage and model runs, and funds added from an agent's page), each with the agent's `useragentguid`. A charge carries the `surface` that made it, and an agent's AI usage row carries `usage`: the model, the number of calls, and the `tokens` and `costs` (in USD) of each kind of token. A batch paid partly by the agent's plan and partly by the balance gives a row for each, each with the whole batch's `usage`. When the balance pays from more than one of its parts, such as coupon credit and deposits, each part's row carries its share instead: `usage.share` is the part of the charge it paid, such as `0.090909` for $0.02 of a $0.22 charge, and its `tokens` and `costs` are cut to that share, so together they add up to the charge's. A row without `share` carries the whole charge's `usage`. AI usage an agent's plan covered is a `USAGE (AGENT PLAN)` row: it is listed for the record but took nothing from the balance, so leave it out when you add up spending (`type: "payment"` lists only the rows that took money from the balance). To narrow the list, pass `useragentguid` or `surface` (`web`, `api`, `mcp`, `llm-gateway`, `extension`, `agent`, `studio`, `workflow-agent` or `workflow`; any other value answers `surface must be one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow.`). Older rows carry neither field. For one agent's rows in dollars with a monthly summary, use [`UserAgent/TransactionList`](/docs/agent-transactions).
 
 ## Best Practices
 
@@ -33289,6 +33313,20 @@ Sent alone while the two rules are off, the channel is refused and nothing chang
   "deps": [
     { "skill": "util-twilio-channel", "requires": "util-voice-receptionist" },
     { "skill": "util-twilio-channel", "requires": "util-voice-call-prep" }
+  ]
+}
+```
+
+Turning the channel off later also turns the two rules off, in the same change, when Web Voice Channel (`util-web-channel`) is off too: Voice Receptionist Rules needs a voice channel on, and the agent can't start without one. A change that would leave the rules on with neither channel on, such as turning Voice Receptionist Rules on by itself, is refused and nothing changes:
+
+```json
+{
+  "result": false,
+  "errors": [
+    { "code": 101, "message": "Voice calls need Twilio Voice Channel or Web Voice Channel on." }
+  ],
+  "deps": [
+    { "skill": "util-voice-receptionist", "requires": "util-twilio-channel", "requiresoneof": ["util-twilio-channel", "util-web-channel"] }
   ]
 }
 ```
@@ -33546,7 +33584,7 @@ Turn on Web Voice Channel (`util-web-channel`) on a useragent and a single REST 
 
 **Skill that powers this channel:**
 
-- Web Voice Channel (`util-web-channel`): browser voice channel. Bundled on the Voice Receptionist template. On any other agent, turn it on in one `POST /UserAgent/SkillsApply` call together with the two Skills it depends on, Voice Receptionist Rules (`util-voice-receptionist`) and Voice Call Prep Rules (`util-voice-call-prep`): `"skills": { "util-web-channel": true, "util-voice-receptionist": true, "util-voice-call-prep": true }`. Sent alone while those are off, the channel is refused with code `101` and a `deps[]` list, and nothing changes. Deploy's `skills` turns them on with the channel.
+- Web Voice Channel (`util-web-channel`): browser voice channel. Bundled on the Voice Receptionist template. On any other agent, turn it on in one `POST /UserAgent/SkillsApply` call together with the two Skills it depends on, Voice Receptionist Rules (`util-voice-receptionist`) and Voice Call Prep Rules (`util-voice-call-prep`): `"skills": { "util-web-channel": true, "util-voice-receptionist": true, "util-voice-call-prep": true }`. Sent alone while those are off, the channel is refused with code `101` and a `deps[]` list, and nothing changes. Deploy's `skills` turns them on with the channel. Turning it off also turns those two Skills off when Twilio Voice Channel (`util-twilio-channel`) is off too, and a change that would leave Voice Receptionist Rules on with neither voice channel on is refused with code `101`, `Voice calls need Twilio Voice Channel or Web Voice Channel on.` (see [`SkillsApply`](/docs/agent-overview#post-useragentskillsapply)).
 
 **Agents that typically enable this channel:**
 

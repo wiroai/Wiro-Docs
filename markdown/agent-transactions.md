@@ -155,7 +155,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 | `includedusd` | `number\|null` | The AI usage the plan includes this period. |
 | `usage` | `object\|null` | The agent's `usage`, as on [`UserAgent/Detail`](/docs/agent-overview#usage-object). Its `resetsat` is the end of the active plan's period, or the current time once that has passed and the renewal is due, and `null` when the agent has no active plan. |
 
-A field is `null` when its part of the summary could not be read: ask again, and never read it as zero.
+A field is `null` when its part of the summary could not be read: ask again, and never read it as zero. The amounts keep up to 4 decimals, as each row's `amountusd` does, so model runs that cost a fraction of a cent add up to what they cost, such as `0.0075`, rather than being rounded to whole cents.
 
 The summary also still carries the credit counts it had before dollar billing (`monthlycredits`, `renewalcredits`, `extracredits`, `usedcredits`, `remainingcredits`, `extrapacks`, `byModel` and the period fields), and the answer still carries the old `transactions` list and its `total`, except on a call made with a signed-in session, such as the Wiro dashboard's. They are deprecated and will be removed: read `rows`, `rowstotal` and the fields above.
 
@@ -169,9 +169,9 @@ The summary also still carries the credit counts it had before dollar billing (`
 | `title` | `string` | A short line that says what the row is, such as `AI Usage`, `Model Run` or the plan payment's line. Show it as it is: its wording can change. |
 | `description` | `string\|null` | The ledger's own line for the row, when it has one, such as `AI usage: Sales Desk (openai/gpt-5.6-terra, 54,969 tokens)`. |
 | `model` | `string\|null` | `ai-usage` rows: the model of the costliest call the row covers; `tokens` and `costs` add up all its calls, whatever their model. `model-run` rows: the model that ran, by its `owner/slug`. `null` otherwise. |
-| `tokens` | `object\|null` | `ai-usage` rows: `{ input, cacheRead, cacheWrite, output }` token counts, where `input` is uncached input. `null` otherwise. |
+| `tokens` | `object\|null` | `ai-usage` rows: `{ input, cacheRead, cacheWrite, output }` token counts, where `input` is uncached input. A row that paid only part of a charge holds its share of them, and its `costs` its share of the costs (see [Rows that cover several model calls](#metered-token-rows)). `null` otherwise. |
 | `costs` | `object\|null` | `ai-usage` rows: what each kind of token cost, in USD, exact to 7 decimals: `{ input, cacheRead, cacheWrite, output }`. `null` on other rows and on legacy rows. |
-| `amountusd` | `number\|null` | The row's amount in USD, in whole cents. When Wiro measures the agent's model calls itself, the exact `costs` can leave a fraction of a cent that carries to the agent's next row, so `amountusd` can differ from their sum by less than a cent. Otherwise each turn is billed on its own at its exact cost rounded up to the next cent, so a turn's `amountusd` can be less than a cent above the sum of its `costs`. `null` only on a legacy `plan` row whose record kept no payment (see below). |
+| `amountusd` | `number\|null` | The row's amount in USD, with up to 4 decimals, so a model run that cost less than a cent reads as it was charged, such as `0.0054`: show it so, not rounded to `$0.01`. AI usage is charged in whole cents. When Wiro measures the agent's model calls itself, the exact `costs` can leave a fraction of a cent that carries to the agent's next row, so `amountusd` can differ from their sum by less than a cent. Otherwise each turn is billed on its own at its exact cost rounded up to the next cent, so a turn's `amountusd` can be less than a cent above the sum of its `costs`. A charge the balance paid from more than one of its parts is split between their rows (see [Rows that cover several model calls](#metered-token-rows)). `null` only on a legacy `plan` row whose record kept no payment (see below). |
 | `paidfrom` | `string\|null` | How the row was paid: `"plan"` (the plan's included usage), `"balance"` (the Wiro balance), `"coupon"` (coupon credit in the balance) or `"card"` (a card payment, such as a plan renewal from before plans moved to the balance, or funds added by card). |
 | `direction` | `string` | `"out"` for spending and refunds, `"in"` for funds added and other credits. |
 | `surface` | `string\|null` | The surface the row was charged on, such as `"agent"`. `null` on older rows. |
@@ -221,7 +221,7 @@ for (const row of rows.filter(r => r.kind === 'ai-usage' && r.costs)) {
 console.log(totals);
 ```
 
-A batch paid more than one way carries the whole batch's `costs` on each of its rows (see [Rows that cover several model calls](#metered-token-rows)), so these totals can count it twice, as when the plan's included usage runs out partway through a batch.
+A batch paid partly by the plan's included usage and partly by the balance carries the whole batch's `costs` on its plan row and again across the rows the balance paid (see [Rows that cover several model calls](#metered-token-rows)), so these totals can count it twice. The rows of a charge the balance paid from more than one of its parts carry only their shares, so they count it once.
 
 ### Reconcile a plan change
 
@@ -237,11 +237,14 @@ On such a row:
 
 | Field | What it holds |
 |-------|---------------|
-| `amountusd` | The whole cents the row takes. |
-| `tokens`, `costs` | The sums of the calls it covers, by kind of token. |
+| `amountusd` | The whole cents the row takes, or its part of them when the balance paid them from more than one of its parts (see below). |
+| `tokens`, `costs` | The sums of the calls it covers, by kind of token, or its share of them when the balance paid from more than one of its parts (see below). |
 | `model`, `description` | The model of the costliest call; the description names the agent, that model and the calls' total tokens. |
 
-A batch paid more than one way gives a row for each way, such as when the plan's included usage runs out partway through it: one row with `paidfrom: "plan"`, then one paid from the balance. Each row takes its own part as `amountusd`, and each carries the whole batch's `tokens` and `costs`.
+A batch paid more than one way gives a row for each way, and each row takes its own part as `amountusd`:
+
+- When the plan's included usage runs out partway through a batch, one row has `paidfrom: "plan"` and the balance pays the rest. The plan's row carries the whole batch's `tokens` and `costs`, and so do the balance's rows together.
+- When the balance pays from more than one of its parts, such as coupon credit and then deposits, each part has a row that carries only its share of the `tokens` and `costs`, in proportion to its `amountusd`, so together they add up to the batch's. In [`Wallet/TransactionList`](/docs/organizations-api-access#billing-flow), such a row's `usage.share` is the part of the charge it paid. Older rows of such a charge carry the whole batch's `tokens` and `costs` on each.
 
 No field ties such a row to the turns it covers. To show usage per turn or per day, add up the rows by `createdat`.
 
@@ -301,13 +304,17 @@ resp = requests.post(
     json={"useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "limit": 100}
 ).json()
 
+def usd(amount):
+    # Up to 4 decimals for an amount under a cent, such as $0.0054
+    return f"${amount:.4f}".rstrip("0") if 0 < amount < 0.01 else f"${amount:.2f}"
+
 s = resp["summary"]
-print(f"{s['month']}: plan ${s['planusd']:.2f}, AI usage from the balance ${s['aiusagebalanceusd']:.2f}, model runs ${s['modelrunsusd']:.2f}")
+print(f"{s['month']}: plan {usd(s['planusd'])}, AI usage from the balance {usd(s['aiusagebalanceusd'])}, model runs {usd(s['modelrunsusd'])}")
 print(f"Rows: {resp['rowstotal']}")
 
 for row in resp["rows"][:10]:
     sign = "+" if row["direction"] == "in" else "-"
-    amount = "no amount" if row["amountusd"] is None else f"{sign}${row['amountusd']:.2f}"
+    amount = "no amount" if row["amountusd"] is None else f"{sign}{usd(row['amountusd'])}"
     print(f"  [{row['kind']:>9}] {amount}  {row['title']}  ({row['paidfrom']})")
 ```
 
@@ -327,9 +334,12 @@ const { data } = await axios.post(
 const { summary } = data;
 console.log(`AI usage this month: $${summary.aiusageplanusd} from the plan, $${summary.aiusagebalanceusd} from the balance`);
 
+// Up to 4 decimals for an amount under a cent, such as $0.0054
+const usd = (amount) => '$' + (amount > 0 && amount < 0.01 ? amount.toFixed(4).replace(/0+$/, '') : amount.toFixed(2));
+
 data.rows.slice(0, 10).forEach(row => {
   const sign = row.direction === 'in' ? '+' : '-';
-  const amount = row.amountusd === null ? 'no amount' : `${sign}$${row.amountusd.toFixed(2)}`;
+  const amount = row.amountusd === null ? 'no amount' : `${sign}${usd(row.amountusd)}`;
   console.log(`  [${row.kind.padStart(9)}] ${amount}  ${row.title}`);
 });
 ```
@@ -352,11 +362,16 @@ curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 $resp = json_decode(curl_exec($ch), true);
 curl_close($ch);
 
+// Up to 4 decimals for an amount under a cent, such as $0.0054
+function usd($amount) {
+    return $amount > 0 && $amount < 0.01 ? '$' . rtrim(sprintf('%.4f', $amount), '0') : sprintf('$%.2f', $amount);
+}
+
 $s = $resp['summary'];
 echo "Plan: \${$s['planusd']}, model runs: \${$s['modelrunsusd']}\n";
 foreach (array_slice($resp['rows'], 0, 10) as $row) {
     $sign = $row['direction'] === 'in' ? '+' : '-';
-    $amount = $row['amountusd'] === null ? 'no amount' : sprintf('%s$%.2f', $sign, $row['amountusd']);
+    $amount = $row['amountusd'] === null ? 'no amount' : $sign . usd($row['amountusd']);
     printf("[%s] %s %s\n", $row['kind'], $amount, $row['title']);
 }
 ```

@@ -16193,7 +16193,7 @@ import type {
   }
 }
 </code></pre>
-<p>Read the rows in the panel under the agent's <strong>Logs</strong>, which its owner and the team's admins can open, or with <a href="/docs/agent-logs#logs-tail"><code>POST /UserAgent/Logs</code></a> and <code>LogsFile</code>, which also take an API key (<code>LogsList</code> lists the days that have rows). The owner's Account Activity page at <a href="https://wiro.ai/panel/account/activity">wiro.ai/panel/account/activity</a> lists them too, by <code>kind</code>. A change to the <code>screen</code> setting writes an <code>AGENT_SETTINGS_UPDATED</code> row: <code>Agent settings updated: screen off</code> or <code>screen on</code>. A browser reset writes an <code>AGENT_BROWSER_RESET</code> row: <code>Agent browser reset</code> (see <a href="#resetting-the-browser">Resetting the Browser</a>).</p>
+<p>Read the rows in the panel under the agent's <strong>Logs</strong>, which its owner and the team's admins can open, or with <a href="/docs/agent-logs#logs-tail"><code>POST /UserAgent/Logs</code></a> and <code>LogsFile</code>, which also take an API key (<code>LogsList</code> lists the days that have rows). The owner's Account Activity page at <a href="https://wiro.ai/panel/account/activity">wiro.ai/panel/account/activity</a> lists them too, by <code>kind</code>. A change to the <code>screen</code> setting writes an <code>AGENT_SETTINGS_UPDATED</code> row: <code>Agent settings updated: Screen (off)</code> or <code>Screen (on)</code>. A browser reset writes an <code>AGENT_BROWSER_RESET</code> row: <code>Agent browser reset</code> (see <a href="#resetting-the-browser">Resetting the Browser</a>).</p>
 <p><strong>With a project API key.</strong> A screen your app opens with a key adds the same rows, named after the key's owner, the person who created its project, whichever of your users it was for. All of your users count as one: on each agent, a project's key writes at most one <code>Watched the agent's screen</code> row an hour and one <code>Took control of the agent's screen</code> row every 10 minutes, apart from the rows the owner's own sessions in the Wiro panel write. Those two titles end with <code>, via API key "&lt;project name&gt;"</code> and carry <code>summary: { "project": "&lt;project name&gt;" }</code>, or end with <code>, via API key</code> for a personal project's key on a team agent. <code>AGENT_SCREEN_CONTROL_ENDED</code> names the key's owner too: its title ends with <code>, via API key</code>, never with the project name, and its <code>summary</code> stays <code>{ seconds, reason }</code>. Keep your own record of which of your users got each ticket (see <a href="#screen-in-your-own-app">Screen in Your Own App</a>).</p>
 <h3 id="turning-the-screen-off">Turning the Screen Off</h3>
 <p>The Screen is on for every agent by default. The agent's owner or a team admin turns it off with the <strong>Screen</strong> switch on the agent's <strong>Settings</strong> tab, or by sending <code>screen: "off"</code> to <a href="#post-useragentupdatesettings"><code>UpdateSettings</code></a> with a signed-in session or a project API key. Off closes the Screen for everyone, in the Wiro panel and in every app that shows it: nobody can watch or take control, the <strong>Screen</strong> button hides, <a href="#post-useragentrealtimescreeninfo"><code>ScreenInfo</code></a> answers <code>reason: "setting_off"</code>, <a href="#post-useragentrealtimescreenstart"><code>ScreenStart</code></a> is refused with code <code>94</code>, and screens that are open, a Take Control session included, close within about half a minute. Turning it back on brings the button back. A change never restarts the agent, and <code>null</code> goes back to <code>"on"</code>. Read the value as <code>screen</code> on <a href="#post-useragentdetail"><code>Detail</code></a>.</p>
@@ -17449,6 +17449,11 @@ for the channel contract.</p>
 <td><code>boolean</code></td>
 <td><code>true</code> when the agent is pinned to its workspace's header dropdown (on a team agent, for every member). Mutate via <code>Pin</code>.</td>
 </tr>
+<tr>
+<td><code>studioprojectid</code></td>
+<td><code>string|null</code></td>
+<td>Detail only: the id of the agent's workspace's <a href="/docs/studio#costs">Studio project</a>, the project Studio and the Workflow Agent work on. A project picker for the <a href="/docs/agent-connectors#connecting-it">Wiro AI Models connector</a> can list it last and say Studio uses it: an agent connected with it runs its models on that same project. <code>null</code> when the workspace has none yet, or when it can't be read.</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -17826,7 +17831,7 @@ for the channel contract.</p>
 </div>
 </div>
 <h5 id="spend-object">Spend object</h5>
-<p><code>spend</code> says what the agent cost in the current calendar month (UTC), in USD. It counts only the rows of the wallet that pays for the agent now: after a move to another workspace, the earlier wallet's rows are not in it.</p>
+<p><code>spend</code> says what the agent cost in the current calendar month (UTC), in USD with up to 4 decimals, so model runs that cost a fraction of a cent count as they were charged. It counts only the rows of the wallet that pays for the agent now: after a move to another workspace, the earlier wallet's rows are not in it.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -19744,7 +19749,7 @@ channel-enable endpoint or persisted switch.</p>
 <p><code>changedby_user</code> is the resolved actor object (<code>uuid</code>, <code>firstname</code>, <code>lastname</code>, <code>email</code>, <code>username</code>, <code>avatar</code>, <code>avatarinitials</code>). It is <code>null</code> when <code>changedby</code> is a system value such as <code>"system"</code> or <code>"backfill-*"</code>, or when the user record has been deleted.</p>
 </blockquote>
 <h4 id="post-useragentskillsapply"><strong>POST</strong> /UserAgent/SkillsApply</h4>
-<p>Applies a batch of skill toggles in a single transactional unit. <strong>This is the only skill-toggle endpoint API consumers should use</strong>. Even when you're flipping a single skill, send it as a one-entry <code>skills</code> map. The single-skill <code>SkillToggle</code> endpoint also exists, but <code>SkillsApply</code> is the one to use from the API.</p>
+<p>Applies a batch of skill toggles in a single transactional unit. <strong>This is the only skill-toggle endpoint API consumers should use</strong>. Even when you're flipping a single skill, send it as a one-entry <code>skills</code> map. The single-skill <code>SkillToggle</code> endpoint also exists, but <code>SkillsApply</code> is the one to use from the API. <code>SkillToggle</code> follows the same rules, and its answer's <code>alsodisabled</code> lists the supporting parts that went off with the skill (see below), <code>[]</code> when none did.</p>
 <p>Every plan includes every skill, so a skill change never moves money: the plan's price and included AI usage stay as they are, and the agent needs no active plan for it. Change the plan itself with <a href="#post-useragentupgradetier"><code>UpgradeTier</code></a>.</p>
 <p>Designed for both the Skill Editor modal (multiple toggles in one save) and one-off API mutations:</p>
 <ol>
@@ -19792,6 +19797,7 @@ channel-enable endpoint or persisted switch.</p>
 </table>
 </div>
 </div>
+<p><strong>Supporting parts and voice channels.</strong> A Skill you turn off also turns off, in the same change, the supporting parts (<code>user_invocable: false</code> in <a href="/docs/agent-skills#post-skillslist"><code>Skills/List</code></a>) that nothing left on still needs, unless you set them in <code>skills</code> yourself. Turning off the last voice channel, Twilio Voice Channel (<code>util-twilio-channel</code>) or Web Voice Channel (<code>util-web-channel</code>), turns off Voice Receptionist Rules (<code>util-voice-receptionist</code>) and Voice Call Prep Rules (<code>util-voice-call-prep</code>) with it, and <code>pricing.enabledSkills</code> shows the set the change left. Voice Receptionist Rules needs one of the two channels on (its <code>requires_one_of</code>), since the agent can't start with it on alone: a change that would leave it on with neither, such as turning it on by itself, is refused with code <code>101</code> (see below).</p>
 <p><strong>Headers:</strong> No extra header is needed. For team agents, use an API key from a project in the agent's team. Keys from another workspace are rejected. The caller must be the agent's owner or a team admin of its team. Plain team members are refused with code <code>97</code>, <code>Only a team admin can perform this action on a team-owned agent.</code></p>
 <h5 id="request_5">Request</h5>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/SkillsApply&quot; \
@@ -19912,7 +19918,7 @@ channel-enable endpoint or persisted switch.</p>
 </tr>
 <tr>
 <td><code>101</code></td>
-<td><code>Cannot apply: some skills require other skills to be enabled.</code>: a Skill that would be on needs one in its <code>depends_on</code> that would be off. Body includes <code>deps[]</code> (<code>{ skill, requires }</code>). Send those Skills in the same map.</td>
+<td><code>Cannot apply: some skills require other skills to be enabled.</code>: a Skill that would be on needs one in its <code>depends_on</code> that would be off. Body includes <code>deps[]</code> (<code>{ skill, requires }</code>). Send those Skills in the same map. <code>Voice calls need Twilio Voice Channel or Web Voice Channel on.</code>: the change would leave Voice Receptionist Rules (<code>util-voice-receptionist</code>) on with neither voice channel on. Its <code>deps[]</code> entry adds <code>requiresoneof</code>, the Skills of which one must be on: <code>{ "skill": "util-voice-receptionist", "requires": "util-twilio-channel", "requiresoneof": ["util-twilio-channel", "util-web-channel"] }</code>. Turn one of them on in the same map, or turn both voice rules off.</td>
 </tr>
 <tr>
 <td><code>102</code></td>
@@ -20553,6 +20559,11 @@ channel-enable endpoint or persisted switch.</p>
 <td><code>events[].tokencost</code></td>
 <td>number | null</td>
 <td>The turn's AI usage, in cents: <code>5</code> is $0.05. Present on <code>token_usage</code> events.</td>
+</tr>
+<tr>
+<td><code>events[].tokencostestimate</code></td>
+<td>boolean | null</td>
+<td><code>true</code> on the <code>token_usage</code> and <code>token_usage_idempotent</code> events of an agent whose model calls Wiro measures itself: <code>tokencost</code> is then an estimate, and the agent's <a href="/docs/agent-transactions#metered-token-rows"><code>ai-usage</code> rows</a> say what was billed. Missing otherwise.</td>
 </tr>
 <tr>
 <td><code>events[].calls</code></td>
@@ -30215,7 +30226,7 @@ https://app.example.com/agents/42/connectors?slug=facebook-pages&amp;connector_e
 </table>
 </div>
 </div>
-<p>Each change also writes a <code>CONNECTOR_PERMISSIONS_SET</code> row to the agent's <a href="/docs/agent-logs#who-did-what-rows">activity log</a>. The refusals, with nothing saved:</p>
+<p>Each change also writes a <code>CONNECTOR_PERMISSIONS_SET</code> row to the agent's <a href="/docs/agent-logs#who-did-what-rows">activity log</a>, titled with the cells it moved, such as <code>Connector permissions changed: Serper web_search, Chat Ask to Block</code>: up to three, then <code>; and 2 more</code> for the rest, or <code>reset to the defaults</code> after a reset. Its <code>summary.changes</code> lists them, at most 10: <code>{ reset: true }</code> first after a reset, then each category column as <code>{ category, column, from, to }</code> and each tool column as <code>{ tool, column, from, to }</code>, where <code>column</code> is <code>chat</code> or <code>autopilot</code>, and <code>from</code> and <code>to</code> are the values before and after the change (for a category, the value its tools share, or <code>mixed</code> when they differ). <code>summary.more</code> counts the cells past 10, and a cell the change didn't move isn't listed. The refusals, with nothing saved:</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -31504,7 +31515,7 @@ Reply &quot;yes&quot; to allow exactly this call once, or &quot;no&quot; to decl
 <p>The list can't be widened. Whatever the connector's catalog row says, Wiro gives the agent no other tool of the server, and also refuses any tool whose name has one of these words in it: <code>agent</code>, <code>workflow</code>, <code>billing</code>, <code>account</code>, <code>project</code>, <code>studio</code>, <code>credential</code>, <code>oauth</code>, <code>skill</code>, <code>spend</code>, <code>limit</code>, <code>access</code>, <code>wallet</code>, <code>team</code>, <code>organization</code>, <code>coupon</code>, <code>invoice</code>, <code>payment</code>, <code>key</code> or <code>user</code>. <code>tools</code> on <a href="#post-agentconnectordetail">Detail</a> lists only the tools the agent gets.</p>
 <p><strong>What the task tools reach.</strong> <code>list_tasks</code>, <code>get_task</code>, <code>wait_for_task</code>, <code>get_task_price</code>, <code>cancel_task</code> and <code>kill_task</code> work only on the tasks the agent started, with this connector or from the agent's skills. A task anyone else started, such as another agent on the same project, a person on wiro.ai or your own backend, is not listed, and the other tools answer for it as for a task that does not exist. Your own backend, calling with an API key of the agent's workspace, still sees every task in it. On an agent several of your users share, each of them can reach the runs the agent made for the others: use one agent per customer to keep them apart.</p>
 <h3 id="connecting-it">Connecting it</h3>
-<p>Its <code>credentialfields</code> have one field with <code>source: "wiro_project"</code>: show a picker of your projects (<a href="/docs/projects"><code>POST /Project/List</code></a>) instead of an input, and send the chosen project's id as <code>wiroprojectguid</code>. Connecting binds that project to the agent as its own Wiro project, exactly as <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>CredentialProjectBind</code></a> does: the same checks, the project's key saved as the agent's <code>wiro</code> credential, and a <code>Setting saved: wiro.apikey</code> row (<code>AGENT_CREDENTIAL_SAVED</code>) in the agent's <a href="/docs/agent-logs#who-did-what-rows">activity log</a> when the project changed. The connector and every other Wiro call of the agent always use the same project.</p>
+<p>Its <code>credentialfields</code> have one field with <code>source: "wiro_project"</code>: show a picker of your projects (<a href="/docs/projects"><code>POST /Project/List</code></a>) instead of an input, and send the chosen project's id as <code>wiroprojectguid</code>. List the workspace's <a href="/docs/studio#costs">Studio project</a>, whose id <a href="/docs/agent-overview#post-useragentdetail"><code>UserAgent/Detail</code></a> gives as <code>studioprojectid</code>, last, and say Studio uses it: an agent connected with it runs its models on the project Studio and the Workflow Agent work on. Connecting binds that project to the agent as its own Wiro project, as <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>CredentialProjectBind</code></a> does: the same checks, and the project's key saved as the agent's <code>wiro</code> credential. When the project or anything else changed, the agent's <a href="/docs/agent-logs#who-did-what-rows">activity log</a> gets the connect's own row, <code>Connector connected: Wiro AI Models</code> (<code>CONNECTOR_CONNECTED</code>), and no <code>Setting saved: Wiro Project</code> row (<code>AGENT_CREDENTIAL_SAVED</code>), which <code>CredentialProjectBind</code> writes. The connector and every other Wiro call of the agent always use the same project.</p>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot; \
   -H &quot;Content-Type: application/json&quot; \
   -H &quot;x-api-key: YOUR_API_KEY&quot; \
@@ -31557,7 +31568,7 @@ Reply &quot;yes&quot; to allow exactly this call once, or &quot;no&quot; to decl
 <h3 id="moving-the-agent-to-another-workspace">Moving the agent to another workspace</h3>
 <p>When the agent moves to a workspace its Wiro project isn't in, with <a href="/docs/organizations-managing-teams#transferring-agents"><code>Team/TransferAgent</code></a> or because its team or organization was deleted, Wiro disconnects the project from the agent and deletes the agent's Wiro AI Models connection, before the agent restarts.</p>
 <p>The same happens without a move when the team that owns the agent's Wiro project, or that team's organization, is deleted. The team's projects then go to their creators' personal workspaces, so an agent of another workspace that ran with one of them is disconnected from it and restarted too. Only a personal agent of the project's creator keeps it.</p>
-<p>Either way, the agent's activity log shows both: <code>Disconnected: wiro</code> (<code>AGENT_CREDENTIAL_REMOVED</code>) and <code>Connector disconnected: wiro</code> (<code>CONNECTOR_DISCONNECTED</code>, with <code>summary.reason</code> <code>"workspace"</code>). To give the agent a project again, connect Wiro AI Models with a project of the agent's workspace: that binds the project to the agent too.</p>
+<p>Either way, the agent's activity log shows both: <code>Disconnected: wiro</code> (<code>AGENT_CREDENTIAL_REMOVED</code>) and <code>Connector disconnected: Wiro AI Models</code> (<code>CONNECTOR_DISCONNECTED</code>, with <code>summary.reason</code> <code>"workspace"</code>). To give the agent a project again, connect Wiro AI Models with a project of the agent's workspace: that binds the project to the agent too.</p>
 <h2 id="errors">Errors</h2>
 <p>Refusals come as <code>result: false</code> with one sentence per problem in <code>errors</code>. Show the sentence: it names a field by its <code>label</code> (a <code>headers</code> connector's value by its <code>name</code>) and never repeats a value.</p>
 <div class="docs-param-table">
@@ -36604,6 +36615,11 @@ page &lt;&gt; binary RFB 3.8 frames: noVNC draws the agent's browser, view only
 <td>Other skill names that must be on while this one is. Deploy's <code>skills</code> and an <code>add</code> setup card turn them on with it. <code>SkillsApply</code> turns on only the names you send and refuses, with code <code>101</code> and <code>deps[]</code>, a change that leaves one of them off, so send them in the same call.</td>
 </tr>
 <tr>
+<td><code>requires_one_of</code></td>
+<td><code>array&lt;string&gt;</code></td>
+<td><strong>Optional: only present when set.</strong> Skills of which one must be on while this one is, such as <code>["util-twilio-channel", "util-web-channel"]</code> on Voice Receptionist Rules (<code>util-voice-receptionist</code>), which the agent can't start with unless a voice channel is on. <code>SkillsApply</code> refuses a change that would leave such a Skill on with none of them on (code <code>101</code>), and turning off the last voice channel turns Voice Receptionist Rules off with it (see <a href="/docs/agent-overview#post-useragentskillsapply"><code>SkillsApply</code></a>).</td>
+</tr>
+<tr>
 <td><code>conflicts_with</code></td>
 <td><code>array&lt;string&gt;</code></td>
 <td>Mutually-exclusive skill names. <code>SkillsApply</code> rejects toggle batches that would enable two conflicting skills.</td>
@@ -37190,7 +37206,7 @@ complete. These channels (Telegram, Slack, Discord) are not Skills and do not af
     }
   }'
 </code></pre>
-<p><code>idempotencyKey</code> is required: use a UUID per "user clicks Save" event. A Skill whose <code>depends_on</code> would stay off is refused with code <code>101</code> and <code>deps[]</code>, and nothing changes: send its dependencies in the same call. The full response shape and error-code table live on <a href="/docs/agent-overview#post-useragentskillsapply"><code>SkillsApply</code></a>.</p>
+<p><code>idempotencyKey</code> is required: use a UUID per "user clicks Save" event. A Skill whose <code>depends_on</code> would stay off is refused with code <code>101</code> and <code>deps[]</code>, and nothing changes: send its dependencies in the same call. A Skill you turn off takes with it the supporting parts that nothing left on still needs, such as Voice Receptionist Rules and Voice Call Prep Rules with the last voice channel, and a change that would leave Voice Receptionist Rules on without a voice channel is refused with code <code>101</code>. The full response shape and error-code table live on <a href="/docs/agent-overview#post-useragentskillsapply"><code>SkillsApply</code></a>.</p>
 <blockquote>
 <p><strong>Template deploys too.</strong> <code>SkillsApply</code> works on agents deployed from a marketplace template as well as on custom builds. On a template agent, a skill you change overrides the template for that skill only; later template updates still reach every skill you never changed.</p>
 <p><strong>Scheduled tasks wait for their connectors.</strong> A template's scheduled task that works with a connector, such as a daily Google Ads report, runs only while that connector is connected. Connecting or disconnecting a connector never changes the task's <code>enabled</code>: a new agent starts with its template's tasks turned on, and a task that is off stays off until you turn it on with <code>CustomSkillUpsert</code> (<code>enabled: true</code>).</p>
@@ -38528,7 +38544,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot; \
                         </table>
                       </div>
                     </div>
-                    <p>A field is <code>null</code> when its part of the summary could not be read: ask again, and never read it as zero.</p>
+                    <p>A field is <code>null</code> when its part of the summary could not be read: ask again, and never read it as zero. The amounts keep up to 4 decimals, as each row's <code>amountusd</code> does, so model runs that cost a fraction of a cent add up to what they cost, such as <code>0.0075</code>, rather than being rounded to whole cents.</p>
                     <p>The summary also still carries the credit counts it had before dollar billing (<code>monthlycredits</code>, <code>renewalcredits</code>, <code>extracredits</code>, <code>usedcredits</code>, <code>remainingcredits</code>, <code>extrapacks</code>, <code>byModel</code> and the period fields), and the answer still carries the old <code>transactions</code> list and its <code>total</code>, except on a call made with a signed-in session, such as the Wiro dashboard's. They are deprecated and will be removed: read <code>rows</code>, <code>rowstotal</code> and the fields above.</p>
 
                     <h3>Row fields</h3>
@@ -38545,9 +38561,9 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/ConnectorConnect&quot; \
                             <tr><td><code>title</code></td><td><code>string</code></td><td>A short line that says what the row is, such as <code>AI Usage</code>, <code>Model Run</code> or the plan payment's line. Show it as it is: its wording can change.</td></tr>
                             <tr><td><code>description</code></td><td><code>string|null</code></td><td>The ledger's own line for the row, when it has one, such as <code>AI usage: Sales Desk (openai/gpt-5.6-terra, 54,969 tokens)</code>.</td></tr>
                             <tr><td><code>model</code></td><td><code>string|null</code></td><td><code>ai-usage</code> rows: the model of the costliest call the row covers; <code>tokens</code> and <code>costs</code> add up all its calls, whatever their model. <code>model-run</code> rows: the model that ran, by its <code>owner/slug</code>. <code>null</code> otherwise.</td></tr>
-                            <tr><td><code>tokens</code></td><td><code>object|null</code></td><td><code>ai-usage</code> rows: <code>{ input, cacheRead, cacheWrite, output }</code> token counts, where <code>input</code> is uncached input. <code>null</code> otherwise.</td></tr>
+                            <tr><td><code>tokens</code></td><td><code>object|null</code></td><td><code>ai-usage</code> rows: <code>{ input, cacheRead, cacheWrite, output }</code> token counts, where <code>input</code> is uncached input. A row that paid only part of a charge holds its share of them, and its <code>costs</code> its share of the costs (see <a href="#metered-token-rows">Rows that cover several model calls</a>). <code>null</code> otherwise.</td></tr>
                             <tr><td><code>costs</code></td><td><code>object|null</code></td><td><code>ai-usage</code> rows: what each kind of token cost, in USD, exact to 7 decimals: <code>{ input, cacheRead, cacheWrite, output }</code>. <code>null</code> on other rows and on legacy rows.</td></tr>
-                            <tr><td><code>amountusd</code></td><td><code>number|null</code></td><td>The row's amount in USD, in whole cents. When Wiro measures the agent's model calls itself, the exact <code>costs</code> can leave a fraction of a cent that carries to the agent's next row, so <code>amountusd</code> can differ from their sum by less than a cent. Otherwise each turn is billed on its own at its exact cost rounded up to the next cent, so a turn's <code>amountusd</code> can be less than a cent above the sum of its <code>costs</code>. <code>null</code> only on a legacy <code>plan</code> row whose record kept no payment (see below).</td></tr>
+                            <tr><td><code>amountusd</code></td><td><code>number|null</code></td><td>The row's amount in USD, with up to 4 decimals, so a model run that cost less than a cent reads as it was charged, such as <code>0.0054</code>: show it so, not rounded to <code>$0.01</code>. AI usage is charged in whole cents. When Wiro measures the agent's model calls itself, the exact <code>costs</code> can leave a fraction of a cent that carries to the agent's next row, so <code>amountusd</code> can differ from their sum by less than a cent. Otherwise each turn is billed on its own at its exact cost rounded up to the next cent, so a turn's <code>amountusd</code> can be less than a cent above the sum of its <code>costs</code>. A charge the balance paid from more than one of its parts is split between their rows (see <a href="#metered-token-rows">Rows that cover several model calls</a>). <code>null</code> only on a legacy <code>plan</code> row whose record kept no payment (see below).</td></tr>
                             <tr><td><code>paidfrom</code></td><td><code>string|null</code></td><td>How the row was paid: <code>"plan"</code> (the plan's included usage), <code>"balance"</code> (the Wiro balance), <code>"coupon"</code> (coupon credit in the balance) or <code>"card"</code> (a card payment, such as a plan renewal from before plans moved to the balance, or funds added by card).</td></tr>
                             <tr><td><code>direction</code></td><td><code>string</code></td><td><code>"out"</code> for spending and refunds, <code>"in"</code> for funds added and other credits.</td></tr>
                             <tr><td><code>surface</code></td><td><code>string|null</code></td><td>The surface the row was charged on, such as <code>"agent"</code>. <code>null</code> on older rows.</td></tr>
@@ -38592,7 +38608,7 @@ for (const row of rows.filter(r =&gt; r.kind === 'ai-usage' &amp;&amp; r.costs))
   for (const k of Object.keys(totals)) totals[k] += row.costs[k] || 0;
 }
 console.log(totals);</code></pre>
-                    <p>A batch paid more than one way carries the whole batch's <code>costs</code> on each of its rows (see <a href="#metered-token-rows">Rows that cover several model calls</a>), so these totals can count it twice, as when the plan's included usage runs out partway through a batch.</p>
+                    <p>A batch paid partly by the plan's included usage and partly by the balance carries the whole batch's <code>costs</code> on its plan row and again across the rows the balance paid (see <a href="#metered-token-rows">Rows that cover several model calls</a>), so these totals can count it twice. The rows of a charge the balance paid from more than one of its parts carry only their shares, so they count it once.</p>
 
                     <h3>Reconcile a plan change</h3>
                     <p>Every plan payment is a <code>plan</code> row: the deploy, a move to a higher plan (the prorated difference) and each renewal, with the plan's name in its <code>title</code> (for legacy rows, see the note under Row fields). A move to a lower plan charges nothing when it is asked for: the renewal that starts it is a <code>plan</code> row at the lower price. Use these rows to render a plan history in your UI: <code>kind: "plan"</code> lists every one of them, the legacy rows included.</p>
@@ -38606,14 +38622,18 @@ console.log(totals);</code></pre>
                             <tr><th>Field</th><th>What it holds</th></tr>
                           </thead>
                           <tbody>
-                            <tr><td><code>amountusd</code></td><td>The whole cents the row takes.</td></tr>
-                            <tr><td><code>tokens</code>, <code>costs</code></td><td>The sums of the calls it covers, by kind of token.</td></tr>
+                            <tr><td><code>amountusd</code></td><td>The whole cents the row takes, or its part of them when the balance paid them from more than one of its parts (see below).</td></tr>
+                            <tr><td><code>tokens</code>, <code>costs</code></td><td>The sums of the calls it covers, by kind of token, or its share of them when the balance paid from more than one of its parts (see below).</td></tr>
                             <tr><td><code>model</code>, <code>description</code></td><td>The model of the costliest call; the description names the agent, that model and the calls' total tokens.</td></tr>
                           </tbody>
                         </table>
                       </div>
                     </div>
-                    <p>A batch paid more than one way gives a row for each way, such as when the plan's included usage runs out partway through it: one row with <code>paidfrom: "plan"</code>, then one paid from the balance. Each row takes its own part as <code>amountusd</code>, and each carries the whole batch's <code>tokens</code> and <code>costs</code>.</p>
+                    <p>A batch paid more than one way gives a row for each way, and each row takes its own part as <code>amountusd</code>:</p>
+                    <ul>
+                      <li>When the plan's included usage runs out partway through a batch, one row has <code>paidfrom: "plan"</code> and the balance pays the rest. The plan's row carries the whole batch's <code>tokens</code> and <code>costs</code>, and so do the balance's rows together.</li>
+                      <li>When the balance pays from more than one of its parts, such as coupon credit and then deposits, each part has a row that carries only its share of the <code>tokens</code> and <code>costs</code>, in proportion to its <code>amountusd</code>, so together they add up to the batch's. In <a href="/docs/organizations-api-access#billing-flow"><code>Wallet/TransactionList</code></a>, such a row's <code>usage.share</code> is the part of the charge it paid. Older rows of such a charge carry the whole batch's <code>tokens</code> and <code>costs</code> on each.</li>
+                    </ul>
                     <p>No field ties such a row to the turns it covers. To show usage per turn or per day, add up the rows by <code>createdat</code>.</p>
                     <h3 id="plan-not-saved">Plan payments that did not finish</h3>
                     <p>When the balance pays for a plan start or a renewal and the plan then can't be saved, the agent's plan, price and included AI usage stay as they were until Wiro support sets them, and the payment is recorded so it can be found. It happens on <code>Deploy</code> and <code>CreateSubscriptionCheckout</code> with <code>useprepaid: true</code>, on <code>RenewSubscription</code> (each answers with code <code>110</code>, see <a href="/docs/agent-overview#post-useragentrenewsubscription">Plan and payment errors</a>), and on Wiro's own renewal at the end of a period. After Wiro's own renewal ends this way, the subscription shows the new period, so <code>RenewSubscription</code> answers <code>Subscription is already active</code>. Send the agent to Wiro support; don't charge again.</p>
@@ -38674,13 +38694,17 @@ resp = requests.post(
     json={"useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "limit": 100}
 ).json()
 
+def usd(amount):
+    # Up to 4 decimals for an amount under a cent, such as $0.0054
+    return f"${amount:.4f}".rstrip("0") if 0 &lt; amount &lt; 0.01 else f"${amount:.2f}"
+
 s = resp["summary"]
-print(f"{s['month']}: plan ${s['planusd']:.2f}, AI usage from the balance ${s['aiusagebalanceusd']:.2f}, model runs ${s['modelrunsusd']:.2f}")
+print(f"{s['month']}: plan {usd(s['planusd'])}, AI usage from the balance {usd(s['aiusagebalanceusd'])}, model runs {usd(s['modelrunsusd'])}")
 print(f"Rows: {resp['rowstotal']}")
 
 for row in resp["rows"][:10]:
     sign = "+" if row["direction"] == "in" else "-"
-    amount = "no amount" if row["amountusd"] is None else f"{sign}${row['amountusd']:.2f}"
+    amount = "no amount" if row["amountusd"] is None else f"{sign}{usd(row['amountusd'])}"
     print(f"  [{row['kind']:&gt;9}] {amount}  {row['title']}  ({row['paidfrom']})")</code></pre>
 
                     <h3>Node.js</h3>
@@ -38697,9 +38721,12 @@ const { data } = await axios.post(
 const { summary } = data;
 console.log(`AI usage this month: $${summary.aiusageplanusd} from the plan, $${summary.aiusagebalanceusd} from the balance`);
 
+// Up to 4 decimals for an amount under a cent, such as $0.0054
+const usd = (amount) =&gt; '$' + (amount &gt; 0 &amp;&amp; amount &lt; 0.01 ? amount.toFixed(4).replace(/0+$/, '') : amount.toFixed(2));
+
 data.rows.slice(0, 10).forEach(row =&gt; {
   const sign = row.direction === 'in' ? '+' : '-';
-  const amount = row.amountusd === null ? 'no amount' : `${sign}$${row.amountusd.toFixed(2)}`;
+  const amount = row.amountusd === null ? 'no amount' : `${sign}${usd(row.amountusd)}`;
   console.log(`  [${row.kind.padStart(9)}] ${amount}  ${row.title}`);
 });</code></pre>
 
@@ -38719,11 +38746,16 @@ curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 $resp = json_decode(curl_exec($ch), true);
 curl_close($ch);
 
+// Up to 4 decimals for an amount under a cent, such as $0.0054
+function usd($amount) {
+    return $amount &gt; 0 &amp;&amp; $amount &lt; 0.01 ? '$' . rtrim(sprintf('%.4f', $amount), '0') : sprintf('$%.2f', $amount);
+}
+
 $s = $resp['summary'];
 echo "Plan: \${$s['planusd']}, model runs: \${$s['modelrunsusd']}\n";
 foreach (array_slice($resp['rows'], 0, 10) as $row) {
     $sign = $row['direction'] === 'in' ? '+' : '-';
-    $amount = $row['amountusd'] === null ? 'no amount' : sprintf('%s$%.2f', $sign, $row['amountusd']);
+    $amount = $row['amountusd'] === null ? 'no amount' : $sign . usd($row['amountusd']);
     printf("[%s] %s %s\n", $row['kind'], $amount, $row['title']);
 }</code></pre>
                   </section>
@@ -38834,6 +38866,7 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
                             <tr><td><code>model</code></td><td><code>string</code></td><td>Canonical model slug that served the turn (e.g. <code>"openai/gpt-5.4"</code>).</td></tr>
                             <tr><td><code>tokens</code></td><td><code>object</code></td><td>Nested token counts in <strong>camelCase</strong>: <code>{ input, output, cacheRead, cacheWrite, total }</code> (each an integer).</td></tr>
                             <tr><td><code>tokencost</code></td><td><code>number</code></td><td>The turn's AI usage, in cents (<code>5</code> is $0.05).</td></tr>
+                            <tr><td><code>tokencostestimate</code></td><td><code>boolean?</code></td><td><code>true</code> when Wiro measures the agent's model calls itself (see <a href="/docs/agent-transactions#metered-token-rows">Rows that cover several model calls</a>): <code>tokencost</code> is then an estimate, the turn's calls priced at the agent's rates. What was billed is in the agent's <code>ai-usage</code> rows in <a href="/docs/agent-transactions">Transactions</a>, which add calls up across turns, carry what is left under a cent to the next row and can include calls the turn's row doesn't count. Missing when the turn was billed exactly its <code>tokencost</code>.</td></tr>
                             <tr><td><code>durationMs</code></td><td><code>number</code></td><td>Wall-clock duration of the turn in milliseconds.</td></tr>
                             <tr><td><code>calls</code></td><td><code>number</code></td><td>Number of LLM calls made during the turn.</td></tr>
                             <tr><td><code>remainingcredits</code></td><td><code>number</code></td><td>Deprecated: kept for older readers and will be removed. Read the agent's AI usage and balance from <code>usage</code> on <a href="/docs/agent-overview#usage-object"><code>UserAgent/Detail</code></a>.</td></tr>
@@ -38876,6 +38909,7 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
   }
 }</code></pre>
                     <p><code>title</code> is the line to show. <code>summary</code> holds the names and amounts behind it, never a connector value. <code>userUuid</code> and <code>user</code> name who did it. When an API key made the change, the title ends with <code>, via API key "&lt;project name&gt;"</code> or <code>, via API key</code>. A date in a title, such as the day a plan ends or a plan change starts, is the day in UTC and says so: <code>2026-06-01 (UTC)</code>. With both, the key comes last: <code>Plan cancelled, ends 2026-06-01 (UTC), via API key "Acme App"</code>.</p>
+                    <p>A title names what changed as the agent's page does: a Skill by its title, a custom skill or Scheduled Task by its key in words (<code>cs-brand-voice</code> reads <code>Brand Voice</code>), a setting by its label with the new value in parentheses, a saved field by its label, and a connector by its catalog <code>title</code>. <code>summary</code> keeps the keys, such as <code>util-weather</code>, <code>cs-brand-voice</code>, <code>timezone Europe/Istanbul</code> or <code>wiro.apikey</code>, and a connector's <code>slug</code> as <code>summary.connector</code>. A name that has no title stays as it is, and a connector row written before connectors were named by title names its <code>slug</code>.</p>
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
                         <table>
@@ -38884,25 +38918,26 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
                           </thead>
                           <tbody>
                             <tr><td><code>AGENT_STARTED</code>, <code>AGENT_STOPPED</code>, <code>AGENT_RESTARTED</code></td><td><code>Agent started</code>, <code>Agent stopped</code>, <code>Agent restarted</code></td></tr>
+                            <tr><td><code>AGENT_RUNNING</code></td><td><code>Agent running: started in 32 seconds</code> (written by Wiro once a start has the agent running, whatever started it: the first start after a deploy, a restart to load a change or a <code>Start</code>; <code>summary.seconds</code> is how long the start took, and without it the title reads <code>Agent running</code>)</td></tr>
                             <tr><td><code>AGENT_RENAMED</code></td><td><code>Agent renamed from "Inbox Bot" to "Inbox Watcher"</code></td></tr>
                             <tr><td><code>AGENT_UPDATED</code></td><td><code>Agent details updated: description, cover</code></td></tr>
-                            <tr><td><code>AGENT_SETTINGS_UPDATED</code></td><td><code>Agent settings updated: timezone Europe/Istanbul</code>, <code>Agent settings updated: screen off</code></td></tr>
+                            <tr><td><code>AGENT_SETTINGS_UPDATED</code></td><td><code>Agent settings updated: Time Zone (Europe/Istanbul)</code>, <code>Agent settings updated: Screen (off)</code></td></tr>
                             <tr><td><code>AGENT_TRANSFERRED</code></td><td><code>Agent moved to a team workspace</code>, <code>Agent moved to the personal workspace</code>; the system's rows when the agent's team or organization is deleted read <code>Agent moved to the personal workspace: its team was deleted</code> and <code>Agent moved to the personal workspace: its organization was deleted</code></td></tr>
-                            <tr><td><code>AGENT_INSTRUCTION_ADDED</code>, <code>AGENT_INSTRUCTION_UPDATED</code>, <code>AGENT_INSTRUCTION_RENAMED</code>, <code>AGENT_INSTRUCTION_DELETED</code>, <code>AGENT_INSTRUCTION_REVERTED</code></td><td><code>Custom skill added: cs-brand-voice</code>, <code>Scheduled task updated: cs-cron-blog-scanner (text, schedule 0 9 * * 1)</code>, <code>Custom skill renamed: cs-brand-voice to cs-house-style</code>, <code>Scheduled task deleted: cs-cron-blog-scanner</code>, <code>Custom skill reverted to its preset: cs-brand-voice</code></td></tr>
-                            <tr><td><code>AGENT_SKILLS_UPDATED</code></td><td><code>Skills updated: util-web-channel off</code></td></tr>
-                            <tr><td><code>AGENT_CREDENTIAL_SAVED</code></td><td><code>Setting saved: wiro.apikey</code> (a channel, the agent's Wiro project or another setting of the agent; several fields read <code>Settings saved: …</code>; connecting a connector writes <code>CONNECTOR_CONNECTED</code>)</td></tr>
-                            <tr><td><code>AGENT_CREDENTIAL_REVEALED</code></td><td><code>Setting revealed: telegram.bottoken</code> (someone showed a saved key in full in the Wiro panel; the row never holds the key)</td></tr>
+                            <tr><td><code>AGENT_INSTRUCTION_ADDED</code>, <code>AGENT_INSTRUCTION_UPDATED</code>, <code>AGENT_INSTRUCTION_RENAMED</code>, <code>AGENT_INSTRUCTION_DELETED</code>, <code>AGENT_INSTRUCTION_REVERTED</code></td><td><code>Custom skill added: Brand Voice</code>, <code>Scheduled task updated: Blog Scanner (text, schedule 0 9 * * 1)</code>, <code>Custom skill renamed: Brand Voice to House Style</code>, <code>Scheduled task deleted: Blog Scanner</code>, <code>Custom skill reverted to its preset: Brand Voice</code></td></tr>
+                            <tr><td><code>AGENT_SKILLS_UPDATED</code></td><td><code>Skills updated: Diagrams on, Weather off</code></td></tr>
+                            <tr><td><code>AGENT_CREDENTIAL_SAVED</code></td><td><code>Setting saved: Wiro Project</code>, <code>Settings saved: Telegram Bot Token, Allowed Telegram DM User IDs</code> (a channel, the agent's Wiro project or another setting of the agent; connecting a connector writes <code>CONNECTOR_CONNECTED</code>, and connecting Wiro AI Models with a project writes only that)</td></tr>
+                            <tr><td><code>AGENT_CREDENTIAL_REVEALED</code></td><td><code>Setting revealed: Telegram Bot Token</code> (someone showed a saved key in full in the Wiro panel; the row never holds the key)</td></tr>
                             <tr><td><code>AGENT_CREDENTIAL_REMOVED</code></td><td><code>Disconnected: wiro</code> (the agent's Wiro project was disconnected because the agent moved to a workspace the project isn't in, or because the project's team or organization was deleted)</td></tr>
-                            <tr><td><code>CONNECTOR_CONNECTED</code>, <code>CONNECTOR_DISCONNECTED</code></td><td><code>Connector connected: serper</code>, <code>Connector disconnected: serper</code> (see <a href="/docs/agent-connectors">Agent Connectors</a>). When the agent moves to a workspace its Wiro project isn't in, or its Wiro project's team or organization is deleted, Wiro writes <code>Connector disconnected: wiro</code> with <code>summary.reason</code> <code>"workspace"</code> next to the <code>AGENT_CREDENTIAL_REMOVED</code> row (see <a href="/docs/agent-connectors#moving-the-agent-to-another-workspace">Moving the agent to another workspace</a>)</td></tr>
-                            <tr><td><code>CONNECTOR_ACCOUNTS_SET</code></td><td><code>Connector accounts set: facebook-pages</code></td></tr>
-                            <tr><td><code>CONNECTOR_REAUTH</code></td><td><code>Connector needs to be connected again: facebook-pages</code> (written by Wiro when a sign-in expired or was revoked)</td></tr>
+                            <tr><td><code>CONNECTOR_CONNECTED</code>, <code>CONNECTOR_DISCONNECTED</code></td><td><code>Connector connected: Serper</code>, <code>Connector disconnected: Serper</code> (see <a href="/docs/agent-connectors">Agent Connectors</a>). When the agent moves to a workspace its Wiro project isn't in, or its Wiro project's team or organization is deleted, Wiro writes <code>Connector disconnected: Wiro AI Models</code> with <code>summary.reason</code> <code>"workspace"</code> next to the <code>AGENT_CREDENTIAL_REMOVED</code> row (see <a href="/docs/agent-connectors#moving-the-agent-to-another-workspace">Moving the agent to another workspace</a>)</td></tr>
+                            <tr><td><code>CONNECTOR_ACCOUNTS_SET</code></td><td><code>Connector accounts set: Facebook Pages</code></td></tr>
+                            <tr><td><code>CONNECTOR_REAUTH</code></td><td><code>Connector needs to be connected again: Facebook Pages</code> (written by Wiro when a sign-in expired or was revoked)</td></tr>
 <tr>
 <td><code>CONNECTOR_PERMISSIONS_SET</code></td>
-<td><code>Connector permissions changed: wordpress</code> (see <a href="/docs/agent-connectors#post-useragentconnectorsetpermissions">ConnectorSetPermissions</a>); <code>Connector permissions changed: wordpress (update_post), from chat</code> when Always allow on an approval card changed a tool's values</td>
+<td><code>Connector permissions changed: Serper web_search, Chat Ask to Block</code>: up to three of the cells the change moved, then how many more, or <code>Connector permissions changed: Serper reset to the defaults</code>, with each cell in <code>summary.changes</code> (see <a href="/docs/agent-connectors#post-useragentconnectorsetpermissions">ConnectorSetPermissions</a>); <code>Connector permissions changed: WordPress (update_post), from chat</code> when Always allow on an approval card changed a tool's values</td>
 </tr>
 <tr>
 <td><code>CONNECTOR_APPROVAL_ANSWERED</code></td>
-<td><code>Approval allow: wordpress update_post</code> (<code>allow</code>, <code>always</code> or <code>decline</code>: the answer that took effect, so an Always allow that allowed the call once reads <code>allow</code>; see <a href="/docs/agent-connectors#post-useragentmessageapprovalcardact">ApprovalCardAct</a>). A card answered in its Telegram, Slack or Discord conversation reads <code>Approval allow: wordpress create_post in Telegram</code></td>
+<td><code>Approval allow: WordPress update_post</code> (<code>allow</code>, <code>always</code> or <code>decline</code>: the answer that took effect, so an Always allow that allowed the call once reads <code>allow</code>; see <a href="/docs/agent-connectors#post-useragentmessageapprovalcardact">ApprovalCardAct</a>). A card answered in its Telegram, Slack or Discord conversation reads <code>Approval allow: WordPress create_post in Telegram</code></td>
 </tr>
                             <tr><td><code>AGENT_PLAN_STARTED</code>, <code>AGENT_PLAN_RENEWED</code>, <code>AGENT_PLAN_CANCELLED</code>, <code>AGENT_PLAN_RESUMED</code></td><td><code>Starter plan started: $5.00 charged</code>, <code>Starter plan renewed: $5.00 charged</code>, <code>Plan cancelled, ends 2026-06-01 (UTC)</code>, <code>Plan cancellation undone</code></td></tr>
                             <tr><td><code>AGENT_PLAN_ENDED</code></td><td><code>Starter plan ended: the wallet could not pay the renewal</code>, <code>Pro plan ended: it was set to cancel</code> (written by Wiro; the agent stops when its plan ends)</td></tr>
@@ -39091,7 +39126,7 @@ foreach (array_slice($resp['rows'], 0, 10) as $row) {
     {
       "ts": "2026-05-03T09:12:44.000Z",
       "kind": "AGENT_CREDENTIAL_SAVED",
-      "title": "Setting saved: wiro.apikey",
+      "title": "Setting saved: Wiro Project",
       "ok": true,
       "summary": { "fields": ["wiro.apikey"] },
       "userUuid": "ada-uuid",
@@ -39668,6 +39703,16 @@ for e in cron_runs:
     { "skill": "util-twilio-channel", "requires": "util-voice-call-prep" }
   ]
 }</code></pre>
+                    <p>Turning the channel off later also turns the two rules off, in the same change, when Web Voice Channel (<code>util-web-channel</code>) is off too: Voice Receptionist Rules needs a voice channel on, and the agent can't start without one. A change that would leave the rules on with neither channel on, such as turning Voice Receptionist Rules on by itself, is refused and nothing changes:</p>
+                    <pre><code class="language-json">{
+  "result": false,
+  "errors": [
+    { "code": 101, "message": "Voice calls need Twilio Voice Channel or Web Voice Channel on." }
+  ],
+  "deps": [
+    { "skill": "util-voice-receptionist", "requires": "util-twilio-channel", "requiresoneof": ["util-twilio-channel", "util-web-channel"] }
+  ]
+}</code></pre>
                     <p><strong>Skill:</strong> Twilio Voice Channel (<code>util-twilio-channel</code>), the phone channel. Its <code>docs_url</code> in <a href="/docs/agent-skills#post-skillslist"><code>Skills/List</code></a> is this page, <code>integration-twiliovoice-skills</code>.</p>
                     <p><strong>Credential:</strong> <code>twilio-voice</code>, the Account SID, Auth Token and phone numbers below.</p>
                     <p><strong>Agents that typically enable this integration:</strong></p>
@@ -40052,7 +40097,7 @@ for e in cron_runs:
                     <p>Turn on Web Voice Channel (<code>util-web-channel</code>) on a useragent and a single REST call (<code>POST /UserAgent/Realtime/WebStart</code>) returns everything the browser needs to open an authenticated WebSocket and stream microphone audio straight to the agent. The same agent can also pick up phone calls via <a href="/docs/integration-twiliovoice-skills">Twilio Voice</a>: the two channels share the same realtime runtime and end up in the same <a href="/docs/integration-twiliovoice-skills#call-history">Call History</a>.</p>
                     <p><strong>Skill that powers this channel:</strong></p>
                     <ul>
-                      <li>Web Voice Channel (<code>util-web-channel</code>): browser voice channel. Bundled on the Voice Receptionist template. On any other agent, turn it on in one <code>POST /UserAgent/SkillsApply</code> call together with the two Skills it depends on, Voice Receptionist Rules (<code>util-voice-receptionist</code>) and Voice Call Prep Rules (<code>util-voice-call-prep</code>): <code>"skills": { "util-web-channel": true, "util-voice-receptionist": true, "util-voice-call-prep": true }</code>. Sent alone while those are off, the channel is refused with code <code>101</code> and a <code>deps[]</code> list, and nothing changes. Deploy's <code>skills</code> turns them on with the channel.</li>
+                      <li>Web Voice Channel (<code>util-web-channel</code>): browser voice channel. Bundled on the Voice Receptionist template. On any other agent, turn it on in one <code>POST /UserAgent/SkillsApply</code> call together with the two Skills it depends on, Voice Receptionist Rules (<code>util-voice-receptionist</code>) and Voice Call Prep Rules (<code>util-voice-call-prep</code>): <code>"skills": { "util-web-channel": true, "util-voice-receptionist": true, "util-voice-call-prep": true }</code>. Sent alone while those are off, the channel is refused with code <code>101</code> and a <code>deps[]</code> list, and nothing changes. Deploy's <code>skills</code> turns them on with the channel. Turning it off also turns those two Skills off when Twilio Voice Channel (<code>util-twilio-channel</code>) is off too, and a change that would leave Voice Receptionist Rules on with neither voice channel on is refused with code <code>101</code>, <code>Voice calls need Twilio Voice Channel or Web Voice Channel on.</code> (see <a href="/docs/agent-overview#post-useragentskillsapply"><code>SkillsApply</code></a>).</li>
                     </ul>
                     <p><strong>Agents that typically enable this channel:</strong></p>
                     <ul>
@@ -42571,7 +42616,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
 
                   <section id="billing-flow">
                     <h2>Wallet Billing Flow</h2>
-                    <p>Runs made with a team project's key are charged to the team wallet and appear in the team's <code>Wallet/TransactionList</code>; personal project keys charge your personal wallet. Call it with <code>{ "uuid": "me", "type": "all", "start": 0, "limit": 100 }</code> (<code>limit</code> up to 400); another <code>type</code>, such as <code>"payment"</code>, lists only the rows whose type contains it. The list also holds your agents' rows (their plan payments, AI usage and model runs, and funds added from an agent's page), each with the agent's <code>useragentguid</code>. A charge carries the <code>surface</code> that made it, and an agent's AI usage row carries <code>usage</code>: the model, the number of calls, and the <code>tokens</code> and <code>costs</code> (in USD) of each kind of token. A batch paid more than one way gives a row for each way, each with the whole batch's <code>usage</code>. AI usage an agent's plan covered is a <code>USAGE (AGENT PLAN)</code> row: it is listed for the record but took nothing from the balance, so leave it out when you add up spending (<code>type: "payment"</code> lists only the rows that took money from the balance). To narrow the list, pass <code>useragentguid</code> or <code>surface</code> (<code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code>, <code>agent</code>, <code>studio</code>, <code>workflow-agent</code> or <code>workflow</code>; any other value answers <code>surface must be one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow.</code>). Older rows carry neither field. For one agent's rows in dollars with a monthly summary, use <a href="/docs/agent-transactions"><code>UserAgent/TransactionList</code></a>.</p>
+                    <p>Runs made with a team project's key are charged to the team wallet and appear in the team's <code>Wallet/TransactionList</code>; personal project keys charge your personal wallet. Call it with <code>{ "uuid": "me", "type": "all", "start": 0, "limit": 100 }</code> (<code>limit</code> up to 400); another <code>type</code>, such as <code>"payment"</code>, lists only the rows whose type contains it. The list also holds your agents' rows (their plan payments, AI usage and model runs, and funds added from an agent's page), each with the agent's <code>useragentguid</code>. A charge carries the <code>surface</code> that made it, and an agent's AI usage row carries <code>usage</code>: the model, the number of calls, and the <code>tokens</code> and <code>costs</code> (in USD) of each kind of token. A batch paid partly by the agent's plan and partly by the balance gives a row for each, each with the whole batch's <code>usage</code>. When the balance pays from more than one of its parts, such as coupon credit and deposits, each part's row carries its share instead: <code>usage.share</code> is the part of the charge it paid, such as <code>0.090909</code> for $0.02 of a $0.22 charge, and its <code>tokens</code> and <code>costs</code> are cut to that share, so together they add up to the charge's. A row without <code>share</code> carries the whole charge's <code>usage</code>. AI usage an agent's plan covered is a <code>USAGE (AGENT PLAN)</code> row: it is listed for the record but took nothing from the balance, so leave it out when you add up spending (<code>type: "payment"</code> lists only the rows that took money from the balance). To narrow the list, pass <code>useragentguid</code> or <code>surface</code> (<code>web</code>, <code>api</code>, <code>mcp</code>, <code>llm-gateway</code>, <code>extension</code>, <code>agent</code>, <code>studio</code>, <code>workflow-agent</code> or <code>workflow</code>; any other value answers <code>surface must be one of web, api, mcp, llm-gateway, extension, agent, studio, workflow-agent, workflow.</code>). Older rows carry neither field. For one agent's rows in dollars with a monthly summary, use <a href="/docs/agent-transactions"><code>UserAgent/TransactionList</code></a>.</p>
                   </section>
 
                   <section id="best-practices">

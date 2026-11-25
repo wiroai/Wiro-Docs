@@ -1142,7 +1142,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetPermissions" \
 | `restart` | `live` (the running agent got the change with no restart: it applies to the agent's next action), `scheduled` (the running agent restarts to load the change), `none` (the agent isn't running or the connection isn't `connected`, so there was nothing to load) or `failed` (the change is saved, but the agent could not restart: it applies at the agent's next start). |
 | `permissions` | The connection's permissions after the change, as on [ConnectorPermissions](#post-useragentconnectorpermissions). |
 
-Each change also writes a `CONNECTOR_PERMISSIONS_SET` row to the agent's [activity log](/docs/agent-logs#who-did-what-rows). The refusals, with nothing saved:
+Each change also writes a `CONNECTOR_PERMISSIONS_SET` row to the agent's [activity log](/docs/agent-logs#who-did-what-rows), titled with the cells it moved, such as `Connector permissions changed: Serper web_search, Chat Ask to Block`: up to three, then `; and 2 more` for the rest, or `reset to the defaults` after a reset. Its `summary.changes` lists them, at most 10: `{ reset: true }` first after a reset, then each category column as `{ category, column, from, to }` and each tool column as `{ tool, column, from, to }`, where `column` is `chat` or `autopilot`, and `from` and `to` are the values before and after the change (for a category, the value its tools share, or `mixed` when they differ). `summary.more` counts the cells past 10, and a cell the change didn't move isn't listed. The refusals, with nothing saved:
 
 | Message | Why |
 |---------|-----|
@@ -1943,7 +1943,7 @@ The list can't be widened. Whatever the connector's catalog row says, Wiro gives
 
 ### Connecting it
 
-Its `credentialfields` have one field with `source: "wiro_project"`: show a picker of your projects ([`POST /Project/List`](/docs/projects)) instead of an input, and send the chosen project's id as `wiroprojectguid`. Connecting binds that project to the agent as its own Wiro project, exactly as [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) does: the same checks, the project's key saved as the agent's `wiro` credential, and a `Setting saved: wiro.apikey` row (`AGENT_CREDENTIAL_SAVED`) in the agent's [activity log](/docs/agent-logs#who-did-what-rows) when the project changed. The connector and every other Wiro call of the agent always use the same project.
+Its `credentialfields` have one field with `source: "wiro_project"`: show a picker of your projects ([`POST /Project/List`](/docs/projects)) instead of an input, and send the chosen project's id as `wiroprojectguid`. List the workspace's [Studio project](/docs/studio#costs), whose id [`UserAgent/Detail`](/docs/agent-overview#post-useragentdetail) gives as `studioprojectid`, last, and say Studio uses it: an agent connected with it runs its models on the project Studio and the Workflow Agent work on. Connecting binds that project to the agent as its own Wiro project, as [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) does: the same checks, and the project's key saved as the agent's `wiro` credential. When the project or anything else changed, the agent's [activity log](/docs/agent-logs#who-did-what-rows) gets the connect's own row, `Connector connected: Wiro AI Models` (`CONNECTOR_CONNECTED`), and no `Setting saved: Wiro Project` row (`AGENT_CREDENTIAL_SAVED`), which `CredentialProjectBind` writes. The connector and every other Wiro call of the agent always use the same project.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
@@ -2004,7 +2004,7 @@ When the agent moves to a workspace its Wiro project isn't in, with [`Team/Trans
 
 The same happens without a move when the team that owns the agent's Wiro project, or that team's organization, is deleted. The team's projects then go to their creators' personal workspaces, so an agent of another workspace that ran with one of them is disconnected from it and restarted too. Only a personal agent of the project's creator keeps it.
 
-Either way, the agent's activity log shows both: `Disconnected: wiro` (`AGENT_CREDENTIAL_REMOVED`) and `Connector disconnected: wiro` (`CONNECTOR_DISCONNECTED`, with `summary.reason` `"workspace"`). To give the agent a project again, connect Wiro AI Models with a project of the agent's workspace: that binds the project to the agent too.
+Either way, the agent's activity log shows both: `Disconnected: wiro` (`AGENT_CREDENTIAL_REMOVED`) and `Connector disconnected: Wiro AI Models` (`CONNECTOR_DISCONNECTED`, with `summary.reason` `"workspace"`). To give the agent a project again, connect Wiro AI Models with a project of the agent's workspace: that binds the project to the agent too.
 
 ## Errors
 

@@ -400,7 +400,7 @@ Three [who-did-what rows](/docs/agent-logs#who-did-what-rows) in the agent's act
 }
 ```
 
-Read the rows in the panel under the agent's **Logs**, which its owner and the team's admins can open, or with [`POST /UserAgent/Logs`](/docs/agent-logs#logs-tail) and `LogsFile`, which also take an API key (`LogsList` lists the days that have rows). The owner's Account Activity page at [wiro.ai/panel/account/activity](https://wiro.ai/panel/account/activity) lists them too, by `kind`. A change to the `screen` setting writes an `AGENT_SETTINGS_UPDATED` row: `Agent settings updated: screen off` or `screen on`. A browser reset writes an `AGENT_BROWSER_RESET` row: `Agent browser reset` (see [Resetting the Browser](#resetting-the-browser)).
+Read the rows in the panel under the agent's **Logs**, which its owner and the team's admins can open, or with [`POST /UserAgent/Logs`](/docs/agent-logs#logs-tail) and `LogsFile`, which also take an API key (`LogsList` lists the days that have rows). The owner's Account Activity page at [wiro.ai/panel/account/activity](https://wiro.ai/panel/account/activity) lists them too, by `kind`. A change to the `screen` setting writes an `AGENT_SETTINGS_UPDATED` row: `Agent settings updated: Screen (off)` or `Screen (on)`. A browser reset writes an `AGENT_BROWSER_RESET` row: `Agent browser reset` (see [Resetting the Browser](#resetting-the-browser)).
 
 **With a project API key.** A screen your app opens with a key adds the same rows, named after the key's owner, the person who created its project, whichever of your users it was for. All of your users count as one: on each agent, a project's key writes at most one `Watched the agent's screen` row an hour and one `Took control of the agent's screen` row every 10 minutes, apart from the rows the owner's own sessions in the Wiro panel write. Those two titles end with `, via API key "<project name>"` and carry `summary: { "project": "<project name>" }`, or end with `, via API key` for a personal project's key on a team agent. `AGENT_SCREEN_CONTROL_ENDED` names the key's owner too: its title ends with `, via API key`, never with the project name, and its `summary` stays `{ seconds, reason }`. Keep your own record of which of your users got each ticket (see [Screen in Your Own App](#screen-in-your-own-app)).
 
@@ -1307,6 +1307,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `cover` | `string\|null` | Per-instance cover URL, `null` until one is set with `Deploy`, `Update` or `Cover`. Show `agent.cover` when it is `null`. |
 | `categories` | `array<string>` | Inherited from the template at deploy; editable via `Update`. |
 | `pinned` | `boolean` | `true` when the agent is pinned to its workspace's header dropdown (on a team agent, for every member). Mutate via `Pin`. |
+| `studioprojectid` | `string\|null` | Detail only: the id of the agent's workspace's [Studio project](/docs/studio#costs), the project Studio and the Workflow Agent work on. A project picker for the [Wiro AI Models connector](/docs/agent-connectors#connecting-it) can list it last and say Studio uses it: an agent connected with it runs its models on that same project. `null` when the workspace has none yet, or when it can't be read. |
 
 **Plan & AI usage**
 
@@ -1409,7 +1410,7 @@ Every provider entry under `credentials.<key>` carries:
 
 ##### Spend object
 
-`spend` says what the agent cost in the current calendar month (UTC), in USD. It counts only the rows of the wallet that pays for the agent now: after a move to another workspace, the earlier wallet's rows are not in it.
+`spend` says what the agent cost in the current calendar month (UTC), in USD with up to 4 decimals, so model runs that cost a fraction of a cent count as they were charged. It counts only the rows of the wallet that pays for the agent now: after a move to another workspace, the earlier wallet's rows are not in it.
 
 | Sub-field | Type | Description |
 |-----------|------|-------------|
@@ -2385,7 +2386,7 @@ Returns the earlier values of one credential's fields, newest first (up to 500).
 
 #### **POST** /UserAgent/SkillsApply
 
-Applies a batch of skill toggles in a single transactional unit. **This is the only skill-toggle endpoint API consumers should use**. Even when you're flipping a single skill, send it as a one-entry `skills` map. The single-skill `SkillToggle` endpoint also exists, but `SkillsApply` is the one to use from the API.
+Applies a batch of skill toggles in a single transactional unit. **This is the only skill-toggle endpoint API consumers should use**. Even when you're flipping a single skill, send it as a one-entry `skills` map. The single-skill `SkillToggle` endpoint also exists, but `SkillsApply` is the one to use from the API. `SkillToggle` follows the same rules, and its answer's `alsodisabled` lists the supporting parts that went off with the skill (see below), `[]` when none did.
 
 Every plan includes every skill, so a skill change never moves money: the plan's price and included AI usage stay as they are, and the agent needs no active plan for it. Change the plan itself with [`UpgradeTier`](#post-useragentupgradetier).
 
@@ -2401,6 +2402,8 @@ Designed for both the Skill Editor modal (multiple toggles in one save) and one-
 | `skills` | object | Yes | Map of `{ "skillname": true \| false }` for every Skill (`util-*`) you want to set. Skills not in the map keep their current state. A Skill you turn on needs the Skills in its `depends_on`, and theirs, on already or in the same map: `SkillsApply` doesn't turn them on and refuses the change with `101`. [`PricingPreview`](#post-useragentpricingpreview) with the same `skillOverrides` lists the whole set in `enabledSkills`. Connectors aren't in this map: connect one with [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect). |
 | `tier` | string | No | Kept for older clients. Skills never change the plan: a value other than the agent's current plan is refused with `Change the plan with UpgradeTier.` |
 | `idempotencyKey` | string | Yes | Caller-generated unique key (UUID recommended), a new one for each change. For 10 minutes, the same key with the same `skills` returns the first call's answer without applying the change again, and the same key with other `skills` is refused with `107`. After that, the key of a change that was applied is spent: a call with it that would change something is refused with `107`, and one that changes nothing answers `noOp: true`. |
+
+**Supporting parts and voice channels.** A Skill you turn off also turns off, in the same change, the supporting parts (`user_invocable: false` in [`Skills/List`](/docs/agent-skills#post-skillslist)) that nothing left on still needs, unless you set them in `skills` yourself. Turning off the last voice channel, Twilio Voice Channel (`util-twilio-channel`) or Web Voice Channel (`util-web-channel`), turns off Voice Receptionist Rules (`util-voice-receptionist`) and Voice Call Prep Rules (`util-voice-call-prep`) with it, and `pricing.enabledSkills` shows the set the change left. Voice Receptionist Rules needs one of the two channels on (its `requires_one_of`), since the agent can't start with it on alone: a change that would leave it on with neither, such as turning it on by itself, is refused with code `101` (see below).
 
 **Headers:** No extra header is needed. For team agents, use an API key from a project in the agent's team. Keys from another workspace are rejected. The caller must be the agent's owner or a team admin of its team. Plain team members are refused with code `97`, `Only a team admin can perform this action on a team-owned agent.`
 
@@ -2477,7 +2480,7 @@ When every entry in your `skills` map already matches the persisted state, the e
 | Code | Meaning |
 |------|---------|
 | `0` | `Unknown skill: <names>`: a name in `skills` that is not a Skill, such as one that starts with `int-` (Connectors are connected with [`ConnectorConnect`](/docs/agent-connectors#post-useragentconnectorconnect), not toggled). Nothing is changed. A name the agent still has can still be turned off. |
-| `101` | `Cannot apply: some skills require other skills to be enabled.`: a Skill that would be on needs one in its `depends_on` that would be off. Body includes `deps[]` (`{ skill, requires }`). Send those Skills in the same map. |
+| `101` | `Cannot apply: some skills require other skills to be enabled.`: a Skill that would be on needs one in its `depends_on` that would be off. Body includes `deps[]` (`{ skill, requires }`). Send those Skills in the same map. `Voice calls need Twilio Voice Channel or Web Voice Channel on.`: the change would leave Voice Receptionist Rules (`util-voice-receptionist`) on with neither voice channel on. Its `deps[]` entry adds `requiresoneof`, the Skills of which one must be on: `{ "skill": "util-voice-receptionist", "requires": "util-twilio-channel", "requiresoneof": ["util-twilio-channel", "util-web-channel"] }`. Turn one of them on in the same map, or turn both voice rules off. |
 | `102` | `Cannot apply: some skills conflict with each other.`: two Skills that would be on are mutually exclusive. Body includes `conflicts[]`. |
 | `104` | `A skill update is already in progress for this agent — please retry shortly.`: another skill change or plan change of this agent is running. Wait and retry. |
 | `105` | `Change the plan with UpgradeTier.`: the `tier` sent is not the agent's current plan. Nothing is changed. Change the plan with [`UpgradeTier`](#post-useragentupgradetier), and send skill changes without `tier`. |
@@ -2824,6 +2827,7 @@ Poll every 30 seconds or more.
 | `events[].model` | string \| null | Canonical model slug billed for the turn. Present on `token_usage` / `token_usage_idempotent` events. |
 | `events[].tokens` | object \| null | Token breakdown on `token_usage` events: `{ input, output, cacheRead, cacheWrite, total }`, **nested camelCase** (distinct from the flat lowercase `inputtokens` / `outputtokens` / … columns on message + transaction rows; same underlying data, different shape). |
 | `events[].tokencost` | number \| null | The turn's AI usage, in cents: `5` is $0.05. Present on `token_usage` events. |
+| `events[].tokencostestimate` | boolean \| null | `true` on the `token_usage` and `token_usage_idempotent` events of an agent whose model calls Wiro measures itself: `tokencost` is then an estimate, and the agent's [`ai-usage` rows](/docs/agent-transactions#metered-token-rows) say what was billed. Missing otherwise. |
 | `events[].calls` | number \| null | Number of LLM calls made in the billed turn. Present on `token_usage` events. |
 | `events[].userUuid` | string \| null | Originating actor's UUID. `"system"` for Scheduled Task runs and internal events. May be missing on older rows, in which case the server falls back to the agent owner. |
 | `events[].user` | object \| null | Resolved user shape (`uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`) when the actor is a real user. `null` for `system` events. |

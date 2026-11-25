@@ -8,7 +8,7 @@ Turn on Web Voice Channel (`util-web-channel`) on a useragent and a single REST 
 
 **Skill that powers this channel:**
 
-- Web Voice Channel (`util-web-channel`): browser voice channel. Bundled on the Voice Receptionist template. On any other agent, turn it on in one `POST /UserAgent/SkillsApply` call together with the two Skills it depends on, Voice Receptionist Rules (`util-voice-receptionist`) and Voice Call Prep Rules (`util-voice-call-prep`): `"skills": { "util-web-channel": true, "util-voice-receptionist": true, "util-voice-call-prep": true }`. Sent alone while those are off, the channel is refused with code `101` and a `deps[]` list, and nothing changes. Deploy's `skills` turns them on with the channel.
+- Web Voice Channel (`util-web-channel`): browser voice channel. Bundled on the Voice Receptionist template. On any other agent, turn it on in one `POST /UserAgent/SkillsApply` call together with the two Skills it depends on, Voice Receptionist Rules (`util-voice-receptionist`) and Voice Call Prep Rules (`util-voice-call-prep`): `"skills": { "util-web-channel": true, "util-voice-receptionist": true, "util-voice-call-prep": true }`. Sent alone while those are off, the channel is refused with code `101` and a `deps[]` list, and nothing changes. Deploy's `skills` turns them on with the channel. Turning it off also turns those two Skills off when Twilio Voice Channel (`util-twilio-channel`) is off too, and a change that would leave Voice Receptionist Rules on with neither voice channel on is refused with code `101`, `Voice calls need Twilio Voice Channel or Web Voice Channel on.` (see [`SkillsApply`](/docs/agent-overview#post-useragentskillsapply)).
 
 **Agents that typically enable this channel:**
 
