@@ -23646,7 +23646,7 @@ print(response.body);
 <tr>
 <td><code>toolstatus</code></td>
 <td><code>string</code></td>
-<td>Tool blocks only. <code>requested</code> while the step runs, then <code>completed</code> or <code>error</code>. A call that neither ran nor failed reads <code>held</code>, a connector call held for a person's approval (see <a href="/docs/agent-connectors#permissions-and-approvals">Permissions and Approvals</a>), or <code>paused</code>, a browser or desktop call refused during Take Control (see <a href="/docs/agent-overview#while-you-have-control">While You Have Control</a>). Show neither as a failure. Blocks saved before these two values existed keep <code>error</code> for a held call and <code>completed</code> for a paused one.</td>
+<td>Tool blocks only. <code>requested</code> while the step runs, then <code>completed</code> or <code>error</code>. A call that neither ran nor failed reads <code>held</code>, a connector call held for a person's approval (see <a href="/docs/agent-connectors#permissions-and-approvals">Permissions and Approvals</a>), or <code>paused</code>, a browser or desktop call refused during Take Control (see <a href="/docs/agent-overview#while-you-have-control">While You Have Control</a>). Show neither as a failure. Blocks saved before these two values existed keep <code>error</code> for either call (a paused call saved just before the change can read <code>completed</code>).</td>
 </tr>
 <tr>
 <td><code>toolintegration</code></td>
