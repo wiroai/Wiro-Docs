@@ -340,7 +340,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
   }'
 ```
 
-Each answers `status: "connected"`, and the running agent has the connector's tools from its next message, with no restart (`serper__web_search`, `wordpress__*`) that the scheduled task above names. A connector that signs in with its vendor answers an `authorizeUrl` instead: see [Connect with a sign-in](/docs/agent-connectors#connect-with-a-sign-in). Check every connection with [`POST /UserAgent/ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist).
+Each answers `status: "connected"`, and from its next message the running agent has the connector's tools that the scheduled task above names (`serper__web_search`, `wordpress__*`), with no restart. A connector that signs in with its vendor answers an `authorizeUrl` instead: see [Connect with a sign-in](/docs/agent-connectors#connect-with-a-sign-in). Check every connection with [`POST /UserAgent/ConnectorList`](/docs/agent-connectors#post-useragentconnectorlist).
 
 ## Step 4: Refine Skills After Deploy
 
