@@ -838,7 +838,7 @@ Every time is a whole number of Unix seconds and every duration a whole number o
 
 `block` has the shape of an [`agent_timeline_delta`](#agent_timeline_delta) block, with `text` always `null`:
 
-- A tool block has `blockid`, `callindex`, `contentindex`, `type` (`tool`), `text`, `toollabel`, `toolstatus` (`requested`, `completed`, `error`, `held`, or `paused`, as on [timeline tool blocks](/docs/agent-messaging#public-timeline-block-fields)), `toolintegration`, `toolaction`, `phase`, `version`, `startedat`, and `updatedat`. `toolintegration` and `toolaction` use the same closed lists as timeline tool blocks, and when `toolintegration` is set, `toolaction` is `null`.
+- A tool block has `blockid`, `callindex`, `contentindex`, `type` (`tool`), `text`, `toollabel`, `toolstatus` (`requested`, `completed`, `error`, `held`, `paused`, or `blocked`, as on [timeline tool blocks](/docs/agent-messaging#public-timeline-block-fields)), `toolintegration`, `toolaction`, `phase`, `version`, `startedat`, and `updatedat`. `toolintegration` and `toolaction` use the same closed lists as timeline tool blocks, and when `toolintegration` is set, `toolaction` is `null`.
 - A `reasoning` or `answer` block has `blockid`, `callindex`, `contentindex`, `type`, `text`, `phase`, `version`, `startedat`, and `updatedat`.
 - A `blockid` is unique within one run only, so key blocks by `runref` and `blockid` together. `version` starts at 1 and only grows: keep a block only when its `version` is higher than the one you hold.
 - `startedat` is when the step was first seen, and `updatedat` is the time of this update.
