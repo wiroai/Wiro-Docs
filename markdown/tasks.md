@@ -283,7 +283,7 @@ Retrieves the current status and output of a task. You can query by either `task
 | `modelslugowner` | `string` | Model owner slug (e.g. `"google"`, `"wiro"`). |
 | `modelslugproject` | `string` | Model project slug (e.g. `"nano-banana-pro"`). |
 | `surface` | `string \| null` | The way the task came in, such as `"api"` (see [Surfaces](#task-surfaces)). `null` for an older task whose surface is not known for certain. |
-| `outputs` | `array` | Output files (CDN URLs) or structured LLM content (`contenttype: "raw"`). |
+| `outputs` | `array` | Output files (CDN URLs) or structured LLM content (`contenttype: "raw"`). Each file also has its `id`. |
 
 ## **POST** /Task/List
 

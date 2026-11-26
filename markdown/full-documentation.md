@@ -5789,7 +5789,7 @@ Retrieves the current status and output of a task. You can query by either `task
 | `modelslugowner` | `string` | Model owner slug (e.g. `"google"`, `"wiro"`). |
 | `modelslugproject` | `string` | Model project slug (e.g. `"nano-banana-pro"`). |
 | `surface` | `string \| null` | The way the task came in, such as `"api"` (see [Surfaces](#task-surfaces)). `null` for an older task whose surface is not known for certain. |
-| `outputs` | `array` | Output files (CDN URLs) or structured LLM content (`contenttype: "raw"`). |
+| `outputs` | `array` | Output files (CDN URLs) or structured LLM content (`contenttype: "raw"`). Each file also has its `id`. |
 
 ## **POST** /Task/List
 
@@ -20608,7 +20608,7 @@ Every Detail or History message row returns a top-level `timeline[]`. It is the 
 
 Each block has an opaque deterministic `blockid`, call/content ordering coordinates, `type` (`reasoning`, `answer`, `tool`, `setup` or `approval`), safe public text, tool state, a setup card or an approval card, `phase` (`stream`, `end`, or `error`), its own monotonically increasing `version`, and timestamps. Reasoning text is a model-provided reasoning summary, never raw hidden chain-of-thought. Tool blocks expose only `toollabel`, `toolstatus`, `toolintegration`, and `toolaction`, never a tool ID, arguments, results, or other internal execution metadata. `toolintegration` and `toolaction` each hold a word from a [closed list](#tool-integration-and-action-values) or `null`. A `setup` block is a setup change the agent proposes; see [Setup From Chat](#setup-from-chat). An `approval` block is a connector action that waits for a person's approval; see [Permissions and Approvals](/docs/agent-connectors#permissions-and-approvals). When a turn ends with `agent_error` or `agent_cancel`, the server closes every block still at `stream` and sends each one as an `agent_timeline_delta`, usually just before that final event. After `agent_end`, open blocks normally close a few seconds later. A tool block that closed with `toolstatus` `requested` was cut off before it finished. One that reads `held`, `paused` or `blocked` didn't run: the call was held for a person's approval, refused during Take Control, or refused because its tool is set to `block` (see [`toolstatus`](#public-timeline-block-fields)).
 
-The timeline leaves out the agent's own housekeeping steps: looking up tools, reading a tool's description, reading a skill's instructions, checking its session's status and listing its Scheduled Tasks. Detail, History, `agent_subscribed` and `agent_timeline_delta` don't carry them. Such a step that works in a connector, with `toolintegration` set, is still listed. The steps still happen, so `blockid` and `contentindex` can skip a number where one was. [`UserAgent/Logs`](/docs/agent-logs) still lists their tool events.
+The timeline leaves out the agent's own housekeeping steps: looking up tools, reading a tool's description, reading a skill's instructions, checking its session's status and listing its Scheduled Tasks. Detail, History, `agent_subscribed` and `agent_timeline_delta` don't carry them. Such a step that works in a connector, with `toolintegration` set, is still listed. The steps still happen, so `callindex` and `contentindex` can skip a number where one was. [`UserAgent/Logs`](/docs/agent-logs) still lists their tool events.
 
 Live WebSocket updates arrive as `agent_timeline_delta` events carrying one public block. Merge by `blockid`, replace that block only when its incoming `version` is strictly newer, then sort by `callindex`, `contentindex`, and `blockid`. `agent_subscribed.timeline` carries the persisted reconnect snapshot. `agent_output` stays provisional cumulative output until the corresponding answer block catches up; after completion or reconnect, `Message/Detail` is authoritative.
 
@@ -20912,7 +20912,7 @@ Only the fields below are returned in browser-facing REST and WebSocket timeline
 | Field | Type | Description |
 |-------|------|-------------|
 | `blockid` | `string` | Opaque deterministic identity for one logical block (for example `c0:i0`). Use it as the merge key; do not parse its current format. |
-| `callindex` | `number` | Zero-based call order within the turn. Primary sort key. |
+| `callindex` | `number` | Zero-based call order within the turn. Primary sort key. It can skip a number where the timeline leaves out a step (see [Ordered turn timeline](#ordered-turn-timeline)). |
 | `contentindex` | `number` | Zero-based content order within the call. Secondary sort key. It can skip a number where the timeline leaves out a step (see [Ordered turn timeline](#ordered-turn-timeline)). |
 | `type` | `string` | `reasoning`, `answer`, `tool`, `setup`, or `approval`. |
 | `text` | `string\|null` | Safe public text for `reasoning` and `answer`; `null` for tool, setup and approval blocks. Reasoning text is an OpenAI GPT-5 provider summary, not raw chain-of-thought. |
@@ -21179,8 +21179,8 @@ A model run the agent starts, such as an image or a video, can end after the tur
 
 When the run's outputs are deleted later, with [Task/InputOutputDelete](/docs/tasks#task-inputoutputdelete), [Studio/Task/DeleteOutput](/docs/studio#post-studiotaskdeleteoutput) or Delete outputs in the agent's Model Runs on wiro.ai, Wiro rewrites the messages that showed them:
 
-- A message left with no file reads `The model run finished, but its outputs were deleted.` in `response` and `debugoutput`, and its `metadata.modelrun` has `outcome` `"deleted"` and `outputs` `[]`.
-- A message that also showed another run's files keeps `outcome` `"done"`. Only the deleted files leave its `outputs`, and their lines leave `response`.
+- A message left with nothing to show reads `The model run finished, but its outputs were deleted.` in `response` and `debugoutput`, and its `metadata.modelrun` has `outcome` `"deleted"` and `outputs` `[]`.
+- A message that also showed another run's files, or a text output, keeps `outcome` `"done"`. Only the deleted files leave its `outputs`, and their lines leave `response`.
 - `guid`, `createdat` and `sessionkey` stay the same, so the message keeps its place in the chat.
 
 History and [Message/Detail](#post-useragentmessagedetail) return the message as it is now. Followers of the session get it again as `agent_message_inserted` with the same `guid`: replace your copy (see [Following a session](/docs/agent-websocket#following-a-session)). When it is the session's latest message, [Message/Sessions](#post-useragentmessagesessions) shows its new text as `lastmessage`, and the session's `updatedat` doesn't change. Only these messages change: a reply in which the agent wrote a file's URL keeps it, and files already sent to a Telegram, Slack or Discord conversation stay there.
@@ -22840,7 +22840,7 @@ The merge contract is:
 
 The complete public block shape is `blockid`, `callindex`, `contentindex`, `type`, `text`, `phase`, `version`, `startedat`, and `updatedat`, and tool blocks also carry `toollabel`, `toolstatus`, `toolintegration`, and `toolaction`. Reasoning and answer blocks don't have these four fields. `phase` is `stream`, `end`, or `error`; timestamps can be `null` when unavailable. No additional internal correlation or execution metadata is emitted in this block.
 
-The agent's own housekeeping steps never arrive: looking up tools, reading a tool's description, reading a skill's instructions, checking its session's status and listing its Scheduled Tasks. `agent_subscribed.timeline` leaves them out too. Such a step that works in a connector, with `toolintegration` set, still arrives. So `blockid` and `contentindex` can skip a number where such a step was: sort by them, and don't count on them going up by one. The agent's [Logs](/docs/agent-logs) still list these steps.
+The agent's own housekeeping steps never arrive: looking up tools, reading a tool's description, reading a skill's instructions, checking its session's status and listing its Scheduled Tasks. `agent_subscribed.timeline` leaves them out too. Such a step that works in a connector, with `toolintegration` set, still arrives. So `callindex` and `contentindex` can skip a number where such a step was: sort by them, and don't count on them going up by one. The agent's [Logs](/docs/agent-logs) still list these steps.
 
 When the agent proposes a setup change, a `setup` block arrives the same way. It sorts after the turn's other blocks, its `text` is `null` and it carries a `setup` object instead of tool fields; see [Setup From Chat](/docs/agent-messaging#setup-from-chat). A pending card's block has `version` 1. When the card is applied, dismissed or fails, the block comes again with `version` 2 and the new `status`; `Message/Detail` and `Message/History` always have the current state. A pending `connect` card's block also carries `next`, the connector it connects, as `[{ connector, title, mode }]`.
 
@@ -23128,7 +23128,7 @@ Each message added to that session afterwards arrives as an `agent_message_inser
 | `createdat` / `startedat` / `endedat` | number | Unix timestamps in seconds, all set to when the message was added. |
 | `timeline` | array | Present on a message that carries approval cards: its `approval` blocks, as History returns them (see [How an approval works](/docs/agent-connectors#how-an-approval-works)). |
 
-- **What arrives.** A follower receives exactly the new messages its `Message/History` read would show. Turns you start with `Message/Send` keep streaming on their own `agenttoken`; following the session doesn't repeat them.
+- **What arrives.** A follower receives exactly the new and changed messages its `Message/History` read would show. Turns you start with `Message/Send` keep streaming on their own `agenttoken`; following the session doesn't repeat them.
 - **Messages that change.** Deleting a model run's outputs rewrites the message that showed them (see [Model run results](/docs/agent-messaging#model-run-results)). Followers get that message again as `agent_message_inserted`, with the same `guid`, `createdat` and `sessionkey` and the text and `metadata` History now returns. Replace your copy.
 - **Cards that change.** When an approval card on such a message is answered, expires or its action runs, followers get `{ "type": "agent_message_block", "sessiontoken": "…", "message": { "messageguid": "…", "block": { … } }, "result": true }`. Replace the block on that message by `blockid` when its `version` is newer.
 - **Stop following** with `{ "type": "agent_session_unsubscribe", "sessiontoken": "…" }`. There is no reply.
@@ -27894,7 +27894,7 @@ To list a customer's conversations, call [`POST /UserAgent/Message/Sessions`](/d
 
 ### Render the timeline
 
-A reply is an ordered list of blocks. Keep a map keyed by `blockid`, keep a block only when its `version` is newer than the one you hold, and draw the blocks sorted by `callindex`, then `contentindex`, then `blockid`. They can skip a number, because the timeline leaves out the agent's own housekeeping steps, such as looking up a tool or reading a skill.
+A reply is an ordered list of blocks. Keep a map keyed by `blockid`, keep a block only when its `version` is newer than the one you hold, and draw the blocks sorted by `callindex`, then `contentindex`, then `blockid`. `callindex` and `contentindex` can skip a number, because the timeline leaves out the agent's own housekeeping steps, such as looking up a tool or reading a skill.
 
 | `type` | What it holds | What your UI shows |
 |--------|---------------|--------------------|

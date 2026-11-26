@@ -319,7 +319,7 @@ To list a customer's conversations, call [`POST /UserAgent/Message/Sessions`](/d
 
 ### Render the timeline
 
-A reply is an ordered list of blocks. Keep a map keyed by `blockid`, keep a block only when its `version` is newer than the one you hold, and draw the blocks sorted by `callindex`, then `contentindex`, then `blockid`. They can skip a number, because the timeline leaves out the agent's own housekeeping steps, such as looking up a tool or reading a skill.
+A reply is an ordered list of blocks. Keep a map keyed by `blockid`, keep a block only when its `version` is newer than the one you hold, and draw the blocks sorted by `callindex`, then `contentindex`, then `blockid`. `callindex` and `contentindex` can skip a number, because the timeline leaves out the agent's own housekeeping steps, such as looking up a tool or reading a skill.
 
 | `type` | What it holds | What your UI shows |
 |--------|---------------|--------------------|
