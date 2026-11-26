@@ -395,6 +395,7 @@ The task must be in a terminal state (`task_postprocess_end` or `task_cancel`). 
 After deletion:
 - Output files and the input files you uploaded are deleted, and their URLs stop working
 - Task Detail then returns no outputs
+- A [model run's result](/docs/agent-messaging#model-run-results) that Wiro posted in a chat stops showing the deleted files
 - Task record and parameters are preserved. Only the files are deleted
 - Calling the endpoint again on the same task returns `result: true` immediately (idempotent)
 

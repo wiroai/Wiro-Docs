@@ -408,7 +408,7 @@ Lists the model runs Studio started for you in the key's workspace, newest first
 | `model` | `{ title, slugowner, slugproject }`. |
 | `categories` | The model's categories. `llm` marks a text run. |
 | `parameters` | The inputs the run used, such as its prompt. |
-| `outputs` | The result files, each with `name`, `contenttype`, `size` and `url`. An LLM run returns its text as `{ "contenttype": "raw", "content": { "answer": [...] } }`. |
+| `outputs` | The result files, each with `id`, `name`, `contenttype`, `size` and `url`. `id` is the file's id, the same value [Task/Detail](/docs/tasks#task-detail) returns for it. An LLM run returns its text as `{ "contenttype": "raw", "content": { "answer": [...] } }`, with no `id`. |
 | `totalcost` | The run's price in USD, charged when it succeeds. |
 | `socketaccesstoken` | While the run is active, a token for the task [WebSocket](/docs/websocket); empty once it finished. |
 | `createtime`, `starttime`, `endtime` | Unix seconds. |
@@ -435,6 +435,7 @@ Lists the model runs Studio started for you in the key's workspace, newest first
       "parameters": { "prompt": "Square banner for a bakery weekend sale, warm colors", "resolution": "2K" },
       "outputs": [
         {
+          "id": "5f2c8a1e9b7d4c3a6e0f1b2d8c9a7e4f",
           "name": "banner-1.png",
           "contenttype": "image/png",
           "size": "1843212",
@@ -472,7 +473,7 @@ Deletes the output and input files of one of your Studio runs once it has finish
 |-----------|------|----------|-------------|
 | `id` | string | Yes | The run's `id` from [Studio/Tasks](#post-studiotasks). |
 
-A run that is not yours answers `There is no task yet.`, and a run that has not finished answers `Task must be completed or cancelled before deleting files`.
+A run that is not yours answers `There is no task yet.`, and a run that has not finished answers `Task must be completed or cancelled before deleting files`. If the run's result was posted in a Studio chat as a message of its own, that message stops showing the deleted files (see [Model run results](/docs/agent-messaging#model-run-results)).
 
 ## Errors
 

@@ -114,7 +114,7 @@ Frames flow in two directions. `↓` = server → client, `↑` = client → ser
 | ↓ | `agent_wiroai_runtask` | Model-run discovery frame. Fires whenever the agent itself launches a Wiro model run during a turn (e.g. generating an image or video for a skill or through the Wiro AI Models connector, `wiro`). Arrives on the `agenttoken` of the turn that launched the run, carrying the new task's `socketaccesstoken` so you can subscribe to that run's `task_*` lifecycle and collect its outputs. See [Model runs the agent triggers](#model-runs-the-agent-triggers). |
 | ↑ | `agent_session_subscribe` | Follow a session with the `sessiontoken` from `Message/History`. See [Following a session](#following-a-session). |
 | ↓ | `agent_session_subscribed` | Session follow acknowledged. |
-| ↓ | `agent_message_inserted` | A message was added to a followed session between turns (a scheduled report, files sent after an answer, the result of background work). Carries the `sessiontoken` and the new row in `message`. |
+| ↓ | `agent_message_inserted` | A message was added to a followed session between turns (a scheduled report, files sent after an answer, the result of background work or of a model run), or such a message changed. Carries the `sessiontoken` and the row in `message`. |
 | ↓ | `agent_message_block` | A card on a message of a followed session changed: an approval card was answered, expired or its action ran. Carries the `sessiontoken`, and `messageguid` and one `block` in `message`; merge the block into that message's timeline by `blockid` and `version`. |
 | ↑ | `agent_session_unsubscribe` | Stop following a session. No reply. |
 | ↑ | `agent_run_subscribe` | Follow an agent's background runs and model runs with the `runstreamtoken` from `POST /UserAgent/RunStreamToken`. See [Following an agent's background runs](#following-an-agents-background-runs). |
@@ -281,6 +281,8 @@ The merge contract is:
 `version` is per block, not global. A turn can therefore render `Thinking → Answer or Tool → Thinking → Answer` across multiple calls. `reasoning` blocks contain only model-provided reasoning summaries, never raw chain-of-thought. `answer` blocks expose safe answer text. `tool` blocks expose only `toollabel`, `toolstatus`, `toolintegration`, and `toolaction`; their `text` is `null`, and tool IDs, arguments, and results are not public.
 
 The complete public block shape is `blockid`, `callindex`, `contentindex`, `type`, `text`, `phase`, `version`, `startedat`, and `updatedat`, and tool blocks also carry `toollabel`, `toolstatus`, `toolintegration`, and `toolaction`. Reasoning and answer blocks don't have these four fields. `phase` is `stream`, `end`, or `error`; timestamps can be `null` when unavailable. No additional internal correlation or execution metadata is emitted in this block.
+
+The agent's own housekeeping steps never arrive: looking up tools, reading a tool's description, reading a skill's instructions, checking its session's status and listing its Scheduled Tasks. `agent_subscribed.timeline` leaves them out too. Such a step that works in a connector, with `toolintegration` set, still arrives. So `blockid` and `contentindex` can skip a number where such a step was: sort by them, and don't count on them going up by one. The agent's [Logs](/docs/agent-logs) still list these steps.
 
 When the agent proposes a setup change, a `setup` block arrives the same way. It sorts after the turn's other blocks, its `text` is `null` and it carries a `setup` object instead of tool fields; see [Setup From Chat](/docs/agent-messaging#setup-from-chat). A pending card's block has `version` 1. When the card is applied, dismissed or fails, the block comes again with `version` 2 and the new `status`; `Message/Detail` and `Message/History` always have the current state. A pending `connect` card's block also carries `next`, the connector it connects, as `[{ connector, title, mode }]`.
 
@@ -519,7 +521,7 @@ When the agent **itself** kicks off a Wiro model run during a turn (for example 
 
 ### Following a session
 
-Some messages are added to a session between turns: a scheduled report, files the agent sends after its answer, or the result of longer work it finished in the background. They belong to no turn, so they never stream on an `agenttoken`. To receive them as they are added, follow the session with the `sessiontoken` that [`Message/History`](/docs/agent-messaging#post-useragentmessagehistory) returns for it:
+Some messages are added to a session between turns: a scheduled report, files the agent sends after its answer, the result of longer work it finished in the background, or a model run's result that came in after its turn. They belong to no turn, so they never stream on an `agenttoken`. To receive them as they are added, follow the session with the `sessiontoken` that [`Message/History`](/docs/agent-messaging#post-useragentmessagehistory) returns for it:
 
 ```json
 {
@@ -558,17 +560,18 @@ Each message added to that session afterwards arrives as an `agent_message_inser
 
 | Field | Type | Description |
 |---|---|---|
-| `guid` | string | The new message's GUID. Add each `guid` once; skip it if History already gave it to you. |
+| `guid` | string | The message's GUID. A `guid` you already hold can come again when its row changed, such as a [model run's result](/docs/agent-messaging#model-run-results) whose outputs were deleted: replace your copy. A row you don't hold that is older than what you show can be skipped, because History returns it already rewritten. |
 | `uuid` | string | The row's `uuid`, as `Message/History` returns it. |
 | `sessionkey` | string | The session the message was added to. |
 | `content` | string | `""`: no prompt of yours belongs to these messages. A [resume turn](/docs/agent-connectors#the-resume-turn) is the exception: its `content` is Wiro's message to the agent, so show its label instead. |
 | `response` | string | The message text. |
 | `status` | string | `"agent_end"`, or `"agent_queue"` for a resume turn just queued: follow it with the `agenttoken` that ApprovalCardAct or History gives. |
-| `metadata` | object | `type` is `"subagent"` for the result of work the agent finished in the background, `"approval_resume"` for a resume turn, `"system"` for the other messages, approval cards from Scheduled Tasks, channels and the agent's own work included. Other keys may appear; ignore the ones you don't use. |
+| `metadata` | object | `type` is `"subagent"` for the result of work the agent finished in the background, `"approval_resume"` for a resume turn, `"system"` for the other messages, approval cards from Scheduled Tasks, channels and the agent's own work included. A model run's result also has `modelrun` (see [Model run results](/docs/agent-messaging#model-run-results)). Other keys may appear; ignore the ones you don't use. |
 | `createdat` / `startedat` / `endedat` | number | Unix timestamps in seconds, all set to when the message was added. |
 | `timeline` | array | Present on a message that carries approval cards: its `approval` blocks, as History returns them (see [How an approval works](/docs/agent-connectors#how-an-approval-works)). |
 
 - **What arrives.** A follower receives exactly the new messages its `Message/History` read would show. Turns you start with `Message/Send` keep streaming on their own `agenttoken`; following the session doesn't repeat them.
+- **Messages that change.** Deleting a model run's outputs rewrites the message that showed them (see [Model run results](/docs/agent-messaging#model-run-results)). Followers get that message again as `agent_message_inserted`, with the same `guid`, `createdat` and `sessionkey` and the text and `metadata` History now returns. Replace your copy.
 - **Cards that change.** When an approval card on such a message is answered, expires or its action runs, followers get `{ "type": "agent_message_block", "sessiontoken": "…", "message": { "messageguid": "…", "block": { … } }, "result": true }`. Replace the block on that message by `blockid` when its `version` is newer.
 - **Stop following** with `{ "type": "agent_session_unsubscribe", "sessiontoken": "…" }`. There is no reply.
 - **Limit.** One connection follows up to 16 sessions. Following another one drops the oldest follow.
@@ -840,6 +843,7 @@ Every time is a whole number of Unix seconds and every duration a whole number o
 
 - A tool block has `blockid`, `callindex`, `contentindex`, `type` (`tool`), `text`, `toollabel`, `toolstatus` (`requested`, `completed`, `error`, `held`, `paused`, or `blocked`, as on [timeline tool blocks](/docs/agent-messaging#public-timeline-block-fields)), `toolintegration`, `toolaction`, `phase`, `version`, `startedat`, and `updatedat`. `toolintegration` and `toolaction` use the same closed lists as timeline tool blocks, and when `toolintegration` is set, `toolaction` is `null`.
 - A `reasoning` or `answer` block has `blockid`, `callindex`, `contentindex`, `type`, `text`, `phase`, `version`, `startedat`, and `updatedat`.
+- Unlike the message timeline, the run stream keeps the agent's own housekeeping steps, such as looking up a tool or reading a skill (see [`agent_timeline_delta`](#agent_timeline_delta)): a run's `block` can be one, and `steps` counts them.
 - A `blockid` is unique within one run only, so key blocks by `runref` and `blockid` together. `version` starts at 1 and only grows: keep a block only when its `version` is higher than the one you hold.
 - `startedat` is when the step was first seen, and `updatedat` is the time of this update.
 - `phase` is `stream`, `end`, or `error`. A step that reached `end` or `error` stays there. An update that names no tool word keeps the block's last word.

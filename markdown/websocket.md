@@ -201,7 +201,7 @@ to retrieve the persisted task.
 
 ### Final Result
 
-`task_postprocess_end` is the event you should listen for. The `message` contains the `outputs` array:
+`task_postprocess_end` is the event you should listen for. The `message` contains the `outputs` array. Each file in it has `id`, `name`, `contenttype`, `size` and `url`. `id` is the file's id, the same value [Task/Detail](/docs/tasks#task-detail) returns for that output. An LLM entry (`contenttype: "raw"`) has no `id`:
 
 ```json
 // Standard model — file outputs with CDN URLs
@@ -209,6 +209,7 @@ to retrieve the persisted task.
   "type": "task_postprocess_end",
   "id": "534574",
   "message": [{
+    "id": "5f2c8a1e9b7d4c3a6e0f1b2d8c9a7e4f",
     "name": "0.png",
     "contenttype": "image/png",
     "size": "202472",
