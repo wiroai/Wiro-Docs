@@ -87,10 +87,6 @@ One row per page, in sidebar order. Each path is live under `https://wiro.ai`.
 | Agent Transactions | `/docs/agent-transactions` | [agent-transactions.md](./markdown/agent-transactions.md) |
 | Agent Logs | `/docs/agent-logs` | [agent-logs.md](./markdown/agent-logs.md) |
 | Agent Use Cases | `/docs/agent-use-cases` | [agent-use-cases.md](./markdown/agent-use-cases.md) |
-| **Agent Channels** | | |
-| Telegram | `/docs/integration-telegram-skills` | [integration-telegram-skills.md](./markdown/integration-telegram-skills.md) |
-| Twilio Voice | `/docs/integration-twiliovoice-skills` | [integration-twiliovoice-skills.md](./markdown/integration-twiliovoice-skills.md) |
-| Web Voice | `/docs/integration-webvoice-skills` | [integration-webvoice-skills.md](./markdown/integration-webvoice-skills.md) |
 | **Organizations & Teams** | | |
 | Overview | `/docs/organizations-overview` | [organizations-overview.md](./markdown/organizations-overview.md) |
 | Managing Teams | `/docs/organizations-managing-teams` | [organizations-managing-teams.md](./markdown/organizations-managing-teams.md) |

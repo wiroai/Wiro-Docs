@@ -49,14 +49,11 @@ const sections = [
   { slug: 'agent-webhooks', title: 'Agent Webhooks', description: 'Receive agent response notifications via HTTP webhooks. Configure callback URLs for async message processing with automatic retries.' },
   { slug: 'agent-connectors', title: 'Agent Connectors', description: 'Connect an agent to the services it works with: the public connector catalog, connecting with fields, a key or the vendor\'s sign-in, the callback and redirect URL, connection states, account pickers and disconnecting, with every request and answer.' },
   { slug: 'agent-credentials', title: 'Agent Credentials', description: 'The values an agent keeps as credentials: its Telegram, Slack and Discord channels, Twilio Voice, the Wiro project it runs models with and settings. The credential registry, CredentialUpsert and credential history.' },
-  { slug: 'agent-chat-integration', title: 'Agent Chat Integration', description: 'Build your own chat for a Wiro agent: send messages, render timeline and setup card blocks, apply cards with SetupCardApply, connect connectors from a card or your settings screen, show your own Connect button from next, and show the agent\'s live Screen with Take Control.' },
+  { slug: 'agent-chat-integration', title: 'Agent Chat Integration', description: 'Build your own chat for a Wiro agent: send messages, render timeline and setup card blocks, apply cards with SetupCardApply, connect connectors from a card or your settings screen, show your own Connect button from next, show the agent\'s live Screen with Take Control, and take voice calls in the browser with Web Voice.' },
   { slug: 'agent-skills', title: 'Agent Skills', description: 'Configure agent behavior with editable preferences, scheduled automation tasks, and skill toggles. Browse the skill registry and capabilities, and put connector tools to work in custom skills.' },
   { slug: 'agent-transactions', title: 'Agent Transactions', description: 'An agent\'s transactions in dollars: its AI usage in the plan or from the balance, the model runs it starts, its plan payments and funds added.' },
   { slug: 'agent-logs', title: 'Agent Logs', description: 'Per-instance activity feed (tool calls, Scheduled Task runs, message exchanges, and turn boundaries) for any deployed agent.' },
   { slug: 'agent-use-cases', title: 'Agent Use Cases', description: 'Learn how to build products with Wiro Agents. Deploy agents for your customers, connect their services with connectors, and create multi-agent workflows.' },
-  { slug: 'integration-telegram-skills', title: 'Telegram Channel', description: 'Telegram bot setup: BotFather token, allowed users, private vs collaborative session modes.' },
-  { slug: 'integration-twiliovoice-skills', title: 'Twilio Voice Channel', description: 'Inbound phone call channel via Twilio Voice Webhooks + Media Streams. Account SID + Auth Token, auto-configured webhooks, hold media, max-duration timer. Used by Voice Receptionist agents.' },
-  { slug: 'integration-webvoice-skills', title: 'Web Voice Channel', description: 'Browser-embedded realtime voice channel. POST /UserAgent/Realtime/WebStart issues two opaque one-time handles, valid for 5 minutes, and the WebSocket URL; the browser sends sessionToken as its first frame and streams 24 kHz PCM mono. Used by the Voice Receptionist agent.' },
   { slug: 'organizations-overview', title: 'Organizations & Teams', description: 'Collaborate with your team under a shared workspace with unified billing, access controls, and resource management. Learn about organizations, teams, and personal workspaces.' },
   { slug: 'organizations-managing-teams', title: 'Managing Teams', description: 'Create organizations, invite members, manage roles and permissions. Transfer agents and projects between workspaces.' },
   { slug: 'organizations-billing', title: 'Team Billing & Spending', description: 'Manage team wallets, transfer credit and track usage across your organization.' },
@@ -68,9 +65,11 @@ const sectionMap = Object.fromEntries(sections.map(s => [s.slug, s]));
 // Pages that left the docs. The per-connector integration pages became the connector
 // catalog's own pages on the site, https://wiro.ai/connectors/{slug}, and the API they
 // described is the Agent Connectors page: each old address, and the address of its
-// Markdown copy, answers 301 with the connector's page. Links from before path URLs
-// (/docs#/integration-metaads-skills) get here too: app.js sends a #/slug that names
-// no page in the docs to /docs/slug.
+// Markdown copy, answers 301 with the connector's page. The channel pages followed:
+// Telegram and Twilio Voice have their channel pages there too, with their API on
+// Agent Credentials, and Web Voice, which has no channel page, is a part of Agent Chat
+// Integration. Links from before path URLs (/docs#/integration-metaads-skills) get
+// here too: app.js sends a #/slug that names no page in the docs to /docs/slug.
 const CONNECTOR_PAGE = 'https://wiro.ai/connectors/';
 const RETIRED_PAGES = {
   'integration-metaads-skills': CONNECTOR_PAGE + 'meta-ads',
@@ -142,8 +141,11 @@ const RETIRED_PAGES = {
   'integration-twitter': CONNECTOR_PAGE + 'twitter',
   'integration-wordpress': CONNECTOR_PAGE + 'wordpress',
   'integration-google-search-skills': CONNECTOR_PAGE + 'serper',
-  'integration-telegram': `${BASE}/integration-telegram-skills`,
-  'voice-agent-twilio-channel': `${BASE}/integration-twiliovoice-skills`,
+  'integration-telegram-skills': CONNECTOR_PAGE + 'telegram',
+  'integration-twiliovoice-skills': CONNECTOR_PAGE + 'twilio-voice',
+  'integration-webvoice-skills': `${BASE}/agent-chat-integration#web-voice-in-your-app`,
+  'integration-telegram': CONNECTOR_PAGE + 'telegram',
+  'voice-agent-twilio-channel': CONNECTOR_PAGE + 'twilio-voice',
 };
 const RETIRED_MARKDOWN = /^markdown\/([a-z0-9-]+)\.md$/;
 
