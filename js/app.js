@@ -417,16 +417,21 @@ function showSection(slug) {
     renderCodePanel(null);
   }
 
+  // The right panel holds the On this page list above the code examples. A page
+  // without code examples keeps the panel for its list alone (is-toc-only), the
+  // way Agent Overview shows it; a page with neither has no panel.
+  const hasToc = buildToc(slug);
   const rightPanel = document.getElementById('codePanel');
   const center = document.querySelector('.docs-center');
   if (rightPanel && center) {
-    const hasCode = currentCodeExamples && currentCodeExamples.length > 0;
-    rightPanel.classList.toggle('is-empty', !hasCode);
+    const hasCode = Boolean(currentCodeExamples && currentCodeExamples.length > 0);
+    rightPanel.classList.toggle('is-empty', !hasCode && !hasToc);
+    rightPanel.classList.toggle('is-toc-only', !hasCode && hasToc);
     center.classList.toggle('no-code-panel', !hasCode);
+    center.classList.toggle('has-toc-panel', !hasCode && hasToc);
   }
 
   renderPagination(slug);
-  buildToc(slug);
   closeCodeDrawer();
 
   // A section switched in place starts at the top. On a page load the reader may
@@ -881,9 +886,11 @@ function initSearch() {
 
 let tocScrollHandler = null;
 
+// Fills the On this page list from the section's h2 headings; true when the
+// page has a list (two or more of them).
 function buildToc(slug) {
   const tocPanel = document.getElementById('tocPanel');
-  if (!tocPanel) return;
+  if (!tocPanel) return false;
 
   const scrollContainer = document.querySelector('.docs-center') || window;
   if (tocScrollHandler && tocScrollHandler._el) {
@@ -895,14 +902,14 @@ function buildToc(slug) {
   if (!activeEl) {
     tocPanel.innerHTML = '';
     tocPanel.classList.remove('has-items');
-    return;
+    return false;
   }
 
   const headings = activeEl.querySelectorAll('h2[id], section[id] > h2');
   if (headings.length < 2) {
     tocPanel.innerHTML = '';
     tocPanel.classList.remove('has-items');
-    return;
+    return false;
   }
 
   const items = [];
@@ -915,7 +922,7 @@ function buildToc(slug) {
   if (items.length < 2) {
     tocPanel.innerHTML = '';
     tocPanel.classList.remove('has-items');
-    return;
+    return false;
   }
 
   let html = '<div class="docs-toc-title"><i class="lni lni-menu-hamburger-1"></i> On this page</div>';
@@ -940,6 +947,7 @@ function buildToc(slug) {
   tocScrollHandler._el = scrollContainer;
   scrollContainer.addEventListener('scroll', tocScrollHandler, { passive: true });
   updateTocActive(items, scrollContainer);
+  return true;
 }
 
 function updateTocActive(items, container) {

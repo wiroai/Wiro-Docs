@@ -245,8 +245,10 @@ const SECTION_DISPLAY = /(<div class="docs-page-section" data-page="[^"]+" style
 const EMPTY_PAGINATION = '<nav class="docs-pagination" id="docsPagination"></nav>';
 const CENTER_OPEN = '<article class="docs-center">';
 const CENTER_OPEN_NO_CODE = '<article class="docs-center no-code-panel">';
+const CENTER_OPEN_TOC_ONLY = '<article class="docs-center no-code-panel has-toc-panel">';
 const CODE_PANEL_OPEN = '<aside class="docs-right-panel" id="codePanel">';
 const CODE_PANEL_OPEN_EMPTY = '<aside class="docs-right-panel is-empty" id="codePanel">';
+const CODE_PANEL_OPEN_TOC_ONLY = '<aside class="docs-right-panel is-toc-only" id="codePanel">';
 const SUBMENU_OPEN = '<details class="docs-nav-group-submenu';
 const CODE_EXAMPLES = /<script\b[^>]*\bclass="code-examples-data"[^>]*>([\s\S]*?)<\/script>/;
 
@@ -492,6 +494,14 @@ function renderPagination(slug) {
   return `<nav class="docs-pagination" id="docsPagination">${html}</nav>`;
 }
 
+// The headings app.js buildToc() lists under On this page: an h2 with an id, or
+// an h2 right inside a section with an id. Two or more make the list.
+const TOC_HEADING = /<h2\b[^>]*\sid\s*=\s*"[^"]+"|<section\b[^>]*\sid\s*=\s*"[^"]+"[^>]*>\s*<h2\b/g;
+
+function hasTocList(markup) {
+  return (markup.match(TOC_HEADING) || []).length >= 2;
+}
+
 // Whether app.js will fill the right panel: the section's first examples list,
 // or the first group of it when they are grouped (Authentication).
 function hasCodeExamples(markup) {
@@ -521,15 +531,17 @@ function markActiveNavLink(head, slug) {
 
 // The first HTML carries the classes app.js sets on a page without code examples,
 // so the right panel and the center column have their final widths from the first
-// paint. app.js still sets them for the full index.html, which switches sections
-// in place.
+// paint: such a page keeps the panel for its On this page list alone, or has no
+// panel when it has no list either. app.js still sets them for the full
+// index.html, which switches sections in place.
 function renderSectionPage(docs, section) {
   const markup = docs.pages.get(section.slug);
   let head = markActiveNavLink(setHeaderPage(injectMeta(docs.head, section), section.title), section.slug);
   let tail = docs.tail.replace(EMPTY_PAGINATION, () => renderPagination(section.slug));
   if (!hasCodeExamples(markup)) {
-    head = head.replace(CENTER_OPEN, CENTER_OPEN_NO_CODE);
-    tail = tail.replace(CODE_PANEL_OPEN, CODE_PANEL_OPEN_EMPTY);
+    const tocOnly = hasTocList(markup);
+    head = head.replace(CENTER_OPEN, tocOnly ? CENTER_OPEN_TOC_ONLY : CENTER_OPEN_NO_CODE);
+    tail = tail.replace(CODE_PANEL_OPEN, tocOnly ? CODE_PANEL_OPEN_TOC_ONLY : CODE_PANEL_OPEN_EMPTY);
   }
   return head + markup.replace(SECTION_DISPLAY, (match, prefix) => `${prefix}block`) + tail;
 }

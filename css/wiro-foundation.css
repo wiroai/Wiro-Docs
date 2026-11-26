@@ -785,9 +785,11 @@ body::-webkit-scrollbar-thumb,
 
 /* The panel comes after the section in the HTML, so the browser can paint a long
    page before it has read the panel. Keeping the panel's room until then gives the
-   center column its final width from the first paint. */
+   center column its final width from the first paint. A page without code examples
+   keeps the panel for its On this page list (has-toc-panel, is-toc-only). */
 @media (min-width: 1280px) {
-  .docs-content-area:has(> .docs-center:not(.no-code-panel)):not(:has(> .docs-right-panel))::after {
+  .docs-content-area:has(> .docs-center:not(.no-code-panel)):not(:has(> .docs-right-panel))::after,
+  .docs-content-area:has(> .docs-center.has-toc-panel):not(:has(> .docs-right-panel))::after {
     content: "";
     width: min(34vw, 440px);
     min-width: 380px;
@@ -2196,8 +2198,15 @@ html.wiro-dark .docs-nav-icon-img[src*="roasit"] {
     color: var(--wiro-ink);
   }
 
-  /* A page without code examples has no panel for this button to open. */
-  .docs-right-panel.is-empty ~ .docs-code-drawer-toggle {
+  /* A page without code examples has no panel for this button to open. Here,
+     where the panel is the Code drawer, a panel that holds only the On this
+     page list stays closed too: the list shows beside the page from 1280px. */
+  .docs-right-panel.is-empty ~ .docs-code-drawer-toggle,
+  .docs-right-panel.is-toc-only ~ .docs-code-drawer-toggle {
+    display: none;
+  }
+
+  .docs-right-panel.is-toc-only {
     display: none;
   }
 
