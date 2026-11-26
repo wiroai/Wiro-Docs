@@ -14553,7 +14553,7 @@ import type {
 <tr>
 <td><code>tokenRates</code></td>
 <td>object</td>
-<td>Chat model rates. <code>default_model</code> is the default chat model, and <code>models</code> is keyed by model slug: each entry has <code>input_per_1m</code> and <code>output_per_1m</code> (cents per 1M tokens), optional cached-input, cache-write and long-context rates, a <code>label</code>, and <code>selectable: true</code> when you can pick it with <code>model</code>. A model you could pick that your <a href="/docs/model-access">Model Access</a> rules block reads <code>selectable: false</code> and <code>blocked: true</code>.</td>
+<td>Chat model rates. <code>default_model</code> names the rates that apply to a model <code>models</code> does not list (the chat model a turn uses when you leave <code>model</code> out is <code>agentModel.chatModel</code>), and <code>models</code> is keyed by model slug: each entry has <code>input_per_1m</code> and <code>output_per_1m</code> (cents per 1M tokens), optional cached-input, cache-write and long-context rates, a <code>label</code>, and <code>selectable: true</code> when you can pick it with <code>model</code>. A model you could pick that your <a href="/docs/model-access">Model Access</a> rules block reads <code>selectable: false</code> and <code>blocked: true</code>.</td>
 </tr>
 <tr>
 <td><code>agentModel.chatModel</code></td>
@@ -14647,34 +14647,35 @@ import type {
 }
 </code></pre>
 <p>This call was made with the API key of the Production project, so <code>project.current</code> is that project, <code>project.options</code> is empty and <code>project.canchange</code> is <code>false</code>: the key's turns always run on its own project.</p>
-<p>When a rule blocks a chat model, Status says so. With a team rule that blocks <code>openai/gpt-5-6-sol</code>, Studio's default chat model, these fields read:</p>
+<p>When a rule blocks a chat model, Status says so. With a team rule that blocks <code>openai/gpt-6.1-terra</code>, Studio's default chat model, these fields read:</p>
 <pre><code class="language-json">{
   &quot;tokenRates&quot;: {
     &quot;default_model&quot;: &quot;openai/gpt-5.6-sol&quot;,
     &quot;models&quot;: {
-      &quot;openai/gpt-5.6-sol&quot;: {
-        &quot;input_per_1m&quot;: 625,
-        &quot;output_per_1m&quot;: 3750,
-        &quot;cached_input_per_1m&quot;: 62.5,
+      &quot;openai/gpt-6.1-terra&quot;: {
+        &quot;input_per_1m&quot;: 110,
+        &quot;output_per_1m&quot;: 550,
+        &quot;cached_input_per_1m&quot;: 5.5,
+        &quot;cache_write_per_1m&quot;: 137.5,
         &quot;selectable&quot;: false,
-        &quot;label&quot;: &quot;GPT-5.6 Sol&quot;,
+        &quot;label&quot;: &quot;GPT-6.1 Terra&quot;,
         &quot;blocked&quot;: true
       },
       &quot;openai/gpt-5.4-mini&quot;: {
-        &quot;input_per_1m&quot;: 93.75,
-        &quot;output_per_1m&quot;: 562.5,
-        &quot;cached_input_per_1m&quot;: 9.375,
+        &quot;input_per_1m&quot;: 82.5,
+        &quot;output_per_1m&quot;: 495,
+        &quot;cached_input_per_1m&quot;: 8.25,
         &quot;selectable&quot;: true,
         &quot;label&quot;: &quot;GPT-5.4 Mini&quot;
       }
     }
   },
   &quot;agentModel&quot;: {
-    &quot;chatModel&quot;: &quot;openai/gpt-5.6-sol&quot;
+    &quot;chatModel&quot;: &quot;openai/gpt-6.1-terra&quot;
   },
-  &quot;blockedModels&quot;: [&quot;openai/gpt-5.6-sol&quot;],
+  &quot;blockedModels&quot;: [&quot;openai/gpt-6.1-terra&quot;],
   &quot;agentModelBlocked&quot;: true,
-  &quot;agentModelMessage&quot;: &quot;This team can't use openai/gpt-5-6-sol. Model Access rules decide which models can run.&quot;
+  &quot;agentModelMessage&quot;: &quot;This team can't use openai/gpt-6-1-terra. Model Access rules decide which models can run.&quot;
 }
 </code></pre>
 <p>A message that leaves <code>model</code> out is then refused with <code>agentModelMessage</code>. Send a model that is still selectable, such as <code>openai/gpt-5.4-mini</code>.</p>

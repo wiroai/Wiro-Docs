@@ -51,7 +51,7 @@ Returns the wallet check, the chat models Studio can use and the project Studio 
 | `walletUsd` | number | Spendable balance of the workspace wallet in USD. |
 | `needsTopup` | boolean | `true` when `walletUsd` is below `minTopup`. |
 | `minTopup` | number | The balance a turn needs to start: `10`. |
-| `tokenRates` | object | Chat model rates. `default_model` is the default chat model, and `models` is keyed by model slug: each entry has `input_per_1m` and `output_per_1m` (cents per 1M tokens), optional cached-input, cache-write and long-context rates, a `label`, and `selectable: true` when you can pick it with `model`. A model you could pick that your [Model Access](/docs/model-access) rules block reads `selectable: false` and `blocked: true`. |
+| `tokenRates` | object | Chat model rates. `default_model` names the rates that apply to a model `models` does not list (the chat model a turn uses when you leave `model` out is `agentModel.chatModel`), and `models` is keyed by model slug: each entry has `input_per_1m` and `output_per_1m` (cents per 1M tokens), optional cached-input, cache-write and long-context rates, a `label`, and `selectable: true` when you can pick it with `model`. A model you could pick that your [Model Access](/docs/model-access) rules block reads `selectable: false` and `blocked: true`. |
 | `agentModel.chatModel` | string | The chat model a turn uses when you leave `model` out. |
 | `blockedModels` | string[] | The chat models you could pick that your Model Access rules block. `[]` when none is blocked. |
 | `agentModelBlocked` | boolean | `true` when your rules block `agentModel.chatModel`: a message that leaves `model` out is then refused with code `92`. |
@@ -110,36 +110,37 @@ The response also carries fields that Wiro's own apps use. Ignore the ones not l
 
 This call was made with the API key of the Production project, so `project.current` is that project, `project.options` is empty and `project.canchange` is `false`: the key's turns always run on its own project.
 
-When a rule blocks a chat model, Status says so. With a team rule that blocks `openai/gpt-5-6-sol`, Studio's default chat model, these fields read:
+When a rule blocks a chat model, Status says so. With a team rule that blocks `openai/gpt-6.1-terra`, Studio's default chat model, these fields read:
 
 ```json
 {
   "tokenRates": {
     "default_model": "openai/gpt-5.6-sol",
     "models": {
-      "openai/gpt-5.6-sol": {
-        "input_per_1m": 625,
-        "output_per_1m": 3750,
-        "cached_input_per_1m": 62.5,
+      "openai/gpt-6.1-terra": {
+        "input_per_1m": 110,
+        "output_per_1m": 550,
+        "cached_input_per_1m": 5.5,
+        "cache_write_per_1m": 137.5,
         "selectable": false,
-        "label": "GPT-5.6 Sol",
+        "label": "GPT-6.1 Terra",
         "blocked": true
       },
       "openai/gpt-5.4-mini": {
-        "input_per_1m": 93.75,
-        "output_per_1m": 562.5,
-        "cached_input_per_1m": 9.375,
+        "input_per_1m": 82.5,
+        "output_per_1m": 495,
+        "cached_input_per_1m": 8.25,
         "selectable": true,
         "label": "GPT-5.4 Mini"
       }
     }
   },
   "agentModel": {
-    "chatModel": "openai/gpt-5.6-sol"
+    "chatModel": "openai/gpt-6.1-terra"
   },
-  "blockedModels": ["openai/gpt-5.6-sol"],
+  "blockedModels": ["openai/gpt-6.1-terra"],
   "agentModelBlocked": true,
-  "agentModelMessage": "This team can't use openai/gpt-5-6-sol. Model Access rules decide which models can run."
+  "agentModelMessage": "This team can't use openai/gpt-6-1-terra. Model Access rules decide which models can run."
 }
 ```
 
