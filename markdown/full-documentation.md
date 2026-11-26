@@ -24550,6 +24550,10 @@ One Wiro address can still show: the redirect URI, `https://api.wiro.ai/v1/Agent
 
 Otherwise, the connector texts your customer may read (field labels, help texts, error sentences) name the vendor only.
 
+### Open-source connectors
+
+The connectors whose tools run inside the agent (`transport: "local"` in the catalog) are open source. Each one is a module of [Wiro Agent Connectors](https://github.com/wiroai/Wiro-Agent-Connectors), on npm as [`@wiro-ai/wiro-agent-connectors`](https://www.npmjs.com/package/@wiro-ai/wiro-agent-connectors), with the same tools. You can also run one as an MCP server in Claude, Cursor or any MCP client, with your own credentials, such as `npx -y @wiro-ai/wiro-agent-connectors serper`; its README there says how to get and revoke each credential.
+
 ## Authentication
 
 | Call | API key | Who may call it |

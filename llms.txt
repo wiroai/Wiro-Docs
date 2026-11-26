@@ -49,7 +49,7 @@
 
 ## Agent Connectors and Channels
 
-Connectors (the outside services an agent works with: Shopify, Google Ads, Meta Ads, HubSpot, Serper, WordPress and the rest) come from the connector catalog; each one has a public page at https://wiro.ai/connectors/{slug} with its fields, setup steps and tools, and the API is on [Agent Connectors](https://wiro.ai/docs/agent-connectors).
+Connectors (the outside services an agent works with: Shopify, Google Ads, Meta Ads, HubSpot, Serper, WordPress and the rest) come from the connector catalog; each one has a public page at https://wiro.ai/connectors/{slug} with its fields, setup steps and tools, and the API is on [Agent Connectors](https://wiro.ai/docs/agent-connectors). The connectors whose tools run inside the agent (`transport: "local"`) are open source in [Wiro Agent Connectors](https://github.com/wiroai/Wiro-Agent-Connectors) (npm `@wiro-ai/wiro-agent-connectors`), and each one also runs as an MCP server in any MCP client: `npx -y @wiro-ai/wiro-agent-connectors <slug>`.
 
 Channels (how people reach the agent besides web chat): each one is explained on its own page at https://wiro.ai/connectors/{slug}, with its setup steps; the API is on [Agent Credentials](https://wiro.ai/docs/agent-credentials) and, for Web Voice, [Agent Chat Integration](https://wiro.ai/docs/agent-chat-integration#web-voice-in-your-app).
 - [Telegram](https://wiro.ai/connectors/telegram): Optional bot channel, immutable user/group allowlists, private/collaborative direct-chat modes, and connector approvals asked and answered in the chat; API in [Communication Channels](https://wiro.ai/docs/agent-credentials#communication-channels)
@@ -1340,6 +1340,7 @@ POST /Wallet/TransactionList: `{ uuid: "me", type: "all" or text a row type cont
 - [Full Markdown Export](https://raw.githubusercontent.com/wiroai/Wiro-Docs/main/markdown/full-documentation.md): All docs in a single markdown file
 - [MCP GitHub](https://github.com/wiroai/Wiro-MCP): MCP server source code
 - [MCP npm](https://www.npmjs.com/package/@wiro-ai/wiro-mcp): MCP server package
+- [Wiro-Agent-Connectors](https://github.com/wiroai/Wiro-Agent-Connectors): open-source MCP connectors for services with no official MCP server, such as Gmail, Shopify, YouTube and Notion (`@wiro-ai/wiro-agent-connectors` on npm); the connectors Wiro agents run inside the agent
 - [Wiro-Plugin](https://github.com/wiroai/Wiro-Plugin): plugin for Cursor, Claude Code, Codex, Gemini CLI, Devin, Antigravity and Kiro, with slash commands and agent skills
 - [Wiro-Skills](https://github.com/wiroai/Wiro-Skills): agent skills for images, image edits, video, music, speech, transcripts, 3D and model search, for Claude Code, Codex, Cursor, Gemini CLI, GitHub Copilot and OpenClaw (`npx skills add wiroai/Wiro-Skills`)
 - [Wiro-LLM](https://github.com/wiroai/Wiro-LLM): Vercel AI SDK provider for chat, images, speech, transcription and video (`@wiro-ai/wiro-llm` on npm)
