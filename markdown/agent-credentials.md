@@ -9,7 +9,7 @@ A credential is a set of values an agent keeps for something it is, rather than 
 | Credential | Key | What it is |
 |------------|-----|------------|
 | Telegram, Slack, Discord | `telegram`, `slack`, `discord` | The agent's own external chat channels. See [Communication Channels](#communication-channels). |
-| Twilio Voice | `twilio-voice` | The phone line the agent answers. See [Twilio Voice Channel](/docs/integration-twiliovoice-skills). |
+| Twilio Voice | `twilio-voice` | The phone line the agent answers. See [Twilio Voice](#twilio-voice). |
 | Wiro project | `wiro` | The project whose wallet pays for the Wiro model runs the agent makes, such as video and voice. See [The agent's Wiro project](#the-agents-wiro-project). |
 | Settings | `var-support-email`, `var-website`, `var-newsletter-test-email` | Values the agent's skills read: the support email it gives customers (field `value`), its website addresses (field `urls`: a list of `{ websitename, url }` entries, both required) and the inbox that gets a test copy of each newsletter before it goes out (field `value`). Save them with `CredentialUpsert`, as in [Setting Credentials](#setting-credentials). |
 
@@ -40,6 +40,8 @@ without additional configuration. Telegram, Slack, and Discord are optional
 external channels. They are available to every marketplace template and custom
 agent, but remain disabled until every registry-declared activation credential
 is complete. There is no separate enable switch on an existing agent.
+Each channel's setup, step by step, is on its own page: [Telegram](https://wiro.ai/connectors/telegram),
+[Slack](https://wiro.ai/connectors/slack) and [Discord](https://wiro.ai/connectors/discord).
 
 Channels are not skills and do not affect pricing. Discover them from the
 top-level `channels[]` array returned by public `POST /Skills/List`:
@@ -119,6 +121,47 @@ Completing the required fields again reactivates it automatically.
 
 **Approvals in these chats.** When an action of a connector needs a person's approval in a Telegram, Slack or Discord conversation, the agent asks there: its reply ends with a question that shows the action and its whole request, and an answer in that conversation of `yes` allows the action once and `no` declines it. Always allow isn't offered there: the agent's owner or an admin of its team sets it in the connector's Permissions. In a group, any member allowed to talk to the agent there answers. See [Approvals in Telegram, Slack and Discord](/docs/agent-connectors#approvals-in-telegram-slack-and-discord).
 
+
+## Twilio Voice
+
+The `twilio-voice` credential is the phone line the agent answers: the Account SID and Auth Token of your customer's own Twilio account and the numbers on it. It works with the Twilio Voice Channel Skill (`util-twilio-channel`) on, together with Voice Receptionist Rules (`util-voice-receptionist`) and Voice Call Prep Rules (`util-voice-call-prep`): send all three in one [`SkillsApply`](/docs/agent-overview#post-useragentskillsapply) call, or let Deploy's `skills` turn the two rules on with it. The setup in the Twilio Console, step by step, is on the [Twilio Voice](https://wiro.ai/connectors/twilio-voice) page.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "twilio-voice", "fieldname": "accountsid",      "fieldvalue": "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" },
+      { "credentialkey": "twilio-voice", "fieldname": "authtoken",       "fieldvalue": "your-32-character-auth-token" },
+      { "credentialkey": "twilio-voice", "parentfield": "phonenumbers", "ordinal": 0, "fieldname": "value", "fieldvalue": "+14155551234" },
+      { "credentialkey": "twilio-voice", "fieldname": "maxcallseconds",  "fieldvalue": "600" },
+      { "credentialkey": "twilio-voice", "fieldname": "holdstrategy",    "fieldvalue": "text_then_music" },
+      { "credentialkey": "twilio-voice", "fieldname": "holdtext",        "fieldvalue": "Please hold while we connect you to our assistant." },
+      { "credentialkey": "twilio-voice", "fieldname": "holdvoice",       "fieldvalue": "Polly.Joanna-Neural" }
+    ]
+  }'
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `accountsid` | string | Yes | Twilio Account SID: 34 chars starting with `AC`. |
+| `authtoken` | string (secret) | Yes | Twilio Live Auth Token: 32-char secret. Stored encrypted at rest. |
+| `phonenumbers` | string array | Yes | E.164-formatted phone numbers this agent will answer. All numbers share the same agent settings (hold media, persona, skills). |
+| `maxcallseconds` | number | No | Hard cap per call in seconds. Default `600` (10 min). When reached, the call is force-ended and the caller hears a fallback message. Twilio still bills for the full duration up to this cap. |
+| `whitelistedcallers` | string array | No | E.164-formatted caller-ID allowlist. **Non-empty** → only listed numbers reach the agent (others get a busy signal). **Empty** → all callers accepted (production default). Use to add only your own number while testing in production. |
+| `holdstrategy` | enum | No | What the caller hears during the ~5-8 sec window it takes the agent to connect. Options: `none`, `text`, `audio`, `music`, `audio_then_music`, `text_then_music`. *"X + background music"* options are the most polished. |
+| `holdtext` | string | Conditional | Required when `holdstrategy` ∈ {`text`, `text_then_music`}. TTS text: keep to 1 sentence (~5-8s spoken). Hard cap 3000 chars. Supports SSML tags (`<break>`, `<prosody>`, `<say-as>`). |
+| `holdvoice` | enum | Conditional | TTS voice for `holdtext`. Empty string (`""`) = use Twilio account default. 20 named voices available (AWS Polly Neural / Generative + Google Chirp3-HD), each tied to a single language: `Polly.Joanna-Neural` (en-US), `Polly.Burcu-Neural` (tr-TR), `Polly.Lea-Neural` (fr-FR), etc. Generative tier is most human-like but priced higher per character. |
+| `holdaudio` | file (MP3/WAV) | Conditional | Required when `holdstrategy` ∈ {`audio`, `audio_then_music`}. Short greeting (5-15 s recommended), mono, max 10 MB. |
+| `holdmusic` | file (MP3/WAV) | Conditional | Required when `holdstrategy` ∈ {`music`, `audio_then_music`, `text_then_music`}. Background music that loops while the caller waits. Mono, max 10 MB. 30-60 s sweet spot. **Use royalty-free music**, since you are responsible for licensing. |
+
+> **Twilio cannot mix speech over music simultaneously**: for a voice-over-music intro, pre-mix both into a single audio file and use `holdstrategy: audio` (or `audio_then_music` if you also want the loop after).
+
+Saving the credential points each number's incoming calls at the agent: `CredentialUpsert` sets the number's `VoiceUrl` and `StatusCallback` in Twilio, and its answer names the numbers it set (see [`CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert)). A number must be on the Twilio account of the Account SID, with Twilio's default voice configuration, *Webhook, TwiML Bin, Function, Studio Flow, Proxy Service*: Wiro does not drive a TwiML App or a SIP Trunk.
+
+Calls on the phone and in the browser are listed by [`POST /UserAgent/TwilioCallHistory/List`](/docs/agent-overview#post-useragenttwiliocallhistorylist). Twilio bills the minutes, the numbers and any text-to-speech hold greeting on the Twilio account; the live call audio is billed to [the agent's Wiro project](#the-agents-wiro-project), not to its AI usage.
 
 ## Credential Registry Endpoints
 

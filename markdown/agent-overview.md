@@ -1894,7 +1894,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 > | `twilioWebhooksFailed` | `object[]` | One `{ phoneNumber, error }` entry per number whose update Twilio rejected. |
 > | `twilioWebhookError` | `string` | Top-level message when the entire VoiceUrl-rewrite flow failed (auth error, network outage). The credential rows are still saved. Only the auto-configuration step failed. |
 >
-> Treat all four fields as best-effort: the credential write itself never depends on Twilio's API call succeeding. See [Twilio Voice Channel](/docs/integration-twiliovoice-skills) for the full lifecycle.
+> Treat all four fields as best-effort: the credential write itself never depends on Twilio's API call succeeding. The credential's fields are on [Agent Credentials](/docs/agent-credentials#twilio-voice), and the setup in Twilio on the [Twilio Voice](https://wiro.ai/connectors/twilio-voice) page.
 
 <a id="credentialupsert-errors"></a>
 
@@ -3128,13 +3128,13 @@ Returns the latest message GUID per pinned agent. Compare each `lastmessageguid`
 
 ### Voice & Realtime
 
-Endpoints for browser-based realtime voice sessions, the unified call history for both Web and Twilio channels, and the agent's live Screen. Per-channel setup, session handles, and the WebSocket protocols live on the dedicated pages:
+Endpoints for browser-based realtime voice sessions, the unified call history for both Web and Twilio channels, and the agent's live Screen. Building them into your own app, with the session handles and the WebSocket protocols, is on Agent Chat Integration: [Web Voice in Your App](/docs/agent-chat-integration#web-voice-in-your-app) and [Screen and Take Control in Your App](/docs/agent-chat-integration#screen-and-take-control-in-your-app).
 
 | Operation | Endpoint |
 |-----------|----------|
-| Start a browser realtime voice session | `POST /UserAgent/Realtime/WebStart`: see [Web Voice](/docs/integration-webvoice-skills) |
-| Cancel a pending realtime session | `POST /UserAgent/Realtime/Cancel`: see [Web Voice, Step 3](/docs/integration-webvoice-skills#step-3-optional-cancel-a-stale-session-with-post-useragentrealtimecancel) |
-| List recent realtime call sessions | `POST /UserAgent/TwilioCallHistory/List`: see [Twilio Voice, Call History](/docs/integration-twiliovoice-skills#call-history) (returns Twilio **and** Web channel sessions despite the Twilio-named path). |
+| Start a browser realtime voice session | [`POST /UserAgent/Realtime/WebStart`](#post-useragentrealtimewebstart): see [Web Voice in Your App](/docs/agent-chat-integration#web-voice-in-your-app) |
+| Cancel a pending realtime session | [`POST /UserAgent/Realtime/Cancel`](#post-useragentrealtimecancel): see [Cancel a call that never connected](/docs/agent-chat-integration#cancel-a-call-that-never-connected) |
+| List recent realtime call sessions | [`POST /UserAgent/TwilioCallHistory/List`](#post-useragenttwiliocallhistorylist) (returns Twilio **and** Web channel sessions despite the Twilio-named path). |
 | Ask whether the agent's Screen can open, and whether Take Control can | [`POST /UserAgent/Realtime/ScreenInfo`](#post-useragentrealtimescreeninfo) |
 | Get a one-time ticket for the Screen socket, to watch or to take control | [`POST /UserAgent/Realtime/ScreenStart`](#post-useragentrealtimescreenstart): see [Screen and Take Control in Your App](/docs/agent-chat-integration#screen-and-take-control-in-your-app) |
 
@@ -3164,7 +3164,7 @@ Starts a browser-embedded realtime voice session with the agent. Returns two opa
 
 - **Auth**: same Bearer / API key path as every other `UserAgent/*` endpoint. Bearer requests must come from wiro.ai; API-key requests have no Origin check.
 - **Rate limit**: fixed 60 sessions/hour per operator. Sessions that fail to start are not counted.
-- **Full WebSocket protocol, control frames, and JS snippet** are in [Web Voice](/docs/integration-webvoice-skills).
+- **Full WebSocket protocol, control frames, and JS snippet** are in [Web Voice in Your App](/docs/agent-chat-integration#web-voice-in-your-app).
 
 ##### Common errors
 
@@ -3256,7 +3256,7 @@ Returns the realtime voice sessions among a useragent's latest messages, coverin
 | `modelSlug` | string \| null | Realtime model slug used for this call (e.g. `gpt-realtime-mini`). |
 | `startedAt` / `endedAt` | number \| null | Unix epoch ms. `endedAt` stays `null` until the call finishes or is rejected. |
 
-Rows are returned newest-first. Rejected sessions (`realtime_session_rejected`) are intermixed and carry `metadata.reason` (visible by reading the same `messageguid` via `Message/Detail`) with values: `concurrent_limit`, `agent_prep_timeout`, `realtime_ws_open_failed`, `realtime_stream_timeout`. Full field reference: [Twilio Voice, Call History](/docs/integration-twiliovoice-skills#call-history).
+Rows are returned newest-first. Rejected sessions (`realtime_session_rejected`) are intermixed and carry `metadata.reason` (visible by reading the same `messageguid` via `Message/Detail`) with values: `concurrent_limit`, `agent_prep_timeout`, `realtime_ws_open_failed`, `realtime_stream_timeout`.
 
 #### **POST** /UserAgent/Realtime/ScreenInfo
 

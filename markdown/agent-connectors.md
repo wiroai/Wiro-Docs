@@ -2063,7 +2063,7 @@ A connector is on while it is connected: it is never a Skill to turn on or a cre
 | `POST /UserAgent/CredentialUpsert` | A row whose `credentialkey` is a connector's slug: the whole request, its other rows included | `Unknown credential: <key>. Connectors are connected with UserAgent/ConnectorConnect.` |
 | `POST /Credentials/Detail` | A connector's slug as `key` | `Credential not found: <key>` (code `404`): read it with [`AgentConnector/Detail`](#post-agentconnectordetail). |
 
-- Deploy's `skills` and `SkillsApply` take Skills (`util-*`) only. The Twilio Voice phone line is the Twilio Voice Channel (`util-twilio-channel`) Skill, with its account in the `twilio-voice` credential: see [Twilio Voice Channel](/docs/integration-twiliovoice-skills).
+- Deploy's `skills` and `SkillsApply` take Skills (`util-*`) only. The Twilio Voice phone line is the Twilio Voice Channel (`util-twilio-channel`) Skill, with its account in the `twilio-voice` credential: see [Twilio Voice](/docs/agent-credentials#twilio-voice).
 - Channels (Telegram, Slack, Discord, Twilio Voice) are not connectors: they keep their credentials. See [Agent Credentials](/docs/agent-credentials).
 - Every OAuth app of your own lists one redirect URI, the same for every vendor: `https://api.wiro.ai/v1/AgentConnector/OAuthCallback`.
 
