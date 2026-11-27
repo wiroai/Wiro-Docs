@@ -89,6 +89,7 @@ curl -X POST "https://api.wiro.ai/v1/AgentConnector/List" \
       "description": "Publish posts, photos and videos to your Facebook Pages and read their engagement.",
       "category": "social",
       "iconurl": "https://cdn.wiro.ai/uploads/connectors/connector-facebook-pages-icon-dfe8207768d6.svg",
+      "icondarkurl": null,
       "websiteurl": "https://www.facebook.com",
       "authtype": "provider-oauth",
       "transport": "local",
@@ -158,6 +159,7 @@ The example is shortened: real help texts and tool descriptions are longer, and 
 | `title`, `description` | Display name and one-line summary. |
 | `category` | One lower-case word for grouping, or `null`. |
 | `iconurl`, `websiteurl` | The vendor's logo and site, or `null`. |
+| `icondarkurl` | The logo to use on a dark background, or `null` when `iconurl` works on both. It is a light copy of a one-colour logo, such as `https://cdn.wiro.ai/uploads/connectors/connector-tiktok-ads-icon-3a9843c10f3d-dark.svg` for TikTok Ads. |
 | `authtype` | How it connects: `fields` (values on a Connect card), `provider-oauth` (the vendor's sign-in with your own app, and for some vendors a key instead), `headers` (values the vendor's own MCP server takes, such as an API key), `oauth` (the vendor's own MCP server's sign-in: no app of yours needed, or, when `credentialfields` lists your app's keys as HubSpot's does, an app of yours at that server) or `none` (nothing to enter). |
 | `transport` | Where its tools run: `local` (inside the agent), `streamable-http` or `sse` (the vendor's own MCP server). Nothing you send depends on it. |
 | `credentialfields` | The Connect card: one entry per value to ask for. See [Connect card fields](#connect-card-fields). A `headers` row lists its values in the same shape. Never a value. |
@@ -198,6 +200,7 @@ curl -X POST "https://api.wiro.ai/v1/AgentConnector/Detail" \
       "description": "Google search results through Serper: organic results, answer box and related questions.",
       "category": "data",
       "iconurl": "https://cdn.wiro.ai/uploads/connectors/connector-serper-icon-983eeb4db711.svg",
+      "icondarkurl": null,
       "websiteurl": "https://serper.dev",
       "authtype": "fields",
       "transport": "local",
