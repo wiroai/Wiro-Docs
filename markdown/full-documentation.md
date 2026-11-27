@@ -16294,7 +16294,7 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
           "_editable": { "bottoken": true, "allowedusers": true, "groups": true },
           "_schema": {
             "title": "Telegram",
-            "icon": "https://wiro.ai/images/icons/skills/telegram.svg",
+            "icon": "https://cdn.wiro.ai/uploads/connectors/connector-telegram-icon-27829c103cfc.svg",
             "brand_color": "#24a1de",
             "brand_text_color": "#ffffff",
             "brand_logo_filter": "brightness(0) invert(1)",
@@ -16767,7 +16767,7 @@ Retrieves full details for a single deployed agent instance, including subscript
           },
           "_schema": {
             "title": "Telegram",
-            "icon": "https://wiro.ai/images/icons/skills/telegram.svg",
+            "icon": "https://cdn.wiro.ai/uploads/connectors/connector-telegram-icon-27829c103cfc.svg",
             "brand_color": "#24a1de",
             "brand_text_color": "#ffffff",
             "brand_logo_filter": "brightness(0) invert(1)",
@@ -24669,7 +24669,7 @@ curl -X POST "https://api.wiro.ai/v1/AgentConnector/List" \
       "title": "Facebook Pages",
       "description": "Publish posts, photos and videos to your Facebook Pages and read their engagement.",
       "category": "social",
-      "iconurl": "https://wiro.ai/images/icons/skills/facebook.svg",
+      "iconurl": "https://cdn.wiro.ai/uploads/connectors/connector-facebook-pages-icon-dfe8207768d6.svg",
       "websiteurl": "https://www.facebook.com",
       "authtype": "provider-oauth",
       "transport": "local",
@@ -24778,7 +24778,7 @@ curl -X POST "https://api.wiro.ai/v1/AgentConnector/Detail" \
       "title": "Serper",
       "description": "Google search results through Serper: organic results, answer box and related questions.",
       "category": "data",
-      "iconurl": "https://wiro.ai/images/icons/skills/serper.svg",
+      "iconurl": "https://cdn.wiro.ai/uploads/connectors/connector-serper-icon-983eeb4db711.svg",
       "websiteurl": "https://serper.dev",
       "authtype": "fields",
       "transport": "local",
@@ -24894,7 +24894,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
     {
       "slug": "serper",
       "title": "Serper",
-      "iconurl": "https://wiro.ai/images/icons/skills/serper.svg",
+      "iconurl": "https://cdn.wiro.ai/uploads/connectors/connector-serper-icon-983eeb4db711.svg",
       "category": "data",
       "authtype": "fields",
       "transport": "local",
@@ -24968,7 +24968,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
     {
       "slug": "dataforseo",
       "title": "DataForSEO",
-      "iconurl": "https://wiro.ai/images/icons/skills/dataforseo.svg",
+      "iconurl": "https://cdn.wiro.ai/uploads/connectors/connector-dataforseo-icon-ec6bc46c1890.svg",
       "category": "data",
       "authtype": "headers",
       "transport": "streamable-http",
@@ -25015,7 +25015,7 @@ Some vendors that sign in with your own app also take a key or token (`modes: ["
     {
       "slug": "facebook-pages",
       "title": "Facebook Pages",
-      "iconurl": "https://wiro.ai/images/icons/skills/facebook.svg",
+      "iconurl": "https://cdn.wiro.ai/uploads/connectors/connector-facebook-pages-icon-dfe8207768d6.svg",
       "category": "social",
       "authtype": "provider-oauth",
       "transport": "local",
@@ -25166,7 +25166,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorList" \
     {
       "slug": "serper",
       "title": "Serper",
-      "iconurl": "https://wiro.ai/images/icons/skills/serper.svg",
+      "iconurl": "https://cdn.wiro.ai/uploads/connectors/connector-serper-icon-983eeb4db711.svg",
       "category": "data",
       "authtype": "fields",
       "transport": "local",
@@ -25186,7 +25186,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorList" \
     {
       "slug": "facebook-pages",
       "title": "Facebook Pages",
-      "iconurl": "https://wiro.ai/images/icons/skills/facebook.svg",
+      "iconurl": "https://cdn.wiro.ai/uploads/connectors/connector-facebook-pages-icon-dfe8207768d6.svg",
       "category": "social",
       "authtype": "provider-oauth",
       "transport": "local",
@@ -25321,7 +25321,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetAccounts" \
     {
       "slug": "facebook-pages",
       "title": "Facebook Pages",
-      "iconurl": "https://wiro.ai/images/icons/skills/facebook.svg",
+      "iconurl": "https://cdn.wiro.ai/uploads/connectors/connector-facebook-pages-icon-dfe8207768d6.svg",
       "category": "social",
       "authtype": "provider-oauth",
       "transport": "local",
@@ -25424,7 +25424,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetAccounts" \
     {
       "slug": "tiktok-ads",
       "title": "TikTok Ads",
-      "iconurl": "https://wiro.ai/images/icons/skills/tiktok.svg",
+      "iconurl": "https://cdn.wiro.ai/uploads/connectors/connector-tiktok-ads-icon-3a9843c10f3d.svg",
       "category": "ads",
       "authtype": "oauth",
       "transport": "streamable-http",
@@ -27167,7 +27167,7 @@ Lists every credential in the registry: the channels, Twilio Voice, the Wiro pro
     {
       "key": "telegram",
       "title": "Telegram",
-      "icon": "/images/icons/skills/telegram.svg",
+      "icon": "https://cdn.wiro.ai/uploads/connectors/connector-telegram-icon-27829c103cfc.svg",
       "brand_color": "#24a1de",
       "brand_text_color": "#ffffff",
       "brand_logo_filter": "brightness(0) invert(1)",
@@ -27206,7 +27206,7 @@ The example shows one entry, shortened. Keys this table doesn't list are for Wir
 |-------|------|-------------|
 | `key` | `string` | Canonical credential key. Use this in `CredentialUpsert.fields[].credentialkey`. |
 | `title` | `string` | Display label for the credential's card. |
-| `icon` | `string` | The icon as the registry holds it: a path on `https://wiro.ai`, such as `/images/icons/skills/telegram.svg` (put `https://wiro.ai` in front of it), or, for a setting, a Lineicons class name, such as `lni lni-envelope-1`. |
+| `icon` | `string` | The icon: a full URL, used as it is, such as `https://cdn.wiro.ai/uploads/connectors/connector-telegram-icon-27829c103cfc.svg`, or, for a setting, a Lineicons class name, such as `lni lni-envelope-1`. |
 | `brand_color` / `brand_text_color` / `brand_logo_filter` | `string\|null` | Colours and CSS filter for rendering the icon, the same shape as on skill registry entries. |
 | `docs_url` | `string\|null` | Slug of the page about it on this docs site, when it has one. Frontends prefix it with `/docs/`. |
 | `credential_mode` | `string` | `"api_key"` for values typed in (the channels, Twilio Voice, the Wiro project) or `"static"` for settings. |
@@ -27253,7 +27253,7 @@ Returns the **same entry** as a row from `Credentials/List` (shortened here):
   "credential": {
     "key": "twilio-voice",
     "title": "Twilio Voice",
-    "icon": "/images/icons/skills/twilio.svg",
+    "icon": "https://cdn.wiro.ai/uploads/connectors/connector-twilio-voice-icon-a5f8492d64f0.svg",
     "credential_mode": "api_key",
     "credential_schema": [
       { "key": "accountsid", "type": "text", "label": "Account SID", "required": true, "encrypted": true },
@@ -30631,7 +30631,7 @@ Lists all skills in the registry.
 | `version` | `string` | Semver for the registry entry. Bumped when the skill's tool surface changes. |
 | `title` | `string` | Display name shown on chips / filters / cards. |
 | `description` | `string` | One-line summary used on marketing surfaces. |
-| `icon` | `string` | A LineIcons class name, such as `lni lni-cloud-sun`, or a path on wiro.ai, such as `/images/icons/skills/twilio.svg`: prefix a path with `https://wiro.ai`. |
+| `icon` | `string` | A LineIcons class name, such as `lni lni-cloud-sun`, or a full URL, used as it is, such as `https://cdn.wiro.ai/uploads/connectors/connector-twilio-voice-icon-a5f8492d64f0.svg` for Twilio Voice Channel (`util-twilio-channel`). |
 | `brand_color` | `string\|null` | Brand background colour (hex) for chips and cards. |
 | `brand_text_color` | `string\|null` | Foreground colour to render on top of `brand_color`. |
 | `brand_logo_filter` | `string\|null` | CSS `filter` value applied to monochrome SVG icons (e.g. `"brightness(0) invert(1)"`) so the same source SVG renders correctly on light and dark brand colours. |

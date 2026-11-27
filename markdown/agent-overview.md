@@ -562,7 +562,7 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
           "_editable": { "bottoken": true, "allowedusers": true, "groups": true },
           "_schema": {
             "title": "Telegram",
-            "icon": "https://wiro.ai/images/icons/skills/telegram.svg",
+            "icon": "https://cdn.wiro.ai/uploads/connectors/connector-telegram-icon-27829c103cfc.svg",
             "brand_color": "#24a1de",
             "brand_text_color": "#ffffff",
             "brand_logo_filter": "brightness(0) invert(1)",
@@ -1035,7 +1035,7 @@ Retrieves full details for a single deployed agent instance, including subscript
           },
           "_schema": {
             "title": "Telegram",
-            "icon": "https://wiro.ai/images/icons/skills/telegram.svg",
+            "icon": "https://cdn.wiro.ai/uploads/connectors/connector-telegram-icon-27829c103cfc.svg",
             "brand_color": "#24a1de",
             "brand_text_color": "#ffffff",
             "brand_logo_filter": "brightness(0) invert(1)",

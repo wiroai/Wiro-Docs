@@ -114,7 +114,7 @@ Lists all skills in the registry.
 | `version` | `string` | Semver for the registry entry. Bumped when the skill's tool surface changes. |
 | `title` | `string` | Display name shown on chips / filters / cards. |
 | `description` | `string` | One-line summary used on marketing surfaces. |
-| `icon` | `string` | A LineIcons class name, such as `lni lni-cloud-sun`, or a path on wiro.ai, such as `/images/icons/skills/twilio.svg`: prefix a path with `https://wiro.ai`. |
+| `icon` | `string` | A LineIcons class name, such as `lni lni-cloud-sun`, or a full URL, used as it is, such as `https://cdn.wiro.ai/uploads/connectors/connector-twilio-voice-icon-a5f8492d64f0.svg` for Twilio Voice Channel (`util-twilio-channel`). |
 | `brand_color` | `string\|null` | Brand background colour (hex) for chips and cards. |
 | `brand_text_color` | `string\|null` | Foreground colour to render on top of `brand_color`. |
 | `brand_logo_filter` | `string\|null` | CSS `filter` value applied to monochrome SVG icons (e.g. `"brightness(0) invert(1)"`) so the same source SVG renders correctly on light and dark brand colours. |

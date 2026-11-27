@@ -186,7 +186,7 @@ Lists every credential in the registry: the channels, Twilio Voice, the Wiro pro
     {
       "key": "telegram",
       "title": "Telegram",
-      "icon": "/images/icons/skills/telegram.svg",
+      "icon": "https://cdn.wiro.ai/uploads/connectors/connector-telegram-icon-27829c103cfc.svg",
       "brand_color": "#24a1de",
       "brand_text_color": "#ffffff",
       "brand_logo_filter": "brightness(0) invert(1)",
@@ -225,7 +225,7 @@ The example shows one entry, shortened. Keys this table doesn't list are for Wir
 |-------|------|-------------|
 | `key` | `string` | Canonical credential key. Use this in `CredentialUpsert.fields[].credentialkey`. |
 | `title` | `string` | Display label for the credential's card. |
-| `icon` | `string` | The icon as the registry holds it: a path on `https://wiro.ai`, such as `/images/icons/skills/telegram.svg` (put `https://wiro.ai` in front of it), or, for a setting, a Lineicons class name, such as `lni lni-envelope-1`. |
+| `icon` | `string` | The icon: a full URL, used as it is, such as `https://cdn.wiro.ai/uploads/connectors/connector-telegram-icon-27829c103cfc.svg`, or, for a setting, a Lineicons class name, such as `lni lni-envelope-1`. |
 | `brand_color` / `brand_text_color` / `brand_logo_filter` | `string\|null` | Colours and CSS filter for rendering the icon, the same shape as on skill registry entries. |
 | `docs_url` | `string\|null` | Slug of the page about it on this docs site, when it has one. Frontends prefix it with `/docs/`. |
 | `credential_mode` | `string` | `"api_key"` for values typed in (the channels, Twilio Voice, the Wiro project) or `"static"` for settings. |
@@ -272,7 +272,7 @@ Returns the **same entry** as a row from `Credentials/List` (shortened here):
   "credential": {
     "key": "twilio-voice",
     "title": "Twilio Voice",
-    "icon": "/images/icons/skills/twilio.svg",
+    "icon": "https://cdn.wiro.ai/uploads/connectors/connector-twilio-voice-icon-a5f8492d64f0.svg",
     "credential_mode": "api_key",
     "credential_schema": [
       { "key": "accountsid", "type": "text", "label": "Account SID", "required": true, "encrypted": true },

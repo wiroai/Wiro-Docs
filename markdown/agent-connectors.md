@@ -88,7 +88,7 @@ curl -X POST "https://api.wiro.ai/v1/AgentConnector/List" \
       "title": "Facebook Pages",
       "description": "Publish posts, photos and videos to your Facebook Pages and read their engagement.",
       "category": "social",
-      "iconurl": "https://wiro.ai/images/icons/skills/facebook.svg",
+      "iconurl": "https://cdn.wiro.ai/uploads/connectors/connector-facebook-pages-icon-dfe8207768d6.svg",
       "websiteurl": "https://www.facebook.com",
       "authtype": "provider-oauth",
       "transport": "local",
@@ -197,7 +197,7 @@ curl -X POST "https://api.wiro.ai/v1/AgentConnector/Detail" \
       "title": "Serper",
       "description": "Google search results through Serper: organic results, answer box and related questions.",
       "category": "data",
-      "iconurl": "https://wiro.ai/images/icons/skills/serper.svg",
+      "iconurl": "https://cdn.wiro.ai/uploads/connectors/connector-serper-icon-983eeb4db711.svg",
       "websiteurl": "https://serper.dev",
       "authtype": "fields",
       "transport": "local",
@@ -313,7 +313,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
     {
       "slug": "serper",
       "title": "Serper",
-      "iconurl": "https://wiro.ai/images/icons/skills/serper.svg",
+      "iconurl": "https://cdn.wiro.ai/uploads/connectors/connector-serper-icon-983eeb4db711.svg",
       "category": "data",
       "authtype": "fields",
       "transport": "local",
@@ -387,7 +387,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorConnect" \
     {
       "slug": "dataforseo",
       "title": "DataForSEO",
-      "iconurl": "https://wiro.ai/images/icons/skills/dataforseo.svg",
+      "iconurl": "https://cdn.wiro.ai/uploads/connectors/connector-dataforseo-icon-ec6bc46c1890.svg",
       "category": "data",
       "authtype": "headers",
       "transport": "streamable-http",
@@ -434,7 +434,7 @@ Some vendors that sign in with your own app also take a key or token (`modes: ["
     {
       "slug": "facebook-pages",
       "title": "Facebook Pages",
-      "iconurl": "https://wiro.ai/images/icons/skills/facebook.svg",
+      "iconurl": "https://cdn.wiro.ai/uploads/connectors/connector-facebook-pages-icon-dfe8207768d6.svg",
       "category": "social",
       "authtype": "provider-oauth",
       "transport": "local",
@@ -585,7 +585,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorList" \
     {
       "slug": "serper",
       "title": "Serper",
-      "iconurl": "https://wiro.ai/images/icons/skills/serper.svg",
+      "iconurl": "https://cdn.wiro.ai/uploads/connectors/connector-serper-icon-983eeb4db711.svg",
       "category": "data",
       "authtype": "fields",
       "transport": "local",
@@ -605,7 +605,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorList" \
     {
       "slug": "facebook-pages",
       "title": "Facebook Pages",
-      "iconurl": "https://wiro.ai/images/icons/skills/facebook.svg",
+      "iconurl": "https://cdn.wiro.ai/uploads/connectors/connector-facebook-pages-icon-dfe8207768d6.svg",
       "category": "social",
       "authtype": "provider-oauth",
       "transport": "local",
@@ -740,7 +740,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetAccounts" \
     {
       "slug": "facebook-pages",
       "title": "Facebook Pages",
-      "iconurl": "https://wiro.ai/images/icons/skills/facebook.svg",
+      "iconurl": "https://cdn.wiro.ai/uploads/connectors/connector-facebook-pages-icon-dfe8207768d6.svg",
       "category": "social",
       "authtype": "provider-oauth",
       "transport": "local",
@@ -843,7 +843,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/ConnectorSetAccounts" \
     {
       "slug": "tiktok-ads",
       "title": "TikTok Ads",
-      "iconurl": "https://wiro.ai/images/icons/skills/tiktok.svg",
+      "iconurl": "https://cdn.wiro.ai/uploads/connectors/connector-tiktok-ads-icon-3a9843c10f3d.svg",
       "category": "ads",
       "authtype": "oauth",
       "transport": "streamable-http",
