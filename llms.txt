@@ -932,11 +932,11 @@ Auth errors return HTTP 401: invalid API key, missing signature, IP not allowed,
 Prepaid credits, pay-per-use. Pricing info in `dynamicprice` field of Tool/List and Tool/Detail responses. The same balance pays agent plans and the AI usage an agent uses once its plan's included usage is used up (see Pricing Model under Agent API). A model run's cost is the task's `totalcost` (Task/Detail); an agent's plan payments and AI usage have no task: read one agent's with POST /UserAgent/TransactionList, or the whole workspace's with POST /Wallet/TransactionList and `surface: "agent"`.
 
 Billing methods:
-- Fixed-rate: cpr (per request), cps (per second), cpo (per output), cpt (per token)
-- Usage-based: cp-pixel (per pixel tier/1MP), cp-audiosecondslength (per audio second), cp-promptlength (per character), cp-outputVideoLength (per output video second)
-- Special: cp-realtimeturn (per realtime voice turn), cp-readoutput (model-reported cost)
+- Fixed-rate: per-run (per run), per-run-second (per second of run time), per-output-file (per output file), per-total-token (per input and output token)
+- Usage-based: per-output-megapixel (per 1MP output tier), per-input-audio-second (per second of input audio), per-input-video-second (per second of input video), per-input-character (per prompt character), per-output-video-second (per second of output video)
+- Special: per-realtime-turn (per conversation turn), reported-price (the model reports the cost when the run ends)
 
-Dynamic pricing: `dynamicprice` field contains pricing tiers with `inputs` (parameter combo), `price` (USD), `priceMethod` (billing code), optional `priceExtra` and `priceInput`. Empty inputs = flat rate.
+Dynamic pricing: `dynamicprice` field contains pricing tiers with `inputs` (parameter combo), `price` (USD), `priceMethod` (billing code), optional `priceExtra` and `priceInput` (per-output-megapixel) and `maxSeconds` (input-length methods: each input counts at most that many seconds). Empty inputs = flat rate.
 
 Fallback: when no dynamicprice, cost = elapsed_seconds × cps. `approximatelycost` field = average run time × cps (pre-run estimate).
 

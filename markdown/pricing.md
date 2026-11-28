@@ -16,26 +16,27 @@ Every model on Wiro uses one of the following billing methods. The method is set
 
 | Billing Method | Code | How it works |
 |---|---|---|
-| **Per Request** | `cpr` | Fixed cost per run, regardless of output. Most common for image generation, image editing, and simple models. |
-| **Per Second** | `cps` | Cost per second of processing time. Used for models where runtime varies significantly. When no dynamic pricing is set, this is the default billing method: cost = elapsed seconds × cps rate. |
-| **Per Output** | `cpo` | Cost per output item generated. If the run produces multiple files, you pay per file. If no output is produced, the base price is charged once. |
-| **Per Token** | `cpt` | Cost per token used. Total tokens (input + output) are extracted from the model's usage metadata. Used for LLM models. |
+| **Per Run** | `per-run` | Fixed cost per run, regardless of output. Most common for image generation, image editing, and simple models. |
+| **Per Second of Run Time** | `per-run-second` | Cost per second of processing time. Used for models where runtime varies significantly. When no dynamic pricing is set, this is the default billing method: cost = elapsed seconds × cps rate. |
+| **Per Output File** | `per-output-file` | Cost per output file generated. If the run produces multiple files, you pay per file. If no output is produced, the base price is charged once. |
+| **Per Input and Output Token** | `per-total-token` | Cost per token used. Total tokens (input + output) are extracted from the model's usage metadata. |
 
 ### Usage-Based Methods
 
 | Billing Method | Code | How it works |
 |---|---|---|
-| **Per Pixel** | `cp-pixel` | Cost based on output resolution. Each 1,048,576 pixels (1024×1024) counts as one tier. Higher resolutions cost proportionally more. Can also include per-input-image costs (`priceInput`) when the model processes input images. |
-| **Per Audio Second** | `cp-audiosecondslength` | Cost per second of input audio duration. It is measured from the duration of the input audio files. |
-| **Per Character** | `cp-promptlength` | Cost per character in the input prompt. Total cost = prompt length × price per character. |
-| **Per Video Second** | `cp-outputVideoLength` | Cost per second of generated output video. It is measured from the duration of the output video. |
+| **Per Output Megapixel** | `per-output-megapixel` | Cost based on output resolution. Each 1,048,576 pixels (1024×1024) counts as one tier: `price` for the first, `priceExtra` for each further tier. Can also include per-input-image costs (`priceInput`) when the model processes input images. |
+| **Per Second of Input Audio** | `per-input-audio-second` | Cost per second of input audio, measured from the duration of every input audio file. |
+| **Per Second of Input Video** | `per-input-video-second` | Cost per second of input video, measured from the duration of every input video file. The model page shows the total as soon as a video is picked. |
+| **Per Prompt Character** | `per-input-character` | Cost per character in the input prompt. Total cost = prompt length × price per character. |
+| **Per Second of Output Video** | `per-output-video-second` | Cost per second of generated output video, measured from the duration of the output video. |
 
 ### Special Methods
 
 | Billing Method | Code | How it works |
 |---|---|---|
-| **Per Realtime Turn** | `cp-realtimeturn` | Used for realtime voice conversation models. Billing happens per turn during the session: each conversation turn has a cost that is deducted in real time. |
-| **Model-Reported** | `cp-readoutput` | The model reports its cost when the run ends. |
+| **Per Conversation Turn** | `per-realtime-turn` | Used for realtime voice conversation models. Billing happens per turn during the session: each conversation turn has a cost that is deducted in real time. |
+| **Set When the Run Ends** | `reported-price` | The model reports its cost when the run ends. |
 
 ## Dynamic Pricing
 
@@ -48,12 +49,12 @@ The pricing is returned in the `dynamicprice` field of the [Tool/List](/docs/mod
   {
     "inputs": { "resolution": "720p", "duration": "5" },
     "price": 0.13,
-    "priceMethod": "cpr"
+    "priceMethod": "per-run"
   },
   {
     "inputs": { "resolution": "1080p", "duration": "5" },
     "price": 0.29,
-    "priceMethod": "cpr"
+    "priceMethod": "per-run"
   }
 ]
 ```
@@ -67,8 +68,9 @@ Each entry in the `dynamicprice` array represents a pricing tier:
 | `inputs` | object | The input parameter combination this price applies to. Empty `{}` means the price applies to all configurations. |
 | `price` | number | The cost in USD for this configuration. |
 | `priceMethod` | string | The billing method code (see tables above). |
-| `priceExtra` | number (optional) | Extra cost per additional tier. Currently used by `cp-pixel`: each additional 1MP tier costs this amount. |
-| `priceInput` | number (optional) | Per-input cost. Currently used by `cp-pixel`: each input image incurs this additional cost per 1MP tier. |
+| `priceExtra` | number (optional) | Extra cost per additional tier. Used by `per-output-megapixel`: each additional 1MP tier costs this amount. |
+| `priceInput` | number (optional) | Per-input cost. Used by `per-output-megapixel`: each input image incurs this additional cost per 1MP tier. |
+| `maxSeconds` | number (optional) | Used by `per-input-audio-second` and `per-input-video-second`: each input counts at most this many seconds, because the model processes only that much of a longer input. |
 
 When `inputs` contains specific parameter values (e.g. `"resolution": "720p"`), that price only applies when you run the model with those exact parameters. When `inputs` is empty (`{}`), it's a flat rate that applies regardless of input parameters.
 
@@ -92,7 +94,7 @@ A video model might have pricing tiers based on resolution and duration:
 An image generation model with a flat rate:
 
 ```json
-[{ "inputs": {}, "price": 0.03, "priceMethod": "cpr" }]
+[{ "inputs": {}, "price": 0.03, "priceMethod": "per-run" }]
 ```
 
 This means every run costs $0.03, regardless of parameters.

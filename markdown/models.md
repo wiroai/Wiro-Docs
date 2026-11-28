@@ -45,7 +45,7 @@ Returns a paginated list of available models. Filter by categories, search by na
       "onlymembers": "1",
       "averagepoint": "5.00",
       "commentcount": "1",
-      "dynamicprice": "[{\"inputs\":{},\"price\":0.09,\"priceMethod\":\"cpr\"}]",
+      "dynamicprice": "[{\"inputs\":{},\"price\":0.09,\"priceMethod\":\"per-run\"}]",
       "taskstat": {
         "runcount": 672,
         "successcount": "254",
@@ -107,7 +107,7 @@ Returns full details for a specific model, including its input parameters, prici
     "tags": ["google"],
     "marketplace": 1,
     "onlymembers": "1",
-    "dynamicprice": [{ "inputs": {}, "price": 0.039, "priceMethod": "cpo" }],
+    "dynamicprice": [{ "inputs": {}, "price": 0.039, "priceMethod": "per-output-file" }],
     "averagepoint": "4.38",
     "commentcount": "10",
     "ratedusercount": "8",
@@ -442,7 +442,7 @@ print(response.body);
     }],
     "inspire": [{ "prompt": "Create a Spider Man image flying over Warsaw", "inputImage": "" }],
     "samples": ["https://cdn.wiro.ai/uploads/models/google-nano-banana-sample-15.webp"],
-    "dynamicprice": [{ "inputs": {}, "price": 0.039, "priceMethod": "cpo" }],
+    "dynamicprice": [{ "inputs": {}, "price": 0.039, "priceMethod": "per-output-file" }],
     "averagepoint": "4.38",
     "taskstat": { "runcount": "531554", "successcount": "510396" },
     "seotitle": "Nano Banana API: Create Mobile & Web Apps with Nano Banana"

@@ -1057,7 +1057,7 @@
       "onlymembers": "1",
       "averagepoint": "5.00",
       "commentcount": "1",
-      "dynamicprice": "[{\"inputs\":{},\"price\":0.09,\"priceMethod\":\"cpr\"}]",
+      "dynamicprice": "[{\"inputs\":{},\"price\":0.09,\"priceMethod\":\"per-run\"}]",
       "taskstat": {
         "runcount": 672,
         "successcount": "254",
@@ -1145,7 +1145,7 @@
     "tags": ["google"],
     "marketplace": 1,
     "onlymembers": "1",
-    "dynamicprice": [{ "inputs": {}, "price": 0.039, "priceMethod": "cpo" }],
+    "dynamicprice": [{ "inputs": {}, "price": 0.039, "priceMethod": "per-output-file" }],
     "averagepoint": "4.38",
     "commentcount": "10",
     "ratedusercount": "8",
@@ -1236,7 +1236,7 @@
                     {
                       "label": "Response (Detail)",
                       "language": "json",
-                      "code": "{\n  \"result\": true,\n  \"errors\": [],\n  \"tool\": [{\n    \"id\": \"1562\",\n    \"title\": \"Nano Banana API: Create Mobile & Web Apps with Nano Banana\",\n    \"slugowner\": \"google\",\n    \"slugproject\": \"nano-banana\",\n    \"cleanslugowner\": \"google\",\n    \"cleanslugproject\": \"nano-banana\",\n    \"description\": \"Google's Gemini 2.5 Flash Image Preview, also known as Nano Banana, model for text-to-image and image-to-image generation.\",\n    \"categories\": [\"image-to-image\", \"text-to-image\", \"image-editing\"],\n    \"parameters\": [{\n      \"title\": \"\",\n      \"subtitle\": \"\",\n      \"items\": [\n        { \"id\": \"inputImage\", \"type\": \"combinefileinput\", \"required\": false },\n        { \"id\": \"prompt\", \"type\": \"textarea\", \"required\": true },\n        { \"id\": \"temperature\", \"type\": \"float\", \"required\": false },\n        { \"id\": \"aspectRatio\", \"type\": \"select\", \"required\": false },\n        { \"id\": \"safetySetting\", \"type\": \"select\", \"required\": false }\n      ]\n    }],\n    \"inspire\": [{ \"prompt\": \"Create a Spider Man image flying over Warsaw\", \"inputImage\": \"\" }],\n    \"samples\": [\"https://cdn.wiro.ai/uploads/models/google-nano-banana-sample-15.webp\"],\n    \"dynamicprice\": [{ \"inputs\": {}, \"price\": 0.039, \"priceMethod\": \"cpo\" }],\n    \"averagepoint\": \"4.38\",\n    \"taskstat\": { \"runcount\": \"531554\", \"successcount\": \"510396\" },\n    \"seotitle\": \"Nano Banana API: Create Mobile & Web Apps with Nano Banana\"\n  }]\n}"
+                      "code": "{\n  \"result\": true,\n  \"errors\": [],\n  \"tool\": [{\n    \"id\": \"1562\",\n    \"title\": \"Nano Banana API: Create Mobile & Web Apps with Nano Banana\",\n    \"slugowner\": \"google\",\n    \"slugproject\": \"nano-banana\",\n    \"cleanslugowner\": \"google\",\n    \"cleanslugproject\": \"nano-banana\",\n    \"description\": \"Google's Gemini 2.5 Flash Image Preview, also known as Nano Banana, model for text-to-image and image-to-image generation.\",\n    \"categories\": [\"image-to-image\", \"text-to-image\", \"image-editing\"],\n    \"parameters\": [{\n      \"title\": \"\",\n      \"subtitle\": \"\",\n      \"items\": [\n        { \"id\": \"inputImage\", \"type\": \"combinefileinput\", \"required\": false },\n        { \"id\": \"prompt\", \"type\": \"textarea\", \"required\": true },\n        { \"id\": \"temperature\", \"type\": \"float\", \"required\": false },\n        { \"id\": \"aspectRatio\", \"type\": \"select\", \"required\": false },\n        { \"id\": \"safetySetting\", \"type\": \"select\", \"required\": false }\n      ]\n    }],\n    \"inspire\": [{ \"prompt\": \"Create a Spider Man image flying over Warsaw\", \"inputImage\": \"\" }],\n    \"samples\": [\"https://cdn.wiro.ai/uploads/models/google-nano-banana-sample-15.webp\"],\n    \"dynamicprice\": [{ \"inputs\": {}, \"price\": 0.039, \"priceMethod\": \"per-output-file\" }],\n    \"averagepoint\": \"4.38\",\n    \"taskstat\": { \"runcount\": \"531554\", \"successcount\": \"510396\" },\n    \"seotitle\": \"Nano Banana API: Create Mobile & Web Apps with Nano Banana\"\n  }]\n}"
                     }
                   ]
                 </script>
@@ -6857,24 +6857,24 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                       </thead>
                       <tbody>
                         <tr>
-                          <td><strong>Per Request</strong></td>
-                          <td><code>cpr</code></td>
+                          <td><strong>Per Run</strong></td>
+                          <td><code>per-run</code></td>
                           <td>Fixed cost per run, regardless of output. Most common for image generation, image editing, and simple models.</td>
                         </tr>
                         <tr>
-                          <td><strong>Per Second</strong></td>
-                          <td><code>cps</code></td>
+                          <td><strong>Per Second of Run Time</strong></td>
+                          <td><code>per-run-second</code></td>
                           <td>Cost per second of processing time. When no dynamic pricing is set, this is the default: cost = elapsed seconds × cps rate.</td>
                         </tr>
                         <tr>
-                          <td><strong>Per Output</strong></td>
-                          <td><code>cpo</code></td>
-                          <td>Cost per output item generated. Multiple files = pay per file. No output = base price charged once.</td>
+                          <td><strong>Per Output File</strong></td>
+                          <td><code>per-output-file</code></td>
+                          <td>Cost per output file generated. Multiple files = pay per file. No output = base price charged once.</td>
                         </tr>
                         <tr>
-                          <td><strong>Per Token</strong></td>
-                          <td><code>cpt</code></td>
-                          <td>Cost per token used. Total tokens (input + output) extracted from model's usage metadata. Used for LLM models.</td>
+                          <td><strong>Per Input and Output Token</strong></td>
+                          <td><code>per-total-token</code></td>
+                          <td>Cost per token used. Total tokens (input + output) extracted from the model's usage metadata.</td>
                         </tr>
                       </tbody>
                     </table>
@@ -6890,23 +6890,28 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                       </thead>
                       <tbody>
                         <tr>
-                          <td><strong>Per Pixel</strong></td>
-                          <td><code>cp-pixel</code></td>
-                          <td>Cost based on output resolution. Each 1,048,576 pixels (1024×1024) = one tier. Can include per-input-image costs (<code>priceInput</code>).</td>
+                          <td><strong>Per Output Megapixel</strong></td>
+                          <td><code>per-output-megapixel</code></td>
+                          <td>Cost based on output resolution. Each 1,048,576 pixels (1024×1024) = one tier: <code>price</code> for the first, <code>priceExtra</code> for each further tier. Can include per-input-image costs (<code>priceInput</code>).</td>
                         </tr>
                         <tr>
-                          <td><strong>Per Audio Second</strong></td>
-                          <td><code>cp-audiosecondslength</code></td>
-                          <td>Cost per second of input audio duration.</td>
+                          <td><strong>Per Second of Input Audio</strong></td>
+                          <td><code>per-input-audio-second</code></td>
+                          <td>Cost per second of input audio, measured from the duration of every input audio file.</td>
                         </tr>
                         <tr>
-                          <td><strong>Per Character</strong></td>
-                          <td><code>cp-promptlength</code></td>
+                          <td><strong>Per Second of Input Video</strong></td>
+                          <td><code>per-input-video-second</code></td>
+                          <td>Cost per second of input video, measured from the duration of every input video file. The model page shows the total as soon as a video is picked.</td>
+                        </tr>
+                        <tr>
+                          <td><strong>Per Prompt Character</strong></td>
+                          <td><code>per-input-character</code></td>
                           <td>Cost per character in the input prompt. Total = prompt length × price.</td>
                         </tr>
                         <tr>
-                          <td><strong>Per Video Second</strong></td>
-                          <td><code>cp-outputVideoLength</code></td>
+                          <td><strong>Per Second of Output Video</strong></td>
+                          <td><code>per-output-video-second</code></td>
                           <td>Cost per second of generated output video.</td>
                         </tr>
                       </tbody>
@@ -6923,13 +6928,13 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                       </thead>
                       <tbody>
                         <tr>
-                          <td><strong>Per Realtime Turn</strong></td>
-                          <td><code>cp-realtimeturn</code></td>
+                          <td><strong>Per Conversation Turn</strong></td>
+                          <td><code>per-realtime-turn</code></td>
                           <td>For realtime voice models. Billing per conversation turn, deducted in real time during the session.</td>
                         </tr>
                         <tr>
-                          <td><strong>Model-Reported</strong></td>
-                          <td><code>cp-readoutput</code></td>
+                          <td><strong>Set When the Run Ends</strong></td>
+                          <td><code>reported-price</code></td>
                           <td>The model reports its cost when the run ends.</td>
                         </tr>
                       </tbody>
@@ -6944,12 +6949,12 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
   {
     "inputs": { "resolution": "720p", "duration": "5" },
     "price": 0.13,
-    "priceMethod": "cpr"
+    "priceMethod": "per-run"
   },
   {
     "inputs": { "resolution": "1080p", "duration": "5" },
     "price": 0.29,
-    "priceMethod": "cpr"
+    "priceMethod": "per-run"
   }
 ]</code></pre>
 
@@ -6982,12 +6987,17 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                         <tr>
                           <td><code>priceExtra</code></td>
                           <td>number (optional)</td>
-                          <td>Extra cost per additional tier. Used by <code>cp-pixel</code>: each additional 1MP tier costs this amount.</td>
+                          <td>Extra cost per additional tier. Used by <code>per-output-megapixel</code>: each additional 1MP tier costs this amount.</td>
                         </tr>
                         <tr>
                           <td><code>priceInput</code></td>
                           <td>number (optional)</td>
-                          <td>Per-input cost. Used by <code>cp-pixel</code>: each input image incurs this cost per 1MP tier.</td>
+                          <td>Per-input cost. Used by <code>per-output-megapixel</code>: each input image incurs this cost per 1MP tier.</td>
+                        </tr>
+                        <tr>
+                          <td><code>maxSeconds</code></td>
+                          <td>number (optional)</td>
+                          <td>Used by <code>per-input-audio-second</code> and <code>per-input-video-second</code>: each input counts at most this many seconds, because the model processes only that much of a longer input.</td>
                         </tr>
                       </tbody>
                     </table>
@@ -7040,7 +7050,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
 
                     <h3>Example: Simple Flat Pricing</h3>
                     <p>An image generation model with a flat rate:</p>
-                    <pre><code class="language-json">[{ "inputs": {}, "price": 0.03, "priceMethod": "cpr" }]</code></pre>
+                    <pre><code class="language-json">[{ "inputs": {}, "price": 0.03, "priceMethod": "per-run" }]</code></pre>
                     <p>This means every run costs $0.03, regardless of parameters.</p>
                   </section>
 
