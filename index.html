@@ -1141,7 +1141,20 @@
     "inspire": [
       { "prompt": "Create a Spider Man image flying over Warsaw", "inputImage": "" }
     ],
-    "samples": ["https://cdn.wiro.ai/uploads/models/google-nano-banana-sample-15.webp"],
+    "samples": [
+      {
+        "outputs": [
+          {
+            "url": "https://cdn.wiro.ai/uploads/models/google-nano-banana-sample-16.webp",
+            "name": "google-nano-banana-sample-16.webp"
+          }
+        ],
+        "inputs": {
+          "prompt": "Write ‘Happy New Year’ on the blackboard",
+          "inputImage": "https://cdn.wiro.ai/uploads/sampleinputs/google-nano-banana_input_1.jpg"
+        }
+      }
+    ],
     "tags": ["google"],
     "marketplace": 1,
     "onlymembers": "1",
@@ -1159,6 +1172,37 @@
     "seodescription": null
   }]
 }</code></pre>
+
+                    <h3>Samples</h3>
+                    <p>Each item in <code>samples</code> is one sample run from the model page, in the order the page shows them: the files the run produced and the inputs it was sent. <code>Tool/List</code> returns <code>samples</code> in the same shape.</p>
+                    <div class="docs-comparison-table">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Field</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td><code>outputs</code></td>
+                            <td><code>array</code></td>
+                            <td>The files the run produced. Each has a <code>url</code> and a <code>name</code>. The name is usually the file name in the URL; an output that keeps its run's file name, such as a JSON output stored as a <code>.txt</code> file, carries that name.</td>
+                          </tr>
+                          <tr>
+                            <td><code>inputs</code></td>
+                            <td><code>object</code></td>
+                            <td>The parameters the run was sent, keyed by parameter <code>id</code>, with file inputs as URLs. <code>{}</code> when they are not known.</td>
+                          </tr>
+                          <tr>
+                            <td><code>task</code></td>
+                            <td><code>string</code></td>
+                            <td>The id of the run the sample came from, when known. Left out otherwise.</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
                   </section>
 
                   <section id="model-browser">
@@ -1236,7 +1280,7 @@
                     {
                       "label": "Response (Detail)",
                       "language": "json",
-                      "code": "{\n  \"result\": true,\n  \"errors\": [],\n  \"tool\": [{\n    \"id\": \"1562\",\n    \"title\": \"Nano Banana API: Create Mobile & Web Apps with Nano Banana\",\n    \"slugowner\": \"google\",\n    \"slugproject\": \"nano-banana\",\n    \"cleanslugowner\": \"google\",\n    \"cleanslugproject\": \"nano-banana\",\n    \"description\": \"Google's Gemini 2.5 Flash Image Preview, also known as Nano Banana, model for text-to-image and image-to-image generation.\",\n    \"categories\": [\"image-to-image\", \"text-to-image\", \"image-editing\"],\n    \"parameters\": [{\n      \"title\": \"\",\n      \"subtitle\": \"\",\n      \"items\": [\n        { \"id\": \"inputImage\", \"type\": \"combinefileinput\", \"required\": false },\n        { \"id\": \"prompt\", \"type\": \"textarea\", \"required\": true },\n        { \"id\": \"temperature\", \"type\": \"float\", \"required\": false },\n        { \"id\": \"aspectRatio\", \"type\": \"select\", \"required\": false },\n        { \"id\": \"safetySetting\", \"type\": \"select\", \"required\": false }\n      ]\n    }],\n    \"inspire\": [{ \"prompt\": \"Create a Spider Man image flying over Warsaw\", \"inputImage\": \"\" }],\n    \"samples\": [\"https://cdn.wiro.ai/uploads/models/google-nano-banana-sample-15.webp\"],\n    \"dynamicprice\": [{ \"inputs\": {}, \"price\": 0.039, \"priceMethod\": \"per-output-file\" }],\n    \"averagepoint\": \"4.38\",\n    \"taskstat\": { \"runcount\": \"531554\", \"successcount\": \"510396\" },\n    \"seotitle\": \"Nano Banana API: Create Mobile & Web Apps with Nano Banana\"\n  }]\n}"
+                      "code": "{\n  \"result\": true,\n  \"errors\": [],\n  \"tool\": [{\n    \"id\": \"1562\",\n    \"title\": \"Nano Banana API: Create Mobile & Web Apps with Nano Banana\",\n    \"slugowner\": \"google\",\n    \"slugproject\": \"nano-banana\",\n    \"cleanslugowner\": \"google\",\n    \"cleanslugproject\": \"nano-banana\",\n    \"description\": \"Google's Gemini 2.5 Flash Image Preview, also known as Nano Banana, model for text-to-image and image-to-image generation.\",\n    \"categories\": [\"image-to-image\", \"text-to-image\", \"image-editing\"],\n    \"parameters\": [{\n      \"title\": \"\",\n      \"subtitle\": \"\",\n      \"items\": [\n        { \"id\": \"inputImage\", \"type\": \"combinefileinput\", \"required\": false },\n        { \"id\": \"prompt\", \"type\": \"textarea\", \"required\": true },\n        { \"id\": \"temperature\", \"type\": \"float\", \"required\": false },\n        { \"id\": \"aspectRatio\", \"type\": \"select\", \"required\": false },\n        { \"id\": \"safetySetting\", \"type\": \"select\", \"required\": false }\n      ]\n    }],\n    \"inspire\": [{ \"prompt\": \"Create a Spider Man image flying over Warsaw\", \"inputImage\": \"\" }],\n    \"samples\": [{\n      \"outputs\": [{ \"url\": \"https://cdn.wiro.ai/uploads/models/google-nano-banana-sample-16.webp\", \"name\": \"google-nano-banana-sample-16.webp\" }],\n      \"inputs\": { \"prompt\": \"Write ‘Happy New Year’ on the blackboard\", \"inputImage\": \"https://cdn.wiro.ai/uploads/sampleinputs/google-nano-banana_input_1.jpg\" }\n    }],\n    \"dynamicprice\": [{ \"inputs\": {}, \"price\": 0.039, \"priceMethod\": \"per-output-file\" }],\n    \"averagepoint\": \"4.38\",\n    \"taskstat\": { \"runcount\": \"531554\", \"successcount\": \"510396\" },\n    \"seotitle\": \"Nano Banana API: Create Mobile & Web Apps with Nano Banana\"\n  }]\n}"
                     }
                   ]
                 </script>

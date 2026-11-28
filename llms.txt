@@ -123,6 +123,8 @@ POST /Tool/Detail
 
 Returns model info including `parameters` array with input definitions (types: text, textarea, select, range, fileinput, multifileinput, combinefileinput).
 
+`samples` (Tool/List and Tool/Detail) lists the sample runs shown on the model page, in page order: `{ outputs: [{ url, name }], inputs: { <parameter id>: value }, task }`. File inputs are URLs, `inputs` is `{}` when not known, and `task` (the run's id) is there only when known.
+
 ### Run a Model
 POST /Run/{owner-slug}/{model-slug}
 

@@ -103,7 +103,20 @@ Returns full details for a specific model, including its input parameters, prici
     "inspire": [
       { "prompt": "Create a Spider Man image flying over Warsaw", "inputImage": "" }
     ],
-    "samples": ["https://cdn.wiro.ai/uploads/models/google-nano-banana-sample-15.webp"],
+    "samples": [
+      {
+        "outputs": [
+          {
+            "url": "https://cdn.wiro.ai/uploads/models/google-nano-banana-sample-16.webp",
+            "name": "google-nano-banana-sample-16.webp"
+          }
+        ],
+        "inputs": {
+          "prompt": "Write ‘Happy New Year’ on the blackboard",
+          "inputImage": "https://cdn.wiro.ai/uploads/sampleinputs/google-nano-banana_input_1.jpg"
+        }
+      }
+    ],
     "tags": ["google"],
     "marketplace": 1,
     "onlymembers": "1",
@@ -122,6 +135,16 @@ Returns full details for a specific model, including its input parameters, prici
   }]
 }
 ```
+
+### Samples
+
+Each item in `samples` is one sample run from the model page, in the order the page shows them: the files the run produced and the inputs it was sent. `Tool/List` returns `samples` in the same shape.
+
+| Field | Type | Description |
+|---|---|---|
+| `outputs` | array | The files the run produced. Each has a `url` and a `name`. The name is usually the file name in the URL; an output that keeps its run's file name, such as a JSON output stored as a `.txt` file, carries that name. |
+| `inputs` | object | The parameters the run was sent, keyed by parameter `id`, with file inputs as URLs. `{}` when they are not known. |
+| `task` | string | The id of the run the sample came from, when known. Left out otherwise. |
 
 ## Model Browser
 
@@ -441,7 +464,10 @@ print(response.body);
       ]
     }],
     "inspire": [{ "prompt": "Create a Spider Man image flying over Warsaw", "inputImage": "" }],
-    "samples": ["https://cdn.wiro.ai/uploads/models/google-nano-banana-sample-15.webp"],
+    "samples": [{
+      "outputs": [{ "url": "https://cdn.wiro.ai/uploads/models/google-nano-banana-sample-16.webp", "name": "google-nano-banana-sample-16.webp" }],
+      "inputs": { "prompt": "Write ‘Happy New Year’ on the blackboard", "inputImage": "https://cdn.wiro.ai/uploads/sampleinputs/google-nano-banana_input_1.jpg" }
+    }],
     "dynamicprice": [{ "inputs": {}, "price": 0.039, "priceMethod": "per-output-file" }],
     "averagepoint": "4.38",
     "taskstat": { "runcount": "531554", "successcount": "510396" },
